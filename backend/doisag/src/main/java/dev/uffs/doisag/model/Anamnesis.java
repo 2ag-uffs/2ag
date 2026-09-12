@@ -1,31 +1,50 @@
 package dev.uffs.doisag.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 
 import java.time.LocalDate;
 
 @Entity
 public class Anamnesis extends BaseAssessment {
+    @Column(columnDefinition = "TEXT")
     private String reasonForVisit;
     private String profession;
+    @Column(columnDefinition = "TEXT")
     private String diet;
+    @Column(columnDefinition = "TEXT")
     private String anxiety;
+    @Column(columnDefinition = "TEXT")
     private String observation;
+    @Column(columnDefinition = "TEXT")
     private String pain;
+    @Column(columnDefinition = "TEXT")
     private String adverseReaction;
+    @Column(columnDefinition = "TEXT")
     private String previousDiagnosis;
+    @Column(columnDefinition = "TEXT")
     private String smokingHabits;
+    @Column(columnDefinition = "TEXT")
     private String expectations;
+    @Column(columnDefinition = "TEXT")
     private String currentMedication;
+    @Column(columnDefinition = "TEXT")
     private String treatmentAwareness;
+    @Column(columnDefinition = "TEXT")
     private String geneticCondition;
+    @Column(columnDefinition = "TEXT")
     private String previousTreatment;
+    @Column(columnDefinition = "TEXT")
     private String familyHistory;
     private String height;
     private String weight;
+    @Column(columnDefinition = "TEXT")
     private String alcoholConsumption;
+    @Column(columnDefinition = "TEXT")
     private String sleepHabits;
+    @Column(columnDefinition = "TEXT")
     private String substanceUse;
+    @Column(columnDefinition = "TEXT")
     private String physicalActivity;
 
     public Anamnesis(Long id, LocalDate assessmentDate, Patient patient, String reasonForVisit, String profession, String diet, String anxiety, String observation, String adverseReaction, String expectations, String currentMedication, String geneticCondition, String previousTreatment, String height, String weight, String sleepHabits, String alcoholConsumption, String familyHistory, String treatmentAwareness, String smokingHabits, String previousDiagnosis, String pain, String substanceUse, String physicalActivity) {

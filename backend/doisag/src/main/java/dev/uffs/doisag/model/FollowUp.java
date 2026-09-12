@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import java.time.LocalDate;
 
@@ -7,6 +8,7 @@ import java.time.LocalDate;
 public class FollowUp extends BaseAssessment {
     private Integer morningDrops;
     private Integer afternoonDrops;
+    @Column(columnDefinition = "TEXT")
     private String comment;
     private Integer tremor;
     private Integer rigiditySpasticity;

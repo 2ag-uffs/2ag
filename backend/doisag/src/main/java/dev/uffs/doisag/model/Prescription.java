@@ -7,11 +7,14 @@ public class Prescription {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(columnDefinition = "TEXT")
     private String productDescription;
+    @Column(columnDefinition = "TEXT")
     private String posology;
     private String brand;
     private String concentration;
     private String spectrum;
+    @Column(columnDefinition = "TEXT")
     private String observation;
 
     // muitas prescrições podem pertencer a uma consulta

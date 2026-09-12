@@ -19,7 +19,8 @@ public class Notification {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, length = 512)
+    // TEXT em vez de length 512: mensagem de alerta clinico pode ser longa
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
     // pra saber se ja foi lida

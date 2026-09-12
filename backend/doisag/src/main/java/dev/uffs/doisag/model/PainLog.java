@@ -2,7 +2,6 @@ package dev.uffs.doisag.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Lob;
 
 import java.time.LocalDate;
 
@@ -13,7 +12,6 @@ public class PainLog extends BaseAssessment {
     private Integer sleepInterference;
     private Integer productivityInterference;
     private Integer extraMedication;
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String observation;
 

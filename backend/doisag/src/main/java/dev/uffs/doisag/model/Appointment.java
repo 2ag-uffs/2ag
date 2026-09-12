@@ -14,9 +14,13 @@ public class Appointment {
     private LocalDateTime dateTime;
     private String modality;
     private String status;
+    @Column(columnDefinition = "TEXT")
     private String diagnosis;
+    @Column(columnDefinition = "TEXT")
     private String clinicalObservation;
+    @Column(columnDefinition = "TEXT")
     private String therapeuticPlan;
+    @Column(columnDefinition = "TEXT")
     private String evolution;
     // relacionamento n:1, muitas consultas podem ser de um paciente
     @ManyToOne(fetch = FetchType.LAZY)

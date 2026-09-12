@@ -3,7 +3,6 @@ package dev.uffs.doisag.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -23,7 +22,6 @@ public class PittsburghScale extends BaseAssessment {
     private Integer freqFeelHot;
     private Integer freqHaveBadDreams;
     private Integer freqHavePain;
-    @Lob // campo grande para anotar
     @Column(columnDefinition = "TEXT")
     private String otherReasonToTroubleSleep;
     private Integer sleepQualityRating;

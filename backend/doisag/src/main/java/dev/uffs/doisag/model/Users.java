@@ -16,6 +16,9 @@ public abstract class Users implements UserDetails { // implementa a interface d
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    // cpf tbm precisa ser unico, senao o mesmo paciente entra duas vezes
+    // e o historico dele fica partido em duas fichas
+    @Column(unique = true)
     private String cpf;
     @Column(unique = true) // garantir email único no banco
     private String email;
