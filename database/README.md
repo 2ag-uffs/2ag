@@ -95,7 +95,7 @@ cd backend/doisag
 ./mvnw spring-boot:run
 ```
 
-na primeira vez que sobe, o hibernate cria as tabelas sozinho (a propriedade `ddl-auto` tá em `update`) e um `CommandLineRunner` cria os usuários de teste
+na primeira vez que sobe, o **flyway** cria as tabelas a partir das migrações em `backend/doisag/src/main/resources/db/migration/`. se você exportou `SEED_DADOS_TESTE=true`, um `CommandLineRunner` também cria os usuários de teste
 
 > pra rodar os **testes** você n precisa de nada disso: `./mvnw clean install` usa h2 em memoria e passa sem postgres instalado. o banco de verdade só é necessário pra rodar a aplicação
 
@@ -103,7 +103,7 @@ na primeira vez que sobe, o hibernate cria as tabelas sozinho (a propriedade `dd
 
 a pasta `physical-model/` tem os scripts de criação (`script-creates.sql`), inserção de exemplo (`script-insert.sql`) e consultas (`scrip-select.sql`)
 
-> ⚠️ **eles não são a fonte de verdade do esquema hoje**. quem cria e altera as tabelas na prática é o hibernate, pelo `ddl-auto: update`, a partir das entidades java. os dois já divergem entre si — por exemplo, o `NOT NULL` da coluna `email` existe no script e não na entidade. ter uma fonte única, com migrações versionadas, é o RNF14 do documento de requisitos
+> ⚠️ **eles são registro histórico, não a fonte de verdade**. o esquema de verdade vive nas migrações do flyway, em `backend/doisag/src/main/resources/db/migration/`. esses scripts foram feitos na modelagem de 2025 e já divergem do modelo atual — não use pra criar banco
 
 ## conclusão
 

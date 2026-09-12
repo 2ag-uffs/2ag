@@ -10,10 +10,16 @@ spring:
     # senha n tem padrao de proposito: melhor a aplicacao n subir do que
     # subir com uma senha que esta publicada no repositorio
     password: ${DATABASE_PASSWORD}
+  flyway:
+    # quem cria e altera tabela agora eh o flyway, pelos arquivos de
+    # src/main/resources/db/migration
+    enabled: ${FLYWAY_ENABLED:true}
   jpa:
     hibernate:
-      # update modifica o banco de dados baseado nas entidades
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      # validate: o hibernate so confere se o banco bate com as entidades
+      # e reclama se n bater. ele n altera mais nada sozinho, senao teriam
+      # duas coisas mexendo no esquema ao mesmo tempo
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     # exibe o sql gerado pelo hibernate no console
     show-sql: ${JPA_SHOW_SQL:true}
     properties:

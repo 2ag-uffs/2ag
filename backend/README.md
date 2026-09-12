@@ -68,6 +68,20 @@ se aparecer `1.8.x` você tem só o java 8 no path e o build vai falhar
 
 -----
 
+### **migracoes do banco**
+
+quem cria e altera tabela eh o **flyway**, pelos arquivos em `src/main/resources/db/migration/`. o hibernate fica em `validate`: ele so confere se o banco bate com as entidades e reclama se n bater.
+
+pra mudar o esquema:
+
+1. mexe na entidade
+2. cria um arquivo novo, `V2__descricao_curta.sql`, com o `alter table` correspondente
+3. roda os testes. se esquecer do passo 2, quebra com `Schema-validation`
+
+**nunca edite uma migracao que ja rodou em algum banco.** o flyway guarda o checksum de cada arquivo e recusa a subida se ele mudar. correcao vira migracao nova.
+
+-----
+
 ### **testes**
 
 ```bash
@@ -76,7 +90,9 @@ se aparecer `1.8.x` você tem só o java 8 no path e o build vai falhar
 
 a suite roda no perfil `test`, com **h2 em memoria**. n precisa de postgres instalado, n precisa de variavel de ambiente, n precisa de docker. o build passa em maquina limpa, que eh o RNF13.
 
-a configuracao fica em `src/test/resources/application-test.yml`: h2 com `MODE=PostgreSQL` (pros campos `TEXT` funcionarem igual), `ddl-auto: create-drop` pra cada execucao comecar limpa, chave jwt fixa e seed desligado.
+a configuracao fica em `src/test/resources/application-test.yml`: h2 com `MODE=PostgreSQL` (pros campos `TEXT` funcionarem igual), flyway ligado e `ddl-auto: validate`, chave jwt fixa e seed desligado.
+
+os testes rodam **a mesma migracao que roda em producao**, e o `validate` confere se as entidades batem com ela. se alguem mexer numa entidade e esquecer da migracao, a suite quebra com `Schema-validation: missing column`.
 
 **toda classe de teste precisa de `@ActiveProfiles("test")`.** sem isso ela tenta o postgres de verdade e falha. o IntelliJ roda o JUnit direto, sem passar pelo maven, entao a anotacao eh o que garante o perfil nos dois caminhos.
 
@@ -104,7 +120,8 @@ a configuração vem de **variável de ambiente**. o `application.yml` só decla
 | `JWT_SECRET` | chave que assina os tokens jwt | **sem padrão, obrigatória** |
 | `CORS_ALLOWED_ORIGIN` | origem do front que pode chamar a api | `http://localhost:5173` |
 | `SEED_DADOS_TESTE` | cria os usuários de teste na subida | `false` |
-| `JPA_DDL_AUTO` | estratégia de esquema do hibernate | `update` |
+| `JPA_DDL_AUTO` | estratégia de esquema do hibernate | `validate` |
+| `FLYWAY_ENABLED` | roda as migrações na subida | `true` |
 | `SERVER_PORT` | porta da api | `8080` |
 
 `DATABASE_PASSWORD` e `JWT_SECRET` **não têm padrão de propósito**: é melhor a aplicação não subir do que subir com credencial que está publicada no repositório. nenhum segredo fica em arquivo versionado.
@@ -400,7 +417,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * `Prescription.spectrum` ainda é `String` livre, apesar de a RN03 definir três valores. fica pendente porque o fluxo de prescrição precisa ser refeito antes (ver abaixo)
   * ~~campos de texto clínico viram `varchar(255)` e truncam~~ **resolvido**: 30 campos de resposta aberta passaram a `TEXT` — os da consulta, os 18 descritivos da anamnese, descrição e posologia da prescrição, comentário do acompanhamento e a mensagem de notificação (RN11)
   * ~~`cpf` não tem restrição de unicidade~~ **resolvido**: `@Column(unique = true)` no `Users`, então o mesmo paciente não entra duas vezes com o histórico partido em duas fichas (RN04)
-  * duas fontes de verdade pro esquema: os scripts de `database/physical-model/` e o `ddl-auto: update`. já divergem entre si — o `NOT NULL` do email existe no sql e não na entidade (RNF14)
+  * ~~duas fontes de verdade pro esquema~~ **resolvido**: o esquema vem de `src/main/resources/db/migration/`, e o hibernate ficou em `validate` — ele só confere, não altera mais nada sozinho (RNF14)
   * nenhum endpoint pagina ou ordena. não existe `Pageable` no projeto, apesar do `relatorio.pdf` §2.11 descrever ordenação por `?sort=name,asc` e busca por `?search=` (RNF06)
   * `messages.properties` não está em utf-8, e a codificação de plataforma do ambiente é `Cp1252`. qualquer texto acentuado nesse arquivo sai corrompido (RNF12)
   * o `MessageSource` resolve mensagem com `Locale.getDefault()`, a locale do servidor, não a do usuário. só existe `messages.properties`, sem `_en` nem `_es` (RNF12)

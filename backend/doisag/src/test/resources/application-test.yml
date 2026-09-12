@@ -7,10 +7,16 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
+  flyway:
+    # ligado tbm no teste: assim a suite verifica a migracao de verdade,
+    # e n so o codigo java
+    enabled: true
   jpa:
     hibernate:
-      # cria as tabelas na subida e derruba no fim, cada run comeca limpo
-      ddl-auto: create-drop
+      # validate: quem cria as tabelas eh a migracao, o hibernate so
+      # confere se as entidades batem com ela. se alguem mexer numa
+      # entidade e esquecer da migracao, o teste quebra
+      ddl-auto: validate
     show-sql: false
 
 api:

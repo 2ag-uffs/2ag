@@ -767,4 +767,8 @@ A sequência é deliberada: segurança antes de funcionalidade, porque cada tela
 
 - Ambiente de build validado com Eclipse Temurin JDK 17.0.20.1 e o wrapper Maven do repositório (3.9.10)
 - **RNF15:** segredos fora do arquivo versionado, configuração por variável de ambiente, `docker compose up` sobe banco, API e interface
-- **RNF13:** perfil `test` com H2 em memória. `./mvnw clean install` passa sem PostgreSQL instalado e sem nenhuma variável de ambiente definida — o comando que antes falhava sempre. Cobertura inicial: subida do contexto, negação de acesso sem token e cálculo de escore
+- **RNF13:** perfil `test` com H2 em memória. `./mvnw clean install` passa sem PostgreSQL instalado e sem nenhuma variável de ambiente definida — o comando que antes falhava sempre
+
+**Fase 1 concluída em 12/09/2026:** RF29, RF30, RF31 (parcial), RF02.2, RN12, RNF03, RNF04 e RNF05. Nenhuma entidade de usuário atravessa a API, autorização por papel e por vínculo em todas as rotas, dono verificado por registro nas escalas, e falha de autenticação responde 401.
+
+**Fase 2 concluída em 12/09/2026:** RN04, RN10, RN11, RNF14 e a parte de datas do RF31. Escala incompleta ficou sem escore, texto clínico deixou de truncar em 255, CPF virou único, toda entidade clínica guarda quando foi criada e alterada, e o esquema passou a ter uma fonte de verdade só, com o Hibernate em `validate`.
