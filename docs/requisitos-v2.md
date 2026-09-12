@@ -637,6 +637,21 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 
 Este anexo é normativo. Nenhuma escala pode ser implementada com algoritmo diferente do especificado aqui (RN13).
 
+Os instrumentos de referência são os que a clínica **efetivamente aplica**, versionados em `docs/scales/`:
+
+| Arquivo | Instrumento |
+| :--- | :--- |
+| `anamnese.xlsx` | ficha de anamnese (formulário de triagem, 23 perguntas) |
+| `acompanhamento-semanal.pdf` | ficha de acompanhamento semanal |
+| `ham-a.pdf` | Escala de Ansiedade de Hamilton |
+| `psqi-br.pdf` | Índice de Qualidade do Sono de Pittsburgh |
+| `diario-sono.pdf` | diário de sono |
+| `registro-dor.pdf` | acompanhamento semanal de paciente com dor |
+| `registro-tea.pdf` | acompanhamento semanal de paciente com TEA |
+| `meem.pdf` | Mini-Exame do Estado Mental |
+
+Em caso de divergência entre este anexo e o formulário em `docs/scales/`, **o formulário prevalece** e o anexo deve ser corrigido: é o instrumento que a prescritora interpreta na prática.
+
 ### A.1 HAM-A — Escala de Ansiedade de Hamilton
 
 14 itens, cada um de 0 (ausente) a 4 (muito grave). **Escore = soma simples dos 14 itens, faixa de 0 a 56.**
@@ -710,7 +725,7 @@ Converter: 0 = 0 · 1 a 2 = 1 · 3 a 4 = 2 · 5 a 6 = 3.
 | **Cópia** | **1** | copiar dois pentágonos com interseção |
 | **Total** | **30** | |
 
-Enunciados exatos do formulário aplicado pela clínica (`docs/scales/meem-clinica.pdf`), que a tela deve reproduzir:
+Enunciados exatos do formulário aplicado pela clínica (`docs/scales/meem.pdf`), que a tela deve reproduzir:
 
 | Seção | Enunciado |
 | :--- | :--- |
