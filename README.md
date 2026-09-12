@@ -1,14 +1,12 @@
 # 2ag
 
-sistema pra acompanhar pacientes em tratamento com óleo de cannabis.
+sistema livre para acompanhamento terapêutico longitudinal de pacientes em tratamento com óleo de Cannabis sativa.
 
-a ideia é tirar do papel e da planilha o que a clínica faz hoje: a anamnese da triagem, o registro da consulta e da prescrição, as escalas clínicas que o paciente preenche toda semana, e o gráfico que mostra se ele está melhorando ou não ao longo dos 90 dias de acompanhamento.
+o 2ag digitaliza o ciclo de cuidado de uma clínica que prescreve fitocanabinoides: triagem por anamnese, registro de consulta e prescrição, aplicação das escalas clínicas padronizadas com cálculo dos escores, envio automatizado dos formulários de acompanhamento ao longo dos 90 dias de tratamento e visualização gráfica da evolução dos sintomas.
 
-é software livre, feito como projeto de extensão da uffs junto com o instituto edma, em chapecó.
+## projeto de extensão universitária
 
-> ⚠️ ainda está em desenvolvimento. **não use com dado de paciente de verdade** — a parte de segurança está sendo arrumada agora.
-
----
+sistema desenvolvido como ação de extensão no componente GCH1993 — Projeto de Integração de Extensão da Universidade Federal da Fronteira Sul (UFFS), campus Chapecó.
 
 ## o que você precisa instalar
 
