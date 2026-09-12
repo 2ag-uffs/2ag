@@ -3,6 +3,8 @@ package dev.uffs.doisag.model;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,8 +18,13 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private LocalDateTime dateTime;
-    private String modality;
-    private String status;
+    // guardado como texto no banco (EnumType.STRING) e n como numero,
+    // senao inserir um valor novo no meio do enum embaralha o historico
+    @Enumerated(EnumType.STRING)
+    private AppointmentModality modality;
+
+    @Enumerated(EnumType.STRING)
+    private AppointmentStatus status;
     @Column(columnDefinition = "TEXT")
     private String diagnosis;
     @Column(columnDefinition = "TEXT")
@@ -43,7 +50,7 @@ public class Appointment {
     )
     private List<Prescription> prescriptions = new ArrayList<>();
 
-    public Appointment(String clinicalObservation, LocalDateTime dateTime, String diagnosis, String evolution, Long id, String modality, Patient patient, Prescriber prescriber, List<Prescription> prescriptions, String status, String therapeuticPlan) {
+    public Appointment(String clinicalObservation, LocalDateTime dateTime, String diagnosis, String evolution, Long id, AppointmentModality modality, Patient patient, Prescriber prescriber, List<Prescription> prescriptions, AppointmentStatus status, String therapeuticPlan) {
         this.clinicalObservation = clinicalObservation;
         this.dateTime = dateTime;
         this.diagnosis = diagnosis;
@@ -58,7 +65,7 @@ public class Appointment {
     }
 
     // para o agendamento, torna os outros atributos opcionais;
-    public Appointment(Patient patient, Prescriber prescriber, String modality, String status, Long id, LocalDateTime dateTime) {
+    public Appointment(Patient patient, Prescriber prescriber, AppointmentModality modality, AppointmentStatus status, Long id, LocalDateTime dateTime) {
         this.patient = patient;
         this.prescriber = prescriber;
         this.modality = modality;
@@ -86,19 +93,19 @@ public class Appointment {
         this.dateTime = dateTime;
     }
 
-    public String getModality() {
+    public AppointmentModality getModality() {
         return modality;
     }
 
-    public void setModality(String modality) {
+    public void setModality(AppointmentModality modality) {
         this.modality = modality;
     }
 
-    public String getStatus() {
+    public AppointmentStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(AppointmentStatus status) {
         this.status = status;
     }
 

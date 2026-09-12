@@ -344,7 +344,7 @@ duas classes padronizam as respostas de erro, e as duas devolvem o mesmo formato
 
 | status | quando acontece |
 | :--- | :--- |
-| `400` | validação de dto falhou, regra de negócio violada, enum inválido |
+| `400` | validação de dto falhou, regra de negócio violada, corpo ilegível (enum ou tipo inválido) |
 | `401` | sem token, token expirado, assinatura inválida, ou credencial errada no login |
 | `403` | autenticado mas sem permissão pra aquele recurso |
 | `404` | recurso não encontrado |
@@ -396,7 +396,8 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **dados e infraestrutura**
 
-  * `Appointment.modality` e `Appointment.status` são `String` livre, sem enum nem validação (RF04)
+  * ~~`Appointment.modality` e `Appointment.status` são `String` livre~~ **resolvido**: viraram `AppointmentModality` (`PRESENCIAL`, `REMOTA`) e `AppointmentStatus` (`AGENDADA`, `EM_ANDAMENTO`, `CONCLUIDA`, `CANCELADA`), guardados como texto no banco (RF04)
+  * `Prescription.spectrum` ainda é `String` livre, apesar de a RN03 definir três valores. fica pendente porque o fluxo de prescrição precisa ser refeito antes (ver abaixo)
   * ~~campos de texto clínico viram `varchar(255)` e truncam~~ **resolvido**: 30 campos de resposta aberta passaram a `TEXT` — os da consulta, os 18 descritivos da anamnese, descrição e posologia da prescrição, comentário do acompanhamento e a mensagem de notificação (RN11)
   * ~~`cpf` não tem restrição de unicidade~~ **resolvido**: `@Column(unique = true)` no `Users`, então o mesmo paciente não entra duas vezes com o histórico partido em duas fichas (RN04)
   * duas fontes de verdade pro esquema: os scripts de `database/physical-model/` e o `ddl-auto: update`. já divergem entre si — o `NOT NULL` do email existe no sql e não na entidade (RNF14)

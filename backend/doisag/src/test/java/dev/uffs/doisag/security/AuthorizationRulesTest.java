@@ -196,6 +196,17 @@ class AuthorizationRulesTest {
                 .andExpect(status().isForbidden());
     }
 
+    // modalidade e status viraram enum, entao valor fora da lista eh
+    // erro do cliente (400) e n erro do servidor (500)
+    @Test
+    void modalidadeForaDaListaDaErroDeRequisicaoENaoDeServidor() throws Exception {
+        mockMvc.perform(post("/consulta")
+                        .header("Authorization", tokenPrescriberA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"dateTime\":\"2026-09-12T10:00:00\",\"modality\":\"qualquer_coisa\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     // ---------- RF29: papel ----------
 
     @Test

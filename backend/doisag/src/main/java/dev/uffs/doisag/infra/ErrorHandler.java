@@ -62,6 +62,17 @@ public class ErrorHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
     }
 
+    // trata 400 quando o json nem da pra ler: campo com tipo errado,
+    // enum com valor que n existe, data em formato invalido.
+    // sem isso o pega-tudo transformava erro do cliente em 500
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnreadableBody(
+            org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+        var errorDto = buildErrorResponse(HttpStatus.BAD_REQUEST,
+                "Corpo da requisição inválido. Verifique os campos enviados!", request);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+    }
+
     // trata 400 para falhas de validação de DTOs com @Valid
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationResponseDTO> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {

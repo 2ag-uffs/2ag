@@ -152,6 +152,16 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 * três rotas estão **comentadas** no fim do `routes.jsx` e as páginas não existem: `/escala-pittsburgh`, `/diario-dor` e `/diario-tea`. o backend designa essas escalas e manda o paciente pra elas, o que leva a uma tela em branco (RF08, RF24, RF25)
 * não existe exportação de dados em pdf ou csv (RF33)
 
+**telas que não estão ligadas ao backend**
+
+descobertos ao conferir o impacto das mudanças no backend. o build passa porque nada disso é erro de sintaxe, mas em execução não funciona:
+
+* `prescricao.jsx` usa `apiService.get` e `apiService.post`, mas **esse objeto nunca é importado nem definido** em lugar nenhum do projeto. a tela quebra com `ReferenceError` assim que tenta salvar
+* `agendamento-consulta-prescritor.jsx` **não faz nenhuma chamada ao backend** — a agenda inteira é dado fixo no código
+* `agendamento-consulta-paciente.jsx` chama `POST /consultas`, e a rota do backend é `/consulta`, no singular
+* `consulta-clinica.jsx` chama `POST /clinical-consultations`, rota que não existe no backend
+* `prescricao.jsx` monta o payload com `patientId`, `prescriberId`, `prescriptionDate`, `nextConsultation`, `treatmentDuration` e `escalationProtocol`, campos que o `PrescriptionCreateDTO` não tem, e manda pra `POST /prescricao` quando a rota de criação é `POST /consulta/{appointmentId}/prescricao`
+
 **estrutura**
 
 * não há rota de fallback (404), nem `ErrorBoundary`, nem layout compartilhado entre as páginas
