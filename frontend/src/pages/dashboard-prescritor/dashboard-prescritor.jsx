@@ -95,9 +95,11 @@ export default function DashboardPrescritor() {
         navigate("/consulta");
     };
 
+    // prescricao n existe solta, ela sai de dentro de uma consulta.
+    // entao o atalho leva pra lista de pacientes, que eh por onde comeca
     const handleNewPrescription = (e) => {
         e.preventDefault();
-        navigate("/prescricao");
+        navigate("/lista-paciente");
     };
 
     const handleAgenda = (e) => {
@@ -311,7 +313,7 @@ export default function DashboardPrescritor() {
                             onClick={handleNewPrescription}
                         >
                             <span className="action-icon">💊</span>
-                            <span>Nova prescrição</span>
+                            <span>Prescrever</span>
                         </button>
                         <button
                             className="action-button"

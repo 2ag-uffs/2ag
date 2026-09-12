@@ -3,6 +3,7 @@ package dev.uffs.doisag.security;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,11 @@ import org.springframework.stereotype.Service;
 public class PatientAccessService {
 
     private final PatientRepository patientRepository;
+    private final AppointmentRepository appointmentRepository;
 
-    public PatientAccessService(PatientRepository patientRepository) {
+    public PatientAccessService(PatientRepository patientRepository, AppointmentRepository appointmentRepository) {
         this.patientRepository = patientRepository;
+        this.appointmentRepository = appointmentRepository;
     }
 
     public boolean canAccess(Long patientId, Authentication authentication) {
@@ -56,6 +59,23 @@ public class PatientAccessService {
     public Patient loggedPatient(Authentication authentication) {
         Users loggedUser = loggedUserOf(authentication);
         return loggedUser instanceof Patient patient ? patient : null;
+    }
+
+    // consulta eh do prescritor que a conduziu, ou do paciente atendido.
+    // usado pra prescricao, que sempre nasce dentro de uma consulta
+    public boolean canAccessAppointment(Long appointmentId, Authentication authentication) {
+        Users loggedUser = loggedUserOf(authentication);
+        if (loggedUser == null || appointmentId == null) {
+            return false;
+        }
+        return appointmentRepository.findById(appointmentId)
+                .map(consulta -> {
+                    if (loggedUser instanceof Prescriber) {
+                        return consulta.getPrescriber().getId().equals(loggedUser.getId());
+                    }
+                    return consulta.getPatient().getId().equals(loggedUser.getId());
+                })
+                .orElse(false);
     }
 
     // quem pode ver a ficha de um prescritor: ele mesmo, ou um paciente

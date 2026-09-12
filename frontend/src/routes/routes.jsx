@@ -56,7 +56,9 @@ const router = createBrowserRouter([
         element: <DashboardPrescritor/>,
     },
     {
-        path: "/prescricao",
+        // a prescricao sai de dentro de uma consulta, entao precisa saber
+        // de qual consulta ela veio
+        path: "/consulta/:appointmentId/prescricao",
         element: <Prescricao/>,
     },
     {

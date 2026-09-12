@@ -24,7 +24,7 @@ public class PrescriptionsController {
 
     // endpoint para CRIAR uma nova prescrição
     // POST /prescricao
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @PostMapping("/consulta/{appointmentId}/prescricao")
     public ResponseEntity<PrescriptionResponseDTO> create(
             @PathVariable Long appointmentId,
@@ -74,7 +74,7 @@ public class PrescriptionsController {
         }
     }
 
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @GetMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<List<PrescriptionResponseDTO>> getPrescriptionsByAppointment(@PathVariable Long appointmentId) {
         List<PrescriptionResponseDTO> dtos = prescriptionService.getByAppointmentId(appointmentId)

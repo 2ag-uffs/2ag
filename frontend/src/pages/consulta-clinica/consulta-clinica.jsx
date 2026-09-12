@@ -29,6 +29,8 @@ export default function ConsultaClinica() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    // guarda o id da consulta salva pra liberar o botao de prescricao
+    const [consultaSalvaId, setConsultaSalvaId] = useState(null);
 
     useEffect(() => {
         const fetchPatientData = async () => {
@@ -77,11 +79,12 @@ export default function ConsultaClinica() {
         };
 
         try {
-            await apiService.post("/consulta", consulta);
+            // a consulta salva volta com o id, que eh o que a prescricao
+            // precisa saber pra nascer amarrada nela (RF05)
+            const consultaSalva = await apiService.post("/consulta", consulta);
 
             setSuccess("Consulta clínica salva com sucesso!");
-            // Redireciona para o histórico do paciente após salvar
-            setTimeout(() => navigate(`/paciente/${patientId}/historico`), 2000);
+            setConsultaSalvaId(consultaSalva.id);
 
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "Ocorreu um erro ao salvar a consulta.");
@@ -100,12 +103,6 @@ export default function ConsultaClinica() {
     const handleBack = () => {
         navigate(-1);
     };
-
-    const handleNewPrescription = (e) => {
-        e.preventDefault();
-
-        navigate("/prescricao");
-    }
 
     if (isLoading) {
         return (
@@ -361,6 +358,25 @@ export default function ConsultaClinica() {
                             {isLoading && <p className="feedback-loading">Salvando consulta...</p>}
                             {error && <p className="feedback-error">Erro: {error}</p>}
                             {success && <p className="feedback-success">{success}</p>}
+                            {/* consulta salva: agora da pra emitir a prescricao
+                                dela, ou seguir pro historico do paciente */}
+                            {consultaSalvaId && (
+                                <div className="form__content__form__actions">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate(`/consulta/${consultaSalvaId}/prescricao`)}
+                                    >
+                                        Emitir prescrição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="button-secondary"
+                                        onClick={() => navigate(`/paciente/${patientId}/historico`)}
+                                    >
+                                        Ir para o histórico
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Ações da consulta */}
@@ -369,7 +385,6 @@ export default function ConsultaClinica() {
                                 <button className="button-secondary" disabled={isLoading}>Salvar Rascunho</button>
                             </div>
                             <div className="actions-right">
-                                <button className="button-secondary" onClick={handleNewPrescription}>Nova Prescrição</button>
                                 <button className="button" onClick={handleSave} disabled={isLoading}>
                                     {isLoading ? 'Salvando...' : 'Finalizar e Salvar'}
                                 </button>

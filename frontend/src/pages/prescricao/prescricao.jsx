@@ -4,24 +4,16 @@ import "../../styles/button.css";
 import "../../styles/input.css";
 import "./prescricao.css";
 import {apiService, ApiError} from "../../services/api.js";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import Header from "../../components/header/header.jsx";
 import React, { useState, useEffect } from "react";
-
-// Função auxiliar para decodificar JWT
-function parseJwt(token) {
-    try {
-        return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-        return null;
-    }
-}
 
 export default function Prescricao() {
     const navigate = useNavigate();
 
     // Estados para gerenciar dados
     const [patient, setPatient] = useState(null);
+    const [appointment, setAppointment] = useState(null);
     const [prescriber, setPrescriber] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -44,39 +36,34 @@ export default function Prescricao() {
         escalasAcompanhamento: []
     });
 
-    // TODO: esta tela ainda precisa ser refeita. o estado patient nunca
-    // recebe valor, entao o salvar sempre para em "dados do paciente nao
-    // encontrados". e a prescricao precisa vir de dentro de uma consulta
-    // (POST /consulta/{id}/prescricao), n avulsa como esta aqui
-
     // Estados para protocolo de escalonamento
     const [escalonamento, setEscalonamento] = useState([
         { semana: 1, dosagem: '', observacao: '' },
         { semana: 2, dosagem: '', observacao: '' }
     ]);
 
-    // Carregar dados do prescritor e paciente ao montar o componente
+    // a prescricao sempre nasce dentro de uma consulta (RF05), entao a
+    // tela recebe o id dela pela url e busca de la o paciente
+    const { appointmentId } = useParams();
+
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const token = localStorage.getItem("authToken");
-                const decodedToken = parseJwt(token);
-                const prescriberId = decodedToken?.id;
-
-                if (prescriberId) {
-                    const prescriberData = await apiService.get(`/prescritor/${prescriberId}`);
-                    setPrescriber(prescriberData);
-                }
-
-
+                const consulta = await apiService.get(`/consulta/${appointmentId}`);
+                setAppointment(consulta);
+                setPatient({id: consulta.patientId, name: consulta.patientName});
+                setPrescriber({id: consulta.prescriberId, name: consulta.prescriberName});
             } catch (err) {
-                setError("Erro ao carregar dados iniciais");
-                console.error(err);
+                setError(err instanceof ApiError ? err.message : "Erro ao carregar dados da consulta");
             }
         };
 
-        loadInitialData();
-    }, []);
+        if (appointmentId) {
+            loadInitialData();
+        } else {
+            setError("Esta tela precisa ser aberta a partir de uma consulta.");
+        }
+    }, [appointmentId]);
 
     // Função para atualizar dados da prescrição
     const handleInputChange = (field, value) => {
@@ -110,38 +97,43 @@ export default function Prescricao() {
         setError(null);
 
         try {
-            const token = localStorage.getItem("authToken");
-            const decodedToken = parseJwt(token);
-            const prescriberId = decodedToken?.id;
-
-            if (!prescriberId || !patient) {
-                throw new Error("Dados do prescritor ou paciente não encontrados");
+            if (!appointmentId) {
+                throw new Error("Consulta não informada");
             }
 
-            // Preparar dados para envio
-            const prescriptionPayload = {
-                patientId: patient.id,
-                prescriberId: prescriberId,
+            const prescricao = {
                 productDescription: `${prescriptionData.formulacao} - ${prescriptionData.concentracao}% - ${prescriptionData.volume}ml`,
                 posology: `${prescriptionData.dosagem} - ${prescriptionData.frequencia} - ${prescriptionData.horario}`,
                 brand: "Marca Padrão", // TODO: Implementar seleção de marca
-                concentration: prescriptionData.concentracao + "%",
+                concentration: prescriptionData.concentracao,
                 spectrum: prescriptionData.formulacao,
-                observation: `Instruções: ${prescriptionData.instrucoes}\nPrecauções: ${prescriptionData.precaucoes}\nEfeitos Esperados: ${prescriptionData.efeitosEsperados}`,
-                prescriptionDate: prescriptionData.dataPrescricao,
-                nextConsultation: prescriptionData.proximaConsulta,
-                treatmentDuration: prescriptionData.duracaoTratamento,
-                escalationProtocol: escalonamento
+                volume: prescriptionData.volume,
+                administrationRoute: prescriptionData.viaAdministracao,
+                instructions: prescriptionData.instrucoes,
+                precautions: prescriptionData.precaucoes,
+                expectedEffects: prescriptionData.efeitosEsperados,
+                treatmentDurationDays: prescriptionData.duracaoTratamento
+                    ? parseInt(prescriptionData.duracaoTratamento)
+                    : null,
+                nextConsultationDate: prescriptionData.proximaConsulta || null,
+                // cada semana do escalonamento vira um degrau, em vez de
+                // virar texto solto dentro da observacao
+                escalationSteps: escalonamento
+                    .filter((passo) => passo.dosagem)
+                    .map((passo) => ({
+                        week: passo.semana,
+                        dosage: passo.dosagem,
+                        note: passo.observacao,
+                    })),
             };
 
-            await apiService.post("/prescricao", prescriptionPayload);
+            await apiService.post(`/consulta/${appointmentId}/prescricao`, prescricao);
 
             alert("Prescrição criada com sucesso!");
-            navigate("/dashboard-prescritor");
+            navigate(`/paciente/${patient.id}/historico`);
 
         } catch (err) {
-            setError(err.message || "Erro ao criar prescrição");
-            console.error("Erro ao criar prescrição:", err);
+            setError(err instanceof ApiError ? err.message : "Erro ao criar prescrição");
         } finally {
             setIsLoading(false);
         }

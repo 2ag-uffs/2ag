@@ -573,7 +573,7 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 |---|---|
 | **RN01** | O acompanhamento clínico tem duração padrão de **90 dias**, renovável, contados do início do tratamento |
 | **RN02** | A conduta terapêutica segue escalonamento gradual de dose (*start low, go slow*): toda prescrição inicia na menor dose eficaz e é ajustada conforme resposta clínica |
-| **RN03** | Formulações possíveis: **isolado** (CBD, THC, CBG), **broad spectrum** (sem THC) e **full spectrum** |
+| **RN03** | Formulações possíveis: **isolado** (CBD, THC, CBG), **broad spectrum** (sem THC) e **full spectrum**. *A tela de prescrição hoje oferece cinco opções que misturam canabinoide com espectro ("CBD Isolado", "THC + CBD"). São dois eixos diferentes e precisam ser separados — **pergunta pendente para a prescritora**: ela escolhe canabinoide e espectro de forma independente?* |
 | **RN04** | E-mail e CPF são únicos em todo o sistema. *Hoje o CPF não possui restrição de unicidade nem na entidade nem no script SQL, permitindo paciente duplicado — embora a documentação técnica afirme o contrário* |
 | **RN05** | Cada paciente está vinculado a exatamente um prescritor. O vínculo é estabelecido no cadastro pelo código do prescritor e só pode ser alterado por administrador |
 | **RN06** | O código de vínculo do prescritor é único e **não é adivinhável**. *O formato atual — três letras do nome + dois dígitos — oferece 90 combinações por prefixo, permitindo que um paciente se vincule a prescritor alheio por tentativa, e a geração pode entrar em laço infinito se as 90 esgotarem* |

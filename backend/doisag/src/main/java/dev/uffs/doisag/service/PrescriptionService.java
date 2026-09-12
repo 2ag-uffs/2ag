@@ -37,7 +37,25 @@ public class PrescriptionService {
         newPrescription.setBrand(dto.brand());
         newPrescription.setConcentration(dto.concentration());
         newPrescription.setSpectrum(dto.spectrum());
+        newPrescription.setVolume(dto.volume());
+        newPrescription.setAdministrationRoute(dto.administrationRoute());
         newPrescription.setObservation(dto.observation());
+        newPrescription.setInstructions(dto.instructions());
+        newPrescription.setPrecautions(dto.precautions());
+        newPrescription.setExpectedEffects(dto.expectedEffects());
+        newPrescription.setTreatmentDurationDays(dto.treatmentDurationDays());
+        newPrescription.setNextConsultationDate(dto.nextConsultationDate());
+
+        // cada degrau do escalonamento vira uma linha propria
+        if (dto.escalationSteps() != null) {
+            for (var passo : dto.escalationSteps()) {
+                var step = new dev.uffs.doisag.model.DoseEscalationStep();
+                step.setWeek(passo.week());
+                step.setDosage(passo.dosage());
+                step.setNote(passo.note());
+                newPrescription.addEscalationStep(step);
+            }
+        }
 
         // associa a prescrição com a consulta encontrada
         newPrescription.setAppointment(appointment);

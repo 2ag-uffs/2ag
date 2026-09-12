@@ -23,6 +23,93 @@ public class Prescription {
     private String observation;
 
     // muitas prescrições podem pertencer a uma consulta
+    // campos que a tela ja coletava e iam todos amontoados dentro de
+    // observation, perdendo a estrutura
+    private String volume;
+    private String administrationRoute;
+
+    @Column(columnDefinition = "TEXT")
+    private String instructions;
+
+    @Column(columnDefinition = "TEXT")
+    private String precautions;
+
+    @Column(columnDefinition = "TEXT")
+    private String expectedEffects;
+
+    private Integer treatmentDurationDays;
+    private java.time.LocalDate nextConsultationDate;
+
+    // o plano de subida de dose, semana a semana
+    @OneToMany(mappedBy = "prescription", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<DoseEscalationStep> escalationSteps = new java.util.ArrayList<>();
+
+    public String getVolume() {
+        return volume;
+    }
+
+    public void setVolume(String volume) {
+        this.volume = volume;
+    }
+
+    public String getAdministrationRoute() {
+        return administrationRoute;
+    }
+
+    public void setAdministrationRoute(String administrationRoute) {
+        this.administrationRoute = administrationRoute;
+    }
+
+    public String getInstructions() {
+        return instructions;
+    }
+
+    public void setInstructions(String instructions) {
+        this.instructions = instructions;
+    }
+
+    public String getPrecautions() {
+        return precautions;
+    }
+
+    public void setPrecautions(String precautions) {
+        this.precautions = precautions;
+    }
+
+    public String getExpectedEffects() {
+        return expectedEffects;
+    }
+
+    public void setExpectedEffects(String expectedEffects) {
+        this.expectedEffects = expectedEffects;
+    }
+
+    public Integer getTreatmentDurationDays() {
+        return treatmentDurationDays;
+    }
+
+    public void setTreatmentDurationDays(Integer treatmentDurationDays) {
+        this.treatmentDurationDays = treatmentDurationDays;
+    }
+
+    public java.time.LocalDate getNextConsultationDate() {
+        return nextConsultationDate;
+    }
+
+    public void setNextConsultationDate(java.time.LocalDate nextConsultationDate) {
+        this.nextConsultationDate = nextConsultationDate;
+    }
+
+    public java.util.List<DoseEscalationStep> getEscalationSteps() {
+        return escalationSteps;
+    }
+
+    // adiciona um degrau ja amarrando os dois lados da relacao
+    public void addEscalationStep(DoseEscalationStep step) {
+        step.setPrescription(this);
+        this.escalationSteps.add(step);
+    }
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "appointment_id", nullable = false) // cria a coluna fk, não pode ser nula
     private Appointment appointment;

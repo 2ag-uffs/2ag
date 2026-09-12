@@ -229,6 +229,30 @@ class AuthorizationRulesTest {
                 .andExpect(status().isOk());
     }
 
+    // prescricao nasce dentro de uma consulta, entao o vinculo eh
+    // verificado pela consulta e n pelo paciente
+    @Test
+    void prescritorNaoEmiteReceitaNaConsultaDeOutro() throws Exception {
+        String consulta = "{\"patientId\":" + patientBId + ",\"dateTime\":\"2026-09-12T10:00:00\"}";
+        String criada = mockMvc.perform(post("/consulta")
+                        .header("Authorization", tokenPrescriberB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(consulta))
+                .andReturn().getResponse().getContentAsString();
+
+        // le o id da consulta criada sem regex, pra n depender de escape
+        Long consultaDoB = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(criada).get("id").asLong();
+
+        String receita = "{\"productDescription\":\"Oleo CBD\",\"posology\":\"2 gotas\"}";
+
+        mockMvc.perform(post("/consulta/" + consultaDoB + "/prescricao")
+                        .header("Authorization", tokenPrescriberA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(receita))
+                .andExpect(status().isForbidden());
+    }
+
     // ---------- RF29: papel ----------
 
     @Test

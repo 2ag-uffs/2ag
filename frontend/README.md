@@ -107,7 +107,7 @@ segue o padrão definido no [README da raiz](../README.md#nomenclatura): arquivo
 | `/dashboard-prescritor` | painel inicial |
 | `/lista-paciente` | lista de pacientes |
 | `/consulta` | consulta clínica |
-| `/prescricao` | nova prescrição |
+| `/consulta/:appointmentId/prescricao` | nova prescrição, a partir de uma consulta |
 | `/mini-exame` | mini-exame do estado mental |
 | `/acompanhamento-prescritor` | acompanhamento do paciente |
 | `/paciente/:pacienteId/selecao-escalas` | designar escalas |
@@ -135,7 +135,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **configuração**
 
-* **parcialmente resolvido**: existe o `src/services/api.js`, que lê o endereço de `VITE_API_URL`, injeta o token, trata 401 e expõe os erros por campo. `login.jsx` e `consulta-clinica.jsx` já usam. faltam 13 arquivos (RNF15)
+* **parcialmente resolvido**: existe o `src/services/api.js`, que lê o endereço de `VITE_API_URL`, injeta o token, trata 401 e expõe os erros por campo. `login.jsx`, `consulta-clinica.jsx` e `prescricao.jsx` já usam. faltam 12 arquivos (RNF15)
 * o `eslint.config.js` está dentro de `public/`, então é publicado como arquivo estático e o eslint não encontra a configuração. na prática **`npm run lint` nunca rodou** neste projeto
 
 **segurança**
@@ -153,7 +153,6 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **telas que ainda não estão ligadas ao backend**
 
-* **`prescricao.jsx` precisa ser refeita.** o estado `patient` é declarado e **nunca recebe valor** — não existe nenhum `setPatient` no arquivo —, então salvar sempre para em "dados do paciente não encontrados". além disso ela manda pra `POST /prescricao` avulso, e prescrição pertence a uma consulta (`POST /consulta/{appointmentId}/prescricao`), como manda o RF05. o `apiService` já existe agora, então ela pelo menos não quebra mais com `ReferenceError`
 * `agendamento-consulta-prescritor.jsx` **não faz nenhuma chamada ao backend** — a agenda inteira é dado fixo no código
 * `agendamento-consulta-paciente.jsx` chama `POST /consultas`, e a rota do backend é `/consulta`, no singular
 * 13 arquivos ainda montam o `fetch` na mão com o endereço fixo. a migração pro `services/api.js` está em andamento
