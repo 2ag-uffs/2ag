@@ -85,7 +85,9 @@ o que ja tem cobertura:
 | teste | o que verifica |
 | :--- | :--- |
 | `DoisagApplicationTests` | o contexto spring inteiro sobe sem banco instalado |
-| `ProtectedRoutesTest` | rota protegida nega acesso sem token |
+| `ProtectedRoutesTest` | sem token, token expirado e assinatura inválida devolvem 401 |
+| `AuthorizationRulesTest` | as regras de papel e de vínculo do RF29 e RF30 |
+| `PasswordExposureTest` | nenhuma resposta da api carrega hash de senha |
 | `HamiltonScaleServiceTest` | o escore soma os itens (unidade, sem spring nem banco) |
 
 -----
@@ -335,16 +337,21 @@ esse fluxo permite que um prescritor envie uma escala para o paciente e que o si
 
 ### **tratamento de erros**
 
-a classe `ErrorHandler` (`@RestControllerAdvice`) padroniza as respostas de erro:
+duas classes padronizam as respostas de erro, e as duas devolvem o mesmo formato de json:
+
+  * `ErrorHandler` (`@RestControllerAdvice`) cuida do que acontece **dentro** do controller
+  * `SecurityErrorHandler` cuida do que acontece **antes** dele, na cadeia de filtros, onde o `@RestControllerAdvice` não alcança
 
 | status | quando acontece |
 | :--- | :--- |
 | `400` | validação de dto falhou, regra de negócio violada, enum inválido |
-| `401` | credencial errada no login |
-| `403` | autenticado mas sem permissão |
+| `401` | sem token, token expirado, assinatura inválida, ou credencial errada no login |
+| `403` | autenticado mas sem permissão pra aquele recurso |
 | `404` | recurso não encontrado |
 | `409` | conflito de integridade no banco (registro duplicado) |
 | `500` | qualquer erro não previsto |
+
+a diferença entre 401 e 403 importa pro front: **401 quer dizer "faça login de novo"** (a sessão acabou), **403 quer dizer "você está logado mas isso não é seu"**. tratar os dois igual manda o usuário pra tela de login em situação que não é de login
 
 formato do corpo: `timestamp`, `status`, `error`, `message`, `path`. erros de validação de dto trazem também a lista de campos com problema
 
@@ -364,7 +371,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * ~~os controllers retornam entidade jpa crua e o jackson serializa o `password`~~ **resolvido**: `/paciente` e `/prescritor` devolvem DTO, e o `Users` tem `@JsonIgnore` no `password` e nos acessores do `UserDetails` como rede de proteção. os 7 endpoints de escala ainda devolvem a entidade, mas o paciente aninhado já não carrega senha — falta trocar por DTO pra parar de expor o paciente inteiro
   * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)
   * ~~`PUT /paciente/{id}` grava a senha sem passar pelo `passwordEncoder`~~ **resolvido**: o update não toca mais em senha. troca de senha será fluxo próprio (RN12)
-  * token expirado ou inválido retorna **500** em vez de 401: a exceção do jjwt é lançada dentro do `SecurityFilter`, antes do `DispatcherServlet`, então o `@RestControllerAdvice` não pega (RF01)
+  * ~~token expirado ou inválido retorna **500** em vez de 401~~ **resolvido**: o `SecurityFilter` trata a exceção do jjwt e o `SecurityErrorHandler` responde 401 em json. requisição sem token também passou de 403 pra 401 (RF01, RF29)
   * os `POST` e `PUT` das 7 rotas de escala ainda recebem a entidade jpa direto no `@RequestBody`, então o cliente pode mandar `id` e relacionamentos (mass assignment). `/paciente` e `/prescritor` já foram convertidos pra DTO
   * ~~`PatientRegistrationDTO` não tem validação~~ **resolvido**: agora tem as mesmas regras do `/auth/register` (senha forte, cpf com dígito verificador, e-mail válido) e o controller usa `@Valid`
 
@@ -403,4 +410,4 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 **testes**
 
   * a suíte cobre hoje apenas a subida do contexto, a negação de acesso sem token e o cálculo do escore do Hamilton. **falta teste das regras de autorização** (RF29, RF30) e do escore das outras escalas (RF23, RF26). esses serão escritos junto com as correções, pra nascerem verdes
-  * `ProtectedRoutesTest.semTokenAindaDevolve403EmVezDe401` é uma sentinela proposital: hoje requisição sem credencial devolve **403**, e o certo é **401** (403 significa "autenticado e sem permissão"). o frontend não consegue distinguir token expirado de falta de permissão. quando a Fase 1 configurar o `AuthenticationEntryPoint`, esse teste quebra de propósito e é só trocar o status esperado
+  * o **frontend ainda não usa** a diferença entre 401 e 403: as 15 telas montam o `fetch` na mão e tratam qualquer erro igual. mandar o usuário pro login só no 401 depende do cliente http centralizado (RNF15)

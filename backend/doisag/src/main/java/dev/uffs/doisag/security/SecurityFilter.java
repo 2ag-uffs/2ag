@@ -1,6 +1,7 @@
 package dev.uffs.doisag.security;
 
 import dev.uffs.doisag.repository.UsersRepository;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,12 +32,20 @@ public class SecurityFilter extends OncePerRequestFilter {
         var tokenJWT = recoverToken(request);
 
         if (tokenJWT != null) {
-            var subject = tokenService.getSubject(tokenJWT);
-            var user = usersRepository.findByEmail(subject);
+            try {
+                var subject = tokenService.getSubject(tokenJWT);
+                var user = usersRepository.findByEmail(subject);
 
-            if (user != null) {
-                var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (user != null) {
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (JwtException | IllegalArgumentException e) {
+                // token expirado, assinatura errada ou texto q n eh jwt.
+                // a gente so n autentica e segue: quem devolve o 401 eh o
+                // SecurityErrorHandler. antes a excecao subia pela cadeia
+                // de filtros e o servidor respondia 500
+                SecurityContextHolder.clearContext();
             }
         }
 

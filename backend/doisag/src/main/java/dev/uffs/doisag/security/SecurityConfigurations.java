@@ -30,13 +30,17 @@ public class SecurityConfigurations {
     // o nosso filtro de segurança personalizado
     private final SecurityFilter securityFilter;
 
+    // responde 401 e 403 em json dentro da cadeia de filtros
+    private final SecurityErrorHandler securityErrorHandler;
+
     // origem do front q pode chamar a api, vem do application.yml
     @Value("${api.cors.allowed-origin}")
     private String allowedOrigin;
 
     // injeção de dependência via construtor
-    public SecurityConfigurations(SecurityFilter securityFilter) {
+    public SecurityConfigurations(SecurityFilter securityFilter, SecurityErrorHandler securityErrorHandler) {
         this.securityFilter = securityFilter;
+        this.securityErrorHandler = securityErrorHandler;
     }
 
     // este bean define a cadeia de filtros de segurança da aplicação
@@ -65,6 +69,11 @@ public class SecurityConfigurations {
                     // de permissao vem do @PreAuthorize do metodo
                     req.anyRequest().authenticated();
                 })
+                // sem token ou com token vencido -> 401. logado e sem
+                // permissao -> 403. os dois em json, igual ao resto da api
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 // adiciona nosso filtro para rodar antes do filtro padrão
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
