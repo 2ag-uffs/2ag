@@ -97,7 +97,7 @@ cd backend/doisag
 
 na primeira vez que sobe, o hibernate cria as tabelas sozinho (a propriedade `ddl-auto` tá em `update`) e um `CommandLineRunner` cria os usuários de teste
 
-> **não use `mvn clean install`**: o `install` roda os testes, e o único teste do projeto precisa do banco acessível com a senha correta — ele falha sempre. pra gerar o `.jar` use `./mvnw clean package -DskipTests`
+> pra rodar os **testes** você n precisa de nada disso: `./mvnw clean install` usa h2 em memoria e passa sem postgres instalado. o banco de verdade só é necessário pra rodar a aplicação
 
 ## sobre os scripts sql
 

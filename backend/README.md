@@ -66,7 +66,27 @@ se aparecer `1.8.x` você tem só o java 8 no path e o build vai falhar
     ./mvnw clean package -DskipTests
     ```
 
-> ⚠️ **não use `mvn clean install`**. o `install` roda os testes, e o único teste que existe (`DoisagApplicationTests.contextLoads`) sobe o contexto spring inteiro e precisa do banco acessível com a senha certa. sem isso ele falha sempre. é o RNF13 do documento de requisitos
+-----
+
+### **testes**
+
+```bash
+./mvnw clean install
+```
+
+a suite roda no perfil `test`, com **h2 em memoria**. n precisa de postgres instalado, n precisa de variavel de ambiente, n precisa de docker. o build passa em maquina limpa, que eh o RNF13.
+
+a configuracao fica em `src/test/resources/application-test.yml`: h2 com `MODE=PostgreSQL` (pros campos `TEXT` funcionarem igual), `ddl-auto: create-drop` pra cada execucao comecar limpa, chave jwt fixa e seed desligado.
+
+**toda classe de teste precisa de `@ActiveProfiles("test")`.** sem isso ela tenta o postgres de verdade e falha. o IntelliJ roda o JUnit direto, sem passar pelo maven, entao a anotacao eh o que garante o perfil nos dois caminhos.
+
+o que ja tem cobertura:
+
+| teste | o que verifica |
+| :--- | :--- |
+| `DoisagApplicationTests` | o contexto spring inteiro sobe sem banco instalado |
+| `ProtectedRoutesTest` | rota protegida nega acesso sem token |
+| `HamiltonScaleServiceTest` | o escore soma os itens (unidade, sem spring nem banco) |
 
 -----
 
@@ -374,4 +394,5 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **testes**
 
-  * o projeto tem um único teste, o `contextLoads` gerado pelo initializr, e ele depende de postgresql acessível. não há teste de autorização nem de cálculo de escore (RNF13)
+  * a suíte cobre hoje apenas a subida do contexto, a negação de acesso sem token e o cálculo do escore do Hamilton. **falta teste das regras de autorização** (RF29, RF30) e do escore das outras escalas (RF23, RF26). esses serão escritos junto com as correções, pra nascerem verdes
+  * `ProtectedRoutesTest.semTokenAindaDevolve403EmVezDe401` é uma sentinela proposital: hoje requisição sem credencial devolve **403**, e o certo é **401** (403 significa "autenticado e sem permissão"). o frontend não consegue distinguir token expirado de falta de permissão. quando a Fase 1 configurar o `AuthenticationEntryPoint`, esse teste quebra de propósito e é só trocar o status esperado

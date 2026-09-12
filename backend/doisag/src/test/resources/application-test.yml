@@ -1,0 +1,25 @@
+# perfil de teste: roda tudo em memoria, sem precisar de postgres
+# instalado. eh o que faz o "./mvnw test" funcionar numa maquina limpa
+spring:
+  datasource:
+    # MODE=PostgreSQL faz o h2 aceitar tipo TEXT e sintaxe do postgres
+    url: jdbc:h2:mem:doisag-teste;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      # cria as tabelas na subida e derruba no fim, cada run comeca limpo
+      ddl-auto: create-drop
+    show-sql: false
+
+api:
+  security:
+    token:
+      # chave fixa so de teste. n tem valor nenhum fora daqui
+      secret: chave-de-teste-do-doisag-nao-usar-em-producao-0123456789-abcdefgh
+  cors:
+    allowed-origin: http://localhost:5173
+  seed:
+    # sem usuario de teste automatico, cada teste monta o que precisa
+    enabled: false

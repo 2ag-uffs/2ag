@@ -108,9 +108,9 @@ Se tudo der certo, a API vai subir em:
 http://localhost:8080
 ```
 
-> **não use `mvn clean install`**: o `install` executa os testes, e o único teste do projeto sobe o contexto Spring inteiro e exige o banco acessível — ele falha sempre. Pra gerar o `.jar` use `./mvnw clean package -DskipTests`
+> Não precisa instalar o Maven: o `mvnw` do repositório baixa a versão correta sozinho. Só o **JDK 17** é obrigatório.
 >
-> Também não precisa instalar o Maven: o `mvnw` do repositório baixa a versão correta sozinho. Só o **JDK 17** é obrigatório.
+> E pra rodar os **testes** você não precisa do banco: `./mvnw clean install` usa H2 em memória e passa em máquina limpa.
 
 ### **usuários de teste já cadastrados**
 

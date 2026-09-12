@@ -63,6 +63,15 @@ openssl rand -base64 48
 
 Instalação manual do banco, backend e frontend: veja [`backend/README.md`](./backend/README.md) e [`database/README.md`](./database/README.md).
 
+### Testes
+
+```bash
+cd backend/doisag
+./mvnw clean install
+```
+
+A suíte roda com banco H2 em memória, no perfil `test`. **Não precisa de PostgreSQL instalado nem de variável de ambiente configurada** — é requisito do projeto que o build passe em máquina limpa (RNF13).
+
 ---
 
 ## Escalas clínicas implementadas

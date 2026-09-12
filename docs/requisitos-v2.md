@@ -763,4 +763,8 @@ A sequência é deliberada: segurança antes de funcionalidade, porque cada tela
 | **5** | Entregar a automação prometida ao cliente | RF32, RF34, RF15 |
 | **6** | Refinamento | RF05, RF10, RF11, RF18, RNF12, RNF08 |
 
-**Fase 0 concluída em 12/09/2026:** ambiente de build validado com Eclipse Temurin JDK 17.0.20.1 e o wrapper Maven do repositório (3.9.10); `clean package` gera artefato com sucesso.
+**Fase 0 concluída em 12/09/2026:**
+
+- Ambiente de build validado com Eclipse Temurin JDK 17.0.20.1 e o wrapper Maven do repositório (3.9.10)
+- **RNF15:** segredos fora do arquivo versionado, configuração por variável de ambiente, `docker compose up` sobe banco, API e interface
+- **RNF13:** perfil `test` com H2 em memória. `./mvnw clean install` passa sem PostgreSQL instalado e sem nenhuma variável de ambiente definida — o comando que antes falhava sempre. Cobertura inicial: subida do contexto, negação de acesso sem token e cálculo de escore
