@@ -376,10 +376,13 @@ Registro do período avaliado e autoavaliação da qualidade de vida (0 a 10). F
 
 **RF25 — Acompanhamento semanal de paciente com dor** · `mantido` · **I** · Paciente
 
-Data avaliada e intensidade da dor em escala visual de 0 a 10 (0 ausência, 1–3 leve, 4–6 moderada, 7–10 intensa). Frequência de interferência da dor — nenhum dia, até 3 dias, entre 3 e 6 dias, todos os dias — em: atividades básicas, atividades sociais, produtividade no trabalho, qualidade do sono e necessidade de medicação extra. Identificador único e observação opcional.
+Período avaliado (`De __/__/__ A __/__/__`) e intensidade da dor em escala visual de 0 a 10. Frequência de interferência da dor — nenhum dia, até 3 dias, entre 3 e 6 dias, todos os dias — em: atividades básicas (comer, levantar, tomar banho), atividades sociais (sair com amigos, passear, ficar com a família), produtividade no trabalho, sono e necessidade de medicação extra para dor. Identificador único e observação opcional.
 
 *Critérios de aceite:*
 - **Possui tela de preenchimento acessível.** Existe no backend, sem interface
+- Faixas da escala visual **conforme o formulário aplicado** (`docs/scales/registro-dor.pdf`): **leve 0 a 2 · moderada 3 a 7 · intensa 8 a 10**. A v1.0 especificava 1–3 leve, 4–6 moderada e 7–10 intensa, que não são as do instrumento em uso
+- A escala é apresentada visualmente, com as três faixas nomeadas e coloridas, não como um campo numérico solto
+- O campo de observação exibe a orientação do formulário: relato de efeito colateral, ausência de tomada de alguma medicação, momento significativo na rotina
 
 ---
 
