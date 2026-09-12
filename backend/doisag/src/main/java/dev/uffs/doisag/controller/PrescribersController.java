@@ -21,7 +21,12 @@ public class PrescribersController {
         this.prescriberService = prescriberService;
     }
 
-    // create prescriber
+    // conta de prescritor eh provisionada, n eh autocadastro (RF02.2).
+    // antes essa rota era publica e criava conta com privilegio, ou seja
+    // qualquer um da internet virava prescritor.
+    // hoje ninguem tem ROLE_ADMIN ainda: quem cria prescritor eh o seed.
+    // quando existir o perfil administrativo, ele entra por aqui
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<PrescriberResponseDTO> create(@RequestBody @Valid PrescriberCreateDTO dados) {
         var prescriber = prescriberService.create(dados);

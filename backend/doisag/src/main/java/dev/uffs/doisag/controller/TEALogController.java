@@ -2,8 +2,10 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.TEALog;
 import dev.uffs.doisag.service.TEALogService;
+import dev.uffs.doisag.model.Patient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,11 @@ public class TEALogController {
     // POST /registro-tea
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
-    public TEALog create(@RequestBody TEALog teaLog) {
+    public TEALog create(@RequestBody TEALog teaLog, @AuthenticationPrincipal Patient loggedPatient) {
+        // o dono do registro eh quem preencheu, n o id que veio no
+        // corpo. antes dava pra atribuir escala a outro paciente
+        teaLog.setId(null);
+        teaLog.setPatient(loggedPatient);
         return teaLogService.create(teaLog);
     }
 
@@ -36,7 +42,7 @@ public class TEALogController {
 
     // endpoint para LER um registro de tea por ID
     // GET /registro-tea/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<TEALog> getById(@PathVariable Long id) {
         TEALog teaLog = teaLogService.getById(id);
@@ -45,7 +51,7 @@ public class TEALogController {
 
     // endpoint para ATUALIZAR um registro de tea
     // PUT /registro-tea/{id}
-    @PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<TEALog> update(@PathVariable Long id, @RequestBody TEALog logDetails) {
             TEALog updatedLog = teaLogService.update(id, logDetails);
@@ -54,7 +60,7 @@ public class TEALogController {
 
     // endpoint para DELETAR um registro de tea
     // DELETE /registro-tea/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             teaLogService.delete(id);

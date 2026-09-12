@@ -211,7 +211,7 @@ rotas extras de paciente:
 
 > `/paciente` e `/prescritor` **não aceitam mais a entidade crua** no corpo. `PUT /paciente/{id}` recebe `PatientUpdateDTO`, `POST /prescritor` recebe `PrescriberCreateDTO` e `PUT /prescritor/{id}` recebe `PrescriberUpdateDTO`. senha, `id` e vínculos ficam fora desses DTOs de propósito
 
-> ⚠️ `POST /prescritor` é **público** hoje. ver limitações
+> `POST /prescritor` exige `ROLE_ADMIN`. como ninguém tem esse papel ainda, quem cria prescritor na prática é o seed. era uma rota pública que criava conta com privilégio (RF02.2)
 
 #### **prescrição**
 
@@ -366,8 +366,10 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * ~~toda rota protegida apenas por `anyRequest().authenticated()`~~ **resolvido**: 63 `@PreAuthorize` declaram a regra em cada método, e `@EnableMethodSecurity` está ligado (RF29)
   * ~~`CustomPatientAccessManager` libera acesso total pra qualquer prescritor~~ **resolvido**: substituído pelo `PatientAccessService`, que resolve o vínculo num único lugar. paciente vê só o próprio prontuário, prescritor vê só a carteira dele (RF30)
   * `GET /paciente` deixou de devolver todos os pacientes do sistema e passou a devolver só a carteira do prescritor logado
-  * **falta cobrir o dono por registro** nas 7 rotas de escala: hoje a regra ali é por papel (paciente preenche, prescritor lê), mas `GET /escala-hamilton/{id}` ainda não verifica se aquela escala é de um paciente da carteira de quem pediu
-  * `POST /prescritor` é público e cria conta com privilégio elevado, sem validação de registro profissional (RF02.2)
+  * ~~falta cobrir o dono por registro nas 7 rotas de escala~~ **resolvido**: o `AssessmentAccessService` resolve o dono de qualquer uma das 7 escalas (todas herdam de `BaseAssessment`, que sabe de qual paciente é) e delega pro `PatientAccessService`
+  * ~~o `POST` das escalas aceita o campo `patient` no corpo~~ **resolvido**: o dono passou a ser sempre o paciente logado, e o `id` é zerado pra `POST` não sobrescrever registro existente
+  * o **MEEM** continua com regra só por papel. ele se liga a `Appointment` e não a `Patient`, então a checagem de dono passa pela consulta — falta fazer
+  * ~~`POST /prescritor` é público e cria conta com privilégio~~ **resolvido**: exige `ROLE_ADMIN`, papel que ninguém tem ainda. o cadastro de prescritor saiu da tela de sign-up, que agora é só de paciente
   * ~~os controllers retornam entidade jpa crua e o jackson serializa o `password`~~ **resolvido**: `/paciente` e `/prescritor` devolvem DTO, e o `Users` tem `@JsonIgnore` no `password` e nos acessores do `UserDetails` como rede de proteção. os 7 endpoints de escala ainda devolvem a entidade, mas o paciente aninhado já não carrega senha — falta trocar por DTO pra parar de expor o paciente inteiro
   * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)
   * ~~`PUT /paciente/{id}` grava a senha sem passar pelo `passwordEncoder`~~ **resolvido**: o update não toca mais em senha. troca de senha será fluxo próprio (RN12)

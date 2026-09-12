@@ -4,15 +4,10 @@ import "./sign-up.css";
 
 export default function SignUp() {
     const navigate = useNavigate();
-    const [userType, setUserType] = useState("");
     const [cpf, setCpf] = useState("");
     // estados para controlar o carregamento e os erros (resp: maiqueli)
     const [isLoading, setIsLoading] = useState(false);
     const [formErrors, setFormErrors] = useState({});
-
-    // adicionei um novo estado para controlar o feedback da troca, um loading para o usuário ver a troca de forms
-    // (maiqueli)
-    const [isSwitchingType, setIsSwitchingType] = useState(false);
 
     // função para formatar o cpf
     const handleCpf = (e) => {
@@ -23,16 +18,6 @@ export default function SignUp() {
         setCpf(value);
     };
 
-    // função para lidar com a troca de tipo de usuário (maiqueli)
-    const handleUserTypeChange = (newType) => {
-        setIsSwitchingType(true); // ativa o loading
-        // a gente usa um timeout só pra dar tempo do usuário ver a animação
-        // 500ms é bem rápido mas o suficiente
-        setTimeout(() => {
-            setUserType(newType); // muda o tipo de usuário de fato
-            setIsSwitchingType(false); // desativa o loading
-        }, 500);
-    };
 
     // modifiquei função handleSubmit para integrar (resp: maiqueli)
     const handleSubmit = async (e) => {
@@ -60,11 +45,9 @@ export default function SignUp() {
             country: form.country.value
         };
 
-        let endpoint = "";
-        let data = {};
-
-        if (userType === "paciente") {
-            endpoint = "http://localhost:8080/auth/register";
+        // so paciente se cadastra sozinho. conta de prescritor eh
+        // criada pela clinica, n por autocadastro
+        const endpoint = "http://localhost:8080/auth/register";
             data = {
                 name: form.nomeCompleto.value,
                 email: form.email.value,
@@ -75,22 +58,6 @@ export default function SignUp() {
                 address: addressObject,
                 professionalCode: form.codigoProfissional.value
             };
-        } else if (userType === "prescritor") {
-            endpoint = "http://localhost:8080/prescritor";
-            data = {
-                name: form.nomeCompleto.value,
-                email: form.email.value,
-                // o campo se chama senha na api, igual no /auth/register
-                senha: password,
-                cpf: cpf.replace(/\D/g, ""),
-                birthDate: form.dataNascimento.value,
-                phone: form.telefone.value.replace(/\D/g, ""),
-                address: addressObject,
-                profession: form.profissao.value,
-                registryType: form.tipoRegistro.value.toUpperCase(),
-                registryNumber: form.numeroRegistro.value
-            };
-        }
 
         try {
             const response = await fetch(endpoint, {
@@ -117,7 +84,7 @@ export default function SignUp() {
                 throw new Error("Erro de validação"); // lança um erro para parar a execução
             }
 
-            alert(`Cadastro de ${userType} realizado com sucesso!`);
+            alert("Cadastro realizado com sucesso!");
             navigate("/login");
 
         } catch (err) {
@@ -140,39 +107,12 @@ export default function SignUp() {
                     />
                     <h2 className="form__content__title">Cadastro de usuário</h2>
                     <form className="form__content__form" onSubmit={handleSubmit}>
-                        <div className="form__content__form__input-group">
-                            <label>Tipo de usuário *</label>
-                            <div>
-                                <input
-                                    type="radio"
-                                    id="paciente"
-                                    name="userType"
-                                    value="paciente"
-                                    checked={userType === "paciente"}
-                                    /* chama a função q exibe o loading (maiqueli) */
-                                    onChange={() => handleUserTypeChange("paciente")}
-                                />
-                                <label htmlFor="paciente">Paciente</label>
-                            </div>
-                            <div>
-                                <input
-                                    type="radio"
-                                    id="prescritor"
-                                    name="userType"
-                                    value="prescritor"
-                                    checked={userType === "prescritor"}
-                                    /* chama a função q exibe o loading (maiqueli) */
-                                    onChange={() => handleUserTypeChange("prescritor")}
-                                />
-                                <label htmlFor="prescritor">Prescritor</label>
-                            </div>
-                        </div>
-                        {/* exibe o aviso de carregamento se estiver trocando de tipo */}
-                        {isSwitchingType && <div className="loading-indicator">Carregando formulário...</div>}
+                        <p className="sign-up__note">
+                            Este cadastro é para pacientes. Se você é prescritor, fale com a clínica para
+                            que sua conta seja criada.
+                        </p>
 
-                        {/* a gente só mostra o resto do formulário se não estiver trocando */}
-                        {!isSwitchingType && userType && (
-                            <>
+                        <>
                                 <div className="form__content__form__input-group">
                                     <label htmlFor="nomeCompleto">Nome Completo *</label>
                                     <input id="nomeCompleto" name="nomeCompleto" type="text" required={true}
@@ -257,8 +197,7 @@ export default function SignUp() {
                                            placeholder="Confirme sua senha"/>
                                 </div>
 
-                                {userType === "paciente" && (
-                                    <div className="form__content__form__input-group">
+                                <div className="form__content__form__input-group">
                                         <label htmlFor="codigoProfissional">Código do Prescritor *</label>
                                         <p className="text-sm text-muted-foreground">
                                             Informe o código fornecido pelo seu prescritor:
@@ -268,37 +207,7 @@ export default function SignUp() {
                                                placeholder="Ex: ABC01"/>
                                         {formErrors.professionalCode &&
                                             <span className="input-error-message">{formErrors.professionalCode}</span>}
-                                    </div>
-                                )}
-                                {userType === "prescritor" && (
-                                    <>
-                                        <div className="form__content__form__input-group">
-                                            <label htmlFor="profissao">Profissão *</label>
-                                            <input id="profissao" name="profissao" type="text" required={true}
-                                                   placeholder="Ex: Médico, Enfermeiro, Psicólogo"/>
-                                        </div>
-                                        <div className="form__content__form__input-group">
-                                            <label htmlFor="tipoRegistro">Tipo de Registro *</label>
-                                            <select id="tipoRegistro" name="tipoRegistro" required={true}>
-                                                <option value="">Selecione o tipo</option>
-                                                <option value="crm">CRM - Conselho Regional de Medicina</option>
-                                                <option value="coren">COREN - Conselho Regional de Enfermagem</option>
-                                                <option value="crbm">CRBM - Conselho Regional de Biomedicina</option>
-                                                <option value="crp">CRP - Conselho Regional de Psicologia</option>
-                                                <option value="crf">CRF - Conselho Regional de Farmácia</option>
-                                                <option value="crefito">CREFITO - Conselho Regional de Fisioterapia
-                                                </option>
-                                                <option value="cro">CRO - Conselho Regional de Odontologia</option>
-                                                <option value="crn">CRN - Conselho Regional de Nutrição</option>
-                                            </select>
-                                        </div>
-                                        <div className="form__content__form__input-group">
-                                            <label htmlFor="numeroRegistro">Número do Registro Profissional *</label>
-                                            <input id="numeroRegistro" name="numeroRegistro" type="text" required={true}
-                                                   placeholder="Ex: 123456"/>
-                                        </div>
-                                    </>
-                                )}
+                                </div>
                                 {/* exibe a mensagem de erro, se houver (maiqueli) */}
                                 {formErrors.general && <p className="sign-up__error-message">{formErrors.general}</p>}
                                 <div className="form__content__form__actions">
@@ -307,8 +216,7 @@ export default function SignUp() {
                                         {isLoading ? "Cadastrando..." : "Cadastrar"}
                                     </button>
                                 </div>
-                            </>
-                        )}
+                        </>
                     </form>
                 </div>
             </section>

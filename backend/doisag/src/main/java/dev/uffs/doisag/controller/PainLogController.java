@@ -2,8 +2,10 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.PainLog;
 import dev.uffs.doisag.service.PainLogService;
+import dev.uffs.doisag.model.Patient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,11 @@ public class PainLogController {
     // POST /registro-dor
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
-    public PainLog create(@RequestBody PainLog painLog) {
+    public PainLog create(@RequestBody PainLog painLog, @AuthenticationPrincipal Patient loggedPatient) {
+        // o dono do registro eh quem preencheu, n o id que veio no
+        // corpo. antes dava pra atribuir escala a outro paciente
+        painLog.setId(null);
+        painLog.setPatient(loggedPatient);
         return painLogService.create(painLog);
     }
 
@@ -36,7 +42,7 @@ public class PainLogController {
 
     // endpoint para LER um registro de dor por ID
     // GET /registro-dor/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PainLog> getById(@PathVariable Long id) {
         PainLog painLog = painLogService.getById(id);
@@ -45,7 +51,7 @@ public class PainLogController {
 
     // endpoint para ATUALIZAR um registro de dor
     // PUT /registro-dor/{id}
-    @PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<PainLog> update(@PathVariable Long id, @RequestBody PainLog logDetails) {
             PainLog updatedLog = painLogService.update(id, logDetails);
@@ -54,7 +60,7 @@ public class PainLogController {
 
     // endpoint para DELETAR um registro de dor
     // DELETE /registro-dor/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             painLogService.delete(id);

@@ -62,9 +62,6 @@ public class SecurityConfigurations {
                     // permite o acesso público ao endpoint de login e register
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
-                    // TODO: fechar isso (RF02.2). prescritor tem q ser criado
-                    // por convite, n por autocadastro publico
-                    req.requestMatchers(HttpMethod.POST, "/prescritor").permitAll();
                     // qualquer outra requisição exige autenticação, e a regra
                     // de permissao vem do @PreAuthorize do metodo
                     req.anyRequest().authenticated();

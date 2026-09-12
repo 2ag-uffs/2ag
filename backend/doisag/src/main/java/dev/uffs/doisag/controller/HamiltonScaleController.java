@@ -2,8 +2,10 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.HamiltonScale;
 import dev.uffs.doisag.service.HamiltonScaleService;
+import dev.uffs.doisag.model.Patient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,11 @@ public class HamiltonScaleController {
     // POST /escala-hamilton
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
-    public HamiltonScale create(@RequestBody HamiltonScale hamiltonScale) {
+    public HamiltonScale create(@RequestBody HamiltonScale hamiltonScale, @AuthenticationPrincipal Patient loggedPatient) {
+        // o dono do registro eh quem preencheu, n o id que veio no
+        // corpo. antes dava pra atribuir escala a outro paciente
+        hamiltonScale.setId(null);
+        hamiltonScale.setPatient(loggedPatient);
         return hamiltonScaleService.create(hamiltonScale);
     }
 
@@ -36,7 +42,7 @@ public class HamiltonScaleController {
 
     // endpoint para LER uma escala hamilton por ID
     // GET /escala-hamilton/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<HamiltonScale> getById(@PathVariable Long id) {
         HamiltonScale hamiltonScale = hamiltonScaleService.getById(id);
@@ -45,7 +51,7 @@ public class HamiltonScaleController {
 
     // endpoint para ATUALIZAR uma escala hamilton
     // PUT /escala-hamilton/{id}
-    @PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<HamiltonScale> update(@PathVariable Long id, @RequestBody HamiltonScale scaleDetails) {
             HamiltonScale updatedScale = hamiltonScaleService.update(id, scaleDetails);
@@ -54,7 +60,7 @@ public class HamiltonScaleController {
 
     // endpoint para DELETAR uma escala hamilton
     // DELETE /escala-hamilton/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             hamiltonScaleService.delete(id);

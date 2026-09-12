@@ -50,6 +50,14 @@ public class PatientAccessService {
         return loggedUser != null && userId != null && userId.equals(loggedUser.getId());
     }
 
+    // devolve o paciente logado, ou null se quem esta logado n eh paciente.
+    // usado no POST das escalas pra forcar o dono a ser quem preencheu,
+    // em vez de aceitar o id que veio no corpo da requisicao
+    public Patient loggedPatient(Authentication authentication) {
+        Users loggedUser = loggedUserOf(authentication);
+        return loggedUser instanceof Patient patient ? patient : null;
+    }
+
     // quem pode ver a ficha de um prescritor: ele mesmo, ou um paciente
     // que esta vinculado a ele
     public boolean canViewPrescriber(Long prescriberId, Authentication authentication) {

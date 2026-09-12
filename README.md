@@ -1,91 +1,143 @@
 # 2ag
 
-Sistema livre para acompanhamento terapêutico longitudinal de pacientes em tratamento com óleo de *Cannabis sativa*.
+sistema pra acompanhar pacientes em tratamento com óleo de cannabis.
 
-O 2ag digitaliza o ciclo de cuidado de uma clínica que prescreve fitocanabinoides: triagem por anamnese, registro de consulta e prescrição, aplicação das escalas clínicas padronizadas com cálculo dos escores, envio automatizado dos formulários de acompanhamento ao longo dos 90 dias de tratamento e visualização gráfica da evolução dos sintomas.
+a ideia é tirar do papel e da planilha o que a clínica faz hoje: a anamnese da triagem, o registro da consulta e da prescrição, as escalas clínicas que o paciente preenche toda semana, e o gráfico que mostra se ele está melhorando ou não ao longo dos 90 dias de acompanhamento.
 
-[![Licença: AGPL v3](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-blue.svg)](./LICENSE)
+é software livre, feito como projeto de extensão da uffs junto com o instituto edma, em chapecó.
 
----
-## Projeto de extensão universitária
-
-Este sistema é desenvolvido como ação de extensão no componente **GCH1993 — Projeto de Integração de Extensão** da **Universidade Federal da Fronteira Sul (UFFS)**, campus Chapecó.
+> ⚠️ ainda está em desenvolvimento. **não use com dado de paciente de verdade** — a parte de segurança está sendo arrumada agora.
 
 ---
 
-## Tecnologias
+## o que você precisa instalar
 
-| Camada | Stack |
-| :--- | :--- |
-| Backend | Java 17, Spring Boot 3.5, Spring Data JPA, Spring Security (JWT) |
-| Frontend | React 19, Vite 6 |
-| Banco | PostgreSQL |
-| Build | Maven Wrapper (backend), npm (frontend) |
+o jeito mais fácil é com docker, aí você não instala mais nada:
 
-Toda a pilha é software livre.
+- docker e docker compose
 
----
+se preferir rodar na mão, sem docker:
 
-## Estrutura do repositório
-
-```
-backend/      api rest em spring boot
-frontend/     interface web em react
-database/     modelagem conceitual, logica e fisica
-docs/         requisitos, escalas de referencia e registro da extensao
-```
+- jdk 17 (não precisa instalar o maven, o repo já tem o `mvnw`)
+- node 18 ou mais novo
+- postgres
 
 ---
 
-## Como executar
+## rodando com docker
 
-### Com Docker (recomendado)
-
-Precisa apenas de Docker e Docker Compose instalados.
+**1.** copia o arquivo de exemplo das configurações:
 
 ```bash
 cp .env.example .env
-# abra o .env e preencha POSTGRES_PASSWORD e JWT_SECRET
-docker compose up
 ```
 
-A interface fica em `http://localhost:5173` e a API em `http://localhost:8080`. O banco sobe junto, num volume que preserva os dados entre reinicializações.
+**2.** abre o `.env` e preenche duas coisas:
 
-Para gerar uma chave de assinatura de token:
+- `POSTGRES_PASSWORD` — inventa uma senha
+- `JWT_SECRET` — a chave que assina o login. pra gerar uma:
 
 ```bash
 openssl rand -base64 48
 ```
 
-> `POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: a aplicação não sobe sem eles, em vez de subir com credencial conhecida. O `.env` não é versionado.
+essas duas não têm valor padrão de propósito. sem elas a aplicação não sobe, o que é melhor do que subir com uma senha publicada no github.
 
-### Sem Docker
+**3.** sobe tudo:
 
-Instalação manual do banco, backend e frontend: veja [`backend/README.md`](./backend/README.md) e [`database/README.md`](./database/README.md).
+```bash
+docker compose up
+```
 
-### Testes
+pronto, o banco, a api e a tela sobem juntos.
+
+- tela: http://localhost:5173
+- api: http://localhost:8080
+
+pra parar é `ctrl+c`. os dados do banco ficam num volume, então não somem quando você desliga.
+
+---
+
+## rodando na mão, sem docker
+
+### 1. o banco
+
+entra no postgres e cria o usuário e o banco:
+
+```sql
+create user admindoisag with password 'a_senha_que_voce_quiser';
+create database doisag owner admindoisag;
+```
+
+tem um passo a passo mais detalhado em [`database/README.md`](./database/README.md).
+
+### 2. a api
+
+as senhas vêm de variável de ambiente, não de arquivo. exporta as duas e sobe:
+
+```bash
+cd backend/doisag
+export DATABASE_PASSWORD='a_senha_que_voce_criou'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SEED_DADOS_TESTE=true
+./mvnw spring-boot:run
+```
+
+no intellij essas variáveis vão em `run` → `edit configurations` → `environment variables`.
+
+o `SEED_DADOS_TESTE=true` cria dois usuários pra você testar sem cadastrar na mão:
+
+| quem | email | senha |
+| :--- | :--- | :--- |
+| prescritora | prescritor@email.com | 123456 |
+| paciente | paciente@email.com | 123456 |
+
+### 3. a tela
+
+em outro terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+abre em http://localhost:5173.
+
+---
+
+## rodando os testes
 
 ```bash
 cd backend/doisag
 ./mvnw clean install
 ```
 
-A suíte roda com banco H2 em memória, no perfil `test`. **Não precisa de PostgreSQL instalado nem de variável de ambiente configurada** — é requisito do projeto que o build passe em máquina limpa (RNF13).
+não precisa do postgres pra isso, os testes usam um banco em memória. se passar numa máquina limpa, está certo.
 
 ---
 
-## Escalas clínicas implementadas
+## onde fica cada coisa
 
-| Instrumento | Aplicação | Escore |
-| :--- | :--- | :--- |
-| Anamnese | paciente | — |
-| Ficha de acompanhamento | paciente | 15 parâmetros de 0 a 10 |
-| Escala de Ansiedade de Hamilton (HAM-A) | paciente | 0 a 56 |
-| Índice de Qualidade do Sono de Pittsburgh (PSQI-BR) | paciente | 0 a 21, 7 componentes |
-| Diário de sono | paciente | — |
-| Registro de dor | paciente | 0 a 10 + interferência |
-| Registro de sintomas (TEA) | paciente | frequência de comportamentos |
-| Mini-Exame do Estado Mental (MEEM) | prescritor | 0 a 30 |
+```
+backend/     a api, em java com spring boot
+frontend/    a tela, em react
+database/    os modelos do banco e o passo a passo de instalação
+docs/        os requisitos e as escalas clínicas que a clínica usa
+```
 
-Os algoritmos de cálculo são normativos e estão especificados no Anexo A do [documento de requisitos](./docs/requisitos-v2.md).
+o documento de requisitos é o [`docs/requisitos-v2.md`](./docs/requisitos-v2.md). é lá que está o que o sistema precisa fazer e como cada escala é calculada.
 
+---
+
+## umas coisas boas de saber
+
+- o paciente se cadastra sozinho, usando o código do prescritor dele. conta de prescritor é criada pela clínica, não por autocadastro.
+- cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
+- nunca comita arquivo com dado de paciente aqui: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confere o `git diff` antes de mandar.
+
+---
+
+## licença
+
+[agpl-3.0](./LICENSE). qualquer clínica pode baixar, usar e mudar. quem mudar e oferecer como serviço precisa publicar as mudanças também.

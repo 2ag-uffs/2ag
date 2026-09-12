@@ -1,7 +1,9 @@
 package dev.uffs.doisag.security;
 
+import dev.uffs.doisag.model.HamiltonScale;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.repository.HamiltonScaleRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,12 +13,15 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // as regras de autorizacao do RF29 e RF30. o @PreAuthorize so eh
@@ -31,6 +36,7 @@ class AuthorizationRulesTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private HamiltonScaleRepository hamiltonScaleRepository;
 
     private String tokenPrescriberA;
     private String tokenPrescriberB;
@@ -117,6 +123,76 @@ class AuthorizationRulesTest {
     @Test
     void prescritorNaoAbreODashboardDeOutroPrescritor() throws Exception {
         mockMvc.perform(get("/dashboard/prescritor/" + patientBId).header("Authorization", tokenPrescriberB))
+                .andExpect(status().isForbidden());
+    }
+
+    // ---------- RF30: dono do registro de escala ----------
+
+    private Long salvaEscalaDe(Long patientId) {
+        HamiltonScale scale = new HamiltonScale();
+        scale.setAssessmentDate(LocalDate.now());
+        scale.setPatient(patientRepository.findById(patientId).orElseThrow());
+        return hamiltonScaleRepository.save(scale).getId();
+    }
+
+    @Test
+    void pacienteNaoAbreEscalaDeOutroPaciente() throws Exception {
+        Long escalaDoB = salvaEscalaDe(patientBId);
+
+        mockMvc.perform(get("/escala-hamilton/" + escalaDoB).header("Authorization", tokenPatientA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void pacienteAbreAPropriaEscala() throws Exception {
+        Long escalaDoA = salvaEscalaDe(patientAId);
+
+        mockMvc.perform(get("/escala-hamilton/" + escalaDoA).header("Authorization", tokenPatientA))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void prescritorNaoAbreEscalaDePacienteAlheio() throws Exception {
+        Long escalaDoB = salvaEscalaDe(patientBId);
+
+        mockMvc.perform(get("/escala-hamilton/" + escalaDoB).header("Authorization", tokenPrescriberA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void prescritorAbreEscalaDoProprioPaciente() throws Exception {
+        Long escalaDoA = salvaEscalaDe(patientAId);
+
+        mockMvc.perform(get("/escala-hamilton/" + escalaDoA).header("Authorization", tokenPrescriberA))
+                .andExpect(status().isOk());
+    }
+
+    // o corpo da requisicao manda o paciente B, mas quem esta logado eh o
+    // A. o registro tem q nascer do A, senao da pra plantar escala no
+    // prontuario de qualquer um
+    @Test
+    void aoCriarEscalaODonoEhQuemEstaLogadoENaoOQueVeioNoCorpo() throws Exception {
+        String corpoMentindoODono = """
+                {"assessmentDate":"2026-09-12","anxiousMood":2,"patient":{"id":%d}}
+                """.formatted(patientBId);
+
+        mockMvc.perform(post("/escala-hamilton")
+                        .header("Authorization", tokenPatientA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoMentindoODono))
+                .andExpect(status().isOk());
+
+        var salvas = hamiltonScaleRepository.findAll();
+        assertThat(salvas).isNotEmpty();
+        assertThat(salvas.get(salvas.size() - 1).getPatient().getId()).isEqualTo(patientAId);
+    }
+
+    @Test
+    void prescritorNaoPreencheEscalaDePaciente() throws Exception {
+        mockMvc.perform(post("/escala-hamilton")
+                        .header("Authorization", tokenPrescriberA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assessmentDate\":\"2026-09-12\"}"))
                 .andExpect(status().isForbidden());
     }
 

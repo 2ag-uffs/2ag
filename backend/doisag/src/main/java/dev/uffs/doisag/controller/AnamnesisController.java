@@ -2,8 +2,10 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.service.AnamnesisService;
+import dev.uffs.doisag.model.Patient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,11 @@ public class AnamnesisController {
     // POST /anamnese
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
-    public Anamnesis create(@RequestBody Anamnesis anamnesis) {
+    public Anamnesis create(@RequestBody Anamnesis anamnesis, @AuthenticationPrincipal Patient loggedPatient) {
+        // o dono do registro eh quem preencheu, n o id que veio no
+        // corpo. antes dava pra atribuir escala a outro paciente
+        anamnesis.setId(null);
+        anamnesis.setPatient(loggedPatient);
         return anamnesisService.create(anamnesis);
     }
 
@@ -36,7 +42,7 @@ public class AnamnesisController {
 
     // endpoint para LER uma anamnese por ID
     // GET /anamnese/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<Anamnesis> getById(@PathVariable Long id) {
         Anamnesis anamnesis = anamnesisService.getById(id);
@@ -45,7 +51,7 @@ public class AnamnesisController {
 
     // endpoint para ATUALIZAR uma anamnese
     // PUT /anamnese/{id}
-    @PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<Anamnesis> update(@PathVariable Long id, @RequestBody Anamnesis anamnesisDetails) {
             Anamnesis updatedAnamnesis = anamnesisService.update(id, anamnesisDetails);
@@ -54,7 +60,7 @@ public class AnamnesisController {
 
     // endpoint para DELETAR uma anamnese
     // DELETE /anamnese/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             anamnesisService.delete(id);

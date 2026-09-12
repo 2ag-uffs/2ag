@@ -2,8 +2,10 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.SleepLog;
 import dev.uffs.doisag.service.SleepLogService;
+import dev.uffs.doisag.model.Patient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,7 +24,11 @@ public class SleepLogController {
     // POST /registro-sono
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
-    public SleepLog create(@RequestBody SleepLog sleepLog) {
+    public SleepLog create(@RequestBody SleepLog sleepLog, @AuthenticationPrincipal Patient loggedPatient) {
+        // o dono do registro eh quem preencheu, n o id que veio no
+        // corpo. antes dava pra atribuir escala a outro paciente
+        sleepLog.setId(null);
+        sleepLog.setPatient(loggedPatient);
         return sleepLogService.create(sleepLog);
     }
 
@@ -36,7 +42,7 @@ public class SleepLogController {
 
     // endpoint para LER um registro de sono por ID
     // GET /registro-sono/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<SleepLog> getById(@PathVariable Long id) {
         SleepLog sleepLog = sleepLogService.getById(id);
@@ -45,7 +51,7 @@ public class SleepLogController {
 
     // endpoint para ATUALIZAR um registro de sono
     // PUT /registro-sono/{id}
-    @PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<SleepLog> update(@PathVariable Long id, @RequestBody SleepLog logDetails) {
             SleepLog updatedLog = sleepLogService.update(id, logDetails);
@@ -54,7 +60,7 @@ public class SleepLogController {
 
     // endpoint para DELETAR um registro de sono
     // DELETE /registro-sono/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             sleepLogService.delete(id);
