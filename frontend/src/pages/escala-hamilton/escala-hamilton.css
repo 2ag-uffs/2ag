@@ -1,0 +1,302 @@
+.escala-hamilton-algo {
+    min-height: 100vh;
+    background-color: var(--color-background, #f8fafc);
+    display: flex;
+    flex-direction: column;
+}
+
+.escala-hamilton-header {
+    background-color: var(--color-primary, #059669);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.escala-hamilton-header-left {
+    display: flex;
+    align-items: center;
+}
+
+.escala-hamilton-logo {
+    height: 2rem;
+    width: auto;
+}
+
+.escala-hamilton-header-nav {
+    display: flex;
+    gap: 1rem;
+}
+
+.escala-hamilton {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.escala-hamilton__content {
+    background-color: var(--color-surface, #ffffff);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    width: 100%;
+}
+
+.escala-hamilton__header {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding: 1rem 2rem;
+    text-align: center;
+}
+
+.escala-hamilton__header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #1f2937);
+    margin: 0 0 0.5rem 0;
+}
+
+.escala-hamilton__header h2 {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--color-text-secondary, #6b7280);
+    margin: 0;
+}
+
+.escala-hamilton__form {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+}
+
+.escala-hamilton__form__row {
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.escala-hamilton__form__row > div {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.escala-hamilton__form__row label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary, #1f2937);
+}
+
+.escala-hamilton__form__row input {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    color: var(--color-text-primary, #1f2937);
+    background-color: var(--color-surface, #ffffff);
+    transition: border-color 0.2s;
+}
+
+.escala-hamilton__form__row input:focus {
+    outline: none;
+    border-color: var(--color-primary, #059669);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+.escala-hamilton__form__group {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+.escala-hamilton__form__group h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #1f2937);
+    margin: 0 0 0.5rem 0;
+}
+
+.escala-hamilton__form__group textarea {
+    width: 100%;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+    color: var(--color-text-primary, #1f2937);
+    background-color: var(--color-surface, #ffffff);
+    transition: border-color 0.2s;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.escala-hamilton__form__group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary, #059669);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+.escala-hamilton_end {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+/* Estilos específicos para HAM-A */
+.ham-a-description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary, #6b7280);
+    margin: 0 0 1rem 0;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.ham-a-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background-color: var(--color-background, #f8fafc);
+    border-radius: 0.375rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.ham-a-total__score {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary, #059669);
+}
+
+.ham-a-total__level {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-secondary, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ham-a-interpretation {
+    background-color: var(--color-background, #f8fafc);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.ham-a-interpretation ul {
+    margin: 0 0 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.ham-a-interpretation li {
+    margin-bottom: 0.5rem;
+    color: var(--color-text-secondary, #6b7280);
+}
+
+.ham-a-current-result {
+    padding: 0.75rem;
+    background-color: var(--color-primary, #059669);
+    color: white;
+    border-radius: 0.375rem;
+    text-align: center;
+}
+
+/* Botões - assumindo que as classes button e button-secondary já existem */
+.button {
+    background-color: var(--color-primary, #059669);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.button:hover {
+    background-color: var(--color-primary-dark, #047857);
+}
+
+.button-secondary {
+    background-color: transparent;
+    color: var(--color-text-primary, #1f2937);
+    border: 1px solid var(--color-border, #e5e7eb);
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.button-secondary:hover {
+    background-color: var(--color-background, #f8fafc);
+    border-color: var(--color-text-secondary, #6b7280);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .escala-hamilton {
+        padding: 1rem 0.5rem;
+    }
+
+    .escala-hamilton__content {
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .escala-hamilton__header {
+        padding: 1rem;
+    }
+
+    .escala-hamilton__form {
+        padding: 1rem;
+    }
+
+    .escala-hamilton__form__row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .escala-hamilton_end {
+        flex-direction: column;
+    }
+
+    .consulta-header {
+        padding: 1rem;
+    }
+
+    .header-nav {
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .escala-hamilton__header h1 {
+        font-size: 1.25rem;
+    }
+
+    .escala-hamilton__header h2 {
+        font-size: 0.875rem;
+    }
+
+    .ham-a-total__score {
+        font-size: 1.25rem;
+    }
+}
+

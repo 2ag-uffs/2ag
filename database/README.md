@@ -1,0 +1,107 @@
+# configurando o banco postgres pro projeto doisag
+
+aqui tá o guia pra instalar e configurar o postgres pro backend do doisag rodar
+
+## primeiro passo: instalar o postgresql
+
+escolha o guia pro seu sistema operacional
+
+### se você usa windows
+
+1.  **download**: baixa o instalador do site oficial do postgresql
+2.  **instalação**: executa o instalador e segue as instruções
+      - quando ele pedir pra criar uma senha pro usuário **postgres**, anota essa senha, você vai precisar dela
+      - garante que a opção de instalar as **'command line tools'** esteja marcada
+3.  **configurar o path**: você precisa adicionar o caminho da pasta `bin` do postgres nas variáveis de ambiente do seu sistema pra conseguir usar os comandos no terminal
+      - o caminho geralmente é algo como `c:\program files\postgresql\<versão>\bin`
+
+### se você usa macos
+
+1.  **instalar homebrew**: se você ainda não tiver o homebrew, instala ele primeiro
+2.  **instalar o postgres**: depois abre o terminal e roda:
+    ```bash
+    brew install postgresql
+    ```
+3.  **iniciar o serviço**: pra garantir que o banco de dados esteja sempre rodando, você pode iniciar o serviço com:
+    ```bash
+    brew services start postgresql
+    ```
+
+### se você usa linux
+
+1.  **instalar o postgres**: só abrir o terminal e rodar:
+    ```bash
+    sudo apt update
+    sudo apt install postgresql postgresql-contrib
+    ```
+
+## segundo passo: criar o banco e os usuários
+
+depois de instalar, você precisa entrar no `psql` pra configurar as coisas.
+
+  - **no windows**: abre o terminal e digita `psql -U postgres` e coloca a senha que você criou
+  - **no macos**: é só rodar `psql postgres` no terminal
+  - **no linux**: é `sudo -u postgres psql`
+
+### criar um superusuário pessoal
+
+é uma boa ideia criar um usuário só pra você não ficar usando o `postgres` padrão o tempo todo. dentro do `psql`, rode o comando:
+
+```sql
+create role <seu_nome_de_usuario> with login superuser password '<sua_senha_segura>';
+```
+
+*lembra de trocar `<seu_nome_de_usuario>` e `<sua_senha_segura>` pelos seus dados. depois de criar, pode sair do `psql` com `\q`.*
+
+### criar o usuário e o banco da aplicação
+
+1.  entra no `psql` de novo, mas dessa vez com o seu usuário: `psql -U <seu_nome_de_usuario> -d postgres`. ele vai pedir sua senha
+2.  lá dentro, cria o usuário que a aplicação vai usar, o nome dele é `admindoisag`:
+    ```sql
+    create user admindoisag with password '<senha_para_a_aplicacao>';
+    ```
+    *escolha uma senha forte e anote ela*
+3.  agora cria o banco de dados com o nome `doisag` e já define o `admindoisag` como dono:
+    ```sql
+    create database doisag owner admindoisag;
+    ```
+4.  pode sair do psql com `\q`
+
+## terceiro passo: configurar o projeto
+
+agora só falta avisar pro projeto qual a senha do banco.
+
+1.  abre o arquivo `backend/doisag/src/main/resources/application.yml`
+2.  encontra a parte do `datasource` e troca o campo `password` pela senha que você criou para o usuário `admindoisag`
+3.  deve ficar parecido com isso:
+    ```yaml
+    spring:
+      datasource:
+        url: jdbc:postgresql://localhost:5432/doisag
+        username: admindoisag
+        password: '<sua_senha>'
+    ```
+4.  salva o arquivo e pronto.
+
+> ⚠️ **esse arquivo é versionado no git**. depois de colocar sua senha real nele, confere o `git diff` antes de commitar, senão a senha vai pro repositório. tirar a senha e a chave do jwt do arquivo versionado e passar pra variável de ambiente é o RNF15 do [documento de requisitos](../docs/requisitos-v2.md)
+
+## quarto passo: subir a aplicação
+
+```bash
+cd backend/doisag
+./mvnw spring-boot:run
+```
+
+na primeira vez que sobe, o hibernate cria as tabelas sozinho (a propriedade `ddl-auto` tá em `update`) e um `CommandLineRunner` cria os usuários de teste
+
+> **não use `mvn clean install`**: o `install` roda os testes, e o único teste do projeto precisa do banco acessível com a senha correta — ele falha sempre. pra gerar o `.jar` use `./mvnw clean package -DskipTests`
+
+## sobre os scripts sql
+
+a pasta `physical-model/` tem os scripts de criação (`script-creates.sql`), inserção de exemplo (`script-insert.sql`) e consultas (`scrip-select.sql`)
+
+> ⚠️ **eles não são a fonte de verdade do esquema hoje**. quem cria e altera as tabelas na prática é o hibernate, pelo `ddl-auto: update`, a partir das entidades java. os dois já divergem entre si — por exemplo, o `NOT NULL` da coluna `email` existe no script e não na entidade. ter uma fonte única, com migrações versionadas, é o RNF14 do documento de requisitos
+
+## conclusão
+
+agora seu ambiente tá todo configurado, quando você rodar o backend ele vai conseguir conectar no banco de dados sem problemas. para um passo a passo focado em linux veja o [`passo-a-passo-banco.md`](./passo-a-passo-banco.md)

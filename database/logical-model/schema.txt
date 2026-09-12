@@ -1,0 +1,238 @@
+users
+---
+id_user PK bigserial
+name varchar(255)
+cpf varchar(255)
+email varchar(255) UNIQUE
+password varchar(255)
+birth_date date
+phone varchar(255)
+street varchar(255)
+"number" varchar(255)
+city varchar(100)
+state varchar(255)
+country varchar(255)
+
+prescriber
+---
+id_prct PK bigint FK >- users.id_user
+profession varchar(255)
+registry_type varchar(255)
+registry_number varchar(255)
+professional_code varchar(255) UNIQUE
+
+patient
+---
+id_pcte PK bigint FK >- users.id_user
+prescriber_id bigint FK >- prescriber.id_prct
+
+anamnesis
+---
+id_anam PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+reason_for_visit text
+profession varchar(255)
+diet text
+anxiety text
+observation text
+pain text
+adverse_reaction text
+previous_diagnosis text
+smoking_habits text
+expectations text
+current_medication text
+treatment_awareness text
+genetic_condition text
+previous_treatment text
+family_history text
+height varchar(10)
+weight varchar(10)
+alcohol_consumption text
+sleep_habits text
+substance_use text
+physical_activity text
+
+appointment
+---
+id_cons PK bigserial
+date_time timestamp
+modality varchar(255)
+status varchar(255)
+diagnosis text
+clinical_observation text
+therapeutic_plan text
+evolution text
+patient_id bigint FK >- patient.id_pcte
+prescriber_id bigint FK >- prescriber.id_prct
+
+prescription
+---
+id_prescr PK bigserial
+product_description text
+posology text
+brand varchar(255)
+concentration varchar(255)
+spectrum varchar(255)
+observation text
+
+follow_up
+---
+id_acomp PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+morning_drops integer
+afternoon_drops integer
+tremor integer
+rigidity_spasticity integer
+nausea integer
+concentration integer
+appetite integer
+social_interaction integer
+disposition integer
+intestinal_function integer
+anxiety integer
+substance_reduction integer
+pain integer
+sports_performance integer
+sleep integer
+dermatological_disease integer
+mood integer
+comment text
+
+mental_state_exam
+---
+id_meem PK bigserial
+appointment_id bigint FK >- Consulta.id_cons
+temporal_orientation integer
+spatial_orientation integer
+registration integer
+attention_and_calculation integer
+recall integer
+naming integer
+repetition integer
+command integer
+score integer
+
+hamilton_scale
+---
+id_ham PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+anxious_mood integer
+tension integer
+fears integer
+insomnia integer
+cognition integer
+depressed_mood integer
+somatic_motor integer
+somatic_sensory integer
+cardiovascular_symptoms integer
+respiratory_symptoms integer
+gastrointestinal_symptoms integer
+genitourinary_symptoms integer
+autonomic_symptoms integer
+ham_score integer
+
+sleep_log
+---
+id_sono PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+bed_time time
+wake_up_time time
+time_in_bed real
+time_to_fall_asleep integer
+times_woken_up integer
+total_time_awake integer
+total_sleep_time real
+total_awake_sleep real
+is_common_day boolean
+fatigue integer
+stress integer
+daytime_sleepiness integer
+inattention integer
+irritability integer
+pain integer
+health_perception integer
+physical_activity_time real
+time_away_from_home real
+used_sleep_medication boolean
+alcohol_consumption integer
+naps_time integer
+coffee_consumption integer
+nighttime_smoking integer
+total_time_awake_during_night integer
+
+pittsburgh_scale
+---
+id_pitt PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+usual_bed_time time
+minutes_to_fall_asleep integer
+usual_wake_up_time time
+actual_sleep_hours real
+freq_cannot_fall_asleep integer
+freq_wakes_up_middle_night integer
+freq_wake_up_for_bathroom integer
+freq_cannot_breathe integer
+freq_cough_or_snore integer
+freq_feel_cold integer
+freq_feel_hot integer
+freq_have_bad_dreams integer
+freq_have_pain integer
+other_reason_to_trouble_sleep text
+sleep_quality_rating integer
+freq_use_sleep_medication integer
+freq_trouble_staying_awake integer
+trouble_with_enthusiasm integer
+room_partner integer
+psqi_score integer
+
+tea_log
+---
+id_tea PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+freq_aggressiveness integer
+freq_agitation integer
+freq_sleep_issues integer
+freq_social_interaction integer
+freq_stereotypy integer
+freq_appetite_issues integer
+observation text
+tea_score integer
+
+pain_log
+---
+id_dor PK bigserial
+assessment_date date
+patient_id bigint FK >- patient.id_pcte
+basic_activity_interference integer
+social_activity_interference integer
+sleep_interference integer
+productivity_interference integer
+extra_medication integer
+observation text
+
+assigned_scale
+---
+id PK bigserial
+patient_id bigint FK >- patient.id_pcte
+prescriber_id bigint FK >- prescriber.id_prct
+scale_type scale_type_enum
+status assignment_status_enum
+assigned_date date
+completed_date date
+
+notification
+---
+id PK bigserial
+user_id bigint FK >- users.id_user
+title varchar(255)
+message varchar(512)
+is_read boolean
+created_at timestamp
+type varchar(255)
+link varchar(255)

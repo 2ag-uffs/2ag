@@ -1,0 +1,363 @@
+### **backend do sistema doisag**
+
+esse repositorio tem o código do backend do sistema doisag, uma api pra gerenciar e acompanhar pacientes que usam fitocanabinoides
+
+o documento de requisitos vigente é o [`docs/requisitos-v2.md`](../docs/requisitos-v2.md). este README descreve **o que a api faz hoje**, não o que ela deveria fazer — o que está fora do esperado está na seção [limitações conhecidas](#limitações-conhecidas)
+
+-----
+
+### **tecnologias**
+
+  * **java 17**
+  * **spring boot 3.5.0**
+  * **spring data jpa** com hibernate pra cuidar do banco
+  * **spring security** com jwt (biblioteca jjwt 0.11.5)
+  * **maven** pra gerenciar as dependências
+  * **postgresql** como banco de dados
+
+-----
+
+### **pré-requisitos**
+
+pra rodar o projeto, você vai precisar ter instalado:
+
+  * **jdk 17** (não jre, e não a 8 — o projeto compila com `release 17`)
+  * postgresql rodando
+  * maven **não** precisa instalar: o repo tem o wrapper (`mvnw`), que baixa a versão certa sozinho
+
+confere se seu java tá certo antes de começar:
+
+```bash
+java -version
+```
+
+se aparecer `1.8.x` você tem só o java 8 no path e o build vai falhar
+
+-----
+
+### **como rodar o projeto**
+
+1.  **clone o repositório:**
+
+    ```bash
+    git clone <url-do-seu-repositorio>
+    cd 2ag/backend/doisag
+    ```
+
+2.  **arrume o banco de dados:**
+
+    crie o banco `doisag` e o usuário `admindoisag` no seu postgres. o passo a passo completo tá no [`database/README.md`](../database/README.md)
+
+3.  **configuração:**
+
+    veja a seção [configuração](#configuração) logo abaixo
+
+4.  **suba a aplicação:**
+
+    ```bash
+    ./mvnw spring-boot:run
+    ```
+
+    se tudo der certo a api vai tá rodando em `http://localhost:8080`
+
+5.  **pra gerar o .jar:**
+
+    ```bash
+    ./mvnw clean package -DskipTests
+    ```
+
+> ⚠️ **não use `mvn clean install`**. o `install` roda os testes, e o único teste que existe (`DoisagApplicationTests.contextLoads`) sobe o contexto spring inteiro e precisa do banco acessível com a senha certa. sem isso ele falha sempre. é o RNF13 do documento de requisitos
+
+-----
+
+### **configuração**
+
+as configurações ficam em `src/main/resources/application.yml`:
+
+| chave | pra que serve |
+| :--- | :--- |
+| `spring.datasource.url` | endereço do banco (padrão `jdbc:postgresql://localhost:5432/doisag`) |
+| `spring.datasource.username` | usuário do banco (padrão `admindoisag`) |
+| `spring.datasource.password` | senha do banco — **você precisa trocar** |
+| `api.security.token.secret` | chave que assina os tokens jwt |
+| `spring.jpa.hibernate.ddl-auto` | tá em `update`: o hibernate altera as tabelas sozinho conforme as entidades |
+
+o `application.yml` vem com `password: sua_senha` e você tem que trocar pela senha real do seu `admindoisag`
+
+> ⚠️ **cuidado**: esse arquivo é versionado no git. trocar a senha nele significa que sua senha real pode ir junto no commit sem você perceber. **confira o `git diff` antes de commitar**. mover essas duas chaves pra variável de ambiente é o RNF15 do documento de requisitos e ainda não foi feito
+
+-----
+
+### **usuário de teste**
+
+quando a aplicação sobe, um `CommandLineRunner` cria dois usuários pra você não ter que cadastrar na mão, mais algumas notificações de exemplo:
+
+| perfil | email | senha |
+| :--- | :--- | :--- |
+| prescritor | `prescritor@email.com` | `123456` |
+| paciente | `paciente@email.com` | `123456` |
+
+> ⚠️ esse seed roda em **toda** inicialização, sem distinção de ambiente. num deploy real ele criaria uma conta de prescritor com senha `123456` em produção. limitar ao profile `dev` é parte do RNF15
+
+-----
+
+### **documentação da api**
+
+  * **URL\_BASE**: `http://localhost:8080`
+  * **CORS**: liberado pra `http://localhost:5173`. tem duas configurações de cors competindo: um bean global em `SecurityConfigurations` e `@CrossOrigin` espalhado nos controllers (o de `AuthenticationController` é `*`)
+
+#### **autenticação**
+
+o esquema é com token. você manda email e senha, a api devolve um jwt, e a partir daí toda chamada precisa mandar esse token junto
+
+  * **COMO MANDAR O TOKEN**: no header da requisição:
+    `Authorization: Bearer <seu-token-jwt>`
+  * **VALIDADE**: 2 horas
+  * **CLAIMS DO TOKEN**: `sub` (email), `id`, `name`, `role`, `authorities`
+  * **PERFIS** (como estão hoje no código):
+      * `ROLE_ADMIN`: perfil do **prescritor**
+      * `ROLE_USER`: perfil do **paciente**
+
+> a v2.0 separa esses papéis em três (`ROLE_PATIENT`, `ROLE_PRESCRIBER`, `ROLE_ADMIN`), porque usar "admin" como sinônimo de prescritor foi o que gerou a falha de autorização descrita nas limitações
+
+#### **endpoints de autenticação**
+
+##### **1. registrar novo paciente**
+
+  * **ENDPOINT**: `POST /auth/register`
+  * **AUTORIZAÇÃO**: pública
+  * **CORPO DA REQUISIÇÃO (`RegisterDTO`)**:
+
+| campo | tipo | descrição | regras de validação |
+| :--- | :--- | :--- | :--- |
+| `name` | `string` | nome completo do paciente | obrigatório |
+| `email` | `string` | email que ele vai usar pra logar | obrigatório, formato válido e único |
+| `senha` | `string` | senha de acesso | no mínimo 8 caracteres, uma minúscula, uma maiúscula, um número e um caractere especial (`@$!%*?&`) |
+| `cpf` | `string` | cpf do paciente | obrigatório, validado por dígito verificador |
+| `birthDate` | `string` | data de nascimento (`YYYY-MM-DD`) | obrigatória e no passado |
+| `phone` | `string` | telefone com ddd | opcional, mas se vier tem que ser só números |
+| `address` | `objeto` | objeto com os dados de endereço | obrigatório |
+| `professionalCode` | `string` | código do prescritor que vai acompanhar ele | obrigatório, formato `[A-Z]{3}[0-9]{2}` (3 letras maiúsculas + 2 números) |
+
+  * **RESPOSTA (`201 Created`)**: `{ "message": "Cadastro realizado com sucesso, seja bem-vindo(a)!" }`
+
+##### **2. efetuar login**
+
+  * **ENDPOINT**: `POST /auth/login`
+  * **AUTORIZAÇÃO**: pública
+  * **CORPO DA REQUISIÇÃO (`LoginDTO`)**: `{ "email": "...", "senha": "..." }`
+  * **RESPOSTA (`200 OK`)**: `{ "token": "<jwt>" }`
+
+#### **endpoints principais (CRUD)**
+
+todas essas rotas exigem autenticação. cada uma tem `GET`, `GET /{id}`, `POST`, `PUT /{id}` e `DELETE /{id}`
+
+| rota | entidade |
+| :--- | :--- |
+| `/paciente` | paciente |
+| `/prescritor` | prescritor |
+| `/consulta` | consulta clínica |
+| `/anamnese` | anamnese |
+| `/acompanhamento` | ficha de acompanhamento semanal |
+| `/escala-hamilton` | escala de ansiedade de hamilton |
+| `/escala-pittsburgh` | índice de qualidade do sono de pittsburgh |
+| `/mini-exame` | mini-exame do estado mental (meem) |
+| `/registro-dor` | registro diário de dor |
+| `/registro-sono` | registro diário de sono |
+| `/registro-tea` | registro de sintomas (tea) |
+
+rotas extras de paciente:
+
+  * **`GET /paciente/prescritor/{prescriberId}`**: lista os pacientes de um prescritor
+  * **`POST /paciente/cadastrar-para-prescritor`**: o prescritor logado cadastra um paciente já vinculado a ele. o vínculo vem do token, não do corpo da requisição
+
+> ⚠️ `POST /prescritor` é **público** hoje. ver limitações
+
+#### **prescrição**
+
+  * **`POST /consulta/{appointmentId}/prescricao`**: cria prescrição dentro de uma consulta
+      * corpo (`PrescriptionCreateDTO`): `productDescription`, `posology`, `brand`, `concentration`, `spectrum`, `observation`
+  * **`GET /prescricao`** e **`GET /prescricao/{id}`**: consulta
+  * **`PUT /prescricao/{id}`**: atualiza (sobrescreve, sem guardar versão anterior)
+  * **`DELETE /prescricao/{id}`**: remove
+  * **`GET /appointments/{appointmentId}/prescriptions`**: prescrições de uma consulta
+
+#### **notificações**
+
+  * **`GET /notifications`**: notificações do usuário logado
+  * **`POST /notifications/{id}/read`**: marca uma como lida
+  * **`POST /notifications/read-all`**: marca todas como lidas
+  * **`DELETE /notifications/{id}`**: remove
+
+hoje as notificações são criadas em três situações: novo paciente vinculado, escala designada ao paciente, e eventos de agendamento
+
+-----
+
+### **endpoints de lógica de negócio**
+
+#### **1. dashboards (`/dashboard`)**
+
+  * **`GET /dashboard/prescritor/{id}`**: nº de pacientes ativos, consultas do dia e formulários pendentes
+  * **`GET /dashboard/paciente/{id}`**: escalas pendentes e consultas futuras
+
+> ⚠️ o campo `upcomingAppointments` do dashboard do paciente retorna **sempre lista vazia** — a busca não foi implementada (`DashboardService`)
+
+#### **2. ciclo de tarefas de escalas**
+
+esse fluxo permite que um prescritor envie uma escala para o paciente e que o sistema dê baixa nela automaticamente
+
+  * **`POST /pacientes/{patientId}/escalas`**: designa uma nova escala para um paciente
+
+      * **CORPO DA REQUISIÇÃO (`AssignScaleDTO`):**
+        ```json
+        {
+          "scaleType": "ESCALA_HAMILTON"
+        }
+        ```
+      * **valores possíveis**: `ESCALA_HAMILTON`, `ESCALA_PITTSBURGH`, `MINI_EXAME_ESTADO_MENTAL`, `REGISTRO_DOR`, `REGISTRO_SONO`, `REGISTRO_TEA`, `ANAMNESE`, `ACOMPANHAMENTO_SEMANAL`
+      * **RESPOSTA (`201 Created`):** retorna o objeto da tarefa criada
+
+  * **`GET /pacientes/{patientId}/escalas`**: lista as escalas designadas
+
+  * **`GET /pacientes/{patientId}/escalas/central`**: dados prontos da central de escalas, separados em pendentes e histórico
+
+  * **para concluir uma tarefa**: não há endpoint específico. quando o paciente submete o formulário correspondente (ex: `POST /escala-hamilton`), o backend atualiza o status da tarefa de `PENDENTE` para `CONCLUIDO`
+
+#### **3. relatórios de progresso**
+
+  * **`GET /pacientes/{patientId}/progresso`**: série histórica de um atributo
+  * **PARÂMETROS (obrigatórios):**
+      * `atributo`: `DOR`, `SONO`, `HUMOR`, `TREMOR`, `ANSIEDADE`, `DISPOSICAO_ENERGIA`, `FUNCAO_INTESTINAL`, `APETITE`, `CONCENTRACAO`, `INTERACAO_SOCIAL`, `RIGIDEZ_ESPASTICIDADE`, `REDUCAO_SUBSTANCIA`, `NAUSEA_VOMITO`, `DESEMPENHO_ESPORTIVO`, `DERMATOLOGICO`
+      * `periodo`: `DIAS_15`, `DIAS_30`, `DIAS_60`, `DIAS_90`
+  * **EXEMPLO:** `GET /pacientes/1/progresso?atributo=DOR&periodo=DIAS_30`
+  * **RESPOSTA:**
+    ```json
+    [
+      { "date": "2025-06-15", "value": 8 },
+      { "date": "2025-06-22", "value": 7 },
+      { "date": "2025-06-29", "value": 5 }
+    ]
+    ```
+
+> essa rota lê apenas a ficha de acompanhamento (`FollowUp`). não é possível ver progresso de hamilton, pittsburgh, dor ou tea
+
+#### **4. relatório de sono**
+
+  * **`GET /pacientes/{patientId}/relatorio-sono`**: médias semanais do diário de sono
+
+-----
+
+### **modelos json**
+
+##### **`Address`**
+
+```json
+{
+  "street": "Rua Exemplo",
+  "number": "123",
+  "city": "Chapecó",
+  "state": "SC",
+  "country": "Brasil"
+}
+```
+
+##### **`Patient` (exemplo de retorno real)**
+
+```json
+{
+  "id": 1,
+  "name": "Nome do Paciente",
+  "cpf": "12345678900",
+  "email": "paciente@email.com",
+  "birthDate": "1990-01-15",
+  "phone": "49999887766",
+  "address": { "...": "..." }
+}
+```
+
+> o objeto `prescriber` **não** aparece no json do paciente: o campo tem `@JsonBackReference`, que remove ele da serialização. se o front precisar do prescritor, tem que buscar em `/prescritor/{id}`
+
+##### **`Prescription` (prescrição)**
+
+```json
+{
+    "id": 1,
+    "productDescription": "Óleo de Cannabis Full Spectrum 3000mg",
+    "posology": "5 gotas, 2x ao dia",
+    "brand": "Marca Exemplo",
+    "concentration": "100mg/mL",
+    "spectrum": "Full Spectrum",
+    "observation": "Aumentar a dose após 15 dias, se necessário."
+}
+```
+
+-----
+
+### **tratamento de erros**
+
+a classe `ErrorHandler` (`@RestControllerAdvice`) padroniza as respostas de erro:
+
+| status | quando acontece |
+| :--- | :--- |
+| `400` | validação de dto falhou, regra de negócio violada, enum inválido |
+| `401` | credencial errada no login |
+| `403` | autenticado mas sem permissão |
+| `404` | recurso não encontrado |
+| `409` | conflito de integridade no banco (registro duplicado) |
+| `500` | qualquer erro não previsto |
+
+formato do corpo: `timestamp`, `status`, `error`, `message`, `path`. erros de validação de dto trazem também a lista de campos com problema
+
+-----
+
+### **limitações conhecidas**
+
+levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que resolve
+
+**segurança** — o sistema não deve ser usado com dado de paciente real até isso ser corrigido
+
+  * fora de `/pacientes/{id}/**`, toda rota é protegida apenas por `anyRequest().authenticated()`. não existe nenhum `@PreAuthorize` no projeto. um token de paciente consegue chamar `GET /paciente`, `GET /anamnese`, `PUT /paciente/{id}` e `DELETE /prescricao/{id}` (RF29)
+  * `CustomPatientAccessManager` libera acesso total pra qualquer `ROLE_ADMIN`, sem checar se aquele prescritor é o prescritor daquele paciente. prescritor A vê o prontuário dos pacientes do prescritor B (RF30)
+  * `POST /prescritor` é público e cria conta com privilégio elevado, sem validação de registro profissional (RF02.2)
+  * os controllers retornam entidade jpa crua. como `Users` implementa `UserDetails`, o jackson serializa o campo `password` (hash bcrypt) nas respostas (RF01)
+  * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)
+  * `PUT /paciente/{id}` grava a senha recebida **sem passar pelo `passwordEncoder`**, o que invalida o login do paciente (RN12)
+  * token expirado ou inválido retorna **500** em vez de 401: a exceção do jjwt é lançada dentro do `SecurityFilter`, antes do `DispatcherServlet`, então o `@RestControllerAdvice` não pega (RF01)
+  * quase todos os `POST` e `PUT` recebem a entidade jpa direto no `@RequestBody`, então o cliente pode mandar `id`, `password` e relacionamentos (mass assignment)
+  * `PatientRegistrationDTO` não tem nenhuma anotação de validação e o controller não usa `@Valid`: paciente cadastrado pelo prescritor não passa por validação de senha nem de cpf
+
+**escalas clínicas** — os escores não correspondem aos instrumentos
+
+  * **pittsburgh**: o escore é a soma crua de 13 campos, dando faixa de 0 a 39. o psqi real tem 7 componentes derivados e vai de 0 a 21, com corte em 5. o número atual não é comparável a nenhum ponto de corte publicado (RF23)
+  * **meem**: só 8 seções implementadas, máximo de 27 pontos. faltam leitura, escrita e cópia dos pentágonos pra fechar os 30 (RF26)
+  * **hamilton**: 13 itens em vez de 14, máximo de 52 em vez de 56 (RF21)
+  * os campos das escalas usam `int` primitivo, então item não respondido vira `0`. num formulário incompleto isso grava `dor = 0` ("sem dor") e `sono = 0` ("muito ruim"), e esses zeros entram no gráfico como dado real (RN10)
+
+**funcionalidades incompletas**
+
+  * não existe nenhum `@Scheduled` no projeto: o ciclo automático de acompanhamento de 90 dias e os lembretes de dose não existem. toda escala é designada manualmente (RF32, RF34)
+  * `ESCALA_PITTSBURGH`, `REGISTRO_DOR` e `REGISTRO_TEA` apontam pra rotas de frontend que não existem — designar essas três leva o paciente a uma tela em branco (RF08)
+  * `MINI_EXAME_ESTADO_MENTAL` é designável ao paciente, mas quem preenche é o prescritor e `MentalStateExamService` não dá baixa na tarefa. a tarefa nunca conclui (RN09)
+  * `CompletedScaleInfoDTO` devolve a string fixa `"Concluído"` no lugar do resultado da escala (RF08)
+  * não existe exportação em pdf nem csv (RF33)
+  * não existe trilha de auditoria: nenhuma entidade tem data de criação, data de alteração ou autor (RF31)
+  * `PUT /prescricao/{id}` sobrescreve a prescrição sem guardar a versão anterior (RF05)
+
+**dados e infraestrutura**
+
+  * `Appointment.modality` e `Appointment.status` são `String` livre, sem enum nem validação (RF04)
+  * campos de texto clínico (`clinicalObservation`, `therapeuticPlan`, `evolution` e os descritivos da anamnese) são `String` sem `columnDefinition`, então viram `varchar(255)` e truncam registro clínico legítimo (RN11)
+  * `cpf` não tem restrição de unicidade, nem na entidade nem no script sql (RN04)
+  * duas fontes de verdade pro esquema: os scripts de `database/physical-model/` e o `ddl-auto: update`. já divergem entre si — o `NOT NULL` do email existe no sql e não na entidade (RNF14)
+  * nenhum endpoint pagina ou ordena. não existe `Pageable` no projeto, apesar do `relatorio.pdf` §2.11 descrever ordenação por `?sort=name,asc` e busca por `?search=` (RNF06)
+  * `messages.properties` não está em utf-8, e a codificação de plataforma do ambiente é `Cp1252`. qualquer texto acentuado nesse arquivo sai corrompido (RNF12)
+  * o `MessageSource` resolve mensagem com `Locale.getDefault()`, a locale do servidor, não a do usuário. só existe `messages.properties`, sem `_en` nem `_es` (RNF12)
+  * `DashboardService` acessa associações `LAZY` dentro de stream, sem `@Transactional` e sem join fetch. funciona por causa do `open-in-view` que o spring boot habilita por padrão, mas gera n+1
+  * dependência circular entre `PatientService`/`ScaleAssignmentService` e `NotificationService`, contornada com `@Lazy` em setter. `ScaleAssignmentService` injeta o mesmo bean duas vezes (construtor e setter)
+  * `ScaleType` já guarda `displayName` e `path`, mas `ScaleAssignmentService` reimplementa os dois em `switch` de 8 casos (RNF08)
+  * lombok está no `pom.xml` como dependência e annotation processor, mas não é usado em nenhuma classe
+  * `AuthorizationManager.check(...)`, usado em `CustomPatientAccessManager`, está deprecado no spring security 6.5 em favor de `authorize(...)`
+
+**testes**
+
+  * o projeto tem um único teste, o `contextLoads` gerado pelo initializr, e ele depende de postgresql acessível. não há teste de autorização nem de cálculo de escore (RNF13)

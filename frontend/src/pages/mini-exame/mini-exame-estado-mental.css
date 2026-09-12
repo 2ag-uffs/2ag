@@ -1,0 +1,409 @@
+.meem {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background-color: var(--color-background);
+    min-height: 100vh;
+}
+
+.meem__content {
+    background-color: var(--color-surface);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    width: 100%;
+}
+
+.meem__header {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.meem__header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.meem__header span {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.meem__form {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    gap: 2rem;
+}
+
+.meem__section {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    background-color: var(--color-background);
+}
+
+.meem__section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.meem__section h3 {
+    margin: 0;
+    color: var(--color-primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.meem__score {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.meem__instruction {
+    margin: 0 0 1rem 0;
+    color: var(--color-text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    background-color: var(--color-background);
+    padding: 1rem;
+    border-radius: 0.25rem;
+    border-left: 4px solid var(--color-primary);
+}
+
+.meem__row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.meem__field {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 250px;
+}
+
+.meem__field label {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 0.9rem;
+}
+
+.meem__field input {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: white;
+}
+
+.meem__field input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.1);
+}
+
+.meem__field input::placeholder {
+    color: var(--color-text-on-primary);
+}
+
+/* Checkbox Groups */
+.meem__checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.meem__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    background-color: white;
+    border: 1px solid var(--color-border-light);
+    transition: all 0.2s ease;
+}
+
+.meem__checkbox:hover {
+    background-color: var(--color-background);
+    border-color: var(--color-primary);
+}
+
+.meem__checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.meem__checkbox span {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 1rem;
+}
+
+.meem__checkbox input[type="checkbox"]:checked + span {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Calculation Group */
+.meem__calculation-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.meem__calculation {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: white;
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.25rem;
+}
+
+.meem__calculation label {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 80px;
+    font-size: 1rem;
+}
+
+.meem__calculation input {
+    width: 80px;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.meem__calculation input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(44, 90, 160, 0.1);
+}
+
+/* Phrase Box */
+.meem__phrase-box {
+    background-color: var(--color-background);
+    border: 2px solid var(--color-primary);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.meem__phrase {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-style: italic;
+}
+
+/* Total Score */
+.meem__total-score {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.meem__total-score h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.meem__score-interpretation {
+    margin-top: 1rem;
+}
+
+.meem__score-interpretation p {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    display: inline-block;
+}
+
+.score-normal {
+    background-color: #4caf50;
+    color: white;
+}
+
+.score-mild {
+    background-color: #ff9800;
+    color: white;
+}
+
+.score-severe {
+    background-color: #f44336;
+    color: white;
+}
+
+/* Actions */
+.meem__actions {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: 2rem;
+}
+
+.meem__submit {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 250px;
+}
+
+.meem__submit:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(44, 90, 160, 0.3);
+}
+
+.meem__submit:active {
+    transform: translateY(0);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .meem {
+        padding: 1rem 0.5rem;
+    }
+    
+    .meem__content {
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .meem__form {
+        padding: 1rem;
+    }
+    
+    .meem__row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .meem__field {
+        min-width: auto;
+    }
+    
+    .meem__header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .meem__section {
+        padding: 1rem;
+    }
+    
+    .meem__section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .meem__calculation {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .meem__calculation label {
+        min-width: auto;
+    }
+    
+    .meem__calculation input {
+        width: 100%;
+        max-width: 120px;
+    }
+    
+    .meem__total-score h3 {
+        font-size: 1.5rem;
+    }
+    
+    .meem__score-interpretation p {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .meem__form {
+        padding: 0.5rem;
+    }
+    
+    .meem__section {
+        padding: 0.75rem;
+    }
+    
+    .meem__header {
+        padding: 1.5rem 1rem;
+    }
+    
+    .meem__header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .meem__phrase {
+        font-size: 1.1rem;
+    }
+    
+    .meem__total-score {
+        padding: 1.5rem 1rem;
+    }
+    
+    .meem__total-score h3 {
+        font-size: 1.25rem;
+    }
+    
+    .meem__submit {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+

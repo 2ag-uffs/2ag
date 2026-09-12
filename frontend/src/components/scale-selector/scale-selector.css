@@ -1,0 +1,150 @@
+.scale-selector {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    gap: 1rem;
+    justify-content: space-evenly;
+}
+
+.scale-selector > span {
+    text-align: center;
+    width: 80px;
+}
+
+.scale-selector__content {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    gap: 0.5rem;
+    justify-content: space-around;
+    width: 380px;
+}
+
+.scale-selector__content > button {
+    aspect-ratio: 1;
+    background-color: var(--color-surface);
+    border-radius: 100%;
+    border-width: 2px;
+}
+
+/* tamanhos originais */
+.scale-selector__content > button:first-child,
+.scale-selector__content > button:last-child {
+    height: 3.25rem;
+}
+
+.scale-selector__content > button:nth-child(3),
+.scale-selector__content > button:nth-child(5) {
+    height: 2.75rem;
+    min-height: 0;
+}
+
+.scale-selector__content > button:nth-child(4) {
+    border-color: var(--color-neutral);
+    height: 2.5rem;
+    min-height: 0;
+}
+
+
+/* hover para botões de agree não selecionados */
+.scale-selector__content > button:nth-child(-n+3):not(.selected):hover {
+    background-color: var(--color-accent-agree);
+}
+
+/* hover para botões de disagree não selecionados */
+.scale-selector__content > button:nth-last-of-type(-n+3):not(.selected):hover {
+    background-color: var(--color-accent-disagree);
+}
+
+/* hover para botões neutro não selecionado */
+.scale-selector__content > button:nth-child(4):not(.selected):hover {
+    background-color: var(--color-neutral);
+}
+
+/* cores botões selecionado por tipo */
+
+.scale-selector__content > button:nth-child(4) {
+    border-color: var(--color-neutral);
+    height: 2.5rem;
+    min-height: 0;
+}
+
+.scale-selector__content > button:nth-child(4).selected {
+    background-color: var(--color-neutral);
+}
+
+.scale-selector__content > button:nth-child(-n + 3) {
+    border-color: var(--color-accent-agree);
+}
+
+.scale-selector__content > button:nth-child(-n + 3).selected {
+    background-color: var(--color-accent-agree);
+}
+
+.scale-selector__content > button:nth-last-of-type(-n + 3) {
+    border-color: var(--color-accent-disagree);
+}
+
+.scale-selector__content > button:nth-last-of-type(-n + 3).selected {
+    background-color: var(--color-accent-disagree);
+}
+
+/* telas pequenas */
+@media (max-width: 576px) {
+    .scale-selector {
+        flex-direction: column; /* span vai para baixo */
+        gap: 0.5rem; /* menor espaçamento */
+    }
+
+    .scale-selector > span {
+        width: auto; /* ocupa largura do conteúdo */
+        font-size: 0.8rem;
+        text-align: center; /* centraliza o texto */
+    }
+
+    .scale-selector__content {
+        width: 280px; /* reduz largura do container */
+        gap: 0.4rem;
+    }
+
+    .scale-selector__content > button:first-child,
+    .scale-selector__content > button:last-child {
+        height: 2.5rem;
+    }
+
+    .scale-selector__content > button:nth-child(3),
+    .scale-selector__content > button:nth-child(5) {
+        height: 2.2rem;
+    }
+
+    .scale-selector__content > button:nth-child(4) {
+        height: 2rem;
+    }
+}
+
+/* telas muuuito pequenas (≤400px) */
+@media (max-width: 400px) {
+    .scale-selector__content {
+        width: 240px;
+        gap: 0.3rem;
+    }
+
+    .scale-selector > span {
+        width: 50px;
+        font-size: 0.75rem;
+    }
+
+    .scale-selector__content > button:first-child,
+    .scale-selector__content > button:last-child {
+        height: 2rem;
+    }
+
+    .scale-selector__content > button:nth-child(3),
+    .scale-selector__content > button:nth-child(5) {
+        height: 1.8rem;
+    }
+
+    .scale-selector__content > button:nth-child(4) {
+        height: 1.6rem;
+    }
+}

@@ -1,0 +1,53 @@
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: 500;
+    src:
+        local("Yaldevi Colombo Regular"),
+        url("/fonts/YaldeviColombo-Regular.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: 700;
+    src:
+        local("Yaldevi Colombo Bold"),
+        url("/fonts/YaldeviColombo-Bold.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: 300;
+    src:
+        local("Yaldevi Colombo ExtraLight Regular"),
+        url("/fonts/YaldeviColombo-ExtraLight.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: 400;
+    src:
+        local("Yaldevi Colombo Light Regular"),
+        url("/fonts/YaldeviColombo-Light.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: normal;
+    src:
+        local("Yaldevi Colombo Medium Regular"),
+        url("/fonts/YaldeviColombo-Medium.woff") format("woff");
+}
+
+@font-face {
+    font-family: "Yaldevi Colombo";
+    font-style: normal;
+    font-weight: 600;
+    src:
+        local("Yaldevi Colombo SemiBold Regular"),
+        url("/fonts/YaldeviColombo-SemiBold.woff") format("woff");
+}

@@ -1,0 +1,33 @@
+/*
+    Estilização base para todos os inputs do sistema
+*/
+button,
+.button {
+    align-items: center;
+    background-color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 0.5rem;
+    color: var(--color-text-on-primary);
+    cursor: pointer;
+    display: flex;
+    flex: 1;
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 3rem;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+button:hover,
+.button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+.button-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+}
+
+.button-secondary:hover {
+    background-color: var(--color-surface-alt);
+}

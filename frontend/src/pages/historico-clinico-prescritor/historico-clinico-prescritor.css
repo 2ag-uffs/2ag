@@ -1,0 +1,131 @@
+.historico-prescritor-page {
+    min-height: 100vh;
+    background-color: var(--color-background);
+    font-family: "Yaldevi Colombo", sans-serif;
+}
+
+.historico-header {
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.historico-main {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.historico-title {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.historico-title h1 {
+    color: var(--color-text-headings);
+    font-size: 2.2rem;
+    font-weight: 700;
+}
+
+.historico-subtitle {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 2.5rem;
+}
+
+.historico-subtitle strong {
+    color: var(--color-primary);
+}
+
+.historico-content {
+    display: grid;
+    gap: 2rem;
+}
+
+.historico-section {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.historico-section h2 {
+    font-size: 1.5rem;
+    color: var(--color-text-headings);
+    padding-bottom: 0.75rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.historico-section p {
+    line-height: 1.6;
+    color: var(--color-text-primary);
+}
+
+.historico-lista {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.historico-lista li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border-light);
+    line-height: 1.6;
+}
+
+.historico-lista li:last-child {
+    border-bottom: none;
+}
+
+.historico-lista li strong {
+    color: var(--color-text-headings);
+    margin-right: 0.5rem;
+}
+
+.prescricoes-container {
+    display: grid;
+    gap: 1rem;
+}
+
+.prescricao-item {
+    background-color: var(--color-surface-alt);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border-light);
+}
+
+.prescricao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    background-color: var(--color-surface-alt);
+}
+
+.prescricao-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--color-primary);
+}
+
+.prescricao-header span {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.prescricao-item p {
+    margin: 0.25rem 0;
+    font-size: 0.95rem;
+}
+
+.prescricao-item p strong {
+    color: var(--color-text-headings);
+}

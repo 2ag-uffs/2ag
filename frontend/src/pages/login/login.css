@@ -1,0 +1,163 @@
+.login {
+    background-color: var(--color-primary);
+    display: flex;
+    flex: 1;
+}
+
+/* -------------------------------
+    Arte lateral
+   ------------------------------- */
+
+.login__art {
+    align-items: center;
+    display: flex;
+    flex: 0.65;
+    justify-content: center;
+    position: relative;
+    user-select: none;
+}
+
+.login__art__center {
+    width: 45%;
+}
+
+.login__art__top-left {
+    left: 1rem;
+    position: absolute;
+    top: 1rem;
+    transform: scaleY(-1);
+}
+
+.login__art__top-right {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    transform: rotate(180deg);
+}
+
+.login__art__bottom-left {
+    bottom: 1rem;
+    left: 1rem;
+    position: absolute;
+}
+
+.login__art__bottom-right {
+    bottom: 1rem;
+    right: 1rem;
+    position: absolute;
+    transform: scaleX(-1);
+}
+
+/* -------------------------------
+    Formulário
+   ------------------------------- */
+
+.login__content {
+    align-items: center;
+    background-color: var(--color-surface);
+    display: flex;
+    flex: 0.35;
+    justify-content: center;
+}
+
+.login__content-wrapper {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 360px;
+}
+
+.login__content__logo {
+    max-width: 200px;
+}
+
+.login__content__title {
+    color: var(--color-primary);
+    font-size: 2rem;
+    font-weight: 600;
+    padding-top: 2rem;
+}
+
+.login__content__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.login__content__form__input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.login__content__form__input-group > label {
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.login__content__form__actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 2rem;
+}
+
+/* adiconei (respo: maiqueli)*/
+.login__error-message {
+    color: #B00020; /* um vermelho escuro */
+    font-weight: 500;
+    background-color: #F8D7DA; /* um fundo rosa claro */
+    padding: 0.75rem;
+    border: 1px solid #F5C6CB; /* uma borda vermelha clara */
+    border-radius: 4px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box; /* garante que o padding não quebre o layout */
+}
+
+/* -------------------------------
+    Responsividade
+   ------------------------------- */
+
+@media screen and (max-width: 1200px) {
+    .login__art {
+        flex: 0.6;
+    }
+
+    .login__content {
+        flex: 0.4;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .login__art {
+        flex: 0.5;
+    }
+
+    .login__content {
+        flex: 0.5;
+    }
+}
+
+@media screen and (max-width: 769px) {
+    .login__art {
+        display: none;
+    }
+
+    .login__content {
+        flex: 1;
+    }
+}
+
+@media screen and (max-width: 576px) {
+    .login__content {
+        padding: 0 1rem;
+    }
+
+    .login__content-wrapper {
+        max-width: 100%;
+    }
+
+    .login__content__form__actions {
+        flex-direction: column;
+    }
+}

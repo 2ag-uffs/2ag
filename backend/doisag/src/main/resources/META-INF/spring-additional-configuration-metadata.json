@@ -1,0 +1,9 @@
+{
+  "properties": [
+    {
+      "name": "api.security.token.secret",
+      "type": "java.lang.String",
+      "description": "Chave secreta para a assinatura e validação de tokens JWT."
+    }
+  ]
+}

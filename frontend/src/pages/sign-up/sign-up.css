@@ -1,0 +1,207 @@
+.sign-up {
+    background-color: var(--color-primary);
+    display: flex;
+    flex: 1;
+    height: 100vh;
+    overflow: hidden;
+}
+
+
+.sign__art {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 65%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sign__art__center {
+    width: 45%;
+}
+
+.sign__art__top-left {
+    left: 1rem;
+    position: absolute;
+    top: 1rem;
+    transform: scaleY(-1);
+}
+
+.sign__art__top-right {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    transform: rotate(180deg);
+}
+
+.sign__art__bottom-left {
+    bottom: 1rem;
+    left: 1rem;
+    position: absolute;
+}
+
+.sign__art__bottom-right {
+    bottom: 1rem;
+    right: 1rem;
+    position: absolute;
+    transform: scaleX(-1);
+}
+
+
+.form__content {
+    align-items: center;
+    background-color: var(--color-surface);
+    display: flex;
+    flex: 0.35;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.form__content-wrapper {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 360px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+.form__content__logo {
+    max-width: 200px;
+    margin-top: 2rem;
+}
+
+.lform__content__logo {
+    max-width: 200px;
+}
+
+.form__content__title {
+    color: var(--color-primary);
+    font-size: 2rem;
+    font-weight: 600;
+    padding-top: 2rem;
+}
+
+.form__content__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form__content__form__input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form__content__form__input-group > div {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.form__content__form__input-group > label {
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.form__content__form__actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 2rem;
+}
+
+/* adiconei para remover  a borda padrão do fieldset q usei no bloco de endereço (maiqueli) */
+.form__fieldset {
+    border: none;
+    /* remove o preenchimento padrão pra não criar espaçamento extra */
+    padding: 0;
+    /* os campos dentro do endereço tenham o mesmo espaçamento do resto do formulário */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* adiconei para aumentar ligeiramente a fonte de "endereço" (maiqueli) */
+.form__fieldset legend {
+    font-size: 1.2rem;
+    font-weight: 500; /* deixa a fonte um pouco mais forte */
+    /* cria um espaço entre o título "Endereço" e o primeiro campo (Logradouro) */
+    margin-bottom: 0.5rem;
+}
+
+/* estliza o loading (maiqueli) */
+.loading-indicator {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+/* adiconei (respo: maiqueli)*/
+.sign-up__error-message {
+    color: #B00020; /* um vermelho escuro */
+    font-weight: 500;
+    background-color: #F8D7DA; /* um fundo rosa claro */
+    padding: 0.75rem;
+    border: 1px solid #F5C6CB; /* uma borda vermelha clara */
+    border-radius: 4px;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box; /* garante que o padding não quebre o layout */
+}
+
+.input-error-message {
+    color: #B00020;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+
+@media screen and (max-width: 1200px) {
+    .sign__art {
+        flex: 0.6;
+        width: 60%;
+    }
+
+    .form__content {
+        flex: 0.4;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .sign__art {
+        flex: 0.5;
+        width: 50%;
+    }
+
+    .form__content {
+        flex: 0.5;
+    }
+}
+
+@media screen and (max-width: 769px) {
+    .sign__art {
+        display: none;
+    }
+
+    .form__content {
+        flex: 1;
+    }
+}
+
+@media screen and (max-width: 576px) {
+    .form__content {
+        padding: 0 1rem;
+    }
+
+    .form__content-wrapper {
+        max-width: 100%;
+    }
+
+    .form__content__form__actions {
+        flex-direction: column;
+    }
+}

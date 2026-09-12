@@ -2,7 +2,7 @@
 
 **Versão:** 2.0
 **Data:** 12 de setembro de 2026
-**Substitui:** `docs/requisitos.pdf` (v1.0, 06/07/2025)
+**Substitui:** `docs/historico/requisitos-v1-2025.pdf` (v1.0, 06/07/2025)
 **Autoras:** Caroline de Quadros Piazza (20230000690), Maiqueli Eduarda Dama Mingoti (20230004643)
 **Cliente:** Instituto EDMA — Chapecó/SC
 **Interlocutora:** Brunna Varela, biomédica prescritora

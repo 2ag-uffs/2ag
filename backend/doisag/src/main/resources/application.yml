@@ -1,0 +1,26 @@
+server:
+  port: 8080 # porta onde a aplicação roda
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/doisag
+    username: admindoisag
+    password: sua_senha
+  jpa:
+    hibernate:
+      # update modifica o banco de dados baseado nas entidades
+      ddl-auto: update
+    # exibe o sql gerado pelo hibernate no console
+    show-sql: true
+    properties:
+      hibernate:
+        # formata o sql exibido no console para ficar mais legível
+        format_sql: true
+    # define o dialeto sql específico para o postgresql
+    # ajuda o hibernate a gerar o sql mais otimizado
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+api:
+  security:
+    token:
+      secret: minha-api-super-secreta-e-protegida-0123456789-com-uma-chave-bem-grande
+      # chave secreta para assinar e validar os tokens jwt
