@@ -3,6 +3,7 @@ import "../../styles/fonts.css";
 import "../../styles/button.css";
 import "../../styles/input.css";
 import "./prescricao.css";
+import {apiService, ApiError} from "../../services/api.js";
 import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 import React, { useState, useEffect } from "react";
@@ -42,6 +43,11 @@ export default function Prescricao() {
         duracaoTratamento: '',
         escalasAcompanhamento: []
     });
+
+    // TODO: esta tela ainda precisa ser refeita. o estado patient nunca
+    // recebe valor, entao o salvar sempre para em "dados do paciente nao
+    // encontrados". e a prescricao precisa vir de dentro de uma consulta
+    // (POST /consulta/{id}/prescricao), n avulsa como esta aqui
 
     // Estados para protocolo de escalonamento
     const [escalonamento, setEscalonamento] = useState([

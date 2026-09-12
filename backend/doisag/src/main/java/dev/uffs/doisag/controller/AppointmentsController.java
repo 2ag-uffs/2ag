@@ -1,6 +1,11 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Prescriber;
+import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import dev.uffs.doisag.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,47 +26,61 @@ public class AppointmentsController {
     }
 
     // create
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#dados.patientId(), authentication)")
     @PostMapping
-    public Appointment create(@RequestBody Appointment appointment) {
-        return appointmentService.create(appointment);
+    public AppointmentResponseDTO create(@RequestBody @Valid AppointmentCreateDTO dados,
+                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        return new AppointmentResponseDTO(appointmentService.create(dados, loggedPrescriber));
     }
 
     // read all
+    // so as consultas dos pacientes do prescritor logado.
+    // antes devolvia as consultas do sistema inteiro
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
-    public List<Appointment> getAll() {
-        return appointmentService.getAll();
+    public List<AppointmentResponseDTO> getMyAppointments(@AuthenticationPrincipal Prescriber loggedPrescriber) {
+        return appointmentService.getByPrescriberId(loggedPrescriber.getId())
+                .stream()
+                .map(AppointmentResponseDTO::new)
+                .toList();
     }
 
     // read by id
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/{id}")
-    public ResponseEntity<Appointment> getById(@PathVariable Long id) {
+    public ResponseEntity<AppointmentResponseDTO> getById(@PathVariable Long id,
+                                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
         Appointment appointment = appointmentService.getById(id);
-        return ResponseEntity.ok(appointment);
+        // consulta de paciente de outro prescritor n eh da conta dele
+        if (!appointment.getPrescriber().getId().equals(loggedPrescriber.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(new AppointmentResponseDTO(appointment));
     }
 
     // update
     @PreAuthorize("hasRole('PRESCRIBER')")
     @PutMapping("/{id}")
-    public ResponseEntity<Appointment> update(@PathVariable Long id, @RequestBody Appointment appointmentDetails) {
-        try {
-            Appointment updatedAppointment = appointmentService.update(id, appointmentDetails);
-            return ResponseEntity.ok(updatedAppointment);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<AppointmentResponseDTO> update(@PathVariable Long id,
+                                                         @RequestBody @Valid AppointmentCreateDTO dados,
+                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        Appointment atual = appointmentService.getById(id);
+        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
+            return ResponseEntity.status(403).build();
         }
+        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.update(id, dados)));
     }
+
     // delete appointment
     @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        try {
-            appointmentService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        Appointment atual = appointmentService.getById(id);
+        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
+            return ResponseEntity.status(403).build();
         }
+        appointmentService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

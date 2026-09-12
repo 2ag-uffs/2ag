@@ -3,6 +3,7 @@ import "../../styles/fonts.css";
 import "../../styles/button.css";
 import "../../styles/input.css";
 import "./consulta-clinica.css";
+import {apiService, ApiError} from "../../services/api.js";
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from "../../components/header/header.jsx";
@@ -31,25 +32,14 @@ export default function ConsultaClinica() {
 
     useEffect(() => {
         const fetchPatientData = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                navigate("/login");
-                return;
-            }
-
             setIsLoading(true);
 
             try {
-                const response = await fetch(`http://localhost:8080/paciente/${patientId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Falha ao carregar dados do paciente.');
-
-                const data = await response.json();
+                // o cliente cuida do token e manda pro login se a sessao acabou
+                const data = await apiService.get(`/paciente/${patientId}`);
                 setPatient(data);
             } catch (err) {
-                setError(err.message);
+                setError(err instanceof ApiError ? err.message : "Falha ao carregar dados do paciente.");
             } finally {
                 setIsLoading(false);
             }
@@ -67,48 +57,34 @@ export default function ConsultaClinica() {
         setError(null);
         setSuccess(null);
 
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            navigate("/login");
-            return;
-        }
-
-        const anamneseCompleta = `Queixa Principal: ${queixaPrincipal}\n\nEvolução: ${evolucao}\n\nObservações Gerais: ${observacoesGerais}`;
-
-        const clinicalConsultationData = {
+        // os campos da tela mapeados nos da consulta.
+        // queixa e observacoes gerais vao juntas na observacao clinica,
+        // que eh campo de texto livre
+        const consulta = {
             patientId: parseInt(patientId),
-            anamnesis: anamneseCompleta,
+            dateTime: new Date().toISOString().slice(0, 19),
+            modality: "PRESENCIAL",
+            status: "CONCLUIDA",
+            diagnosis: hipoteseDiagnostica,
+            clinicalObservation: `Queixa Principal: ${queixaPrincipal}\n\nObservações Gerais: ${observacoesGerais}`,
+            therapeuticPlan: conduta,
+            evolution: evolucao,
             physicalExam: exameFisico,
-            diagnosticHypothesis: hipoteseDiagnostica,
-            conduct: conduta,
             complementaryExams: examesComplementares,
             bloodPressure: pressao,
-            weight: parseFloat(peso),
-            height: parseInt(altura),
-            consultationDate: new Date().toISOString()
+            weight: peso ? parseFloat(peso) : null,
+            height: altura ? parseInt(altura) : null
         };
 
         try {
-            const response = await fetch("http://localhost:8080/clinical-consultations", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(clinicalConsultationData)
-            });
-
-            if (!response.ok) {
-                const errorBody = await response.json();
-                throw new Error(errorBody.message || 'Ocorreu um erro ao salvar a consulta.');
-            }
+            await apiService.post("/consulta", consulta);
 
             setSuccess("Consulta clínica salva com sucesso!");
             // Redireciona para o histórico do paciente após salvar
             setTimeout(() => navigate(`/paciente/${patientId}/historico`), 2000);
 
         } catch (err) {
-            setError(err.message);
+            setError(err instanceof ApiError ? err.message : "Ocorreu um erro ao salvar a consulta.");
         } finally {
             setIsLoading(false);
         }

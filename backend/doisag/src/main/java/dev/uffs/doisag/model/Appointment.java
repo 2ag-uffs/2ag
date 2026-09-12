@@ -33,6 +33,59 @@ public class Appointment {
     private String therapeuticPlan;
     @Column(columnDefinition = "TEXT")
     private String evolution;
+
+    // o que a prescritora registra durante o exame do paciente.
+    // peso e altura ficam numericos de proposito: sao os unicos dados da
+    // consulta que fazem sentido acompanhar ao longo do tratamento
+    @Column(columnDefinition = "TEXT")
+    private String physicalExam;
+
+    @Column(columnDefinition = "TEXT")
+    private String complementaryExams;
+
+    private String bloodPressure;
+    private Float weight;
+    private Integer height;
+
+    public String getPhysicalExam() {
+        return physicalExam;
+    }
+
+    public void setPhysicalExam(String physicalExam) {
+        this.physicalExam = physicalExam;
+    }
+
+    public String getComplementaryExams() {
+        return complementaryExams;
+    }
+
+    public void setComplementaryExams(String complementaryExams) {
+        this.complementaryExams = complementaryExams;
+    }
+
+    public String getBloodPressure() {
+        return bloodPressure;
+    }
+
+    public void setBloodPressure(String bloodPressure) {
+        this.bloodPressure = bloodPressure;
+    }
+
+    public Float getWeight() {
+        return weight;
+    }
+
+    public void setWeight(Float weight) {
+        this.weight = weight;
+    }
+
+    public Integer getHeight() {
+        return height;
+    }
+
+    public void setHeight(Integer height) {
+        this.height = height;
+    }
     // relacionamento n:1, muitas consultas podem ser de um paciente
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id", nullable = false) // fk pro paciente

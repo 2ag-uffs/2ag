@@ -207,6 +207,28 @@ class AuthorizationRulesTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void prescritorNaoRegistraConsultaParaPacienteAlheio() throws Exception {
+        String corpo = "{\"patientId\":" + patientBId + ",\"dateTime\":\"2026-09-12T10:00:00\"}";
+
+        mockMvc.perform(post("/consulta")
+                        .header("Authorization", tokenPrescriberA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void prescritorRegistraConsultaParaOProprioPaciente() throws Exception {
+        String corpo = "{\"patientId\":" + patientAId + ",\"dateTime\":\"2026-09-12T10:00:00\",\"modality\":\"PRESENCIAL\"}";
+
+        mockMvc.perform(post("/consulta")
+                        .header("Authorization", tokenPrescriberA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo))
+                .andExpect(status().isOk());
+    }
+
     // ---------- RF29: papel ----------
 
     @Test

@@ -1,16 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
 import "./login.css";
-
-// função auxiliar pra decodificar o token jwt
-// ela pega a parte do meio do token que tem as infos do usuário ai sabemos o role dele
-function parseJwt(token) {
-    try {
-        return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-        return null;
-    }
-}
+import {apiService, saveToken, getLoggedUser, ApiError} from "../../services/api.js";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -28,25 +19,10 @@ export default function Login() {
         const password = e.target.password.value;
 
         try {
-            const response = await fetch("http://localhost:8080/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({email: email, senha: password}),
-            });
+            const data = await apiService.post("/auth/login", {email: email, senha: password});
+            saveToken(data.token);
 
-            if (!response.ok) {
-                setError("e-mail ou senha inválidos!");
-                setIsLoading(false);
-                return;
-            }
-
-            const data = await response.json();
-            localStorage.setItem("authToken", data.token);
-
-            const decodedToken = parseJwt(data.token);
-            const userRole = decodedToken?.authorities?.[0];
+            const userRole = getLoggedUser()?.authorities?.[0];
 
             if (userRole === "ROLE_PATIENT") {
                 navigate("/dashboard-paciente");
@@ -57,7 +33,7 @@ export default function Login() {
             }
 
         } catch (err) {
-            setError("falha de conexão com o servidor");
+            setError(err instanceof ApiError ? err.message : "falha de conexão com o servidor");
         }
 
         setIsLoading(false);

@@ -9,6 +9,9 @@ import java.util.List;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
     List<Appointment> findByPrescriberIdAndDateTimeBetween(Long prescriberId, LocalDateTime startOfDay, LocalDateTime endOfDay);
+
+    // consultas de um prescritor, pra n listar as do sistema inteiro
+    List<Appointment> findByPrescriberId(Long prescriberId);
 /**
  * aqui a gente caça no banco as consultas de um médico específico, num dia específico
  * o spring data jpa é divo e cria a query sozinho só pelo nome do método

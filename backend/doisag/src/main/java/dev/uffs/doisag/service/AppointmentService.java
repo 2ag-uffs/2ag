@@ -1,7 +1,11 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +22,13 @@ public class AppointmentService {
 
     // injecoes
     private final AppointmentRepository appointmentRepository;
+    private final PatientRepository patientRepository;
     private NotificationService notificationService;
 
     // removemos o NotificationService do construtor
-    public AppointmentService(AppointmentRepository appointmentRepository) {
+    public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository) {
         this.appointmentRepository = appointmentRepository;
+        this.patientRepository = patientRepository;
     }
 
     // criamos um metodo setter para o spring injetar a dependencia depois
@@ -31,8 +37,27 @@ public class AppointmentService {
         this.notificationService = notificationService;
     }
 
-    // create
-    public Appointment create(Appointment appointment) {
+    // create. o prescritor vem de quem esta logado, n do corpo
+    public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
+        Patient patient = patientRepository.findById(dados.patientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
+
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPrescriber(prescriber);
+        appointment.setDateTime(dados.dateTime());
+        appointment.setModality(dados.modality());
+        appointment.setStatus(dados.status());
+        appointment.setDiagnosis(dados.diagnosis());
+        appointment.setClinicalObservation(dados.clinicalObservation());
+        appointment.setTherapeuticPlan(dados.therapeuticPlan());
+        appointment.setEvolution(dados.evolution());
+        appointment.setPhysicalExam(dados.physicalExam());
+        appointment.setComplementaryExams(dados.complementaryExams());
+        appointment.setBloodPressure(dados.bloodPressure());
+        appointment.setWeight(dados.weight());
+        appointment.setHeight(dados.height());
+
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
@@ -67,43 +92,26 @@ public class AppointmentService {
 
     }
 
-    public Appointment update(Long id, Appointment appointmentDetails) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Consulta não encontrada para o id:: " + id));
+    public Appointment update(Long id, AppointmentCreateDTO dados) {
+        Appointment appointment = getById(id);
+        appointment.setDateTime(dados.dateTime());
+        appointment.setModality(dados.modality());
+        appointment.setStatus(dados.status());
+        appointment.setDiagnosis(dados.diagnosis());
+        appointment.setClinicalObservation(dados.clinicalObservation());
+        appointment.setTherapeuticPlan(dados.therapeuticPlan());
+        appointment.setEvolution(dados.evolution());
+        appointment.setPhysicalExam(dados.physicalExam());
+        appointment.setComplementaryExams(dados.complementaryExams());
+        appointment.setBloodPressure(dados.bloodPressure());
+        appointment.setWeight(dados.weight());
+        appointment.setHeight(dados.height());
+        return appointmentRepository.save(appointment);
+    }
 
-        LocalDateTime oldDateTime = appointment.getDateTime();
-
-        appointment.setDateTime(appointmentDetails.getDateTime());
-        appointment.setModality(appointmentDetails.getModality());
-        appointment.setStatus(appointmentDetails.getStatus());
-        appointment.setDiagnosis(appointmentDetails.getDiagnosis());
-        appointment.setClinicalObservation(appointmentDetails.getClinicalObservation());
-        appointment.setTherapeuticPlan(appointmentDetails.getTherapeuticPlan());
-        appointment.setEvolution(appointmentDetails.getEvolution());
-
-        Appointment updatedAppointment = appointmentRepository.save(appointment);
-
-        if (!oldDateTime.equals(updatedAppointment.getDateTime())) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
-            String newFormattedDateTime = updatedAppointment.getDateTime().format(formatter);
-
-            notificationService.createNotification(
-                    updatedAppointment.getPatient(),
-                    "Consulta Reagendada",
-                    "Sua consulta com " + updatedAppointment.getPrescriber().getName() + " foi reagendada para " + newFormattedDateTime + ".",
-                    "APPOINTMENT",
-                    "/agendamento-consulta"
-            );
-
-            notificationService.createNotification(
-                    updatedAppointment.getPrescriber(),
-                    "Consulta Reagendada",
-                    "A consulta com o paciente " + updatedAppointment.getPatient().getName() + " foi reagendada para " + newFormattedDateTime + ".",
-                    "APPOINTMENT",
-                    "/agendamento-prescritor"
-            );
-        }
-        return updatedAppointment;
+    // consultas de um prescritor especifico
+    public List<Appointment> getByPrescriberId(Long prescriberId) {
+        return appointmentRepository.findByPrescriberId(prescriberId);
     }
 
     public void delete(Long id) {
