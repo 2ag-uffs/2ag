@@ -72,19 +72,33 @@ se aparecer `1.8.x` você tem só o java 8 no path e o build vai falhar
 
 ### **configuração**
 
-as configurações ficam em `src/main/resources/application.yml`:
+a configuração vem de **variável de ambiente**. o `application.yml` só declara os nomes e os padrões:
 
-| chave | pra que serve |
-| :--- | :--- |
-| `spring.datasource.url` | endereço do banco (padrão `jdbc:postgresql://localhost:5432/doisag`) |
-| `spring.datasource.username` | usuário do banco (padrão `admindoisag`) |
-| `spring.datasource.password` | senha do banco — **você precisa trocar** |
-| `api.security.token.secret` | chave que assina os tokens jwt |
-| `spring.jpa.hibernate.ddl-auto` | tá em `update`: o hibernate altera as tabelas sozinho conforme as entidades |
+| variavel | pra que serve | padrao |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | endereço jdbc do banco | `jdbc:postgresql://localhost:5432/doisag` |
+| `DATABASE_USER` | usuário do banco | `admindoisag` |
+| `DATABASE_PASSWORD` | senha do banco | **sem padrão, obrigatória** |
+| `JWT_SECRET` | chave que assina os tokens jwt | **sem padrão, obrigatória** |
+| `CORS_ALLOWED_ORIGIN` | origem do front que pode chamar a api | `http://localhost:5173` |
+| `SEED_DADOS_TESTE` | cria os usuários de teste na subida | `false` |
+| `JPA_DDL_AUTO` | estratégia de esquema do hibernate | `update` |
+| `SERVER_PORT` | porta da api | `8080` |
 
-o `application.yml` vem com `password: sua_senha` e você tem que trocar pela senha real do seu `admindoisag`
+`DATABASE_PASSWORD` e `JWT_SECRET` **não têm padrão de propósito**: é melhor a aplicação não subir do que subir com credencial que está publicada no repositório. nenhum segredo fica em arquivo versionado.
 
-> ⚠️ **cuidado**: esse arquivo é versionado no git. trocar a senha nele significa que sua senha real pode ir junto no commit sem você perceber. **confira o `git diff` antes de commitar**. mover essas duas chaves pra variável de ambiente é o RNF15 do documento de requisitos e ainda não foi feito
+pra rodar localmente, exporte as duas antes de subir:
+
+```bash
+export DATABASE_PASSWORD='sua_senha_do_banco'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SEED_DADOS_TESTE=true
+./mvnw spring-boot:run
+```
+
+no IntelliJ, o caminho é `Run` → `Edit Configurations` → `Environment variables` na configuração do `DoisagApplication`.
+
+com docker, o `docker compose` já passa tudo isso a partir do `.env` — veja o [README da raiz](../README.md#como-executar)
 
 -----
 

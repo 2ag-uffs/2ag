@@ -60,9 +60,29 @@ docs/         requisitos, escalas de referencia e registro da extensao
 
 ## Como executar
 
-> Em breve: `docker compose up`. A configuração por container e as migrações versionadas estão em desenvolvimento.
->
-> Até lá, o passo a passo manual está em [`backend/README.md`](./backend/README.md) e [`database/README.md`](./database/README.md).
+### Com Docker (recomendado)
+
+Precisa apenas de Docker e Docker Compose instalados.
+
+```bash
+cp .env.example .env
+# abra o .env e preencha POSTGRES_PASSWORD e JWT_SECRET
+docker compose up
+```
+
+A interface fica em `http://localhost:5173` e a API em `http://localhost:8080`. O banco sobe junto, num volume que preserva os dados entre reinicializações.
+
+Para gerar uma chave de assinatura de token:
+
+```bash
+openssl rand -base64 48
+```
+
+> `POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: a aplicação não sobe sem eles, em vez de subir com credencial conhecida. O `.env` não é versionado.
+
+### Sem Docker
+
+Instalação manual do banco, backend e frontend: veja [`backend/README.md`](./backend/README.md) e [`database/README.md`](./database/README.md).
 
 ---
 

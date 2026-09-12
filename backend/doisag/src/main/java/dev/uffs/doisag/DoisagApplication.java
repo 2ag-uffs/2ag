@@ -7,6 +7,7 @@ import dev.uffs.doisag.service.NotificationService;
 import dev.uffs.doisag.service.PrescriberService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,7 +22,10 @@ public class DoisagApplication {
 		SpringApplication.run(DoisagApplication.class, args);
 	}
 
+	// so cria os usuarios de teste se api.seed.enabled=true.
+	// em producao fica desligado, senao nasce um prescritor com senha 123456
 	@Bean
+	@ConditionalOnProperty(name = "api.seed.enabled", havingValue = "true")
 	public CommandLineRunner initDatabase(
 			UsersRepository usersRepository,
 			PasswordEncoder passwordEncoder,

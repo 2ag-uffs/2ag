@@ -79,25 +79,17 @@ GRANT ALL PRIVILEGES ON DATABASE doisag TO admindoisag;
 
 ---
 
-### **conferir a configuração no projeto**
+### **configurar as credenciais**
 
-No arquivo:
+A senha **não vai em arquivo versionado**. Exporte as variáveis antes de subir a aplicação:
 
-```
-backend/doisag/src/main/resources/application.yml
-```
-
-Troque o campo `password` pela senha que você acabou de criar:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/doisag
-    username: admindoisag
-    password: '<sua_senha>'
+```bash
+export DATABASE_PASSWORD='<a senha que você criou acima>'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SEED_DADOS_TESTE=true
 ```
 
-> ⚠️ **esse arquivo é versionado no git**. confere o `git diff` antes de commitar pra sua senha real não ir pro repositório. tirar a senha e a chave do jwt do arquivo versionado é o RNF15 do [documento de requisitos](../docs/requisitos-v2.md)
+> `DATABASE_PASSWORD` e `JWT_SECRET` não têm valor padrão: a aplicação não sobe sem elas. Isso é intencional — é melhor falhar do que subir com credencial publicada no repositório.
 
 ---
 

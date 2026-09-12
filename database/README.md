@@ -69,21 +69,24 @@ create role <seu_nome_de_usuario> with login superuser password '<sua_senha_segu
 
 ## terceiro passo: configurar o projeto
 
-agora só falta avisar pro projeto qual a senha do banco.
+a senha do banco **não vai em arquivo**, ela vem de variável de ambiente. nenhum segredo fica versionado no repositório.
 
-1.  abre o arquivo `backend/doisag/src/main/resources/application.yml`
-2.  encontra a parte do `datasource` e troca o campo `password` pela senha que você criou para o usuário `admindoisag`
-3.  deve ficar parecido com isso:
-    ```yaml
-    spring:
-      datasource:
-        url: jdbc:postgresql://localhost:5432/doisag
-        username: admindoisag
-        password: '<sua_senha>'
-    ```
-4.  salva o arquivo e pronto.
+antes de subir o backend, exporte as duas variáveis obrigatórias:
 
-> ⚠️ **esse arquivo é versionado no git**. depois de colocar sua senha real nele, confere o `git diff` antes de commitar, senão a senha vai pro repositório. tirar a senha e a chave do jwt do arquivo versionado e passar pra variável de ambiente é o RNF15 do [documento de requisitos](../docs/requisitos-v2.md)
+```bash
+export DATABASE_PASSWORD='<a senha que você criou pro admindoisag>'
+export JWT_SECRET="$(openssl rand -base64 48)"
+```
+
+se quiser os usuários de teste criados na primeira subida, exporte também:
+
+```bash
+export SEED_DADOS_TESTE=true
+```
+
+no IntelliJ o caminho é `Run` → `Edit Configurations` → `Environment variables`, na configuração do `DoisagApplication`.
+
+a lista completa de variáveis está no [`backend/README.md`](../backend/README.md#configuração)
 
 ## quarto passo: subir a aplicação
 
