@@ -1,0 +1,81 @@
+# ---------------------------------------------------------------
+# dados sensiveis de paciente
+# ---------------------------------------------------------------
+# este repositorio e publico. nada que identifique paciente entra aqui.
+# formularios preenchidos, planilhas de acompanhamento, exportacoes do
+# prontuario e anamneses respondidas ficam fora do versionamento.
+dados-sensiveis/
+dados-reais/
+*.respostas.xlsx
+*(respostas)*.xlsx
+*(respostas)*.csv
+anamnese-preenchida*
+prontuario*
+/backups/
+
+# ---------------------------------------------------------------
+# segredos e configuracao de ambiente
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.yaml
+application-secrets.yml
+*.pem
+*.key
+*.p12
+*.jks
+
+# ---------------------------------------------------------------
+# java / maven
+# ---------------------------------------------------------------
+target/
+!.mvn/wrapper/maven-wrapper.properties
+.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ---------------------------------------------------------------
+# node / vite
+# ---------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------
+# ide e editores
+# ---------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------------
+# sistema operacional
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+__MACOSX/
+$RECYCLE.BIN/
