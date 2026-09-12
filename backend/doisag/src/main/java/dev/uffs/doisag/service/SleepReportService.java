@@ -27,18 +27,18 @@ public class SleepReportService {
         }
 
         // aqui a gente calcula a média de cada campo usando stream do java
-        // orElse(0.0) é pra caso a lista esteja vazia mas a gente já tratou isso antes
-        double avgTimeInBed = recentLogs.stream().mapToDouble(SleepLog::getTimeInBed).average().orElse(0.0);
-        double avgTimeToFallAsleep = recentLogs.stream().mapToInt(SleepLog::getTimeToFallAsleep).average().orElse(0.0);
-        double avgTimesWokenUp = recentLogs.stream().mapToInt(SleepLog::getTimesWokenUp).average().orElse(0.0);
-        double avgTotalTimeAwake = recentLogs.stream().mapToInt(SleepLog::getTotalTimeAwake).average().orElse(0.0);
-        double avgTotalSleepTime = recentLogs.stream().mapToDouble(SleepLog::getTotalSleepTime).average().orElse(0.0);
-        double avgFatigue = recentLogs.stream().mapToInt(SleepLog::getFatigue).average().orElse(0.0);
-        double avgStress = recentLogs.stream().mapToInt(SleepLog::getStress).average().orElse(0.0);
-        double avgDaytimeSleepiness = recentLogs.stream().mapToInt(SleepLog::getDaytimeSleepiness).average().orElse(0.0);
-        double avgInattention = recentLogs.stream().mapToInt(SleepLog::getInattention).average().orElse(0.0);
-        double avgIrritability = recentLogs.stream().mapToInt(SleepLog::getIrritability).average().orElse(0.0);
-        double avgPain = recentLogs.stream().mapToInt(SleepLog::getPain).average().orElse(0.0);
+        // quem n respondeu fica de fora da media, em vez de entrar como zero
+        double avgTimeInBed = recentLogs.stream().map(SleepLog::getTimeInBed).filter(java.util.Objects::nonNull).mapToDouble(Float::floatValue).average().orElse(0.0);
+        double avgTimeToFallAsleep = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getTimeToFallAsleep).toList());
+        double avgTimesWokenUp = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getTimesWokenUp).toList());
+        double avgTotalTimeAwake = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getTotalTimeAwake).toList());
+        double avgTotalSleepTime = recentLogs.stream().map(SleepLog::getTotalSleepTime).filter(java.util.Objects::nonNull).mapToDouble(Float::floatValue).average().orElse(0.0);
+        double avgFatigue = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getFatigue).toList());
+        double avgStress = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getStress).toList());
+        double avgDaytimeSleepiness = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getDaytimeSleepiness).toList());
+        double avgInattention = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getInattention).toList());
+        double avgIrritability = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getIrritability).toList());
+        double avgPain = ScoreHelper.averageIgnoringNulls(recentLogs.stream().map(SleepLog::getPain).toList());
 
         // monta e retorna o dto com as médias calculadas
         return new WeeklySleepReportDTO(

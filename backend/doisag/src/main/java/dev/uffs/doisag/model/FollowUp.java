@@ -5,26 +5,26 @@ import java.time.LocalDate;
 
 @Entity
 public class FollowUp extends BaseAssessment {
-    private int morningDrops;
-    private int afternoonDrops;
+    private Integer morningDrops;
+    private Integer afternoonDrops;
     private String comment;
-    private int tremor;
-    private int rigiditySpasticity;
-    private int nausea;
-    private int concentration;
-    private int appetite;
-    private int socialInteraction;
-    private int disposition;
-    private int intestinalFunction;
-    private int anxiety;
-    private int substanceReduction;
-    private int pain;
-    private int sportsPerformance;
-    private int sleep;
-    private int dermatologicalDisease;
-    private int mood;
+    private Integer tremor;
+    private Integer rigiditySpasticity;
+    private Integer nausea;
+    private Integer concentration;
+    private Integer appetite;
+    private Integer socialInteraction;
+    private Integer disposition;
+    private Integer intestinalFunction;
+    private Integer anxiety;
+    private Integer substanceReduction;
+    private Integer pain;
+    private Integer sportsPerformance;
+    private Integer sleep;
+    private Integer dermatologicalDisease;
+    private Integer mood;
 
-    public FollowUp(Long id, LocalDate assessmentDate, Patient patient, int morningDrops, int afternoonDrops, String comment, int tremor, int rigiditySpasticity, int nausea, int concentration, int appetite, int socialInteraction, int disposition, int anxiety, int intestinalFunction, int substanceReduction, int pain, int sportsPerformance, int sleep, int dermatologicalDisease, int mood) {
+    public FollowUp(Long id, LocalDate assessmentDate, Patient patient, Integer morningDrops, Integer afternoonDrops, String comment, Integer tremor, Integer rigiditySpasticity, Integer nausea, Integer concentration, Integer appetite, Integer socialInteraction, Integer disposition, Integer anxiety, Integer intestinalFunction, Integer substanceReduction, Integer pain, Integer sportsPerformance, Integer sleep, Integer dermatologicalDisease, Integer mood) {
         super(id, assessmentDate, patient);
         this.morningDrops = morningDrops;
         this.afternoonDrops = afternoonDrops;
@@ -46,7 +46,7 @@ public class FollowUp extends BaseAssessment {
         this.mood = mood;
     }
     // comentario opcional
-    public FollowUp(Long id, LocalDate assessmentDate, Patient patient, int morningDrops, int afternoonDrops, int tremor, int nausea, int rigiditySpasticity, int concentration, int appetite, int socialInteraction, int disposition, int intestinalFunction, int anxiety, int pain, int substanceReduction, int sleep, int sportsPerformance, int dermatologicalDisease, int mood) {
+    public FollowUp(Long id, LocalDate assessmentDate, Patient patient, Integer morningDrops, Integer afternoonDrops, Integer tremor, Integer nausea, Integer rigiditySpasticity, Integer concentration, Integer appetite, Integer socialInteraction, Integer disposition, Integer intestinalFunction, Integer anxiety, Integer pain, Integer substanceReduction, Integer sleep, Integer sportsPerformance, Integer dermatologicalDisease, Integer mood) {
         super(id, assessmentDate, patient);
         this.morningDrops = morningDrops;
         this.afternoonDrops = afternoonDrops;
@@ -69,19 +69,19 @@ public class FollowUp extends BaseAssessment {
     public FollowUp() {
     }
 
-    public int getMorningDrops() {
+    public Integer getMorningDrops() {
         return morningDrops;
     }
 
-    public void setMorningDrops(int morningDrops) {
+    public void setMorningDrops(Integer morningDrops) {
         this.morningDrops = morningDrops;
     }
 
-    public int getAfternoonDrops() {
+    public Integer getAfternoonDrops() {
         return afternoonDrops;
     }
 
-    public void setAfternoonDrops(int afternoonDrops) {
+    public void setAfternoonDrops(Integer afternoonDrops) {
         this.afternoonDrops = afternoonDrops;
     }
 
@@ -93,123 +93,123 @@ public class FollowUp extends BaseAssessment {
         this.comment = comment;
     }
 
-    public int getTremor() {
+    public Integer getTremor() {
         return tremor;
     }
 
-    public void setTremor(int tremor) {
+    public void setTremor(Integer tremor) {
         this.tremor = tremor;
     }
 
-    public int getRigiditySpasticity() {
+    public Integer getRigiditySpasticity() {
         return rigiditySpasticity;
     }
 
-    public void setRigiditySpasticity(int rigiditySpasticity) {
+    public void setRigiditySpasticity(Integer rigiditySpasticity) {
         this.rigiditySpasticity = rigiditySpasticity;
     }
 
-    public int getNausea() {
+    public Integer getNausea() {
         return nausea;
     }
 
-    public void setNausea(int nausea) {
+    public void setNausea(Integer nausea) {
         this.nausea = nausea;
     }
 
-    public int getConcentration() {
+    public Integer getConcentration() {
         return concentration;
     }
 
-    public void setConcentration(int concentration) {
+    public void setConcentration(Integer concentration) {
         this.concentration = concentration;
     }
 
-    public int getAppetite() {
+    public Integer getAppetite() {
         return appetite;
     }
 
-    public void setAppetite(int appetite) {
+    public void setAppetite(Integer appetite) {
         this.appetite = appetite;
     }
 
-    public int getDisposition() {
+    public Integer getDisposition() {
         return disposition;
     }
 
-    public void setDisposition(int disposition) {
+    public void setDisposition(Integer disposition) {
         this.disposition = disposition;
     }
 
-    public int getSocialInteraction() {
+    public Integer getSocialInteraction() {
         return socialInteraction;
     }
 
-    public void setSocialInteraction(int socialInteraction) {
+    public void setSocialInteraction(Integer socialInteraction) {
         this.socialInteraction = socialInteraction;
     }
 
-    public int getIntestinalFunction() {
+    public Integer getIntestinalFunction() {
         return intestinalFunction;
     }
 
-    public void setIntestinalFunction(int intestinalFunction) {
+    public void setIntestinalFunction(Integer intestinalFunction) {
         this.intestinalFunction = intestinalFunction;
     }
 
-    public int getAnxiety() {
+    public Integer getAnxiety() {
         return anxiety;
     }
 
-    public void setAnxiety(int anxiety) {
+    public void setAnxiety(Integer anxiety) {
         this.anxiety = anxiety;
     }
 
-    public int getSubstanceReduction() {
+    public Integer getSubstanceReduction() {
         return substanceReduction;
     }
 
-    public void setSubstanceReduction(int substanceReduction) {
+    public void setSubstanceReduction(Integer substanceReduction) {
         this.substanceReduction = substanceReduction;
     }
 
-    public int getPain() {
+    public Integer getPain() {
         return pain;
     }
 
-    public void setPain(int pain) {
+    public void setPain(Integer pain) {
         this.pain = pain;
     }
 
-    public int getSportsPerformance() {
+    public Integer getSportsPerformance() {
         return sportsPerformance;
     }
 
-    public void setSportsPerformance(int sportsPerformance) {
+    public void setSportsPerformance(Integer sportsPerformance) {
         this.sportsPerformance = sportsPerformance;
     }
 
-    public int getSleep() {
+    public Integer getSleep() {
         return sleep;
     }
 
-    public void setSleep(int sleep) {
+    public void setSleep(Integer sleep) {
         this.sleep = sleep;
     }
 
-    public int getDermatologicalDisease() {
+    public Integer getDermatologicalDisease() {
         return dermatologicalDisease;
     }
 
-    public void setDermatologicalDisease(int dermatologicalDisease) {
+    public void setDermatologicalDisease(Integer dermatologicalDisease) {
         this.dermatologicalDisease = dermatologicalDisease;
     }
 
-    public int getMood() {
+    public Integer getMood() {
         return mood;
     }
 
-    public void setMood(int mood) {
+    public void setMood(Integer mood) {
         this.mood = mood;
     }
 }

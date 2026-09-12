@@ -382,7 +382,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * **pittsburgh**: o escore é a soma crua de 13 campos, dando faixa de 0 a 39. o psqi real tem 7 componentes derivados e vai de 0 a 21, com corte em 5. o número atual não é comparável a nenhum ponto de corte publicado (RF23)
   * **meem**: só 8 seções implementadas, máximo de 27 pontos. faltam leitura, escrita e cópia dos pentágonos pra fechar os 30 (RF26)
   * **hamilton**: 13 itens em vez de 14, máximo de 52 em vez de 56 (RF21)
-  * os campos das escalas usam `int` primitivo, então item não respondido vira `0`. num formulário incompleto isso grava `dor = 0` ("sem dor") e `sono = 0` ("muito ruim"), e esses zeros entram no gráfico como dado real (RN10)
+  * ~~os campos das escalas usam `int` primitivo, item não respondido vira `0`~~ **resolvido**: os 89 campos viraram `Integer`, escala com item faltando fica **sem escore** em vez de somar só o que veio, e o gráfico de progresso pula o dia em vez de plotar zero (RN10)
 
 **funcionalidades incompletas**
 

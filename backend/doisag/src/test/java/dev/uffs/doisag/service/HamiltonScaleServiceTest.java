@@ -61,16 +61,42 @@ class HamiltonScaleServiceTest {
     }
 
     @Test
-    void shouldScoreZeroWhenNothingIsAnswered() {
+    void shouldNotScoreAnEmptyForm() {
         repositorySavesWhatItGets();
 
         HamiltonScale emptyScale = new HamiltonScale();
 
         HamiltonScale saved = hamiltonScaleService.create(emptyScale);
 
-        // formulario vazio hoje pontua 0, q na escala significa
-        // "sem ansiedade". eh o problema descrito na RN10: item n
-        // respondido tem q ser ausente e n zero
-        assertThat(saved.getHamScore()).isZero();
+        // antes um formulario vazio pontuava 0, q na escala significa
+        // "sem ansiedade". agora fica sem escore, pq n foi respondido (RN10)
+        assertThat(saved.getHamScore()).isNull();
+    }
+
+    @Test
+    void shouldNotScoreWhenOneItemIsMissing() {
+        repositorySavesWhatItGets();
+
+        // tudo respondido menos o ultimo item
+        HamiltonScale scale = new HamiltonScale();
+        scale.setAnxiousMood(2);
+        scale.setTension(2);
+        scale.setFears(2);
+        scale.setInsomnia(2);
+        scale.setCognition(2);
+        scale.setDepressedMood(2);
+        scale.setSomaticMotor(2);
+        scale.setSomaticSensory(2);
+        scale.setCardiovascularSymptoms(2);
+        scale.setRespiratorySymptoms(2);
+        scale.setGastrointestinalSymptoms(2);
+        scale.setGenitourinarySymptoms(2);
+        // autonomicSymptoms fica sem resposta
+
+        HamiltonScale saved = hamiltonScaleService.create(scale);
+
+        // somar so os 12 respondidos daria 24, q a prescritora leria
+        // como ansiedade moderada. escala incompleta n tem escore
+        assertThat(saved.getHamScore()).isNull();
     }
 }

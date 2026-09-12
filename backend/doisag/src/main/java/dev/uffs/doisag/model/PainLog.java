@@ -8,16 +8,16 @@ import java.time.LocalDate;
 
 @Entity
 public class PainLog extends BaseAssessment {
-    private int basicActivityInterference;
-    private int socialActivityInterference;
-    private int sleepInterference;
-    private int productivityInterference;
-    private int extraMedication;
+    private Integer basicActivityInterference;
+    private Integer socialActivityInterference;
+    private Integer sleepInterference;
+    private Integer productivityInterference;
+    private Integer extraMedication;
     @Lob
     @Column(columnDefinition = "TEXT")
     private String observation;
 
-    public PainLog(Long id, LocalDate assessmentDate, Patient patient, int socialActivityInterference, int basicActivityInterference, int sleepInterference, int productivityInterference, int extraMedication, String observation) {
+    public PainLog(Long id, LocalDate assessmentDate, Patient patient, Integer socialActivityInterference, Integer basicActivityInterference, Integer sleepInterference, Integer productivityInterference, Integer extraMedication, String observation) {
         super(id, assessmentDate, patient);
         this.socialActivityInterference = socialActivityInterference;
         this.basicActivityInterference = basicActivityInterference;
@@ -27,7 +27,7 @@ public class PainLog extends BaseAssessment {
         this.observation = observation;
     }
         // observacao eh opcional
-    public PainLog(Long id, LocalDate assessmentDate, Patient patient, int basicActivityInterference, int extraMedication, int productivityInterference, int sleepInterference, int socialActivityInterference) {
+    public PainLog(Long id, LocalDate assessmentDate, Patient patient, Integer basicActivityInterference, Integer extraMedication, Integer productivityInterference, Integer sleepInterference, Integer socialActivityInterference) {
         super(id, assessmentDate, patient);
         this.basicActivityInterference = basicActivityInterference;
         this.extraMedication = extraMedication;
@@ -39,43 +39,43 @@ public class PainLog extends BaseAssessment {
     public PainLog() {
     }
 
-    public int getSocialActivityInterference() {
+    public Integer getSocialActivityInterference() {
         return socialActivityInterference;
     }
 
-    public void setSocialActivityInterference(int socialActivityInterference) {
+    public void setSocialActivityInterference(Integer socialActivityInterference) {
         this.socialActivityInterference = socialActivityInterference;
     }
 
-    public int getBasicActivityInterference() {
+    public Integer getBasicActivityInterference() {
         return basicActivityInterference;
     }
 
-    public void setBasicActivityInterference(int basicActivityInterference) {
+    public void setBasicActivityInterference(Integer basicActivityInterference) {
         this.basicActivityInterference = basicActivityInterference;
     }
 
-    public int getSleepInterference() {
+    public Integer getSleepInterference() {
         return sleepInterference;
     }
 
-    public void setSleepInterference(int sleepInterference) {
+    public void setSleepInterference(Integer sleepInterference) {
         this.sleepInterference = sleepInterference;
     }
 
-    public int getProductivityInterference() {
+    public Integer getProductivityInterference() {
         return productivityInterference;
     }
 
-    public void setProductivityInterference(int productivityInterference) {
+    public void setProductivityInterference(Integer productivityInterference) {
         this.productivityInterference = productivityInterference;
     }
 
-    public int getExtraMedication() {
+    public Integer getExtraMedication() {
         return extraMedication;
     }
 
-    public void setExtraMedication(int extraMedication) {
+    public void setExtraMedication(Integer extraMedication) {
         this.extraMedication = extraMedication;
     }
 

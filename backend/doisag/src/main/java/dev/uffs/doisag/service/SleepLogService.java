@@ -32,17 +32,21 @@ public class SleepLogService {
             if (duration.isNegative()) {
                 duration = duration.plusDays(1);
             }
-            sleepLog.setTimeInBed(duration.toMinutes());
+            sleepLog.setTimeInBed((float) duration.toMinutes());
         }
 
         // calcula o tempo total que a pessoa ficou acordada no periodo de sono
         // eh a soma do tempo pra pegar no sono + o tempo que ficou acordada no meio da noite
-        int totalTimeAwake = sleepLog.getTimeToFallAsleep() + sleepLog.getTotalTimeAwakeDuringNight();
+        // se faltou algum dos dois, n da pra calcular o tempo acordado
+        Integer totalTimeAwake = ScoreHelper.sumOrNull(
+                sleepLog.getTimeToFallAsleep(), sleepLog.getTotalTimeAwakeDuringNight());
         sleepLog.setTotalTimeAwake(totalTimeAwake);
 
         // calcula o tempo total de sono de fato
         // eh o tempo na cama menos o tempo que ficou acordada
-        float totalSleepTime = sleepLog.getTimeInBed() - totalTimeAwake;
+        Float totalSleepTime = (sleepLog.getTimeInBed() == null || totalTimeAwake == null)
+                ? null
+                : sleepLog.getTimeInBed() - totalTimeAwake;
         sleepLog.setTotalSleepTime(totalSleepTime);
     }
 

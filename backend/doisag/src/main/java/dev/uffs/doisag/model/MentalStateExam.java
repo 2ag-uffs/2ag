@@ -10,17 +10,17 @@ public class MentalStateExam {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "appointment_id", nullable = false) // fk para a consulta
     private Appointment appointment;
-    private int temporalOrientation;
-    private int spatialOrientation;
-    private int registration;
-    private int attentionAndCalculation;
-    private int recall;
-    private int naming;
-    private int repetition;
-    private int command;
-    private int score;
+    private Integer temporalOrientation;
+    private Integer spatialOrientation;
+    private Integer registration;
+    private Integer attentionAndCalculation;
+    private Integer recall;
+    private Integer naming;
+    private Integer repetition;
+    private Integer command;
+    private Integer score;
 
-    public MentalStateExam(Appointment appointment, int temporalOrientation, int spatialOrientation, int registration, int attentionAndCalculation, int recall, int naming, int repetition, int command, int score) {
+    public MentalStateExam(Appointment appointment, Integer temporalOrientation, Integer spatialOrientation, Integer registration, Integer attentionAndCalculation, Integer recall, Integer naming, Integer repetition, Integer command, Integer score) {
         this.appointment = appointment;
         this.temporalOrientation = temporalOrientation;
         this.spatialOrientation = spatialOrientation;
@@ -43,75 +43,75 @@ public class MentalStateExam {
         this.appointment = appointment;
     }
 
-    public int getTemporalOrientation() {
+    public Integer getTemporalOrientation() {
         return temporalOrientation;
     }
 
-    public void setTemporalOrientation(int temporalOrientation) {
+    public void setTemporalOrientation(Integer temporalOrientation) {
         this.temporalOrientation = temporalOrientation;
     }
 
-    public int getSpatialOrientation() {
+    public Integer getSpatialOrientation() {
         return spatialOrientation;
     }
 
-    public void setSpatialOrientation(int spatialOrientation) {
+    public void setSpatialOrientation(Integer spatialOrientation) {
         this.spatialOrientation = spatialOrientation;
     }
 
-    public int getRegistration() {
+    public Integer getRegistration() {
         return registration;
     }
 
-    public void setRegistration(int registration) {
+    public void setRegistration(Integer registration) {
         this.registration = registration;
     }
 
-    public int getAttentionAndCalculation() {
+    public Integer getAttentionAndCalculation() {
         return attentionAndCalculation;
     }
 
-    public void setAttentionAndCalculation(int attentionAndCalculation) {
+    public void setAttentionAndCalculation(Integer attentionAndCalculation) {
         this.attentionAndCalculation = attentionAndCalculation;
     }
 
-    public int getRecall() {
+    public Integer getRecall() {
         return recall;
     }
 
-    public void setRecall(int recall) {
+    public void setRecall(Integer recall) {
         this.recall = recall;
     }
 
-    public int getNaming() {
+    public Integer getNaming() {
         return naming;
     }
 
-    public void setNaming(int naming) {
+    public void setNaming(Integer naming) {
         this.naming = naming;
     }
 
-    public int getRepetition() {
+    public Integer getRepetition() {
         return repetition;
     }
 
-    public void setRepetition(int repetition) {
+    public void setRepetition(Integer repetition) {
         this.repetition = repetition;
     }
 
-    public int getCommand() {
+    public Integer getCommand() {
         return command;
     }
 
-    public void setCommand(int command) {
+    public void setCommand(Integer command) {
         this.command = command;
     }
 
-    public int getScore() {
+    public Integer getScore() {
         return score;
     }
 
-    public void setScore(int score) {
+    public void setScore(Integer score) {
         this.score = score;
     }
 }

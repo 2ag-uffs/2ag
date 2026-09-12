@@ -6,22 +6,22 @@ import java.time.LocalDate;
 
 @Entity
 public class HamiltonScale extends BaseAssessment {
-    private int anxiousMood;
-    private int tension;
-    private int fears;
-    private int insomnia;
-    private int cognition;
-    private int depressedMood;
-    private int somaticMotor;
-    private int somaticSensory;
-    private int cardiovascularSymptoms;
-    private int respiratorySymptoms;
-    private int gastrointestinalSymptoms;
-    private int genitourinarySymptoms;
-    private int autonomicSymptoms;
-    private int hamScore;
+    private Integer anxiousMood;
+    private Integer tension;
+    private Integer fears;
+    private Integer insomnia;
+    private Integer cognition;
+    private Integer depressedMood;
+    private Integer somaticMotor;
+    private Integer somaticSensory;
+    private Integer cardiovascularSymptoms;
+    private Integer respiratorySymptoms;
+    private Integer gastrointestinalSymptoms;
+    private Integer genitourinarySymptoms;
+    private Integer autonomicSymptoms;
+    private Integer hamScore;
 
-    public HamiltonScale(Long id, LocalDate assessmentDate, Patient patient, int anxiousMood, int tension, int fears, int insomnia, int cognition, int depressedMood, int somaticMotor, int somaticSensory, int cardiovascularSymptoms, int respiratorySymptoms, int gastrointestinalSymptoms, int genitourinarySymptoms, int autonomicSymptoms, int hamScore) {
+    public HamiltonScale(Long id, LocalDate assessmentDate, Patient patient, Integer anxiousMood, Integer tension, Integer fears, Integer insomnia, Integer cognition, Integer depressedMood, Integer somaticMotor, Integer somaticSensory, Integer cardiovascularSymptoms, Integer respiratorySymptoms, Integer gastrointestinalSymptoms, Integer genitourinarySymptoms, Integer autonomicSymptoms, Integer hamScore) {
         super(id, assessmentDate, patient);
         this.anxiousMood = anxiousMood;
         this.tension = tension;
@@ -41,115 +41,115 @@ public class HamiltonScale extends BaseAssessment {
     public HamiltonScale() {
     }
 
-    public int getAnxiousMood() {
+    public Integer getAnxiousMood() {
         return anxiousMood;
     }
 
-    public void setAnxiousMood(int anxiousMood) {
+    public void setAnxiousMood(Integer anxiousMood) {
         this.anxiousMood = anxiousMood;
     }
 
-    public int getTension() {
+    public Integer getTension() {
         return tension;
     }
 
-    public void setTension(int tension) {
+    public void setTension(Integer tension) {
         this.tension = tension;
     }
 
-    public int getFears() {
+    public Integer getFears() {
         return fears;
     }
 
-    public void setFears(int fears) {
+    public void setFears(Integer fears) {
         this.fears = fears;
     }
 
-    public int getInsomnia() {
+    public Integer getInsomnia() {
         return insomnia;
     }
 
-    public void setInsomnia(int insomnia) {
+    public void setInsomnia(Integer insomnia) {
         this.insomnia = insomnia;
     }
 
-    public int getCognition() {
+    public Integer getCognition() {
         return cognition;
     }
 
-    public void setCognition(int cognition) {
+    public void setCognition(Integer cognition) {
         this.cognition = cognition;
     }
 
-    public int getDepressedMood() {
+    public Integer getDepressedMood() {
         return depressedMood;
     }
 
-    public void setDepressedMood(int depressedMood) {
+    public void setDepressedMood(Integer depressedMood) {
         this.depressedMood = depressedMood;
     }
 
-    public int getSomaticMotor() {
+    public Integer getSomaticMotor() {
         return somaticMotor;
     }
 
-    public void setSomaticMotor(int somaticMotor) {
+    public void setSomaticMotor(Integer somaticMotor) {
         this.somaticMotor = somaticMotor;
     }
 
-    public int getSomaticSensory() {
+    public Integer getSomaticSensory() {
         return somaticSensory;
     }
 
-    public void setSomaticSensory(int somaticSensory) {
+    public void setSomaticSensory(Integer somaticSensory) {
         this.somaticSensory = somaticSensory;
     }
 
-    public int getCardiovascularSymptoms() {
+    public Integer getCardiovascularSymptoms() {
         return cardiovascularSymptoms;
     }
 
-    public void setCardiovascularSymptoms(int cardiovascularSymptoms) {
+    public void setCardiovascularSymptoms(Integer cardiovascularSymptoms) {
         this.cardiovascularSymptoms = cardiovascularSymptoms;
     }
 
-    public int getRespiratorySymptoms() {
+    public Integer getRespiratorySymptoms() {
         return respiratorySymptoms;
     }
 
-    public void setRespiratorySymptoms(int respiratorySymptoms) {
+    public void setRespiratorySymptoms(Integer respiratorySymptoms) {
         this.respiratorySymptoms = respiratorySymptoms;
     }
 
-    public int getGastrointestinalSymptoms() {
+    public Integer getGastrointestinalSymptoms() {
         return gastrointestinalSymptoms;
     }
 
-    public void setGastrointestinalSymptoms(int gastrointestinalSymptoms) {
+    public void setGastrointestinalSymptoms(Integer gastrointestinalSymptoms) {
         this.gastrointestinalSymptoms = gastrointestinalSymptoms;
     }
 
-    public int getGenitourinarySymptoms() {
+    public Integer getGenitourinarySymptoms() {
         return genitourinarySymptoms;
     }
 
-    public void setGenitourinarySymptoms(int genitourinarySymptoms) {
+    public void setGenitourinarySymptoms(Integer genitourinarySymptoms) {
         this.genitourinarySymptoms = genitourinarySymptoms;
     }
 
-    public int getAutonomicSymptoms() {
+    public Integer getAutonomicSymptoms() {
         return autonomicSymptoms;
     }
 
-    public void setAutonomicSymptoms(int autonomicSymptoms) {
+    public void setAutonomicSymptoms(Integer autonomicSymptoms) {
         this.autonomicSymptoms = autonomicSymptoms;
     }
 
-    public int getHamScore() {
+    public Integer getHamScore() {
         return hamScore;
     }
 
-    public void setHamScore(int hamScore) {
+    public void setHamScore(Integer hamScore) {
         this.hamScore = hamScore;
     }
 }

@@ -7,19 +7,19 @@ import java.time.LocalDate;
 
 @Entity
 public class TEALog extends BaseAssessment {
-    private int freqAggressiveness;
-    private int freqAgitation;
-    private int freqSleepIssues;
-    private int freqSocialInteraction;
-    private int freqStereotypy;
-    private int freqAppetiteIssues;
+    private Integer freqAggressiveness;
+    private Integer freqAgitation;
+    private Integer freqSleepIssues;
+    private Integer freqSocialInteraction;
+    private Integer freqStereotypy;
+    private Integer freqAppetiteIssues;
     @Lob
     @Column(columnDefinition = "TEXT")
     private String observation;
-    private int teaScore;
+    private Integer teaScore;
 
     // Construtor completo
-    public TEALog(Long id, LocalDate assessmentDate, Patient patient, int freqAgitation, int freqSleepIssues, int freqAggressiveness, int freqSocialInteraction, int freqStereotypy, int freqAppetiteIssues, String observation, int teaScore) {
+    public TEALog(Long id, LocalDate assessmentDate, Patient patient, Integer freqAgitation, Integer freqSleepIssues, Integer freqAggressiveness, Integer freqSocialInteraction, Integer freqStereotypy, Integer freqAppetiteIssues, String observation, Integer teaScore) {
         super(id, assessmentDate, patient);
         this.freqAgitation = freqAgitation;
         this.freqSleepIssues = freqSleepIssues;
@@ -32,7 +32,7 @@ public class TEALog extends BaseAssessment {
     }
 
     // Construtor com observação opcional
-    public TEALog(Long id, LocalDate assessmentDate, Patient patient, int freqAggressiveness, int teaScore, int freqAppetiteIssues, int freqStereotypy, int freqSocialInteraction, int freqSleepIssues, int freqAgitation) {
+    public TEALog(Long id, LocalDate assessmentDate, Patient patient, Integer freqAggressiveness, Integer teaScore, Integer freqAppetiteIssues, Integer freqStereotypy, Integer freqSocialInteraction, Integer freqSleepIssues, Integer freqAgitation) {
         super(id, assessmentDate, patient);
         this.freqAggressiveness = freqAggressiveness;
         this.teaScore = teaScore;
@@ -48,27 +48,27 @@ public class TEALog extends BaseAssessment {
     }
 
     // Getters e Setters
-    public int getFreqAggressiveness() { return freqAggressiveness; }
-    public void setFreqAggressiveness(int freqAggressiveness) { this.freqAggressiveness = freqAggressiveness; }
+    public Integer getFreqAggressiveness() { return freqAggressiveness; }
+    public void setFreqAggressiveness(Integer freqAggressiveness) { this.freqAggressiveness = freqAggressiveness; }
 
-    public int getFreqAgitation() { return freqAgitation; }
-    public void setFreqAgitation(int freqAgitation) { this.freqAgitation = freqAgitation; }
+    public Integer getFreqAgitation() { return freqAgitation; }
+    public void setFreqAgitation(Integer freqAgitation) { this.freqAgitation = freqAgitation; }
 
-    public int getFreqSleepIssues() { return freqSleepIssues; }
-    public void setFreqSleepIssues(int freqSleepIssues) { this.freqSleepIssues = freqSleepIssues; }
+    public Integer getFreqSleepIssues() { return freqSleepIssues; }
+    public void setFreqSleepIssues(Integer freqSleepIssues) { this.freqSleepIssues = freqSleepIssues; }
 
-    public int getFreqSocialInteraction() { return freqSocialInteraction; }
-    public void setFreqSocialInteraction(int freqSocialInteraction) { this.freqSocialInteraction = freqSocialInteraction; }
+    public Integer getFreqSocialInteraction() { return freqSocialInteraction; }
+    public void setFreqSocialInteraction(Integer freqSocialInteraction) { this.freqSocialInteraction = freqSocialInteraction; }
 
-    public int getFreqStereotypy() { return freqStereotypy; }
-    public void setFreqStereotypy(int freqStereotypy) { this.freqStereotypy = freqStereotypy; }
+    public Integer getFreqStereotypy() { return freqStereotypy; }
+    public void setFreqStereotypy(Integer freqStereotypy) { this.freqStereotypy = freqStereotypy; }
 
-    public int getFreqAppetiteIssues() { return freqAppetiteIssues; }
-    public void setFreqAppetiteIssues(int freqAppetiteIssues) { this.freqAppetiteIssues = freqAppetiteIssues; }
+    public Integer getFreqAppetiteIssues() { return freqAppetiteIssues; }
+    public void setFreqAppetiteIssues(Integer freqAppetiteIssues) { this.freqAppetiteIssues = freqAppetiteIssues; }
 
     public String getObservation() { return observation; }
     public void setObservation(String observation) { this.observation = observation; }
 
-    public int getTeaScore() { return teaScore; }
-    public void setTeaScore(int teaScore) { this.teaScore = teaScore; }
+    public Integer getTeaScore() { return teaScore; }
+    public void setTeaScore(Integer teaScore) { this.teaScore = teaScore; }
 }

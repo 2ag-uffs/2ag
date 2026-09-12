@@ -11,29 +11,29 @@ import java.time.LocalTime;
 @Entity
 public class PittsburghScale extends BaseAssessment {
     private LocalTime usualBedTime;
-    private int minutesToFallAsleep;
+    private Integer minutesToFallAsleep;
     private LocalTime usualWakeUpTime;
-    private float actualSleepHours;
-    private int freqCannotFallAsleep;
-    private int freqWakesUpMiddleNight;
-    private int freqWakeUpForBathroom;
-    private int freqCannotBreathe;
-    private int freqCoughOrSnore;
-    private int freqFeelCold;
-    private int freqFeelHot;
-    private int freqHaveBadDreams;
-    private int freqHavePain;
+    private Float actualSleepHours;
+    private Integer freqCannotFallAsleep;
+    private Integer freqWakesUpMiddleNight;
+    private Integer freqWakeUpForBathroom;
+    private Integer freqCannotBreathe;
+    private Integer freqCoughOrSnore;
+    private Integer freqFeelCold;
+    private Integer freqFeelHot;
+    private Integer freqHaveBadDreams;
+    private Integer freqHavePain;
     @Lob // campo grande para anotar
     @Column(columnDefinition = "TEXT")
     private String otherReasonToTroubleSleep;
-    private int sleepQualityRating;
-    private int freqUseSleepMedication;
-    private int freqTroubleStayingAwake;
-    private int troubleWithEnthusiasm;
-    private int roomPartner;
-    private int psqiScore;
+    private Integer sleepQualityRating;
+    private Integer freqUseSleepMedication;
+    private Integer freqTroubleStayingAwake;
+    private Integer troubleWithEnthusiasm;
+    private Integer roomPartner;
+    private Integer psqiScore;
 
-    public PittsburghScale(Long id, LocalDate assessmentDate, Patient patient, LocalTime usualBedTime, int minutesToFallAsleep, LocalTime usualWakeUpTime, float actualSleepHours, int freqWakesUpMiddleNight, int freqCannotFallAsleep, int freqWakeUpForBathroom, int freqCannotBreathe, int freqCoughOrSnore, int freqFeelCold, int freqFeelHot, int freqHaveBadDreams, int freqHavePain, String otherReasonToTroubleSleep, int sleepQualityRating, int freqUseSleepMedication, int troubleWithEnthusiasm, int freqTroubleStayingAwake, int roomPartner, int psqiScore) {
+    public PittsburghScale(Long id, LocalDate assessmentDate, Patient patient, LocalTime usualBedTime, Integer minutesToFallAsleep, LocalTime usualWakeUpTime, Float actualSleepHours, Integer freqWakesUpMiddleNight, Integer freqCannotFallAsleep, Integer freqWakeUpForBathroom, Integer freqCannotBreathe, Integer freqCoughOrSnore, Integer freqFeelCold, Integer freqFeelHot, Integer freqHaveBadDreams, Integer freqHavePain, String otherReasonToTroubleSleep, Integer sleepQualityRating, Integer freqUseSleepMedication, Integer troubleWithEnthusiasm, Integer freqTroubleStayingAwake, Integer roomPartner, Integer psqiScore) {
         super(id, assessmentDate, patient);
         this.usualBedTime = usualBedTime;
         this.minutesToFallAsleep = minutesToFallAsleep;
@@ -68,11 +68,11 @@ public class PittsburghScale extends BaseAssessment {
         this.usualBedTime = usualBedTime;
     }
 
-    public int getMinutesToFallAsleep() {
+    public Integer getMinutesToFallAsleep() {
         return minutesToFallAsleep;
     }
 
-    public void setMinutesToFallAsleep(int minutesToFallAsleep) {
+    public void setMinutesToFallAsleep(Integer minutesToFallAsleep) {
         this.minutesToFallAsleep = minutesToFallAsleep;
     }
 
@@ -84,83 +84,83 @@ public class PittsburghScale extends BaseAssessment {
         this.usualWakeUpTime = usualWakeUpTime;
     }
 
-    public float getActualSleepHours() {
+    public Float getActualSleepHours() {
         return actualSleepHours;
     }
 
-    public void setActualSleepHours(float actualSleepHours) {
+    public void setActualSleepHours(Float actualSleepHours) {
         this.actualSleepHours = actualSleepHours;
     }
 
-    public int getFreqCannotFallAsleep() {
+    public Integer getFreqCannotFallAsleep() {
         return freqCannotFallAsleep;
     }
 
-    public void setFreqCannotFallAsleep(int freqCannotFallAsleep) {
+    public void setFreqCannotFallAsleep(Integer freqCannotFallAsleep) {
         this.freqCannotFallAsleep = freqCannotFallAsleep;
     }
 
-    public int getFreqWakesUpMiddleNight() {
+    public Integer getFreqWakesUpMiddleNight() {
         return freqWakesUpMiddleNight;
     }
 
-    public void setFreqWakesUpMiddleNight(int freqWakesUpMiddleNight) {
+    public void setFreqWakesUpMiddleNight(Integer freqWakesUpMiddleNight) {
         this.freqWakesUpMiddleNight = freqWakesUpMiddleNight;
     }
 
-    public int getFreqWakeUpForBathroom() {
+    public Integer getFreqWakeUpForBathroom() {
         return freqWakeUpForBathroom;
     }
 
-    public void setFreqWakeUpForBathroom(int freqWakeUpForBathroom) {
+    public void setFreqWakeUpForBathroom(Integer freqWakeUpForBathroom) {
         this.freqWakeUpForBathroom = freqWakeUpForBathroom;
     }
 
-    public int getFreqCannotBreathe() {
+    public Integer getFreqCannotBreathe() {
         return freqCannotBreathe;
     }
 
-    public void setFreqCannotBreathe(int freqCannotBreathe) {
+    public void setFreqCannotBreathe(Integer freqCannotBreathe) {
         this.freqCannotBreathe = freqCannotBreathe;
     }
 
-    public int getFreqCoughOrSnore() {
+    public Integer getFreqCoughOrSnore() {
         return freqCoughOrSnore;
     }
 
-    public void setFreqCoughOrSnore(int freqCoughOrSnore) {
+    public void setFreqCoughOrSnore(Integer freqCoughOrSnore) {
         this.freqCoughOrSnore = freqCoughOrSnore;
     }
 
-    public int getFreqFeelCold() {
+    public Integer getFreqFeelCold() {
         return freqFeelCold;
     }
 
-    public void setFreqFeelCold(int freqFeelCold) {
+    public void setFreqFeelCold(Integer freqFeelCold) {
         this.freqFeelCold = freqFeelCold;
     }
 
-    public int getFreqFeelHot() {
+    public Integer getFreqFeelHot() {
         return freqFeelHot;
     }
 
-    public void setFreqFeelHot(int freqFeelHot) {
+    public void setFreqFeelHot(Integer freqFeelHot) {
         this.freqFeelHot = freqFeelHot;
     }
 
-    public int getFreqHavePain() {
+    public Integer getFreqHavePain() {
         return freqHavePain;
     }
 
-    public void setFreqHavePain(int freqHavePain) {
+    public void setFreqHavePain(Integer freqHavePain) {
         this.freqHavePain = freqHavePain;
     }
 
-    public int getFreqHaveBadDreams() {
+    public Integer getFreqHaveBadDreams() {
         return freqHaveBadDreams;
     }
 
-    public void setFreqHaveBadDreams(int freqHaveBadDreams) {
+    public void setFreqHaveBadDreams(Integer freqHaveBadDreams) {
         this.freqHaveBadDreams = freqHaveBadDreams;
     }
 
@@ -172,51 +172,51 @@ public class PittsburghScale extends BaseAssessment {
         this.otherReasonToTroubleSleep = otherReasonToTroubleSleep;
     }
 
-    public int getSleepQualityRating() {
+    public Integer getSleepQualityRating() {
         return sleepQualityRating;
     }
 
-    public void setSleepQualityRating(int sleepQualityRating) {
+    public void setSleepQualityRating(Integer sleepQualityRating) {
         this.sleepQualityRating = sleepQualityRating;
     }
 
-    public int getFreqUseSleepMedication() {
+    public Integer getFreqUseSleepMedication() {
         return freqUseSleepMedication;
     }
 
-    public void setFreqUseSleepMedication(int freqUseSleepMedication) {
+    public void setFreqUseSleepMedication(Integer freqUseSleepMedication) {
         this.freqUseSleepMedication = freqUseSleepMedication;
     }
 
-    public int getFreqTroubleStayingAwake() {
+    public Integer getFreqTroubleStayingAwake() {
         return freqTroubleStayingAwake;
     }
 
-    public void setFreqTroubleStayingAwake(int freqTroubleStayingAwake) {
+    public void setFreqTroubleStayingAwake(Integer freqTroubleStayingAwake) {
         this.freqTroubleStayingAwake = freqTroubleStayingAwake;
     }
 
-    public int getTroubleWithEnthusiasm() {
+    public Integer getTroubleWithEnthusiasm() {
         return troubleWithEnthusiasm;
     }
 
-    public void setTroubleWithEnthusiasm(int troubleWithEnthusiasm) {
+    public void setTroubleWithEnthusiasm(Integer troubleWithEnthusiasm) {
         this.troubleWithEnthusiasm = troubleWithEnthusiasm;
     }
 
-    public int getRoomPartner() {
+    public Integer getRoomPartner() {
         return roomPartner;
     }
 
-    public void setRoomPartner(int roomPartner) {
+    public void setRoomPartner(Integer roomPartner) {
         this.roomPartner = roomPartner;
     }
 
-    public int getPsqiScore() {
+    public Integer getPsqiScore() {
         return psqiScore;
     }
 
-    public void setPsqiScore(int psqiScore) {
+    public void setPsqiScore(Integer psqiScore) {
         this.psqiScore = psqiScore;
     }
 

@@ -30,9 +30,13 @@ public class ProgressReportService {
 
         // a gente passa por cada registro e pega só o valor do atributo que o front pediu
         return followUps.stream()
+                // dia sem resposta vira lacuna no grafico, n ponto no zero.
+                // zero em dor significa "sem dor", entao plotar zero por
+                // falta de resposta inverte o sentido do que aconteceu (RN10)
+                .filter(followUp -> getValueForAttribute(followUp, attribute) != null)
                 .map(followUp -> new ProgressDataPointDTO(
                         followUp.getAssessmentDate(),
-                        getValueForAttribute(followUp, attribute) // método auxiliar pra pegar o valor certo
+                        getValueForAttribute(followUp, attribute)
                 ))
                 .collect(Collectors.toList());
     }

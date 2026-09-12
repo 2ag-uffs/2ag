@@ -22,29 +22,30 @@ public class PittsburghScaleService {
     }
 
     // método privado para calcular o score final do psqi
-    private int calculateTotalScore(PittsburghScale scale) {
-        // soma simples dos escores de frequência e avaliação (assumindo que já vêm pontuados de 0 a 3)
-        return scale.getSleepQualityRating() +
-                scale.getFreqCannotFallAsleep() +
-                scale.getFreqWakesUpMiddleNight() +
-                scale.getFreqWakeUpForBathroom() +
-                scale.getFreqCannotBreathe() +
-                scale.getFreqCoughOrSnore() +
-                scale.getFreqFeelCold() +
-                scale.getFreqFeelHot() +
-                scale.getFreqHaveBadDreams() +
-                scale.getFreqHavePain() +
-                scale.getFreqUseSleepMedication() +
-                scale.getFreqTroubleStayingAwake() +
-                scale.getTroubleWithEnthusiasm();
-        // nota: a lógica real do psqi é mais complexa e baseada em 7 componentes.
-        // esta é uma soma direta dos campos para simplicidade, conforme padrão de outras escalas do projeto.
+    private Integer calculateTotalScore(PittsburghScale scale) {
+        // soma direta dos campos, q n eh o algoritmo oficial do psqi.
+        // o certo sao 7 componentes derivados, faixa de 0 a 21 (RF23).
+        // vai ser trocado na etapa de validade clinica
+        return ScoreHelper.sumOrNull(
+                scale.getSleepQualityRating(),
+                scale.getFreqCannotFallAsleep(),
+                scale.getFreqWakesUpMiddleNight(),
+                scale.getFreqWakeUpForBathroom(),
+                scale.getFreqCannotBreathe(),
+                scale.getFreqCoughOrSnore(),
+                scale.getFreqFeelCold(),
+                scale.getFreqFeelHot(),
+                scale.getFreqHaveBadDreams(),
+                scale.getFreqHavePain(),
+                scale.getFreqUseSleepMedication(),
+                scale.getFreqTroubleStayingAwake(),
+                scale.getTroubleWithEnthusiasm());
     }
 
     // CREATE
     public PittsburghScale create(PittsburghScale pittsburghScale) {
         // calcular o score
-        int totalScore = calculateTotalScore(pittsburghScale);
+        Integer totalScore = calculateTotalScore(pittsburghScale);
         pittsburghScale.setPsqiScore(totalScore);
         // salva a escala preenchida no banco
         PittsburghScale savedScale = pittsburghScaleRepository.save(pittsburghScale);
@@ -100,7 +101,7 @@ public class PittsburghScaleService {
         existingScale.setRoomPartner(scaleDetails.getRoomPartner());
 
         // recalcula e define a pontuação
-        int totalScore = calculateTotalScore(existingScale);
+        Integer totalScore = calculateTotalScore(existingScale);
         existingScale.setPsqiScore(totalScore);
 
         return pittsburghScaleRepository.save(existingScale);

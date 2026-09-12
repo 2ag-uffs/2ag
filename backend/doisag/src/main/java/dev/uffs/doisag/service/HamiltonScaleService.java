@@ -22,26 +22,27 @@ public class HamiltonScaleService {
     }
 
     // método para calcular a pontuação total
-    private int calculateTotalScore(HamiltonScale scale) {
-        return scale.getAnxiousMood() +
-                scale.getTension() +
-                scale.getFears() +
-                scale.getInsomnia() +
-                scale.getCognition() +
-                scale.getDepressedMood() +
-                scale.getSomaticMotor() +
-                scale.getSomaticSensory() +
-                scale.getCardiovascularSymptoms() +
-                scale.getRespiratorySymptoms() +
-                scale.getGastrointestinalSymptoms() +
-                scale.getGenitourinarySymptoms() +
-                scale.getAutonomicSymptoms();
+    private Integer calculateTotalScore(HamiltonScale scale) {
+        return ScoreHelper.sumOrNull(
+                scale.getAnxiousMood(),
+                scale.getTension(),
+                scale.getFears(),
+                scale.getInsomnia(),
+                scale.getCognition(),
+                scale.getDepressedMood(),
+                scale.getSomaticMotor(),
+                scale.getSomaticSensory(),
+                scale.getCardiovascularSymptoms(),
+                scale.getRespiratorySymptoms(),
+                scale.getGastrointestinalSymptoms(),
+                scale.getGenitourinarySymptoms(),
+                scale.getAutonomicSymptoms());
     }
 
     // CREATE
     public HamiltonScale create(HamiltonScale hamiltonScale) {
         // calcula e define a pontuação total antes de salvar
-        int totalScore = calculateTotalScore(hamiltonScale);
+        Integer totalScore = calculateTotalScore(hamiltonScale);
         hamiltonScale.setHamScore(totalScore);
 
         // salva a escala preenchida no banco
@@ -94,7 +95,7 @@ public class HamiltonScaleService {
         existingScale.setAutonomicSymptoms(scaleDetails.getAutonomicSymptoms());
 
         // recalcula e define a pontuação total
-        int totalScore = calculateTotalScore(existingScale);
+        Integer totalScore = calculateTotalScore(existingScale);
         existingScale.setHamScore(totalScore);
 
         return hamiltonScaleRepository.save(existingScale);

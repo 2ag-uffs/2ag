@@ -22,19 +22,20 @@ public class TEALogService {
     }
 
     // método privado para calcular o score total
-    private int calculateTotalScore(TEALog log) {
-        return log.getFreqAggressiveness() +
-                log.getFreqAgitation() +
-                log.getFreqSleepIssues() +
-                log.getFreqSocialInteraction() +
-                log.getFreqStereotypy() +
-                log.getFreqAppetiteIssues();
+    private Integer calculateTotalScore(TEALog log) {
+        return ScoreHelper.sumOrNull(
+                log.getFreqAggressiveness(),
+                log.getFreqAgitation(),
+                log.getFreqSleepIssues(),
+                log.getFreqSocialInteraction(),
+                log.getFreqStereotypy(),
+                log.getFreqAppetiteIssues());
     }
 
     // CREATE
     public TEALog create(TEALog teaLog) {
         // calcula o score
-        int totalScore = calculateTotalScore(teaLog);
+        Integer totalScore = calculateTotalScore(teaLog);
         teaLog.setTeaScore(totalScore);
 
         // salva no banco
@@ -79,7 +80,7 @@ public class TEALogService {
         existingLog.setObservation(logDetails.getObservation());
 
         // recalcula o score
-        int totalScore = calculateTotalScore(existingLog);
+        Integer totalScore = calculateTotalScore(existingLog);
         existingLog.setTeaScore(totalScore);
 
         return teaLogRepository.save(existingLog);

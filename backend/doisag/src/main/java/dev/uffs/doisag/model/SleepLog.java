@@ -8,31 +8,31 @@ import java.time.LocalTime;
 public class SleepLog extends BaseAssessment {
     private LocalTime bedTime;
     private LocalTime wakeUpTime;
-    private float timeInBed;
-    private int timeToFallAsleep;
-    private int timesWokenUp;
-    private int totalTimeAwake;
-    private float totalSleepTime;
-    private float totalAwakeSleep;
+    private Float timeInBed;
+    private Integer timeToFallAsleep;
+    private Integer timesWokenUp;
+    private Integer totalTimeAwake;
+    private Float totalSleepTime;
+    private Float totalAwakeSleep;
     private Boolean isCommonDay;
-    private int fatigue;
-    private int stress;
-    private int daytimeSleepiness;
-    private int inattention;
-    private int irritability;
-    private int pain;
-    private int healthPerception;
-    private float physicalActivityTime;
-    private float timeAwayFromHome;
+    private Integer fatigue;
+    private Integer stress;
+    private Integer daytimeSleepiness;
+    private Integer inattention;
+    private Integer irritability;
+    private Integer pain;
+    private Integer healthPerception;
+    private Float physicalActivityTime;
+    private Float timeAwayFromHome;
     private Boolean usedSleepMedication;
-    private int alcoholConsumption;
-    private int napsTime;
-    private int coffeeConsumption;
-    private int nighttimeSmoking;
-    private int totalTimeAwakeDuringNight;
+    private Integer alcoholConsumption;
+    private Integer napsTime;
+    private Integer coffeeConsumption;
+    private Integer nighttimeSmoking;
+    private Integer totalTimeAwakeDuringNight;
 
 
-    public SleepLog(int alcoholConsumption, LocalTime bedTime, int coffeeConsumption, int daytimeSleepiness, int fatigue, int healthPerception, int inattention, int irritability, Boolean isCommonDay, int napsTime, int nighttimeSmoking, int pain, float physicalActivityTime, int stress, float timeAwayFromHome, float timeInBed, int timesWokenUp, int timeToFallAsleep, float totalAwakeSleep, float totalSleepTime, int totalTimeAwake, int totalTimeAwakeDuringNight, Boolean usedSleepMedication, LocalTime wakeUpTime) {
+    public SleepLog(Integer alcoholConsumption, LocalTime bedTime, Integer coffeeConsumption, Integer daytimeSleepiness, Integer fatigue, Integer healthPerception, Integer inattention, Integer irritability, Boolean isCommonDay, Integer napsTime, Integer nighttimeSmoking, Integer pain, Float physicalActivityTime, Integer stress, Float timeAwayFromHome, Float timeInBed, Integer timesWokenUp, Integer timeToFallAsleep, Float totalAwakeSleep, Float totalSleepTime, Integer totalTimeAwake, Integer totalTimeAwakeDuringNight, Boolean usedSleepMedication, LocalTime wakeUpTime) {
         this.alcoholConsumption = alcoholConsumption;
         this.bedTime = bedTime;
         this.coffeeConsumption = coffeeConsumption;
@@ -64,11 +64,11 @@ public class SleepLog extends BaseAssessment {
 
  }
 
-    public int getTotalTimeAwake() {
+    public Integer getTotalTimeAwake() {
         return totalTimeAwake;
     }
 
-    public void setTotalTimeAwake(int totalTimeAwake) {
+    public void setTotalTimeAwake(Integer totalTimeAwake) {
         this.totalTimeAwake = totalTimeAwake;
     }
 
@@ -88,35 +88,35 @@ public class SleepLog extends BaseAssessment {
         this.wakeUpTime = wakeUpTime;
     }
 
-    public float getTimeInBed() {
+    public Float getTimeInBed() {
         return timeInBed;
     }
 
-    public void setTimeInBed(float timeInBed) {
+    public void setTimeInBed(Float timeInBed) {
         this.timeInBed = timeInBed;
     }
 
-    public int getTimeToFallAsleep() {
+    public Integer getTimeToFallAsleep() {
         return timeToFallAsleep;
     }
 
-    public void setTimeToFallAsleep(int timeToFallAsleep) {
+    public void setTimeToFallAsleep(Integer timeToFallAsleep) {
         this.timeToFallAsleep = timeToFallAsleep;
     }
 
-    public int getTimesWokenUp() {
+    public Integer getTimesWokenUp() {
         return timesWokenUp;
     }
 
-    public void setTimesWokenUp(int timesWokenUp) {
+    public void setTimesWokenUp(Integer timesWokenUp) {
         this.timesWokenUp = timesWokenUp;
     }
 
-    public float getTotalSleepTime() {
+    public Float getTotalSleepTime() {
         return totalSleepTime;
     }
 
-    public void setTotalSleepTime(float totalSleepTime) {
+    public void setTotalSleepTime(Float totalSleepTime) {
         this.totalSleepTime = totalSleepTime;
     }
 
@@ -128,75 +128,75 @@ public class SleepLog extends BaseAssessment {
         isCommonDay = commonDay;
     }
 
-    public int getFatigue() {
+    public Integer getFatigue() {
         return fatigue;
     }
 
-    public void setFatigue(int fatigue) {
+    public void setFatigue(Integer fatigue) {
         this.fatigue = fatigue;
     }
 
-    public int getStress() {
+    public Integer getStress() {
         return stress;
     }
 
-    public void setStress(int stress) {
+    public void setStress(Integer stress) {
         this.stress = stress;
     }
 
-    public int getDaytimeSleepiness() {
+    public Integer getDaytimeSleepiness() {
         return daytimeSleepiness;
     }
 
-    public void setDaytimeSleepiness(int daytimeSleepiness) {
+    public void setDaytimeSleepiness(Integer daytimeSleepiness) {
         this.daytimeSleepiness = daytimeSleepiness;
     }
 
-    public int getInattention() {
+    public Integer getInattention() {
         return inattention;
     }
 
-    public void setInattention(int inattention) {
+    public void setInattention(Integer inattention) {
         this.inattention = inattention;
     }
 
-    public int getIrritability() {
+    public Integer getIrritability() {
         return irritability;
     }
 
-    public void setIrritability(int irritability) {
+    public void setIrritability(Integer irritability) {
         this.irritability = irritability;
     }
 
-    public int getPain() {
+    public Integer getPain() {
         return pain;
     }
 
-    public void setPain(int pain) {
+    public void setPain(Integer pain) {
         this.pain = pain;
     }
 
-    public int getHealthPerception() {
+    public Integer getHealthPerception() {
         return healthPerception;
     }
 
-    public void setHealthPerception(int healthPerception) {
+    public void setHealthPerception(Integer healthPerception) {
         this.healthPerception = healthPerception;
     }
 
-    public float getPhysicalActivityTime() {
+    public Float getPhysicalActivityTime() {
         return physicalActivityTime;
     }
 
-    public void setPhysicalActivityTime(float physicalActivityTime) {
+    public void setPhysicalActivityTime(Float physicalActivityTime) {
         this.physicalActivityTime = physicalActivityTime;
     }
 
-    public float getTimeAwayFromHome() {
+    public Float getTimeAwayFromHome() {
         return timeAwayFromHome;
     }
 
-    public void setTimeAwayFromHome(float timeAwayFromHome) {
+    public void setTimeAwayFromHome(Float timeAwayFromHome) {
         this.timeAwayFromHome = timeAwayFromHome;
     }
 
@@ -208,51 +208,51 @@ public class SleepLog extends BaseAssessment {
         this.usedSleepMedication = usedSleepMedication;
     }
 
-    public int getAlcoholConsumption() {
+    public Integer getAlcoholConsumption() {
         return alcoholConsumption;
     }
 
-    public void setAlcoholConsumption(int alcoholConsumption) {
+    public void setAlcoholConsumption(Integer alcoholConsumption) {
         this.alcoholConsumption = alcoholConsumption;
     }
 
-    public int getNapsTime() {
+    public Integer getNapsTime() {
         return napsTime;
     }
 
-    public void setNapsTime(int napsTime) {
+    public void setNapsTime(Integer napsTime) {
         this.napsTime = napsTime;
     }
 
-    public int getCoffeeConsumption() {
+    public Integer getCoffeeConsumption() {
         return coffeeConsumption;
     }
 
-    public void setCoffeeConsumption(int coffeeConsumption) {
+    public void setCoffeeConsumption(Integer coffeeConsumption) {
         this.coffeeConsumption = coffeeConsumption;
     }
 
-    public int getNighttimeSmoking() {
+    public Integer getNighttimeSmoking() {
         return nighttimeSmoking;
     }
 
-    public void setNighttimeSmoking(int nighttimeSmoking) {
+    public void setNighttimeSmoking(Integer nighttimeSmoking) {
         this.nighttimeSmoking = nighttimeSmoking;
     }
 
-    public int getTotalTimeAwakeDuringNight() {
+    public Integer getTotalTimeAwakeDuringNight() {
         return totalTimeAwakeDuringNight;
     }
 
-    public float getTotalAwakeSleep() {
+    public Float getTotalAwakeSleep() {
         return totalAwakeSleep;
     }
 
-    public void setTotalAwakeSleep(float totalAwakeSleep) {
+    public void setTotalAwakeSleep(Float totalAwakeSleep) {
         this.totalAwakeSleep = totalAwakeSleep;
     }
 
-    public void setTotalTimeAwakeDuringNight(int totalTimeAwakeDuringNight) {
+    public void setTotalTimeAwakeDuringNight(Integer totalTimeAwakeDuringNight) {
         this.totalTimeAwakeDuringNight = totalTimeAwakeDuringNight;
     }
 }

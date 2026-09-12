@@ -18,20 +18,21 @@ public class MentalStateExamService {
     }
 
     // método privado para calcular a pontuação total
-    private int calculateTotalScore(MentalStateExam exam) {
-        return exam.getTemporalOrientation() +
-                exam.getSpatialOrientation() +
-                exam.getRegistration() +
-                exam.getAttentionAndCalculation() +
-                exam.getRecall() +
-                exam.getNaming() +
-                exam.getRepetition() +
-                exam.getCommand();
+    private Integer calculateTotalScore(MentalStateExam exam) {
+        return ScoreHelper.sumOrNull(
+                exam.getTemporalOrientation(),
+                exam.getSpatialOrientation(),
+                exam.getRegistration(),
+                exam.getAttentionAndCalculation(),
+                exam.getRecall(),
+                exam.getNaming(),
+                exam.getRepetition(),
+                exam.getCommand());
     }
 
     // CREATE
     public MentalStateExam create(MentalStateExam mentalStateExam) {
-        int totalScore = calculateTotalScore(mentalStateExam);
+        Integer totalScore = calculateTotalScore(mentalStateExam);
         mentalStateExam.setScore(totalScore);
         return mentalStateExamRepository.save(mentalStateExam);
     }
@@ -64,7 +65,7 @@ public class MentalStateExamService {
         existingExam.setCommand(examDetails.getCommand());
 
         // recalcula a pontuação
-        int totalScore = calculateTotalScore(existingExam);
+        Integer totalScore = calculateTotalScore(existingExam);
         existingExam.setScore(totalScore);
 
         return mentalStateExamRepository.save(existingExam);
