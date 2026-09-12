@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -102,6 +103,7 @@ public abstract class Users implements UserDetails { // implementa a interface d
     // a partir daqui vou trabalhar os metodos de permissão do usuário a partir do userdetails implemnetado
 
     // prescritores papel de admin e pacientes papel de user
+    @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this instanceof Prescriber) {
@@ -110,34 +112,41 @@ public abstract class Users implements UserDetails { // implementa a interface d
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
-    // retorna a senha criptografada do banco
+    // retorna a senha criptografada do banco.
+    // o JsonIgnore eh o que impede o hash de sair em resposta da api
+    @JsonIgnore
     @Override
     public String getPassword() {
         return this.password;
     }
 
     // username vai ser o e-mail
+    @JsonIgnore
     @Override
     public String getUsername() {
         return this.email;
     }
 
     // vamos dizer q as contas nunca expiram
+    @JsonIgnore
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
+    @JsonIgnore
     @Override
     public boolean isAccountNonLocked() {
         return true;
     }
 
+    @JsonIgnore
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
+    @JsonIgnore
     @Override
     public boolean isEnabled() {
         return true;

@@ -1,5 +1,7 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PrescriberCreateDTO;
+import dev.uffs.doisag.dto.PrescriberUpdateDTO;
 import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -22,21 +24,35 @@ public class PrescriberService {
         this.passwordEncoder = passwordEncoder;
     }
     // create prescriber
-    public Prescriber create(Prescriber prescriber) {
+    public Prescriber create(PrescriberCreateDTO dados) {
 
         // checamos se o registro profissional n eh repetido
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(
-                prescriber.getRegistryType(),
-                prescriber.getRegistryNumber()
+                dados.registryType(),
+                dados.registryNumber()
         )) {
             // a mensagem de erro
             throw new ValidationException("Este registro profissional já está cadastrado no sistema");
         }
 
+        // email tbm n pode repetir, senao o login n sabe quem eh quem
+        if (prescriberRepository.findByEmail(dados.email()).isPresent()) {
+            throw new ValidationException("E-mail já cadastrado no sistema");
+        }
+
+        Prescriber prescriber = new Prescriber();
+        prescriber.setName(dados.name());
+        prescriber.setEmail(dados.email());
+        prescriber.setCpf(dados.cpf());
+        prescriber.setBirthDate(dados.birthDate());
+        prescriber.setPhone(dados.phone());
+        prescriber.setAddress(dados.address() == null ? null : dados.address().toAddress());
+        prescriber.setProfession(dados.profession());
+        prescriber.setRegistryType(dados.registryType());
+        prescriber.setRegistryNumber(dados.registryNumber());
+
         // pegamos a senha que veio do cadastro e criptografa ela
-        String encryptedPassword = passwordEncoder.encode(prescriber.getPassword());
-        // define a senha criptografada no objeto antes de salvar
-        prescriber.setPassword(encryptedPassword);
+        prescriber.setPassword(passwordEncoder.encode(dados.senha()));
 
         // aqui vou criar a logica para gerar o cod do prescritor para vincular com pacientes:
         // pega as 3 primeiras letras do nome e bota em maiúsculo
@@ -64,24 +80,26 @@ public class PrescriberService {
     // read by id prescriber
     public Prescriber getById(Long id) {
         return prescriberRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Prescritor não encontrado com o id: " + id));
     }
 
     // update prescriber
-    public Prescriber update(Long id, Prescriber prescriberDetails) {
+    public Prescriber update(Long id, PrescriberUpdateDTO dados) {
         Prescriber prescriber = prescriberRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Prescritor não encontrado com o id: " + id));
 
-        prescriber.setName(prescriberDetails.getName());
-        prescriber.setEmail(prescriberDetails.getEmail());
-        prescriber.setPhone(prescriberDetails.getPhone());
-        prescriber.setCpf(prescriberDetails.getCpf());
-        prescriber.setBirthDate(prescriberDetails.getBirthDate());
-        prescriber.setAddress(prescriberDetails.getAddress());
-        prescriber.setProfession(prescriberDetails.getProfession());
-        prescriber.setRegistryType(prescriberDetails.getRegistryType());
-        prescriber.setRegistryNumber(prescriberDetails.getRegistryNumber());
-        prescriber.setProfessionalCode(prescriberDetails.getProfessionalCode());
+        prescriber.setName(dados.name());
+        prescriber.setEmail(dados.email());
+        prescriber.setPhone(dados.phone());
+        prescriber.setCpf(dados.cpf());
+        prescriber.setBirthDate(dados.birthDate());
+        prescriber.setAddress(dados.address() == null ? null : dados.address().toAddress());
+        prescriber.setProfession(dados.profession());
+        prescriber.setRegistryType(dados.registryType());
+        prescriber.setRegistryNumber(dados.registryNumber());
+
+        // professionalCode n entra: eh ele q liga os pacientes a esse
+        // prescritor, trocar aqui quebraria o vinculo de todos eles
 
         return prescriberRepository.save(prescriber);
     }

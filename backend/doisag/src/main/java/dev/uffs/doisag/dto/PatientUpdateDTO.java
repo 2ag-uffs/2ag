@@ -9,11 +9,10 @@ import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
-// so carrega os dados do paciente que o prescritor vai preencher no form.
-// antes esse record n tinha validacao nenhuma, ou seja paciente
-// cadastrado pelo prescritor entrava sem senha forte e sem cpf valido,
-// diferente do q acontece no /auth/register
-public record PatientRegistrationDTO(
+// dados que o usuario pode alterar num paciente.
+// de proposito n tem id, senha nem prescritor: antes o endpoint
+// recebia a entidade crua e o cliente conseguia mandar qualquer campo
+public record PatientUpdateDTO(
         @NotBlank(message = "O nome completo é obrigatório")
         String name,
 
@@ -25,17 +24,13 @@ public record PatientRegistrationDTO(
         @CPF(message = "O CPF informado é inválido")
         String cpf,
 
-        @Pattern(regexp = "^[0-9]*$", message = "O telefone deve conter apenas números")
-        String phone,
-
         @Past(message = "A data de nascimento deve ser uma data no passado")
         LocalDate birthDate,
 
-        @Valid
-        AddressDTO address,
+        @Pattern(regexp = "^[0-9]*$", message = "O telefone deve conter apenas números")
+        String phone,
 
-        @NotBlank(message = "A senha é obrigatória")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-                message = "A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial")
-        String senha
-) {}
+        @Valid
+        AddressDTO address
+) {
+}

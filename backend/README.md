@@ -203,7 +203,11 @@ todas essas rotas exigem autenticação. cada uma tem `GET`, `GET /{id}`, `POST`
 rotas extras de paciente:
 
   * **`GET /paciente/prescritor/{prescriberId}`**: lista os pacientes de um prescritor
-  * **`POST /paciente/cadastrar-para-prescritor`**: o prescritor logado cadastra um paciente já vinculado a ele. o vínculo vem do token, não do corpo da requisição
+  * **`POST /paciente/cadastrar-para-prescritor`**: o prescritor logado cadastra um paciente já vinculado a ele. o vínculo vem do token, não do corpo da requisição. corpo: `PatientRegistrationDTO` (`name`, `email`, `senha`, `cpf`, `phone`, `birthDate`, `address`), todos validados
+
+> **`POST /paciente` foi removido.** ele criava paciente com a senha em texto puro e sem validação nenhuma, gerando conta que nunca conseguia logar. os caminhos certos são `/auth/register` (o próprio paciente se cadastra) e `/paciente/cadastrar-para-prescritor` (o prescritor cadastra)
+
+> `/paciente` e `/prescritor` **não aceitam mais a entidade crua** no corpo. `PUT /paciente/{id}` recebe `PatientUpdateDTO`, `POST /prescritor` recebe `PrescriberCreateDTO` e `PUT /prescritor/{id}` recebe `PrescriberUpdateDTO`. senha, `id` e vínculos ficam fora desses DTOs de propósito
 
 > ⚠️ `POST /prescritor` é **público** hoje. ver limitações
 
@@ -295,7 +299,7 @@ esse fluxo permite que um prescritor envie uma escala para o paciente e que o si
 }
 ```
 
-##### **`Patient` (exemplo de retorno real)**
+##### **`PatientResponseDTO` (o que a api devolve)**
 
 ```json
 {
@@ -305,11 +309,13 @@ esse fluxo permite que um prescritor envie uma escala para o paciente e que o si
   "email": "paciente@email.com",
   "birthDate": "1990-01-15",
   "phone": "49999887766",
-  "address": { "...": "..." }
+  "address": { "...": "..." },
+  "prescriberId": 1,
+  "prescriberName": "Bruna Varela"
 }
 ```
 
-> o objeto `prescriber` **não** aparece no json do paciente: o campo tem `@JsonBackReference`, que remove ele da serialização. se o front precisar do prescritor, tem que buscar em `/prescritor/{id}`
+> não existe mais campo `password` em resposta nenhuma da api, e os campos do `UserDetails` (`enabled`, `authorities`, `username`, `accountNonLocked`, `credentialsNonExpired`, `accountNonExpired`) também sumiram. o prescritor agora vem como `prescriberId` e `prescriberName`, em vez de não vir
 
 ##### **`Prescription` (prescrição)**
 
@@ -353,12 +359,12 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * fora de `/pacientes/{id}/**`, toda rota é protegida apenas por `anyRequest().authenticated()`. não existe nenhum `@PreAuthorize` no projeto. um token de paciente consegue chamar `GET /paciente`, `GET /anamnese`, `PUT /paciente/{id}` e `DELETE /prescricao/{id}` (RF29)
   * `CustomPatientAccessManager` libera acesso total pra qualquer `ROLE_ADMIN`, sem checar se aquele prescritor é o prescritor daquele paciente. prescritor A vê o prontuário dos pacientes do prescritor B (RF30)
   * `POST /prescritor` é público e cria conta com privilégio elevado, sem validação de registro profissional (RF02.2)
-  * os controllers retornam entidade jpa crua. como `Users` implementa `UserDetails`, o jackson serializa o campo `password` (hash bcrypt) nas respostas (RF01)
+  * ~~os controllers retornam entidade jpa crua e o jackson serializa o `password`~~ **resolvido**: `/paciente` e `/prescritor` devolvem DTO, e o `Users` tem `@JsonIgnore` no `password` e nos acessores do `UserDetails` como rede de proteção. os 7 endpoints de escala ainda devolvem a entidade, mas o paciente aninhado já não carrega senha — falta trocar por DTO pra parar de expor o paciente inteiro
   * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)
-  * `PUT /paciente/{id}` grava a senha recebida **sem passar pelo `passwordEncoder`**, o que invalida o login do paciente (RN12)
+  * ~~`PUT /paciente/{id}` grava a senha sem passar pelo `passwordEncoder`~~ **resolvido**: o update não toca mais em senha. troca de senha será fluxo próprio (RN12)
   * token expirado ou inválido retorna **500** em vez de 401: a exceção do jjwt é lançada dentro do `SecurityFilter`, antes do `DispatcherServlet`, então o `@RestControllerAdvice` não pega (RF01)
-  * quase todos os `POST` e `PUT` recebem a entidade jpa direto no `@RequestBody`, então o cliente pode mandar `id`, `password` e relacionamentos (mass assignment)
-  * `PatientRegistrationDTO` não tem nenhuma anotação de validação e o controller não usa `@Valid`: paciente cadastrado pelo prescritor não passa por validação de senha nem de cpf
+  * os `POST` e `PUT` das 7 rotas de escala ainda recebem a entidade jpa direto no `@RequestBody`, então o cliente pode mandar `id` e relacionamentos (mass assignment). `/paciente` e `/prescritor` já foram convertidos pra DTO
+  * ~~`PatientRegistrationDTO` não tem validação~~ **resolvido**: agora tem as mesmas regras do `/auth/register` (senha forte, cpf com dígito verificador, e-mail válido) e o controller usa `@Valid`
 
 **escalas clínicas** — os escores não correspondem aos instrumentos
 

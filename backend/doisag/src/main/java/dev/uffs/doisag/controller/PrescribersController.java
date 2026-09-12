@@ -1,13 +1,16 @@
 package dev.uffs.doisag.controller;
 
-import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.dto.PrescriberCreateDTO;
+import dev.uffs.doisag.dto.PrescriberResponseDTO;
+import dev.uffs.doisag.dto.PrescriberUpdateDTO;
 import dev.uffs.doisag.service.PrescriberService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/prescritor")
 public class PrescribersController {
@@ -17,41 +20,39 @@ public class PrescribersController {
         this.prescriberService = prescriberService;
     }
 
-    // endpoint para CRIAR um novo prescritor
-    // post /prescritor
+    // create prescriber
     @PostMapping
-    public Prescriber create(@RequestBody Prescriber prescriber) {
-        return prescriberService.create(prescriber);
+    public ResponseEntity<PrescriberResponseDTO> create(@RequestBody @Valid PrescriberCreateDTO dados) {
+        var prescriber = prescriberService.create(dados);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new PrescriberResponseDTO(prescriber));
     }
 
-    // endpoint para LER todos os prescritores
-    // get /prescritor
+    // read all prescriber
     @GetMapping
-    public List<Prescriber> getAll() {
-        return prescriberService.getAll();
+    public List<PrescriberResponseDTO> getAll() {
+        return prescriberService.getAll()
+                .stream()
+                .map(PrescriberResponseDTO::new)
+                .toList();
     }
 
-    // endpoint para LER um prescritor por ID
-    // get /prescritor/{id}
+    // read by id prescriber
     @GetMapping("/{id}")
-    public ResponseEntity<Prescriber> getById(@PathVariable Long id) {
-        Prescriber prescriber = prescriberService.getById(id);
-        return ResponseEntity.ok(prescriber);
+    public ResponseEntity<PrescriberResponseDTO> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(new PrescriberResponseDTO(prescriberService.getById(id)));
     }
 
-    // endpoint para ATUALIZAR um prescritor
-    // put /prescritor/{id}
+    // update prescriber
     @PutMapping("/{id}")
-    public ResponseEntity<Prescriber> update(@PathVariable Long id, @RequestBody Prescriber prescriberDetails) {
-        Prescriber updatedPrescriber = prescriberService.update(id, prescriberDetails);
-        return ResponseEntity.ok(updatedPrescriber);
+    public ResponseEntity<PrescriberResponseDTO> update(@PathVariable Long id,
+                                                        @RequestBody @Valid PrescriberUpdateDTO dados) {
+        return ResponseEntity.ok(new PrescriberResponseDTO(prescriberService.update(id, dados)));
     }
 
-    // endpoint para DELETAR um prescritor
-    // delete /prescritor/{id}
+    // delete prescriber
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-            prescriberService.delete(id);
-            return ResponseEntity.noContent().build();
+        prescriberService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

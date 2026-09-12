@@ -1,5 +1,6 @@
 package dev.uffs.doisag;
 
+import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -40,13 +41,18 @@ public class DoisagApplication {
 
 			if (prescriberDetails == null) {
 				System.out.println("CRIANDO USUARIO DE TESTE (PRESCRITOR): " + prescriberEmail);
-				var newPrescriber = new Prescriber();
-				newPrescriber.setName("Bruna Varela");
-				newPrescriber.setEmail(prescriberEmail);
-				newPrescriber.setPassword("123456");
-				newPrescriber.setProfession("biomedica");
-				newPrescriber.setRegistryType("CRBM");
-				newPrescriber.setRegistryNumber("12345");
+				var newPrescriber = new PrescriberCreateDTO(
+						"Bruna Varela",
+						prescriberEmail,
+						"123456",
+						"11144477735",
+						LocalDate.of(1985, 3, 20),
+						"49999000111",
+						null,
+						"biomedica",
+						"CRBM",
+						"12345"
+				);
 				testPrescriber = prescriberService.create(newPrescriber);
 			} else {
 				testPrescriber = (Prescriber) prescriberDetails;

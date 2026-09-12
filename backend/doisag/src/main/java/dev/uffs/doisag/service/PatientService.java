@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -42,10 +43,6 @@ public class PatientService {
         this.notificationService = notificationService;
     }
 
-    public Patient create(Patient patient) {
-        return patientRepository.save(patient);
-    }
-
     public List<Patient> getAll() {
         return patientRepository.findAll();
     }
@@ -59,17 +56,20 @@ public class PatientService {
         return patientRepository.findAllByPrescriberId(prescriberId);
     }
 
-    public Patient update(Long id, Patient patientDetails) {
+    public Patient update(Long id, PatientUpdateDTO dados) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado com o id: " + id));
 
-        patient.setName(patientDetails.getName());
-        patient.setEmail(patientDetails.getEmail());
-        patient.setPhone(patientDetails.getPhone());
-        patient.setCpf(patientDetails.getCpf());
-        patient.setBirthDate(patientDetails.getBirthDate());
-        patient.setAddress(patientDetails.getAddress());
-        patient.setPassword(patientDetails.getPassword());
+        patient.setName(dados.name());
+        patient.setEmail(dados.email());
+        patient.setPhone(dados.phone());
+        patient.setCpf(dados.cpf());
+        patient.setBirthDate(dados.birthDate());
+        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
+
+        // senha n se mexe aqui. antes esse metodo gravava o valor recebido
+        // direto, sem passar pelo passwordEncoder, o q invalidava o login
+        // do paciente. troca de senha eh fluxo proprio (RN12)
 
         return patientRepository.save(patient);
     }
@@ -125,7 +125,7 @@ public class PatientService {
         patient.setCpf(dados.cpf());
         patient.setPhone(dados.phone());
         patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address());
+        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
         patient.setPassword(passwordEncoder.encode(dados.senha()));
 
         // aqui a magica acontece, a gente associa o prescritor que encontramos

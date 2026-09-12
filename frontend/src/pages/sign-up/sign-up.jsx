@@ -80,7 +80,8 @@ export default function SignUp() {
             data = {
                 name: form.nomeCompleto.value,
                 email: form.email.value,
-                password: password,
+                // o campo se chama senha na api, igual no /auth/register
+                senha: password,
                 cpf: cpf.replace(/\D/g, ""),
                 birthDate: form.dataNascimento.value,
                 phone: form.telefone.value.replace(/\D/g, ""),

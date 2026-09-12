@@ -9,11 +9,11 @@ import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
-// so carrega os dados do paciente que o prescritor vai preencher no form.
-// antes esse record n tinha validacao nenhuma, ou seja paciente
-// cadastrado pelo prescritor entrava sem senha forte e sem cpf valido,
-// diferente do q acontece no /auth/register
-public record PatientRegistrationDTO(
+// dados alteraveis de um prescritor.
+// o professionalCode fica fora de proposito: eh ele que liga os
+// pacientes ao prescritor, trocar quebraria o vinculo. senha tbm n
+// entra aqui, troca de senha eh outro fluxo
+public record PrescriberUpdateDTO(
         @NotBlank(message = "O nome completo é obrigatório")
         String name,
 
@@ -25,17 +25,22 @@ public record PatientRegistrationDTO(
         @CPF(message = "O CPF informado é inválido")
         String cpf,
 
-        @Pattern(regexp = "^[0-9]*$", message = "O telefone deve conter apenas números")
-        String phone,
-
         @Past(message = "A data de nascimento deve ser uma data no passado")
         LocalDate birthDate,
+
+        @Pattern(regexp = "^[0-9]*$", message = "O telefone deve conter apenas números")
+        String phone,
 
         @Valid
         AddressDTO address,
 
-        @NotBlank(message = "A senha é obrigatória")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-                message = "A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial")
-        String senha
-) {}
+        @NotBlank(message = "A profissão é obrigatória")
+        String profession,
+
+        @NotBlank(message = "O conselho profissional é obrigatório")
+        String registryType,
+
+        @NotBlank(message = "O número do registro profissional é obrigatório")
+        String registryNumber
+) {
+}
