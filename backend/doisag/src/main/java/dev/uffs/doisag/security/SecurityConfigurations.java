@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,6 +23,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity // marco a classe como uma configuração de segurança do spring
+// sem isso os @PreAuthorize dos controllers sao ignorados em silencio
+@EnableMethodSecurity
 public class SecurityConfigurations {
 
     // o nosso filtro de segurança personalizado
@@ -45,20 +48,21 @@ public class SecurityConfigurations {
                 .csrf(AbstractHttpConfigurer::disable)
                 // garante que o backend não vai criar sessões de usuário
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // define as regras de acesso
+                // aqui ficam so as rotas publicas. quem pode fazer o que nas
+                // rotas protegidas esta no @PreAuthorize de cada metodo, perto
+                // do codigo. antes tudo caia num anyRequest().authenticated()
+                // e endpoint novo nascia aberto pra qualquer usuario logado
                 .authorizeHttpRequests(req -> {
                     // add isso pro navegador conseguir fazer a checagem do CORS sem ser bloqueado
                     req.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     // permite o acesso público ao endpoint de login e register
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
-                    // aqui permito o cadastro de prescritores
+                    // TODO: fechar isso (RF02.2). prescritor tem q ser criado
+                    // por convite, n por autocadastro publico
                     req.requestMatchers(HttpMethod.POST, "/prescritor").permitAll();
-                    req.requestMatchers("/pacientes/{id}/**")
-                            .access(new CustomPatientAccessManager()); // Usaremos um gerenciador customizado
-                    // notif
-                    req.requestMatchers("/notifications/**").authenticated();
-                    // qualquer outra requisição exige autenticação
+                    // qualquer outra requisição exige autenticação, e a regra
+                    // de permissao vem do @PreAuthorize do metodo
                     req.anyRequest().authenticated();
                 })
                 // adiciona nosso filtro para rodar antes do filtro padrão

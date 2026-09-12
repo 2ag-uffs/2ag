@@ -33,9 +33,8 @@ public class TokenService {
                 .map(auth -> auth.getAuthority())
                 .collect(Collectors.toList());
 
-        String role = authorities.contains("ROLE_USER") ? "PATIENT" : "PRESCRIBER";
-
-        System.out.println("Role definida para o token: " + role);
+        // o papel vai no token pro front saber pra qual painel mandar o usuario
+        String role = authorities.contains("ROLE_PATIENT") ? "PATIENT" : "PRESCRIBER";
         return Jwts.builder()
                 .setIssuer("API Doisag") // quem está emitindo o token
                 .setSubject(user.getEmail()) // quem é o dono do token (o email do usuario)

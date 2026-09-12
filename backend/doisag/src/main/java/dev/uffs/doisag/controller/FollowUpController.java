@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.FollowUp;
 import dev.uffs.doisag.service.FollowUpService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class FollowUpController {
 
     // endpoint para CRIAR um novo acompanhamento
     // POST /acompanhamento
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public FollowUp create(@RequestBody FollowUp followUp) {
         return followUpService.create(followUp);
@@ -26,6 +28,7 @@ public class FollowUpController {
 
     // endpoint para LER todos os followups
     // GET /acompanhamento
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<FollowUp> getAll() {
         return followUpService.getAll();
@@ -33,6 +36,7 @@ public class FollowUpController {
 
     // endpoint para LER um followup por ID
     // GET /acompanhamento/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<FollowUp> getById(@PathVariable Long id) {
         FollowUp followUp = followUpService.getById(id);
@@ -41,6 +45,7 @@ public class FollowUpController {
 
     // endpoint para ATUALIZAR um followup
     // PUT /acompanhamento/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<FollowUp> update(@PathVariable Long id, @RequestBody FollowUp followUpDetails) {
             FollowUp updatedFollowUp = followUpService.update(id, followUpDetails);
@@ -49,6 +54,7 @@ public class FollowUpController {
 
     // endpoint para DELETAR um followup
     // DELETE /acompanhamento/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         followUpService.delete(id);

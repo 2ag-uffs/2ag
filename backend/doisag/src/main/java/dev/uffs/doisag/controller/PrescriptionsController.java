@@ -8,6 +8,7 @@ import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.service.PrescriptionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class PrescriptionsController {
 
     // endpoint para CRIAR uma nova prescrição
     // POST /prescricao
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @PostMapping("/consulta/{appointmentId}/prescricao")
     public ResponseEntity<PrescriptionResponseDTO> create(
             @PathVariable Long appointmentId,
@@ -33,6 +35,7 @@ public class PrescriptionsController {
 
     // endpoint para LER todas as prescrições
     // GET /prescricao
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/prescricao")
     public List<PrescriptionResponseDTO> getAll() {
         return prescriptionService.getAll()
@@ -42,6 +45,7 @@ public class PrescriptionsController {
     }
     // endpoint para LER uma prescrição por ID
     // GET /prescricao/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/prescricao/{id}")
     public ResponseEntity<PrescriptionResponseDTO> getById( @PathVariable Long id) {
         Prescription prescription = prescriptionService.getById(id);
@@ -50,6 +54,7 @@ public class PrescriptionsController {
 
     // endpoint para ATUALIZAR uma prescrição
     // PUT /prescricao/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @PutMapping("/prescricao/{id}")
     public ResponseEntity<PrescriptionResponseDTO> update(@PathVariable Long id, @RequestBody PrescriptionUpdateDTO dto) {
             Prescription updatedPrescription = prescriptionService.update(id, dto);
@@ -58,6 +63,7 @@ public class PrescriptionsController {
 
     // endpoint para DELETAR uma prescrição
     // DELETE /prescricao/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/prescricao/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         try {
@@ -68,6 +74,7 @@ public class PrescriptionsController {
         }
     }
 
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<List<PrescriptionResponseDTO>> getPrescriptionsByAppointment(@PathVariable Long appointmentId) {
         List<PrescriptionResponseDTO> dtos = prescriptionService.getByAppointmentId(appointmentId)

@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.HamiltonScale;
 import dev.uffs.doisag.service.HamiltonScaleService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class HamiltonScaleController {
 
     // endpoint para CRIAR uma nova escala hamilton
     // POST /escala-hamilton
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public HamiltonScale create(@RequestBody HamiltonScale hamiltonScale) {
         return hamiltonScaleService.create(hamiltonScale);
@@ -26,6 +28,7 @@ public class HamiltonScaleController {
 
     // endpoint para LER todas as escalas hamilton
     // GET /escala-hamilton
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<HamiltonScale> getAll() {
         return hamiltonScaleService.getAll();
@@ -33,6 +36,7 @@ public class HamiltonScaleController {
 
     // endpoint para LER uma escala hamilton por ID
     // GET /escala-hamilton/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<HamiltonScale> getById(@PathVariable Long id) {
         HamiltonScale hamiltonScale = hamiltonScaleService.getById(id);
@@ -41,6 +45,7 @@ public class HamiltonScaleController {
 
     // endpoint para ATUALIZAR uma escala hamilton
     // PUT /escala-hamilton/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<HamiltonScale> update(@PathVariable Long id, @RequestBody HamiltonScale scaleDetails) {
             HamiltonScale updatedScale = hamiltonScaleService.update(id, scaleDetails);
@@ -49,6 +54,7 @@ public class HamiltonScaleController {
 
     // endpoint para DELETAR uma escala hamilton
     // DELETE /escala-hamilton/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             hamiltonScaleService.delete(id);

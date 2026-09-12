@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.PainLog;
 import dev.uffs.doisag.service.PainLogService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class PainLogController {
 
     // endpoint para CRIAR um novo registro de dor
     // POST /registro-dor
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public PainLog create(@RequestBody PainLog painLog) {
         return painLogService.create(painLog);
@@ -26,6 +28,7 @@ public class PainLogController {
 
     // endpoint para LER todos os registros de dor
     // GET /registro-dor
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<PainLog> getAll() {
         return painLogService.getAll();
@@ -33,6 +36,7 @@ public class PainLogController {
 
     // endpoint para LER um registro de dor por ID
     // GET /registro-dor/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<PainLog> getById(@PathVariable Long id) {
         PainLog painLog = painLogService.getById(id);
@@ -41,6 +45,7 @@ public class PainLogController {
 
     // endpoint para ATUALIZAR um registro de dor
     // PUT /registro-dor/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<PainLog> update(@PathVariable Long id, @RequestBody PainLog logDetails) {
             PainLog updatedLog = painLogService.update(id, logDetails);
@@ -49,6 +54,7 @@ public class PainLogController {
 
     // endpoint para DELETAR um registro de dor
     // DELETE /registro-dor/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             painLogService.delete(id);

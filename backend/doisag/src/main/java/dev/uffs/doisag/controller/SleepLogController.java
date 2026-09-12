@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.SleepLog;
 import dev.uffs.doisag.service.SleepLogService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class SleepLogController {
 
     // endpoint para CRIAR um novo registro de sono
     // POST /registro-sono
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public SleepLog create(@RequestBody SleepLog sleepLog) {
         return sleepLogService.create(sleepLog);
@@ -26,6 +28,7 @@ public class SleepLogController {
 
     // endpoint para LER todos os registros de sono
     // GET /registro-sono
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<SleepLog> getAll() {
         return sleepLogService.getAll();
@@ -33,6 +36,7 @@ public class SleepLogController {
 
     // endpoint para LER um registro de sono por ID
     // GET /registro-sono/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<SleepLog> getById(@PathVariable Long id) {
         SleepLog sleepLog = sleepLogService.getById(id);
@@ -41,6 +45,7 @@ public class SleepLogController {
 
     // endpoint para ATUALIZAR um registro de sono
     // PUT /registro-sono/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<SleepLog> update(@PathVariable Long id, @RequestBody SleepLog logDetails) {
             SleepLog updatedLog = sleepLogService.update(id, logDetails);
@@ -49,6 +54,7 @@ public class SleepLogController {
 
     // endpoint para DELETAR um registro de sono
     // DELETE /registro-sono/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             sleepLogService.delete(id);

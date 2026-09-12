@@ -48,9 +48,9 @@ export default function Login() {
             const decodedToken = parseJwt(data.token);
             const userRole = decodedToken?.authorities?.[0];
 
-            if (userRole === "ROLE_USER") {
+            if (userRole === "ROLE_PATIENT") {
                 navigate("/dashboard-paciente");
-            } else if (userRole === "ROLE_ADMIN") {
+            } else if (userRole === "ROLE_PRESCRIBER") {
                 navigate("/dashboard-prescritor");
             } else {
                 setError("perfil de usuário não reconhecido no token");

@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.PittsburghScale;
 import dev.uffs.doisag.service.PittsburghScaleService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class PittsburghScaleController {
 
     // endpoint para CRIAR uma nova escala pittsburgh
     // POST /escala-pittsburgh
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public PittsburghScale create(@RequestBody PittsburghScale pittsburghScale) {
         return pittsburghScaleService.create(pittsburghScale);
@@ -26,6 +28,7 @@ public class PittsburghScaleController {
 
     // endpoint para LER todas as escalas pittsburgh
     // GET /escala-pittsburgh
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<PittsburghScale> getAll() {
         return pittsburghScaleService.getAll();
@@ -33,6 +36,7 @@ public class PittsburghScaleController {
 
     // endpoint para LER uma escala pittsburgh por ID
     // GET /escala-pittsburgh/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<PittsburghScale> getById(@PathVariable Long id) {
         PittsburghScale pittsburghScale = pittsburghScaleService.getById(id);
@@ -41,6 +45,7 @@ public class PittsburghScaleController {
 
     // endpoint para ATUALIZAR uma escala pittsburgh
     // PUT /escala-pittsburgh/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<PittsburghScale> update(@PathVariable Long id, @RequestBody PittsburghScale scaleDetails) {
             PittsburghScale updatedScale = pittsburghScaleService.update(id, scaleDetails);
@@ -49,6 +54,7 @@ public class PittsburghScaleController {
 
     // endpoint para DELETAR uma escala pittsburgh
     // DELETE /escala-pittsburgh/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             pittsburghScaleService.delete(id);

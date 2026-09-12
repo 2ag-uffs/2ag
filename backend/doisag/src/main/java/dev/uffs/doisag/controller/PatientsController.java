@@ -3,10 +3,12 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.PatientRegistrationDTO;
 import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.dto.PatientUpdateDTO;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PatientService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +23,22 @@ public class PatientsController {
         this.patientService = patientService;
     }
 
-    // endpoint para listar pacientes de um prescritor
+    // lista os pacientes do prescritor logado.
+    // antes esse endpoint devolvia TODOS os pacientes do sistema, ou seja
+    // um prescritor via a carteira dos outros, com nome, cpf e email
+    @PreAuthorize("hasRole('PRESCRIBER')")
+    @GetMapping
+    public List<PatientResponseDTO> getMyPatients(Authentication authentication) {
+        Long prescriberId = ((Users) authentication.getPrincipal()).getId();
+        return patientService.getPatientsByPrescriberId(prescriberId)
+                .stream()
+                .map(PatientResponseDTO::new)
+                .toList();
+    }
+
+    // mesma coisa que o de cima, mas com o id na url. so vale se o id
+    // for o do proprio prescritor logado
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.isSelf(#prescriberId, authentication)")
     @GetMapping("/prescritor/{prescriberId}")
     public List<PatientResponseDTO> getPatientsByPrescriber(@PathVariable Long prescriberId) {
         return patientService.getPatientsByPrescriberId(prescriberId)
@@ -30,29 +47,23 @@ public class PatientsController {
                 .toList();
     }
 
-    // read all patient
-    @GetMapping
-    public List<PatientResponseDTO> getAll() {
-        return patientService.getAll()
-                .stream()
-                .map(PatientResponseDTO::new)
-                .toList();
-    }
-
     // read by id patient
+    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PatientResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(new PatientResponseDTO(patientService.getById(id)));
     }
 
     // update patient
+    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<PatientResponseDTO> update(@PathVariable Long id,
                                                      @RequestBody @Valid PatientUpdateDTO dados) {
         return ResponseEntity.ok(new PatientResponseDTO(patientService.update(id, dados)));
     }
 
-    // delete patient
+    // delete patient. so o prescritor que acompanha o paciente
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         patientService.delete(id);
@@ -60,12 +71,12 @@ public class PatientsController {
     }
 
     // o prescritor logado cadastra um paciente ja vinculado a ele
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @PostMapping("/cadastrar-para-prescritor")
     public ResponseEntity<PatientResponseDTO> registerPatientForPrescriber(
             @RequestBody @Valid PatientRegistrationDTO dados,
             Authentication authentication) {
-        // o authentication eh injetado automaticamente pelo spring security
-        // ele contem os dados do usuario logado (geralmente o email/username)
+        // o vinculo vem do token, n do corpo da requisicao
         String prescriberEmail = authentication.getName();
 
         var novoPaciente = patientService.registerPatientForPrescriber(dados, prescriberEmail);

@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,18 +21,21 @@ public class AppointmentsController {
     }
 
     // create
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @PostMapping
     public Appointment create(@RequestBody Appointment appointment) {
         return appointmentService.create(appointment);
     }
 
     // read all
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<Appointment> getAll() {
         return appointmentService.getAll();
     }
 
     // read by id
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/{id}")
     public ResponseEntity<Appointment> getById(@PathVariable Long id) {
         Appointment appointment = appointmentService.getById(id);
@@ -39,6 +43,7 @@ public class AppointmentsController {
     }
 
     // update
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @PutMapping("/{id}")
     public ResponseEntity<Appointment> update(@PathVariable Long id, @RequestBody Appointment appointmentDetails) {
         try {
@@ -49,6 +54,7 @@ public class AppointmentsController {
         }
     }
     // delete appointment
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         try {

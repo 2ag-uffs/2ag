@@ -14,5 +14,7 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     List<Patient> findAllByPrescriberId(Long prescriberId);
 
-
+    // checa o vinculo numa consulta so, sem carregar o paciente inteiro
+    // nem depender de lazy loading. usado pelo PatientAccessService
+    boolean existsByIdAndPrescriberId(Long id, Long prescriberId);
 }

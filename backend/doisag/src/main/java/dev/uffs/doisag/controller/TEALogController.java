@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.TEALog;
 import dev.uffs.doisag.service.TEALogService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class TEALogController {
 
     // endpoint para CRIAR um novo registro de tea
     // POST /registro-tea
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public TEALog create(@RequestBody TEALog teaLog) {
         return teaLogService.create(teaLog);
@@ -26,6 +28,7 @@ public class TEALogController {
 
     // endpoint para LER todos os registros de tea
     // GET /registro-tea
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<TEALog> getAll() {
         return teaLogService.getAll();
@@ -33,6 +36,7 @@ public class TEALogController {
 
     // endpoint para LER um registro de tea por ID
     // GET /registro-tea/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<TEALog> getById(@PathVariable Long id) {
         TEALog teaLog = teaLogService.getById(id);
@@ -41,6 +45,7 @@ public class TEALogController {
 
     // endpoint para ATUALIZAR um registro de tea
     // PUT /registro-tea/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<TEALog> update(@PathVariable Long id, @RequestBody TEALog logDetails) {
             TEALog updatedLog = teaLogService.update(id, logDetails);
@@ -49,6 +54,7 @@ public class TEALogController {
 
     // endpoint para DELETAR um registro de tea
     // DELETE /registro-tea/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             teaLogService.delete(id);

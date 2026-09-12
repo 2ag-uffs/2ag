@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.service.AnamnesisService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class AnamnesisController {
 
     // endpoint para CRIAR uma nova anamnese
     // POST /anamnese
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public Anamnesis create(@RequestBody Anamnesis anamnesis) {
         return anamnesisService.create(anamnesis);
@@ -26,6 +28,7 @@ public class AnamnesisController {
 
     // endpoint para LER todas as anamneses
     // GET /anamnese
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<Anamnesis> getAll() {
         return anamnesisService.getAll();
@@ -33,6 +36,7 @@ public class AnamnesisController {
 
     // endpoint para LER uma anamnese por ID
     // GET /anamnese/{id}
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<Anamnesis> getById(@PathVariable Long id) {
         Anamnesis anamnesis = anamnesisService.getById(id);
@@ -41,6 +45,7 @@ public class AnamnesisController {
 
     // endpoint para ATUALIZAR uma anamnese
     // PUT /anamnese/{id}
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/{id}")
     public ResponseEntity<Anamnesis> update(@PathVariable Long id, @RequestBody Anamnesis anamnesisDetails) {
             Anamnesis updatedAnamnesis = anamnesisService.update(id, anamnesisDetails);
@@ -49,6 +54,7 @@ public class AnamnesisController {
 
     // endpoint para DELETAR uma anamnese
     // DELETE /anamnese/{id}
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
             anamnesisService.delete(id);

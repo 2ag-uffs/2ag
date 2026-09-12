@@ -102,14 +102,16 @@ public abstract class Users implements UserDetails { // implementa a interface d
 
     // a partir daqui vou trabalhar os metodos de permissão do usuário a partir do userdetails implemnetado
 
-    // prescritores papel de admin e pacientes papel de user
+    // o papel diz o que a pessoa eh no dominio, n o quanto ela pode.
+    // antes prescritor tinha ROLE_ADMIN e "admin" naturalmente virou
+    // acesso a tudo, q foi a origem da falha de autorizacao
     @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this instanceof Prescriber) {
-            return List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            return List.of(new SimpleGrantedAuthority("ROLE_PRESCRIBER"));
         }
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority("ROLE_PATIENT"));
     }
 
     // retorna a senha criptografada do banco.

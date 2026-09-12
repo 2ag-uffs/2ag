@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.service.ScaleAssignmentService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
@@ -22,6 +23,7 @@ public class ScaleAssignmentController {
     }
 
     // endpoint que o prescritor vai usar pra mandar uma escala pro paciente
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @PostMapping
     // resposta agora é o DTO q criei
     public ResponseEntity<AssignedScaleResponseDTO> assignScale(@PathVariable Long patientId, @RequestBody AssignScaleDTO assignScaleDTO) {
@@ -40,6 +42,7 @@ public class ScaleAssignmentController {
         return ResponseEntity.created(location).body(newAssignmentDto);
     }
 
+    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     // o tipo da resposta agora é uma lista do nosso DTO
     public ResponseEntity<List<AssignedScaleResponseDTO>> getAssignedScales(@PathVariable Long patientId) {
@@ -47,6 +50,7 @@ public class ScaleAssignmentController {
         return ResponseEntity.ok(scalesDto);
     }
 
+    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/central") // sub-path para ser mais específico
     public ResponseEntity<PatientScalesPageDTO> getPatientScalesPage(@PathVariable Long patientId) {
         PatientScalesPageDTO pageData = scaleAssignmentService.getPatientScalesPageData(patientId);

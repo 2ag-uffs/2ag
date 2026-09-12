@@ -148,11 +148,11 @@ o esquema é com token. você manda email e senha, a api devolve um jwt, e a par
     `Authorization: Bearer <seu-token-jwt>`
   * **VALIDADE**: 2 horas
   * **CLAIMS DO TOKEN**: `sub` (email), `id`, `name`, `role`, `authorities`
-  * **PERFIS** (como estão hoje no código):
-      * `ROLE_ADMIN`: perfil do **prescritor**
-      * `ROLE_USER`: perfil do **paciente**
+  * **PERFIS**:
+      * `ROLE_PRESCRIBER`: perfil do **prescritor**
+      * `ROLE_PATIENT`: perfil do **paciente**
 
-> a v2.0 separa esses papéis em três (`ROLE_PATIENT`, `ROLE_PRESCRIBER`, `ROLE_ADMIN`), porque usar "admin" como sinônimo de prescritor foi o que gerou a falha de autorização descrita nas limitações
+> antes o prescritor tinha `ROLE_ADMIN` e o paciente `ROLE_USER`. chamar o prescritor de "admin" foi o que levou o controle de acesso a liberar tudo pra ele — o papel passou a dizer o quanto a pessoa pode, em vez de quem ela é. `ROLE_ADMIN` fica reservado pro perfil administrativo da v2.0, que provisiona contas e não vê prontuário
 
 #### **endpoints de autenticação**
 
@@ -356,8 +356,10 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **segurança** — o sistema não deve ser usado com dado de paciente real até isso ser corrigido
 
-  * fora de `/pacientes/{id}/**`, toda rota é protegida apenas por `anyRequest().authenticated()`. não existe nenhum `@PreAuthorize` no projeto. um token de paciente consegue chamar `GET /paciente`, `GET /anamnese`, `PUT /paciente/{id}` e `DELETE /prescricao/{id}` (RF29)
-  * `CustomPatientAccessManager` libera acesso total pra qualquer `ROLE_ADMIN`, sem checar se aquele prescritor é o prescritor daquele paciente. prescritor A vê o prontuário dos pacientes do prescritor B (RF30)
+  * ~~toda rota protegida apenas por `anyRequest().authenticated()`~~ **resolvido**: 63 `@PreAuthorize` declaram a regra em cada método, e `@EnableMethodSecurity` está ligado (RF29)
+  * ~~`CustomPatientAccessManager` libera acesso total pra qualquer prescritor~~ **resolvido**: substituído pelo `PatientAccessService`, que resolve o vínculo num único lugar. paciente vê só o próprio prontuário, prescritor vê só a carteira dele (RF30)
+  * `GET /paciente` deixou de devolver todos os pacientes do sistema e passou a devolver só a carteira do prescritor logado
+  * **falta cobrir o dono por registro** nas 7 rotas de escala: hoje a regra ali é por papel (paciente preenche, prescritor lê), mas `GET /escala-hamilton/{id}` ainda não verifica se aquela escala é de um paciente da carteira de quem pediu
   * `POST /prescritor` é público e cria conta com privilégio elevado, sem validação de registro profissional (RF02.2)
   * ~~os controllers retornam entidade jpa crua e o jackson serializa o `password`~~ **resolvido**: `/paciente` e `/prescritor` devolvem DTO, e o `Users` tem `@JsonIgnore` no `password` e nos acessores do `UserDetails` como rede de proteção. os 7 endpoints de escala ainda devolvem a entidade, mas o paciente aninhado já não carrega senha — falta trocar por DTO pra parar de expor o paciente inteiro
   * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)

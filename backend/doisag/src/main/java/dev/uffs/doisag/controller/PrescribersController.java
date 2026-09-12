@@ -7,6 +7,7 @@ import dev.uffs.doisag.service.PrescriberService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,6 +29,7 @@ public class PrescribersController {
     }
 
     // read all prescriber
+    @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<PrescriberResponseDTO> getAll() {
         return prescriberService.getAll()
@@ -36,20 +38,23 @@ public class PrescribersController {
                 .toList();
     }
 
-    // read by id prescriber
+    // read by id prescriber. ele mesmo, ou um paciente da carteira dele
+    @PreAuthorize("@patientAccess.canViewPrescriber(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PrescriberResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(new PrescriberResponseDTO(prescriberService.getById(id)));
     }
 
-    // update prescriber
+    // update prescriber. so a propria ficha
+    @PreAuthorize("@patientAccess.isSelf(#id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<PrescriberResponseDTO> update(@PathVariable Long id,
                                                         @RequestBody @Valid PrescriberUpdateDTO dados) {
         return ResponseEntity.ok(new PrescriberResponseDTO(prescriberService.update(id, dados)));
     }
 
-    // delete prescriber
+    // delete prescriber. so a propria conta
+    @PreAuthorize("@patientAccess.isSelf(#id, authentication)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         prescriberService.delete(id);

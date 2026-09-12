@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.PatientDashboardDTO;
 import dev.uffs.doisag.dto.PrescriberDashboardDTO;
 import dev.uffs.doisag.service.DashboardService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @CrossOrigin(origins = "http://localhost:5173")
@@ -19,6 +20,7 @@ public class DashboardController {
     }
 
     // endpoint pro dashboard do prescritor, o front chama aqui passando o id do prescritor logado
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.isSelf(#id, authentication)")
     @GetMapping("/prescritor/{id}")
     public ResponseEntity<PrescriberDashboardDTO> getPrescriberDashboard(@PathVariable Long id) {
         // chama o service pra buscar os dados
@@ -28,6 +30,7 @@ public class DashboardController {
     }
 
     // endpoint pro dashboard do paciente, mesma lógica, mas pro paciente logado
+    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
     @GetMapping("/paciente/{id}")
     public ResponseEntity<PatientDashboardDTO> getPatientDashboard(@PathVariable Long id) {
         PatientDashboardDTO dashboardData = dashboardService.getPatientDashboard(id);

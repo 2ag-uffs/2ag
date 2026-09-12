@@ -5,6 +5,7 @@ import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
 import dev.uffs.doisag.service.ProgressReportService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class ProgressReportController {
     }
 
     // endpoint que o front vai chamar pra montar os gráficos
+    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     public ResponseEntity<List<ProgressDataPointDTO>> getProgress(
             @PathVariable Long patientId,
