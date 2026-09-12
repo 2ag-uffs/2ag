@@ -95,6 +95,38 @@ class DataIntegrityTest {
     }
 
     @Test
+    void registroClinicoGuardaQuandoFoiCriadoEAlterado() {
+        Anamnesis anamnesis = new Anamnesis();
+        anamnesis.setAssessmentDate(LocalDate.now());
+        anamnesis.setPatient(novoPaciente("auditoria@email.com", "16899535009"));
+        anamnesis.setReasonForVisit("primeira versao");
+
+        Anamnesis salva = anamnesisRepository.save(anamnesis);
+        entityManager.flush();
+
+        // ninguem seta na mao, quem preenche eh o spring
+        assertThat(salva.getCreatedAt()).isNotNull();
+        assertThat(salva.getUpdatedAt()).isNotNull();
+        LocalDateTime criadoEm = salva.getCreatedAt();
+
+        salva.setReasonForVisit("depois de alterar");
+        anamnesisRepository.saveAndFlush(salva);
+
+        // a data de criacao n muda quando o registro eh editado
+        assertThat(salva.getCreatedAt()).isEqualTo(criadoEm);
+        assertThat(salva.getUpdatedAt()).isAfterOrEqualTo(criadoEm);
+    }
+
+    @Test
+    void pacienteGuardaQuandoFoiCriado() {
+        Patient patient = novoPaciente("data-paciente@email.com", "40364947850");
+        entityManager.flush();
+
+        assertThat(patient.getCreatedAt()).isNotNull();
+        assertThat(patient.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
     void naoDeixaCadastrarOMesmoCpfDuasVezes() {
         novoPaciente("primeiro@email.com", "11144477735");
         entityManager.flush();

@@ -391,7 +391,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * `MINI_EXAME_ESTADO_MENTAL` é designável ao paciente, mas quem preenche é o prescritor e `MentalStateExamService` não dá baixa na tarefa. a tarefa nunca conclui (RN09)
   * `CompletedScaleInfoDTO` devolve a string fixa `"Concluído"` no lugar do resultado da escala (RF08)
   * não existe exportação em pdf nem csv (RF33)
-  * não existe trilha de auditoria: nenhuma entidade tem data de criação, data de alteração ou autor (RF31)
+  * **parcialmente resolvido**: toda entidade clínica ganhou `createdAt` e `updatedAt`, preenchidos pelo Spring. ainda falta o **autor** da alteração e o registro imutável de quem acessou o quê, que é o resto do RF31
   * `PUT /prescricao/{id}` sobrescreve a prescrição sem guardar a versão anterior (RF05)
 
 **dados e infraestrutura**

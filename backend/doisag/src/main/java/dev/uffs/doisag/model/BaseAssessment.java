@@ -1,11 +1,16 @@
 package dev.uffs.doisag.model;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import java.time.LocalDateTime;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
 
 @MappedSuperclass
 // dados que se repetem em todos os formulários
+@EntityListeners(AuditingEntityListener.class)
 public abstract class BaseAssessment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -50,5 +55,23 @@ public abstract class BaseAssessment {
 
     public void setPatient(Patient patient) {
         this.patient = patient;
+    }
+
+    // quando o registro nasceu e quando foi mexido pela ultima vez.
+    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }

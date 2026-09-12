@@ -1,5 +1,9 @@
 package dev.uffs.doisag.model;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -11,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED) // respeitar minha definição de especialização total em BD
+@EntityListeners(AuditingEntityListener.class)
 public abstract class Users implements UserDetails { // implementa a interface do spring security
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -155,5 +160,23 @@ public abstract class Users implements UserDetails { // implementa a interface d
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+    // quando o registro nasceu e quando foi mexido pela ultima vez.
+    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }

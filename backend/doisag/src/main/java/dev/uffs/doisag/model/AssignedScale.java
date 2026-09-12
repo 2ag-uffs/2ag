@@ -1,11 +1,16 @@
 package dev.uffs.doisag.model;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import dev.uffs.doisag.enums.AssignmentStatus;
 import dev.uffs.doisag.enums.ScaleType;
 
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 public class AssignedScale {
 
     @Id
@@ -93,5 +98,23 @@ public class AssignedScale {
 
     public void setCompletedDate(LocalDate completedDate) {
         this.completedDate = completedDate;
+    }
+
+    // quando o registro nasceu e quando foi mexido pela ultima vez.
+    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }
