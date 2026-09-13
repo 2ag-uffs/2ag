@@ -731,13 +731,29 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
   - o administrador, com as ações de prescritores e do sistema e o paciente identificado só pelo número.
 - **URLs:** nenhuma rota leva dado pessoal. Os caminhos usam só identificadores numéricos.
 
+**Atendimento concluído em 13/09/2026:** RF04, RF05, RF19, RF12 e RF13, com o arquivamento de paciente.
+
+- **Anulação:** consulta, prescrição e anamnese registradas por engano não são apagadas. O prescritor anula com motivo obrigatório e o registro continua no histórico, com data, motivo e autor. Uma consulta com prescrição ativa só é anulada depois da prescrição.
+- **Consulta (RF04):** o prescritor registra a consulta que já aconteceu ou completa a que estava agendada. Consulta futura é assunto da agenda.
+- **Prescrição (RF05):** a nova prescrição substitui a vigente, e a anterior fica guardada como substituída. O óleo é descrito por uma lista de canabinoides, cada um com a sua concentração, até a clínica responder a questão 1. O paciente vê as próprias prescrições em tela própria.
+- **Anamnese (RF19):** o paciente preenche e corrige a ficha. A data de preenchimento é a do dia, e o preenchimento dá baixa na tarefa enviada pelo prescritor.
+- **Histórico (RF12 e RF13):**
+  - as duas telas mostram consultas, prescrições, anamnese e escalas com os dados reais;
+  - o botão de exportar saiu do histórico do paciente até o RF33;
+  - o prescritor anula registros no próprio histórico e chega de lá às outras telas do paciente.
+- **Arquivamento de paciente:**
+  - tira o paciente da lista de ativos e da contagem do painel;
+  - encerra o acompanhamento automático, e um novo só começa depois de reativar;
+  - o paciente continua vendo o próprio histórico, e as escalas enviadas pelo prescritor continuam chegando;
+  - arquivar e reativar entram na trilha de auditoria.
+- **Escalas enviadas:** o paciente sempre recebe a escala que o prescritor envia. Reenviar uma escala ainda pendente não cria tarefa repetida.
+- **Trilha de auditoria:** a abertura do prontuário gera uma linha por visita, mesmo quando a tela carrega várias listas ao mesmo tempo.
+
 Ficam para os módulos seguintes, onde cada entidade é reescrita:
 
-- **Atendimento:**
-  - anulação de registro com motivo, que substitui a exclusão;
-  - arquivamento de paciente, que tira o paciente da lista de ativos e encerra o envio automático, mas não impede que as escalas enviadas pelo prescritor cheguem a ele;
-  - preservação da versão anterior da prescrição (RF05).
-- **Escalas:** a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou.
+- **Escalas:**
+  - a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou;
+  - os resultados do MEEM no histórico do prescritor, que ainda não têm listagem por paciente.
 - **Agenda:** o campo de observação que o paciente preenchia ao marcar consulta, que saiu por gravar texto do paciente em campo clínico.
 
 ---
