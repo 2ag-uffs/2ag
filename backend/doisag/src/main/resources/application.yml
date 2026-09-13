@@ -4,6 +4,9 @@
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    # toda rota fica embaixo de api pro front e a api dividirem a mesma origem
+    context-path: /api
 
 spring:
   datasource:
@@ -30,9 +33,6 @@ api:
       # chave q assina a sessao e tbm n tem padrao
       # pra gerar uma use openssl rand -base64 48
       secret: ${JWT_SECRET}
-  cors:
-    # origem do front q pode chamar a api
-    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}

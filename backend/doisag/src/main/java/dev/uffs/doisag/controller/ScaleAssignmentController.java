@@ -11,7 +11,6 @@ import java.net.URI;
 import dev.uffs.doisag.dto.AssignedScaleResponseDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/pacientes/{patientId}/escalas")
 public class ScaleAssignmentController {

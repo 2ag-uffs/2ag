@@ -24,8 +24,6 @@ api:
     token:
       # chave fixa so de teste. n tem valor nenhum fora daqui
       secret: chave-de-teste-do-doisag-nao-usar-em-producao-0123456789-abcdefgh
-  cors:
-    allowed-origin: http://localhost:5173
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false

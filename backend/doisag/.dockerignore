@@ -1,0 +1,4 @@
+# o docker n precisa do q o maven e a ide geram na maquina local
+target
+.idea
+*.iml

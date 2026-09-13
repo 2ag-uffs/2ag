@@ -1,10 +1,6 @@
-// cliente unico pra falar com a api.
-//
-// antes cada tela montava o fetch na mao, com o endereco do servidor
-// escrito dentro do codigo e o token lido do localStorage em cada lugar.
-// eram 29 enderecos fixos e 34 leituras de token espalhadas.
-
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// cliente unico pra falar com a api
+// o front e a api ficam na mesma origem entao todo caminho comeca com api
+const BASE_URL = "/api";
 
 const TOKEN_KEY = "authToken";
 

@@ -1,9 +1,9 @@
-# sobe o sistema inteiro: banco, api e interface
+# sobe o sistema inteiro com banco api e front
 #
-#   cp .env.example .env    (e preenche as senhas)
+#   cp .env.example .env    e preencha as senhas
 #   docker compose up
 #
-# depois abre http://localhost:5173
+# depois abra o navegador em localhost na porta 5173
 
 services:
   banco:
@@ -14,14 +14,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Sao_Paulo
+      PGTZ: America/Sao_Paulo
     volumes:
-      # os dados ficam num volume, entao nao se perdem quando o container morre
+      # os dados ficam num volume e sobrevivem quando o container morre
       - dados-do-banco:/var/lib/postgresql/data
-    ports:
-      # exposto pra vc conseguir olhar o banco com psql ou dbeaver
-      - "5432:5432"
+    # sem porta exposta o banco so eh alcancavel pela api dentro da rede do compose
     healthcheck:
-      # o backend so sobe depois q o banco responde de verdade
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
@@ -41,21 +40,24 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN}
       SEED_DADOS_TESTE: ${SEED_DADOS_TESTE}
-    ports:
-      - "8080:8080"
+      TZ: America/Sao_Paulo
+    # a api tbm n expoe porta e quem conversa com ela eh o nginx do front
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   web:
     build:
       context: ./frontend
-      args:
-        # o vite injeta isso no momento do build, n em runtime
-        VITE_API_URL: ${VITE_API_URL}
     container_name: 2ag-web
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "5173:80"
 
