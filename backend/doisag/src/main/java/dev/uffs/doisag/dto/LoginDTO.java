@@ -1,5 +1,13 @@
 package dev.uffs.doisag.dto;
 
-// dto para receber os dados de login (email e senha)
-public record LoginDTO(String email, String senha) {
+import jakarta.validation.constraints.NotBlank;
+
+// dados do formulario de login
+public record LoginDTO(
+        @NotBlank(message = "Informe o e-mail")
+        String email,
+
+        @NotBlank(message = "Informe a senha")
+        String password
+) {
 }

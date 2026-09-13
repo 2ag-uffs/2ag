@@ -1,37 +1,21 @@
 // cliente unico pra falar com a api
 // o front e a api ficam na mesma origem entao todo caminho comeca com api
+// a sessao fica num cookie httponly q o javascript nem enxerga
 const BASE_URL = "/api";
 
-const TOKEN_KEY = "authToken";
+// quem esta logado agora
+// eh carregado quando o app abre e muda no login e no logout
+let loggedUser = null;
 
-export function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
-}
-
-export function saveToken(token) {
-    localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken() {
-    localStorage.removeItem(TOKEN_KEY);
-}
-
-// le o que veio do jwt sem validar assinatura. serve so pra tela saber
-// o id e o papel de quem esta logado, quem valida de verdade eh a api
 export function getLoggedUser() {
-    const token = getToken();
-    if (!token) {
-        return null;
-    }
-    try {
-        return JSON.parse(atob(token.split(".")[1]));
-    } catch {
-        return null;
-    }
+    return loggedUser;
 }
 
-// erro da api com o que a tela precisa: o status, a mensagem geral e a
-// lista de erros por campo que o backend manda quando a validacao falha
+export function setLoggedUser(user) {
+    loggedUser = user;
+}
+
+// erro da api com o status a mensagem e os erros de cada campo
 export class ApiError extends Error {
     constructor(status, message, errors) {
         super(message || "Ocorreu um erro.");
@@ -39,29 +23,29 @@ export class ApiError extends Error {
         this.errors = errors || null;
     }
 
-    // transforma [{field, message}] em {campo: mensagem}, que eh o
-    // formato que os formularios usam
+    // transforma a lista de erros num objeto de campo e mensagem q os formularios usam
     fieldErrors() {
+        const errorsByField = {};
         if (!this.errors) {
-            return {};
+            return errorsByField;
         }
-        return this.errors.reduce((acc, erro) => {
-            acc[erro.field] = erro.message;
-            return acc;
-        }, {});
+        this.errors.forEach((fieldError) => {
+            errorsByField[fieldError.field] = fieldError.message;
+        });
+        return errorsByField;
     }
 }
 
-async function lerCorpo(response) {
+async function readBody(response) {
     if (response.status === 204) {
         return null;
     }
-    const texto = await response.text();
-    if (!texto) {
+    const text = await response.text();
+    if (!text) {
         return null;
     }
     try {
-        return JSON.parse(texto);
+        return JSON.parse(text);
     } catch {
         return null;
     }
@@ -69,36 +53,49 @@ async function lerCorpo(response) {
 
 async function request(path, options = {}) {
     const headers = {"Content-Type": "application/json", ...(options.headers || {})};
+    const response = await fetch(BASE_URL + path, {...options, headers});
+    const body = await readBody(response);
 
-    const token = getToken();
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${BASE_URL}${path}`, {...options, headers});
-    const corpo = await lerCorpo(response);
-
-    // 401 com token na mao quer dizer que a sessao acabou, ai manda pro
-    // login. 401 sem token eh so credencial errada, tipo no proprio
-    // login, e quem mostra a mensagem eh a tela.
-    // 403 eh outra coisa: esta logado mas aquilo n eh dele
+    // 401 com alguem logado quer dizer q a sessao acabou e a pessoa volta pro login
+    // 401 sem ninguem logado eh senha errada e quem mostra a mensagem eh a tela
     if (response.status === 401) {
-        const tinhaSessao = Boolean(token);
-        clearToken();
-        if (tinhaSessao && !window.location.pathname.startsWith("/login")) {
+        const hadSession = loggedUser !== null;
+        loggedUser = null;
+        if (hadSession && !window.location.pathname.startsWith("/login")) {
             window.location.href = "/login";
         }
-        const mensagem = tinhaSessao
+        const message = hadSession
             ? "Sua sessão expirou. Faça login novamente."
-            : (corpo && corpo.message) || "E-mail ou senha inválidos.";
-        throw new ApiError(401, mensagem);
+            : (body && body.message) || "E-mail ou senha inválidos.";
+        throw new ApiError(401, message);
     }
 
     if (!response.ok) {
-        throw new ApiError(response.status, corpo && corpo.message, corpo && corpo.errors);
+        throw new ApiError(response.status, body && body.message, body && body.errors);
     }
 
-    return corpo;
+    return body;
+}
+
+// pergunta pra api quem esta logado quando o app abre
+// sem sessao valida o resultado eh null
+export async function loadSession() {
+    try {
+        loggedUser = await request("/auth/me");
+    } catch {
+        loggedUser = null;
+    }
+    return loggedUser;
+}
+
+export async function logout() {
+    try {
+        await request("/auth/logout", {method: "POST"});
+    } catch {
+        // mesmo se a api falhar a tela esquece quem estava logado
+    } finally {
+        loggedUser = null;
+    }
 }
 
 export const apiService = {

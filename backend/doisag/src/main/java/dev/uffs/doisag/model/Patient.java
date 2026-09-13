@@ -5,6 +5,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import dev.uffs.doisag.enums.UserRole;
 
 import java.time.LocalDate;
 
@@ -31,5 +32,10 @@ public class Patient extends Users {
 
     public void setPrescriber(Prescriber prescriber) {
         this.prescriber = prescriber;
+    }
+
+    @Override
+    public UserRole getRole() {
+        return UserRole.PATIENT;
     }
 }

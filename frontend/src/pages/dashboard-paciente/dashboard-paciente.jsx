@@ -5,7 +5,7 @@ import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/input.css";
 import "./dashboard-paciente.css";
-import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
 
 export default function DashboardPaciente() {
     const navigate = useNavigate();
@@ -40,9 +40,9 @@ export default function DashboardPaciente() {
             .finally(() => setIsLoading(false));
     }, [navigate]);
 
-    const handleLogout = (e) => {
+    const handleLogout = async (e) => {
         e.preventDefault();
-        clearToken();
+        await logout();
         navigate("/login");
     };
 

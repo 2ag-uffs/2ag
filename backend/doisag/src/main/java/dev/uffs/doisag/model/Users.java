@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import dev.uffs.doisag.enums.UserRole;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -141,18 +142,15 @@ public abstract class Users implements UserDetails { // implementa a interface d
         this.lockedUntil = lockedUntil;
     }
 
-    // a partir daqui vou trabalhar os metodos de permissão do usuário a partir do userdetails implemnetado
+    // cada tipo de conta diz o proprio papel
+    @JsonIgnore
+    public abstract UserRole getRole();
 
-    // o papel diz o que a pessoa eh no dominio, n o quanto ela pode.
-    // antes prescritor tinha ROLE_ADMIN e "admin" naturalmente virou
-    // acesso a tudo, q foi a origem da falha de autorizacao
+    // o spring security usa o papel com o prefixo ROLE
     @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (this instanceof Prescriber) {
-            return List.of(new SimpleGrantedAuthority("ROLE_PRESCRIBER"));
-        }
-        return List.of(new SimpleGrantedAuthority("ROLE_PATIENT"));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + getRole().name()));
     }
 
     // retorna a senha criptografada do banco.

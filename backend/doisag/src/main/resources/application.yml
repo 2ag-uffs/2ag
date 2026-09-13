@@ -33,6 +33,11 @@ api:
       # chave q assina a sessao e tbm n tem padrao
       # pra gerar uma use openssl rand -base64 48
       secret: ${JWT_SECRET}
+  session:
+    # minutos q a sessao dura sem uso
+    duration-minutes: ${SESSION_DURATION_MINUTES:120}
+    # o cookie so trafega em https e no computador local sem https fica false
+    secure-cookie: ${SESSION_SECURE_COOKIE:true}
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}

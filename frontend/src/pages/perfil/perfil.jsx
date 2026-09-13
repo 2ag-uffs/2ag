@@ -17,7 +17,7 @@ const ENDERECO_VAZIO = {street: "", number: "", city: "", state: "", country: ""
 export default function Perfil() {
     const navigate = useNavigate();
     const usuarioLogado = getLoggedUser();
-    const ehPaciente = usuarioLogado?.authorities?.[0] === "ROLE_PATIENT";
+    const ehPaciente = usuarioLogado?.role === "PATIENT";
     const recurso = ehPaciente ? "paciente" : "prescritor";
 
     const [perfil, setPerfil] = useState(null);

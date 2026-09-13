@@ -1,50 +1,55 @@
 import {useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import "./login.css";
-import {apiService, saveToken, getLoggedUser, ApiError} from "../../services/api.js";
+import {apiService, setLoggedUser, ApiError} from "../../services/api.js";
+
+// tela inicial de cada perfil depois do login
+const HOME_BY_ROLE = {
+    PATIENT: "/dashboard-paciente",
+    PRESCRIBER: "/dashboard-prescritor",
+};
 
 export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
-    // estados pra controlar o carregamento e os erros
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    // quem acabou de se cadastrar cai aqui com esse aviso, em vez do
-    // alert que a tela de cadastro dava antes
-    const cadastrado = Boolean(location.state && location.state.cadastrado);
+    // quem acabou de se cadastrar chega aqui com esse aviso
+    const justRegistered = Boolean(location.state && location.state.cadastrado);
 
-    // alterei a função handleSubmit pra assíncrona, agora a gente consegue usar await para esperar a resposta da API
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (event) => {
+        event.preventDefault();
         setIsLoading(true);
         setError(null);
 
-        const email = e.target.email.value;
-        const password = e.target.password.value;
+        const email = event.target.email.value;
+        const password = event.target.password.value;
 
         try {
-            const data = await apiService.post("/auth/login", {email: email, senha: password});
-            saveToken(data.token);
+            // quem tenta entrar de novo comeca sem sessao na tela
+            setLoggedUser(null);
+            const user = await apiService.post("/auth/login", {email: email, password: password});
+            setLoggedUser(user);
 
-            const userRole = getLoggedUser()?.authorities?.[0];
-
-            if (userRole === "ROLE_PATIENT") {
-                navigate("/dashboard-paciente");
-            } else if (userRole === "ROLE_PRESCRIBER") {
-                navigate("/dashboard-prescritor");
+            const homePath = HOME_BY_ROLE[user.role];
+            if (homePath) {
+                navigate(homePath);
             } else {
-                setError("perfil de usuário não reconhecido no token");
+                setError("Perfil de usuário não reconhecido.");
             }
-
-        } catch (err) {
-            setError(err instanceof ApiError ? err.message : "falha de conexão com o servidor");
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                setError(requestError.message);
+            } else {
+                setError("Não foi possível falar com o servidor.");
+            }
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
 
-    const handleSignUp = (e) => {
-        e.preventDefault();
+    const handleSignUp = (event) => {
+        event.preventDefault();
         navigate("/sign-up");
     };
 
@@ -85,10 +90,9 @@ export default function Login() {
                         src="/images/logotipo-horizontal.svg"
                     />
                     <h2 className="login__content__title">Login</h2>
-                    {cadastrado && !error && (
+                    {justRegistered && !error && (
                         <p className="aviso">Cadastro feito. Entre com seu e-mail e senha.</p>
                     )}
-                    {/* adiconei para mostrar o erro (resp: maiqueli) */}
                     {error && <p className="login__error-message">{error}</p>}
                     <form className="login__content__form" onSubmit={handleSubmit}>
                         <div className="login__content__form__input-group">
@@ -97,6 +101,7 @@ export default function Login() {
                                 id="email"
                                 name="email"
                                 type="email"
+                                autoComplete="username"
                                 required={true}
                             />
                         </div>
@@ -106,11 +111,11 @@ export default function Login() {
                                 id="password"
                                 name="password"
                                 type="password"
+                                autoComplete="current-password"
                                 required={true}
                             />
                         </div>
                         <div className="login__content__form__actions">
-                            {/* usei o estado isLoading no botão (resp: maiqueli) */}
                             <button type="submit" disabled={isLoading}>
                                 {isLoading ? "Entrando..." : "Entrar"}
                             </button>

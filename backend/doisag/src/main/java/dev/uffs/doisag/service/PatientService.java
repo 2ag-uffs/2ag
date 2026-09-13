@@ -81,7 +81,7 @@ public class PatientService {
     }
 
     public Patient registerPatient(RegisterDTO dados) {
-        if (usersRepository.findByEmail(dados.email()) != null) {
+        if (usersRepository.findByEmail(dados.email()).isPresent()) {
             throw new ValidationException("email já cadastrado no sistema!");
         }
 
@@ -109,7 +109,7 @@ public class PatientService {
 
     public Patient registerPatientForPrescriber(PatientRegistrationDTO dados, String prescriberEmail) {
         // primeiro a gente ve se o email do paciente novo ja existe
-        if (usersRepository.findByEmail(dados.email()) != null) {
+        if (usersRepository.findByEmail(dados.email()).isPresent()) {
             throw new ValidationException("email do paciente já cadastrado no sistema!");
         }
 

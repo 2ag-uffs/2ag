@@ -3,8 +3,6 @@ package dev.uffs.doisag.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -35,11 +33,12 @@ public class SecurityConfigurations {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 // o front e a api ficam na mesma origem entao n tem cors
-                // e o token vai no cabecalho entao n tem csrf
+                // o cookie da sessao eh samesite strict entao outro site n consegue usar a sessao
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(routes -> {
                     routes.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
+                    routes.requestMatchers(HttpMethod.POST, "/auth/logout").permitAll();
                     routes.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
                     // verificacao de saude usada pelo docker
                     routes.requestMatchers(HttpMethod.GET, "/health").permitAll();
@@ -51,12 +50,6 @@ public class SecurityConfigurations {
                         .accessDeniedHandler(securityErrorHandler))
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
-    }
-
-    // o login ainda passa por aqui ate a sessao ser reescrita
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
     }
 
     @Bean

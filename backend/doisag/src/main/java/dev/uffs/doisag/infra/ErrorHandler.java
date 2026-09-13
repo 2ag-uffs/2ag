@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -100,6 +101,18 @@ public class ErrorHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> handleBadCredentials(BadCredentialsException exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos", request);
+    }
+
+    // conta desativada tentando entrar com a senha certa
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDisabledAccount(DisabledException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Conta desativada. Fale com a clínica", request);
+    }
+
+    // muitas senhas erradas seguidas
+    @ExceptionHandler(LoginBlockedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleLoginBlocked(LoginBlockedException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.TOO_MANY_REQUESTS, exception.getMessage(), request);
     }
 
     // qualquer outra falha de autenticacao

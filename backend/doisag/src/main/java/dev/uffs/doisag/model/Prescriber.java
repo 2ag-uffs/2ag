@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import dev.uffs.doisag.enums.UserRole;
 
 
 import java.time.LocalDate;
@@ -74,5 +75,10 @@ public class Prescriber extends Users {
 
     public void setRegistryType(String registryType) {
         this.registryType = registryType;
+    }
+
+    @Override
+    public UserRole getRole() {
+        return UserRole.PRESCRIBER;
     }
 }

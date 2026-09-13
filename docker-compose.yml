@@ -40,7 +40,8 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      SEED_DADOS_TESTE: ${SEED_DADOS_TESTE}
+      SEED_DADOS_TESTE: ${SEED_DADOS_TESTE:-false}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
       TZ: America/Sao_Paulo
     # a api tbm n expoe porta e quem conversa com ela eh o nginx do front
     healthcheck:

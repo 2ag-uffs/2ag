@@ -6,7 +6,7 @@ import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/input.css";
 import "./dashboard-prescritor.css";
-import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
 
 export default function DashboardPrescritor() {
     const navigate = useNavigate();
@@ -48,9 +48,9 @@ export default function DashboardPrescritor() {
         fetchData();
     }, [fetchData]);
 
-    const handleLogout = (e) => {
+    const handleLogout = async (e) => {
         e.preventDefault();
-        clearToken();
+        await logout();
         navigate("/login");
     };
 
