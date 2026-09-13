@@ -44,7 +44,11 @@ public record RegisterDTO(
 
         @NotBlank(message = "Informe a senha")
         @Pattern(regexp = PasswordRules.PATTERN, message = PasswordRules.MESSAGE)
-        String password
+        String password,
+
+        // versao do termo de consentimento q a pessoa leu e aceitou (RF36)
+        @NotBlank(message = "Para criar a conta, leia e aceite o termo de consentimento")
+        String consentTermVersion
 ) {
     // e-mail digitado no celular costuma vir com espaco no fim
     // o espaco sai antes da validacao pra n recusar um e-mail certo

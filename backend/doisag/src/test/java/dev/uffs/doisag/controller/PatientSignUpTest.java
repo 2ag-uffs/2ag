@@ -1,14 +1,18 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientInviteRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.SecureTokens;
+import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.PatientInviteService;
+import dev.uffs.doisag.service.PatientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +27,14 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// cadastro do paciente pelo link de convite (RF02.1)
+// cadastro do paciente pelo link de convite (RF02.1) com aceite do termo (RF36)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -46,6 +51,7 @@ class PatientSignUpTest {
     @Autowired private PatientInviteRepository patientInviteRepository;
     @Autowired private PatientInviteService patientInviteService;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     private Prescriber prescriber;
@@ -63,13 +69,23 @@ class PatientSignUpTest {
         return patientInviteService.createInvite(prescriber.getId()).token();
     }
 
-    // corpo do cadastro de uma pessoa q ainda n tem conta
+    // corpo do cadastro de uma pessoa q ainda n tem conta e aceitou o termo atual
     private String signUpBody(String inviteToken, String email, String cpf, String password) {
+        return signUpBodyWithTerm(inviteToken, email, cpf, password, ConsentTermService.CURRENT_VERSION);
+    }
+
+    // versao do termo nula quer dizer q a pessoa n marcou o aceite
+    private String signUpBodyWithTerm(String inviteToken, String email, String cpf, String password,
+                                      String termVersion) {
+        String termVersionJson = "null";
+        if (termVersion != null) {
+            termVersionJson = "\"" + termVersion + "\"";
+        }
         return """
                 {"inviteToken":"%s","name":"Maria da Silva","cpf":"%s","birthDate":"1990-04-12",
-                 "phone":"49999887766","email":"%s","password":"%s",
+                 "phone":"49999887766","email":"%s","password":"%s","consentTermVersion":%s,
                  "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"sc"}}
-                """.formatted(inviteToken, cpf, email, password);
+                """.formatted(inviteToken, cpf, email, password, termVersionJson);
     }
 
     private ResultActions signUp(String body) throws Exception {
@@ -196,5 +212,35 @@ class PatientSignUpTest {
 
         assertThat(notificationRepository.findAll())
                 .anyMatch(notification -> notification.getUser().getId().equals(prescriber.getId()));
+    }
+
+    @Test
+    void signUpRecordsWhichTermVersionWasAcceptedAndWhen() throws Exception {
+        signUp(signUpBody(newInviteToken(), "termo@email.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
+
+        Long patientId = usersRepository.findByEmail("termo@email.com").orElseThrow().getId();
+        List<ConsentAcceptance> acceptances = consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patientId);
+        assertThat(acceptances).hasSize(1);
+        assertThat(acceptances.get(0).getTermVersion()).isEqualTo(ConsentTermService.CURRENT_VERSION);
+        assertThat(acceptances.get(0).getAcceptedAt()).isAfter(LocalDateTime.now().minusMinutes(1));
+    }
+
+    @Test
+    void signUpWithoutAcceptingTheTermIsRejected() throws Exception {
+        signUp(signUpBodyWithTerm(newInviteToken(), "sem-termo@email.com", VALID_CPF, VALID_PASSWORD, null))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field == 'consentTermVersion')]").exists());
+
+        assertThat(usersRepository.existsByEmail("sem-termo@email.com")).isFalse();
+    }
+
+    @Test
+    void signUpWithAnOutdatedTermIsRejected() throws Exception {
+        signUp(signUpBodyWithTerm(newInviteToken(), "termo-antigo@email.com", VALID_CPF, VALID_PASSWORD, "2020-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
+
+        assertThat(usersRepository.existsByEmail("termo-antigo@email.com")).isFalse();
     }
 }

@@ -6,6 +6,7 @@ import PasswordField from "../../components/form/password-field.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
+import Modal from "../../components/modal/modal.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
@@ -26,7 +27,7 @@ const EMPTY_FORM = {
 };
 
 // confere no navegador o q da pra conferir antes de mandar pra api
-function findFormErrors(formData) {
+function findFormErrors(formData, hasAcceptedConsent) {
     const errors = {};
     if (onlyDigits(formData.cpf).length !== 11) {
         errors.cpf = "O CPF tem 11 números";
@@ -39,6 +40,9 @@ function findFormErrors(formData) {
     }
     if (formData.password !== formData.passwordConfirmation) {
         errors.passwordConfirmation = "As senhas não são iguais";
+    }
+    if (!hasAcceptedConsent) {
+        errors.consentTermVersion = "Para criar a conta, leia e aceite o termo de consentimento";
     }
     return errors;
 }
@@ -54,7 +58,7 @@ function focusFirstInvalidField() {
     }, 0);
 }
 
-// cadastro do paciente pelo link de convite (RF02.1)
+// cadastro do paciente pelo link de convite (RF02.1) com aceite do termo (RF36)
 export default function SignUp() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -62,22 +66,29 @@ export default function SignUp() {
 
     const [inviteStatus, setInviteStatus] = useState(inviteToken ? "checking" : "missing");
     const [inviteInfo, setInviteInfo] = useState(null);
+    const [consentTerm, setConsentTerm] = useState(null);
+    const [hasAcceptedConsent, setHasAcceptedConsent] = useState(false);
+    const [isTermOpen, setIsTermOpen] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [fieldErrors, setFieldErrors] = useState({});
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // confere o convite antes de mostrar o formulario
+    // confere o convite e busca o termo antes de mostrar o formulario
     useEffect(() => {
         if (!inviteToken) {
             return;
         }
 
         let isCurrentPage = true;
-        apiService.get("/invites/" + encodeURIComponent(inviteToken))
-            .then((invite) => {
+        Promise.all([
+            apiService.get("/invites/" + encodeURIComponent(inviteToken)),
+            apiService.get("/consent-term"),
+        ])
+            .then(([invite, term]) => {
                 if (isCurrentPage) {
                     setInviteInfo(invite);
+                    setConsentTerm(term);
                     setInviteStatus("valid");
                 }
             })
@@ -102,11 +113,24 @@ export default function SignUp() {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
     };
 
+    // marcar o aceite tira o aviso de erro do aceite
+    const changeConsent = (isAccepted) => {
+        setHasAcceptedConsent(isAccepted);
+        if (isAccepted) {
+            setFieldErrors((currentErrors) => ({...currentErrors, consentTermVersion: undefined}));
+        }
+    };
+
+    const acceptTerm = () => {
+        changeConsent(true);
+        setIsTermOpen(false);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setErrorMessage(null);
 
-        const formErrors = findFormErrors(formData);
+        const formErrors = findFormErrors(formData, hasAcceptedConsent);
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
             focusFirstInvalidField();
@@ -128,6 +152,7 @@ export default function SignUp() {
             },
             email: formData.email,
             password: formData.password,
+            consentTermVersion: consentTerm.version,
         };
 
         try {
@@ -317,6 +342,29 @@ export default function SignUp() {
                     />
                 </fieldset>
 
+                <div className={styles.consent}>
+                    <label className={styles.consentLabel}>
+                        <input
+                            type="checkbox"
+                            name="consentTermVersion"
+                            className={styles.consentCheckbox}
+                            checked={hasAcceptedConsent}
+                            onChange={(event) => changeConsent(event.target.checked)}
+                            aria-invalid={fieldErrors.consentTermVersion ? "true" : undefined}
+                        />
+                        <span>
+                            Li e aceito o{" "}
+                            <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
+                                termo de consentimento
+                            </button>
+                            {" "}para o uso dos meus dados de saúde no acompanhamento.
+                        </span>
+                    </label>
+                    {fieldErrors.consentTermVersion && (
+                        <span className={styles.consentError}>{fieldErrors.consentTermVersion}</span>
+                    )}
+                </div>
+
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                     {isSubmitting ? "Criando conta..." : "Criar conta"}
                 </button>
@@ -325,6 +373,15 @@ export default function SignUp() {
             <p className={styles.loginNote}>
                 Já tem conta? <Link to="/login">Entrar</Link>
             </p>
+
+            <Modal show={isTermOpen} title="Termo de consentimento" onClickClose={() => setIsTermOpen(false)}>
+                <div className={styles.termText}>{consentTerm.text}</div>
+                <div className={styles.termActions}>
+                    <button type="button" className={styles.termAcceptButton} onClick={acceptTerm}>
+                        Li e aceito
+                    </button>
+                </div>
+            </Modal>
         </AuthLayout>
     );
 }

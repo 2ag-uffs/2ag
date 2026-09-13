@@ -133,6 +133,20 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 ---
 
+## 10. Termo de consentimento do sistema
+
+**Status:** aberta · **trava:** RF36 e o início do piloto
+
+O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a data de cada aceite. O texto atual é um **rascunho técnico** e precisa ser revisado e aprovado pela clínica, de preferência com apoio jurídico, antes de qualquer paciente real.
+
+**Perguntar:**
+
+- A clínica já usa um termo de consentimento em papel? Podemos partir dele?
+- Quem responde como encarregado de dados da clínica (LGPD, art. 41) e qual contato deve aparecer no termo?
+- Os dados do sistema poderão ser usados em pesquisa, mesmo sem identificação? Se sim, isso pede um consentimento separado.
+
+---
+
 ## respondidas
 
 | Quando | Pergunta | Resposta |

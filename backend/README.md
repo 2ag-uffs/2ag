@@ -85,6 +85,14 @@ o administrador não acessa nenhum dado clínico.
 
 o banco guarda só o hash do código que vai no link.
 
+## termo de consentimento
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /consent-term` | rota pública com a versão e o texto do termo que o cadastro pede |
+
+o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data.
+
 ## erros
 
 toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. erro de validação traz também `errors`, com a mensagem de cada campo.

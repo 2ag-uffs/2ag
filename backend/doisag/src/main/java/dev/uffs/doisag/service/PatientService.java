@@ -23,17 +23,23 @@ import java.util.List;
 @Service
 public class PatientService {
 
+    public static final String OUTDATED_TERM_MESSAGE =
+            "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
+
     private final PatientRepository patientRepository;
     private final UsersRepository usersRepository;
     private final PatientInviteService patientInviteService;
+    private final ConsentTermService consentTermService;
     private final PasswordEncoder passwordEncoder;
     private NotificationService notificationService;
 
     public PatientService(PatientRepository patientRepository, UsersRepository usersRepository,
-                          PatientInviteService patientInviteService, PasswordEncoder passwordEncoder) {
+                          PatientInviteService patientInviteService, ConsentTermService consentTermService,
+                          PasswordEncoder passwordEncoder) {
         this.patientRepository = patientRepository;
         this.usersRepository = usersRepository;
         this.patientInviteService = patientInviteService;
+        this.consentTermService = consentTermService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -83,6 +89,11 @@ public class PatientService {
     // o prescritor sai do convite e o convite so vale uma vez
     @Transactional
     public Patient registerPatient(RegisterDTO registerData) {
+        // o termo aceito precisa ser o q esta valendo agora (RF36)
+        if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
+            throw new BusinessException(OUTDATED_TERM_MESSAGE);
+        }
+
         PatientInvite invite = patientInviteService.lockUsableInvite(registerData.inviteToken());
         if (invite == null) {
             throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
@@ -110,6 +121,7 @@ public class PatientService {
         Patient savedPatient = patientRepository.save(patient);
 
         patientInviteService.markAsUsed(invite, savedPatient);
+        consentTermService.registerAcceptance(savedPatient, registerData.consentTermVersion());
 
         notificationService.createNotification(prescriber, "Novo paciente vinculado",
                 savedPatient.getName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
