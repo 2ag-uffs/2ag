@@ -2,6 +2,7 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -120,10 +121,36 @@ public class AppointmentService {
         return appointmentRepository.findByPrescriberId(prescriberId);
     }
 
+    // cancelar n apaga: a consulta fica no historico com status
+    // CANCELADA. apagar perderia o registro de que ela existiu, e o
+    // paciente e o prescritor precisam poder olhar pra tras e ver isso
+    public Appointment cancel(Long id) {
+        Appointment appointment = getById(id);
+
+        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
+            throw new IllegalArgumentException("Esta consulta já está cancelada");
+        }
+        if (appointment.getStatus() == AppointmentStatus.CONCLUIDA) {
+            throw new IllegalArgumentException("Consulta já concluída não pode ser cancelada");
+        }
+
+        appointment.setStatus(AppointmentStatus.CANCELADA);
+        Appointment cancelada = appointmentRepository.save(appointment);
+        avisaDoCancelamento(cancelada);
+        return cancelada;
+    }
+
+    // apaga de vez, pra caso de consulta lancada por engano. quem quer
+    // desmarcar usa o cancel, que guarda o registro
     public void delete(Long id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Consulta não encontrada para o id :: " + id));
 
+        avisaDoCancelamento(appointment);
+        appointmentRepository.delete(appointment);
+    }
+
+    private void avisaDoCancelamento(Appointment appointment) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
         String formattedDateTime = appointment.getDateTime().format(formatter);
 
@@ -142,7 +169,5 @@ public class AppointmentService {
                 "ALERT",
                 "/agendamento-prescritor"
         );
-
-        appointmentRepository.delete(appointment);
     }
 }

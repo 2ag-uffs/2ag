@@ -655,3 +655,25 @@ textarea:focus {
     }
 }
 
+/* consulta cancelada continua na lista, mas apagada: o registro de que
+   ela existiu importa, a consulta em si n vai mais acontecer */
+.appointment-item.cancelada {
+    opacity: 0.6;
+}
+
+.appointment-item.cancelada .appointment-time,
+.appointment-item.cancelada .appointment-details h3 {
+    text-decoration: line-through;
+}
+
+.appointment-status-badge {
+    background-color: var(--color-error-soft);
+    border: 1px solid var(--color-error-border);
+    border-radius: 1rem;
+    color: var(--color-error);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.75rem;
+}
+

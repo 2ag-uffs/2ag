@@ -71,7 +71,20 @@ public class AppointmentsController {
         return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.update(id, dados)));
     }
 
-    // delete appointment
+    // cancelar. n eh delete de proposito: a consulta continua no
+    // historico com status CANCELADA, e o paciente recebe o aviso
+    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PutMapping("/{id}/cancelar")
+    public ResponseEntity<AppointmentResponseDTO> cancel(@PathVariable Long id,
+                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        Appointment atual = appointmentService.getById(id);
+        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.cancel(id)));
+    }
+
+    // apaga de vez, pra consulta lancada por engano
     @PreAuthorize("hasRole('PRESCRIBER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id,

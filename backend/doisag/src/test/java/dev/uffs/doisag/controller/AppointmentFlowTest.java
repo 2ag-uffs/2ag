@@ -176,8 +176,42 @@ class AppointmentFlowTest {
         assertThat(alterada.get("patientName").asText()).isEqualTo("Paciente da agenda");
     }
 
+    // cancelar guarda o registro em vez de apagar: quem olha o historico
+    // precisa ver que a consulta existiu e foi desmarcada
     @Test
-    void cancelarTiraAConsultaDaAgenda() throws Exception {
+    void cancelarMarcaComoCanceladaSemApagar() throws Exception {
+        Long id = marcaConsulta("2026-10-01T09:00:00", "PRESENCIAL", 60).get("id").asLong();
+
+        String resposta = mockMvc.perform(put("/consulta/" + id + "/cancelar")
+                        .header("Authorization", tokenPrescritor))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(json.readTree(resposta).get("status").asText()).isEqualTo("CANCELADA");
+
+        String lista = mockMvc.perform(get("/consulta").header("Authorization", tokenPrescritor))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode consultas = json.readTree(lista);
+        assertThat(consultas).hasSize(1);
+        assertThat(consultas.get(0).get("status").asText()).isEqualTo("CANCELADA");
+    }
+
+    @Test
+    void naoCancelaDuasVezesAMesmaConsulta() throws Exception {
+        Long id = marcaConsulta("2026-10-01T09:00:00", "PRESENCIAL", 60).get("id").asLong();
+
+        mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenPrescritor))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenPrescritor))
+                .andExpect(status().isBadRequest());
+    }
+
+    // apagar continua existindo pra consulta lancada por engano
+    @Test
+    void apagarTiraAConsultaDaLista() throws Exception {
         Long id = marcaConsulta("2026-10-01T09:00:00", "PRESENCIAL", 60).get("id").asLong();
 
         mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenPrescritor))
@@ -199,6 +233,9 @@ class AppointmentFlowTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenOutroPrescritor))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenOutroPrescritor))
                 .andExpect(status().isForbidden());
 
         String lista = mockMvc.perform(get("/consulta").header("Authorization", tokenOutroPrescritor))

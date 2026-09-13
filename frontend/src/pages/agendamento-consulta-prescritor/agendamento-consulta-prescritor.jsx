@@ -19,6 +19,17 @@ const dataLocal = (date) => {
     return `${ano}-${mes}-${dia}`;
 };
 
+// consulta cancelada continua na lista, pra ficar registrado que
+// existiu, mas o horario dela volta a ficar livre
+const cancelada = (consulta) => consulta.status === "CANCELADA";
+
+const STATUS_LEGIVEL = {
+    AGENDADA: "Agendada",
+    EM_ANDAMENTO: "Em andamento",
+    CONCLUIDA: "Concluída",
+    CANCELADA: "Cancelada",
+};
+
 // a api guarda um instante so (dateTime) mais a duracao. a agenda
 // trabalha com data, hora de inicio e hora de fim, entao a conversao
 // fica aqui na borda, em vez de espalhada pela tela
@@ -131,6 +142,7 @@ export default function AgendamentoPrescritor() {
     const isTimeSlotOccupied = (date, time) => {
         const dateString = dataLocal(date);
         return appointments.some(apt =>
+            !cancelada(apt) &&
             apt.data === dateString &&
             apt.horarioInicio <= time &&
             apt.horarioFim > time
@@ -140,6 +152,7 @@ export default function AgendamentoPrescritor() {
     const getAppointmentAtTime = (date, time) => {
         const dateString = dataLocal(date);
         return appointments.find(apt =>
+            !cancelada(apt) &&
             apt.data === dateString &&
             apt.horarioInicio <= time &&
             apt.horarioFim > time
@@ -218,16 +231,15 @@ export default function AgendamentoPrescritor() {
         }
     };
 
-    // o backend trata cancelar como apagar, e eh o delete que dispara a
-    // notificacao pro paciente. existe um status CANCELADA no enum, que
-    // seria melhor por guardar o registro, mas isso eh decisao do modelo
+    // cancelar muda o status, n apaga: o registro fica no historico e o
+    // horario volta a ficar livre na grade
     const handleCancelAppointment = async () => {
         setConfirmandoCancelamento(false);
         const nome = editingAppointment.pacienteNome;
         setErro(null);
         setSalvando(true);
         try {
-            await apiService.delete(`/consulta/${editingAppointment.id}`);
+            await apiService.put(`/consulta/${editingAppointment.id}/cancelar`);
             await carregar();
             setAviso(`Consulta de ${nome} cancelada.`);
             setShowEditModal(false);
@@ -358,7 +370,10 @@ export default function AgendamentoPrescritor() {
                                 </div>
                             ) : (
                                 getTodayAppointments().map(appointment => (
-                                    <div key={appointment.id} className="appointment-item">
+                                    <div
+                                        key={appointment.id}
+                                        className={`appointment-item ${cancelada(appointment) ? "cancelada" : ""}`}
+                                    >
                                         <div className="appointment-time">{appointment.horarioInicio}</div>
                                         <div className="appointment-details">
                                             <h3>{appointment.pacienteNome}</h3>
@@ -366,17 +381,25 @@ export default function AgendamentoPrescritor() {
                                             <span className={`appointment-type-badge ${appointment.tipo}`}>
                                                 {appointment.tipo}
                                             </span>
+                                            {cancelada(appointment) && (
+                                                <span className="appointment-status-badge">Cancelada</span>
+                                            )}
                                         </div>
                                         <div className="appointment-actions">
-                                            <button
-                                                className="button-secondary"
-                                                onClick={() => {
-                                                    setEditingAppointment(appointment);
-                                                    setShowEditModal(true);
-                                                }}
-                                            >
-                                                Editar
-                                            </button>
+                                            {/* consulta cancelada n abre pra editar */}
+                                            {!cancelada(appointment) && (
+                                                <button
+                                                    type="button"
+                                                    className="button-secondary"
+                                                    onClick={() => {
+                                                        setEditingAppointment(appointment);
+                                                        setObservacoesEdicao(appointment.observacoes);
+                                                        setShowEditModal(true);
+                                                    }}
+                                                >
+                                                    Editar
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -522,7 +545,7 @@ export default function AgendamentoPrescritor() {
                                 <p>Data: {new Date(editingAppointment.data).toLocaleDateString("pt-BR")}</p>
                                 <p>Horário: {editingAppointment.horarioInicio} - {editingAppointment.horarioFim}</p>
                                 <p>Tipo: {editingAppointment.tipo}</p>
-                                <p>Status: {editingAppointment.status}</p>
+                                <p>Status: {STATUS_LEGIVEL[editingAppointment.status] || editingAppointment.status}</p>
                             </div>
 
                             <div className="form-group">
