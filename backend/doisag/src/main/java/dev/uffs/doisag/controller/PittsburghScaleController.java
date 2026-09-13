@@ -56,13 +56,4 @@ public class PittsburghScaleController {
             PittsburghScale updatedScale = pittsburghScaleService.update(id, scaleDetails);
             return ResponseEntity.ok(updatedScale);
     }
-
-    // endpoint para DELETAR uma escala pittsburgh
-    // DELETE /escala-pittsburgh/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_PITTSBURGH', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            pittsburghScaleService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

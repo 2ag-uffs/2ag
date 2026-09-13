@@ -56,13 +56,4 @@ public class PainLogController {
             PainLog updatedLog = painLogService.update(id, logDetails);
             return ResponseEntity.ok(updatedLog);
     }
-
-    // endpoint para DELETAR um registro de dor
-    // DELETE /registro-dor/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            painLogService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

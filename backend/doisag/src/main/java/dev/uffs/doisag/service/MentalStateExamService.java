@@ -97,12 +97,4 @@ public class MentalStateExamService {
 
         return mentalStateExamRepository.save(existingExam);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        if (!mentalStateExamRepository.existsById(id)) {
-            throw new EntityNotFoundException("exame de estado mental não encontrado com o id: " + id);
-        }
-        mentalStateExamRepository.deleteById(id);
-    }
 }

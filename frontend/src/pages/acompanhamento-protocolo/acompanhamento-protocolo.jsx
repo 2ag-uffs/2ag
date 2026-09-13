@@ -110,7 +110,7 @@ export default function AcompanhamentoProtocolo() {
     const encerrar = async () => {
         setConfirmandoEncerrar(false);
         try {
-            await apiService.delete(`/pacientes/${patientId}/acompanhamento`);
+            await apiService.put(`/pacientes/${patientId}/acompanhamento/encerrar`);
             carregar();
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível encerrar.");

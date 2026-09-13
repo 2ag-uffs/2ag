@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -234,21 +233,6 @@ class AppointmentFlowTest {
 
         mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenPrescritor))
                 .andExpect(status().isBadRequest());
-    }
-
-    // apagar continua existindo pra consulta lancada por engano
-    @Test
-    void apagarTiraAConsultaDaLista() throws Exception {
-        Long id = marcaConsulta(DAQUI_A_UM_MES + "T09:00:00", "PRESENCIAL", 60).get("id").asLong();
-
-        mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenPrescritor))
-                .andExpect(status().isNoContent());
-
-        String lista = mockMvc.perform(get("/consulta").header("Authorization", tokenPrescritor))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(json.readTree(lista)).isEmpty();
     }
 
     // ---------- RF10: o paciente marca a propria consulta ----------
@@ -471,9 +455,6 @@ class AppointmentFlowTest {
         Long id = marcaConsulta(DAQUI_A_UM_MES + "T09:00:00", "PRESENCIAL", 60).get("id").asLong();
 
         mockMvc.perform(get("/consulta/" + id).header("Authorization", tokenOutroPrescritor))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenOutroPrescritor))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenOutroPrescritor))

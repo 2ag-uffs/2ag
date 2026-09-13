@@ -80,13 +80,4 @@ public class FollowUpService {
 
         return followUpRepository.save(followUp);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o acompanhamento existe antes de deletar
-        if (!followUpRepository.existsById(id)) {
-            throw new EntityNotFoundException("follow-up não encontrado com o id: " + id);
-        }
-        followUpRepository.deleteById(id);
-    }
 }

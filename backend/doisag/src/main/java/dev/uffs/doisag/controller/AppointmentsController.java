@@ -105,17 +105,4 @@ public class AppointmentsController {
         }
         return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.cancel(id)));
     }
-
-    // apaga de vez, pra consulta lancada por engano
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id,
-                                       @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        appointmentService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
 }

@@ -7,7 +7,6 @@ import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.model.Appointment;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -95,14 +94,5 @@ public class PrescriptionService {
 
     public List<Prescription> getByAppointmentId(Long appointmentId) {
         return prescriptionRepository.findByAppointmentId(appointmentId);
-    }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se a prescrição existe antes de deletar
-        if (!prescriptionRepository.existsById(id)) {
-            throw new EntityNotFoundException("prescrição não encontrada com o id: " + id);
-        }
-        prescriptionRepository.deleteById(id);
     }
 }

@@ -101,13 +101,4 @@ public class HamiltonScaleService {
 
         return hamiltonScaleRepository.save(existingScale);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se a escala existe antes de deletar
-        if (!hamiltonScaleRepository.existsById(id)) {
-            throw new EntityNotFoundException("escala hamilton não encontrada com o id: " + id);
-        }
-        hamiltonScaleRepository.deleteById(id);
-    }
 }

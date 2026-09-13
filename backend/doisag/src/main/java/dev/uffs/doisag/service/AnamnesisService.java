@@ -68,13 +68,4 @@ public class AnamnesisService {
 
         return anamnesisRepository.save(anamnesis);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se a anamnese existe antes de deletar
-        if (!anamnesisRepository.existsById(id)) {
-            throw new EntityNotFoundException("anamnese não encontrada com o id: " + id);
-        }
-        anamnesisRepository.deleteById(id);
-    }
 }

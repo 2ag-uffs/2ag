@@ -116,13 +116,4 @@ public class SleepLogService {
         return sleepLogRepository.save(existingLog);
     }
 
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o registro de sono existe antes de deletar
-        if (!sleepLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("registro de sono não encontrado com o id: " + id);
-        }
-        sleepLogRepository.deleteById(id);
-    }
 }

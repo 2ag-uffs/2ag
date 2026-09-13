@@ -53,13 +53,4 @@ public class MentalStateExamController {
             MentalStateExam updatedExam = mentalStateExamService.update(id, examDetails);
             return ResponseEntity.ok(updatedExam);
     }
-
-    // endpoint para DELETAR um exame
-    // DELETE /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            mentalStateExamService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

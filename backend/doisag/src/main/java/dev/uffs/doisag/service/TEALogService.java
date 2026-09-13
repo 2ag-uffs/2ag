@@ -85,12 +85,4 @@ public class TEALogService {
 
         return teaLogRepository.save(existingLog);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        if (!teaLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("registro tea não encontrado com o id: " + id);
-        }
-        teaLogRepository.deleteById(id);
-    }
 }

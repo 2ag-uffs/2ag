@@ -56,13 +56,4 @@ public class FollowUpController {
             FollowUp updatedFollowUp = followUpService.update(id, followUpDetails);
             return ResponseEntity.ok(updatedFollowUp);
     }
-
-    // endpoint para DELETAR um followup
-    // DELETE /acompanhamento/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        followUpService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
 }

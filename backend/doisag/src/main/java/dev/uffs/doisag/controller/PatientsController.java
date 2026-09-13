@@ -49,12 +49,4 @@ public class PatientsController {
     public ResponseEntity<PatientResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(new PatientResponseDTO(patientService.getById(id)));
     }
-
-    // delete patient. so o prescritor que acompanha o paciente
-    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        patientService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
 }

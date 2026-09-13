@@ -56,13 +56,4 @@ public class AnamnesisController {
             Anamnesis updatedAnamnesis = anamnesisService.update(id, anamnesisDetails);
             return ResponseEntity.ok(updatedAnamnesis);
     }
-
-    // endpoint para DELETAR uma anamnese
-    // DELETE /anamnese/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            anamnesisService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

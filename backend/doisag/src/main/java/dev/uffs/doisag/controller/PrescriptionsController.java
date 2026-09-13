@@ -3,7 +3,6 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.dto.PrescriptionUpdateDTO;
-import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.service.PrescriptionService;
 import org.springframework.http.HttpStatus;
@@ -58,19 +57,6 @@ public class PrescriptionsController {
     public ResponseEntity<PrescriptionResponseDTO> update(@PathVariable Long id, @RequestBody PrescriptionUpdateDTO dto) {
             Prescription updatedPrescription = prescriptionService.update(id, dto);
             return ResponseEntity.ok(new PrescriptionResponseDTO(updatedPrescription));
-    }
-
-    // endpoint para DELETAR uma prescrição
-    // DELETE /prescricao/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @DeleteMapping("/prescricao/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        try {
-            prescriptionService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
     }
 
     @PreAuthorize("@patientAccess.canAccessAppointment(#appointmentId, authentication)")

@@ -10,7 +10,6 @@ import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -58,12 +57,6 @@ public class PatientService {
 
     public List<Patient> getPatientsByPrescriberId(Long prescriberId) {
         return patientRepository.findAllByPrescriberId(prescriberId);
-    }
-
-    public void delete(Long id) {
-        Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado com o id: " + id));
-        patientRepository.delete(patient);
     }
 
     // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)

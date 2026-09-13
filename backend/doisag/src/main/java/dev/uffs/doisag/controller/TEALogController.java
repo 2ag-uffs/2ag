@@ -56,13 +56,4 @@ public class TEALogController {
             TEALog updatedLog = teaLogService.update(id, logDetails);
             return ResponseEntity.ok(updatedLog);
     }
-
-    // endpoint para DELETAR um registro de tea
-    // DELETE /registro-tea/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            teaLogService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

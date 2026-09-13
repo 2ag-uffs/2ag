@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -293,12 +292,6 @@ class AuthorizationRulesTest {
     @Test
     void pacienteNaoListaPacientes() throws Exception {
         mockMvc.perform(get("/paciente").header("Authorization", tokenPatientA))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void pacienteNaoApagaPrescricao() throws Exception {
-        mockMvc.perform(delete("/prescricao/1").header("Authorization", tokenPatientA))
                 .andExpect(status().isForbidden());
     }
 

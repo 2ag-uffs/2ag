@@ -66,13 +66,4 @@ public class PainLogService {
 
         return painLogRepository.save(existingLog);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o diário de dor existe antes de deletar
-        if (!painLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("diário de dor não encontrado com o id: " + id);
-        }
-        painLogRepository.deleteById(id);
-    }
 }

@@ -56,13 +56,4 @@ public class HamiltonScaleController {
             HamiltonScale updatedScale = hamiltonScaleService.update(id, scaleDetails);
             return ResponseEntity.ok(updatedScale);
     }
-
-    // endpoint para DELETAR uma escala hamilton
-    // DELETE /escala-hamilton/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            hamiltonScaleService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }

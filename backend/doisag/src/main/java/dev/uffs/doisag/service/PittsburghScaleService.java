@@ -237,12 +237,4 @@ public class PittsburghScaleService {
 
         return pittsburghScaleRepository.save(existingScale);
     }
-
-    // DELETE
-    public void delete(Long id) {
-        if (!pittsburghScaleRepository.existsById(id)) {
-            throw new EntityNotFoundException("escala pittsburgh não encontrada com o id: " + id);
-        }
-        pittsburghScaleRepository.deleteById(id);
-    }
 }

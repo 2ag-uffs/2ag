@@ -11,7 +11,6 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -189,16 +188,6 @@ public class AppointmentService {
         Appointment cancelada = appointmentRepository.save(appointment);
         avisaDoCancelamento(cancelada);
         return cancelada;
-    }
-
-    // apaga de vez, pra caso de consulta lancada por engano. quem quer
-    // desmarcar usa o cancel, que guarda o registro
-    public void delete(Long id) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Consulta não encontrada para o id :: " + id));
-
-        avisaDoCancelamento(appointment);
-        appointmentRepository.delete(appointment);
     }
 
     // RN08: dois agendamentos do mesmo prescritor n podem ocupar o

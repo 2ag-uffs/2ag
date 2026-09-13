@@ -56,13 +56,4 @@ public class SleepLogController {
             SleepLog updatedLog = sleepLogService.update(id, logDetails);
             return ResponseEntity.ok(updatedLog);
     }
-
-    // endpoint para DELETAR um registro de sono
-    // DELETE /registro-sono/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            sleepLogService.delete(id);
-            return ResponseEntity.noContent().build();
-    }
 }
