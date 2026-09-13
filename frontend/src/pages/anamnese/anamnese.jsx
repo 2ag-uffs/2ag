@@ -1,25 +1,12 @@
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useEffect, useState} from 'react';
+import {useNavigate} from 'react-router';
 import './anamnese.css';
 import '../../styles/colors.css';
 import '../../styles/fonts.css';
 import '../../styles/button.css';
 import '../../styles/input.css';
 import Header from "../../components/header/header.jsx";
-
-// funcao auxiliar pra pegar os dados do usuario do token
-function getUserDataFromToken() {
-    const token = localStorage.getItem("authToken");
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        // retorna o id e o nome
-        return {id: payload.id, name: payload.name};
-    } catch (e) {
-        console.error("Erro ao decodificar o token:", e);
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function Anamnese() {
     const navigate = useNavigate();
@@ -54,7 +41,7 @@ export default function Anamnese() {
 
     // protege a rota e pega dados do usuario
     useEffect(() => {
-        const user = getUserDataFromToken();
+        const user = getLoggedUser();
         if (!user) {
             navigate("/login");
         } else {
@@ -107,33 +94,10 @@ export default function Anamnese() {
         };
 
         try {
-            const token = localStorage.getItem("authToken");
-            const response = await fetch("http://localhost:8080/anamnese", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.status === 401 || response.status === 403) {
-                throw new Error("Sua sessão expirou. Por favor, faça o login novamente!");
-            }
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Falha ao enviar a ficha de anamnese :c");
-            }
-
-            alert('Ficha de Anamnese enviada com sucesso!');
-            navigate('/dashboard-paciente');
-
+            await apiService.post("/anamnese", payload);
+            navigate('/dashboard-paciente', {state: {aviso: "Ficha de anamnese enviada."}});
         } catch (err) {
-            setError(err.message);
-            if (err.message.includes("sessão expirou")) {
-                localStorage.removeItem("authToken");
-                navigate('/login');
-            }
+            setError(err instanceof ApiError ? err.message : "Falha ao enviar a ficha de anamnese.");
         } finally {
             setIsLoading(false);
         }

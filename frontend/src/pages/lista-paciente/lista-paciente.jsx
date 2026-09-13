@@ -1,19 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import './lista-paciente.css';
 import '../../styles/colors.css';
 import '../../styles/fonts.css';
 import '../../styles/button.css';
 import Header from "../../components/header/header.jsx";
-
-// Função para decodificar o token e obter o ID do prescritor
-function parseJwt(token) {
-    try {
-        return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function ListaPacientes() {
     const navigate = useNavigate();
@@ -23,41 +15,19 @@ export default function ListaPacientes() {
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        const fetchPacientes = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                navigate("/login");
-                return;
-            }
+        const prescritor = getLoggedUser();
+        if (!prescritor) {
+            navigate("/login");
+            return;
+        }
 
-            const decodedToken = parseJwt(token);
-            const prescriberId = decodedToken?.id;
-
-            if (!prescriberId) {
-                setError("Não foi possível identificar o prescritor.");
-                setIsLoading(false);
-                return;
-            }
-
-            try {
-                const response = await fetch(`http://localhost:8080/paciente/prescritor/${prescriberId}`, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Erro ao buscar pacientes: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                setPacientes(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchPacientes();
+        apiService
+            .get(`/paciente/prescritor/${prescritor.id}`)
+            .then(setPacientes)
+            .catch((err) => {
+                setError(err instanceof ApiError ? err.message : "Erro ao buscar pacientes.");
+            })
+            .finally(() => setIsLoading(false));
     }, [navigate]);
 
     const handleSelectScales = (pacienteId) => {

@@ -1,19 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Modal from "../../components/modal/modal";
 import "../../styles/button.css";
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/input.css";
 import "./dashboard-prescritor.css";
-
-function parseJwt(token) {
-    try {
-        return JSON.parse(atob(token.split(".")[1]));
-    } catch (e) {
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/api.js";
 
 export default function DashboardPrescritor() {
     const navigate = useNavigate();
@@ -28,57 +21,25 @@ export default function DashboardPrescritor() {
     const [cpf, setCpf] = useState("");
 
     const fetchData = useCallback(async () => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            setError("Token de autenticação não encontrado.");
-            setIsLoading(false);
+        const usuario = getLoggedUser();
+        if (!usuario) {
             navigate("/login");
             return;
         }
 
-        const decodedToken = parseJwt(token);
-        const userId = decodedToken?.id;
-
-        if (!userId) {
-            setError(
-                "Não foi possível obter o ID do usuário a partir do token.",
-            );
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const [prescritorResponse, dashboardResponse] = await Promise.all([
-                fetch(`http://localhost:8080/prescritor/${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                }),
-                fetch(`http://localhost:8080/dashboard/prescritor/${userId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                }),
+            const [prescritor, dashboard] = await Promise.all([
+                apiService.get(`/prescritor/${usuario.id}`),
+                apiService.get(`/dashboard/prescritor/${usuario.id}`),
             ]);
-
-            if (!prescritorResponse.ok) {
-                throw new Error(
-                    `Falha ao buscar dados do prescritor (Erro ${prescritorResponse.status})`,
-                );
-            }
-            if (!dashboardResponse.ok) {
-                throw new Error(
-                    `Falha ao buscar dados do painel (Erro ${dashboardResponse.status})`,
-                );
-            }
-
-            const prescritorData = await prescritorResponse.json();
-            const dashboardApiData = await dashboardResponse.json();
-
-            setPrescritorInfo(prescritorData);
-            setDashboardData(dashboardApiData);
+            setPrescritorInfo(prescritor);
+            setDashboardData(dashboard);
         } catch (err) {
-            setError(err.message);
+            setError(err instanceof ApiError ? err.message : "Erro ao carregar o painel.");
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
         fetchData();
@@ -86,7 +47,7 @@ export default function DashboardPrescritor() {
 
     const handleLogout = (e) => {
         e.preventDefault();
-        localStorage.removeItem("authToken");
+        clearToken();
         navigate("/login");
     };
 
@@ -160,48 +121,24 @@ export default function DashboardPrescritor() {
             birthDate: form.dataNascimento.value,
             phone: form.telefone.value.replace(/\D/g, ""),
             address: addressObject,
-            professionalCode: "abc12",
         };
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-            setError("Token de autenticação não encontrado.");
-            setIsCreatingPatient(false);
-            navigate("/login");
-            return;
-        }
+
+        // o vinculo com o prescritor sai do token no backend, entao o
+        // professionalCode n precisa ir no corpo. ia um "abc12" fixo
         try {
-            const response = await fetch(
-                "http://localhost:8080/paciente/cadastrar-para-prescritor",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(data),
-                },
-            );
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.errors) {
-                    const newErrors = errorData.errors.reduce((acc, error) => {
-                        acc[error.field] = error.message;
-                        return acc;
-                    }, {});
-                    setFormErrors(newErrors);
-                } else {
-                    setFormErrors({
-                        general: errorData.message || "Ocorreu um erro.",
-                    });
-                }
-                throw new Error("Erro de validação");
-            }
+            await apiService.post("/paciente/cadastrar-para-prescritor", data);
             setShowModal(false);
             setCpf("");
-            alert(`Cadastro do paciente realizado com sucesso!`);
             fetchData();
         } catch (err) {
-            console.error(err.message);
+            if (err instanceof ApiError) {
+                const porCampo = err.fieldErrors();
+                setFormErrors(
+                    Object.keys(porCampo).length > 0 ? porCampo : {general: err.message},
+                );
+            } else {
+                setFormErrors({general: "Não foi possível falar com o servidor."});
+            }
         } finally {
             setIsCreatingPatient(false);
         }

@@ -445,3 +445,7 @@ textarea:focus {
     }
 }
 
+.agendamento-erro {
+    color: var(--color-error);
+    margin-bottom: 1rem;
+}

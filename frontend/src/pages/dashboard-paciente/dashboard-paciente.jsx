@@ -1,21 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import "../../styles/button.css";
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/input.css";
 import "./dashboard-paciente.css";
-
-function parseJwt(token) {
-    try {
-        return JSON.parse(atob(token.split(".")[1]));
-    } catch (e) {
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/api.js";
 
 export default function DashboardPaciente() {
     const navigate = useNavigate();
+    const location = useLocation();
+    // quem acabou de salvar um formulario chega aqui com esse aviso,
+    // no lugar do alert que cada tela dava antes
+    const aviso = location.state && location.state.aviso;
 
     const [pacienteInfo, setPacienteInfo] = useState(null);
     const [dashboardData, setDashboardData] = useState(null);
@@ -23,68 +20,35 @@ export default function DashboardPaciente() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchData = async () => {
-            const token = localStorage.getItem("authToken");
-            if (!token) {
-                setError("Token não encontrado.");
-                navigate("/login");
-                return;
-            }
+        const usuario = getLoggedUser();
+        if (!usuario) {
+            navigate("/login");
+            return;
+        }
 
-            const decodedToken = parseJwt(token);
-            const userId = decodedToken?.id;
-            if (!userId) {
-                setError("Usuário inválido.");
-                navigate("/login");
-                return;
-            }
-
-            try {
-                const [pacienteRes, dashRes] = await Promise.all([
-                    fetch(`http://localhost:8080/paciente/${userId}`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }),
-                    fetch(
-                        `http://localhost:8080/dashboard/paciente/${userId}`,
-                        {
-                            headers: { Authorization: `Bearer ${token}` },
-                        },
-                    ),
-                ]);
-
-                if (!pacienteRes.ok) throw new Error("Erro ao buscar paciente");
-                if (!dashRes.ok)
-                    throw new Error("Erro ao buscar dados da dashboard");
-
-                const pacienteData = await pacienteRes.json();
-                const dashboard = await dashRes.json();
-
-                setPacienteInfo(pacienteData);
+        Promise.all([
+            apiService.get(`/paciente/${usuario.id}`),
+            apiService.get(`/dashboard/paciente/${usuario.id}`),
+        ])
+            .then(([paciente, dashboard]) => {
+                setPacienteInfo(paciente);
                 setDashboardData(dashboard);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchData();
+            })
+            .catch((err) => {
+                setError(err instanceof ApiError ? err.message : "Erro ao carregar a dashboard.");
+            })
+            .finally(() => setIsLoading(false));
     }, [navigate]);
 
     const handleLogout = (e) => {
         e.preventDefault();
-        localStorage.removeItem("authToken");
+        clearToken();
         navigate("/login");
-        window.location.reload();
     };
 
     const handleWeeklyMonitoring = () => navigate("/acompanhamento-paciente");
     const handleAgendarConsulta = () => navigate("/agendamento-consulta");
-    // falta ajustar com o retorno do backend para redirecionar para a escala hamilton
-    const handleOpenHamAScale = () => navigate("/escala-hamilton");
     const handleNotificacoes = () => navigate("/notificacoes-paciente");
-    // falta ajustar com o retorno do backend para redirecionar para a diária do sono
-    const handleSleep = () => navigate("/diario-sono");
     const handleAnamnese = () => navigate("/anamnese");
     const handleProgresso = () => navigate("/progresso");
     const handleEscalas = () => {
@@ -137,6 +101,7 @@ export default function DashboardPaciente() {
             </header>
 
             <main className="dashboard-main">
+                {aviso && <p className="dashboard-aviso">{aviso}</p>}
                 <div className="dashboard-welcome">
                     <h1>Painel do Paciente!</h1>
                     <p>

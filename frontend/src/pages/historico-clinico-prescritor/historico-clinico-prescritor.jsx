@@ -5,9 +5,7 @@ import '../../styles/colors.css';
 import '../../styles/fonts.css';
 import '../../styles/button.css';
 import Header from "../../components/header/header.jsx";
-import React from "react";
-
-const API_BASE_URL = 'http://localhost:8080';
+import {apiService} from "../../services/api.js";
 
 export default function HistoricoClinicoPrescritor() {
     const navigate = useNavigate();
@@ -24,34 +22,9 @@ export default function HistoricoClinicoPrescritor() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const getAuthToken = () => {
-        return localStorage.getItem('authToken');
-    };
-
-    const fetchWithAuth = async (url) => {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('Token de autenticação não encontrado');
-        }
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-        }
-
-        return response.json();
-    };
-
     const buscarDadosPaciente = async () => {
         try {
-            const dadosBasicos = await fetchWithAuth(`${API_BASE_URL}/paciente/${pacienteId}`);
+            const dadosBasicos = await apiService.get(`/paciente/${pacienteId}`);
             return dadosBasicos;
         } catch (error) {
             console.error('Erro ao buscar dados básicos do paciente:', error);
@@ -61,7 +34,7 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarAnamnese = async () => {
         try {
-            const anamneses = await fetchWithAuth(`${API_BASE_URL}/anamnese`);
+            const anamneses = await apiService.get(`/anamnese`);
             const anamnesePaciente = anamneses.find(anamnese => anamnese.patient?.id === parseInt(pacienteId));
             return anamnesePaciente?.description || 'Nenhuma informação de anamnese registrada.';
         } catch (error) {
@@ -72,7 +45,7 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarConsultas = async () => {
         try {
-            const consultas = await fetchWithAuth(`${API_BASE_URL}/consulta`);
+            const consultas = await apiService.get(`/consulta`);
             const consultasPaciente = consultas.filter(consulta => consulta.patient?.id === parseInt(pacienteId));
 
             const diagnosticos = consultasPaciente.map(consulta => ({
@@ -96,7 +69,7 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarPrescricoes = async () => {
         try {
-            const prescricoes = await fetchWithAuth(`${API_BASE_URL}/prescricao`);
+            const prescricoes = await apiService.get(`/prescricao`);
             const prescricoesPaciente = prescricoes.filter(prescricao => prescricao.patient?.id === parseInt(pacienteId));
 
             return prescricoesPaciente.map(prescricao => ({
@@ -148,6 +121,9 @@ export default function HistoricoClinicoPrescritor() {
         };
 
         carregarDados();
+        // as funcoes de busca so dependem do pacienteId, que ja esta
+        // na lista. incluir elas aqui recarregaria a cada render
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pacienteId]);
 
     const handleBack = () => {

@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import {useState} from "react";
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/button.css";
@@ -6,19 +6,7 @@ import "../../styles/input.css";
 import "./agendamento-consulta-paciente.css";
 import {useNavigate} from "react-router";
 import Header from "../../components/header/header.jsx";
-
-
-function getUserIdFromToken() {
-    const token = localStorage.getItem("authToken");
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.id;
-    } catch (e) {
-        console.error("Erro ao decodificar o token:", e);
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function AgendamentoConsultaPaciente() {
     const navigate = useNavigate();
@@ -29,11 +17,8 @@ export default function AgendamentoConsultaPaciente() {
     const [selectedTime, setSelectedTime] = useState(null);
     const [consultaType, setConsultaType] = useState("presencial");
     const [observacoes, setObservacoes] = useState("");
-    const [notificacoes, setNotificacoes] = useState({
-        email: true,
-        sms: false,
-        whatsapp: true
-    });
+    const [erro, setErro] = useState(null);
+    const [enviando, setEnviando] = useState(false);
 
     // Função auxiliar para obter datas futuras
     const getFutureDate = (days) => {
@@ -97,50 +82,43 @@ export default function AgendamentoConsultaPaciente() {
         setSelectedTime(time);
     };
 
+    // atencao: hoje o POST /consulta exige hasRole('PRESCRIBER'), entao
+    // esta tela recebe 403. paciente n agenda sozinho no backend atual,
+    // quem marca eh o prescritor. deixei a chamada certa pra quando a
+    // clinica decidir se paciente pode ou n marcar direto
     const handleConfirmarAgendamento = async () => {
         if (!selectedPrescritor || !selectedDate || !selectedTime) {
-            alert("Por favor, selecione prescritor, data e horário.");
+            setErro("Selecione prescritor, data e horário.");
             return;
         }
 
-        const token = localStorage.getItem("authToken");
-        const pacienteId = getUserIdFromToken();
-
-        if (!token || !pacienteId) {
-            alert("Usuário não autenticado.");
+        const usuarioLogado = getLoggedUser();
+        if (!usuarioLogado) {
             navigate("/login");
             return;
         }
 
-        const consultaData = {
-            pacienteId: pacienteId,
-            prescritorId: selectedPrescritor.id,
-            data: selectedDate,
-            horario: selectedTime,
-            tipoConsulta: consultaType,
-            observacoes: observacoes
+        setErro(null);
+        setEnviando(true);
+
+        const consulta = {
+            patientId: usuarioLogado.id,
+            dateTime: `${selectedDate}T${selectedTime}`,
+            modality: consultaType === "presencial" ? "PRESENCIAL" : "TELEMEDICINA",
+            clinicalObservation: observacoes,
         };
 
         try {
-            const response = await fetch("http://localhost:8080/consultas", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(consultaData)
-            });
-
-            if (!response.ok) {
-                throw new Error("Erro ao agendar a consulta.");
+            await apiService.post("/consulta", consulta);
+            navigate("/dashboard-paciente");
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 403) {
+                setErro("O agendamento é feito pela clínica. Entre em contato com seu prescritor.");
+            } else {
+                setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
             }
-
-            alert("Consulta agendada com sucesso!");
-            navigate("/dashboard"); // ou a rota que quiser após o agendamento
-
-        } catch (error) {
-            console.error(error);
-            alert("Falha ao agendar consulta.");
+        } finally {
+            setEnviando(false);
         }
     };
 
@@ -354,12 +332,18 @@ export default function AgendamentoConsultaPaciente() {
                                     </div>
                                 </div>
 
+                                {erro && <p className="agendamento-erro">{erro}</p>}
+
                                 <div className="resumo-actions">
-                                    <button className="button-secondary" onClick={handleBackToDashboard}>
+                                    <button className="button-secondary" onClick={handleBack} disabled={enviando}>
                                         Cancelar
                                     </button>
-                                    <button className="button" onClick={handleConfirmarAgendamento}>
-                                        Confirmar agendamento
+                                    <button
+                                        className="button"
+                                        onClick={handleConfirmarAgendamento}
+                                        disabled={enviando}
+                                    >
+                                        {enviando ? "Agendando..." : "Confirmar agendamento"}
                                     </button>
                                 </div>
                             </div>

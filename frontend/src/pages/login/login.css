@@ -161,3 +161,14 @@
         flex-direction: column;
     }
 }
+
+/* aviso de cadastro feito */
+.login__aviso {
+    color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+    border-radius: 4px;
+    padding: 0.75rem;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}

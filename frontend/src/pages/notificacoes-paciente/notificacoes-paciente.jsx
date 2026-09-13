@@ -1,20 +1,8 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useEffect, useMemo, useState} from 'react';
+import {useNavigate} from 'react-router';
 import './notificacoes-paciente.css';
 import Header from "../../components/header/header.jsx";
-
-// funcao para pegar dados do usuario do token
-function getUserDataFromToken() {
-    const token = localStorage.getItem("authToken");
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return {id: payload.id, name: payload.name, role: payload.role};
-    } catch (e) {
-        console.error("Erro ao decodificar token:", e);
-        return null;
-    }
-}
+import {apiService, getLoggedUser} from "../../services/api.js";
 
 // helper para traduzir os tipos de notificacao
 const getTypeLabel = (type) => {
@@ -58,7 +46,7 @@ export default function NotificacoesPaciente() {
     const [selectedNotifications, setSelectedNotifications] = useState(new Set());
 
     useEffect(() => {
-        const user = getUserDataFromToken();
+        const user = getLoggedUser();
         if (!user) {
             navigate("/login");
             return;
@@ -79,17 +67,10 @@ export default function NotificacoesPaciente() {
             setIsLoading(true);
             setError(null);
             try {
-                const token = localStorage.getItem("authToken");
-                const response = await fetch("http://localhost:8080/notifications", {
-                    headers: {"Authorization": `Bearer ${token}`}
-                });
-                if (!response.ok) {
-                    throw new Error("Falha ao buscar notificações.");
-                }
-                const data = await response.json();
+                const data = await apiService.get("/notifications");
                 setNotifications(data.map(n => ({...n, read: n.isRead})));
-            } catch (err) {
-                setError(err.message);
+            } catch {
+                setError("Falha ao buscar notificações.");
             } finally {
                 setIsLoading(false);
             }
@@ -183,29 +164,20 @@ export default function NotificacoesPaciente() {
     };
 
     // funcao helper para chamadas de API autenticadas
-    const makeAuthenticatedApiCall = async (url, options) => {
-        const token = localStorage.getItem("authToken");
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            ...options.headers,
-        };
+    // as acoes de marcar e apagar so precisam saber se deu certo, entao
+    // o erro vira false e a tela mostra a mensagem
+    const chamarApi = async (acao) => {
         try {
-            const response = await fetch(url, {...options, headers});
-            if (!response.ok) {
-                // lanca um erro para ser pego pelo Promise.all ou pelo try/catch
-                throw new Error(`API call failed: ${response.status}`);
-            }
+            await acao();
             return true;
-        } catch (error) {
-            console.error("API call error:", error);
+        } catch {
             setError("Ocorreu um erro ao processar sua solicitação.");
             return false;
         }
     };
 
     const handleMarkOneAsRead = async (id) => {
-        const success = await makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}/read`, {method: 'POST'});
+        const success = await chamarApi(() => apiService.post(`/notifications/${id}/read`));
         if (success) {
             setNotifications(prev =>
                 prev.map(n => n.id === id ? {...n, read: true} : n)
@@ -214,7 +186,7 @@ export default function NotificacoesPaciente() {
     };
 
     const handleDeleteOne = async (id) => {
-        const success = await makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}`, {method: 'DELETE'});
+        const success = await chamarApi(() => apiService.delete(`/notifications/${id}`));
         if (success) {
             setNotifications(prev => prev.filter(n => n.id !== id));
         }
@@ -224,7 +196,7 @@ export default function NotificacoesPaciente() {
         const idsToMark = Array.from(selectedNotifications);
 
         const promises = idsToMark.map(id =>
-            makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}/read`, {method: 'POST'})
+            chamarApi(() => apiService.post(`/notifications/${id}/read`))
         );
 
         const results = await Promise.all(promises);
@@ -241,7 +213,7 @@ export default function NotificacoesPaciente() {
         const idsToDelete = Array.from(selectedNotifications);
 
         const promises = idsToDelete.map(id =>
-            makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}`, {method: 'DELETE'})
+            chamarApi(() => apiService.delete(`/notifications/${id}`))
         );
 
         const results = await Promise.all(promises);

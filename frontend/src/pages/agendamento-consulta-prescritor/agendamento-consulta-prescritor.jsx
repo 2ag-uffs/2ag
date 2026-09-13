@@ -4,7 +4,7 @@ import "../../styles/fonts.css";
 import "../../styles/button.css";
 import "../../styles/input.css";
 import "./agendamento-consulta-prescritor.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 
 export default function AgendamentoPrescritor() {

@@ -29,7 +29,7 @@ export function getLoggedUser() {
     }
     try {
         return JSON.parse(atob(token.split(".")[1]));
-    } catch (e) {
+    } catch {
         return null;
     }
 }
@@ -66,7 +66,7 @@ async function lerCorpo(response) {
     }
     try {
         return JSON.parse(texto);
-    } catch (e) {
+    } catch {
         return null;
     }
 }

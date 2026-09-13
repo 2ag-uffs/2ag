@@ -13,7 +13,6 @@ export default function Prescricao() {
 
     // Estados para gerenciar dados
     const [patient, setPatient] = useState(null);
-    const [appointment, setAppointment] = useState(null);
     const [prescriber, setPrescriber] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -50,7 +49,6 @@ export default function Prescricao() {
         const loadInitialData = async () => {
             try {
                 const consulta = await apiService.get(`/consulta/${appointmentId}`);
-                setAppointment(consulta);
                 setPatient({id: consulta.patientId, name: consulta.patientName});
                 setPrescriber({id: consulta.prescriberId, name: consulta.prescriberName});
             } catch (err) {

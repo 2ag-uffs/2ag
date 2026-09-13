@@ -1,20 +1,8 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import './notificacoes-precritor.css';
+import {useEffect, useMemo, useState} from 'react';
+import {useNavigate} from 'react-router';
+import './notificacoes-prescritor.css';
 import Header from "../../components/header/header.jsx";
-
-// funcao para pegar dados do usuario do token
-function getUserDataFromToken() {
-    const token = localStorage.getItem("authToken");
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return {id: payload.id, name: payload.name, role: payload.role};
-    } catch (e) {
-        console.error("Erro ao decodificar token:", e);
-        return null;
-    }
-}
+import {apiService, getLoggedUser} from "../../services/api.js";
 
 // helper para traduzir os tipos de notificacao
 const getTypeLabel = (type) => {
@@ -67,7 +55,7 @@ export default function NotificacoesPrescritor() {
     const [selectedNotifications, setSelectedNotifications] = useState(new Set());
 
     useEffect(() => {
-        const user = getUserDataFromToken();
+        const user = getLoggedUser();
         if (!user) {
             navigate("/login");
             return;
@@ -88,26 +76,16 @@ export default function NotificacoesPrescritor() {
             setIsLoading(true);
             setError(null);
             try {
-                const token = localStorage.getItem("authToken");
-                const headers = {"Authorization": `Bearer ${token}`};
-
                 // busca as notificacoes e os pacientes em paralelo
-                const [notificationsResponse, patientsResponse] = await Promise.all([
-                    fetch("http://localhost:8080/notifications", {headers}),
-                    fetch("http://localhost:8080/paciente", {headers}) // Endpoint para buscar pacientes do prescritor
+                const [notificacoes, pacientes] = await Promise.all([
+                    apiService.get("/notifications"),
+                    apiService.get("/paciente"),
                 ]);
 
-                if (!notificationsResponse.ok) throw new Error("Falha ao buscar notificações.");
-                if (!patientsResponse.ok) throw new Error("Falha ao buscar lista de pacientes.");
-
-                const notificationsData = await notificationsResponse.json();
-                const patientsData = await patientsResponse.json();
-
-                setNotifications(notificationsData.map(n => ({...n, read: n.isRead})));
-                setPatientList(patientsData);
-
-            } catch (err) {
-                setError(err.message);
+                setNotifications(notificacoes.map(n => ({...n, read: n.isRead})));
+                setPatientList(pacientes);
+            } catch {
+                setError("Falha ao buscar as notificações.");
             } finally {
                 setIsLoading(false);
             }
@@ -170,17 +148,6 @@ export default function NotificacoesPrescritor() {
     }, [notifications, activeFilter, appliedFilters, patientList]);
 
 
-    const groupedNotifications = useMemo(() => {
-        return filteredNotifications.reduce((acc, notification) => {
-            const type = notification.type || 'DEFAULT';
-            if (!acc[type]) {
-                acc[type] = [];
-            }
-            acc[type].push(notification);
-            return acc;
-        }, {});
-    }, [filteredNotifications]);
-
     // funcao para o botao filtrar
     const handleFilterClick = () => {
         setAppliedFilters(stagedFilters);
@@ -212,29 +179,20 @@ export default function NotificacoesPrescritor() {
     };
 
     // funcao helper para chamadas de API autenticadas
-    const makeAuthenticatedApiCall = async (url, options) => {
-        const token = localStorage.getItem("authToken");
-        const headers = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            ...options.headers,
-        };
+    // as acoes de marcar e apagar so precisam saber se deu certo, entao
+    // o erro vira false e a tela mostra a mensagem
+    const chamarApi = async (acao) => {
         try {
-            const response = await fetch(url, {...options, headers});
-            if (!response.ok) {
-                // lanca um erro para ser pego pelo Promise.all ou pelo try/catch
-                throw new Error(`API call failed: ${response.status}`);
-            }
+            await acao();
             return true;
-        } catch (error) {
-            console.error("API call error:", error);
+        } catch {
             setError("Ocorreu um erro ao processar sua solicitação.");
             return false;
         }
     };
 
     const handleMarkOneAsRead = async (id) => {
-        const success = await makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}/read`, {method: 'POST'});
+        const success = await chamarApi(() => apiService.post(`/notifications/${id}/read`));
         if (success) {
             setNotifications(prev =>
                 prev.map(n => n.id === id ? {...n, read: true} : n)
@@ -243,7 +201,7 @@ export default function NotificacoesPrescritor() {
     };
 
     const handleDeleteOne = async (id) => {
-        const success = await makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}`, {method: 'DELETE'});
+        const success = await chamarApi(() => apiService.delete(`/notifications/${id}`));
         if (success) {
             setNotifications(prev => prev.filter(n => n.id !== id));
         }
@@ -253,7 +211,7 @@ export default function NotificacoesPrescritor() {
         const idsToMark = Array.from(selectedNotifications);
 
         const promises = idsToMark.map(id =>
-            makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}/read`, {method: 'POST'})
+            chamarApi(() => apiService.post(`/notifications/${id}/read`))
         );
 
         const results = await Promise.all(promises);
@@ -270,7 +228,7 @@ export default function NotificacoesPrescritor() {
         const idsToDelete = Array.from(selectedNotifications);
 
         const promises = idsToDelete.map(id =>
-            makeAuthenticatedApiCall(`http://localhost:8080/notifications/${id}`, {method: 'DELETE'})
+            chamarApi(() => apiService.delete(`/notifications/${id}`))
         );
 
         const results = await Promise.all(promises);
@@ -278,20 +236,6 @@ export default function NotificacoesPrescritor() {
         if (results.every(res => res === true)) {
             setNotifications(prev => prev.filter(n => !idsToDelete.includes(n.id)));
             setSelectedNotifications(new Set());
-        }
-    };
-
-    const handleNotificationClick = (link, id) => {
-        if (link) {
-            // marcar como lida ao clicar no card (fora do checkbox)
-            const notification = notifications.find(n => n.id === id);
-            if (notification && !notification.read) {
-                handleMarkOneAsRead(id).then(() => {
-                    navigate(link);
-                });
-            } else {
-                navigate(link);
-            }
         }
     };
 

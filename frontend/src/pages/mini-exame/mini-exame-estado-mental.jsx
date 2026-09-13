@@ -155,7 +155,7 @@ export default function MiniExameEstadoMental() {
         try {
             // antes esta tela so dava console.log e nada era salvo
             await apiService.post(`/mini-exame/consulta/${appointmentId}`, avaliacao);
-            alert("Mini-exame salvo! Total: " + total + " de " + TOTAL_POSSIVEL);
+            // volta pra consulta, que ja mostra o exame salvo na ficha
             navigate(-1);
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível salvar a avaliação.");

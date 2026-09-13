@@ -52,8 +52,7 @@ export default function DiarioTea() {
                 ...comportamentos,
                 observation,
             });
-            alert("Registro salvo!");
-            navigate("/dashboard-paciente");
+            navigate("/dashboard-paciente", {state: {aviso: "Registro salvo."}});
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível salvar o registro.");
         } finally {

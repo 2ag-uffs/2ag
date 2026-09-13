@@ -234,3 +234,12 @@
         font-size: 1.5rem;
     }
 }
+
+/* aviso de sucesso, no lugar do alert que tinha antes */
+.perfil-aviso {
+    color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}

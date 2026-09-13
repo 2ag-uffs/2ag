@@ -62,8 +62,7 @@ export default function DiarioDor() {
                 ...interferencias,
                 observation,
             });
-            alert("Registro de dor salvo!");
-            navigate("/dashboard-paciente");
+            navigate("/dashboard-paciente", {state: {aviso: "Registro de dor salvo."}});
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível salvar o registro.");
         } finally {

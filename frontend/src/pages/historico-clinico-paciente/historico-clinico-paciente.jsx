@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 import "../../styles/button.css";
 import "../../styles/colors.css";

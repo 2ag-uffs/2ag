@@ -1,12 +1,12 @@
 import React, {useEffect, useState} from 'react'; // 1. importe o useState e o useEffect
-import {useNavigate} from "react-router-dom";
+import {useNavigate} from "react-router";
 import './header.css';
 
 // função auxiliar pra decodificar o token
 function parseJwt(token) {
     try {
         return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
+    } catch {
         return null;
     }
 }

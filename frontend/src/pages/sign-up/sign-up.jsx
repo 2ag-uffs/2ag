@@ -1,5 +1,6 @@
 import {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {useNavigate} from "react-router";
+import {apiService, ApiError} from "../../services/api.js";
 import "./sign-up.css";
 
 export default function SignUp() {
@@ -47,49 +48,30 @@ export default function SignUp() {
 
         // so paciente se cadastra sozinho. conta de prescritor eh
         // criada pela clinica, n por autocadastro
-        const endpoint = "http://localhost:8080/auth/register";
-            data = {
-                name: form.nomeCompleto.value,
-                email: form.email.value,
-                senha: password,
-                cpf: cpf.replace(/\D/g, ""),
-                birthDate: form.dataNascimento.value,
-                phone: form.telefone.value.replace(/\D/g, ""),
-                address: addressObject,
-                professionalCode: form.codigoProfissional.value
-            };
+        const dados = {
+            name: form.nomeCompleto.value,
+            email: form.email.value,
+            senha: password,
+            cpf: cpf.replace(/\D/g, ""),
+            birthDate: form.dataNascimento.value,
+            phone: form.telefone.value.replace(/\D/g, ""),
+            address: addressObject,
+            professionalCode: form.codigoProfissional.value
+        };
 
         try {
-            const response = await fetch(endpoint, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-
-                // verificamos se a resposta tem a nossa lista errors
-                if (errorData.errors) {
-                    // transformamos a lista de erros em um objeto mais fácil de usar
-                    const newErrors = errorData.errors.reduce((acc, error) => {
-                        acc[error.field] = error.message;
-                        return acc;
-                    }, {});
-                    setFormErrors(newErrors);
-                } else {
-                    // se for outro tipo de erro, usamos a mensagem geral
-                    setFormErrors({general: errorData.message || "Ocorreu um erro."});
-                }
-                throw new Error("Erro de validação"); // lança um erro para parar a execução
-            }
-
-            alert("Cadastro realizado com sucesso!");
-            navigate("/login");
-
+            await apiService.post("/auth/register", dados);
+            // o login mostra o aviso de cadastro feito, em vez de alert
+            navigate("/login", {state: {cadastrado: true}});
         } catch (err) {
-            // o console.log é bom para debugar, mas não afeta o usuário
-            console.error(err.message);
+            if (err instanceof ApiError) {
+                const porCampo = err.fieldErrors();
+                setFormErrors(
+                    Object.keys(porCampo).length > 0 ? porCampo : {general: err.message},
+                );
+            } else {
+                setFormErrors({general: "Não foi possível falar com o servidor."});
+            }
         } finally {
             // o finally garante que o loading sempre será desativado
             setIsLoading(false);

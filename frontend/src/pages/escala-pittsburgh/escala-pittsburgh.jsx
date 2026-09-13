@@ -100,8 +100,7 @@ export default function EscalaPittsburgh() {
                 otherReasonToTroubleSleep: resposta.otherReasonToTroubleSleep,
                 ...notas,
             });
-            alert("Avaliação do sono salva!");
-            navigate("/dashboard-paciente");
+            navigate("/dashboard-paciente", {state: {aviso: "Avaliação do sono salva."}});
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível salvar a avaliação.");
         } finally {

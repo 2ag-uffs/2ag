@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import './selecao-escalas.css';
 import '../../styles/colors.css';
 import '../../styles/fonts.css';
 import '../../styles/button.css';
 import Header from "../../components/header/header.jsx";
-
-const API_BASE_URL = 'http://localhost:8080';
+import {apiService} from "../../services/api.js";
 
 const ESCALAS_MAPEAMENTO = {
     'ESCALA_HAMILTON': {
@@ -59,41 +58,7 @@ export default function SelecaoEscalas() {
     const [loadingSalvar, setLoadingSalvar] = useState(false);
     const [error, setError] = useState(null);
 
-    const getAuthToken = () => {
-        return localStorage.getItem('authToken');
-    };
-
-    const fetchWithAuth = async (url, options = {}) => {
-        const token = getAuthToken();
-        if (!token) {
-            throw new Error('Token de autenticação não encontrado');
-        }
-
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
-        }
-
-        return response.json();
-    };
-
-    const buscarDadosPaciente = async () => {
-        try {
-            const dadosPaciente = await fetchWithAuth(`${API_BASE_URL}/paciente/${pacienteId}`);
-            return dadosPaciente;
-        } catch (error) {
-            console.error('Erro ao buscar dados do paciente:', error);
-            throw error;
-        }
-    };
+    const buscarDadosPaciente = () => apiService.get(`/paciente/${pacienteId}`);
 
     const buscarEscalasDisponiveis = () => {
         return Object.entries(ESCALAS_MAPEAMENTO).map(([backendType, frontendData]) => ({
@@ -103,34 +68,22 @@ export default function SelecaoEscalas() {
     };
 
     const buscarEscalasAtribuidas = async () => {
+        // se falhar, a tela ainda abre com a lista vazia em vez de quebrar
         try {
-            const response = await fetchWithAuth(`${API_BASE_URL}/dashboard/paciente/${pacienteId}`);
-            return response.escalasAtribuidas || [];
-        } catch (error) {
-            console.error('Erro ao buscar escalas atribuídas:', error);
+            const dashboard = await apiService.get(`/dashboard/paciente/${pacienteId}`);
+            return dashboard.escalasAtribuidas || [];
+        } catch {
             return [];
         }
     };
 
     const salvarEscalasSelecionadas = async (escalasParaSalvar) => {
-        try {
-            const promises = escalasParaSalvar.map(async (escalaBackendType) => {
-                const payload = {
-                    scaleType: escalaBackendType
-                };
-
-                return await fetchWithAuth(`${API_BASE_URL}/pacientes/${pacienteId}/escalas`, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-            });
-
-            await Promise.all(promises);
-            return true;
-        } catch (error) {
-            console.error('Erro ao salvar escalas:', error);
-            throw error;
-        }
+        await Promise.all(
+            escalasParaSalvar.map((escalaBackendType) =>
+                apiService.post(`/pacientes/${pacienteId}/escalas`, {scaleType: escalaBackendType}),
+            ),
+        );
+        return true;
     };
 
     useEffect(() => {
@@ -175,6 +128,9 @@ export default function SelecaoEscalas() {
         };
 
         carregarDados();
+        // as funcoes de busca so dependem do pacienteId, que ja esta
+        // na lista. incluir elas aqui recarregaria a cada render
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pacienteId]);
 
     const handleBack = () => {

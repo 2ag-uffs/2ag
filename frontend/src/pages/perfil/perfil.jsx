@@ -1,105 +1,143 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
 import Header from "../../components/header/header.jsx";
-import './perfil.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import '../../styles/input.css';
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import "../../styles/colors.css";
+import "../../styles/fonts.css";
+import "../../styles/button.css";
+import "../../styles/input.css";
+import "./perfil.css";
+
+// serve pro paciente e pro prescritor. a tela chamava um profileService
+// que n existia no projeto, entao quebrava na hora de montar, e os
+// campos dela (cep, especialidade, contato de emergencia) n existem no
+// modelo. agora ela bate nos endpoints que ja existem, um por papel
+const ENDERECO_VAZIO = {street: "", number: "", city: "", state: "", country: ""};
 
 export default function Perfil() {
     const navigate = useNavigate();
-    const [profileData, setProfileData] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
-    const [passwordError, setPasswordError] = useState('');
+    const usuarioLogado = getLoggedUser();
+    const ehPaciente = usuarioLogado?.authorities?.[0] === "ROLE_PATIENT";
+    const recurso = ehPaciente ? "paciente" : "prescritor";
+
+    const [perfil, setPerfil] = useState(null);
+    const [carregando, setCarregando] = useState(true);
+    const [erro, setErro] = useState(null);
+    const [editando, setEditando] = useState(false);
+    const [salvando, setSalvando] = useState(false);
+    const [errosDeCampo, setErrosDeCampo] = useState({});
+    const [aviso, setAviso] = useState(null);
+
+    const [modalSenha, setModalSenha] = useState(false);
+    const [senhas, setSenhas] = useState({atual: "", nova: "", confirmacao: ""});
+    const [erroSenha, setErroSenha] = useState("");
+    const [trocandoSenha, setTrocandoSenha] = useState(false);
 
     useEffect(() => {
-        // Verifica se o usuário está autenticado
-        if (!isAuthenticated()) {
+        if (!usuarioLogado) {
             navigate("/login");
             return;
         }
 
-        const fetchProfile = async () => {
-            try {
-                const data = await profileService.getUserProfile();
-                setProfileData(data);
-            } catch (err) {
-                setError(err.message);
-                console.error("Erro ao carregar perfil:", err);
-            } finally {
-                setIsLoading(false);
-            }
+        apiService
+            .get(`/${recurso}/${usuarioLogado.id}`)
+            .then((dados) => setPerfil({...dados, address: dados.address || ENDERECO_VAZIO}))
+            .catch((err) => {
+                setErro(err instanceof ApiError ? err.message : "Não foi possível carregar o perfil.");
+            })
+            .finally(() => setCarregando(false));
+        // o id e o papel saem do token, que n muda enquanto a tela esta aberta
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const mudarCampo = (campo, valor) => {
+        setPerfil((atual) => ({...atual, [campo]: valor}));
+    };
+
+    const mudarEndereco = (campo, valor) => {
+        setPerfil((atual) => ({...atual, address: {...atual.address, [campo]: valor}}));
+    };
+
+    const salvar = async () => {
+        setSalvando(true);
+        setErro(null);
+        setErrosDeCampo({});
+        setAviso(null);
+
+        // o endpoint de update n aceita id nem prescritor, entao vai so
+        // o que o dto pede
+        const dados = {
+            name: perfil.name,
+            email: perfil.email,
+            cpf: perfil.cpf,
+            birthDate: perfil.birthDate,
+            phone: perfil.phone,
+            address: perfil.address,
         };
 
-        fetchProfile();
-    }, [navigate]);
-
-    const handleInputChange = (field, value) => {
-        setProfileData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        setError(null);
+        if (!ehPaciente) {
+            dados.profession = perfil.profession;
+            dados.registryType = perfil.registryType;
+            dados.registryNumber = perfil.registryNumber;
+        }
 
         try {
-            const updatedProfile = await profileService.updateUserProfile(profileData);
-            setProfileData(updatedProfile);
-            setIsEditing(false);
-            alert('Perfil atualizado com sucesso!');
+            const atualizado = await apiService.put(`/${recurso}/${usuarioLogado.id}`, dados);
+            setPerfil({...atualizado, address: atualizado.address || ENDERECO_VAZIO});
+            setEditando(false);
+            setAviso("Perfil atualizado.");
         } catch (err) {
-            setError(err.message);
-            console.error("Erro ao salvar perfil:", err);
+            if (err instanceof ApiError) {
+                const porCampo = err.fieldErrors();
+                if (Object.keys(porCampo).length > 0) {
+                    setErrosDeCampo(porCampo);
+                } else {
+                    setErro(err.message);
+                }
+            } else {
+                setErro("Não foi possível falar com o servidor.");
+            }
         } finally {
-            setIsSaving(false);
+            setSalvando(false);
         }
     };
 
-    const handlePasswordChange = async () => {
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setPasswordError('As senhas não coincidem');
+    const fecharModalSenha = () => {
+        setModalSenha(false);
+        setErroSenha("");
+        setSenhas({atual: "", nova: "", confirmacao: ""});
+    };
+
+    const trocarSenha = async () => {
+        setErroSenha("");
+
+        if (senhas.nova !== senhas.confirmacao) {
+            setErroSenha("As senhas não coincidem.");
+            return;
+        }
+        // o backend pede 8, entao a tela avisa antes de gastar uma ida
+        if (senhas.nova.length < 8) {
+            setErroSenha("A nova senha precisa ter pelo menos 8 caracteres.");
             return;
         }
 
-        if (passwordData.newPassword.length < 6) {
-            setPasswordError('A nova senha deve ter pelo menos 6 caracteres');
-            return;
-        }
-
+        setTrocandoSenha(true);
         try {
-            await profileService.changePassword(passwordData.currentPassword, passwordData.newPassword);
-            setShowPasswordModal(false);
-            setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-            setPasswordError('');
-            alert('Senha alterada com sucesso!');
+            await apiService.put("/auth/senha", {senhaAtual: senhas.atual, novaSenha: senhas.nova});
+            fecharModalSenha();
+            setAviso("Senha alterada.");
         } catch (err) {
-            setPasswordError(err.message || 'Erro ao alterar senha');
+            setErroSenha(err instanceof ApiError ? err.message : "Não foi possível alterar a senha.");
+        } finally {
+            setTrocandoSenha(false);
         }
     };
 
-    const handleBack = () => {
-        const currentUser = getCurrentUser();
-        if (currentUser.role === 'PATIENT') {
-            navigate('/dashboard-paciente');
-        } else {
-            navigate('/dashboard-prescritor');
-        }
+    const voltar = () => {
+        navigate(ehPaciente ? "/dashboard-paciente" : "/dashboard-prescritor");
     };
 
-    if (isLoading) {
+    if (carregando) {
         return (
             <div className="perfil-loading">
                 <h1>Carregando perfil...</h1>
@@ -107,295 +145,165 @@ export default function Perfil() {
         );
     }
 
-    if (error) {
+    if (!perfil) {
         return (
             <div className="perfil-error">
                 <h1>Erro ao carregar perfil</h1>
-                <p>{error}</p>
-                <button onClick={handleBack}>Voltar</button>
+                <p>{erro}</p>
+                <button onClick={voltar}>Voltar</button>
             </div>
         );
     }
 
+    // repete em todo campo, entao virou funcao em vez de copia
+    const campo = (rotulo, nome, valor, aoMudar, tipo = "text", bloqueado = false) => (
+        <div className="input-group">
+            <label htmlFor={nome}>{rotulo}</label>
+            <input
+                id={nome}
+                type={tipo}
+                value={valor || ""}
+                onChange={(e) => aoMudar(e.target.value)}
+                disabled={bloqueado || !editando}
+                className={bloqueado ? "input-disabled" : ""}
+            />
+            {errosDeCampo[nome] && <span className="error-message">{errosDeCampo[nome]}</span>}
+        </div>
+    );
+
+    const somenteLeitura = () => {
+    };
+
     return (
         <div className="perfil-container">
-            <Header
-                userName={profileData?.name || 'Usuário'}
-                userRole={profileData?.role === 'PATIENT' ? 'Paciente' : 'Prescritor'}
-                onBack={handleBack}
-            />
+            <Header/>
 
             <main className="perfil-main">
                 <div className="perfil-header">
-                    <h1>Meu Perfil</h1>
+                    <h1>Meu perfil</h1>
                     <div className="perfil-actions">
-                        {!isEditing ? (
+                        {!editando ? (
                             <>
-                                <button
-                                    className="button-secondary"
-                                    onClick={() => setShowPasswordModal(true)}
-                                >
-                                    Alterar Senha
+                                <button className="button-secondary" onClick={() => setModalSenha(true)}>
+                                    Alterar senha
                                 </button>
-                                <button
-                                    className="button"
-                                    onClick={() => setIsEditing(true)}
-                                >
-                                    Editar Perfil
+                                <button className="button" onClick={() => setEditando(true)}>
+                                    Editar perfil
                                 </button>
                             </>
                         ) : (
                             <>
                                 <button
                                     className="button-secondary"
-                                    onClick={() => setIsEditing(false)}
-                                    disabled={isSaving}
+                                    onClick={() => setEditando(false)}
+                                    disabled={salvando}
                                 >
                                     Cancelar
                                 </button>
-                                <button
-                                    className="button"
-                                    onClick={handleSave}
-                                    disabled={isSaving}
-                                >
-                                    {isSaving ? 'Salvando...' : 'Salvar'}
+                                <button className="button" onClick={salvar} disabled={salvando}>
+                                    {salvando ? "Salvando..." : "Salvar"}
                                 </button>
                             </>
                         )}
                     </div>
                 </div>
 
+                {aviso && <p className="perfil-aviso">{aviso}</p>}
+                {erro && <p className="error-message">{erro}</p>}
+
                 <div className="perfil-content">
-                    {/* Informações Pessoais */}
                     <section className="perfil-section">
-                        <h2>Informações Pessoais</h2>
+                        <h2>Informações pessoais</h2>
                         <div className="perfil-grid">
-                            <div className="input-group">
-                                <label>Nome Completo</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.name || ''}
-                                    onChange={(e) => handleInputChange('name', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>Email</label>
-                                <input
-                                    type="email"
-                                    value={profileData?.email || ''}
-                                    disabled={true}
-                                    className="input-disabled"
-                                />
-                                <small>O email não pode ser alterado</small>
-                            </div>
-                            <div className="input-group">
-                                <label>Telefone</label>
-                                <input
-                                    type="tel"
-                                    value={profileData?.phone || ''}
-                                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>Data de Nascimento</label>
-                                <input
-                                    type="date"
-                                    value={profileData?.birthDate || ''}
-                                    onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>CPF</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.cpf || ''}
-                                    disabled={true}
-                                    className="input-disabled"
-                                />
-                                <small>O CPF não pode ser alterado</small>
-                            </div>
+                            {campo("Nome completo", "name", perfil.name, (v) => mudarCampo("name", v))}
+                            {campo("E-mail", "email", perfil.email, (v) => mudarCampo("email", v), "email")}
+                            {campo("Telefone", "phone", perfil.phone, (v) => mudarCampo("phone", v), "tel")}
+                            {campo("Data de nascimento", "birthDate", perfil.birthDate, (v) => mudarCampo("birthDate", v), "date")}
+                            {campo("CPF", "cpf", perfil.cpf, somenteLeitura, "text", true)}
                         </div>
                     </section>
 
-                    {/* Endereço */}
                     <section className="perfil-section">
                         <h2>Endereço</h2>
                         <div className="perfil-grid">
-                            <div className="input-group full-width">
-                                <label>Endereço</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.address || ''}
-                                    onChange={(e) => handleInputChange('address', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>Cidade</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.city || ''}
-                                    onChange={(e) => handleInputChange('city', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>Estado</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.state || ''}
-                                    onChange={(e) => handleInputChange('state', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
-                            <div className="input-group">
-                                <label>CEP</label>
-                                <input
-                                    type="text"
-                                    value={profileData?.zipCode || ''}
-                                    onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                                    disabled={!isEditing}
-                                />
-                            </div>
+                            {campo("Logradouro", "address.street", perfil.address.street, (v) => mudarEndereco("street", v))}
+                            {campo("Número", "address.number", perfil.address.number, (v) => mudarEndereco("number", v))}
+                            {campo("Cidade", "address.city", perfil.address.city, (v) => mudarEndereco("city", v))}
+                            {campo("Estado", "address.state", perfil.address.state, (v) => mudarEndereco("state", v))}
+                            {campo("País", "address.country", perfil.address.country, (v) => mudarEndereco("country", v))}
                         </div>
                     </section>
 
-                    {/* Informações Específicas do Prescritor */}
-                    {profileData?.role === 'PRESCRIBER' && (
+                    {ehPaciente ? (
                         <section className="perfil-section">
-                            <h2>Informações Profissionais</h2>
+                            <h2>Acompanhamento</h2>
                             <div className="perfil-grid">
-                                <div className="input-group">
-                                    <label>Código Profissional</label>
-                                    <input
-                                        type="text"
-                                        value={profileData?.professionalCode || ''}
-                                        onChange={(e) => handleInputChange('professionalCode', e.target.value)}
-                                        disabled={!isEditing}
-                                    />
-                                </div>
-                                <div className="input-group">
-                                    <label>Especialidade</label>
-                                    <input
-                                        type="text"
-                                        value={profileData?.specialty || ''}
-                                        onChange={(e) => handleInputChange('specialty', e.target.value)}
-                                        disabled={!isEditing}
-                                    />
-                                </div>
-                                <div className="input-group full-width">
-                                    <label>Instituição</label>
-                                    <input
-                                        type="text"
-                                        value={profileData?.institution || ''}
-                                        onChange={(e) => handleInputChange('institution', e.target.value)}
-                                        disabled={!isEditing}
-                                    />
-                                </div>
+                                {campo(
+                                    "Prescritor",
+                                    "prescriberName",
+                                    perfil.prescriberName || "Sem prescritor vinculado",
+                                    somenteLeitura,
+                                    "text",
+                                    true,
+                                )}
                             </div>
                         </section>
-                    )}
-
-                    {/* Informações Específicas do Paciente */}
-                    {profileData?.role === 'PATIENT' && (
+                    ) : (
                         <section className="perfil-section">
-                            <h2>Informações de Emergência</h2>
+                            <h2>Dados profissionais</h2>
                             <div className="perfil-grid">
-                                <div className="input-group">
-                                    <label>Contato de Emergência</label>
-                                    <input
-                                        type="text"
-                                        value={profileData?.emergencyContact || ''}
-                                        onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                                        disabled={!isEditing}
-                                    />
-                                </div>
-                                <div className="input-group">
-                                    <label>Telefone de Emergência</label>
-                                    <input
-                                        type="tel"
-                                        value={profileData?.emergencyPhone || ''}
-                                        onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
-                                        disabled={!isEditing}
-                                    />
-                                </div>
-                                <div className="input-group full-width">
-                                    <label>Histórico Médico</label>
-                                    <textarea
-                                        value={profileData?.medicalHistory || ''}
-                                        onChange={(e) => handleInputChange('medicalHistory', e.target.value)}
-                                        disabled={!isEditing}
-                                        rows="4"
-                                    />
-                                </div>
+                                {campo("Profissão", "profession", perfil.profession, (v) => mudarCampo("profession", v))}
+                                {campo("Conselho", "registryType", perfil.registryType, (v) => mudarCampo("registryType", v))}
+                                {campo("Número do registro", "registryNumber", perfil.registryNumber, (v) => mudarCampo("registryNumber", v))}
+                                {/* o codigo eh o que liga paciente a prescritor no
+                                    cadastro, entao n da pra editar por aqui */}
+                                {campo("Código do prescritor", "professionalCode", perfil.professionalCode, somenteLeitura, "text", true)}
                             </div>
                         </section>
                     )}
                 </div>
             </main>
 
-            {/* Modal de Alteração de Senha */}
-            {showPasswordModal && (
+            {modalSenha && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-                        <h2>Alterar Senha</h2>
-                        {passwordError && (
-                            <div className="error-message">{passwordError}</div>
-                        )}
+                        <h2>Alterar senha</h2>
+                        {erroSenha && <div className="error-message">{erroSenha}</div>}
                         <div className="modal-form">
                             <div className="input-group">
-                                <label>Senha Atual</label>
+                                <label htmlFor="senhaAtual">Senha atual</label>
                                 <input
+                                    id="senhaAtual"
                                     type="password"
-                                    value={passwordData.currentPassword}
-                                    onChange={(e) => setPasswordData(prev => ({
-                                        ...prev,
-                                        currentPassword: e.target.value
-                                    }))}
+                                    value={senhas.atual}
+                                    onChange={(e) => setSenhas((s) => ({...s, atual: e.target.value}))}
                                 />
                             </div>
                             <div className="input-group">
-                                <label>Nova Senha</label>
+                                <label htmlFor="novaSenha">Nova senha</label>
                                 <input
+                                    id="novaSenha"
                                     type="password"
-                                    value={passwordData.newPassword}
-                                    onChange={(e) => setPasswordData(prev => ({
-                                        ...prev,
-                                        newPassword: e.target.value
-                                    }))}
+                                    value={senhas.nova}
+                                    onChange={(e) => setSenhas((s) => ({...s, nova: e.target.value}))}
                                 />
                             </div>
                             <div className="input-group">
-                                <label>Confirmar Nova Senha</label>
+                                <label htmlFor="confirmacaoSenha">Confirmar nova senha</label>
                                 <input
+                                    id="confirmacaoSenha"
                                     type="password"
-                                    value={passwordData.confirmPassword}
-                                    onChange={(e) => setPasswordData(prev => ({
-                                        ...prev,
-                                        confirmPassword: e.target.value
-                                    }))}
+                                    value={senhas.confirmacao}
+                                    onChange={(e) => setSenhas((s) => ({...s, confirmacao: e.target.value}))}
                                 />
                             </div>
                         </div>
                         <div className="modal-actions">
-                            <button
-                                className="button-secondary"
-                                onClick={() => {
-                                    setShowPasswordModal(false);
-                                    setPasswordError('');
-                                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                                }}
-                            >
+                            <button className="button-secondary" onClick={fecharModalSenha} disabled={trocandoSenha}>
                                 Cancelar
                             </button>
-                            <button
-                                className="button"
-                                onClick={handlePasswordChange}
-                            >
-                                Alterar Senha
+                            <button className="button" onClick={trocarSenha} disabled={trocandoSenha}>
+                                {trocandoSenha ? "Alterando..." : "Alterar senha"}
                             </button>
                         </div>
                     </div>

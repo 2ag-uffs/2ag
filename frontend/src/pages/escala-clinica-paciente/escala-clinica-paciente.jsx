@@ -1,10 +1,11 @@
-import {useNavigate, useParams} from 'react-router-dom';
-import React, {useEffect, useState} from 'react';
+import {useNavigate, useParams} from 'react-router';
+import {useEffect, useState} from 'react';
 import './escala-clinica-paciente.css';
 import '../../styles/colors.css';
 import '../../styles/fonts.css';
 import '../../styles/button.css';
 import Header from "../../components/header/header.jsx";
+import {apiService, ApiError} from "../../services/api.js";
 
 export default function CentralEscalas() {
     const navigate = useNavigate();
@@ -15,35 +16,21 @@ export default function CentralEscalas() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchData = async () => {
-            const token = localStorage.getItem('authToken');
-
-            try {
-                const response = await fetch(`http://localhost:8080/pacientes/${patientId}/escalas/central`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.status === 403) {
-                    throw new Error('Você não tem permissão para ver estes dados.');
-                }
-                if (!response.ok) {
-                    throw new Error('Falha ao buscar os dados das avaliações.');
-                }
-
-                const data = await response.json();
-                setPageData(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        if (patientId) {
-            fetchData();
+        if (!patientId) {
+            return;
         }
+
+        apiService
+            .get(`/pacientes/${patientId}/escalas/central`)
+            .then(setPageData)
+            .catch((err) => {
+                if (err instanceof ApiError && err.status === 403) {
+                    setError('Você não tem permissão para ver estes dados.');
+                } else {
+                    setError('Falha ao buscar os dados das avaliações.');
+                }
+            })
+            .finally(() => setIsLoading(false));
     }, [patientId]);
 
     const handleNavigate = (path) => {

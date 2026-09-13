@@ -1,13 +1,17 @@
 import {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {useLocation, useNavigate} from "react-router";
 import "./login.css";
 import {apiService, saveToken, getLoggedUser, ApiError} from "../../services/api.js";
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
     // estados pra controlar o carregamento e os erros
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    // quem acabou de se cadastrar cai aqui com esse aviso, em vez do
+    // alert que a tela de cadastro dava antes
+    const cadastrado = Boolean(location.state && location.state.cadastrado);
 
     // alterei a função handleSubmit pra assíncrona, agora a gente consegue usar await para esperar a resposta da API
     const handleSubmit = async (e) => {
@@ -81,6 +85,9 @@ export default function Login() {
                         src="/images/logotipo-horizontal.svg"
                     />
                     <h2 className="login__content__title">Login</h2>
+                    {cadastrado && !error && (
+                        <p className="login__aviso">Cadastro feito. Entre com seu e-mail e senha.</p>
+                    )}
                     {/* adiconei para mostrar o erro (resp: maiqueli) */}
                     {error && <p className="login__error-message">{error}</p>}
                     <form className="login__content__form" onSubmit={handleSubmit}>

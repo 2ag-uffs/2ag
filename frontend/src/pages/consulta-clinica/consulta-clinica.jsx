@@ -5,7 +5,7 @@ import "../../styles/input.css";
 import "./consulta-clinica.css";
 import {apiService, ApiError} from "../../services/api.js";
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import Header from "../../components/header/header.jsx";
 
 
@@ -93,12 +93,6 @@ export default function ConsultaClinica() {
         }
     };
 
-
-    const handleReturnDash = (e) => {
-        e.preventDefault();
-
-        navigate("/dashboard-prescritor");
-    };
 
     const handleBack = () => {
         navigate(-1);
@@ -266,6 +260,21 @@ export default function ConsultaClinica() {
                                         <label htmlFor="altura">Altura (cm)</label>
                                         <input id="altura" type="number" placeholder="175" value={altura} onChange={(e) => setAltura(e.target.value)} />
                                     </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="hipotese-diagnostica">Hipótese Diagnóstica</label>
+                                    <textarea id="hipotese-diagnostica" placeholder="Descreva a hipótese diagnóstica..." rows="3" value={hipoteseDiagnostica} onChange={(e) => setHipoteseDiagnostica(e.target.value)}></textarea>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="conduta">Conduta / Plano Terapêutico</label>
+                                    <textarea id="conduta" placeholder="Descreva a conduta definida..." rows="3" value={conduta} onChange={(e) => setConduta(e.target.value)}></textarea>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="exames-complementares">Exames Complementares</label>
+                                    <textarea id="exames-complementares" placeholder="Exames solicitados ou resultados..." rows="3" value={examesComplementares} onChange={(e) => setExamesComplementares(e.target.value)}></textarea>
                                 </div>
 
                                 <div className="form-group">

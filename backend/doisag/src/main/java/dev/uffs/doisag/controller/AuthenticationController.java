@@ -1,15 +1,18 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.ApiResponseDTO; // import do novo dto
+import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.LoginDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.dto.TokenDTO;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.service.PasswordService;
 import dev.uffs.doisag.service.PatientService;
 import dev.uffs.doisag.security.TokenService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -21,12 +24,14 @@ public class AuthenticationController {
     private final AuthenticationManager manager;
     private final TokenService tokenService;
     private final PatientService patientService; // injete o patientService
+    private final PasswordService passwordService;
 
     // injeção de dependências via construtor
-    public AuthenticationController(AuthenticationManager manager, TokenService tokenService, PatientService patientService) {
+    public AuthenticationController(AuthenticationManager manager, TokenService tokenService, PatientService patientService, PasswordService passwordService) {
         this.manager = manager;
         this.tokenService = tokenService;
         this.patientService = patientService;
+        this.passwordService = passwordService;
     }
 
     // endpoint que o frontend vai chamar para fazer login
@@ -51,5 +56,15 @@ public class AuthenticationController {
         // retorna 201 created com um corpo de mensagem
         var response = new ApiResponseDTO("Cadastro realizado com sucesso, seja bem-vindo(a)!");
         return ResponseEntity.status(201).body(response);
+    }
+
+    // troca a senha de quem esta logado. n tem id na rota de proposito:
+    // cada um so troca a propria
+    @PutMapping("/senha")
+    public ResponseEntity<ApiResponseDTO> trocarSenha(
+            @RequestBody @Valid ChangePasswordDTO dados,
+            @AuthenticationPrincipal Users usuarioLogado) {
+        passwordService.trocarSenha(usuarioLogado, dados);
+        return ResponseEntity.ok(new ApiResponseDTO("Senha alterada com sucesso."));
     }
 }

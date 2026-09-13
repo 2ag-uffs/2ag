@@ -178,8 +178,9 @@ export default function HamAScale() {
         try {
             await apiService.post('/escala-hamilton', escala);
             const total = calculateTotal();
-            alert('Avaliação salva! Total: ' + total + '/56. Nível: ' + getAnxietyLevel(total));
-            navigate('/dashboard-paciente');
+            navigate('/dashboard-paciente', {
+                state: {aviso: 'Avaliação salva. Total: ' + total + '/56, ' + getAnxietyLevel(total) + '.'},
+            });
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : 'Não foi possível salvar a avaliação.');
         } finally {

@@ -1,4 +1,8 @@
-:root {
+/* esses nomes sao locais desta tela. estavam em :root, entao
+ * vazavam pro app inteiro: como o vite junta todo css num arquivo
+ * so, os dois arquivos de notificacao redefiniam os mesmos nomes e
+ * valia o ultimo que carregasse */
+.notifications-page {
     --primary-color: var(--color-primary);
     --background-color: var(--color-background);
     --surface-color: var(--color-surface);

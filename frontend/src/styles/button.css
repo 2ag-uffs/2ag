@@ -1,6 +1,12 @@
 /*
-    Estilização base para todos os inputs do sistema
-*/
+ * estilo base de todo botao do sistema.
+ *
+ * cuidado com o flex e o min-height daqui: eles valem pra qualquer
+ * <button> da tela, inclusive os que tem tamanho proprio. ja quebraram
+ * o seletor de nota das escalas e os quadrados do diario de dor, que
+ * declaravam 44x44 e renderizavam 61x48.
+ * quem tem tamanho proprio precisa escrever flex 0 0 auto e min-height 0
+ */
 button,
 .button {
     align-items: center;

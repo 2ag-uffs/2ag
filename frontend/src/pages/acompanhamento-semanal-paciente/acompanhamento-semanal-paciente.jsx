@@ -1,21 +1,9 @@
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import "./acompanhamento-semanal-paciente.css";
-import {useNavigate} from "react-router-dom";
+import {useNavigate} from "react-router";
 import Header from "../../components/header/header.jsx";
-
-// funcao auxiliar pra pegar o id do usuario do token
-function getUserIdFromToken() {
-    const token = localStorage.getItem("authToken");
-    if (!token) return null;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.id;
-    } catch (e) {
-        console.error("Erro ao decodificar o token:", e);
-        return null;
-    }
-}
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function AcompanhamentoSemanalPaciente() {
     const navigate = useNavigate();
@@ -43,10 +31,9 @@ export default function AcompanhamentoSemanalPaciente() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    //  se nao tiver logado manda pra tela de login
+    // se n tiver logado manda pra tela de login
     useEffect(() => {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
+        if (!getLoggedUser()) {
             navigate("/login");
         }
     }, [navigate]);
@@ -57,7 +44,7 @@ export default function AcompanhamentoSemanalPaciente() {
         setIsLoading(true);
         setError(null);
 
-        const patientId = getUserIdFromToken();
+        const patientId = getLoggedUser()?.id;
         if (!patientId) {
             setError("Sua sessão expirou. Faça o login novamente.");
             setIsLoading(false);
@@ -90,36 +77,10 @@ export default function AcompanhamentoSemanalPaciente() {
         };
 
         try {
-            const token = localStorage.getItem("authToken");
-            const response = await fetch("http://localhost:8080/acompanhamento", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            // se o token for invalido ou expirou, o backend retorna 401 ou 403
-            if (response.status === 401 || response.status === 403) {
-                setError("Sua sessão expirou. Por favor, faça login novamente.");
-                localStorage.removeItem("authToken"); // limpa o token velho
-                navigate("/login");
-                return;
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Falha ao salvar acompanhamento.");
-            }
-
-            // o alert pausa a execucao aqui ate o usuario clicar em OK
-            alert("Acompanhamento salvo com sucesso!");
-            // so depois do OK a navegacao acontece
-            navigate("/dashboard-paciente");
-
+            await apiService.post("/acompanhamento", payload);
+            navigate("/dashboard-paciente", {state: {aviso: "Acompanhamento salvo."}});
         } catch (err) {
-            setError(err.message);
+            setError(err instanceof ApiError ? err.message : "Falha ao salvar o acompanhamento.");
         } finally {
             setIsLoading(false);
         }
