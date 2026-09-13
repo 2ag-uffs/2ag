@@ -735,7 +735,7 @@ Ficam para os módulos seguintes, onde cada entidade é reescrita:
 
 - **Atendimento:**
   - anulação de registro com motivo, que substitui a exclusão;
-  - arquivamento de paciente;
+  - arquivamento de paciente, que tira o paciente da lista de ativos e encerra o envio automático, mas não impede que as escalas enviadas pelo prescritor cheguem a ele;
   - preservação da versão anterior da prescrição (RF05).
 - **Escalas:** a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou.
 - **Agenda:** o campo de observação que o paciente preenchia ao marcar consulta, que saiu por gravar texto do paciente em campo clínico.

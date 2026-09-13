@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.repository.AnamnesisRepository;
@@ -15,10 +16,13 @@ import java.util.Optional;
 public class AnamnesisService {
     private final AnamnesisRepository anamnesisRepository;
     private final AuditService auditService;
+    private final ScaleAssignmentService scaleAssignmentService;
 
-    public AnamnesisService(AnamnesisRepository anamnesisRepository, AuditService auditService) {
+    public AnamnesisService(AnamnesisRepository anamnesisRepository, AuditService auditService,
+                            ScaleAssignmentService scaleAssignmentService) {
         this.anamnesisRepository = anamnesisRepository;
         this.auditService = auditService;
+        this.scaleAssignmentService = scaleAssignmentService;
     }
 
     // CREATE
@@ -27,6 +31,8 @@ public class AnamnesisService {
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());
+        // preencher a anamnese da baixa na tarefa q o prescritor enviou igual as outras escalas
+        scaleAssignmentService.completeAssignedScale(savedAnamnesis.getPatient().getId(), ScaleType.ANAMNESE);
         return savedAnamnesis;
     }
 

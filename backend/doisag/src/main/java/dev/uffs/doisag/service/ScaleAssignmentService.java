@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.springframework.context.MessageSource;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import dev.uffs.doisag.dto.CompletedScaleInfoDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
@@ -48,8 +49,16 @@ public class ScaleAssignmentService {
         this.notificationService = notificationService;
     }
 
+    // envio feito pelo prescritor
+    // se a mesma escala ainda esta pendente o paciente ja tem essa tarefa e n recebe outra igual
     @Transactional
     public AssignedScaleResponseDTO assignScaleToPatient(Long patientId, AssignScaleDTO assignScaleDTO) {
+        Optional<AssignedScale> pendingAssignment = assignedScaleRepository
+                .findFirstByPatientIdAndScaleTypeAndStatusOrderByAssignedDateDesc(
+                        patientId, assignScaleDTO.scaleType(), AssignmentStatus.PENDENTE);
+        if (pendingAssignment.isPresent()) {
+            return new AssignedScaleResponseDTO(pendingAssignment.get());
+        }
         return assignScaleToPatient(patientId, assignScaleDTO, LocalDate.now());
     }
 
