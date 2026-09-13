@@ -161,7 +161,7 @@
 }
 
 .status-completo {
-    color: var(--color-secondary-dark);
+    color: var(--color-primary);
     font-size: 0.8rem;
     font-weight: 600;
     background-color: rgba(119, 149, 79, 0.1);

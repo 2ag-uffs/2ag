@@ -141,7 +141,7 @@
 }
 
 .prescricao-status.ativa {
-    color: var(--color-secondary-dark);
+    color: var(--color-primary);
     background-color: rgba(119, 149, 79, 0.1);
 }
 

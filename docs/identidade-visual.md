@@ -100,7 +100,7 @@ Sobre fundo sem contraste · esticar horizontalmente · aumentar o tamanho do s�
 
 `frontend/src/styles/colors.css` é a única fonte de cor do frontend. Os quinze tons da cartela estão lá com o nome da família, mais o preto neutro.
 
-Quatro valores são derivação nossa, porque a cartela não tem tom neutro: `--color-border`, `--color-border-light`, `--color-primary-soft` (realce de seleção) e `--color-neutral`. Estão marcados como tal no arquivo.
+Quatro valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo.
 
 Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, amarela e vermelha da escala de dor, que copiam o formulário impresso que a clínica já usa.
 
@@ -110,8 +110,9 @@ Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores
 | :--- | :--- | :--- |
 | branco sobre `#006633` | 7,1:1 | AAA |
 | palha `#FFEEDA` sobre `#006633` | 6,3:1 | AA |
-| `#1D1B1B` sobre a palha `#FFEEDA` | 15,1:1 | AAA |
-| `#006633` sobre a palha `#FFEEDA` | 6,3:1 | AA |
+| `#1D1B1B` sobre o fundo `#F4F6F4` | 15,8:1 | AAA |
+| `#193E21` sobre o fundo `#F4F6F4` | 11,0:1 | AAA |
+| `#006633` sobre o fundo `#F4F6F4` | 6,6:1 | AA |
 | branco sobre `#77954F` | 3,4:1 | ❌ reprova |
 | `#1D1B1B` sobre `#77954F` | 5,1:1 | AA |
 | `#77954F` como texto sobre branco | 3,4:1 | ❌ reprova |
@@ -121,11 +122,17 @@ Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores
 
 O verde claro e a terracota do manual **reprovam como cor de texto**, nos dois sentidos: branco em cima deles e eles em cima de branco. Isso não contraria o manual — ele descreve a secundária como "detalhes principais, grafismos", não como texto.
 
-A regra que ficou: onde o verde claro é fundo, o texto vai escuro (`--color-text-on-secondary`); onde ele era texto, virou o tom 3 da família (`#637D40`); e a terracota de texto e de fundo virou o tom 3 (`#A44819`), que é também a `--color-error`. Os tons 1 continuam na paleta, em preenchimento, borda e ícone.
+A regra que ficou: onde o verde claro é fundo, o texto vai escuro (`--color-text-on-secondary`); onde ele era texto, virou a primária, porque nem o tom 3 (`#637D40`, 4,3:1) passa em cima do fundo da página; e a terracota de texto e de fundo virou o tom 3 (`#A44819`), que é também a `--color-error`. O verde claro e a terracota do tom 1 continuam na paleta, em preenchimento, borda e ícone.
 
 ### superfícies
 
-O fundo das telas é a palha `#FFEEDA` e o cartão é branco. A separação entre os dois é fraca (1,14:1), então cartão continua dependendo da sombra que já tinha. `--color-surface-alt` é o tom 2 da palha, para bloco destacado dentro do cartão — é o fundo da caixa de pontuação das escalas.
+O fundo das telas é um neutro frio levemente esverdeado (`#F4F6F4`), o cartão é branco e o bloco dentro do cartão é `#E9EDEA`. Nenhum dos três sai da cartela, porque ela não tem tom neutro.
+
+A primeira versão usava a palha `#FFEEDA` como fundo de tudo. Na tela pesou: fundo creme, cabeçalho verde e caixa de destaque em pêssego são três coisas quentes empilhadas, e as faixas azul, amarela e vermelha da escala de dor brigavam com elas. Palha, pêssego e terracota voltaram para o papel que o manual dá a elas — destaque em até 10%: badge, estado, erro e faixa de escala.
+
+Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
+
+O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.
 
 ### logotipo
 
@@ -151,8 +158,8 @@ O sistema 60‑30‑10 diz que a **primária ocupa 60% e serve de fundo**. Isso 
 
 O 2ag é um sistema clínico: o paciente passa minutos preenchendo formulário de 15 itens, e a prescritora lê prontuário e gráfico de evolução. Fundo escuro em 60% da tela prejudica leitura longa e contraste de texto.
 
-A leitura aplicada foi: a **primária domina a identidade** (cabeçalho, barra de navegação, botões principais, arte do login, elementos de marca), e o corpo de leitura usa a palha `#FFEEDA`.
+A leitura aplicada foi: a **primária domina a identidade** (cabeçalho, barra de navegação, botões principais, arte do login, elementos de marca), e o corpo de leitura usa um neutro quase sem cor, derivado da própria primária.
 
-Vale registrar que isso também estica o manual do outro lado: a palha está listada entre as cores de destaque, limitadas a 10%, e aqui ela é o fundo de todas as telas.
+Ou seja: nenhuma cor da marca serve de fundo de tela. A primária porque escureceria demais, e a palha porque já tentamos e ficou pesada.
 
-**Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface`.
+**Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface-alt`.

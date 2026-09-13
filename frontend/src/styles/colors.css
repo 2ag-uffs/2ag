@@ -11,10 +11,14 @@
  * to action.
  *
  * como isso virou interface: a primaria domina a identidade (cabecalho,
- * navegacao, botao principal) e o corpo de leitura fica na palha. o
- * manual diz que a primaria ocupa 60% como fundo, mas isso eh regra de
- * material impresso: 60% da tela em verde escuro atrapalha quem
- * preenche formulario de 15 itens ou le prontuario
+ * navegacao, botao principal) e o corpo de leitura fica num neutro
+ * frio, quase sem cor. o manual diz que a primaria ocupa 60% como
+ * fundo, mas isso eh regra de material impresso: 60% da tela em verde
+ * escuro atrapalha quem preenche formulario de 15 itens ou le prontuario
+ *
+ * palha, pessego e terracota ficam no papel que o manual deu pra elas,
+ * de destaque em ate 10%: badge, estado, erro, faixa de escala. ja
+ * tentamos a palha como fundo de tudo e pesou, virou creme demais
  */
 
 :root {
@@ -46,27 +50,29 @@
     /* ---- preto neutro ---- */
     --color-neutral-black: #1d1b1b;
 
-    /* ---- superficies ---- */
-    --color-background: #ffeeda;        /* a palha, tom 1 */
-    --color-surface: #ffffff;
-    --color-surface-alt: #ffe6c9;       /* a palha, tom 2, pra cartao */
+    /* ---- superficies ----
+     * neutros esverdeados, derivados da primaria quase sem saturacao.
+     * a cartela n tem tom neutro, entao esses tres sao nossos */
+    --color-background: #f4f6f4;        /* fundo da pagina */
+    --color-surface: #ffffff;           /* cartao */
+    --color-surface-alt: #e9edea;       /* bloco dentro do cartao */
 
     /* ---- texto ----
      * branco sobre a primaria da 7,1:1, passa no AA e no AAA.
      * sobre a secundaria da so 3,4:1, entao ali o texto vai escuro */
     --color-text-primary: #1d1b1b;
-    --color-text-headings: #006633;
-    --color-text-secondary: #5c5a57;
+    --color-text-headings: #193e21;     /* verde escuro tom 3, 12:1 */
+    --color-text-secondary: #575e59;
     --color-text-on-primary: #ffffff;
     --color-text-on-secondary: #1d1b1b;
 
     /* ---- derivados, n saem da cartela ----
      * a cartela n tem tom neutro pra borda, divisor e realce fraco,
      * entao esses quatro sao diluicoes nossas */
-    --color-border: #e3dcd2;
-    --color-border-light: #efe9e1;
-    --color-primary-soft: #e0ede6;      /* verde bem diluido, pra selecao */
-    --color-neutral: #a8a49e;
+    --color-border: #dbe1dd;
+    --color-border-light: #e9edea;
+    --color-primary-soft: #e0ede6;      /* verde diluido, selecao e destaque */
+    --color-neutral: #9aa69f;
 
     /* ---- estados ---- */
     --color-error: #a44819;             /* terracota tom 3, 6,0:1 */
@@ -78,12 +84,12 @@
     /* ---- nomes antigos, mantidos pra n quebrar as telas ---- */
     --color-accent-agree: #77954f;
     --color-accent-disagree: #bf663f;
-    --color-text-muted: #5c5a57;
+    --color-text-muted: #575e59;
     --color-btn-light-bg: #77954f;
     --color-btn-light-bg-transparent: #77954f6e;
 
     /* ---- cores do grafico de evolucao ----
      * saem da paleta em vez do padrao da biblioteca */
     --color-chart-line: #006633;
-    --color-chart-grid: #e3dcd2;
+    --color-chart-grid: #dbe1dd;
 }
