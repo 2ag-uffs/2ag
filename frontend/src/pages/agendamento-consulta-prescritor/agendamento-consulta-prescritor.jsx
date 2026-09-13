@@ -6,6 +6,7 @@ import "../../styles/input.css";
 import "./agendamento-consulta-prescritor.css";
 import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 
 // atencao: esta tela ainda n fala com a api. as consultas ficam so no
 // estado do componente e somem quando a pagina recarrega. por isso os
@@ -14,6 +15,7 @@ export default function AgendamentoPrescritor() {
     const navigate = useNavigate();
 
     const [aviso, setAviso] = useState(null);
+    const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
@@ -206,13 +208,13 @@ export default function AgendamentoPrescritor() {
         setEditingAppointment(null);
     };
 
+    // o confirm do navegador virou modal, quem pergunta eh o botao
     const handleCancelAppointment = () => {
-        if (window.confirm(`Tem certeza que deseja cancelar a consulta de ${editingAppointment.pacienteNome}?`)) {
-            setAppointments(appointments.filter(apt => apt.id !== editingAppointment.id));
-            setAviso(`Consulta de ${editingAppointment.pacienteNome} cancelada.`);
-            setShowEditModal(false);
-            setEditingAppointment(null);
-        }
+        setConfirmandoCancelamento(false);
+        setAppointments(appointments.filter(apt => apt.id !== editingAppointment.id));
+        setAviso(`Consulta de ${editingAppointment.pacienteNome} cancelada.`);
+        setShowEditModal(false);
+        setEditingAppointment(null);
     };
 
     const filteredPatients = patients.filter(patient =>
@@ -508,8 +510,9 @@ export default function AgendamentoPrescritor() {
                         </div>
                         <div className="modal-footer">
                             <button
+                                type="button"
                                 className="button-danger"
-                                onClick={handleCancelAppointment}
+                                onClick={() => setConfirmandoCancelamento(true)}
                             >
                                 Cancelar Consulta
                             </button>
@@ -529,6 +532,20 @@ export default function AgendamentoPrescritor() {
                     </div>
                 </div>
             )}
+
+            <ModalConfirmacao
+                show={confirmandoCancelamento}
+                titulo="Cancelar consulta"
+                mensagem={
+                    editingAppointment
+                        ? `A consulta de ${editingAppointment.pacienteNome} sai da agenda. Quer cancelar?`
+                        : ""
+                }
+                textoConfirmar="Sim, cancelar"
+                textoCancelar="Manter consulta"
+                onConfirmar={handleCancelAppointment}
+                onCancelar={() => setConfirmandoCancelamento(false)}
+            />
         </div>
     );
 }

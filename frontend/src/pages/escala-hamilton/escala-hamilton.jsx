@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router';
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import './escala-hamilton.css';
 import Header from "../../components/header/header.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 
 const hamAItems = [
@@ -130,6 +131,7 @@ export default function HamAScale() {
 
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState(null);
+    const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
     const [data, setData] = useState({
         evaluationDate: '',
@@ -188,10 +190,9 @@ export default function HamAScale() {
         }
     };
 
+    // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
-        if (confirm('Tem certeza que deseja cancelar? Todos os dados serão perdidos.')) {
-            navigate('/dashboard-paciente');
-        }
+        setConfirmandoSaida(true);
     };
 
     const handleBack = () => {
@@ -306,6 +307,16 @@ export default function HamAScale() {
                     </div>
                 </div>
             </div>
+
+            <ModalConfirmacao
+                show={confirmandoSaida}
+                titulo="Cancelar preenchimento"
+                mensagem="Tudo o que você preencheu será perdido. Quer mesmo sair?"
+                textoConfirmar="Sim, cancelar"
+                textoCancelar="Continuar preenchendo"
+                onConfirmar={() => navigate('/dashboard-paciente')}
+                onCancelar={() => setConfirmandoSaida(false)}
+            />
         </div>
     );
 }

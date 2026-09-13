@@ -6,6 +6,7 @@ import '../../styles/fonts.css';
 import '../../styles/button.css';
 import '../../styles/input.css';
 import Header from "../../components/header/header.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function Anamnese() {
@@ -13,6 +14,7 @@ export default function Anamnese() {
     const [userData, setUserData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
     const [formData, setFormData] = useState({
         assessmentDate: new Date().toISOString().split('T')[0],
@@ -107,10 +109,9 @@ export default function Anamnese() {
         navigate(-1);
     };
 
+    // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
-        if (window.confirm('Tem certeza que deseja cancelar? Todos os dados preenchidos serão perdidos')) {
-            navigate('/dashboard-paciente');
-        }
+        setConfirmandoSaida(true);
     };
 
     return (
@@ -299,6 +300,16 @@ export default function Anamnese() {
                         </button>
                     </div>
                 </form>
+
+            <ModalConfirmacao
+                show={confirmandoSaida}
+                titulo="Cancelar preenchimento"
+                mensagem="Tudo o que você preencheu será perdido. Quer mesmo sair?"
+                textoConfirmar="Sim, cancelar"
+                textoCancelar="Continuar preenchendo"
+                onConfirmar={() => navigate("/dashboard-paciente")}
+                onCancelar={() => setConfirmandoSaida(false)}
+            />
             </main>
         </div>
     );

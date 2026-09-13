@@ -3,6 +3,7 @@ import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import "./acompanhamento-semanal-paciente.css";
 import {useNavigate} from "react-router";
 import Header from "../../components/header/header.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function AcompanhamentoSemanalPaciente() {
@@ -30,6 +31,7 @@ export default function AcompanhamentoSemanalPaciente() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
     // se n tiver logado manda pra tela de login
     useEffect(() => {
@@ -90,10 +92,9 @@ export default function AcompanhamentoSemanalPaciente() {
         navigate(-1); // volta pra pagina anterior
     };
 
+    // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
-        if (window.confirm('Tem certeza que deseja cancelar? Todos os dados serão perdidos')) {
-            navigate('/dashboard-paciente');
-        }
+        setConfirmandoSaida(true);
     };
 
     return (
@@ -367,6 +368,16 @@ export default function AcompanhamentoSemanalPaciente() {
                         </div>
                     </form>
                 </div>
+
+            <ModalConfirmacao
+                show={confirmandoSaida}
+                titulo="Cancelar preenchimento"
+                mensagem="Tudo o que você preencheu será perdido. Quer mesmo sair?"
+                textoConfirmar="Sim, cancelar"
+                textoCancelar="Continuar preenchendo"
+                onConfirmar={() => navigate("/dashboard-paciente")}
+                onCancelar={() => setConfirmandoSaida(false)}
+            />
             </div>
         </div>
     );

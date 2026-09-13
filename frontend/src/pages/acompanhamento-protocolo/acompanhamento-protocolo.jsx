@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import Header from "../../components/header/header.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
@@ -44,6 +45,7 @@ export default function AcompanhamentoProtocolo() {
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState(null);
     const [aviso, setAviso] = useState(null);
+    const [confirmandoEncerrar, setConfirmandoEncerrar] = useState(false);
 
     const carregar = () => {
         setCarregando(true);
@@ -109,10 +111,9 @@ export default function AcompanhamentoProtocolo() {
         }
     };
 
+    // o confirm do navegador virou modal, quem pergunta eh o botao
     const encerrar = async () => {
-        if (!confirm("Encerrar o acompanhamento? O sistema para de enviar as escalas.")) {
-            return;
-        }
+        setConfirmandoEncerrar(false);
         try {
             await apiService.delete(`/pacientes/${patientId}/acompanhamento`);
             carregar();
@@ -174,7 +175,11 @@ export default function AcompanhamentoProtocolo() {
                         </p>
 
                         <div className="protocolo__acoes">
-                            <button type="button" className="button-secondary" onClick={encerrar}>
+                            <button
+                                type="button"
+                                className="button-secondary"
+                                onClick={() => setConfirmandoEncerrar(true)}
+                            >
                                 Encerrar acompanhamento
                             </button>
                             <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
@@ -250,6 +255,16 @@ export default function AcompanhamentoProtocolo() {
                     </form>
                 )}
             </main>
+
+            <ModalConfirmacao
+                show={confirmandoEncerrar}
+                titulo="Encerrar acompanhamento"
+                mensagem="O sistema para de enviar as escalas para este paciente. Quer encerrar?"
+                textoConfirmar="Sim, encerrar"
+                textoCancelar="Manter ativo"
+                onConfirmar={encerrar}
+                onCancelar={() => setConfirmandoEncerrar(false)}
+            />
         </div>
     );
 }
