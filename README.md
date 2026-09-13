@@ -41,6 +41,7 @@ cp .env.example .env
 - `POSTGRES_PASSWORD`: uma senha para o banco
 - `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
+- `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
 
 `POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: sem elas a aplicação não sobe.
 

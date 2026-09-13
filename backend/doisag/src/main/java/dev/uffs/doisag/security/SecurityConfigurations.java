@@ -40,6 +40,9 @@ public class SecurityConfigurations {
                     routes.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     routes.requestMatchers(HttpMethod.POST, "/auth/logout").permitAll();
                     routes.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
+                    // quem esqueceu a senha ainda n tem sessao
+                    routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/request").permitAll();
+                    routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/confirm").permitAll();
                     // a tela de cadastro confere o convite antes de a pessoa ter conta
                     routes.requestMatchers(HttpMethod.GET, "/invites/*").permitAll();
                     // o termo de consentimento eh lido antes de a pessoa ter conta

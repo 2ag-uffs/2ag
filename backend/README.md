@@ -45,6 +45,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
+| `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail | `http://localhost:5173` |
 
 a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde roda.
 
@@ -86,6 +87,15 @@ o administrador não acessa nenhum dado clínico.
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
 
 as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perfil de outra pessoa.
+
+## recuperação de senha
+
+| rota | o que faz |
+| :--- | :--- |
+| `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma |
+| `POST /auth/password-reset/confirm` | grava a senha nova. o link vale uma vez, por 30 minutos, e as sessões abertas caem |
+
+cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. **o envio de e-mail ainda não está configurado:** por enquanto a mensagem, com o link, aparece no log da api.
 
 ## convite de paciente
 

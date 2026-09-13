@@ -12,6 +12,14 @@
     margin-top: 0.5rem;
 }
 
+.forgotLink {
+    align-self: flex-end;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: -0.5rem;
+}
+
 /* o espaco entre os blocos ja vem do gap da moldura */
 .message {
     margin-bottom: 0;

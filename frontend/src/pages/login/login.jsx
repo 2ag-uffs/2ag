@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {useLocation, useNavigate, useSearchParams} from "react-router";
+import {Link, useLocation, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -87,6 +87,7 @@ export default function Login() {
                     onChange={(event) => setPassword(event.target.value)}
                     required={true}
                 />
+                <Link to="/esqueci-senha" className={styles.forgotLink}>Esqueci minha senha</Link>
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                     {isSubmitting ? "Entrando..." : "Entrar"}
                 </button>

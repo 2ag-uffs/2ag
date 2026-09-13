@@ -36,6 +36,16 @@ const routes = [
                 lazy: lazyPage(() => import("../pages/sign-up/sign-up.jsx")),
             },
             {
+                path: "/esqueci-senha",
+                loader: redirectLoggedUserHome,
+                lazy: lazyPage(() => import("../pages/forgot-password/forgot-password.jsx")),
+            },
+            {
+                path: "/redefinir-senha",
+                loader: redirectLoggedUserHome,
+                lazy: lazyPage(() => import("../pages/reset-password/reset-password.jsx")),
+            },
+            {
                 // daqui pra baixo so entra quem esta logado e todas as telas usam o mesmo layout
                 loader: requireRole(),
                 element: <AppLayout/>,
