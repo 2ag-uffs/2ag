@@ -45,6 +45,10 @@ class AuthorizationRulesTest {
     private Long patientBId;
     private Long prescriberAId;
 
+    // consulta n pode ser marcada no passado, entao a fixture anda
+    // junto com o calendario em vez de ter data fixa
+    private static final String DAQUI_A_UM_MES = LocalDate.now().plusMonths(1).toString();
+
     @BeforeEach
     void montaDuasClinicas() {
         Prescriber prescriberA = salvaPrescritor("presc-a@email.com", "AAA11");
@@ -203,13 +207,13 @@ class AuthorizationRulesTest {
         mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPrescriberA)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"dateTime\":\"2026-09-12T10:00:00\",\"modality\":\"qualquer_coisa\"}"))
+                        .content("{\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\",\"modality\":\"qualquer_coisa\"}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void prescritorNaoRegistraConsultaParaPacienteAlheio() throws Exception {
-        String corpo = "{\"patientId\":" + patientBId + ",\"dateTime\":\"2026-09-12T10:00:00\"}";
+        String corpo = "{\"patientId\":" + patientBId + ",\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\"}";
 
         mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPrescriberA)
@@ -220,7 +224,7 @@ class AuthorizationRulesTest {
 
     @Test
     void prescritorRegistraConsultaParaOProprioPaciente() throws Exception {
-        String corpo = "{\"patientId\":" + patientAId + ",\"dateTime\":\"2026-09-12T10:00:00\",\"modality\":\"PRESENCIAL\"}";
+        String corpo = "{\"patientId\":" + patientAId + ",\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\",\"modality\":\"PRESENCIAL\"}";
 
         mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPrescriberA)
@@ -233,7 +237,7 @@ class AuthorizationRulesTest {
     // verificado pela consulta e n pelo paciente
     @Test
     void prescritorNaoEmiteReceitaNaConsultaDeOutro() throws Exception {
-        String consulta = "{\"patientId\":" + patientBId + ",\"dateTime\":\"2026-09-12T10:00:00\"}";
+        String consulta = "{\"patientId\":" + patientBId + ",\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\"}";
         String criada = mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPrescriberB)
                         .contentType(MediaType.APPLICATION_JSON)

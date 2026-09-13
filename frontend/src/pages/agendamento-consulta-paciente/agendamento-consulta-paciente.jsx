@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/button.css";
@@ -8,87 +8,121 @@ import {useNavigate} from "react-router";
 import Header from "../../components/header/header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
+// a agenda funciona em blocos de meia em meia hora, das 8h as 18h
+const HORA_INICIAL = 8;
+const HORA_FINAL = 18;
+const DURACAO = 60;
+
+// o toISOString devolve utc e troca o dia depois das 21h aqui
+const dataLocal = (date) => {
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, "0");
+    const dia = String(date.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+};
+
+const paraMinutos = (hhmm) => {
+    const [hora, minuto] = hhmm.split(":").map(Number);
+    return hora * 60 + minuto;
+};
+
 export default function AgendamentoConsultaPaciente() {
     const navigate = useNavigate();
 
-    // Estados do formulário
-    const [selectedPrescritor, setSelectedPrescritor] = useState(null);
+    // o paciente tem um prescritor so, o dele. antes a tela oferecia tres
+    // medicos inventados, com nota de avaliacao e tudo (RF10)
+    const [prescritor, setPrescritor] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedTime, setSelectedTime] = useState(null);
     const [consultaType, setConsultaType] = useState("presencial");
     const [observacoes, setObservacoes] = useState("");
     const [erro, setErro] = useState(null);
     const [enviando, setEnviando] = useState(false);
+    const [carregando, setCarregando] = useState(true);
+    // os horarios que o prescritor ja tem ocupados no dia escolhido
+    const [ocupados, setOcupados] = useState([]);
+    const [buscandoHorarios, setBuscandoHorarios] = useState(false);
 
-    // Função auxiliar para obter datas futuras
-    const getFutureDate = (days) => {
-        const date = new Date();
-        date.setDate(date.getDate() + days);
-        return date.toISOString().split('T')[0];
-    };
-
-    // Mock data para prescritores (datas ajustadas dinamicamente)
-    const prescritores = [
-        {
-            id: 1,
-            nome: "Dr. Maria Santos",
-            foto: "/images/dr-maria.jpg",
-            avaliacao: 4.9,
-            disponibilidade: [getFutureDate(1), getFutureDate(2), getFutureDate(3), getFutureDate(4)]
-        },
-        {
-            id: 2,
-            nome: "Dr. João Silva",
-            foto: "/images/dr-joao.jpg",
-            avaliacao: 4.8,
-            disponibilidade: [getFutureDate(0), getFutureDate(2), getFutureDate(4), getFutureDate(5)]
-        },
-        {
-            id: 3,
-            nome: "Dra. Ana Costa",
-            foto: "/images/dra-ana.jpg",
-            avaliacao: 4.9,
-            disponibilidade: [getFutureDate(1), getFutureDate(3), getFutureDate(4), getFutureDate(6)]
+    // o prescritor vem do vinculo do paciente, n de uma lista
+    useEffect(() => {
+        const usuarioLogado = getLoggedUser();
+        if (!usuarioLogado) {
+            navigate("/login");
+            return;
         }
-    ];
 
-    // Mock data para horários disponíveis (datas ajustadas dinamicamente)
-    const horariosDisponiveis = {
-        [getFutureDate(0)]: ["09:00", "10:30", "14:00", "15:30"],
-        [getFutureDate(1)]: ["08:30", "10:00", "13:30", "16:00"],
-        [getFutureDate(2)]: ["09:30", "11:00", "14:30", "16:30"],
-        [getFutureDate(3)]: ["08:00", "09:30", "13:00", "15:00"],
-        [getFutureDate(4)]: ["10:00", "11:30", "14:00", "17:00"],
-        [getFutureDate(5)]: ["09:00", "10:30", "15:00", "16:30"],
-        [getFutureDate(6)]: ["08:30", "10:00", "13:30", "15:30"]
+        apiService
+            .get(`/paciente/${usuarioLogado.id}`)
+            .then((paciente) => {
+                if (paciente.prescriberId) {
+                    setPrescritor({id: paciente.prescriberId, nome: paciente.prescriberName});
+                }
+            })
+            .catch((err) => {
+                setErro(err instanceof ApiError ? err.message : "Não foi possível carregar seus dados.");
+            })
+            .finally(() => setCarregando(false));
+    }, [navigate]);
+
+    // os horarios livres do dia saem da agenda do prescritor. a api
+    // devolve so os intervalos ocupados, sem dizer de quem sao
+    const buscarOcupados = useCallback(async (data) => {
+        setBuscandoHorarios(true);
+        try {
+            setOcupados(await apiService.get(`/consulta/disponibilidade?data=${data}`));
+        } catch {
+            setOcupados([]);
+            setErro("Não foi possível ver os horários do seu prescritor.");
+        } finally {
+            setBuscandoHorarios(false);
+        }
+    }, []);
+
+    // todos os blocos do dia, marcando quais ja estao tomados
+    const horariosDoDia = () => {
+        const blocos = [];
+        for (let hora = HORA_INICIAL; hora < HORA_FINAL; hora++) {
+            for (let minuto = 0; minuto < 60; minuto += 30) {
+                blocos.push(String(hora).padStart(2, "0") + ":" + String(minuto).padStart(2, "0"));
+            }
+        }
+
+        const agora = new Date();
+        const hoje = dataLocal(agora);
+        const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+
+        return blocos.map((horario) => {
+            const inicio = paraMinutos(horario);
+            const fim = inicio + DURACAO;
+            const tomado = ocupados.some((faixa) => {
+                const inicioOutro = paraMinutos(faixa.inicio);
+                const fimOutro = paraMinutos(faixa.fim);
+                return inicio < fimOutro && inicioOutro < fim;
+            });
+            // horario que ja passou hoje tbm n serve
+            const passou = selectedDate === hoje && inicio <= minutosAgora;
+            return {horario, livre: !tomado && !passou};
+        });
     };
 
     const handleBack = () => {
         navigate(-1);
     };
 
-    const handlePrescritorSelect = (prescritor) => {
-        setSelectedPrescritor(prescritor);
-        setSelectedDate(null);
-        setSelectedTime(null);
-    };
-
     const handleDateSelect = (date) => {
         setSelectedDate(date);
         setSelectedTime(null);
+        setErro(null);
+        buscarOcupados(date);
     };
 
     const handleTimeSelect = (time) => {
         setSelectedTime(time);
     };
 
-    // atencao: hoje o POST /consulta exige hasRole('PRESCRIBER'), entao
-    // esta tela recebe 403. paciente n agenda sozinho no backend atual,
-    // quem marca eh o prescritor. deixei a chamada certa pra quando a
-    // clinica decidir se paciente pode ou n marcar direto
     const handleConfirmarAgendamento = async () => {
-        if (!selectedPrescritor || !selectedDate || !selectedTime) {
-            setErro("Selecione prescritor, data e horário.");
+        if (!selectedDate || !selectedTime) {
+            setErro("Escolha a data e o horário.");
             return;
         }
 
@@ -101,22 +135,21 @@ export default function AgendamentoConsultaPaciente() {
         setErro(null);
         setEnviando(true);
 
-        const consulta = {
-            patientId: usuarioLogado.id,
-            dateTime: `${selectedDate}T${selectedTime}`,
-            modality: consultaType === "presencial" ? "PRESENCIAL" : "REMOTA",
-            clinicalObservation: observacoes,
-        };
-
         try {
-            await apiService.post("/consulta", consulta);
-            navigate("/dashboard-paciente");
+            // o prescritor n vai no corpo: o backend pega o do vinculo
+            await apiService.post("/consulta", {
+                patientId: usuarioLogado.id,
+                dateTime: `${selectedDate}T${selectedTime}:00`,
+                modality: consultaType === "presencial" ? "PRESENCIAL" : "REMOTA",
+                status: "AGENDADA",
+                clinicalObservation: observacoes,
+                durationMinutes: DURACAO,
+            });
+            navigate("/dashboard-paciente", {state: {aviso: "Consulta agendada."}});
         } catch (err) {
-            if (err instanceof ApiError && err.status === 403) {
-                setErro("O agendamento é feito pela clínica. Entre em contato com seu prescritor.");
-            } else {
-                setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
-            }
+            setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
+            // o horario pode ter sido tomado enquanto a tela estava aberta
+            buscarOcupados(selectedDate);
         } finally {
             setEnviando(false);
         }
@@ -128,11 +161,8 @@ export default function AgendamentoConsultaPaciente() {
         return date.toLocaleDateString("pt-BR");
     };
 
-    const isDateAvailable = (date) => {
-        if (!selectedPrescritor) return false;
-        return selectedPrescritor.disponibilidade.includes(date);
-    };
-
+    // os proximos 14 dias. domingo fica de fora, o resto abre e quem
+    // diz o que sobrou de horario eh a agenda do prescritor
     const generateCalendarDays = () => {
         const today = new Date();
         const days = [];
@@ -140,13 +170,12 @@ export default function AgendamentoConsultaPaciente() {
         for (let i = 0; i < 14; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
-            const dateString = date.toISOString().split('T')[0];
 
             days.push({
-                date: dateString,
+                date: dataLocal(date),
                 day: date.getDate(),
                 dayName: date.toLocaleDateString("pt-BR", {weekday: "short"}),
-                available: isDateAvailable(dateString)
+                available: date.getDay() !== 0
             });
         }
 
@@ -166,44 +195,35 @@ export default function AgendamentoConsultaPaciente() {
                 <div className="agendamento-header">
                     <div className="dashboard-welcome">
                         <h1>Agendar Nova Consulta</h1>
-                        <p>Escolha o prescritor, data e horário que melhor se adequam à sua agenda.</p>
+                        <p>Escolha a data e o horário que melhor se adequam à sua agenda.</p>
                     </div>
                 </div>
 
                 <div className="agendamento-grid">
-                    {/* Seleção de Prescritor */}
+    {/* o paciente tem um prescritor so, o dele. n ha o que escolher */}
                     <section className="dashboard-card">
                         <div className="card-header">
-                            <h2>Escolha o Prescritor</h2>
-                            {selectedPrescritor && (
-                                <span className="card-badge">Selecionado</span>
-                            )}
+                            <h2>Seu Prescritor</h2>
                         </div>
                         <div className="card-content">
-                            <div className="prescritores-list">
-                                {prescritores.map((prescritor) => (
-                                    <div
-                                        key={prescritor.id}
-                                        className={`prescritor-item ${selectedPrescritor?.id === prescritor.id ? 'selected' : ''}`}
-                                        onClick={() => handlePrescritorSelect(prescritor)}
-                                    >
-                                        <div className="prescritor-avatar">
-                                            <div className="avatar-placeholder">
-                                                {prescritor.nome.split(' ').map(n => n[0]).join('')}
-                                            </div>
-                                        </div>
-                                        <div className="prescritor-info">
-                                            <h3>{prescritor.nome}</h3>
-                                            <div className="prescritor-rating">
-                                                ⭐ {prescritor.avaliacao}
-                                            </div>
-                                        </div>
-                                        <div className="prescritor-select">
-                                            {selectedPrescritor?.id === prescritor.id ? '✓' : ''}
+                            {carregando && <p>Carregando...</p>}
+                            {!carregando && !prescritor && (
+                                <div className="empty-state">
+                                    <p>Você ainda não tem um prescritor vinculado. Fale com a clínica.</p>
+                                </div>
+                            )}
+                            {prescritor && (
+                                <div className="prescritor-item selected">
+                                    <div className="prescritor-avatar">
+                                        <div className="avatar-placeholder">
+                                            {prescritor.nome.split(' ').map(parte => parte[0]).join('')}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="prescritor-info">
+                                        <h3>{prescritor.nome}</h3>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </section>
 
@@ -216,9 +236,9 @@ export default function AgendamentoConsultaPaciente() {
                             )}
                         </div>
                         <div className="card-content">
-                            {!selectedPrescritor ? (
+                            {!prescritor ? (
                                 <div className="empty-state">
-                                    <p>Selecione um prescritor para ver as datas disponíveis</p>
+                                    <p>Sem prescritor vinculado, não há agenda para mostrar</p>
                                 </div>
                             ) : (
                                 <div className="calendar-grid">
@@ -247,17 +267,24 @@ export default function AgendamentoConsultaPaciente() {
                             )}
                         </div>
                         <div className="card-content">
-                            {!selectedDate ? (
+                            {!selectedDate && (
                                 <div className="empty-state">
                                     <p>Selecione uma data para ver os horários disponíveis</p>
                                 </div>
-                            ) : (
+                            )}
+                            {selectedDate && buscandoHorarios && <p>Vendo a agenda...</p>}
+                            {selectedDate && !buscandoHorarios && (
                                 <div className="horarios-grid">
-                                    {horariosDisponiveis[selectedDate]?.map((horario) => (
+                                    {/* horario ocupado aparece, mas desabilitado: some
+                                        um botao do nada confunde mais do que ajuda */}
+                                    {horariosDoDia().map(({horario, livre}) => (
                                         <button
+                                            type="button"
                                             key={horario}
                                             className={`horario-button ${selectedTime === horario ? 'selected' : ''}`}
                                             onClick={() => handleTimeSelect(horario)}
+                                            disabled={!livre}
+                                            title={livre ? "" : "Horário já ocupado"}
                                         >
                                             {horario}
                                         </button>
@@ -311,7 +338,7 @@ export default function AgendamentoConsultaPaciente() {
                     </section>
 
                     {/* Resumo do Agendamento */}
-                    {(selectedPrescritor && selectedDate && selectedTime) && (
+                    {(prescritor && selectedDate && selectedTime) && (
                         <section className="dashboard-card resumo-card">
                             <div className="card-header">
                                 <h2>Resumo do Agendamento</h2>
@@ -319,7 +346,7 @@ export default function AgendamentoConsultaPaciente() {
                             <div className="card-content">
                                 <div className="resumo-info">
                                     <div className="resumo-item">
-                                        <strong>Prescritor:</strong> {selectedPrescritor.nome}
+                                        <strong>Prescritor:</strong> {prescritor.nome}
                                     </div>
                                     <div className="resumo-item">
                                         <strong>Data:</strong> {formatDate(selectedDate)}
@@ -339,9 +366,10 @@ export default function AgendamentoConsultaPaciente() {
                                         Cancelar
                                     </button>
                                     <button
+                                        type="button"
                                         className="button"
                                         onClick={handleConfirmarAgendamento}
-                                        disabled={enviando}
+                                        disabled={enviando || !prescritor}
                                     >
                                         {enviando ? "Agendando..." : "Confirmar agendamento"}
                                     </button>

@@ -2,6 +2,7 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.BusySlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
@@ -13,13 +14,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class AppointmentService {
+
+    // a agenda trabalha em blocos de uma hora quando ninguem diz outra coisa
+    public static final int DURACAO_PADRAO = 60;
 
     // injecoes
     private final AppointmentRepository appointmentRepository;
@@ -38,10 +44,20 @@ public class AppointmentService {
         this.notificationService = notificationService;
     }
 
-    // create. o prescritor vem de quem esta logado, n do corpo
-    public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
+    // create. quando quem marca eh o prescritor, ele vem do token. quando
+    // eh o paciente (RF10), o prescritor eh o que ele ja tem vinculado,
+    // entao n da pra marcar consulta na agenda de outro profissional
+    public Appointment create(AppointmentCreateDTO dados, Prescriber prescritorLogado) {
         Patient patient = patientRepository.findById(dados.patientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
+
+        Prescriber prescriber = prescritorLogado != null ? prescritorLogado : patient.getPrescriber();
+        if (prescriber == null) {
+            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
+        }
+
+        recusaDataNoPassado(dados.dateTime());
+        recusaHorarioOcupado(prescriber, dados.dateTime(), dados.durationMinutes(), null);
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
@@ -60,7 +76,7 @@ public class AppointmentService {
         appointment.setHeight(dados.height());
         // sem duracao a grade da agenda n sabe ate quando o horario
         // esta ocupado, entao uma hora eh o padrao
-        appointment.setDurationMinutes(dados.durationMinutes() == null ? 60 : dados.durationMinutes());
+        appointment.setDurationMinutes(dados.durationMinutes() == null ? DURACAO_PADRAO : dados.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
@@ -98,6 +114,8 @@ public class AppointmentService {
 
     public Appointment update(Long id, AppointmentCreateDTO dados) {
         Appointment appointment = getById(id);
+        // a propria consulta n conta como conflito com ela mesma
+        recusaHorarioOcupado(appointment.getPrescriber(), dados.dateTime(), dados.durationMinutes(), id);
         appointment.setDateTime(dados.dateTime());
         appointment.setModality(dados.modality());
         appointment.setStatus(dados.status());
@@ -114,6 +132,22 @@ public class AppointmentService {
             appointment.setDurationMinutes(dados.durationMinutes());
         }
         return appointmentRepository.save(appointment);
+    }
+
+    // os horarios ja ocupados de um prescritor num dia, sem dizer de
+    // quem sao. eh o que o paciente ve pra escolher horario (RF10)
+    public List<BusySlotDTO> getHorariosOcupados(Long prescriberId, LocalDate dia) {
+        return appointmentRepository
+                .findByPrescriberIdAndDateTimeBetween(prescriberId, dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
+                .stream()
+                .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                .map(consulta -> {
+                    int minutos = consulta.getDurationMinutes() == null ? DURACAO_PADRAO : consulta.getDurationMinutes();
+                    LocalTime inicio = consulta.getDateTime().toLocalTime();
+                    return new BusySlotDTO(inicio, inicio.plusMinutes(minutos));
+                })
+                .sorted((a, b) -> a.inicio().compareTo(b.inicio()))
+                .toList();
     }
 
     // consultas de um prescritor especifico
@@ -148,6 +182,39 @@ public class AppointmentService {
 
         avisaDoCancelamento(appointment);
         appointmentRepository.delete(appointment);
+    }
+
+    // RN08: dois agendamentos do mesmo prescritor n podem ocupar o
+    // mesmo horario. a conta de sobreposicao fica aqui em vez de virar
+    // query, porque a duracao eh coluna separada do inicio
+    private void recusaHorarioOcupado(Prescriber prescriber, LocalDateTime inicio, Integer duracao, Long idQueEstaSendoAlterada) {
+        int minutos = duracao == null ? DURACAO_PADRAO : duracao;
+        LocalDateTime fim = inicio.plusMinutes(minutos);
+        LocalDate dia = inicio.toLocalDate();
+
+        boolean ocupado = appointmentRepository
+                .findByPrescriberIdAndDateTimeBetween(prescriber.getId(), dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
+                .stream()
+                .filter(outra -> !outra.getId().equals(idQueEstaSendoAlterada))
+                // consulta cancelada devolveu o horario
+                .filter(outra -> outra.getStatus() != AppointmentStatus.CANCELADA)
+                .anyMatch(outra -> {
+                    int duracaoOutra = outra.getDurationMinutes() == null ? DURACAO_PADRAO : outra.getDurationMinutes();
+                    LocalDateTime inicioOutra = outra.getDateTime();
+                    LocalDateTime fimOutra = inicioOutra.plusMinutes(duracaoOutra);
+                    return inicio.isBefore(fimOutra) && inicioOutra.isBefore(fim);
+                });
+
+        if (ocupado) {
+            throw new IllegalArgumentException("Já existe consulta marcada nesse horário");
+        }
+    }
+
+    // RF10: n da pra marcar consulta pra tras
+    private void recusaDataNoPassado(LocalDateTime quando) {
+        if (quando.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Não é possível agendar em uma data que já passou");
+        }
     }
 
     private void avisaDoCancelamento(Appointment appointment) {
