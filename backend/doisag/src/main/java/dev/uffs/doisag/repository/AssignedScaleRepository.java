@@ -24,4 +24,9 @@ public interface AssignedScaleRepository extends JpaRepository<AssignedScale, Lo
     // busca todas as escalas de um paciente, ordenando pela data que foram designadas
     List<AssignedScale> findByPatientIdOrderByAssignedDateDesc(Long patientId);
 
+
+    // a ultima vez que essa escala foi designada pra esse paciente,
+    // respondida ou n. o job usa isso pra saber se ja deu o prazo
+    Optional<AssignedScale> findFirstByPatientIdAndScaleTypeOrderByAssignedDateDesc(
+            Long patientId, ScaleType scaleType);
 }

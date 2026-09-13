@@ -44,6 +44,17 @@ public class ScaleAssignmentService {
     }
 
     public AssignedScaleResponseDTO assignScaleToPatient(Long patientId, AssignScaleDTO assignScaleDTO) {
+        return assignScaleToPatient(patientId, assignScaleDTO, LocalDate.now());
+    }
+
+    // a versao com data serve pro acompanhamento automatico: o job
+    // registra a data que ele esta processando, e n a de hoje.
+    // sem isso, se ele rodar atrasado, a escala nasce com a data errada
+    // e a proxima rodada calcula o prazo em cima de um dia que n eh o
+    // dela
+    public AssignedScaleResponseDTO assignScaleToPatient(Long patientId,
+                                                         AssignScaleDTO assignScaleDTO,
+                                                         LocalDate dataDaDesignacao) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado"));
 
@@ -60,7 +71,7 @@ public class ScaleAssignmentService {
         newAssignment.setPrescriber(patient.getPrescriber());
         newAssignment.setScaleType(assignScaleDTO.scaleType());
         newAssignment.setStatus(AssignmentStatus.PENDENTE);
-        newAssignment.setAssignedDate(LocalDate.now());
+        newAssignment.setAssignedDate(dataDaDesignacao);
 
         // a gente salva a entidade no banco
         AssignedScale savedAssignment = assignedScaleRepository.save(newAssignment);

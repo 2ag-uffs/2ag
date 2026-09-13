@@ -259,7 +259,22 @@ hoje as notificações são criadas em três situações: novo paciente vinculad
 
 > ⚠️ o campo `upcomingAppointments` do dashboard do paciente retorna **sempre lista vazia** — a busca não foi implementada (`DashboardService`)
 
-#### **2. ciclo de tarefas de escalas**
+#### **2. acompanhamento automático de 90 dias**
+
+o que resolve a sobrecarga descrita na entrevista de 2025: a prescritora monta o plano **uma vez** e o sistema envia as escalas sozinho.
+
+  * **`POST /pacientes/{patientId}/acompanhamento`**: inicia o acompanhamento
+      * corpo: `startDate` (opcional, padrão hoje), `durationDays` (opcional, padrão 90) e `items`, uma lista de `{scaleType, periodicity}`
+      * `periodicity`: `SEMANAL`, `QUINZENAL` ou `MENSAL`
+      * recusa se o paciente já tiver um acompanhamento em andamento, e recusa o `MINI_EXAME_ESTADO_MENTAL`, que é aplicado na consulta (RN09)
+  * **`GET /pacientes/{patientId}/acompanhamento`**: o acompanhamento em andamento
+  * **`DELETE /pacientes/{patientId}/acompanhamento`**: encerra antes do prazo
+
+o job roda **todo dia às 8h** (`api.acompanhamento.cron`, com `-` desligando). ele olha **quando cada escala foi designada pela última vez**, e não quantos dias se passaram desde o início — assim, se o servidor ficar fora do ar, o acompanhamento continua de onde parou em vez de pular a rodada.
+
+ao passar da data final o protocolo se encerra sozinho.
+
+#### **3. ciclo de tarefas de escalas**
 
 esse fluxo permite que um prescritor envie uma escala para o paciente e que o sistema dê baixa nela automaticamente
 
@@ -403,7 +418,8 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **funcionalidades incompletas**
 
-  * não existe nenhum `@Scheduled` no projeto: o ciclo automático de acompanhamento de 90 dias e os lembretes de dose não existem. toda escala é designada manualmente (RF32, RF34)
+  * ~~não existe nenhum `@Scheduled`: o ciclo automático de 90 dias não existe~~ **resolvido**: o prescritor monta o protocolo uma vez (`POST /pacientes/{id}/acompanhamento`) dizendo quais escalas e com que frequência, e um job diário designa o que vencer até o fim do período (RF32)
+  * os **lembretes de dose** (RF34) ainda não existem. o protocolo cobre o envio dos formulários, não o horário da medicação
   * ~~`ESCALA_PITTSBURGH`, `REGISTRO_DOR` e `REGISTRO_TEA` apontam pra rotas que não existem~~ **resolvido**: as três telas foram criadas, e todas as 8 rotas do `ScaleType` existem no frontend (RF08)
   * ~~`MINI_EXAME_ESTADO_MENTAL` é designável ao paciente~~ **resolvido**: designar o MEEM agora é recusado com 400. ele é aplicado pelo prescritor dentro da consulta, em `POST /mini-exame/consulta/{appointmentId}` (RN09)
   * `CompletedScaleInfoDTO` devolve a string fixa `"Concluído"` no lugar do resultado da escala (RF08)

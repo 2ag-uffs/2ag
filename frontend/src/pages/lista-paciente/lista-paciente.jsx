@@ -73,6 +73,11 @@ export default function ListaPacientes() {
         navigate(`/paciente/${pacienteId}/progresso`);
     };
 
+    // RF32: monta o acompanhamento automatico de 90 dias
+    const handleAcompanhamento = (pacienteId) => {
+        navigate(`/paciente/${pacienteId}/acompanhamento`);
+    };
+
     const handleNewConsult = (patientId) => {
         navigate(`/consulta?patientId=${patientId}`);
     };
@@ -153,6 +158,9 @@ export default function ListaPacientes() {
                                     </button>
                                     <button className="button-tertiary" onClick={() => handleViewProgress(paciente.id)}>
                                         Ver Progresso
+                                    </button>
+                                    <button className="button-tertiary" onClick={() => handleAcompanhamento(paciente.id)}>
+                                        Acompanhamento
                                     </button>
                                 </div>
                             </div>

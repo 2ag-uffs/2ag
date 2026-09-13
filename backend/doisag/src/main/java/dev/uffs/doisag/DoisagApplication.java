@@ -11,6 +11,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +21,8 @@ import java.time.LocalDate;
 @SpringBootApplication
 // liga o preenchimento automatico de createdAt e updatedAt
 @EnableJpaAuditing
+// liga o job diario do acompanhamento automatico (RF32)
+@EnableScheduling
 public class DoisagApplication {
 
 	public static void main(String[] args) {

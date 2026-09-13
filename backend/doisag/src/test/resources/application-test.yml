@@ -29,3 +29,8 @@ api:
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false
+  acompanhamento:
+    # "-" desliga o agendamento. no teste quem dispara a logica somos nos,
+    # passando a data na mao, senao n da pra testar o que acontece daqui
+    # a 7, 30 ou 91 dias
+    cron: "-"

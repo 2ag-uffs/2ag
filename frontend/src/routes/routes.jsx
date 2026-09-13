@@ -25,6 +25,7 @@ import NotificacoesPrescritor from "../pages/notificacoes-prescritor/notificacoe
 import NotificacoesPaciente from "../pages/notificacoes-paciente/notificacoes-paciente.jsx";
 import Perfil from "../pages/perfil/perfil.jsx";
 import Progresso from "../pages/progresso/progresso.jsx";
+import AcompanhamentoProtocolo from "../pages/acompanhamento-protocolo/acompanhamento-protocolo.jsx";
 import DiarioDor from "../pages/diario-dor/diario-dor.jsx";
 import DiarioTea from "../pages/diario-tea/diario-tea.jsx";
 import EscalaPittsburgh from "../pages/escala-pittsburgh/escala-pittsburgh.jsx";
@@ -141,6 +142,11 @@ const router = createBrowserRouter([
         // o prescritor vendo o progresso de um paciente dele (RF28)
         path: "/paciente/:patientId/progresso",
         element: <Progresso/>
+    },
+    {
+        // monta o acompanhamento automatico de 90 dias (RF32)
+        path: "/paciente/:patientId/acompanhamento",
+        element: <AcompanhamentoProtocolo/>
     },
     {
         // essas tres rotas existiam so como comentario, e o ScaleType do
