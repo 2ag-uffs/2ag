@@ -52,9 +52,13 @@
     gap: 6px;
 }
 
+/* mesmo caso do diario de dor: sem isso o button.css estica o quadrado */
 .diario-tea__escala button {
     width: 44px;
     height: 44px;
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 0;
     border-radius: 6px;
     border: 1px solid var(--color-border);
     background-color: var(--color-surface);

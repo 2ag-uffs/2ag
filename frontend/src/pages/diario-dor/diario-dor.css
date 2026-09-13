@@ -53,9 +53,14 @@
     gap: 6px;
 }
 
+/* o flex e o min-height sao pra vencer o button.css, que estica todo
+   botao do sistema pra ocupar o espaco que tem */
 .diario-dor__nota {
     width: 44px;
     height: 44px;
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 0;
     border-radius: 6px;
     border: 2px solid transparent;
     font-weight: 600;
