@@ -1,7 +1,6 @@
 package dev.uffs.doisag.model;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.Column;
 import jakarta.persistence.OneToMany;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,11 +22,6 @@ public class Prescriber extends Users {
     // conselho profisisnal e numero unico da profissão
     private String registryType;
     private String registryNumber;
-
-
-    // codigo unico de vinculo para a api
-    @Column(unique = true)
-    private String professionalCode;
 
     // anotacao para serialize lista de filhos normalmente
     @JsonManagedReference
@@ -51,14 +45,6 @@ public class Prescriber extends Users {
 
     public void setProfession(String profession) {
         this.profession = profession;
-    }
-
-    public String getProfessionalCode() {
-        return professionalCode;
-    }
-
-    public void setProfessionalCode(String professionalCode) {
-        this.professionalCode = professionalCode;
     }
 
     public String getRegistryNumber() {

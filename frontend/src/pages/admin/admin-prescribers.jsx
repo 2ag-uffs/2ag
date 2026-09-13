@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import Modal from "../../components/modal/modal.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
+import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./admin-prescribers.module.css";
 
@@ -100,12 +101,12 @@ export default function AdminPrescribers() {
         setFieldErrors({});
         setFormError(null);
 
-        // a api ainda chama a senha de senha e espera cpf e telefone so com numeros
+        // a api espera cpf e telefone so com numeros
         // campo opcional vazio vai como null
         const requestBody = {
             name: formData.name,
             email: formData.email,
-            senha: formData.password,
+            password: formData.password,
             cpf: formData.cpf.replace(/\D/g, ""),
             birthDate: formData.birthDate || null,
             phone: formData.phone.replace(/\D/g, "") || null,
@@ -118,17 +119,12 @@ export default function AdminPrescribers() {
             const createdPrescriber = await apiService.post("/admin/prescribers", requestBody);
             setIsFormOpen(false);
             setNotice(
-                "Conta de " + createdPrescriber.name + " criada. Código de vínculo para os pacientes: "
-                + createdPrescriber.professionalCode,
+                "Conta de " + createdPrescriber.name + " criada. Passe o e-mail e a senha inicial para a pessoa entrar.",
             );
             await loadPrescribers();
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
-                // o formulario chama o campo de password e a api chama de senha
-                if (errorsByField.senha) {
-                    errorsByField.password = errorsByField.senha;
-                }
                 setFieldErrors(errorsByField);
                 if (Object.keys(errorsByField).length === 0) {
                     setFormError(requestError.message);
@@ -195,9 +191,6 @@ export default function AdminPrescribers() {
                             <span>
                                 {prescriber.registryType} {prescriber.registryNumber} · {prescriber.profession}
                             </span>
-                            <span>
-                                Código de vínculo: <strong>{prescriber.professionalCode}</strong>
-                            </span>
                         </div>
                         <div className={styles.cardActions}>
                             <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
@@ -252,10 +245,9 @@ export default function AdminPrescribers() {
                                error={fieldErrors.password} onChange={updateField} autoComplete="new-password"
                                isWide={true}/>
 
-                    <p className={styles.formHint}>
-                        A senha precisa ter pelo menos 8 caracteres, com letra maiúscula, letra minúscula,
-                        número e um destes símbolos: @ $ ! % * ? &amp;
-                    </p>
+                    <div className={styles.fieldWide}>
+                        <PasswordChecklist password={formData.password}/>
+                    </div>
 
                     <div className={styles.formActions}>
                         <button type="button" className={styles.secondaryButton} onClick={closeForm} disabled={isSaving}>

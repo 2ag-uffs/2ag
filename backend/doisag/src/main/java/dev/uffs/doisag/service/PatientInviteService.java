@@ -3,6 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.InviteCreatedDTO;
 import dev.uffs.doisag.dto.InviteInfoDTO;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientInviteRepository;
@@ -68,12 +69,36 @@ public class PatientInviteService {
         }
 
         PatientInvite invite = patientInviteRepository.findByTokenHash(SecureTokens.hashToken(token)).orElse(null);
+        if (isUsable(invite)) {
+            return invite;
+        }
+        return null;
+    }
+
+    // mesma busca do cadastro mas travando o convite ate a transacao terminar
+    public PatientInvite lockUsableInvite(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+
+        PatientInvite invite = patientInviteRepository.findByTokenHashForUpdate(SecureTokens.hashToken(token))
+                .orElse(null);
+        if (isUsable(invite)) {
+            return invite;
+        }
+        return null;
+    }
+
+    // o convite passa a pertencer ao paciente q acabou de se cadastrar
+    public void markAsUsed(PatientInvite invite, Patient patient) {
+        invite.setUsedAt(LocalDateTime.now());
+        invite.setPatient(patient);
+    }
+
+    private boolean isUsable(PatientInvite invite) {
         if (invite == null || !invite.isUsableAt(LocalDateTime.now())) {
-            return null;
+            return false;
         }
-        if (!invite.getPrescriber().isActive()) {
-            return null;
-        }
-        return invite;
+        return invite.getPrescriber().isActive();
     }
 }

@@ -153,7 +153,7 @@ docs/        requisitos, escalas clínicas, identidade visual e documentos da ex
 
 ## umas coisas boas de saber
 
-- o paciente se cadastra sozinho, com o código do prescritor dele. conta de prescritor é criada pelo administrador, nunca por autocadastro.
+- o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
 - o administrador cuida só das contas: ele não vê prontuário.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
 - nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.

@@ -16,8 +16,7 @@ public record PrescriberResponseDTO(
         AddressDTO address,
         String profession,
         String registryType,
-        String registryNumber,
-        String professionalCode
+        String registryNumber
 ) {
     public PrescriberResponseDTO(Prescriber prescriber) {
         this(
@@ -30,8 +29,7 @@ public record PrescriberResponseDTO(
                 prescriber.getAddress() == null ? null : new AddressDTO(prescriber.getAddress()),
                 prescriber.getProfession(),
                 prescriber.getRegistryType(),
-                prescriber.getRegistryNumber(),
-                prescriber.getProfessionalCode()
+                prescriber.getRegistryNumber()
         );
     }
 }

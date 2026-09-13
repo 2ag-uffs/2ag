@@ -55,7 +55,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role}` |
 | `POST /auth/logout` | apaga o cookie |
 | `GET /auth/me` | quem está logado |
-| `POST /auth/register` | cadastro do paciente com o código do prescritor |
+| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
 | `PUT /auth/senha` | troca a própria senha |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
@@ -76,6 +76,15 @@ os perfis são `PATIENT`, `PRESCRIBER` e `ADMIN`. quem pode o quê está no `@Pr
 
 o administrador não acessa nenhum dado clínico.
 
+## convite de paciente
+
+| rota | o que faz |
+| :--- | :--- |
+| `POST /invites` | o prescritor gera um link de convite de uso único, válido por 7 dias |
+| `GET /invites/{token}` | rota pública que a tela de cadastro usa para conferir o convite |
+
+o banco guarda só o hash do código que vai no link.
+
 ## erros
 
 toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. erro de validação traz também `errors`, com a mensagem de cada campo.
@@ -87,7 +96,7 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `403` | logado, mas sem permissão para aquele dado, ou conta desativada tentando entrar |
 | `404` | registro ou rota que não existe |
 | `405` | método http que a rota não aceita |
-| `409` | registro duplicado |
+| `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors` |
 | `429` | login bloqueado por tentativas erradas |
 | `500` | erro inesperado, registrado no log |
 

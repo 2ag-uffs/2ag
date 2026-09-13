@@ -10,9 +10,7 @@ import org.hibernate.validator.constraints.br.CPF;
 import java.time.LocalDate;
 
 // dados alteraveis de um prescritor.
-// o professionalCode fica fora de proposito: eh ele que liga os
-// pacientes ao prescritor, trocar quebraria o vinculo. senha tbm n
-// entra aqui, troca de senha eh outro fluxo
+// senha n entra aqui, troca de senha eh outro fluxo
 public record PrescriberUpdateDTO(
         @NotBlank(message = "O nome completo é obrigatório")
         String name,

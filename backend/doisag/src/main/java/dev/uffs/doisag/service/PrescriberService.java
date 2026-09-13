@@ -2,12 +2,13 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.dto.PrescriberUpdateDTO;
+import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.UsersRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ValidationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,59 +21,45 @@ import java.util.Optional;
 
 public class PrescriberService {
     private final PrescriberRepository prescriberRepository;
+    private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public PrescriberService(PrescriberRepository prescriberRepository, PasswordEncoder passwordEncoder) {
+    public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
+                             PasswordEncoder passwordEncoder) {
         this.prescriberRepository = prescriberRepository;
+        this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
     }
-    // create prescriber
-    public Prescriber create(PrescriberCreateDTO dados) {
 
-        // checamos se o registro profissional n eh repetido
-        if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(
-                dados.registryType(),
-                dados.registryNumber()
-        )) {
-            // a mensagem de erro
-            throw new ValidationException("Este registro profissional já está cadastrado no sistema");
+    // o administrador cria a conta de um prescritor (RF02.2)
+    @Transactional
+    public Prescriber create(PrescriberCreateDTO dados) {
+        // conselho e numero de registro identificam o profissional
+        if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(dados.registryType(), dados.registryNumber())) {
+            throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
         }
 
-        // email tbm n pode repetir, senao o login n sabe quem eh quem
+        // e-mail e cpf n se repetem em nenhuma conta senao o login n sabe quem eh quem
         String email = InputCleaner.normalizeEmail(dados.email());
-        if (prescriberRepository.findByEmail(email).isPresent()) {
-            throw new ValidationException("E-mail já cadastrado no sistema");
+        if (usersRepository.existsByEmail(email)) {
+            throw new DuplicateValueException("email", "Este e-mail já tem conta no sistema");
+        }
+        String cpf = InputCleaner.keepOnlyDigits(dados.cpf());
+        if (usersRepository.existsByCpf(cpf)) {
+            throw new DuplicateValueException("cpf", "Este CPF já tem conta no sistema");
         }
 
         Prescriber prescriber = new Prescriber();
-        prescriber.setName(dados.name());
+        prescriber.setName(dados.name().trim());
         prescriber.setEmail(email);
-        prescriber.setCpf(dados.cpf());
+        prescriber.setCpf(cpf);
         prescriber.setBirthDate(dados.birthDate());
-        prescriber.setPhone(dados.phone());
+        prescriber.setPhone(InputCleaner.keepOnlyDigits(dados.phone()));
         prescriber.setAddress(dados.address() == null ? null : dados.address().toAddress());
         prescriber.setProfession(dados.profession());
         prescriber.setRegistryType(dados.registryType());
         prescriber.setRegistryNumber(dados.registryNumber());
-
-        // pegamos a senha que veio do cadastro e criptografa ela
-        prescriber.setPassword(passwordEncoder.encode(dados.senha()));
-
-        // aqui vou criar a logica para gerar o cod do prescritor para vincular com pacientes:
-        // pega as 3 primeiras letras do nome e bota em maiúsculo
-        String namePart = prescriber.getName().substring(0, Math.min(prescriber.getName().length(), 3)).toUpperCase();
-        String finalCode;   // variavel pra armazenar provissoriamnete o cod
-        // a gente entra num loop pra garantir que o código gerado seja único
-        do {
-            // gera um número aleatório entre 10 e 99
-            int numberPart = new java.util.Random().nextInt(90) + 10;
-            finalCode = namePart + numberPart;
-        } while (prescriberRepository.existsByProfessionalCode(finalCode)); // continua no loop se o código já existir
-
-        // quando achar um código único a gente atribui ele ao prescritor
-        prescriber.setProfessionalCode(finalCode);
-
-        // salva o prescritor com o código gerado
+        prescriber.setPassword(passwordEncoder.encode(dados.password()));
         return prescriberRepository.save(prescriber);
     }
 
@@ -110,9 +97,6 @@ public class PrescriberService {
         prescriber.setProfession(dados.profession());
         prescriber.setRegistryType(dados.registryType());
         prescriber.setRegistryNumber(dados.registryNumber());
-
-        // professionalCode n entra: eh ele q liga os pacientes a esse
-        // prescritor, trocar aqui quebraria o vinculo de todos eles
 
         return prescriberRepository.save(prescriber);
     }

@@ -1,234 +1,330 @@
-import {useState} from "react";
-import {useNavigate} from "react-router";
-import {apiService, ApiError} from "../../services/api.js";
-import "./sign-up.css";
+import {useEffect, useState} from "react";
+import {Link, useNavigate, useSearchParams} from "react-router";
+import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import PasswordChecklist from "../../components/form/password-checklist.jsx";
+import PasswordField from "../../components/form/password-field.jsx";
+import SelectField from "../../components/form/select-field.jsx";
+import TextField from "../../components/form/text-field.jsx";
+import {isStrongPassword} from "../../components/form/password-rules.js";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
+import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
+import styles from "./sign-up.module.css";
 
+const EMPTY_FORM = {
+    name: "",
+    cpf: "",
+    birthDate: "",
+    phone: "",
+    street: "",
+    number: "",
+    city: "",
+    state: "",
+    email: "",
+    password: "",
+    passwordConfirmation: "",
+};
+
+// confere no navegador o q da pra conferir antes de mandar pra api
+function findFormErrors(formData) {
+    const errors = {};
+    if (onlyDigits(formData.cpf).length !== 11) {
+        errors.cpf = "O CPF tem 11 números";
+    }
+    if (onlyDigits(formData.phone).length < 10) {
+        errors.phone = "Informe o telefone com DDD";
+    }
+    if (!isStrongPassword(formData.password)) {
+        errors.password = "A senha ainda não cumpre todas as regras";
+    }
+    if (formData.password !== formData.passwordConfirmation) {
+        errors.passwordConfirmation = "As senhas não são iguais";
+    }
+    return errors;
+}
+
+// leva a pessoa ate o primeiro campo com erro
+// no celular o formulario eh comprido e o erro pode estar fora da tela
+function focusFirstInvalidField() {
+    setTimeout(() => {
+        const firstInvalidField = document.querySelector("[aria-invalid='true']");
+        if (firstInvalidField) {
+            firstInvalidField.focus();
+        }
+    }, 0);
+}
+
+// cadastro do paciente pelo link de convite (RF02.1)
 export default function SignUp() {
     const navigate = useNavigate();
-    const [cpf, setCpf] = useState("");
-    // estados para controlar o carregamento e os erros (resp: maiqueli)
-    const [isLoading, setIsLoading] = useState(false);
-    const [formErrors, setFormErrors] = useState({});
+    const [searchParams] = useSearchParams();
+    const inviteToken = searchParams.get("convite");
 
-    // função para formatar o cpf
-    const handleCpf = (e) => {
-        let value = e.target.value.replace(/\D/g, "");
-        value = value.replace(/(\d{3})(\d)/, "$1.$2");
-        value = value.replace(/(\d{3})(\d)/, "$1.$2");
-        value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-        setCpf(value);
-    };
+    const [inviteStatus, setInviteStatus] = useState(inviteToken ? "checking" : "missing");
+    const [inviteInfo, setInviteInfo] = useState(null);
+    const [formData, setFormData] = useState(EMPTY_FORM);
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [errorMessage, setErrorMessage] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-
-    // modifiquei função handleSubmit para integrar (resp: maiqueli)
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setFormErrors({}); // limpa os erros antigos antes de cada nova tentativa
-
-        const form = e.target;
-        const password = form.senha.value;
-        const confirmPassword = form.confirmarSenha.value;
-
-        // validação simples pra ver se as senhas batem
-        if (password !== confirmPassword) {
-            setFormErrors({confirmarSenha: "As senhas não conferem!"});
-            setIsLoading(false);
+    // confere o convite antes de mostrar o formulario
+    useEffect(() => {
+        if (!inviteToken) {
             return;
         }
 
-        // ajustei para a gente pegar os valores dos novos campos separados, igual deixei no banco e no back (maiqueli)
-        const addressObject = {
-            street: form.street.value,
-            number: form.number.value,
-            city: form.city.value,
-            state: form.state.value,
-            country: form.country.value
-        };
+        let isCurrentPage = true;
+        apiService.get("/invites/" + encodeURIComponent(inviteToken))
+            .then((invite) => {
+                if (isCurrentPage) {
+                    setInviteInfo(invite);
+                    setInviteStatus("valid");
+                }
+            })
+            .catch((requestError) => {
+                if (!isCurrentPage) {
+                    return;
+                }
+                if (requestError instanceof ApiError && requestError.status === 404) {
+                    setInviteStatus("invalid");
+                } else {
+                    setInviteStatus("offline");
+                }
+            });
 
-        // so paciente se cadastra sozinho. conta de prescritor eh
-        // criada pela clinica, n por autocadastro
-        const dados = {
-            name: form.nomeCompleto.value,
-            email: form.email.value,
-            senha: password,
-            cpf: cpf.replace(/\D/g, ""),
-            birthDate: form.dataNascimento.value,
-            phone: form.telefone.value.replace(/\D/g, ""),
-            address: addressObject,
-            professionalCode: form.codigoProfissional.value
+        // se a pessoa sair antes da resposta chegar a resposta eh ignorada
+        return () => {
+            isCurrentPage = false;
+        };
+    }, [inviteToken]);
+
+    const updateField = (fieldName, value) => {
+        setFormData((currentData) => ({...currentData, [fieldName]: value}));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setErrorMessage(null);
+
+        const formErrors = findFormErrors(formData);
+        setFieldErrors(formErrors);
+        if (Object.keys(formErrors).length > 0) {
+            focusFirstInvalidField();
+            return;
+        }
+
+        setIsSubmitting(true);
+        const requestBody = {
+            inviteToken: inviteToken,
+            name: formData.name,
+            cpf: onlyDigits(formData.cpf),
+            birthDate: formData.birthDate,
+            phone: onlyDigits(formData.phone),
+            address: {
+                street: formData.street,
+                number: formData.number,
+                city: formData.city,
+                state: formData.state,
+            },
+            email: formData.email,
+            password: formData.password,
         };
 
         try {
-            await apiService.post("/auth/register", dados);
-            // o login mostra o aviso de cadastro feito, em vez de alert
-            navigate("/login", {state: {cadastrado: true}});
-        } catch (err) {
-            if (err instanceof ApiError) {
-                const porCampo = err.fieldErrors();
-                setFormErrors(
-                    Object.keys(porCampo).length > 0 ? porCampo : {general: err.message},
-                );
+            const user = await apiService.post("/auth/register", requestBody);
+            setLoggedUser(user);
+            navigate("/dashboard-paciente", {replace: true});
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                const errorsByField = requestError.fieldErrors();
+                setFieldErrors(errorsByField);
+                if (Object.keys(errorsByField).length > 0) {
+                    setErrorMessage("Confira os campos destacados.");
+                    focusFirstInvalidField();
+                } else {
+                    setErrorMessage(requestError.message);
+                }
             } else {
-                setFormErrors({general: "Não foi possível falar com o servidor."});
+                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
             }
-        } finally {
-            // o finally garante que o loading sempre será desativado
-            setIsLoading(false);
+            setIsSubmitting(false);
         }
     };
 
+    if (inviteStatus === "checking") {
+        return (
+            <AuthLayout title="Criar conta">
+                <p className={styles.statusText}>Conferindo o convite...</p>
+            </AuthLayout>
+        );
+    }
+
+    if (inviteStatus !== "valid") {
+        let statusMessage = "O cadastro de paciente é feito pelo link de convite que o seu prescritor envia. "
+            + "Peça o link a ele.";
+        if (inviteStatus === "invalid") {
+            statusMessage = "Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. "
+                + "Peça um novo link ao seu prescritor.";
+        }
+        if (inviteStatus === "offline") {
+            statusMessage = "Não foi possível conferir o convite agora. Confira sua internet e abra o link de novo.";
+        }
+
+        return (
+            <AuthLayout title="Criar conta">
+                <p className={"aviso aviso--atencao " + styles.message}>{statusMessage}</p>
+                <Link to="/login" className={"button button-secondary " + styles.linkButton}>
+                    Já tenho conta
+                </Link>
+            </AuthLayout>
+        );
+    }
+
     return (
-        <div className="sign-up">
-            <section className="form__content">
-                <div className="form__content-wrapper">
-                    <img
-                        alt="Logotipo 2AG"
-                        className="form__content__logo"
-                        src="/images/logotipo-horizontal.svg"
+        <AuthLayout title="Criar conta">
+            <p className={"aviso " + styles.message}>
+                Convite de <strong>{inviteInfo.prescriberName}</strong>
+                {inviteInfo.prescriberProfession ? " · " + inviteInfo.prescriberProfession : ""}.
+                Sua conta fica vinculada a esse acompanhamento.
+            </p>
+
+            {errorMessage && (
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">{errorMessage}</p>
+            )}
+
+            <form className={styles.form} onSubmit={handleSubmit}>
+                <fieldset className={styles.section}>
+                    <legend className={styles.sectionTitle}>Seus dados</legend>
+                    <TextField
+                        label="Nome completo"
+                        name="name"
+                        autoComplete="name"
+                        value={formData.name}
+                        onChange={(event) => updateField("name", event.target.value)}
+                        error={fieldErrors.name}
+                        required={true}
                     />
-                    <h2 className="form__content__title">Cadastro de usuário</h2>
-                    <form className="form__content__form" onSubmit={handleSubmit}>
-                        <p className="sign-up__note">
-                            Este cadastro é para pacientes. Se você é prescritor, fale com a clínica para
-                            que sua conta seja criada.
-                        </p>
+                    <TextField
+                        label="CPF"
+                        name="cpf"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00"
+                        value={formData.cpf}
+                        onChange={(event) => updateField("cpf", formatCpf(event.target.value))}
+                        error={fieldErrors.cpf}
+                        required={true}
+                    />
+                    <div className={styles.row}>
+                        <TextField
+                            label="Data de nascimento"
+                            name="birthDate"
+                            type="date"
+                            autoComplete="bday"
+                            value={formData.birthDate}
+                            onChange={(event) => updateField("birthDate", event.target.value)}
+                            error={fieldErrors.birthDate}
+                            required={true}
+                        />
+                        <TextField
+                            label="Telefone com DDD"
+                            name="phone"
+                            type="tel"
+                            autoComplete="tel-national"
+                            placeholder="(49) 99999-9999"
+                            value={formData.phone}
+                            onChange={(event) => updateField("phone", formatPhone(event.target.value))}
+                            error={fieldErrors.phone}
+                            required={true}
+                        />
+                    </div>
+                </fieldset>
 
-                        <>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="nomeCompleto">Nome Completo *</label>
-                                    <input id="nomeCompleto" name="nomeCompleto" type="text" required={true}
-                                           placeholder="Digite seu nome completo"/>
-                                    {formErrors.name && <span className="input-error-message">{formErrors.name}</span>}
-                                </div>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="cpf">CPF *</label>
-                                    <input type="text" id="cpf" name="cpf" value={cpf} onChange={handleCpf}
-                                           placeholder="000.000.000-00" maxLength="14"/>
-                                    {formErrors.cpf && <span className="input-error-message">{formErrors.cpf}</span>}
-                                </div>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="email">E-mail *</label>
-                                    <input id="email" name="email" type="email" required={true}
-                                           placeholder="seu@email.com"/>
-                                    {formErrors.email &&
-                                        <span className="input-error-message">{formErrors.email}</span>}
-                                </div>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="dataNascimento">Data de Nascimento *</label>
-                                    <input id="dataNascimento" name="dataNascimento" type="date" required={true}/>
-                                    {formErrors.birthDate &&
-                                        <span className="input-error-message">{formErrors.birthDate}</span>}
-                                </div>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="telefone">Telefone *</label>
-                                    <input id="telefone" name="telefone" type="tel" required={true}
-                                           placeholder="(00) 00000-0000"/>
-                                    {formErrors.phone &&
-                                        <span className="input-error-message">{formErrors.phone}</span>}
-                                </div>
-                                <fieldset className="form__fieldset">
-                                    <legend>Endereço:</legend>
-                                    <div className="form__content__form__input-group">
-                                        <label htmlFor="street">Logradouro *</label>
-                                        <input id="street" name="street" type="text" required={true}
-                                               placeholder="Rua, Avenida, etc."/>
-                                        {formErrors['address.street'] &&
-                                            <span className="input-error-message">{formErrors['address.street']}</span>}
-                                    </div>
-                                    <div className="form__content__form__input-group">
-                                        <label htmlFor="number">Número *</label>
-                                        <input id="number" name="number" type="text" required={true}
-                                               placeholder="Ex: 123"/>
-                                        {formErrors['address.number'] &&
-                                            <span className="input-error-message">{formErrors['address.number']}</span>}
-                                    </div>
-                                    <div className="form__content__form__input-group">
-                                        <label htmlFor="city">Cidade *</label>
-                                        <input id="city" name="city" type="text" required={true}
-                                               placeholder="Ex: Chapecó"/>
-                                        {formErrors['address.city'] &&
-                                            <span className="input-error-message">{formErrors['address.city']}</span>}
-                                    </div>
-                                    <div className="form__content__form__input-group">
-                                        <label htmlFor="state">Estado (UF) *</label>
-                                        <input id="state" name="state" type="text" required={true} maxLength="2"
-                                               placeholder="Ex: SC"/>
-                                        {formErrors['address.state'] &&
-                                            <span className="input-error-message">{formErrors['address.state']}</span>}
-                                    </div>
-                                    <div className="form__content__form__input-group">
-                                        <label htmlFor="country">País *</label>
-                                        <input id="country" name="country" type="text" required={true}
-                                               placeholder="Ex: Brasil"/>
-                                        {formErrors['address.country'] &&
-                                            <span
-                                                className="input-error-message">{formErrors['address.country']}</span>}
-                                    </div>
-                                </fieldset>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="senha">Senha *</label>
-                                    <input id="senha" name="senha" type="password" required={true}
-                                           placeholder="Digite sua senha"/>
-                                    {formErrors.senha &&
-                                        <span className="input-error-message">{formErrors.senha}</span>}
-                                </div>
-                                <div className="form__content__form__input-group">
-                                    <label htmlFor="confirmarSenha">Confirmar Senha *</label>
-                                    <input id="confirmarSenha" name="confirmarSenha" type="password" required={true}
-                                           placeholder="Confirme sua senha"/>
-                                </div>
+                <fieldset className={styles.section}>
+                    <legend className={styles.sectionTitle}>Endereço</legend>
+                    <div className={styles.rowWide}>
+                        <TextField
+                            label="Rua"
+                            name="address.street"
+                            autoComplete="address-line1"
+                            value={formData.street}
+                            onChange={(event) => updateField("street", event.target.value)}
+                            error={fieldErrors["address.street"]}
+                            required={true}
+                        />
+                        <TextField
+                            label="Número"
+                            name="address.number"
+                            value={formData.number}
+                            onChange={(event) => updateField("number", event.target.value)}
+                            error={fieldErrors["address.number"]}
+                            required={true}
+                        />
+                    </div>
+                    <div className={styles.rowWide}>
+                        <TextField
+                            label="Cidade"
+                            name="address.city"
+                            autoComplete="address-level2"
+                            value={formData.city}
+                            onChange={(event) => updateField("city", event.target.value)}
+                            error={fieldErrors["address.city"]}
+                            required={true}
+                        />
+                        <SelectField
+                            label="Estado"
+                            name="address.state"
+                            options={BRAZIL_STATE_OPTIONS}
+                            placeholder="Escolha"
+                            value={formData.state}
+                            onChange={(event) => updateField("state", event.target.value)}
+                            error={fieldErrors["address.state"]}
+                            required={true}
+                        />
+                    </div>
+                </fieldset>
 
-                                <div className="form__content__form__input-group">
-                                        <label htmlFor="codigoProfissional">Código do Prescritor *</label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Informe o código fornecido pelo seu prescritor:
-                                        </p>
-                                        <input id="codigoProfissional" name="codigoProfissional" type="text"
-                                               required={true}
-                                               placeholder="Ex: ABC01"/>
-                                        {formErrors.professionalCode &&
-                                            <span className="input-error-message">{formErrors.professionalCode}</span>}
-                                </div>
-                                {/* exibe a mensagem de erro, se houver (maiqueli) */}
-                                {formErrors.general && <p className="sign-up__error-message">{formErrors.general}</p>}
-                                <div className="form__content__form__actions">
-                                    {/* desabilita o botão enquanto carrega (maiqueli) */}
-                                    <button type="submit" disabled={isLoading}>
-                                        {isLoading ? "Cadastrando..." : "Cadastrar"}
-                                    </button>
-                                </div>
-                        </>
-                    </form>
-                </div>
-            </section>
-            <section className="sign__art">
-                <img
-                    alt="Logotipo 2AG"
-                    className="sign__art__top-left"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="sign__art__top-right"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="sign__art__center"
-                    src="/images/logotipo-vertical-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="sign__art__bottom-left"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="sign__art__bottom-right"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-            </section>
-        </div>
+                <fieldset className={styles.section}>
+                    <legend className={styles.sectionTitle}>Acesso</legend>
+                    <TextField
+                        label="E-mail"
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={formData.email}
+                        onChange={(event) => updateField("email", event.target.value)}
+                        error={fieldErrors.email}
+                        required={true}
+                    />
+                    <PasswordField
+                        label="Senha"
+                        name="password"
+                        autoComplete="new-password"
+                        value={formData.password}
+                        onChange={(event) => updateField("password", event.target.value)}
+                        error={fieldErrors.password}
+                        required={true}
+                    />
+                    <PasswordChecklist password={formData.password}/>
+                    <PasswordField
+                        label="Repita a senha"
+                        name="passwordConfirmation"
+                        autoComplete="new-password"
+                        value={formData.passwordConfirmation}
+                        onChange={(event) => updateField("passwordConfirmation", event.target.value)}
+                        error={fieldErrors.passwordConfirmation}
+                        required={true}
+                    />
+                </fieldset>
+
+                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+                    {isSubmitting ? "Criando conta..." : "Criar conta"}
+                </button>
+            </form>
+
+            <p className={styles.loginNote}>
+                Já tem conta? <Link to="/login">Entrar</Link>
+            </p>
+        </AuthLayout>
     );
 }

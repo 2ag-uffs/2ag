@@ -38,13 +38,17 @@ src/
 │   └── role-home.js          tela inicial de cada perfil
 ├── components/
 │   ├── app-layout/           cabeçalho, menu e barra inferior no celular
+│   ├── auth-layout/          moldura das telas de login e cadastro
+│   ├── form/                 campos, campo de senha e regras de senha
+│   ├── invite-patient-modal/ convite de paciente
 │   ├── page-loader/          indicador de carregamento
 │   ├── status-page/          página não encontrada e erro inesperado
 │   ├── modal/
 │   └── scale-selector/
 ├── pages/                    uma pasta por tela
 ├── services/api.js           cliente único da api
-└── styles/                   cores, fontes e estilos globais
+├── styles/                   cores, fontes e estilos globais
+└── utils/                    máscaras de cpf e telefone e lista de estados
 ```
 
 ## navegação
@@ -70,4 +74,4 @@ vale para todo código novo ou reescrito:
 
 ## situação das telas
 
-o layout, as rotas e a tela do administrador já seguem o padrão novo. as demais telas, incluindo login e cadastro, ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.
+o layout, as rotas, o login, o cadastro e a tela do administrador já seguem o padrão novo. as telas clínicas ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.

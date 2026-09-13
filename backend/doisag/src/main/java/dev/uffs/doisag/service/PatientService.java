@@ -2,40 +2,41 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
+import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DuplicateValueException;
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
-import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Optional;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PatientService {
 
-    // injecoes
     private final PatientRepository patientRepository;
     private final UsersRepository usersRepository;
-    private final PrescriberRepository prescriberRepository;
+    private final PatientInviteService patientInviteService;
     private final PasswordEncoder passwordEncoder;
     private NotificationService notificationService;
 
-    public PatientService(PasswordEncoder passwordEncoder, PatientRepository patientRepository, UsersRepository usersRepository, PrescriberRepository prescriberRepository) {
-        this.passwordEncoder = passwordEncoder;
+    public PatientService(PatientRepository patientRepository, UsersRepository usersRepository,
+                          PatientInviteService patientInviteService, PasswordEncoder passwordEncoder) {
         this.patientRepository = patientRepository;
         this.usersRepository = usersRepository;
-        this.prescriberRepository = prescriberRepository;
+        this.patientInviteService = patientInviteService;
+        this.passwordEncoder = passwordEncoder;
     }
+
     @Autowired
     public void setNotificationService(@Lazy NotificationService notificationService) {
         this.notificationService = notificationService;
@@ -78,30 +79,40 @@ public class PatientService {
         patientRepository.delete(patient);
     }
 
-    public Patient registerPatient(RegisterDTO dados) {
-        if (usersRepository.findByEmail(dados.email()).isPresent()) {
-            throw new ValidationException("email já cadastrado no sistema!");
+    // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)
+    // o prescritor sai do convite e o convite so vale uma vez
+    @Transactional
+    public Patient registerPatient(RegisterDTO registerData) {
+        PatientInvite invite = patientInviteService.lockUsableInvite(registerData.inviteToken());
+        if (invite == null) {
+            throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
         }
 
-        Prescriber prescriber = prescriberRepository.findByProfessionalCode(dados.professionalCode())
-                .orElseThrow(() -> new ValidationException("Código do prescritor inválido!"));
+        String email = InputCleaner.normalizeEmail(registerData.email());
+        if (usersRepository.existsByEmail(email)) {
+            throw new DuplicateValueException("email", "Este e-mail já tem conta. Se for o seu, entre pelo login");
+        }
+        String cpf = InputCleaner.keepOnlyDigits(registerData.cpf());
+        if (usersRepository.existsByCpf(cpf)) {
+            throw new DuplicateValueException("cpf", "Este CPF já tem conta. Se for o seu, entre pelo login");
+        }
 
-        var patient = new Patient();
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setCpf(dados.cpf());
-        patient.setPhone(dados.phone());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address());
-        patient.setPassword(passwordEncoder.encode(dados.senha()));
+        Prescriber prescriber = invite.getPrescriber();
+        Patient patient = new Patient();
+        patient.setName(registerData.name().trim());
+        patient.setEmail(email);
+        patient.setCpf(cpf);
+        patient.setBirthDate(registerData.birthDate());
+        patient.setPhone(InputCleaner.keepOnlyDigits(registerData.phone()));
+        patient.setAddress(registerData.address().toAddress());
+        patient.setPassword(passwordEncoder.encode(registerData.password()));
         patient.setPrescriber(prescriber);
-
         Patient savedPatient = patientRepository.save(patient);
 
-        String title = "Novo Paciente Vinculado";
-        String message = "O paciente " + savedPatient.getName() + " acabou de se cadastrar e está vinculado a você.";
-        notificationService.createNotification(prescriber, title, message, "ALERT", "/lista-paciente");
+        patientInviteService.markAsUsed(invite, savedPatient);
 
+        notificationService.createNotification(prescriber, "Novo paciente vinculado",
+                savedPatient.getName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
         return savedPatient;
     }
 }

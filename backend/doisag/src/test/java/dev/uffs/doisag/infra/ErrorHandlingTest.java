@@ -46,7 +46,6 @@ class ErrorHandlingTest {
         prescriber.setName("Prescritor do teste de erro");
         prescriber.setEmail("erro-prescritor@email.com");
         prescriber.setPassword("hash");
-        prescriber.setProfessionalCode("ERR01");
         prescriber = prescriberRepository.save(prescriber);
 
         Patient patient = new Patient();

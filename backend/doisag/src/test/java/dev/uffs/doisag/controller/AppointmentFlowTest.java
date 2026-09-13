@@ -80,7 +80,6 @@ class AppointmentFlowTest {
         prescriber.setName("Prescritor " + code);
         prescriber.setEmail(email);
         prescriber.setPassword("hash-irrelevante-aqui");
-        prescriber.setProfessionalCode(code);
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber(code);
         return prescriberRepository.save(prescriber);

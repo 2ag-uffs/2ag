@@ -11,7 +11,6 @@ public record AdminPrescriberDTO(
         String profession,
         String registryType,
         String registryNumber,
-        String professionalCode,
         boolean active
 ) {
     public AdminPrescriberDTO(Prescriber prescriber) {
@@ -22,7 +21,6 @@ public record AdminPrescriberDTO(
                 prescriber.getProfession(),
                 prescriber.getRegistryType(),
                 prescriber.getRegistryNumber(),
-                prescriber.getProfessionalCode(),
                 prescriber.isActive()
         );
     }

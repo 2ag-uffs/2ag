@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminPrescribersTest {
 
     private static final String NEW_PRESCRIBER_JSON = """
-            {"name":"Prescritor Novo","email":"novo-prescritor@email.com","senha":"Senha@123",
+            {"name":"Prescritor Novo","email":"novo-prescritor@email.com","password":"Senha@123",
              "cpf":"16899535009","birthDate":"1980-01-01","phone":"49999990000",
              "profession":"Biomédico","registryType":"CRBM","registryNumber":"77777"}
             """;
@@ -56,7 +56,6 @@ class AdminPrescribersTest {
         prescriber.setName("Prescritor " + code);
         prescriber.setEmail(email);
         prescriber.setPassword("hash");
-        prescriber.setProfessionalCode(code);
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber(code);
         return prescriberRepository.save(prescriber);
@@ -85,9 +84,8 @@ class AdminPrescribersTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(NEW_PRESCRIBER_JSON))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.professionalCode").isNotEmpty())
                 .andExpect(jsonPath("$.active").value(true))
-                .andExpect(jsonPath("$.senha").doesNotExist());
+                .andExpect(jsonPath("$.password").doesNotExist());
 
         mockMvc.perform(get("/admin/prescribers").header("Authorization", adminToken()))
                 .andExpect(status().isOk())

@@ -50,7 +50,6 @@ class PasswordExposureTest {
         prescriber.setName("Prescritora de Teste");
         prescriber.setEmail("presc-vazamento@email.com");
         prescriber.setPassword(KNOWN_HASH);
-        prescriber.setProfessionalCode("TES99");
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber("99999");
         prescriber = prescriberRepository.save(prescriber);

@@ -122,12 +122,6 @@
     font-size: 0.85rem;
 }
 
-.formHint {
-    color: var(--color-text-secondary);
-    font-size: 0.85rem;
-    grid-column: 1 / -1;
-}
-
 .formActions {
     display: flex;
     gap: 0.75rem;

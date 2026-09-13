@@ -249,9 +249,6 @@ export default function Perfil() {
                                 {campo("Profissão", "profession", perfil.profession, (v) => mudarCampo("profession", v))}
                                 {campo("Conselho", "registryType", perfil.registryType, (v) => mudarCampo("registryType", v))}
                                 {campo("Número do registro", "registryNumber", perfil.registryNumber, (v) => mudarCampo("registryNumber", v))}
-                                {/* o codigo eh o que liga paciente a prescritor no
-                                    cadastro, entao n da pra editar por aqui */}
-                                {campo("Código do prescritor", "professionalCode", perfil.professionalCode, somenteLeitura, "text", true)}
                             </div>
                         </section>
                     )}

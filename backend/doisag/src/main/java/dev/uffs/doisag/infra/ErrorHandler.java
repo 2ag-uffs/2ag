@@ -90,6 +90,22 @@ public class ErrorHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    // valor unico q ja pertence a outra conta
+    // vai com o nome do campo pro formulario destacar onde esta o problema
+    @ExceptionHandler(DuplicateValueException.class)
+    public ResponseEntity<ValidationResponseDTO> handleDuplicateValue(DuplicateValueException exception,
+                                                                      HttpServletRequest request) {
+        ValidationResponseDTO body = new ValidationResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                exception.getMessage(),
+                request.getRequestURI(),
+                List.of(new ValidationErrorDetail(exception.getField(), exception.getMessage()))
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     // metodo http q a rota n aceita
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception,

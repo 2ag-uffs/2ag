@@ -59,7 +59,6 @@ class SessionTest {
         prescriber.setName("Prescritor da sessao");
         prescriber.setEmail("sessao-prescritor@email.com");
         prescriber.setPassword("hash");
-        prescriber.setProfessionalCode("SES01");
         prescriber = prescriberRepository.save(prescriber);
 
         patient = new Patient();

@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.LoginDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.dto.SessionUserDTO;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.service.AuthService;
@@ -61,12 +62,13 @@ public class AuthenticationController {
         return new SessionUserDTO(loggedUser);
     }
 
-    // o proprio paciente se cadastra com o codigo do prescritor
+    // o paciente cria a conta pelo link de convite e ja sai logado
     @PostMapping("/register")
-    public ResponseEntity<ApiResponseDTO> register(@RequestBody @Valid RegisterDTO registerData) {
-        patientService.registerPatient(registerData);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponseDTO("Cadastro realizado com sucesso, seja bem-vindo(a)!"));
+    public ResponseEntity<SessionUserDTO> register(@RequestBody @Valid RegisterDTO registerData,
+                                                   HttpServletResponse response) {
+        Patient patient = patientService.registerPatient(registerData);
+        sessionCookieService.writeSession(response, patient);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new SessionUserDTO(patient));
     }
 
     // cada um so troca a propria senha entao a rota n tem id

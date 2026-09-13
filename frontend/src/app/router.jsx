@@ -31,7 +31,7 @@ const routes = [
                 lazy: lazyPage(() => import("../pages/login/login.jsx")),
             },
             {
-                path: "/sign-up",
+                path: "/cadastro",
                 loader: redirectLoggedUserHome,
                 lazy: lazyPage(() => import("../pages/sign-up/sign-up.jsx")),
             },

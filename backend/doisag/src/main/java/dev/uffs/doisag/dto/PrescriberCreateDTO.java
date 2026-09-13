@@ -9,8 +9,7 @@ import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
-// dados pra criar um prescritor. o professionalCode n entra aqui
-// pq quem gera eh o service
+// dados q o administrador preenche pra criar a conta de um prescritor (RF02.2)
 public record PrescriberCreateDTO(
         @NotBlank(message = "O nome completo é obrigatório")
         String name,
@@ -20,9 +19,8 @@ public record PrescriberCreateDTO(
         String email,
 
         @NotBlank(message = "A senha é obrigatória")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-                message = "A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial")
-        String senha,
+        @Pattern(regexp = PasswordRules.PATTERN, message = PasswordRules.MESSAGE)
+        String password,
 
         @NotBlank(message = "O CPF é obrigatório")
         @CPF(message = "O CPF informado é inválido")
