@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface SleepLogRepository extends JpaRepository<SleepLog, Long> {
+public interface SleepLogRepository extends AssessmentRepository<SleepLog> {
 
     // aqui busca os 7 registros de sono mais recentes de um paciente
     // ordenando pela data pra pegar os últimos direitinho

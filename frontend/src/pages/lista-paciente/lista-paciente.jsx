@@ -68,6 +68,11 @@ export default function ListaPacientes() {
         navigate(`/paciente/${pacienteId}/historico`);
     };
 
+    // RF28: o prescritor vendo a evolucao de um paciente dele
+    const handleViewProgress = (pacienteId) => {
+        navigate(`/paciente/${pacienteId}/progresso`);
+    };
+
     const handleNewConsult = (patientId) => {
         navigate(`/consulta?patientId=${patientId}`);
     };
@@ -145,6 +150,9 @@ export default function ListaPacientes() {
                                     </button>
                                     <button className="button-tertiary" onClick={() => handleViewHistory(paciente.id)}>
                                         Ver Histórico
+                                    </button>
+                                    <button className="button-tertiary" onClick={() => handleViewProgress(paciente.id)}>
+                                        Ver Progresso
                                     </button>
                                 </div>
                             </div>

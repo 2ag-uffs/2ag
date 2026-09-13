@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Entity;
 
 import java.time.LocalDate;
@@ -151,5 +152,10 @@ public class HamiltonScale extends BaseAssessment {
 
     public void setHamScore(Integer hamScore) {
         this.hamScore = hamScore;
+    }
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return attribute == TrackableAttribute.ESCORE_HAMILTON ? hamScore : null;
     }
 }

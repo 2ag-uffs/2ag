@@ -1,11 +1,16 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import java.time.LocalDate;
 
 @Entity
 public class TEALog extends BaseAssessment {
+    // autoavaliacao da qualidade de vida no periodo, 0 a 10 (RF24).
+    // tbm faltava no modelo
+    private Integer qualityOfLife;
+
     private Integer freqAggressiveness;
     private Integer freqAgitation;
     private Integer freqSleepIssues;
@@ -69,4 +74,21 @@ public class TEALog extends BaseAssessment {
 
     public Integer getTeaScore() { return teaScore; }
     public void setTeaScore(Integer teaScore) { this.teaScore = teaScore; }
+
+    public Integer getQualityOfLife() {
+        return qualityOfLife;
+    }
+
+    public void setQualityOfLife(Integer qualityOfLife) {
+        this.qualityOfLife = qualityOfLife;
+    }
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return switch (attribute) {
+            case QUALIDADE_DE_VIDA -> qualityOfLife;
+            case ESCORE_TEA -> teaScore;
+            default -> null;
+        };
+    }
 }

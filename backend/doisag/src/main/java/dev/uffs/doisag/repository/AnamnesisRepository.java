@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 
-public interface AnamnesisRepository extends JpaRepository<Anamnesis, Long> {
+public interface AnamnesisRepository extends AssessmentRepository<Anamnesis> {
 }

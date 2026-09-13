@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -218,4 +219,9 @@ public class PittsburghScale extends BaseAssessment {
         this.psqiScore = psqiScore;
     }
 
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return attribute == TrackableAttribute.ESCORE_PITTSBURGH ? psqiScore : null;
+    }
 }

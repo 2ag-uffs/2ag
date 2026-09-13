@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import java.time.LocalDate;
@@ -213,5 +214,29 @@ public class FollowUp extends BaseAssessment {
 
     public void setMood(Integer mood) {
         this.mood = mood;
+    }
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return switch (attribute) {
+            case DOR -> pain;
+            case SONO -> sleep;
+            case HUMOR -> mood;
+            case TREMOR -> tremor;
+            case ANSIEDADE -> anxiety;
+            case DISPOSICAO_ENERGIA -> disposition;
+            case FUNCAO_INTESTINAL -> intestinalFunction;
+            case APETITE -> appetite;
+            case CONCENTRACAO -> concentration;
+            case INTERACAO_SOCIAL -> socialInteraction;
+            case RIGIDEZ_ESPASTICIDADE -> rigiditySpasticity;
+            case REDUCAO_SUBSTANCIA -> substanceReduction;
+            case NAUSEA_VOMITO -> nausea;
+            case DESEMPENHO_ESPORTIVO -> sportsPerformance;
+            case DERMATOLOGICO -> dermatologicalDisease;
+            case GOTAS_MANHA -> morningDrops;
+            case GOTAS_TARDE -> afternoonDrops;
+            default -> null;
+        };
     }
 }

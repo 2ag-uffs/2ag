@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 
@@ -7,6 +8,11 @@ import java.time.LocalDate;
 
 @Entity
 public class PainLog extends BaseAssessment {
+    // a escala visual do formulario: leve 0 a 2, moderada 3 a 7,
+    // intensa 8 a 10. eh a medida principal do registro de dor e n
+    // existia no modelo, entao a tela n tinha onde guardar (RF25)
+    private Integer painIntensity;
+
     private Integer basicActivityInterference;
     private Integer socialActivityInterference;
     private Integer sleepInterference;
@@ -83,5 +89,18 @@ public class PainLog extends BaseAssessment {
 
     public void setObservation(String observation) {
         this.observation = observation;
+    }
+
+    public Integer getPainIntensity() {
+        return painIntensity;
+    }
+
+    public void setPainIntensity(Integer painIntensity) {
+        this.painIntensity = painIntensity;
+    }
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return attribute == TrackableAttribute.INTENSIDADE_DOR ? painIntensity : null;
     }
 }

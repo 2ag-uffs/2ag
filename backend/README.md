@@ -296,7 +296,7 @@ esse fluxo permite que um prescritor envie uma escala para o paciente e que o si
     ]
     ```
 
-> essa rota lê apenas a ficha de acompanhamento (`FollowUp`). não é possível ver progresso de hamilton, pittsburgh, dor ou tea
+> a rota funciona pra **qualquer escala**. o atributo já diz de qual escala ele vem, então não precisa passar a escala junto. use `GET /progresso/atributos` pra descobrir o que existe: ele devolve nome, rótulo, escala e a faixa de valores de cada atributo, que é o que a tela usa pra montar os seletores e o eixo do gráfico
 
 #### **4. relatório de sono**
 
@@ -424,6 +424,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * `DashboardService` acessa associações `LAZY` dentro de stream, sem `@Transactional` e sem join fetch. funciona por causa do `open-in-view` que o spring boot habilita por padrão, mas gera n+1
   * dependência circular entre `PatientService`/`ScaleAssignmentService` e `NotificationService`, contornada com `@Lazy` em setter. `ScaleAssignmentService` injeta o mesmo bean duas vezes (construtor e setter)
   * `ScaleType` já guarda `displayName` e `path`, mas `ScaleAssignmentService` reimplementa os dois em `switch` de 8 casos (RNF08)
+  * ~~o progresso só lê a ficha de acompanhamento, com um `switch` de 15 campos dentro do serviço~~ **resolvido**: cada escala responde pelo próprio `trackedValue`, e o serviço não conhece campo de escala nenhuma. acrescentar escala é registrar o repositório e implementar o método (RNF08)
   * lombok está no `pom.xml` como dependência e annotation processor, mas não é usado em nenhuma classe
   * `AuthorizationManager.check(...)`, usado em `CustomPatientAccessManager`, está deprecado no spring security 6.5 em favor de `authorize(...)`
 

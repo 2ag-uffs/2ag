@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Repository
-public interface FollowUpRepository extends JpaRepository<FollowUp, Long> {
+public interface FollowUpRepository extends AssessmentRepository<FollowUp> {
     List<FollowUp> findByPatientIdAndAssessmentDateAfterOrderByAssessmentDateAsc(Long patientId, LocalDate startDate);
     // busca os acompanhamentos de um paciente a partir de uma data
     // e já ordena pela data pra o gráfico ficar certinho

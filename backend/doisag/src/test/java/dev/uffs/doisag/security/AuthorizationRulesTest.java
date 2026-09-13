@@ -253,6 +253,38 @@ class AuthorizationRulesTest {
                 .andExpect(status().isForbidden());
     }
 
+    // o progresso agora funciona pra qualquer escala, e n so pra ficha
+    // de acompanhamento. o vinculo continua sendo checado
+    @Test
+    void progressoDeOutraEscalaTambemRespeitaOVinculo() throws Exception {
+        mockMvc.perform(get("/pacientes/" + patientBId + "/progresso?atributo=ESCORE_HAMILTON&periodo=DIAS_30")
+                        .header("Authorization", tokenPrescriberA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void progressoDaEscalaDeHamiltonDoProprioPaciente() throws Exception {
+        mockMvc.perform(get("/pacientes/" + patientAId + "/progresso?atributo=ESCORE_HAMILTON&periodo=DIAS_30")
+                        .header("Authorization", tokenPrescriberA))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void catalogoDeAtributosListaTodasAsEscalas() throws Exception {
+        String corpo = mockMvc.perform(get("/progresso/atributos")
+                        .header("Authorization", tokenPrescriberA))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // se alguma escala sumir do catalogo, o seletor da tela fica sem opcao
+        assertThat(corpo).contains("ACOMPANHAMENTO_SEMANAL");
+        assertThat(corpo).contains("ESCALA_HAMILTON");
+        assertThat(corpo).contains("ESCALA_PITTSBURGH");
+        assertThat(corpo).contains("REGISTRO_DOR");
+        assertThat(corpo).contains("REGISTRO_TEA");
+        assertThat(corpo).contains("REGISTRO_SONO");
+    }
+
     // ---------- RF29: papel ----------
 
     @Test

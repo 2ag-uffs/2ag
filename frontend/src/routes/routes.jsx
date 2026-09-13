@@ -24,6 +24,7 @@ import Anamnese from "../pages/anamnese/anamnese.jsx";
 import NotificacoesPrescritor from "../pages/notificacoes-prescritor/notificacoes-prescritor.jsx";
 import NotificacoesPaciente from "../pages/notificacoes-paciente/notificacoes-paciente.jsx";
 import Perfil from "../pages/perfil/perfil.jsx";
+import Progresso from "../pages/progresso/progresso.jsx";
 
 
 const router = createBrowserRouter([
@@ -125,6 +126,16 @@ const router = createBrowserRouter([
     {
         path: "/perfil",
         element: <Perfil/>
+    },
+    {
+        // o paciente vendo o proprio progresso (RF27)
+        path: "/progresso",
+        element: <Progresso/>
+    },
+    {
+        // o prescritor vendo o progresso de um paciente dele (RF28)
+        path: "/paciente/:patientId/progresso",
+        element: <Progresso/>
     },
     // "/escala-pittsburgh";
     // "/diario-dor";

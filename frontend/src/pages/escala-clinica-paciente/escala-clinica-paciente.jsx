@@ -124,7 +124,7 @@ export default function CentralEscalas() {
                                                     onClick={() => handleNavigate(escala.viewPath)}>Ver Respostas
                                             </button>
                                             <button className="button-tertiary"
-                                                    onClick={() => handleNavigate('/evolucao-clinica')}>Ver Progresso
+                                                    onClick={() => handleNavigate('/progresso')}>Ver Progresso
                                             </button>
                                         </td>
                                     </tr>

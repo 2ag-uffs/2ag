@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface PittsburghScaleRepository extends JpaRepository<PittsburghScale, Long> {
+public interface PittsburghScaleRepository extends AssessmentRepository<PittsburghScale> {
 }

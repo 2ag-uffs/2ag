@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.Entity;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -254,5 +255,18 @@ public class SleepLog extends BaseAssessment {
 
     public void setTotalTimeAwakeDuringNight(Integer totalTimeAwakeDuringNight) {
         this.totalTimeAwakeDuringNight = totalTimeAwakeDuringNight;
+    }
+
+    @Override
+    public Integer trackedValue(TrackableAttribute attribute) {
+        return switch (attribute) {
+            case CANSACO -> fatigue;
+            case ESTRESSE -> stress;
+            case SONOLENCIA_DIURNA -> daytimeSleepiness;
+            case IRRITABILIDADE -> irritability;
+            case DESPERTARES -> timesWokenUp;
+            case TEMPO_ATE_DORMIR -> timeToFallAsleep;
+            default -> null;
+        };
     }
 }

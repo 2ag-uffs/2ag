@@ -86,6 +86,7 @@ export default function DashboardPaciente() {
     // falta ajustar com o retorno do backend para redirecionar para a diária do sono
     const handleSleep = () => navigate("/diario-sono");
     const handleAnamnese = () => navigate("/anamnese");
+    const handleProgresso = () => navigate("/progresso");
     const handleEscalas = () => {
         if (pacienteInfo?.id) {
             navigate(`/pacientes/${pacienteInfo.id}/escalas`);
@@ -178,6 +179,13 @@ export default function DashboardPaciente() {
                         >
                             <span className="action-icon">🗒️</span>
                             <span>Anamnese</span>
+                        </button>
+                        <button
+                            className="action-button"
+                            onClick={handleProgresso}
+                        >
+                            <span className="action-icon">📈</span>
+                            <span>Meu Progresso</span>
                         </button>
                     </div>
                 </section>

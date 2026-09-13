@@ -146,8 +146,8 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **telas que faltam**
 
-* **não existe tela de progresso** (RF27, RF28). o endpoint `GET /pacientes/{id}/progresso` funciona no backend e nenhuma tela o consome
-* **não há biblioteca de gráficos** no projeto, então as telas de acompanhamento e histórico não têm como exibir evolução (RF07, RF27, RF28)
+* ~~não existe tela de progresso~~ **resolvida**: `/progresso` para o paciente e `/paciente/:patientId/progresso` para o prescritor, as duas na mesma página (RF27, RF28). usa **recharts**
+* o `acompanhamento-semanal-prescritor.jsx` e o histórico ainda não exibem gráfico (RF07)
 * três rotas estão **comentadas** no fim do `routes.jsx` e as páginas não existem: `/escala-pittsburgh`, `/diario-dor` e `/diario-tea`. o backend designa essas escalas e manda o paciente pra elas, o que leva a uma tela em branco (RF08, RF24, RF25)
 * não existe exportação de dados em pdf ou csv (RF33)
 
