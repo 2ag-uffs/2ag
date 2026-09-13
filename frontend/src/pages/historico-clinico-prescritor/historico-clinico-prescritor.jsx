@@ -180,6 +180,12 @@ export default function HistoricoClinicoPrescritor() {
                             Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
                         </p>
                     )}
+                    {patient.archived && (
+                        <p className={styles.subtitle}>
+                            No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi
+                            encerrado.
+                        </p>
+                    )}
                 </div>
                 <div className={styles.headerActions}>
                     <button

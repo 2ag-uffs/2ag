@@ -5,7 +5,9 @@ public enum AuditOperation {
     CRIACAO("Criação"),
     ALTERACAO("Alteração"),
     VISUALIZACAO("Acesso"),
-    ANULACAO("Anulação");
+    ANULACAO("Anulação"),
+    ARQUIVAMENTO("Arquivamento"),
+    REATIVACAO("Reativação");
 
     private final String label;
 

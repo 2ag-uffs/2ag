@@ -1,150 +1,241 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
-import './lista-paciente.css';
+import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
+import {apiService, ApiError} from "../../services/api.js";
+import {ageFrom, formatDate} from "../../utils/date-format.js";
+import styles from "./lista-paciente.module.css";
 
+const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
+
+function patientDetailsOf(patient) {
+    const age = ageFrom(patient.birthDate);
+    const ageText = age !== null ? age + " anos" : "Idade não informada";
+    if (patient.archived) {
+        return ageText + " · no arquivo desde " + formatDate(patient.archivedAt);
+    }
+    return ageText;
+}
+
+// carteira de pacientes do prescritor
+// os ativos aparecem primeiro e os arquivados ficam numa aba separada com o prontuario guardado
+// o resto das acoes do paciente fica no historico dele
 export default function ListaPacientes() {
     const navigate = useNavigate();
-    const [pacientes, setPacientes] = useState([]);
+    const [showArchived, setShowArchived] = useState(false);
+    const [patients, setPatients] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [actionError, setActionError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [isInviteOpen, setIsInviteOpen] = useState(false);
+    // paciente q o prescritor escolheu arquivar e q abre a confirmacao
+    const [patientToArchive, setPatientToArchive] = useState(null);
+    // paciente com pedido em andamento pra n mandar duas vezes
+    const [busyPatientId, setBusyPatientId] = useState(null);
+    // somar um aqui busca a lista de novo depois de arquivar ou reativar
+    const [reloadCount, setReloadCount] = useState(0);
 
     useEffect(() => {
-        const prescritor = getLoggedUser();
-        if (!prescritor) {
-            navigate("/login");
+        let isCurrentRequest = true;
+
+        apiService.get("/paciente?arquivados=" + showArchived)
+            .then((patientList) => {
+                if (isCurrentRequest) {
+                    setPatients(patientList);
+                    setLoadError(null);
+                }
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar seus pacientes. Confira sua internet e tente de novo.");
+                }
+            })
+            .finally(() => {
+                if (isCurrentRequest) {
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [showArchived, reloadCount]);
+
+    const changeList = (archived) => {
+        if (archived === showArchived) {
             return;
         }
-
-        apiService
-            .get("/paciente")
-            .then(setPacientes)
-            .catch((err) => {
-                setError(err instanceof ApiError ? err.message : "Erro ao buscar pacientes.");
-            })
-            .finally(() => setIsLoading(false));
-    }, [navigate]);
-
-    const handleSelectScales = (pacienteId) => {
-        navigate(`/paciente/${pacienteId}/selecao-escalas`);
+        setIsLoading(true);
+        setShowArchived(archived);
     };
 
-    const handleViewHistory = (pacienteId) => {
-        navigate(`/paciente/${pacienteId}/historico`);
-    };
-
-    // RF28: o prescritor vendo a evolucao de um paciente dele
-    const handleViewProgress = (pacienteId) => {
-        navigate(`/paciente/${pacienteId}/progresso`);
-    };
-
-    // RF32: monta o acompanhamento automatico de 90 dias
-    const handleAcompanhamento = (pacienteId) => {
-        navigate(`/paciente/${pacienteId}/acompanhamento`);
-    };
-
-    // RF31: quem criou alterou ou abriu o prontuario desse paciente
-    const handleViewAudit = (paciente) => {
-        navigate(`/paciente/${paciente.id}/auditoria`, {state: {patientName: paciente.name}});
-    };
-
-    const handleNewConsult = (patientId) => {
-        navigate(`/paciente/${patientId}/consulta/nova`);
-    };
-
-    const filteredPacientes = pacientes.filter(paciente =>
-        paciente.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const calculateAge = (birthDate) => {
-        if (!birthDate) return 'N/A';
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-            age--;
+    const archivePatient = async () => {
+        const patient = patientToArchive;
+        setPatientToArchive(null);
+        setNotice(null);
+        setActionError(null);
+        setBusyPatientId(patient.id);
+        try {
+            await apiService.put("/paciente/" + patient.id + "/arquivamento");
+            setNotice(patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.");
+            setReloadCount((currentCount) => currentCount + 1);
+        } catch (requestError) {
+            setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        } finally {
+            setBusyPatientId(null);
         }
-        return age;
     };
 
+    const reactivatePatient = async (patient) => {
+        setNotice(null);
+        setActionError(null);
+        setBusyPatientId(patient.id);
+        try {
+            await apiService.put("/paciente/" + patient.id + "/reativacao");
+            setNotice(patient.name + " voltou para a lista de ativos.");
+            setReloadCount((currentCount) => currentCount + 1);
+        } catch (requestError) {
+            setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        } finally {
+            setBusyPatientId(null);
+        }
+    };
 
-    if (isLoading) {
-        return <div className="lista-pacientes-page"><h1>Carregando pacientes...</h1></div>;
-    }
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const visiblePatients = patients.filter((patient) => patient.name.toLowerCase().includes(normalizedSearch));
 
-    if (error) {
-        return <div className="lista-pacientes-page"><h1>Erro: {error}</h1></div>;
+    let emptyMessage = "Nenhum paciente encontrado com esse nome.";
+    if (patients.length === 0) {
+        emptyMessage = showArchived
+            ? "Nenhum paciente no arquivo."
+            : "Você ainda não tem pacientes ativos. Use Convidar paciente para enviar o link de cadastro.";
     }
 
     return (
-        <div className="lista-pacientes-page">
+        <section className={styles.page}>
+            <div className={styles.header}>
+                <div>
+                    <h1>Meus pacientes</h1>
+                    <p className={styles.subtitle}>
+                        Abra o histórico para ver consultas, prescrições, anamnese e escalas do paciente.
+                    </p>
+                </div>
+                <button type="button" className={styles.primaryButton} onClick={() => setIsInviteOpen(true)}>
+                    Convidar paciente
+                </button>
+            </div>
 
-            <main className="lp-main">
-                <div className="lp-pacientes-header">
-                    <h2>Meus Pacientes Ativos</h2>
-                    <input
-                        type="text"
-                        placeholder="Buscar paciente..."
-                        className="lp-busca-paciente"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <button type="button" className="lp-invite-button" onClick={() => setIsInviteOpen(true)}>
-                        Convidar paciente
+            <div className={styles.toolbar}>
+                <div className={styles.filters} role="group" aria-label="Quais pacientes mostrar">
+                    <button
+                        type="button"
+                        className={showArchived ? styles.filterButton : styles.filterButtonActive}
+                        aria-pressed={!showArchived}
+                        onClick={() => changeList(false)}
+                    >
+                        Ativos
+                    </button>
+                    <button
+                        type="button"
+                        className={showArchived ? styles.filterButtonActive : styles.filterButton}
+                        aria-pressed={showArchived}
+                        onClick={() => changeList(true)}
+                    >
+                        Arquivados
                     </button>
                 </div>
+                <input
+                    type="search"
+                    className={styles.search}
+                    placeholder="Buscar pelo nome"
+                    aria-label="Buscar paciente pelo nome"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                />
+            </div>
 
-                <div className="lp-pacientes-lista">
-                    {filteredPacientes.length > 0 ? (
-                        filteredPacientes.map(paciente => (
-                            <div key={paciente.id} className="lp-paciente-card">
-                                <div className="lp-paciente-info-wrapper">
-                                    <div className="lp-paciente-avatar">{paciente.name.charAt(0)}</div>
-                                    <div className="lp-paciente-info">
-                                        <h3>{paciente.name}</h3>
-                                        <p>{calculateAge(paciente.birthDate)} anos</p>
-                                    </div>
-                                    <div className="lp-paciente-status">
-                                        <span className="lp-status-dot"></span>
-                                        Ativo
-                                    </div>
-                                </div>
-                                <div className="lp-paciente-actions">
-                                    <button className="button-tertiary" onClick={() => handleNewConsult(paciente.id)}>
-                                        Iniciar Consulta
-                                    </button>
-                                    <button className="button-tertiary" onClick={() => handleSelectScales(paciente.id)}>
-                                        Gerenciar Escalas
-                                    </button>
-                                    <button className="button-tertiary" onClick={() => handleViewHistory(paciente.id)}>
-                                        Ver Histórico
-                                    </button>
-                                    <button className="button-tertiary" onClick={() => handleViewProgress(paciente.id)}>
-                                        Ver Progresso
-                                    </button>
-                                    <button className="button-tertiary" onClick={() => handleAcompanhamento(paciente.id)}>
-                                        Acompanhamento
-                                    </button>
-                                    <button className="button-tertiary" onClick={() => handleViewAudit(paciente)}>
-                                        Histórico de Acesso
-                                    </button>
+            {notice && <p className="aviso" role="status">{notice}</p>}
+            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+
+            {isLoading && <p className={styles.status}>Carregando...</p>}
+            {!isLoading && loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+
+            {!isLoading && !loadError && visiblePatients.length === 0 && (
+                <p className={styles.status}>{emptyMessage}</p>
+            )}
+
+            {!isLoading && !loadError && visiblePatients.length > 0 && (
+                <ul className={styles.list}>
+                    {visiblePatients.map((patient) => (
+                        <li key={patient.id} className={styles.card}>
+                            <div className={styles.patientInfo}>
+                                <span className={styles.avatar} aria-hidden="true">{patient.name.charAt(0)}</span>
+                                <div>
+                                    <h2 className={styles.patientName}>{patient.name}</h2>
+                                    <p className={styles.status}>{patientDetailsOf(patient)}</p>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <p className="lp-empty-state">
-                            {pacientes.length === 0
-                                ? "Você ainda não tem pacientes. Use o botão Convidar paciente para enviar o link de cadastro."
-                                : "Nenhum paciente encontrado."}
-                        </p>
-                    )}
-                </div>
-            </main>
+                            <div className={styles.actions}>
+                                <button
+                                    type="button"
+                                    className={styles.primaryButton}
+                                    onClick={() => navigate("/paciente/" + patient.id + "/historico")}
+                                >
+                                    Abrir histórico
+                                </button>
+                                {!patient.archived && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            className={styles.secondaryButton}
+                                            onClick={() => navigate("/paciente/" + patient.id + "/consulta/nova")}
+                                        >
+                                            Nova consulta
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={styles.secondaryButton}
+                                            onClick={() => setPatientToArchive(patient)}
+                                            disabled={busyPatientId === patient.id}
+                                        >
+                                            {busyPatientId === patient.id ? "Arquivando..." : "Arquivar"}
+                                        </button>
+                                    </>
+                                )}
+                                {patient.archived && (
+                                    <button
+                                        type="button"
+                                        className={styles.secondaryButton}
+                                        onClick={() => reactivatePatient(patient)}
+                                        disabled={busyPatientId === patient.id}
+                                    >
+                                        {busyPatientId === patient.id ? "Reativando..." : "Reativar"}
+                                    </button>
+                                )}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <ModalConfirmacao
+                show={patientToArchive !== null}
+                titulo="Arquivar paciente"
+                mensagem={patientToArchive
+                    ? patientToArchive.name + " sai da lista de ativos e o acompanhamento automático é encerrado."
+                    + " O prontuário fica guardado, as escalas que você enviar continuam chegando"
+                    + " e você pode reativar quando quiser."
+                    : ""}
+                textoConfirmar="Arquivar"
+                textoCancelar="Voltar"
+                onConfirmar={archivePatient}
+                onCancelar={() => setPatientToArchive(null)}
+            />
             <InvitePatientModal show={isInviteOpen} onClose={() => setIsInviteOpen(false)}/>
-        </div>
+        </section>
     );
 }

@@ -63,6 +63,19 @@ public class AuditService {
                 new AuditEvent(findLoggedUser(), AuditOperation.ANULACAO, recordType, recordId, patientId));
     }
 
+    // arquivar e reativar valem pro prontuario inteiro do paciente
+    @Transactional
+    public void recordArchiving(Long patientId) {
+        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.ARQUIVAMENTO,
+                AuditRecordType.PRONTUARIO, null, patientId));
+    }
+
+    @Transactional
+    public void recordReactivation(Long patientId) {
+        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.REATIVACAO,
+                AuditRecordType.PRONTUARIO, null, patientId));
+    }
+
     // o prescritor abrindo dado clinico de um paciente
     // o paciente olhando os proprios dados n entra na trilha
     @Transactional

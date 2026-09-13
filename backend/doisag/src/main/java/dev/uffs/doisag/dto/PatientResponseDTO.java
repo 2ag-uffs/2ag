@@ -4,9 +4,10 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
-// o que a api devolve quando o assunto eh paciente.
-// n tem senha aqui, e nem os campos do UserDetails q vazavam antes
+// o que a api devolve quando o assunto eh paciente
+// n tem senha aqui e nem os campos do UserDetails q vazavam antes
 public record PatientResponseDTO(
         Long id,
         String name,
@@ -16,7 +17,9 @@ public record PatientResponseDTO(
         String phone,
         AddressDTO address,
         Long prescriberId,
-        String prescriberName
+        String prescriberName,
+        boolean archived,
+        LocalDateTime archivedAt
 ) {
     public PatientResponseDTO(Patient patient) {
         this(
@@ -28,11 +31,13 @@ public record PatientResponseDTO(
                 patient.getPhone(),
                 patient.getAddress() == null ? null : new AddressDTO(patient.getAddress()),
                 prescriberIdOf(patient),
-                prescriberNameOf(patient)
+                prescriberNameOf(patient),
+                patient.isArchived(),
+                patient.getArchivedAt()
         );
     }
 
-    // o prescritor pode ser nulo e o campo eh lazy, entao separei
+    // o prescritor pode ser nulo e o campo eh lazy entao separei
     // em metodos pra n poluir o construtor
     private static Long prescriberIdOf(Patient patient) {
         Prescriber prescriber = patient.getPrescriber();

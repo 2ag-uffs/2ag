@@ -43,7 +43,7 @@ public class DashboardService {
     public PrescriberDashboardDTO getPrescriberDashboard(Long prescriberId) {
 
         // busca o número de pacientes ativos
-        long activePatients = patientRepository.countByPrescriberId(prescriberId);
+        long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNull(prescriberId);
 
         // busca as consultas agendadas pra hoje
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay(); // comecinho do dia de hoje

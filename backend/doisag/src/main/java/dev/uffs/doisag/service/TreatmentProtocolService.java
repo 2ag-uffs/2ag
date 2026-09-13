@@ -36,6 +36,9 @@ public class TreatmentProtocolService {
     // o acompanhamento dura 90 dias por padrao (RN01)
     private static final int DURACAO_PADRAO_EM_DIAS = 90;
 
+    public static final String ARCHIVED_PATIENT_MESSAGE =
+            "Paciente arquivado não recebe acompanhamento automático. Reative o paciente antes";
+
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
     private final AssignedScaleRepository assignedScaleRepository;
@@ -58,6 +61,11 @@ public class TreatmentProtocolService {
     public TreatmentProtocol create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+
+        // paciente arquivado n recebe envio automatico ate o prescritor reativar
+        if (patient.isArchived()) {
+            throw new ValidationException(ARCHIVED_PATIENT_MESSAGE);
+        }
 
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
@@ -107,10 +115,21 @@ public class TreatmentProtocolService {
 
     @Transactional
     public TreatmentProtocol encerrar(Long patientId) {
-        TreatmentProtocol protocol = findActiveProtocol(patientId);
+        return endProtocol(findActiveProtocol(patientId));
+    }
+
+    // arquivar o paciente encerra o acompanhamento automatico q estiver andando
+    @Transactional
+    public void endActiveProtocolIfAny(Long patientId) {
+        protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(this::endProtocol);
+    }
+
+    // encerrar n apaga nada e o protocolo fica guardado como inativo
+    private TreatmentProtocol endProtocol(TreatmentProtocol protocol) {
         protocol.setActive(false);
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);
-        auditService.recordChange(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
+        auditService.recordChange(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(),
+                savedProtocol.getPatient().getId());
         return savedProtocol;
     }
 
@@ -128,10 +147,7 @@ public class TreatmentProtocolService {
 
             // passou dos 90 dias: encerra e n designa mais nada
             if (hoje.isAfter(protocol.getEndDate())) {
-                protocol.setActive(false);
-                protocolRepository.save(protocol);
-                auditService.recordChange(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, protocol.getId(),
-                        protocol.getPatient().getId());
+                endProtocol(protocol);
                 continue;
             }
 

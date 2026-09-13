@@ -56,8 +56,12 @@ public class PatientService {
         return patient;
     }
 
-    public List<Patient> getPatientsByPrescriberId(Long prescriberId) {
-        return patientRepository.findAllByPrescriberId(prescriberId);
+    // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
+    public List<Patient> getPatientsByPrescriberId(Long prescriberId, boolean archived) {
+        if (archived) {
+            return patientRepository.findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(prescriberId);
+        }
+        return patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId);
     }
 
     // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)
