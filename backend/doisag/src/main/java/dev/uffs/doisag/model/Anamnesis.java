@@ -1,6 +1,8 @@
 package dev.uffs.doisag.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 
 import java.time.LocalDate;
@@ -46,6 +48,10 @@ public class Anamnesis extends BaseAssessment {
     private String substanceUse;
     @Column(columnDefinition = "TEXT")
     private String physicalActivity;
+
+    // preenchido so quando a anamnese foi anulada pelo prescritor
+    @Embedded
+    private Annulment annulment;
 
     public Anamnesis(Long id, LocalDate assessmentDate, Patient patient, String reasonForVisit, String profession, String diet, String anxiety, String observation, String adverseReaction, String expectations, String currentMedication, String geneticCondition, String previousTreatment, String height, String weight, String sleepHabits, String alcoholConsumption, String familyHistory, String treatmentAwareness, String smokingHabits, String previousDiagnosis, String pain, String substanceUse, String physicalActivity) {
         super(id, assessmentDate, patient);
@@ -252,5 +258,20 @@ public class Anamnesis extends BaseAssessment {
 
     public void setPhysicalActivity(String physicalActivity) {
         this.physicalActivity = physicalActivity;
+    }
+
+    // a anulacao sai na resposta pelos dtos e n pela entidade crua
+    @JsonIgnore
+    public Annulment getAnnulment() {
+        return annulment;
+    }
+
+    public void setAnnulment(Annulment annulment) {
+        this.annulment = annulment;
+    }
+
+    @JsonIgnore
+    public boolean isAnnulled() {
+        return annulment != null;
     }
 }

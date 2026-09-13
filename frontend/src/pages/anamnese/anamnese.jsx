@@ -1,301 +1,340 @@
-import {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router';
-import './anamnese.css';
+import {useState} from "react";
+import {useNavigate} from "react-router";
+import SelectField from "../../components/form/select-field.jsx";
+import TextAreaField from "../../components/form/text-area-field.jsx";
+import TextField from "../../components/form/text-field.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, ApiError} from "../../services/api.js";
+import styles from "./anamnese.module.css";
 
+const SMOKING_OPTIONS = [
+    {value: "Não", label: "Não"},
+    {value: "Sim, diariamente", label: "Sim, diariamente"},
+    {value: "Sim, ocasionalmente", label: "Sim, ocasionalmente"},
+];
+
+const ALCOHOL_OPTIONS = [
+    {value: "Não", label: "Não"},
+    {value: "Sim, socialmente", label: "Sim, socialmente"},
+    {value: "Sim, frequentemente", label: "Sim, frequentemente"},
+];
+
+const AWARENESS_OPTIONS = [
+    {value: "Sim", label: "Sim"},
+    {value: "Não", label: "Não"},
+];
+
+// data de hoje no formato do input date sem passar por utc
+function todayForInput() {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return today.getFullYear() + "-" + month + "-" + day;
+}
+
+function emptyAnswers() {
+    return {
+        assessmentDate: todayForInput(),
+        profession: "",
+        reasonForVisit: "",
+        previousDiagnosis: "",
+        previousTreatment: "",
+        currentMedication: "",
+        familyHistory: "",
+        adverseReaction: "",
+        geneticCondition: "",
+        diet: "",
+        smokingHabits: "Não",
+        alcoholConsumption: "Não",
+        weight: "",
+        height: "",
+        substanceUse: "",
+        physicalActivity: "",
+        sleepHabits: "",
+        anxiety: "",
+        pain: "",
+        expectations: "",
+        treatmentAwareness: "",
+        observation: "",
+    };
+}
+
+// ficha de anamnese preenchida pelo proprio paciente (RF19)
 export default function Anamnese() {
     const navigate = useNavigate();
-    const [userData, setUserData] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+    const [answers, setAnswers] = useState(emptyAnswers);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formError, setFormError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [isConfirmingExit, setIsConfirmingExit] = useState(false);
 
-    const [formData, setFormData] = useState({
-        assessmentDate: new Date().toISOString().split('T')[0],
-        profession: '',
-        reasonForVisit: '',
-        previousDiagnosis: '',
-        previousTreatment: '',
-        currentMedication: '',
-        diet: '',
-        smokingHabits: 'Não',
-        alcoholConsumption: 'Não',
-        weight: '',
-        height: '',
-        substanceUse: '',
-        physicalActivity: '',
-        sleepHabits: '',
-        anxiety: '',
-        pain: '',
-        familyHistory: '',
-        adverseReaction: '',
-        geneticCondition: '',
-        expectations: '',
-        treatmentAwareness: '',
-        observation: '',
-    });
-
-    // protege a rota e pega dados do usuario
-    useEffect(() => {
-        const user = getLoggedUser();
-        if (!user) {
-            navigate("/login");
-        } else {
-            setUserData(user);
-        }
-    }, [navigate]);
-
-    const handleChange = (e) => {
-        const {name, value} = e.target;
-        setFormData(prev => ({...prev, [name]: value}));
+    const updateAnswer = (fieldName, value) => {
+        setAnswers((currentAnswers) => ({...currentAnswers, [fieldName]: value}));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setIsSaving(true);
+        setFormError(null);
+        setFieldErrors({});
 
-        if (!userData?.id) {
-            setError("Sua sessão expirou. Faça o login novamente!");
-            setIsLoading(false);
-            navigate('/login');
-            return;
-        }
-
-        // mapeio os nomes do front para o back
-        const payload = {
-            patient: {id: userData.id},
-            assessmentDate: formData.assessmentDate,
-            profession: formData.profession,
-            reasonForVisit: formData.reasonForVisit,
-            previousDiagnosis: formData.previousDiagnosis,
-            previousTreatment: formData.previousTreatment,
-            currentMedication: formData.currentMedication,
-            diet: formData.diet,
-            smokingHabits: formData.smokingHabits,
-            alcoholConsumption: formData.alcoholConsumption,
-            weight: formData.weight,
-            height: formData.height,
-            substanceUse: formData.substanceUse,
-            physicalActivity: formData.physicalActivity,
-            sleepHabits: formData.sleepHabits,
-            anxiety: formData.anxiety,
-            pain: formData.pain,
-            familyHistory: formData.familyHistory,
-            adverseReaction: formData.adverseReaction,
-            geneticCondition: formData.geneticCondition,
-            expectations: formData.expectations,
-            treatmentAwareness: formData.treatmentAwareness === 'Sim' ? true : (formData.isAwareOfMonitoring === 'Não' ? false : null),
-            observation: formData.observation,
-        };
+        // resposta em branco vai como null pra api
+        const requestBody = {};
+        Object.keys(answers).forEach((fieldName) => {
+            const answer = answers[fieldName].trim();
+            requestBody[fieldName] = answer === "" ? null : answer;
+        });
 
         try {
-            await apiService.post("/anamnese", payload);
-            navigate('/dashboard-paciente', {state: {aviso: "Ficha de anamnese enviada."}});
-        } catch (err) {
-            setError(err instanceof ApiError ? err.message : "Falha ao enviar a ficha de anamnese.");
-        } finally {
-            setIsLoading(false);
+            await apiService.post("/anamnese", requestBody);
+            navigate("/dashboard-paciente", {state: {aviso: "Ficha de anamnese enviada. Obrigado por responder."}});
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                const errorsByField = requestError.fieldErrors();
+                setFieldErrors(errorsByField);
+                setFormError(Object.keys(errorsByField).length === 0
+                    ? requestError.message
+                    : "Confira as respostas destacadas.");
+            } else {
+                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            }
+            setIsSaving(false);
         }
-    };
-
-    // o confirm do navegador virou modal da propria tela
-    const handleCancel = () => {
-        setConfirmandoSaida(true);
     };
 
     return (
-        <div className="anamnese-page">
+        <section className={styles.page}>
+            <div className={styles.header}>
+                <h1>Anamnese</h1>
+                <p>
+                    Estas perguntas ajudam o seu prescritor a conhecer sua saúde antes de começar o tratamento. Só o
+                    motivo da consulta e a pergunta sobre o acompanhamento são obrigatórios.
+                </p>
+            </div>
 
-            <main className="anamnese-main">
-                <form className="anamnese-form" onSubmit={handleSubmit}>
-                    <div className="anamnese-intro">
-                        <h2>Bem-vindo(a) à sua avaliação inicial!</h2>
-                        <p>
-                            Esta ficha de anamnese tem como objetivo reunir informações para garantir um tratamento mais
-                            seguro e eficaz, adaptado às suas necessidades individuais. Agradecemos por dedicar seu
-                            tempo para preenche-la. Se tiver dúvidas durante o preenchimento, não hesite em nos contatar
-                            para assistência!
-                        </p>
-                    </div>
-                    {error &&
-                        <p className="error-message" style={{textAlign: 'center', marginBottom: '1rem'}}>{error}</p>}
-                    <div className="form-section">
-                        <h3>Informações Gerais</h3>
-                        <div className="form-grid">
-                            <div className="form-group">
-                                <label htmlFor="assessmentDate">Data de preenchimento</label>
-                                <input type="date" id="assessmentDate" name="assessmentDate"
-                                       value={formData.assessmentDate} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-2">
-                                <label htmlFor="profession">Ocupação</label>
-                                <input type="text" id="profession" name="profession" value={formData.profession}
-                                       onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="reasonForVisit">Motivo principal da consulta</label>
-                                <textarea id="reasonForVisit" name="reasonForVisit" value={formData.reasonForVisit}
-                                          onChange={handleChange} rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
+            {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
-                    <div className="form-section">
-                        <h3>Histórico de Saúde</h3>
-                        <div className="form-grid">
-                            <div className="form-group span-3">
-                                <label htmlFor="previousDiagnosis">Diagnóstico(s) prévio(s)</label>
-                                <input type="text" id="previousDiagnosis" name="previousDiagnosis"
-                                       value={formData.previousDiagnosis} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="previousTreatment">Tratamentos anteriores</label>
-                                <textarea id="previousTreatment" name="previousTreatment"
-                                          value={formData.previousTreatment} onChange={handleChange}
-                                          rows="3"></textarea>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="currentMedication">Medicações em uso</label>
-                                <textarea id="currentMedication" name="currentMedication"
-                                          value={formData.currentMedication} onChange={handleChange}
-                                          rows="3"></textarea>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="familyHistory">Histórico familiar de doenças relevantes</label>
-                                <input type="text" id="familyHistory" name="familyHistory"
-                                       value={formData.familyHistory} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="adverseReaction">Reações adversas a medicamentos</label>
-                                <input type="text" id="adverseReaction" name="adverseReaction"
-                                       value={formData.adverseReaction} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="geneticCondition">Condições genéticas conhecidas</label>
-                                <input type="text" id="geneticCondition" name="geneticCondition"
-                                       value={formData.geneticCondition} onChange={handleChange}/>
-                            </div>
-                        </div>
+            <form className={styles.form} onSubmit={handleSubmit}>
+                <fieldset className={styles.section} disabled={isSaving}>
+                    <legend>Sobre você</legend>
+                    <div className={styles.row}>
+                        <TextField
+                            label="Data de preenchimento"
+                            name="assessmentDate"
+                            type="date"
+                            max={todayForInput()}
+                            value={answers.assessmentDate}
+                            onChange={(event) => updateAnswer("assessmentDate", event.target.value)}
+                            error={fieldErrors.assessmentDate}
+                        />
+                        <TextField
+                            label="Ocupação"
+                            name="profession"
+                            value={answers.profession}
+                            onChange={(event) => updateAnswer("profession", event.target.value)}
+                            error={fieldErrors.profession}
+                        />
                     </div>
-                    <div className="form-section">
-                        <h3>Hábitos e Estilo de Vida</h3>
-                        <div className="form-grid">
-                            <div className="form-group span-3">
-                                <label htmlFor="diet">Tipo de dieta</label>
-                                <input type="text" id="diet" name="diet"
-                                       placeholder="Ex: onívora, vegetariana, vegana, etc." value={formData.diet}
-                                       onChange={handleChange}/>
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="smokingHabits">Hábito de fumar</label>
-                                <select id="smokingHabits" name="smokingHabits" value={formData.smokingHabits}
-                                        onChange={handleChange}>
-                                    <option>Não</option>
-                                    <option>Sim, diariamente</option>
-                                    <option>Sim, ocasionalmente</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="alcoholConsumption">Consumo de álcool</label>
-                                <select id="alcoholConsumption" name="alcoholConsumption"
-                                        value={formData.alcoholConsumption} onChange={handleChange}>
-                                    <option>Não</option>
-                                    <option>Sim, socialmente</option>
-                                    <option>Sim, frequentemente</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="weight">Peso (kg)</label>
-                                <input type="number" id="weight" name="weight" placeholder="Ex: 70.5"
-                                       value={formData.weight} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="height">Altura (cm)</label>
-                                <input type="number" id="height" name="height" placeholder="Ex: 175"
-                                       value={formData.height} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-2">
-                                <label htmlFor="substanceUse">Uso de outras substâncias recreativas</label>
-                                <input type="text" id="substanceUse" name="substanceUse" value={formData.substanceUse}
-                                       onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="physicalActivity">Prática de exercícios físicos (descreva frequência e
-                                    tipo)</label>
-                                <input type="text" id="physicalActivity" name="physicalActivity"
-                                       value={formData.physicalActivity} onChange={handleChange}/>
-                            </div>
-                        </div>
+                    <TextAreaField
+                        label="Motivo principal da consulta"
+                        name="reasonForVisit"
+                        rows={3}
+                        value={answers.reasonForVisit}
+                        onChange={(event) => updateAnswer("reasonForVisit", event.target.value)}
+                        error={fieldErrors.reasonForVisit}
+                        required={true}
+                    />
+                </fieldset>
+
+                <fieldset className={styles.section} disabled={isSaving}>
+                    <legend>Histórico de saúde</legend>
+                    <TextAreaField
+                        label="Diagnósticos anteriores"
+                        name="previousDiagnosis"
+                        rows={2}
+                        value={answers.previousDiagnosis}
+                        onChange={(event) => updateAnswer("previousDiagnosis", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Tratamentos anteriores"
+                        name="previousTreatment"
+                        rows={3}
+                        value={answers.previousTreatment}
+                        onChange={(event) => updateAnswer("previousTreatment", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Medicações em uso"
+                        name="currentMedication"
+                        rows={3}
+                        value={answers.currentMedication}
+                        onChange={(event) => updateAnswer("currentMedication", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Doenças importantes na família"
+                        name="familyHistory"
+                        rows={2}
+                        value={answers.familyHistory}
+                        onChange={(event) => updateAnswer("familyHistory", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Reações ruins a medicamentos"
+                        name="adverseReaction"
+                        rows={2}
+                        value={answers.adverseReaction}
+                        onChange={(event) => updateAnswer("adverseReaction", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Condições genéticas conhecidas"
+                        name="geneticCondition"
+                        rows={2}
+                        value={answers.geneticCondition}
+                        onChange={(event) => updateAnswer("geneticCondition", event.target.value)}
+                    />
+                </fieldset>
+
+                <fieldset className={styles.section} disabled={isSaving}>
+                    <legend>Hábitos</legend>
+                    <TextField
+                        label="Tipo de alimentação"
+                        name="diet"
+                        placeholder="Ex: onívora, vegetariana ou vegana"
+                        value={answers.diet}
+                        onChange={(event) => updateAnswer("diet", event.target.value)}
+                    />
+                    <div className={styles.row}>
+                        <SelectField
+                            label="Fuma?"
+                            name="smokingHabits"
+                            options={SMOKING_OPTIONS}
+                            value={answers.smokingHabits}
+                            onChange={(event) => updateAnswer("smokingHabits", event.target.value)}
+                        />
+                        <SelectField
+                            label="Bebe álcool?"
+                            name="alcoholConsumption"
+                            options={ALCOHOL_OPTIONS}
+                            value={answers.alcoholConsumption}
+                            onChange={(event) => updateAnswer("alcoholConsumption", event.target.value)}
+                        />
                     </div>
-                    <div className="form-section">
-                        <h3>Sintomas e Queixas Atuais</h3>
-                        <div className="form-grid">
-                            <div className="form-group span-3">
-                                <label htmlFor="sleepHabits">Qualidade do sono</label>
-                                <input type="text" id="sleepHabits" name="sleepHabits"
-                                       placeholder="Ex: durmo bem, tenho insônia, acordo várias vezes, etc."
-                                       value={formData.sleepHabits} onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="anxiety">Presença de ansiedade (descreva frequência e
-                                    intensidade)</label>
-                                <input type="text" id="anxiety" name="anxiety" value={formData.anxiety}
-                                       onChange={handleChange}/>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="pain">Presença de dor (descreva local, frequência e intensidade)</label>
-                                <input type="text" id="pain" name="pain" value={formData.pain} onChange={handleChange}/>
-                            </div>
-                        </div>
+                    <div className={styles.row}>
+                        <TextField
+                            label="Peso (kg)"
+                            name="weight"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.1"
+                            value={answers.weight}
+                            onChange={(event) => updateAnswer("weight", event.target.value)}
+                            error={fieldErrors.weight}
+                        />
+                        <TextField
+                            label="Altura (cm)"
+                            name="height"
+                            type="number"
+                            inputMode="numeric"
+                            value={answers.height}
+                            onChange={(event) => updateAnswer("height", event.target.value)}
+                            error={fieldErrors.height}
+                        />
                     </div>
-                    <div className="form-section">
-                        <h3>Tratamento</h3>
-                        <div className="form-grid">
-                            <div className="form-group span-3">
-                                <label htmlFor="expectations">Expectativas com o tratamento</label>
-                                <textarea id="expectations" name="expectations" value={formData.expectations}
-                                          onChange={handleChange} rows="3"></textarea>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="treatmentAwareness">Está ciente de que o tratamento deve ser monitorado
-                                    regularmente?</label>
-                                <select id="treatmentAwareness" name="treatmentAwareness"
-                                        value={formData.treatmentAwareness} onChange={handleChange} required>
-                                    <option value="" disabled>Selecione uma opção</option>
-                                    <option>Sim</option>
-                                    <option>Não</option>
-                                </select>
-                            </div>
-                            <div className="form-group span-3">
-                                <label htmlFor="observation">Observações gerais</label>
-                                <textarea id="observation" name="observation"
-                                          placeholder="Espaço para informações adicionais que julgar importantes."
-                                          value={formData.observation} onChange={handleChange} rows="4"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="anamnese-actions">
-                        <button type="button" className="button-secondary" onClick={handleCancel}>
-                            Cancelar
-                        </button>
-                        <button type="submit" className="button" disabled={isLoading}>
-                            {isLoading ? "Enviando..." : "Enviar Anamnese"}
-                        </button>
-                    </div>
-                </form>
+                    <TextAreaField
+                        label="Uso de outras substâncias"
+                        name="substanceUse"
+                        rows={2}
+                        value={answers.substanceUse}
+                        onChange={(event) => updateAnswer("substanceUse", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Exercícios físicos"
+                        name="physicalActivity"
+                        hint="Conte qual exercício e quantas vezes por semana."
+                        rows={2}
+                        value={answers.physicalActivity}
+                        onChange={(event) => updateAnswer("physicalActivity", event.target.value)}
+                    />
+                </fieldset>
+
+                <fieldset className={styles.section} disabled={isSaving}>
+                    <legend>Como você está hoje</legend>
+                    <TextAreaField
+                        label="Sono"
+                        name="sleepHabits"
+                        placeholder="Ex: durmo bem, tenho insônia ou acordo várias vezes"
+                        rows={2}
+                        value={answers.sleepHabits}
+                        onChange={(event) => updateAnswer("sleepHabits", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Ansiedade"
+                        name="anxiety"
+                        hint="Com que frequência aparece e com que intensidade."
+                        rows={2}
+                        value={answers.anxiety}
+                        onChange={(event) => updateAnswer("anxiety", event.target.value)}
+                    />
+                    <TextAreaField
+                        label="Dor"
+                        name="pain"
+                        hint="Onde dói, com que frequência e com que intensidade."
+                        rows={2}
+                        value={answers.pain}
+                        onChange={(event) => updateAnswer("pain", event.target.value)}
+                    />
+                </fieldset>
+
+                <fieldset className={styles.section} disabled={isSaving}>
+                    <legend>Sobre o tratamento</legend>
+                    <TextAreaField
+                        label="O que você espera do tratamento"
+                        name="expectations"
+                        rows={3}
+                        value={answers.expectations}
+                        onChange={(event) => updateAnswer("expectations", event.target.value)}
+                    />
+                    <SelectField
+                        label="Você sabe que o tratamento precisa de acompanhamento regular?"
+                        name="treatmentAwareness"
+                        options={AWARENESS_OPTIONS}
+                        placeholder="Escolha uma resposta"
+                        value={answers.treatmentAwareness}
+                        onChange={(event) => updateAnswer("treatmentAwareness", event.target.value)}
+                        error={fieldErrors.treatmentAwareness}
+                        required={true}
+                    />
+                    <TextAreaField
+                        label="Algo mais que queira contar"
+                        name="observation"
+                        rows={3}
+                        value={answers.observation}
+                        onChange={(event) => updateAnswer("observation", event.target.value)}
+                    />
+                </fieldset>
+
+                <div className={styles.actions}>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => setIsConfirmingExit(true)}
+                        disabled={isSaving}
+                    >
+                        Cancelar
+                    </button>
+                    <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                        {isSaving ? "Enviando..." : "Enviar anamnese"}
+                    </button>
+                </div>
+            </form>
 
             <ModalConfirmacao
-                show={confirmandoSaida}
-                titulo="Cancelar preenchimento"
-                mensagem="Tudo o que você preencheu será perdido. Quer mesmo sair?"
-                textoConfirmar="Sim, cancelar"
+                show={isConfirmingExit}
+                titulo="Sair sem enviar"
+                mensagem="O que você preencheu ainda não foi enviado e vai se perder. Quer mesmo sair?"
+                textoConfirmar="Sim, sair"
                 textoCancelar="Continuar preenchendo"
                 onConfirmar={() => navigate("/dashboard-paciente")}
-                onCancelar={() => setConfirmandoSaida(false)}
+                onCancelar={() => setIsConfirmingExit(false)}
             />
-            </main>
-        </div>
+        </section>
     );
 }

@@ -1,6 +1,6 @@
 package dev.uffs.doisag.controller;
 
-import dev.uffs.doisag.dto.AnamnesisSummaryDTO;
+import dev.uffs.doisag.dto.AnamnesisResponseDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.service.AnamnesisService;
@@ -33,10 +33,10 @@ public class ClinicalHistoryController {
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/anamneses")
-    public List<AnamnesisSummaryDTO> getAnamneses(@PathVariable Long patientId) {
+    public List<AnamnesisResponseDTO> getAnamneses(@PathVariable Long patientId) {
         return anamnesisService.getByPatientId(patientId)
                 .stream()
-                .map(AnamnesisSummaryDTO::new)
+                .map(AnamnesisResponseDTO::new)
                 .toList();
     }
 

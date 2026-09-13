@@ -124,8 +124,9 @@ class ScaleDeliveryTest {
         mockMvc.perform(post("/anamnese")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"reasonForVisit\":\"Dor lombar\"}"))
-                .andExpect(status().isOk());
+                        .content("{\"assessmentDate\":\"" + LocalDate.now()
+                                + "\",\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
