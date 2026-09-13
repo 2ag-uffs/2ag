@@ -29,7 +29,7 @@ public class ProgressReportController {
     // catalogo do que da pra acompanhar, agrupado por escala.
     // fica fora da rota de paciente pq n depende de nenhum: eh a lista
     // de possibilidades do sistema
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
     @GetMapping("/progresso/atributos")
     public List<TrackableAttributeDTO> getTrackableAttributes() {
         return Arrays.stream(TrackableAttribute.values())
@@ -38,7 +38,7 @@ public class ProgressReportController {
     }
 
     // endpoint que o front chama pra montar os graficos
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/pacientes/{patientId}/progresso")
     public ResponseEntity<List<ProgressDataPointDTO>> getProgress(
             @PathVariable Long patientId,
@@ -53,7 +53,7 @@ public class ProgressReportController {
     // as consultas do mesmo periodo, pra marcar no grafico em que dia o
     // paciente foi atendido. serve pra ler a curva junto com a conduta:
     // se o sintoma virou depois de uma consulta, da pra ver
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/pacientes/{patientId}/progresso/consultas")
     public ResponseEntity<List<AppointmentMarkerDTO>> getAppointmentMarkers(
             @PathVariable Long patientId,

@@ -1,11 +1,6 @@
 import {useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./mini-exame-estado-mental.css";
 
 // as 11 secoes do instrumento, na ordem do formulario da clinica.
@@ -166,7 +161,6 @@ export default function MiniExameEstadoMental() {
 
     return (
         <div className="meem">
-            <Header/>
             <main className="meem__conteudo">
                 <h1>Mini-Exame do Estado Mental (MEEM)</h1>
 

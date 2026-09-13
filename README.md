@@ -6,87 +6,83 @@ sistema livre para acompanhamento terapêutico longitudinal de pacientes em trat
 
 sistema desenvolvido como ação de extensão no componente GCH1993 — Projeto de Integração de Extensão da Universidade Federal da Fronteira Sul (UFFS), campus Chapecó.
 
+o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisitos-v2.md). a revisão técnica de 13/09/2026 (§8 do documento) registra as decisões de arquitetura e a ordem de trabalho.
+
+## situação
+
+o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. o módulo de **acesso e identidade** também está pronto: login, convite de paciente, cadastro com termo de consentimento, perfil e recuperação de senha. o de **autorização** também: perfil e vínculo conferidos no servidor em toda rota, fim da exclusão de dado clínico e trilha de auditoria. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
+
+**não use com dado real de paciente antes do fim dessa reconstrução.**
+
 ## o que você precisa instalar
 
-o jeito mais fácil é com docker, aí você não instala mais nada:
+o jeito mais fácil é com docker:
 
 - docker e docker compose
 
-se preferir rodar na mão, sem docker:
+para rodar sem docker:
 
-- jdk 17 (não precisa instalar o maven, o repo já tem o `mvnw`)
-- node 18 ou mais novo
+- jdk 17 (o maven não precisa, o repositório já tem o `mvnw`)
+- node 20 ou mais novo
 - postgres
 
 ---
 
 ## rodando com docker
 
-**1.** copia o arquivo de exemplo das configurações:
+**1.** copie o arquivo de exemplo das configurações:
 
 ```bash
 cp .env.example .env
 ```
 
-**2.** abre o `.env` e preenche duas coisas:
+**2.** abra o `.env` e preencha:
 
-- `POSTGRES_PASSWORD` — inventa uma senha
-- `JWT_SECRET` — a chave que assina o login. pra gerar uma:
+- `POSTGRES_PASSWORD`: uma senha para o banco
+- `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
+- `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
+- `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
+- `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova. sem `MAIL_HOST`, a mensagem aparece só no log da api
 
-```bash
-openssl rand -base64 48
-```
+`POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: sem elas a aplicação não sobe.
 
-essas duas não têm valor padrão de propósito. sem elas a aplicação não sobe, o que é melhor do que subir com uma senha publicada no github.
-
-**3.** sobe tudo:
+**3.** suba tudo:
 
 ```bash
 docker compose up
 ```
 
-pronto, o banco, a api e a tela sobem juntos.
+abra http://localhost:5173. o nginx do front entrega a tela e repassa as chamadas de `/api` para o backend, então só essa porta fica exposta. o banco não fica acessível de fora da rede do compose.
 
-- tela: http://localhost:5173
-- api: http://localhost:8080
+os dados ficam num volume e não somem quando os containers param. para parar, use `ctrl+c`.
 
-pra parar é `ctrl+c`. os dados do banco ficam num volume, então não somem quando você desliga.
+> num servidor com https, troque `SESSION_SECURE_COOKIE` para `true` no `.env`. em `false` o cookie da sessão também trafega sem https, o que só serve para testar no próprio computador.
 
 ---
 
-## rodando na mão, sem docker
+## rodando sem docker
 
 ### 1. o banco
-
-entra no postgres e cria o usuário e o banco:
 
 ```sql
 create user admindoisag with password 'a_senha_que_voce_quiser';
 create database doisag owner admindoisag;
 ```
 
-tem um passo a passo mais detalhado em [`database/README.md`](./database/README.md).
+há um passo a passo mais detalhado em [`database/README.md`](./database/README.md).
 
 ### 2. a api
-
-as senhas vêm de variável de ambiente, não de arquivo. exporta as duas e sobe:
 
 ```bash
 cd backend/doisag
 export DATABASE_PASSWORD='a_senha_que_voce_criou'
 export JWT_SECRET="$(openssl rand -base64 48)"
+export SESSION_SECURE_COOKIE=false
 export SEED_DADOS_TESTE=true
 ./mvnw spring-boot:run
 ```
 
-no intellij essas variáveis vão em `run` → `edit configurations` → `environment variables`.
-
-o `SEED_DADOS_TESTE=true` cria dois usuários pra você testar sem cadastrar na mão:
-
-| quem | email | senha |
-| :--- | :--- | :--- |
-| prescritora | prescritor@email.com | 123456 |
-| paciente | paciente@email.com | 123456 |
+a api sobe em http://localhost:8080/api. no intellij, as variáveis vão em `run` → `edit configurations` → `environment variables`.
 
 ### 3. a tela
 
@@ -98,7 +94,32 @@ npm install
 npm run dev
 ```
 
-abre em http://localhost:5173.
+abra http://localhost:5173. em desenvolvimento o vite repassa `/api` para a porta 8080, do mesmo jeito que o nginx faz no docker.
+
+### sem postgres, só para olhar as telas
+
+a api também sobe com o banco em memória dos testes, no lugar dos passos 1 e 2. os dados somem quando ela para:
+
+```bash
+cd backend/doisag
+./mvnw spring-boot:test-run "-Dspring-boot.run.arguments=--spring.profiles.active=test --api.seed.enabled=true --api.session.secure-cookie=false"
+```
+
+> **porta 8080 ocupada:** suba a api em outra porta (`export SERVER_PORT=8081`, ou `--server.port=8081` junto dos argumentos acima) e crie o arquivo `frontend/.env.local` com a linha `API_URL=http://localhost:8081`.
+
+### contas de teste
+
+com `SEED_DADOS_TESTE=true` a api cria três contas, todas com a senha `Senha@123`:
+
+| perfil | e-mail |
+| :--- | :--- |
+| administrador | admin@email.com |
+| prescritor | prescritor@email.com |
+| paciente | paciente@email.com |
+
+o seed nunca pode ser ligado em produção.
+
+> **banco local antigo:** as migrações foram consolidadas numa base única em 13/09/2026. quem já tinha um banco de antes dessa data precisa recriá-lo: `docker compose down -v` com docker, ou `drop database doisag;` seguido de `create database doisag owner admindoisag;` sem docker.
 
 ---
 
@@ -109,7 +130,15 @@ cd backend/doisag
 ./mvnw clean install
 ```
 
-não precisa do postgres pra isso, os testes usam um banco em memória. se passar numa máquina limpa, está certo.
+não precisa de postgres: os testes usam banco em memória.
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+o ci do github roda os três a cada push e também confere se as imagens do docker continuam montando.
 
 ---
 
@@ -118,19 +147,19 @@ não precisa do postgres pra isso, os testes usam um banco em memória. se passa
 ```
 backend/     a api, em java com spring boot
 frontend/    a tela, em react
-database/    os modelos do banco e o passo a passo de instalação
-docs/        os requisitos e as escalas clínicas que a clínica usa
+database/    a modelagem de 2025 e o passo a passo de instalação do banco
+docs/        requisitos, escalas clínicas, identidade visual e documentos da extensão
 ```
-
-o documento de requisitos é o [`docs/requisitos-v2.md`](./docs/requisitos-v2.md). é lá que está o que o sistema precisa fazer e como cada escala é calculada.
 
 ---
 
 ## umas coisas boas de saber
 
-- o paciente se cadastra sozinho, usando o código do prescritor dele. conta de prescritor é criada pela clínica, não por autocadastro.
+- o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
+- o administrador cuida só das contas: ele não vê prontuário.
+- nenhum dado clínico é apagado, e toda criação, alteração e abertura de prontuário fica na trilha de auditoria. o prescritor consulta a trilha de cada paciente pela lista de pacientes, e o administrador consulta em Auditoria, sem ver nome de paciente.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
-- nunca comita arquivo com dado de paciente aqui: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confere o `git diff` antes de mandar.
+- nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.
 
 ---
 

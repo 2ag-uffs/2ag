@@ -1,0 +1,30 @@
+/* modal q pede o motivo da anulacao */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.recordDescription {
+    font-weight: 600;
+}
+
+.note {
+    color: var(--color-text-secondary);
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+/* no celular os botoes empilham e o voltar fica em cima */
+@media screen and (max-width: 578px) {
+    .actions {
+        flex-direction: column;
+    }
+}

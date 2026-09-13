@@ -8,13 +8,16 @@ import java.util.List;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
-    long countByPrescriberId(Long prescriberId);
-    // conta quantos pacientes um prescritor específico tem na carteira dele
-    // vai ser bom pro card de pacientes ativos no dashboard
 
-    List<Patient> findAllByPrescriberId(Long prescriberId);
+    // quantos pacientes ativos o prescritor tem pro card do painel
+    long countByPrescriberIdAndArchivedAtIsNull(Long prescriberId);
 
-    // checa o vinculo numa consulta so, sem carregar o paciente inteiro
-    // nem depender de lazy loading. usado pelo PatientAccessService
+    // carteira do prescritor em ordem alfabetica separada entre ativos e arquivados
+    List<Patient> findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(Long prescriberId);
+
+    List<Patient> findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(Long prescriberId);
+
+    // checa o vinculo numa consulta so sem carregar o paciente inteiro
+    // nem depender de lazy loading e eh usado pelo PatientAccessService
     boolean existsByIdAndPrescriberId(Long id, Long prescriberId);
 }

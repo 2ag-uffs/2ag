@@ -1,0 +1,132 @@
+/* tela de cadastro do paciente */
+
+/* o espaco entre os blocos ja vem do gap da moldura */
+.message {
+    margin-bottom: 0;
+}
+
+.statusText {
+    color: var(--color-text-secondary);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+/* cada grupo de campos com um titulo */
+.section {
+    border: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sectionTitle {
+    color: var(--color-text-headings);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.row {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* rua e cidade ocupam mais espaco q numero e estado */
+.rowWide {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.submitButton,
+.linkButton {
+    flex: 0 0 auto;
+}
+
+.linkButton {
+    text-decoration: none;
+}
+
+.loginNote {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* aceite do termo de consentimento */
+.consent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.consentLabel {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.6rem;
+    line-height: 1.4;
+}
+
+/* o input css global deixa todo campo alto e com borda entao a caixinha desfaz isso */
+.consentCheckbox {
+    accent-color: var(--color-primary);
+    flex: 0 0 auto;
+    height: 1.25rem;
+    margin-top: 0.1rem;
+    min-height: 0;
+    padding: 0;
+    width: 1.25rem;
+}
+
+/* botao com cara de link no meio da frase */
+.termButton {
+    background-color: transparent;
+    border: none;
+    color: var(--color-primary);
+    display: inline;
+    font: inherit;
+    font-weight: 600;
+    min-height: 0;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.termButton:hover {
+    background-color: transparent;
+}
+
+.consentError {
+    color: var(--color-error);
+    font-size: 0.85rem;
+}
+
+.termText {
+    line-height: 1.5;
+    margin-top: 1rem;
+    max-height: 60svh;
+    overflow-y: auto;
+    white-space: pre-line;
+}
+
+.termActions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+}
+
+.termAcceptButton {
+    flex: 0 0 auto;
+    padding: 0 1.5rem;
+}
+
+@media (max-width: 420px) {
+    .row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

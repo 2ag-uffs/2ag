@@ -1,13 +1,14 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.TEALog;
 import dev.uffs.doisag.repository.TEALogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -15,10 +16,13 @@ public class TEALogService {
     private final TEALogRepository teaLogRepository;
     // aqui eh a injeçao do service q controla o status
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public TEALogService(TEALogRepository teaLogRepository, ScaleAssignmentService scaleAssignmentService) {
+    public TEALogService(TEALogRepository teaLogRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.teaLogRepository = teaLogRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // método privado para calcular o score total
@@ -33,6 +37,7 @@ public class TEALogService {
     }
 
     // CREATE
+    @Transactional
     public TEALog create(TEALog teaLog) {
         // calcula o score
         Integer totalScore = calculateTotalScore(teaLog);
@@ -43,6 +48,7 @@ public class TEALogService {
 
         // usar o service para marcar como concluido
         if (savedScale.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.REGISTRO_TEA, savedScale.getId(), savedScale.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedScale.getPatient().getId(),
                     ScaleType.REGISTRO_TEA
@@ -52,25 +58,23 @@ public class TEALogService {
         return savedScale;
     }
 
-    // READ ALL
-    public List<TEALog> getAll() {
-        return teaLogRepository.findAll();
-    }
-
     // READ BY ID
     public TEALog getById(Long id) {
-        return teaLogRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+        TEALog teaLog = teaLogRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Registro de sintomas não encontrado com o id: " + id));
+        auditService.recordChartView(teaLog.getPatient().getId());
+        return teaLog;
     }
 
     // UPDATE
+    @Transactional
     public TEALog update(Long id, TEALog logDetails) {
         TEALog existingLog = teaLogRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("registro tea não encontrado com o id: " + id));
 
         // atualiza os campos
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setFreqAggressiveness(logDetails.getFreqAggressiveness());
         existingLog.setFreqAgitation(logDetails.getFreqAgitation());
         existingLog.setFreqSleepIssues(logDetails.getFreqSleepIssues());
@@ -83,14 +87,8 @@ public class TEALogService {
         Integer totalScore = calculateTotalScore(existingLog);
         existingLog.setTeaScore(totalScore);
 
-        return teaLogRepository.save(existingLog);
-    }
-
-    // DELETE
-    public void delete(Long id) {
-        if (!teaLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("registro tea não encontrado com o id: " + id);
-        }
-        teaLogRepository.deleteById(id);
+        TEALog savedRecord = teaLogRepository.save(existingLog);
+        auditService.recordChange(AuditRecordType.REGISTRO_TEA, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 }

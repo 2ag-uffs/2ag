@@ -8,9 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/registro-dor")
 public class PainLogController {
@@ -32,17 +29,9 @@ public class PainLogController {
         return painLogService.create(painLog);
     }
 
-    // endpoint para LER todos os registros de dor
-    // GET /registro-dor
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<PainLog> getAll() {
-        return painLogService.getAll();
-    }
-
     // endpoint para LER um registro de dor por ID
     // GET /registro-dor/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PainLog> getById(@PathVariable Long id) {
         PainLog painLog = painLogService.getById(id);
@@ -51,19 +40,11 @@ public class PainLogController {
 
     // endpoint para ATUALIZAR um registro de dor
     // PUT /registro-dor/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<PainLog> update(@PathVariable Long id, @RequestBody PainLog logDetails) {
             PainLog updatedLog = painLogService.update(id, logDetails);
             return ResponseEntity.ok(updatedLog);
-    }
-
-    // endpoint para DELETAR um registro de dor
-    // DELETE /registro-dor/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_DOR', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            painLogService.delete(id);
-            return ResponseEntity.noContent().build();
     }
 }

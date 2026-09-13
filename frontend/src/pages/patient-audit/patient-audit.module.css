@@ -1,0 +1,11 @@
+/* historico de acesso ao prontuario de um paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.subtitle {
+    color: var(--color-text-secondary);
+}

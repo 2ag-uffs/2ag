@@ -2,7 +2,6 @@ import {useEffect, useState} from "react";
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import "./acompanhamento-semanal-paciente.css";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
@@ -88,10 +87,6 @@ export default function AcompanhamentoSemanalPaciente() {
         }
     };
 
-    const handleBack = () => {
-        navigate(-1); // volta pra pagina anterior
-    };
-
     // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
         setConfirmandoSaida(true);
@@ -99,11 +94,6 @@ export default function AcompanhamentoSemanalPaciente() {
 
     return (
         <div>
-            <Header
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
             <div className="acompanhamento-paciente-page">
                 <div className="acompanhamento-paciente__content">
                     <div className="acompanhamento-paciente__header">

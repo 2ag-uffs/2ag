@@ -1,70 +1,69 @@
 package dev.uffs.doisag.controller;
 
-import dev.uffs.doisag.dto.ApiResponseDTO; // import do novo dto
-import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.LoginDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
-import dev.uffs.doisag.dto.TokenDTO;
+import dev.uffs.doisag.dto.SessionUserDTO;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
-import dev.uffs.doisag.service.PasswordService;
+import dev.uffs.doisag.security.SessionCookieService;
+import dev.uffs.doisag.service.AuthService;
 import dev.uffs.doisag.service.PatientService;
-import dev.uffs.doisag.security.TokenService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@CrossOrigin(origins = "*")
+// entrada e saida do sistema
 @RestController
-@RequestMapping("/auth") // mudei a rota base para /auth para agrupar login e registro
+@RequestMapping("/auth")
 public class AuthenticationController {
 
-    private final AuthenticationManager manager;
-    private final TokenService tokenService;
-    private final PatientService patientService; // injete o patientService
-    private final PasswordService passwordService;
+    private final AuthService authService;
+    private final SessionCookieService sessionCookieService;
+    private final PatientService patientService;
 
-    // injeção de dependências via construtor
-    public AuthenticationController(AuthenticationManager manager, TokenService tokenService, PatientService patientService, PasswordService passwordService) {
-        this.manager = manager;
-        this.tokenService = tokenService;
+    public AuthenticationController(AuthService authService, SessionCookieService sessionCookieService,
+                                    PatientService patientService) {
+        this.authService = authService;
+        this.sessionCookieService = sessionCookieService;
         this.patientService = patientService;
-        this.passwordService = passwordService;
     }
 
-    // endpoint que o frontend vai chamar para fazer login
+    // confere a senha e devolve o cookie da sessao junto com os dados de quem entrou
     @PostMapping("/login")
-    public ResponseEntity<TokenDTO> efetuarLogin(@RequestBody LoginDTO dados) {
-        // o spring usa esse objeto para juntar o email e a senha que vieram do DTO
-        var authenticationToken = new UsernamePasswordAuthenticationToken(dados.email(), dados.senha());
-        // o manager chama nosso AuthorizationService para validar o login e a senha
-        var authentication = manager.authenticate(authenticationToken);
-        // se o login deu certo, a gente pega o usuário logado e gera o token jwt
-        var tokenJWT = tokenService.generateToken((Users) authentication.getPrincipal());
-        // devolve o token para o frontend dentro do DTO correto
-        return ResponseEntity.ok(new TokenDTO(tokenJWT));
+    public SessionUserDTO login(@RequestBody @Valid LoginDTO loginData, HttpServletResponse response) {
+        Users user = authService.login(loginData.email(), loginData.password());
+        sessionCookieService.writeSession(response, user);
+        return new SessionUserDTO(user);
     }
 
-    // endpoint para registrar pacientes em /auth/register
+    // apaga o cookie e a sessao acaba
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        sessionCookieService.clearSession(response);
+        return ResponseEntity.noContent().build();
+    }
+
+    // quem esta logado agora
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER', 'ADMIN')")
+    @GetMapping("/me")
+    public SessionUserDTO getLoggedUser(@AuthenticationPrincipal Users loggedUser) {
+        return new SessionUserDTO(loggedUser);
+    }
+
+    // o paciente cria a conta pelo link de convite e ja sai logado
     @PostMapping("/register")
-    // o método retorna nosso DTO de resposta
-    public ResponseEntity<ApiResponseDTO> register(@RequestBody @Valid RegisterDTO dados) { // adicionei o @Valid aqui para checar nosso registerDTO
-        patientService.registerPatient(dados);
-
-        // retorna 201 created com um corpo de mensagem
-        var response = new ApiResponseDTO("Cadastro realizado com sucesso, seja bem-vindo(a)!");
-        return ResponseEntity.status(201).body(response);
-    }
-
-    // troca a senha de quem esta logado. n tem id na rota de proposito:
-    // cada um so troca a propria
-    @PutMapping("/senha")
-    public ResponseEntity<ApiResponseDTO> trocarSenha(
-            @RequestBody @Valid ChangePasswordDTO dados,
-            @AuthenticationPrincipal Users usuarioLogado) {
-        passwordService.trocarSenha(usuarioLogado, dados);
-        return ResponseEntity.ok(new ApiResponseDTO("Senha alterada com sucesso."));
+    public ResponseEntity<SessionUserDTO> register(@RequestBody @Valid RegisterDTO registerData,
+                                                   HttpServletResponse response) {
+        Patient patient = patientService.registerPatient(registerData);
+        sessionCookieService.writeSession(response, patient);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new SessionUserDTO(patient));
     }
 }

@@ -1,46 +1,68 @@
+# configuracao da api
+# o q muda de um ambiente pro outro vem de variavel de ambiente
+# o valor depois dos dois pontos eh o padrao quando a variavel n existe
+
 server:
-  port: ${SERVER_PORT:8080} # porta onde a aplicação roda
+  port: ${SERVER_PORT:8080}
+  servlet:
+    # toda rota fica embaixo de api pro front e a api dividirem a mesma origem
+    context-path: /api
 
 spring:
   datasource:
-    # os valores vem de variavel de ambiente. o que vem depois dos dois
-    # pontos eh o padrao usado quando a variavel n esta definida
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/doisag}
     username: ${DATABASE_USER:admindoisag}
-    # senha n tem padrao de proposito: melhor a aplicacao n subir do que
-    # subir com uma senha que esta publicada no repositorio
+    # sem padrao de proposito pra api n subir com senha publicada no repositorio
     password: ${DATABASE_PASSWORD}
   flyway:
-    # quem cria e altera tabela agora eh o flyway, pelos arquivos de
-    # src/main/resources/db/migration
+    # quem cria e altera tabela eh o flyway pelos arquivos da pasta de migracoes
     enabled: ${FLYWAY_ENABLED:true}
   jpa:
     hibernate:
-      # validate: o hibernate so confere se o banco bate com as entidades
-      # e reclama se n bater. ele n altera mais nada sozinho, senao teriam
-      # duas coisas mexendo no esquema ao mesmo tempo
+      # o hibernate so confere se o banco bate com as entidades e n altera nada
       ddl-auto: ${JPA_DDL_AUTO:validate}
-    # exibe o sql gerado pelo hibernate no console
-    show-sql: ${JPA_SHOW_SQL:true}
+    # sql no console so quando alguem pedir
+    show-sql: ${JPA_SHOW_SQL:false}
+    # fica ligado so ate o ultimo modulo antigo ser reescrito
+    # os modulos novos carregam tudo dentro do servico e n dependem disso
+    open-in-view: true
+  mail:
+    # servidor q manda os e-mails como o link de criar senha nova
+    # sem MAIL_HOST a api n manda nada e so escreve a mensagem no log
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
-      hibernate:
-        # formata o sql exibido no console para ficar mais legível
-        format_sql: true
-    # define o dialeto sql específico para o postgresql
-    # ajuda o hibernate a gerar o sql mais otimizado
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+      "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MAIL_SMTP_STARTTLS:true}
+      # sem limite de tempo um servidor fora do ar prenderia a requisicao de quem pediu o e-mail
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
 
 api:
   security:
     token:
-      # chave secreta para assinar e validar os tokens jwt.
-      # tambem sem padrao: chave previsivel deixa qualquer um forjar token
-      # pra gerar uma: openssl rand -base64 48
+      # chave q assina a sessao e tbm n tem padrao
+      # pra gerar uma use openssl rand -base64 48
       secret: ${JWT_SECRET}
-  cors:
-    # origem do frontend que pode chamar a api
-    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  session:
+    # minutos q a sessao dura sem uso
+    duration-minutes: ${SESSION_DURATION_MINUTES:120}
+    # o cookie so trafega em https e no computador local sem https fica false
+    secure-cookie: ${SESSION_SECURE_COOKIE:true}
+  admin:
+    # conta administrativa criada na primeira subida
+    # sem essas duas variaveis nenhuma conta de administrador eh criada
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
   seed:
-    # cria os usuarios de teste na subida. em producao tem q ser false,
-    # senao nasce um prescritor com senha 123456 junto com a aplicacao
+    # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}
+  # endereco onde as pessoas abrem o sistema
+  # vai nos links enviados por e-mail como o de criar uma senha nova
+  public-url: ${PUBLIC_URL:http://localhost:5173}
+  email:
+    # endereco q aparece como remetente e quando fica vazio vale o MAIL_USERNAME
+    from: ${MAIL_FROM:}

@@ -49,7 +49,6 @@ class TreatmentProtocolServiceTest {
         prescritora.setName("Prescritora");
         prescritora.setEmail("presc-protocolo@email.com");
         prescritora.setPassword("hash");
-        prescritora.setProfessionalCode("PRO01");
         prescritora = prescriberRepository.save(prescritora);
 
         paciente = new Patient();

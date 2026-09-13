@@ -1,16 +1,17 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.PittsburghScale;
 import dev.uffs.doisag.repository.PittsburghScaleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalTime;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -18,10 +19,13 @@ public class PittsburghScaleService {
     private final PittsburghScaleRepository pittsburghScaleRepository;
     // aqui eh a injeçao do service q controla o status
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public PittsburghScaleService(PittsburghScaleRepository pittsburghScaleRepository, ScaleAssignmentService scaleAssignmentService) {
+    public PittsburghScaleService(PittsburghScaleRepository pittsburghScaleRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.pittsburghScaleRepository = pittsburghScaleRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // método privado para calcular o score final do psqi
@@ -174,6 +178,7 @@ public class PittsburghScaleService {
     }
 
     // CREATE
+    @Transactional
     public PittsburghScale create(PittsburghScale pittsburghScale) {
         // calcular o score
         Integer totalScore = calculateTotalScore(pittsburghScale);
@@ -183,6 +188,7 @@ public class PittsburghScaleService {
 
         // avisar service para marcar como concluido
         if (savedScale.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.ESCALA_PITTSBURGH, savedScale.getId(), savedScale.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedScale.getPatient().getId(),
                     ScaleType.ESCALA_PITTSBURGH
@@ -192,25 +198,23 @@ public class PittsburghScaleService {
         return savedScale;
     }
 
-    // READ ALL
-    public List<PittsburghScale> getAll() {
-        return pittsburghScaleRepository.findAll();
-    }
-
     // READ BY ID
     public PittsburghScale getById(Long id) {
-        return pittsburghScaleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+        PittsburghScale scale = pittsburghScaleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Escala não encontrada com o id: " + id));
+        auditService.recordChartView(scale.getPatient().getId());
+        return scale;
     }
 
     // UPDATE
+    @Transactional
     public PittsburghScale update(Long id, PittsburghScale scaleDetails) {
         PittsburghScale existingScale = pittsburghScaleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("escala pittsburgh não encontrada com o id: " + id));
 
         // atualiza os campos
         existingScale.setAssessmentDate(scaleDetails.getAssessmentDate());
-        existingScale.setPatient(scaleDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingScale.setUsualBedTime(scaleDetails.getUsualBedTime());
         existingScale.setMinutesToFallAsleep(scaleDetails.getMinutesToFallAsleep());
         existingScale.setUsualWakeUpTime(scaleDetails.getUsualWakeUpTime());
@@ -235,14 +239,8 @@ public class PittsburghScaleService {
         Integer totalScore = calculateTotalScore(existingScale);
         existingScale.setPsqiScore(totalScore);
 
-        return pittsburghScaleRepository.save(existingScale);
-    }
-
-    // DELETE
-    public void delete(Long id) {
-        if (!pittsburghScaleRepository.existsById(id)) {
-            throw new EntityNotFoundException("escala pittsburgh não encontrada com o id: " + id);
-        }
-        pittsburghScaleRepository.deleteById(id);
+        PittsburghScale savedRecord = pittsburghScaleRepository.save(existingScale);
+        auditService.recordChange(AuditRecordType.ESCALA_PITTSBURGH, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 }

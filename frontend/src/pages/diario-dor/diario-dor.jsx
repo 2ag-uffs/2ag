@@ -1,11 +1,6 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./diario-dor.css";
 
 // as quatro opcoes de frequencia do formulario em papel, na ordem.
@@ -72,7 +67,6 @@ export default function DiarioDor() {
 
     return (
         <div className="diario-dor">
-            <Header/>
             <main className="diario-dor__conteudo">
                 <h1>Acompanhamento semanal de dor</h1>
 

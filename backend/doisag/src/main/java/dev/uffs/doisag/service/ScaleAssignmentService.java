@@ -2,6 +2,7 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.dto.AssignedScaleResponseDTO;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.AssignmentStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.AssignedScale;
@@ -12,15 +13,17 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.context.MessageSource;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import dev.uffs.doisag.dto.CompletedScaleInfoDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
 import dev.uffs.doisag.dto.PendingScaleInfoDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 
 
 @Service
@@ -30,11 +33,14 @@ public class ScaleAssignmentService {
     private final PatientRepository patientRepository;
     private NotificationService notificationService;
     private final MessageSource messageSource;
+    private final AuditService auditService;
 
-    public ScaleAssignmentService(AssignedScaleRepository assignedScaleRepository, PatientRepository patientRepository, MessageSource messageSource, NotificationService notificationService) {
+    public ScaleAssignmentService(AssignedScaleRepository assignedScaleRepository, PatientRepository patientRepository, MessageSource messageSource, NotificationService notificationService,
+                                  AuditService auditService) {
         this.assignedScaleRepository = assignedScaleRepository;
         this.patientRepository = patientRepository;
         this.messageSource = messageSource;
+        this.auditService = auditService;
         this.notificationService = notificationService;
     }
 
@@ -43,7 +49,16 @@ public class ScaleAssignmentService {
         this.notificationService = notificationService;
     }
 
+    // envio feito pelo prescritor
+    // se a mesma escala ainda esta pendente o paciente ja tem essa tarefa e n recebe outra igual
+    @Transactional
     public AssignedScaleResponseDTO assignScaleToPatient(Long patientId, AssignScaleDTO assignScaleDTO) {
+        Optional<AssignedScale> pendingAssignment = assignedScaleRepository
+                .findFirstByPatientIdAndScaleTypeAndStatusOrderByAssignedDateDesc(
+                        patientId, assignScaleDTO.scaleType(), AssignmentStatus.PENDENTE);
+        if (pendingAssignment.isPresent()) {
+            return new AssignedScaleResponseDTO(pendingAssignment.get());
+        }
         return assignScaleToPatient(patientId, assignScaleDTO, LocalDate.now());
     }
 
@@ -52,6 +67,7 @@ public class ScaleAssignmentService {
     // sem isso, se ele rodar atrasado, a escala nasce com a data errada
     // e a proxima rodada calcula o prazo em cima de um dia que n eh o
     // dela
+    @Transactional
     public AssignedScaleResponseDTO assignScaleToPatient(Long patientId,
                                                          AssignScaleDTO assignScaleDTO,
                                                          LocalDate dataDaDesignacao) {
@@ -75,6 +91,7 @@ public class ScaleAssignmentService {
 
         // a gente salva a entidade no banco
         AssignedScale savedAssignment = assignedScaleRepository.save(newAssignment);
+        auditService.recordCreation(AuditRecordType.DESIGNACAO_DE_ESCALA, savedAssignment.getId(), patient.getId());
 
         String scaleName = formatScaleName(savedAssignment.getScaleType());
         String notificationTitle = messageSource.getMessage("notification.new_task.title", new Object[]{scaleName}, Locale.getDefault());
@@ -107,6 +124,7 @@ public class ScaleAssignmentService {
 
     // busca a lista de escalas designadas para um paciente
     public List<AssignedScaleResponseDTO> getAssignedScalesForPatient(Long patientId) {
+        auditService.recordChartView(patientId);
         // a gente busca a lista de entidades do banco
         List<AssignedScale> scales = assignedScaleRepository.findByPatientIdOrderByAssignedDateDesc(patientId);
 
@@ -117,9 +135,10 @@ public class ScaleAssignmentService {
     }
 
     public PatientScalesPageDTO getPatientScalesPageData(Long patientId) {
+        auditService.recordChartView(patientId);
         // busca o paciente pra pegar o nome dele
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 
         // busco as escalas pendentes
         List<PendingScaleInfoDTO> pending = assignedScaleRepository

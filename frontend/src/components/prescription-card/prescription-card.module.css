@@ -1,0 +1,98 @@
+/* cartao de uma prescricao */
+
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-wrap: anywhere;
+    padding: 1rem 1.25rem;
+}
+
+.cardCurrent {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary-soft);
+}
+
+.header {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.header h3 {
+    font-size: 1.1rem;
+}
+
+.meta {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.badgeCurrent,
+.badgeReplaced,
+.badgeAnnulled {
+    border-radius: 999px;
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+}
+
+.badgeCurrent {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.badgeReplaced {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}
+
+.badgeAnnulled {
+    background-color: var(--color-error-soft);
+    color: var(--color-error);
+}
+
+.details {
+    display: grid;
+    gap: 0.5rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    margin: 0;
+}
+
+.details dt {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.details dd {
+    margin: 0;
+    white-space: pre-line;
+}
+
+.block h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.block p {
+    white-space: pre-line;
+}
+
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding-left: 1.25rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}

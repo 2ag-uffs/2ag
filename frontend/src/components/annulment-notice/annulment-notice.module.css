@@ -1,0 +1,9 @@
+/* faixa de registro anulado */
+
+.notice {
+    background-color: var(--color-error-soft);
+    border-radius: 0.5rem;
+    color: var(--color-error);
+    padding: 0.5rem 0.75rem;
+    white-space: pre-line;
+}

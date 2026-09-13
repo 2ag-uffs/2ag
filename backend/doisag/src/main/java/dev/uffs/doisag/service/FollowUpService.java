@@ -1,13 +1,14 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.FollowUp;
 import dev.uffs.doisag.repository.FollowUpRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -16,19 +17,24 @@ public class FollowUpService {
     private final FollowUpRepository followUpRepository;
     // aqui eh a injeçao do service q controla o status
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public FollowUpService(FollowUpRepository followUpRepository, ScaleAssignmentService scaleAssignmentService) {
+    public FollowUpService(FollowUpRepository followUpRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.followUpRepository = followUpRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // CREATE
+    @Transactional
     public FollowUp create(FollowUp followUp) {
         // salva o acompanhamento preenchido no banco
         FollowUp savedFollowUp = followUpRepository.save(followUp);
 
         // ai avisa o outro service pra marcar a tarefa como concluída
         if (savedFollowUp.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_SEMANAL, savedFollowUp.getId(), savedFollowUp.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedFollowUp.getPatient().getId(),
                     ScaleType.ACOMPANHAMENTO_SEMANAL // o tipo
@@ -39,18 +45,16 @@ public class FollowUpService {
         return savedFollowUp;
     }
 
-    // READ ALL
-    public List<FollowUp> getAll() {
-        return followUpRepository.findAll();
-    }
-
     // READ BY ID
     public FollowUp getById(Long id) {
-        return followUpRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+        FollowUp followUp = followUpRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Acompanhamento não encontrado com o id: " + id));
+        auditService.recordChartView(followUp.getPatient().getId());
+        return followUp;
     }
 
     // UPDATE
+    @Transactional
     public FollowUp update(Long id, FollowUp followUpDetails) {
         // busca o acompanhamento ou lança uma exceção
         FollowUp followUp = followUpRepository.findById(id)
@@ -58,7 +62,7 @@ public class FollowUpService {
 
         // atualiza os campos do objeto com os novos detalhes
         followUp.setAssessmentDate(followUpDetails.getAssessmentDate());
-        followUp.setPatient(followUpDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         followUp.setMorningDrops(followUpDetails.getMorningDrops());
         followUp.setAfternoonDrops(followUpDetails.getAfternoonDrops());
         followUp.setComment(followUpDetails.getComment());
@@ -78,15 +82,8 @@ public class FollowUpService {
         followUp.setDermatologicalDisease(followUpDetails.getDermatologicalDisease());
         followUp.setMood(followUpDetails.getMood());
 
-        return followUpRepository.save(followUp);
-    }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o acompanhamento existe antes de deletar
-        if (!followUpRepository.existsById(id)) {
-            throw new EntityNotFoundException("follow-up não encontrado com o id: " + id);
-        }
-        followUpRepository.deleteById(id);
+        FollowUp savedRecord = followUpRepository.save(followUp);
+        auditService.recordChange(AuditRecordType.ACOMPANHAMENTO_SEMANAL, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 }

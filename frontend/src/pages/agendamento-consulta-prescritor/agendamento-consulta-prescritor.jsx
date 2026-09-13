@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./agendamento-consulta-prescritor.css";
-import { useNavigate } from "react-router";
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 
@@ -56,7 +50,6 @@ const daApi = (consulta) => {
 // estado do componente e somem quando a pagina recarrega. por isso os
 // avisos daqui n dizem que o paciente foi notificado, porque n foi
 export default function AgendamentoPrescritor() {
-    const navigate = useNavigate();
 
     const [aviso, setAviso] = useState(null);
     const [erro, setErro] = useState(null);
@@ -107,10 +100,6 @@ export default function AgendamentoPrescritor() {
         start: 8,
         end: 18,
         interval: 30 // minutos
-    };
-
-    const handleBack = () => {
-        navigate(-1);
     };
 
     const getWeekDays = (date) => {
@@ -284,12 +273,6 @@ export default function AgendamentoPrescritor() {
 
     return (
         <div className="agendamento-prescritor">
-            <Header
-                title="Dr. Maria Santos - CRM 12345"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="dashboard-main">
                 {carregando && <p>Carregando agenda...</p>}

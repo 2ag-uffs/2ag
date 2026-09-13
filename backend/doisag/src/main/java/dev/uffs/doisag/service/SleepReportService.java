@@ -12,12 +12,15 @@ import java.util.List;
 public class SleepReportService {
 
     private final SleepLogRepository sleepLogRepository;
+    private final AuditService auditService;
 
-    public SleepReportService(SleepLogRepository sleepLogRepository) {
+    public SleepReportService(SleepLogRepository sleepLogRepository, AuditService auditService) {
         this.sleepLogRepository = sleepLogRepository;
+        this.auditService = auditService;
     }
 
     public WeeklySleepReportDTO generateWeeklyReport(Long patientId) {
+        auditService.recordChartView(patientId);
         // busca os últimos 7 registros no banco
         List<SleepLog> recentLogs = sleepLogRepository.findTop7ByPatientIdOrderByAssessmentDateDesc(patientId);
 

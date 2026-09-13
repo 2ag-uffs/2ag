@@ -1,7 +1,7 @@
 # Documento de Requisitos do Sistema — 2AG
 
-**Versão:** 2.0
-**Data:** 12 de setembro de 2026
+**Versão:** 2.1
+**Data:** 13 de setembro de 2026 (revisão técnica, §8) · versão 2.0 em 12 de setembro de 2026
 **Substitui:** `docs/historico/requisitos-v1-2025.pdf` (v1.0, 06/07/2025)
 **Autoras:** Caroline de Quadros Piazza (20230000690), Maiqueli Eduarda Dama Mingoti (20230004643)
 **Cliente:** Instituto EDMA — Chapecó/SC
@@ -633,6 +633,128 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 | — | **novo** | RNF13 Testabilidade |
 | — | **novo** | RNF14 Versionamento de esquema |
 | — | **novo** | RNF15 Configuração por ambiente |
+
+---
+
+## 8. Revisão técnica de 13/09/2026
+
+### 8.1 Motivo
+
+Uma auditoria que executou o sistema, e não apenas leu o código, mostrou que parte dos registros de conclusão do Anexo B não se sustenta em uso real. Os testes passavam porque rodavam dentro de transação, o que escondia as falhas abaixo:
+
+- o job diário do acompanhamento de 90 dias (RF32) falha com `LazyInitializationException` e não designa nenhuma escala;
+- a leitura de escala por id responde 500, porque a entidade JPA é serializada com o paciente ainda não carregado;
+- a edição de escala aceita o paciente no corpo e permite mover o registro para o prontuário de outra pessoa;
+- qualquer usuário autenticado lê qualquer prescrição por id, e qualquer prescritor lista as prescrições do sistema inteiro;
+- rota inexistente e parâmetro inválido respondem 500;
+- a ficha de acompanhamento semanal apresenta 11 dos 15 itens com as âncoras invertidas em relação ao formulário da clínica;
+- a tela de consulta clínica nunca abre, o que impede consulta, prescrição e MEEM pelo frontend.
+
+Os registros do Anexo B ficam como histórico. O andamento passa a seguir a ordem de trabalho do §8.6.
+
+### 8.2 Decisões de arquitetura
+
+| Decisão | Descrição |
+|---|---|
+| Motor único de escalas | Uma tabela de respostas (paciente, tipo, período, respostas, escore e faixa), uma classe de cálculo por escala e a definição de cada escala (itens, âncoras e faixas) em um único lugar, consumida por um formulário genérico no frontend |
+| Migração base | As migrações V1 a V8 são consolidadas em uma única migração base, com restrições de nulidade e índices. A consolidação só é possível porque o sistema nunca foi implantado |
+| Mesma origem | Um único servidor web entrega o frontend e repassa `/api` para o backend, eliminando CORS e deixando um único ponto de HTTPS |
+| Sessão | Token em cookie `httpOnly`, renovado durante o uso, com bloqueio temporário após tentativas de login incorretas |
+| Padrão de backend | DTO em toda entrada e saída, serviços transacionais, tratamento de erro completo e fuso `America/Sao_Paulo` |
+| Padrão de frontend | Layout por perfil, rotas protegidas em um único lugar, carregamento de cada tela sob demanda e CSS com escopo por componente |
+| Integração contínua | Testes do backend, lint e build do frontend a cada envio ao repositório |
+
+### 8.3 Requisitos alterados
+
+| Requisito | Alteração |
+|---|---|
+| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores |
+| RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
+| RF05 | Nova prescrição substitui a vigente (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |
+| RF06/RF20 e RF22 | Um registro por dia, apresentado como a grade semanal do formulário em papel. O diário de sono inclui a programação de horários definida pelo prescritor |
+| RF20 | *Critério acrescentado:* as âncoras de cada item são idênticas às do formulário da clínica |
+| RF24/RF25 | O período avaliado é registrado com início e fim, como no formulário |
+| RF07 | Consolidado com o RF28 em uma página única do paciente |
+| RF10/RF11 | O prescritor cadastra a disponibilidade, o paciente solicita o horário e o prescritor confirma |
+| RF18 | Restrito a dados pessoais, senha e preferência de e-mail, sem escolha de idioma |
+| RF26 | *Critério acrescentado:* a escolaridade usada no ponto de corte e a data da avaliação são registradas |
+| RF31 | Tabela de auditoria somente de inserção, gravada pelos serviços |
+| RF33 | Exportação em CSV, com opção anonimizada, e página de impressão |
+| RF34 | E-mail e notificação no sistema para formulário pendente e consulta. O lembrete de dose fica para fase posterior |
+| RF14/RF15 | Lista de notificações com marcação de leitura, sem filtros avançados |
+| RNF06 | Paginação apenas nas listagens que crescem sem limite: notificações e auditoria |
+| RN10 | *Critério acrescentado:* o frontend nunca pré-preenche item de escala com valor |
+
+### 8.4 Descartado
+
+| Item | Justificativa |
+|---|---|
+| RNF12 — internacionalização | Uma clínica, apenas pt-BR. A infraestrutura de tradução não se paga nesta entrega |
+| Tela de dados do consultório | Não corresponde a nenhum requisito |
+| Abas de objetivos e arquivos da consulta | Não correspondem a requisito, e o envio de arquivo clínico acrescenta armazenamento e obrigações de LGPD |
+| Filtros avançados de notificação | Complexidade sem demanda registrada |
+| Exclusão física de dado clínico | O prontuário tem guarda mínima de 20 anos (Lei 13.787/2018). Substituída por desativação |
+
+### 8.5 Acrescentado
+
+| ID | Requisito | Prioridade |
+|---|---|---|
+| RF35 | Recuperação de senha por e-mail, com link de uso único e validade curta | E |
+| RF36 | Termo de consentimento (LGPD, art. 11) aceito no cadastro, com versão e data registradas | E |
+| RNF16 | Operação: fuso horário único `America/Sao_Paulo`, verificação de saúde da API e integração contínua | E |
+
+O RNF07 (backup automático com restauração testada) permanece essencial e é pré-requisito do piloto.
+
+### 8.6 Ordem de trabalho
+
+| Etapa | Conteúdo |
+|---|---|
+| 0 — Fundação | Migração base, configuração, tratamento de erro, sessão, conta administrativa, integração contínua, layout e rotas do frontend |
+| Módulos | Requisito por requisito, na ordem deste documento: acesso e identidade, autorização, atendimento, agenda, escalas, evolução, notificações e exportação. Cada requisito é entregue completo, com backend, frontend e teste |
+
+O RF03 (tela inicial) sai do módulo de acesso e identidade e passa para depois do módulo de escalas, porque reúne consultas, escalas e formulários que só são reescritos nesses módulos (decisão de 13/09/2026).
+
+As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 10.
+
+**Acesso e identidade concluído em 13/09/2026:** RF01, RN06, RF02.1, RF36, RF18 e RF35. O vínculo do paciente passou a ser por convite de uso único, o cadastro exige o aceite do termo (ainda em rascunho) e a recuperação de senha grava o link no log da API até o envio de e-mail ser configurado.
+
+**Autorização concluída em 13/09/2026:** RF29, RF30 e RF31, com os critérios de RNF03 e RNF04 que dependem deles.
+
+- **Perfil:** toda rota declara os perfis que podem usá-la. Um teste percorre a API inteira e falha se alguma rota não declarar.
+- **Listagens:** saíram as que devolviam o sistema inteiro.
+- **Consultas:** o paciente marca consulta por uma rota própria, que não aceita campo clínico.
+- **Vínculo:** é conferido no servidor em toda leitura e escrita, e a edição não troca mais o dono do registro.
+- **Exclusão física:** as rotas que apagavam dado clínico foram removidas.
+- **Trilha de auditoria:** registra quem cria ou altera consulta, prescrição, anamnese, escala, designação e acompanhamento. Registra também quando o prescritor abre o prontuário, uma linha por visita de até 30 minutos.
+- **Quem consulta a trilha:**
+  - o prescritor, para os próprios pacientes;
+  - o administrador, com as ações de prescritores e do sistema e o paciente identificado só pelo número.
+- **URLs:** nenhuma rota leva dado pessoal. Os caminhos usam só identificadores numéricos.
+
+**Atendimento concluído em 13/09/2026:** RF04, RF05, RF19, RF12 e RF13, com o arquivamento de paciente.
+
+- **Anulação:** consulta, prescrição e anamnese registradas por engano não são apagadas. O prescritor anula com motivo obrigatório e o registro continua no histórico, com data, motivo e autor. Uma consulta com prescrição ativa só é anulada depois da prescrição.
+- **Consulta (RF04):** o prescritor registra a consulta que já aconteceu ou completa a que estava agendada. Consulta futura é assunto da agenda.
+- **Prescrição (RF05):** a nova prescrição substitui a vigente, e a anterior fica guardada como substituída. O óleo é descrito por uma lista de canabinoides, cada um com a sua concentração, até a clínica responder a questão 1. O paciente vê as próprias prescrições em tela própria.
+- **Anamnese (RF19):** o paciente preenche e corrige a ficha. A data de preenchimento é a do dia, e o preenchimento dá baixa na tarefa enviada pelo prescritor.
+- **Histórico (RF12 e RF13):**
+  - as duas telas mostram consultas, prescrições, anamnese e escalas com os dados reais;
+  - o botão de exportar saiu do histórico do paciente até o RF33;
+  - o prescritor anula registros no próprio histórico e chega de lá às outras telas do paciente.
+- **Arquivamento de paciente:**
+  - tira o paciente da lista de ativos e da contagem do painel;
+  - encerra o acompanhamento automático, e um novo só começa depois de reativar;
+  - o paciente continua vendo o próprio histórico, e as escalas enviadas pelo prescritor continuam chegando;
+  - arquivar e reativar entram na trilha de auditoria.
+- **Escalas enviadas:** o paciente sempre recebe a escala que o prescritor envia. Reenviar uma escala ainda pendente não cria tarefa repetida.
+- **Trilha de auditoria:** a abertura do prontuário gera uma linha por visita, mesmo quando a tela carrega várias listas ao mesmo tempo.
+
+Ficam para os módulos seguintes, onde cada entidade é reescrita:
+
+- **Escalas:**
+  - a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou;
+  - os resultados do MEEM no histórico do prescritor, que ainda não têm listagem por paciente.
+- **Agenda:** o campo de observação que o paciente preenchia ao marcar consulta, que saiu por gravar texto do paciente em campo clínico.
 
 ---
 

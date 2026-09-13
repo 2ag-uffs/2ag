@@ -1,240 +1,311 @@
-import { useLocation, useNavigate, useParams } from 'react-router';
-import { useState, useEffect } from 'react';
-import './historico-clinico-prescritor.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import Header from "../../components/header/header.jsx";
-import {apiService} from "../../services/api.js";
+import {useEffect, useState} from "react";
+import {useLocation, useNavigate, useParams} from "react-router";
+import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
+import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
+import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
+import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
+import SectionLinks from "../../components/section-links/section-links.jsx";
+import {apiService, ApiError} from "../../services/api.js";
+import {ageFrom, formatDate, formatDateTime, isInTheFuture} from "../../utils/date-format.js";
+import styles from "./historico-clinico-prescritor.module.css";
 
+// historico clinico de um paciente do prescritor (RF13)
+// o registro feito por engano eh anulado com motivo e continua aparecendo aqui
 export default function HistoricoClinicoPrescritor() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { pacienteId } = useParams();
+    const {patientId} = useParams();
+
+    const [history, setHistory] = useState(null);
+    const [loadError, setLoadError] = useState(null);
     // quem salvou algo em outra tela chega aqui com esse aviso
-    const aviso = location.state && location.state.aviso;
-
-    const [dadosPaciente, setDadosPaciente] = useState({
-        nome: '',
-        anamnese: '',
-        diagnosticos: [],
-        tratamentos: [],
-        prescricoes: []
-    });
-
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    const buscarDadosPaciente = async () => {
-        try {
-            const dadosBasicos = await apiService.get(`/paciente/${pacienteId}`);
-            return dadosBasicos;
-        } catch (error) {
-            console.error('Erro ao buscar dados básicos do paciente:', error);
-            throw error;
-        }
-    };
-
-    const buscarAnamnese = async () => {
-        try {
-            const anamneses = await apiService.get(`/anamnese`);
-            const anamnesePaciente = anamneses.find(anamnese => anamnese.patient?.id === parseInt(pacienteId));
-            return anamnesePaciente?.description || 'Nenhuma informação de anamnese registrada.';
-        } catch (error) {
-            console.error('Erro ao buscar anamnese:', error);
-            return 'Erro ao carregar anamnese.';
-        }
-    };
-
-    const buscarConsultas = async () => {
-        try {
-            const consultas = await apiService.get(`/consulta`);
-            const consultasPaciente = consultas.filter(consulta => consulta.patient?.id === parseInt(pacienteId));
-
-            const diagnosticos = consultasPaciente.map(consulta => ({
-                id: consulta.id,
-                data: new Date(consulta.consultationDate).toLocaleDateString('pt-BR'),
-                diagnostico: consulta.diagnosis || 'Diagnóstico não informado'
-            }));
-
-            const tratamentos = consultasPaciente.map(consulta => ({
-                id: consulta.id,
-                data: new Date(consulta.consultationDate).toLocaleDateString('pt-BR'),
-                tratamento: consulta.treatment || 'Tratamento não informado'
-            }));
-
-            return { diagnosticos, tratamentos };
-        } catch (error) {
-            console.error('Erro ao buscar consultas:', error);
-            return { diagnosticos: [], tratamentos: [] };
-        }
-    };
-
-    const buscarPrescricoes = async () => {
-        try {
-            const prescricoes = await apiService.get(`/prescricao`);
-            const prescricoesPaciente = prescricoes.filter(prescricao => prescricao.patient?.id === parseInt(pacienteId));
-
-            return prescricoesPaciente.map(prescricao => ({
-                id: prescricao.id,
-                data: new Date(prescricao.createdAt || Date.now()).toLocaleDateString('pt-BR'),
-                medicamento: prescricao.productDescription || 'Medicamento não informado',
-                dose: prescricao.concentration || 'Dose não informada',
-                posologia: prescricao.posology || 'Posologia não informada'
-            }));
-        } catch (error) {
-            console.error('Erro ao buscar prescrições:', error);
-            return [];
-        }
-    };
+    const [notice, setNotice] = useState(location.state && location.state.aviso);
+    // o registro q o prescritor escolheu anular e q abre o modal
+    const [annulmentTarget, setAnnulmentTarget] = useState(null);
+    // somar um aqui busca o historico de novo sem esconder a tela
+    const [reloadCount, setReloadCount] = useState(0);
 
     useEffect(() => {
-        const carregarDados = async () => {
-            if (!pacienteId) {
-                setError('ID do paciente não fornecido');
-                setLoading(false);
-                return;
-            }
+        let isCurrentRequest = true;
+        const patientPath = "/pacientes/" + patientId;
 
-            try {
-                setLoading(true);
-                setError(null);
+        Promise.all([
+            apiService.get("/paciente/" + patientId),
+            apiService.get(patientPath + "/consultas"),
+            apiService.get(patientPath + "/prescricoes"),
+            apiService.get(patientPath + "/anamneses"),
+            apiService.get(patientPath + "/escalas/central"),
+        ])
+            .then(([patient, appointments, prescriptions, anamneses, scalesPage]) => {
+                if (isCurrentRequest) {
+                    setHistory({patient, appointments, prescriptions, anamneses, scalesPage});
+                }
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar o histórico. Confira sua internet e tente de novo.");
+                }
+            });
 
-                const [dadosBasicos, anamnese, consultas, prescricoes] = await Promise.all([
-                    buscarDadosPaciente(),
-                    buscarAnamnese(),
-                    buscarConsultas(),
-                    buscarPrescricoes()
-                ]);
-
-                setDadosPaciente({
-                    nome: dadosBasicos.name || 'Nome não informado',
-                    anamnese: anamnese,
-                    diagnosticos: consultas.diagnosticos,
-                    tratamentos: consultas.tratamentos,
-                    prescricoes: prescricoes
-                });
-
-            } catch (error) {
-                console.error('Erro ao carregar dados do paciente:', error);
-                setError('Erro ao carregar dados do paciente. Verifique sua conexão e tente novamente.');
-            } finally {
-                setLoading(false);
-            }
+        return () => {
+            isCurrentRequest = false;
         };
+    }, [patientId, reloadCount]);
 
-        carregarDados();
-        // as funcoes de busca so dependem do pacienteId, que ja esta
-        // na lista. incluir elas aqui recarregaria a cada render
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pacienteId]);
-
-    const handleBack = () => {
-        navigate(-1);
+    const handleAnnulled = () => {
+        setAnnulmentTarget(null);
+        setNotice("Registro anulado. Ele continua no histórico com o motivo da anulação.");
+        setReloadCount((currentCount) => currentCount + 1);
     };
 
-    if (loading) {
-        return (
-            <div className="historico-prescritor-page">
-                <Header
-                    title="Dr. Maria Santos - CRM 12345"
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
-                <main className="historico-main">
-                    <div className="historico-title">
-                        <h1>Histórico Clínico do Paciente</h1>
-                    </div>
-                    <p className="historico-subtitle">Carregando dados do paciente...</p>
-                </main>
-            </div>
-        );
+    if (loadError) {
+        return <p className="aviso aviso--atencao">{loadError}</p>;
     }
 
-    if (error) {
-        return (
-            <div className="historico-prescritor-page">
-                <Header
-                    title="Dr. Maria Santos - CRM 12345"
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
-                <main className="historico-main">
-                    <div className="historico-title">
-                        <h1>Histórico Clínico do Paciente</h1>
-                    </div>
-                    <p className="historico-subtitle error-message">{error}</p>
-                    <button onClick={() => window.location.reload()} className="retry-button">
-                        Tentar Novamente
-                    </button>
-                </main>
-            </div>
-        );
+    if (history === null) {
+        return <p className={styles.status}>Carregando...</p>;
     }
+
+    const {patient, appointments, prescriptions, anamneses, scalesPage} = history;
+    const age = ageFrom(patient.birthDate);
+
+    // a lista vem da consulta mais recente pra mais antiga
+    // entao a proxima consulta marcada eh a ultima futura da lista
+    const pastAppointments = appointments.filter((appointment) => !isInTheFuture(appointment.dateTime));
+    const upcomingAppointments = appointments.filter((appointment) => isInTheFuture(appointment.dateTime)
+        && !appointment.annulled && appointment.status !== "CANCELADA");
+    const nextAppointment = upcomingAppointments.length > 0
+        ? upcomingAppointments[upcomingAppointments.length - 1]
+        : null;
+
+    // a vigente aparece primeiro e as outras seguem da mais nova pra mais antiga
+    const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
+        .concat(prescriptions.filter((prescription) => !prescription.current));
+
+    // consulta anulada ou cancelada fica so pra leitura
+    const consultationActions = (appointment) => {
+        if (appointment.annulled || appointment.status === "CANCELADA") {
+            return null;
+        }
+        return (
+            <>
+                <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
+                >
+                    Editar registro
+                </button>
+                <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => navigate("/consulta/" + appointment.id + "/prescricao")}
+                >
+                    Emitir prescrição
+                </button>
+                <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => navigate("/consulta/" + appointment.id + "/mini-exame")}
+                >
+                    Mini-exame
+                </button>
+                <button
+                    type="button"
+                    className={styles.dangerButton}
+                    onClick={() => setAnnulmentTarget({
+                        title: "Anular consulta",
+                        recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
+                        endpoint: "/consulta/" + appointment.id + "/anulacao",
+                    })}
+                >
+                    Anular
+                </button>
+            </>
+        );
+    };
+
+    const prescriptionActions = (prescription) => {
+        if (prescription.annulled) {
+            return null;
+        }
+        return (
+            <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => setAnnulmentTarget({
+                    title: "Anular prescrição",
+                    recordDescription: prescription.productDescription + ", emitida em "
+                        + formatDate(prescription.appointmentDateTime),
+                    endpoint: "/prescricao/" + prescription.id + "/anulacao",
+                })}
+            >
+                Anular
+            </button>
+        );
+    };
+
+    const anamnesisActions = (anamnesis) => {
+        if (anamnesis.annulled) {
+            return null;
+        }
+        return (
+            <button
+                type="button"
+                className={styles.dangerButton}
+                onClick={() => setAnnulmentTarget({
+                    title: "Anular anamnese",
+                    recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
+                    endpoint: "/anamnese/" + anamnesis.id + "/anulacao",
+                })}
+            >
+                Anular
+            </button>
+        );
+    };
 
     return (
-        <div className="historico-prescritor-page">
-            <Header
-                title="Dr. Maria Santos - CRM 12345"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
+        <section className={styles.page}>
+            <div className={styles.header}>
+                <div>
+                    <h1>{patient.name}</h1>
+                    <p className={styles.subtitle}>
+                        Histórico clínico{age !== null ? " · " + age + " anos" : ""}
+                    </p>
+                    {nextAppointment && (
+                        <p className={styles.subtitle}>
+                            Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
+                        </p>
+                    )}
+                    {patient.archived && (
+                        <p className={styles.subtitle}>
+                            No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi
+                            encerrado.
+                        </p>
+                    )}
+                </div>
+                <div className={styles.headerActions}>
+                    <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => navigate("/paciente/" + patientId + "/consulta/nova")}
+                    >
+                        Nova consulta
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => navigate("/paciente/" + patientId + "/selecao-escalas")}
+                    >
+                        Enviar escalas
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => navigate("/paciente/" + patientId + "/acompanhamento")}
+                    >
+                        Acompanhamento
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => navigate("/paciente/" + patientId + "/progresso")}
+                    >
+                        Progresso
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => navigate("/paciente/" + patientId + "/auditoria",
+                            {state: {patientName: patient.name}})}
+                    >
+                        Histórico de acesso
+                    </button>
+                </div>
+            </div>
+
+            {notice && <p className="aviso" role="status">{notice}</p>}
+
+            <SectionLinks
+                label="Partes do histórico"
+                sections={[
+                    {id: "consultas", label: "Consultas (" + pastAppointments.length + ")"},
+                    {id: "prescricoes", label: "Prescrições (" + prescriptions.length + ")"},
+                    {id: "anamnese", label: "Anamnese (" + anamneses.length + ")"},
+                    {id: "escalas", label: "Escalas"},
+                ]}
             />
 
-            <main className="historico-main">
-                {aviso && <p className="aviso">{aviso}</p>}
-                <div className="historico-title">
-                    <h1>Histórico Clínico do Paciente</h1>
-                </div>
-                <p className="historico-subtitle">
-                    Visualizando o histórico completo de <strong>{dadosPaciente.nome}</strong>.
-                </p>
+            <section id="consultas" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Consultas</h2>
+                {pastAppointments.length === 0 ? (
+                    <p className={styles.status}>Nenhuma consulta realizada ainda.</p>
+                ) : (
+                    <div className={styles.list}>
+                        {pastAppointments.map((appointment) => (
+                            <ConsultationCard
+                                key={appointment.id}
+                                appointment={appointment}
+                                actions={consultationActions(appointment)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                <div className="historico-content">
-                    {/* Seção de Anamnese */}
-                    <section className="historico-section">
-                        <h2>Anamnese</h2>
-                        <p>{dadosPaciente.anamnese}</p>
-                    </section>
+            <section id="prescricoes" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Prescrições</h2>
+                {orderedPrescriptions.length === 0 ? (
+                    <p className={styles.status}>Nenhuma prescrição emitida ainda.</p>
+                ) : (
+                    <div className={styles.list}>
+                        {orderedPrescriptions.map((prescription) => (
+                            <PrescriptionCard
+                                key={prescription.id}
+                                prescription={prescription}
+                                actions={prescriptionActions(prescription)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    {/* Seção de Diagnósticos */}
-                    <section className="historico-section">
-                        <h2>Diagnósticos</h2>
-                        <ul className="historico-lista">
-                            {dadosPaciente.diagnosticos?.length > 0 ? dadosPaciente.diagnosticos.map(item => (
-                                <li key={item.id}><strong>{item.data}:</strong> {item.diagnostico}</li>
-                            )) : <li>Nenhum diagnóstico registrado.</li>}
-                        </ul>
-                    </section>
+            <section id="anamnese" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Anamnese</h2>
+                {anamneses.length === 0 ? (
+                    <p className={styles.status}>
+                        O paciente ainda não preencheu a anamnese. Ela pode ser enviada em Enviar escalas.
+                    </p>
+                ) : (
+                    <div className={styles.list}>
+                        {anamneses.map((anamnesis) => (
+                            <AnamnesisView
+                                key={anamnesis.id}
+                                anamnesis={anamnesis}
+                                actions={anamnesisActions(anamnesis)}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    {/* Seção de Tratamentos */}
-                    <section className="historico-section">
-                        <h2>Tratamentos</h2>
-                        <ul className="historico-lista">
-                            {dadosPaciente.tratamentos?.length > 0 ? dadosPaciente.tratamentos.map(item => (
-                                <li key={item.id}><strong>{item.data}:</strong> {item.tratamento}</li>
-                            )) : <li>Nenhum tratamento registrado.</li>}
-                        </ul>
-                    </section>
+            <section id="escalas" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Escalas</h2>
+                <ScaleSummary scalesPage={scalesPage} pendingTitle="Aguardando o paciente"/>
+            </section>
 
-                    {/* Seção de Prescrições Anteriores */}
-                    <section className="historico-section">
-                        <h2>Prescrições Anteriores</h2>
-                        <div className="prescricoes-container">
-                            {dadosPaciente.prescricoes?.length > 0 ? dadosPaciente.prescricoes.map(item => (
-                                <div key={item.id} className="prescricao-item">
-                                    <h4>{item.medicamento}</h4>
-                                    <span>{item.data}</span>
-                                    <p><strong>Dose:</strong> {item.dose}</p>
-                                    <p><strong>Posologia:</strong> {item.posologia}</p>
-                                </div>
-                            )) : <p>Nenhuma prescrição anterior registrada.</p>}
-                        </div>
-                    </section>
-                </div>
-            </main>
-        </div>
+            {annulmentTarget && (
+                <AnnulmentModal
+                    title={annulmentTarget.title}
+                    recordDescription={annulmentTarget.recordDescription}
+                    endpoint={annulmentTarget.endpoint}
+                    onClose={() => setAnnulmentTarget(null)}
+                    onAnnulled={handleAnnulled}
+                />
+            )}
+        </section>
     );
 }

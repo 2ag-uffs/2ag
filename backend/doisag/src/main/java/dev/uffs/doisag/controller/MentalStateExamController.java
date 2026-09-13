@@ -7,9 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/mini-exame")
 public class MentalStateExamController {
@@ -29,17 +26,9 @@ public class MentalStateExamController {
         return mentalStateExamService.create(dados, appointmentId);
     }
 
-    // endpoint para LER todos os exames
-    // GET /mini-exame
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<MentalStateExam> getAll() {
-        return mentalStateExamService.getAll();
-    }
-
     // endpoint para LER um exame por ID
     // GET /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessMentalStateExam(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<MentalStateExam> getById(@PathVariable Long id) {
         MentalStateExam mentalStateExam = mentalStateExamService.getById(id);
@@ -48,19 +37,10 @@ public class MentalStateExamController {
 
     // endpoint para ATUALIZAR um exame
     // PUT /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessMentalStateExam(#id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<MentalStateExam> update(@PathVariable Long id, @RequestBody MentalStateExam examDetails) {
             MentalStateExam updatedExam = mentalStateExamService.update(id, examDetails);
             return ResponseEntity.ok(updatedExam);
-    }
-
-    // endpoint para DELETAR um exame
-    // DELETE /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            mentalStateExamService.delete(id);
-            return ResponseEntity.noContent().build();
     }
 }

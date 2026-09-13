@@ -12,7 +12,7 @@
 	<artifactId>doisag</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>doisag</name>
-	<description>About sistema para gestão e acompanhamento de pacientes em tratamento com fitocanabinoides</description>
+	<description>2ag - acompanhamento terapeutico de pacientes em tratamento com fitocanabinoides</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -49,11 +49,6 @@
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -97,6 +92,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
+		<!-- envio de e-mail pelo servidor smtp configurado nas variaveis MAIL -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
 		<!-- migracoes versionadas: o esquema do banco passa a ter uma
 		     fonte de verdade so, em db/migration -->
 		<dependency>
@@ -110,29 +110,17 @@
 	</dependencies>
 	<build>
 		<plugins>
+			<!-- os testes rodam no mesmo fuso da api -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
+				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</path>
-					</annotationProcessorPaths>
+					<argLine>-Duser.timezone=America/Sao_Paulo</argLine>
 				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>

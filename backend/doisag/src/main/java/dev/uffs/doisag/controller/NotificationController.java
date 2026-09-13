@@ -4,14 +4,16 @@ import dev.uffs.doisag.dto.NotificationDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.NotificationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:5173")
+// avisos da propria conta e o servico confere se cada aviso eh de quem pediu
 @RestController
 @RequestMapping("/notifications")
+@PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
 public class NotificationController {
 
     private final NotificationService notificationService;

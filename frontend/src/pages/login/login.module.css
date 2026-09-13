@@ -1,0 +1,33 @@
+/* tela de login */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* o button css global estica o botao entao aqui ele n cresce */
+.submitButton {
+    flex: 0 0 auto;
+    margin-top: 0.5rem;
+}
+
+.forgotLink {
+    align-self: flex-end;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-top: -0.5rem;
+}
+
+/* o espaco entre os blocos ja vem do gap da moldura */
+.message {
+    margin-bottom: 0;
+}
+
+.signUpNote {
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    padding-top: 1.25rem;
+}

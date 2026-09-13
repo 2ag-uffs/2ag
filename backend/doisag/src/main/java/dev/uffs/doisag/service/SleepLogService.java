@@ -1,14 +1,15 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.SleepLog;
 import dev.uffs.doisag.repository.SleepLogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import dev.uffs.doisag.enums.ScaleType;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -16,10 +17,13 @@ public class SleepLogService {
     private final SleepLogRepository sleepLogRepository;
     // aqui eh a injeçao do service q controla o status
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public SleepLogService(SleepLogRepository sleepLogRepository, ScaleAssignmentService scaleAssignmentService) {
+    public SleepLogService(SleepLogRepository sleepLogRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.sleepLogRepository = sleepLogRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // método pra centralizar a lógica de calc
@@ -51,6 +55,7 @@ public class SleepLogService {
     }
 
     // CREATE
+    @Transactional
     public SleepLog create(SleepLog sleepLog) {
         // chama nosso metodo central pra fazer todos os calculos de tempo
         calculateSleepMetrics(sleepLog);
@@ -60,6 +65,7 @@ public class SleepLogService {
 
         // depois de salvar, avisa o sistema pra dar baixa na tarefa
         if (savedLog.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.REGISTRO_SONO, savedLog.getId(), savedLog.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedLog.getPatient().getId(),
                     ScaleType.REGISTRO_SONO
@@ -69,18 +75,16 @@ public class SleepLogService {
         return savedLog;
     }
 
-    // READ ALL
-    public List<SleepLog> getAll() {
-        return sleepLogRepository.findAll();
-    }
-
     // READ BY ID
     public SleepLog getById(Long id) {
-        return sleepLogRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+        SleepLog sleepLog = sleepLogRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Registro de sono não encontrado com o id: " + id));
+        auditService.recordChartView(sleepLog.getPatient().getId());
+        return sleepLog;
     }
 
     // UPDATE
+    @Transactional
     public SleepLog update(Long id, SleepLog logDetails) {
         // busca o registro de sono ou lanca uma excecao se nao achar
         SleepLog existingLog = sleepLogRepository.findById(id)
@@ -88,7 +92,7 @@ public class SleepLogService {
 
         // atualiza todos os campos com os novos dados vindos do frontend
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setBedTime(logDetails.getBedTime());
         existingLog.setWakeUpTime(logDetails.getWakeUpTime());
         existingLog.setTimeToFallAsleep(logDetails.getTimeToFallAsleep());
@@ -113,16 +117,9 @@ public class SleepLogService {
         // depois de atualizar os dados, a gente recalcula as metricas de tempo
         calculateSleepMetrics(existingLog);
 
-        return sleepLogRepository.save(existingLog);
+        SleepLog savedRecord = sleepLogRepository.save(existingLog);
+        auditService.recordChange(AuditRecordType.REGISTRO_SONO, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o registro de sono existe antes de deletar
-        if (!sleepLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("registro de sono não encontrado com o id: " + id);
-        }
-        sleepLogRepository.deleteById(id);
-    }
 }

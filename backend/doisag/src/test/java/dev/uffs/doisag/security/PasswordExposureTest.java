@@ -41,6 +41,7 @@ class PasswordExposureTest {
     @Autowired private TokenService tokenService;
 
     private Long patientId;
+    private Long prescriberId;
     private String tokenPrescriber;
 
     @BeforeEach
@@ -49,10 +50,10 @@ class PasswordExposureTest {
         prescriber.setName("Prescritora de Teste");
         prescriber.setEmail("presc-vazamento@email.com");
         prescriber.setPassword(KNOWN_HASH);
-        prescriber.setProfessionalCode("TES99");
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber("99999");
         prescriber = prescriberRepository.save(prescriber);
+        prescriberId = prescriber.getId();
 
         Patient patient = new Patient();
         patient.setName("Paciente de Teste");
@@ -93,8 +94,8 @@ class PasswordExposureTest {
     }
 
     @Test
-    void buscarPrescritorNaoPodeTrazerSenha() throws Exception {
-        String body = corpoDe("/prescritor");
+    void perfilNaoPodeTrazerSenha() throws Exception {
+        String body = corpoDe("/profile");
 
         assertThat(body).contains("Prescritora de Teste");
         assertThat(body).doesNotContain(KNOWN_HASH);
@@ -108,9 +109,9 @@ class PasswordExposureTest {
         HamiltonScale scale = new HamiltonScale();
         scale.setAssessmentDate(LocalDate.now());
         scale.setPatient(patientRepository.findById(patientId).orElseThrow());
-        hamiltonScaleRepository.save(scale);
+        Long scaleId = hamiltonScaleRepository.save(scale).getId();
 
-        String body = corpoDe("/escala-hamilton");
+        String body = corpoDe("/escala-hamilton/" + scaleId);
 
         assertThat(body).doesNotContain(KNOWN_HASH);
         assertThat(body).doesNotContain("password");

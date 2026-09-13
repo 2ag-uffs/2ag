@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -80,7 +79,6 @@ class AppointmentFlowTest {
         prescriber.setName("Prescritor " + code);
         prescriber.setEmail(email);
         prescriber.setPassword("hash-irrelevante-aqui");
-        prescriber.setProfessionalCode(code);
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber(code);
         return prescriberRepository.save(prescriber);
@@ -103,6 +101,14 @@ class AppointmentFlowTest {
                 + "\"dateTime\":\"" + dataHora + "\","
                 + "\"modality\":\"" + modalidade + "\","
                 + "\"status\":\"AGENDADA\""
+                + "}";
+    }
+
+    // o paciente so manda data e modalidade
+    private String corpoDoPaciente(String dataHora, String modalidade) {
+        return "{"
+                + "\"dateTime\":\"" + dataHora + "\","
+                + "\"modality\":\"" + modalidade + "\""
                 + "}";
     }
 
@@ -237,29 +243,14 @@ class AppointmentFlowTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // apagar continua existindo pra consulta lancada por engano
-    @Test
-    void apagarTiraAConsultaDaLista() throws Exception {
-        Long id = marcaConsulta(DAQUI_A_UM_MES + "T09:00:00", "PRESENCIAL", 60).get("id").asLong();
-
-        mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenPrescritor))
-                .andExpect(status().isNoContent());
-
-        String lista = mockMvc.perform(get("/consulta").header("Authorization", tokenPrescritor))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(json.readTree(lista)).isEmpty();
-    }
-
     // ---------- RF10: o paciente marca a propria consulta ----------
 
     @Test
     void pacienteMarcaConsultaParaSiComOProprioPrescritor() throws Exception {
-        String resposta = mockMvc.perform(post("/consulta")
+        String resposta = mockMvc.perform(post("/consulta/agendamento")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteId, DAQUI_A_UM_MES + "T11:00:00", "REMOTA")))
+                        .content(corpoDoPaciente(DAQUI_A_UM_MES + "T11:00:00", "REMOTA")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -269,12 +260,13 @@ class AppointmentFlowTest {
         assertThat(criada.get("prescriberName").asText()).isEqualTo("Prescritor AGA11");
     }
 
+    // a rota do prescritor aceita campo clinico entao o paciente usa a dele
     @Test
-    void pacienteNaoMarcaConsultaNoNomeDeOutro() throws Exception {
+    void pacienteNaoUsaARotaDoPrescritorParaMarcar() throws Exception {
         mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteDeOutroId, DAQUI_A_UM_MES + "T11:00:00", "PRESENCIAL")))
+                        .content(corpoSimples(pacienteId, DAQUI_A_UM_MES + "T11:00:00", "PRESENCIAL")))
                 .andExpect(status().isForbidden());
     }
 
@@ -282,10 +274,10 @@ class AppointmentFlowTest {
     void naoMarcaConsultaNoPassado() throws Exception {
         String ontem = LocalDate.now().minusDays(1).toString();
 
-        mockMvc.perform(post("/consulta")
+        mockMvc.perform(post("/consulta/agendamento")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteId, ontem + "T09:00:00", "PRESENCIAL")))
+                        .content(corpoDoPaciente(ontem + "T09:00:00", "PRESENCIAL")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -386,6 +378,24 @@ class AppointmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
     }
 
+    // ---------- catalogo do grafico de evolucao ----------
+
+    @Test
+    void catalogoDeAtributosListaTodasAsEscalas() throws Exception {
+        String corpo = mockMvc.perform(get("/progresso/atributos")
+                        .header("Authorization", tokenPrescritor))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // se alguma escala sumir do catalogo o seletor da tela fica sem opcao
+        assertThat(corpo).contains("ACOMPANHAMENTO_SEMANAL");
+        assertThat(corpo).contains("ESCALA_HAMILTON");
+        assertThat(corpo).contains("ESCALA_PITTSBURGH");
+        assertThat(corpo).contains("REGISTRO_DOR");
+        assertThat(corpo).contains("REGISTRO_TEA");
+        assertThat(corpo).contains("REGISTRO_SONO");
+    }
+
     // ---------- marcadores no grafico de evolucao ----------
 
     // a consulta vira uma marca no grafico, pra dar pra ler a curva de
@@ -472,9 +482,6 @@ class AppointmentFlowTest {
         Long id = marcaConsulta(DAQUI_A_UM_MES + "T09:00:00", "PRESENCIAL", 60).get("id").asLong();
 
         mockMvc.perform(get("/consulta/" + id).header("Authorization", tokenOutroPrescritor))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(delete("/consulta/" + id).header("Authorization", tokenOutroPrescritor))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/consulta/" + id + "/cancelar").header("Authorization", tokenOutroPrescritor))

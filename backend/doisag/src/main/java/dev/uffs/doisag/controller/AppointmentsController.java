@@ -1,9 +1,9 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
-import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -12,13 +12,11 @@ import java.time.LocalDate;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import dev.uffs.doisag.service.AppointmentService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/consulta")
 
@@ -30,16 +28,21 @@ public class AppointmentsController {
         this.appointmentService = appointmentService;
     }
 
-    // create. vale pros dois papeis: o prescritor marca pra paciente da
-    // carteira dele (RF11) e o paciente marca pra si (RF10). o canAccess
-    // ja cobre os dois casos, entao n tem mais hasRole aqui.
-    // o loggedPrescriber vem nulo quando quem chama eh paciente, e ai o
-    // prescritor da consulta sai do vinculo dele
-    @PreAuthorize("@patientAccess.canAccess(#dados.patientId(), authentication)")
+    // o prescritor registra consulta pra paciente da carteira dele (RF11)
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#dados.patientId(), authentication)")
     @PostMapping
     public AppointmentResponseDTO create(@RequestBody @Valid AppointmentCreateDTO dados,
                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
         return new AppointmentResponseDTO(appointmentService.create(dados, loggedPrescriber));
+    }
+
+    // o paciente marca a propria consulta com o prescritor do vinculo (RF10)
+    // a rota eh separada pra ele nunca escrever campo clinico
+    @PreAuthorize("hasRole('PATIENT')")
+    @PostMapping("/agendamento")
+    public AppointmentResponseDTO requestAppointment(@RequestBody @Valid AppointmentRequestDTO requestData,
+                                                     @AuthenticationPrincipal Patient loggedPatient) {
+        return new AppointmentResponseDTO(appointmentService.requestByPatient(loggedPatient.getId(), requestData));
     }
 
     // os horarios ocupados do prescritor do paciente logado, pra ele
@@ -68,55 +71,23 @@ public class AppointmentsController {
                 .toList();
     }
 
-    // read by id
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    // o vinculo com o paciente da consulta eh conferido antes de abrir
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @GetMapping("/{id}")
-    public ResponseEntity<AppointmentResponseDTO> getById(@PathVariable Long id,
-                                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment appointment = appointmentService.getById(id);
-        // consulta de paciente de outro prescritor n eh da conta dele
-        if (!appointment.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointment));
+    public AppointmentResponseDTO getById(@PathVariable Long id) {
+        return new AppointmentResponseDTO(appointmentService.getById(id));
     }
 
-    // update
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}")
-    public ResponseEntity<AppointmentResponseDTO> update(@PathVariable Long id,
-                                                         @RequestBody @Valid AppointmentCreateDTO dados,
-                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.update(id, dados)));
+    public AppointmentResponseDTO update(@PathVariable Long id, @RequestBody @Valid AppointmentCreateDTO dados) {
+        return new AppointmentResponseDTO(appointmentService.update(id, dados));
     }
 
-    // cancelar. n eh delete de proposito: a consulta continua no
-    // historico com status CANCELADA, e o paciente recebe o aviso
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    // cancelar n apaga e a consulta continua no historico com status CANCELADA
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/cancelar")
-    public ResponseEntity<AppointmentResponseDTO> cancel(@PathVariable Long id,
-                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.cancel(id)));
-    }
-
-    // apaga de vez, pra consulta lancada por engano
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id,
-                                       @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        appointmentService.delete(id);
-        return ResponseEntity.noContent().build();
+    public AppointmentResponseDTO cancel(@PathVariable Long id) {
+        return new AppointmentResponseDTO(appointmentService.cancel(id));
     }
 }

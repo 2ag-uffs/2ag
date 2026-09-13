@@ -1,8 +1,10 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
+import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.TimePeriod;
@@ -11,10 +13,10 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,12 +34,15 @@ public class AppointmentService {
     // injecoes
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
+    private final AuditService auditService;
     private NotificationService notificationService;
 
     // removemos o NotificationService do construtor
-    public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository) {
+    public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
+                              AuditService auditService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
+        this.auditService = auditService;
     }
 
     // criamos um metodo setter para o spring injetar a dependencia depois
@@ -46,17 +51,12 @@ public class AppointmentService {
         this.notificationService = notificationService;
     }
 
-    // create. quando quem marca eh o prescritor, ele vem do token. quando
-    // eh o paciente (RF10), o prescritor eh o que ele ja tem vinculado,
-    // entao n da pra marcar consulta na agenda de outro profissional
-    public Appointment create(AppointmentCreateDTO dados, Prescriber prescritorLogado) {
+    // consulta registrada pelo prescritor. ele vem da sessao entao n da
+    // pra registrar consulta no nome de outro profissional
+    @Transactional
+    public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(dados.patientId())
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
-
-        Prescriber prescriber = prescritorLogado != null ? prescritorLogado : patient.getPrescriber();
-        if (prescriber == null) {
-            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
-        }
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
 
         recusaDataNoPassado(dados.dateTime());
         recusaHorarioOcupado(prescriber, dados.dateTime(), dados.durationMinutes(), null);
@@ -81,41 +81,78 @@ public class AppointmentService {
         appointment.setDurationMinutes(dados.durationMinutes() == null ? DURACAO_PADRAO : dados.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
+        notifyNewAppointment(savedAppointment);
+        return savedAppointment;
+    }
 
+    // o paciente marca a propria consulta (RF10). o prescritor eh o do
+    // vinculo e o paciente so escolhe data modalidade e duracao
+    @Transactional
+    public Appointment requestByPatient(Long patientId, AppointmentRequestDTO requestData) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+
+        Prescriber prescriber = patient.getPrescriber();
+        if (prescriber == null) {
+            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
+        }
+
+        recusaDataNoPassado(requestData.dateTime());
+        recusaHorarioOcupado(prescriber, requestData.dateTime(), requestData.durationMinutes(), null);
+
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPrescriber(prescriber);
+        appointment.setDateTime(requestData.dateTime());
+        appointment.setModality(requestData.modality());
+        appointment.setStatus(AppointmentStatus.AGENDADA);
+        appointment.setDurationMinutes(
+                requestData.durationMinutes() == null ? DURACAO_PADRAO : requestData.durationMinutes());
+
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
+        notifyNewAppointment(savedAppointment);
+        return savedAppointment;
+    }
+
+    private void notifyNewAppointment(Appointment appointment) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String formattedDateTime = savedAppointment.getDateTime().format(formatter);
+        String formattedDateTime = appointment.getDateTime().format(formatter);
 
         notificationService.createNotification(
-                savedAppointment.getPatient(),
+                appointment.getPatient(),
                 "Consulta Agendada!",
-                "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi agendada para " + formattedDateTime + ".",
+                "Sua consulta com " + appointment.getPrescriber().getName() + " foi agendada para " + formattedDateTime + ".",
                 "APPOINTMENT",
                 "/agendamento-consulta"
         );
 
         notificationService.createNotification(
-                savedAppointment.getPrescriber(),
+                appointment.getPrescriber(),
                 "Novo Agendamento",
-                "Você tem uma nova consulta com " + savedAppointment.getPatient().getName() + " em " + formattedDateTime + ".",
+                "Você tem uma nova consulta com " + appointment.getPatient().getName() + " em " + formattedDateTime + ".",
                 "APPOINTMENT",
                 "/agendamento-prescritor"
         );
-
-        return savedAppointment;
     }
 
-    public List<Appointment> getAll() {
-        return appointmentRepository.findAll();
-    }
-
+    // abrir a consulta conta como abrir o prontuario do paciente
     public Appointment getById(Long id) {
-        return appointmentRepository.findById(id).
-                orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
-
+        Appointment appointment = findAppointment(id);
+        auditService.recordChartView(appointment.getPatient().getId());
+        return appointment;
     }
 
+    // busca usada dentro do servico q n conta como abrir o prontuario
+    private Appointment findAppointment(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + id));
+    }
+
+    @Transactional
     public Appointment update(Long id, AppointmentCreateDTO dados) {
-        Appointment appointment = getById(id);
+        Appointment appointment = findAppointment(id);
         // a propria consulta n conta como conflito com ela mesma
         recusaHorarioOcupado(appointment.getPrescriber(), dados.dateTime(), dados.durationMinutes(), id);
         appointment.setDateTime(dados.dateTime());
@@ -133,12 +170,16 @@ public class AppointmentService {
         if (dados.durationMinutes() != null) {
             appointment.setDurationMinutes(dados.durationMinutes());
         }
-        return appointmentRepository.save(appointment);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
+                savedAppointment.getPatient().getId());
+        return savedAppointment;
     }
 
     // as consultas de um paciente dentro da janela do grafico. cancelada
     // fica de fora: consulta que n aconteceu n explica mudanca nenhuma
     public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod periodo) {
+        auditService.recordChartView(patientId);
         LocalDate hoje = LocalDate.now();
         LocalDate inicio = hoje.minusDays(periodo.getDays());
 
@@ -147,6 +188,8 @@ public class AppointmentService {
                         patientId, inicio.atStartOfDay(), hoje.atTime(LocalTime.MAX))
                 .stream()
                 .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                // consulta anulada foi lancada por engano e n aconteceu
+                .filter(consulta -> !consulta.isAnnulled())
                 .map(AppointmentMarkerDTO::new)
                 .toList();
     }
@@ -158,6 +201,7 @@ public class AppointmentService {
                 .findByPrescriberIdAndDateTimeBetween(prescriberId, dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
                 .stream()
                 .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                .filter(consulta -> !consulta.isAnnulled())
                 .map(consulta -> {
                     int minutos = consulta.getDurationMinutes() == null ? DURACAO_PADRAO : consulta.getDurationMinutes();
                     LocalTime inicio = consulta.getDateTime().toLocalTime();
@@ -172,11 +216,18 @@ public class AppointmentService {
         return appointmentRepository.findByPrescriberId(prescriberId);
     }
 
+    // consultas de um paciente da mais recente pra mais antiga
+    public List<Appointment> getByPatientId(Long patientId) {
+        auditService.recordChartView(patientId);
+        return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId);
+    }
+
     // cancelar n apaga: a consulta fica no historico com status
     // CANCELADA. apagar perderia o registro de que ela existiu, e o
     // paciente e o prescritor precisam poder olhar pra tras e ver isso
+    @Transactional
     public Appointment cancel(Long id) {
-        Appointment appointment = getById(id);
+        Appointment appointment = findAppointment(id);
 
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new IllegalArgumentException("Esta consulta já está cancelada");
@@ -187,18 +238,9 @@ public class AppointmentService {
 
         appointment.setStatus(AppointmentStatus.CANCELADA);
         Appointment cancelada = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, cancelada.getId(), cancelada.getPatient().getId());
         avisaDoCancelamento(cancelada);
         return cancelada;
-    }
-
-    // apaga de vez, pra caso de consulta lancada por engano. quem quer
-    // desmarcar usa o cancel, que guarda o registro
-    public void delete(Long id) {
-        Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Consulta não encontrada para o id :: " + id));
-
-        avisaDoCancelamento(appointment);
-        appointmentRepository.delete(appointment);
     }
 
     // RN08: dois agendamentos do mesmo prescritor n podem ocupar o
@@ -215,6 +257,7 @@ public class AppointmentService {
                 .filter(outra -> !outra.getId().equals(idQueEstaSendoAlterada))
                 // consulta cancelada devolveu o horario
                 .filter(outra -> outra.getStatus() != AppointmentStatus.CANCELADA)
+                .filter(outra -> !outra.isAnnulled())
                 .anyMatch(outra -> {
                     int duracaoOutra = outra.getDurationMinutes() == null ? DURACAO_PADRAO : outra.getDurationMinutes();
                     LocalDateTime inicioOutra = outra.getDateTime();

@@ -1,0 +1,35 @@
+RASCUNHO — este texto ainda precisa ser revisado e aprovado pela clínica antes do uso com pacientes.
+
+TERMO DE CONSENTIMENTO PARA O USO DE DADOS PESSOAIS E DE SAÚDE
+
+Ao criar sua conta no 2AG, você autoriza o uso dos seus dados pessoais e de saúde no acompanhamento do seu tratamento, conforme a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018).
+
+1. Quem cuida dos seus dados
+[NOME DA CLÍNICA], responsável pelo seu atendimento, decide como os seus dados são usados no sistema.
+
+2. Quais dados são coletados
+- Identificação e contato: nome, CPF, data de nascimento, telefone, e-mail e endereço.
+- Saúde: respostas da anamnese, escalas clínicas, diários de sono, dor e sintomas, consultas, prescrições e a evolução do tratamento.
+
+3. Para que os dados são usados
+- Para o profissional que acompanha você registrar e avaliar a evolução do tratamento.
+- Para enviar lembretes de formulários e de consultas.
+- Para mostrar a você e ao seu prescritor os gráficos da sua evolução.
+Seus dados não serão usados em pesquisa sem um consentimento separado e específico.
+
+4. Quem tem acesso
+Somente o prescritor vinculado à sua conta e a equipe da clínica autorizada por ele. A conta de administração do sistema não acessa dados de saúde. Seus dados não são vendidos nem compartilhados com terceiros, exceto quando a lei obrigar.
+
+5. Por quanto tempo os dados ficam guardados
+O prontuário é guardado por no mínimo 20 anos a partir do último registro, como exige a Lei nº 13.787/2018. Por isso, informações de saúde não são apagadas durante esse período, mesmo que você deixe de usar o sistema.
+
+6. Como seus dados são protegidos
+O acesso exige login com senha, a comunicação com o sistema é criptografada e cada pessoa vê apenas os dados que lhe cabem.
+
+7. Seus direitos
+Você pode, a qualquer momento, pedir a confirmação e o acesso aos seus dados, a correção de dados incompletos ou errados, informações sobre com quem eles são compartilhados e a revogação deste consentimento. A revogação interrompe novos registros, mas não apaga o prontuário dentro do prazo legal de guarda.
+
+8. Contato
+Dúvidas e pedidos sobre os seus dados: [CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA].
+
+Ao marcar "Li e aceito", você declara que leu este termo e concorda com o uso dos seus dados nas condições acima. O sistema registra a versão do termo e a data do seu aceite.

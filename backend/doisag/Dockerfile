@@ -11,7 +11,7 @@ COPY pom.xml .
 RUN mvn -B dependency:go-offline
 
 COPY src ./src
-# pula os testes aqui pq o teste atual precisa de banco rodando
+# os testes rodam no ci entao aqui so empacota
 RUN mvn -B clean package -DskipTests
 
 # ---- etapa 2: imagem final, so com o runtime ----

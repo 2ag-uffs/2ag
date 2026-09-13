@@ -1,12 +1,7 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./acompanhamento-protocolo.css";
 
 // as escalas que o paciente responde sozinho. o mini-exame fica de fora
@@ -115,7 +110,7 @@ export default function AcompanhamentoProtocolo() {
     const encerrar = async () => {
         setConfirmandoEncerrar(false);
         try {
-            await apiService.delete(`/pacientes/${patientId}/acompanhamento`);
+            await apiService.put(`/pacientes/${patientId}/acompanhamento/encerrar`);
             carregar();
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível encerrar.");
@@ -125,7 +120,6 @@ export default function AcompanhamentoProtocolo() {
     if (carregando) {
         return (
             <div className="protocolo">
-                <Header/>
                 <main className="protocolo__conteudo"><p>Carregando...</p></main>
             </div>
         );
@@ -133,7 +127,6 @@ export default function AcompanhamentoProtocolo() {
 
     return (
         <div className="protocolo">
-            <Header/>
             <main className="protocolo__conteudo">
                 <h1>Acompanhamento automático</h1>
 

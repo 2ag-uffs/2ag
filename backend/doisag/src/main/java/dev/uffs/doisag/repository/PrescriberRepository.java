@@ -9,11 +9,6 @@ import java.util.Optional;
 @Repository
 public interface PrescriberRepository extends JpaRepository<Prescriber, Long> {
 
-    // método para buscar um prescritor pelo código profissional
-    Optional<Prescriber> findByProfessionalCode(String professionalCode);
-    // método pra checar se um código já está em uso
-    boolean existsByProfessionalCode(String professionalCode);
-
     // checa se a combinação de tipo e número de registro já existe no banco
     boolean existsByRegistryTypeAndRegistryNumber(String registryType, String registryNumber);
 

@@ -73,7 +73,6 @@ class DataIntegrityTest {
         prescriber.setName("Prescritora");
         prescriber.setEmail("presc-integridade@email.com");
         prescriber.setPassword("hash");
-        prescriber.setProfessionalCode("INT01");
         prescriber = prescriberRepository.save(prescriber);
 
         Appointment appointment = new Appointment();

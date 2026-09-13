@@ -8,9 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/registro-sono")
 public class SleepLogController {
@@ -32,17 +29,9 @@ public class SleepLogController {
         return sleepLogService.create(sleepLog);
     }
 
-    // endpoint para LER todos os registros de sono
-    // GET /registro-sono
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<SleepLog> getAll() {
-        return sleepLogService.getAll();
-    }
-
     // endpoint para LER um registro de sono por ID
     // GET /registro-sono/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<SleepLog> getById(@PathVariable Long id) {
         SleepLog sleepLog = sleepLogService.getById(id);
@@ -51,19 +40,11 @@ public class SleepLogController {
 
     // endpoint para ATUALIZAR um registro de sono
     // PUT /registro-sono/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<SleepLog> update(@PathVariable Long id, @RequestBody SleepLog logDetails) {
             SleepLog updatedLog = sleepLogService.update(id, logDetails);
             return ResponseEntity.ok(updatedLog);
-    }
-
-    // endpoint para DELETAR um registro de sono
-    // DELETE /registro-sono/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_SONO', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-            sleepLogService.delete(id);
-            return ResponseEntity.noContent().build();
     }
 }

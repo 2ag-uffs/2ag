@@ -1,12 +1,12 @@
 package dev.uffs.doisag.model;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.Column;
 import jakarta.persistence.OneToMany;
 import java.util.ArrayList;
 import java.util.List;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import dev.uffs.doisag.enums.UserRole;
 
 
 import java.time.LocalDate;
@@ -22,11 +22,6 @@ public class Prescriber extends Users {
     // conselho profisisnal e numero unico da profissão
     private String registryType;
     private String registryNumber;
-
-
-    // codigo unico de vinculo para a api
-    @Column(unique = true)
-    private String professionalCode;
 
     // anotacao para serialize lista de filhos normalmente
     @JsonManagedReference
@@ -52,14 +47,6 @@ public class Prescriber extends Users {
         this.profession = profession;
     }
 
-    public String getProfessionalCode() {
-        return professionalCode;
-    }
-
-    public void setProfessionalCode(String professionalCode) {
-        this.professionalCode = professionalCode;
-    }
-
     public String getRegistryNumber() {
         return registryNumber;
     }
@@ -74,5 +61,10 @@ public class Prescriber extends Users {
 
     public void setRegistryType(String registryType) {
         this.registryType = registryType;
+    }
+
+    @Override
+    public UserRole getRole() {
+        return UserRole.PRESCRIBER;
     }
 }

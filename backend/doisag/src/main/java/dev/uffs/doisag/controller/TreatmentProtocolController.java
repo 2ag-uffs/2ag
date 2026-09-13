@@ -33,14 +33,15 @@ public class TreatmentProtocolController {
     }
 
     // o paciente tambem pode ver o proprio acompanhamento
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     public TreatmentProtocolResponseDTO getActive(@PathVariable Long patientId) {
         return new TreatmentProtocolResponseDTO(treatmentProtocolService.getActiveByPatient(patientId));
     }
 
+    // encerrar n apaga nada o protocolo fica guardado como inativo
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @DeleteMapping
+    @PutMapping("/encerrar")
     public TreatmentProtocolResponseDTO encerrar(@PathVariable Long patientId) {
         return new TreatmentProtocolResponseDTO(treatmentProtocolService.encerrar(patientId));
     }

@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import Modal from "../../components/modal/modal";
-import "../../styles/button.css";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/input.css";
+import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import "./dashboard-prescritor.css";
-import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function DashboardPrescritor() {
     const navigate = useNavigate();
@@ -15,13 +11,9 @@ export default function DashboardPrescritor() {
     const aviso = location.state && location.state.aviso;
 
     const [showModal, setShowModal] = useState(false);
-    const [prescritorInfo, setPrescritorInfo] = useState(null);
     const [dashboardData, setDashboardData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isCreatingPatient, setIsCreatingPatient] = useState(false);
-    const [formErrors, setFormErrors] = useState({});
-    const [cpf, setCpf] = useState("");
 
     const fetchData = useCallback(async () => {
         const usuario = getLoggedUser();
@@ -31,11 +23,7 @@ export default function DashboardPrescritor() {
         }
 
         try {
-            const [prescritor, dashboard] = await Promise.all([
-                apiService.get(`/prescritor/${usuario.id}`),
-                apiService.get(`/dashboard/prescritor/${usuario.id}`),
-            ]);
-            setPrescritorInfo(prescritor);
+            const dashboard = await apiService.get(`/dashboard/prescritor/${usuario.id}`);
             setDashboardData(dashboard);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "Erro ao carregar o painel.");
@@ -48,15 +36,10 @@ export default function DashboardPrescritor() {
         fetchData();
     }, [fetchData]);
 
-    const handleLogout = (e) => {
-        e.preventDefault();
-        clearToken();
-        navigate("/login");
-    };
-
+    // toda consulta eh de um paciente entao comeca escolhendo ele na lista
     const handleNewConsult = (e) => {
         e.preventDefault();
-        navigate("/consulta");
+        navigate("/lista-paciente");
     };
 
     // prescricao n existe solta, ela sai de dentro de uma consulta.
@@ -71,80 +54,9 @@ export default function DashboardPrescritor() {
         navigate("/agendamento-prescritor");
     };
 
-    const handleNotificacoes = (e) => {
-        e.preventDefault();
-        navigate("/notificacoes-prescritor");
-    };
-
     const handlePaciente = (e) => {
         e.preventDefault();
         navigate("/lista-paciente");
-    };
-
-    const handleCloseModal = (e) => {
-        e.preventDefault();
-        if (!isCreatingPatient) {
-            setShowModal(false);
-            setCpf("");
-        }
-    };
-
-    const handleCpf = (e) => {
-        let value = e.target.value.replace(/\D/g, "");
-        value = value.replace(/(\d{3})(\d)/, "$1.$2");
-        value = value.replace(/(\d{3})(\d)/, "$1.$2");
-        value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-        setCpf(value);
-    };
-
-    const handleSubmitNewPatient = async (e) => {
-        e.preventDefault();
-        setIsCreatingPatient(true);
-        setFormErrors({});
-        const form = e.target;
-        const password = form.senha.value;
-        const confirmPassword = form.confirmarSenha.value;
-        if (password !== confirmPassword) {
-            setFormErrors({ confirmarSenha: "As senhas não conferem!" });
-            setIsCreatingPatient(false);
-            return;
-        }
-        const addressObject = {
-            street: form.street.value,
-            number: form.number.value,
-            city: form.city.value,
-            state: form.state.value,
-            country: form.country.value,
-        };
-        let data = {
-            name: form.nomeCompleto.value,
-            email: form.email.value,
-            senha: password,
-            cpf: cpf.replace(/\D/g, ""),
-            birthDate: form.dataNascimento.value,
-            phone: form.telefone.value.replace(/\D/g, ""),
-            address: addressObject,
-        };
-
-        // o vinculo com o prescritor sai do token no backend, entao o
-        // professionalCode n precisa ir no corpo. ia um "abc12" fixo
-        try {
-            await apiService.post("/paciente/cadastrar-para-prescritor", data);
-            setShowModal(false);
-            setCpf("");
-            fetchData();
-        } catch (err) {
-            if (err instanceof ApiError) {
-                const porCampo = err.fieldErrors();
-                setFormErrors(
-                    Object.keys(porCampo).length > 0 ? porCampo : {general: err.message},
-                );
-            } else {
-                setFormErrors({general: "Não foi possível falar com o servidor."});
-            }
-        } finally {
-            setIsCreatingPatient(false);
-        }
     };
 
     if (isLoading) {
@@ -169,30 +81,6 @@ export default function DashboardPrescritor() {
 
     return (
         <div className="dashboard-prescritor">
-            <header className="dashboard-header">
-                <img
-                    src="/images/logotipo-icon-claro.svg"
-                    alt="Logo"
-                    className="logo"
-                />
-                <div className="dashboard-header__user">
-                    <span>
-                        {prescritorInfo?.name || "Nome do Doutor"} -{" "}
-                        {prescritorInfo?.registryType || "CRM"}{" "}
-                        {prescritorInfo?.registryNumber || "00000"}
-                    </span>
-                    <button
-                        className="button-secondary"
-                        onClick={handleNotificacoes}
-                    >
-                        Notificações
-                    </button>
-                    <button className="button-secondary" onClick={handleLogout}>
-                        Sair
-                    </button>
-                </div>
-            </header>
-
             <main className="dashboard-main">
                 {aviso && <p className="aviso">{aviso}</p>}
                 <div className="dashboard-welcome">
@@ -240,7 +128,7 @@ export default function DashboardPrescritor() {
                             onClick={() => setShowModal(true)}
                         >
                             <span className="action-icon">👥</span>
-                            <span>Novo paciente</span>
+                            <span>Convidar paciente</span>
                         </button>
                         <button
                             className="action-button"
@@ -481,202 +369,7 @@ export default function DashboardPrescritor() {
                     </section>
                 </div>
             </main>
-            <Modal
-                show={showModal}
-                title={"Novo paciente"}
-                onClickClose={handleCloseModal}
-            >
-                <form className="new-patient" onSubmit={handleSubmitNewPatient}>
-                    <div className="new-patient__field">
-                        <label htmlFor="nomeCompleto">Nome completo*</label>
-                        <input
-                            id="nomeCompleto"
-                            name="nomeCompleto"
-                            placeholder="Digite o nome completo"
-                            required
-                        />
-                        {formErrors.name && (
-                            <span className="input-error-message">
-                                {formErrors.name}
-                            </span>
-                        )}
-                    </div>
-                    <div className="new-patient__row">
-                        <div className="new-patient__field">
-                            <label htmlFor="cpf">CPF*</label>
-                            <input
-                                id="cpf"
-                                name="cpf"
-                                maxLength={14}
-                                value={cpf}
-                                onChange={handleCpf}
-                                placeholder="000.000.000-00"
-                            />
-                            {formErrors.cpf && (
-                                <span className="input-error-message">
-                                    {formErrors.cpf}
-                                </span>
-                            )}
-                        </div>
-                        <div className="new-patient__field">
-                            <label htmlFor="email">Email*</label>
-                            <input
-                                id="email"
-                                name="email"
-                                placeholder="paciente@email.com"
-                                type="email"
-                                required
-                            />
-                            {formErrors.email && (
-                                <span className="input-error-message">
-                                    {formErrors.email}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="new-patient__row">
-                        <div className="new-patient__field">
-                            <label htmlFor="dataNascimento">
-                                Data de nascimento*
-                            </label>
-                            <input
-                                id="dataNascimento"
-                                name="dataNascimento"
-                                type="date"
-                                required
-                            />
-                            {formErrors.birthDate && (
-                                <span className="input-error-message">
-                                    {formErrors.birthDate}
-                                </span>
-                            )}
-                        </div>
-                        <div className="new-patient__field">
-                            <label htmlFor="telefone">Telefone*</label>
-                            <input
-                                id="telefone"
-                                name="telefone"
-                                type="tel"
-                                required
-                                placeholder="(00) 00000-0000"
-                            />
-                            {formErrors.phone && (
-                                <span className="input-error-message">
-                                    {formErrors.phone}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="new-patient__field">
-                        <label htmlFor="street">Logradouro*</label>
-                        <input
-                            id="street"
-                            name="street"
-                            required
-                            placeholder="Rua, Avenida, etc."
-                        />
-                        {formErrors["address.street"] && (
-                            <span className="input-error-message">
-                                {formErrors["address.street"]}
-                            </span>
-                        )}
-                    </div>
-                    <div className="new-patient__row">
-                        <div className="new-patient__field small">
-                            <label htmlFor="number">Número*</label>
-                            <input
-                                id="number"
-                                name="number"
-                                required
-                                placeholder="123"
-                            />
-                            {formErrors["address.number"] && (
-                                <span className="input-error-message">
-                                    {formErrors["address.number"]}
-                                </span>
-                            )}
-                        </div>
-                        <div className="new-patient__field">
-                            <label htmlFor="city">Cidade*</label>
-                            <input
-                                id="city"
-                                name="city"
-                                required
-                                placeholder="Cidade"
-                            />
-                            {formErrors["address.city"] && (
-                                <span className="input-error-message">
-                                    {formErrors["address.city"]}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="new-patient__row">
-                        <div className="new-patient__field small">
-                            <label htmlFor="state">Estado (UF)*</label>
-                            <input
-                                id="state"
-                                name="state"
-                                required
-                                maxLength="2"
-                                placeholder="UF"
-                            />
-                            {formErrors["address.state"] && (
-                                <span className="input-error-message">
-                                    {formErrors["address.state"]}
-                                </span>
-                            )}
-                        </div>
-                        <div className="new-patient__field">
-                            <label htmlFor="country">País*</label>
-                            <input
-                                id="country"
-                                name="country"
-                                required
-                                placeholder="País"
-                            />
-                            {formErrors["address.country"] && (
-                                <span className="input-error-message">
-                                    {formErrors["address.country"]}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="new-patient__field">
-                        <label htmlFor="senha">Senha*</label>
-                        <input
-                            id="senha"
-                            name="senha"
-                            type="password"
-                            required
-                            placeholder="Digite uma senha"
-                        />
-                        {formErrors.senha && (
-                            <span className="input-error-message">
-                                {formErrors.senha}
-                            </span>
-                        )}
-                    </div>
-                    <div className="new-patient__field">
-                        <label htmlFor="confirmarSenha">Confirmar senha*</label>
-                        <input
-                            id="confirmarSenha"
-                            name="confirmarSenha"
-                            type="password"
-                            required
-                            placeholder="Confirme a senha"
-                        />
-                    </div>
-                    <div className="new-patient__actions">
-                        <button type="button" onClick={handleCloseModal}>
-                            Cancelar
-                        </button>
-                        <button disabled={isCreatingPatient}>
-                            {isCreatingPatient ? "Salvando..." : "Salvar"}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            <InvitePatientModal show={showModal} onClose={() => setShowModal(false)}/>
         </div>
     );
 }

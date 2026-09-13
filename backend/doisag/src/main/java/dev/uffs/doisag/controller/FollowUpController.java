@@ -8,9 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/acompanhamento")
 public class FollowUpController {
@@ -32,17 +29,9 @@ public class FollowUpController {
         return followUpService.create(followUp);
     }
 
-    // endpoint para LER todos os followups
-    // GET /acompanhamento
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<FollowUp> getAll() {
-        return followUpService.getAll();
-    }
-
     // endpoint para LER um followup por ID
     // GET /acompanhamento/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<FollowUp> getById(@PathVariable Long id) {
         FollowUp followUp = followUpService.getById(id);
@@ -51,19 +40,11 @@ public class FollowUpController {
 
     // endpoint para ATUALIZAR um followup
     // PUT /acompanhamento/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<FollowUp> update(@PathVariable Long id, @RequestBody FollowUp followUpDetails) {
             FollowUp updatedFollowUp = followUpService.update(id, followUpDetails);
             return ResponseEntity.ok(updatedFollowUp);
-    }
-
-    // endpoint para DELETAR um followup
-    // DELETE /acompanhamento/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ACOMPANHAMENTO_SEMANAL', #id, authentication)")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        followUpService.delete(id);
-        return ResponseEntity.noContent().build();
     }
 }

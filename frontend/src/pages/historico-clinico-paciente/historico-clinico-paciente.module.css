@@ -1,0 +1,50 @@
+/* historico clinico do proprio paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 60rem;
+}
+
+.subtitle,
+.status {
+    color: var(--color-text-secondary);
+}
+
+/* o cabecalho do app fica por cima entao o atalho para um pouco abaixo dele */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    scroll-margin-top: 5rem;
+}
+
+.sectionTitle {
+    font-size: 1.25rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.emptyAnamnesis {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.secondaryButton {
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+    flex: 0 0 auto;
+    padding: 0 1rem;
+}
+
+.secondaryButton:hover {
+    background-color: var(--color-surface-alt);
+}

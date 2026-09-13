@@ -1,0 +1,5 @@
+# o docker n pode copiar as dependencias da maquina local pra dentro da imagem
+# elas sao instaladas de novo la dentro com npm ci
+node_modules
+dist
+.env

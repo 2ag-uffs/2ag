@@ -1,143 +1,109 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DuplicateValueException;
+import dev.uffs.doisag.infra.InputCleaner;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
-import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.ValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Optional;
-import dev.uffs.doisag.dto.PatientRegistrationDTO;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PatientService {
 
-    // injecoes
+    public static final String OUTDATED_TERM_MESSAGE =
+            "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
+
     private final PatientRepository patientRepository;
     private final UsersRepository usersRepository;
-    private final PrescriberRepository prescriberRepository;
+    private final PatientInviteService patientInviteService;
+    private final ConsentTermService consentTermService;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
     private NotificationService notificationService;
 
-    public PatientService(PasswordEncoder passwordEncoder, PatientRepository patientRepository, UsersRepository usersRepository, PrescriberRepository prescriberRepository) {
-        this.passwordEncoder = passwordEncoder;
+    public PatientService(PatientRepository patientRepository, UsersRepository usersRepository,
+                          PatientInviteService patientInviteService, ConsentTermService consentTermService,
+                          PasswordEncoder passwordEncoder, AuditService auditService) {
         this.patientRepository = patientRepository;
         this.usersRepository = usersRepository;
-        this.prescriberRepository = prescriberRepository;
+        this.patientInviteService = patientInviteService;
+        this.consentTermService = consentTermService;
+        this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
+
     @Autowired
     public void setNotificationService(@Lazy NotificationService notificationService) {
         this.notificationService = notificationService;
     }
 
-    public List<Patient> getAll() {
-        return patientRepository.findAll();
-    }
-
+    // abrir os dados do paciente conta como abrir o prontuario
     public Patient getById(Long id) {
-        return patientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
-    }
-
-    public List<Patient> getPatientsByPrescriberId(Long prescriberId) {
-        return patientRepository.findAllByPrescriberId(prescriberId);
-    }
-
-    public Patient update(Long id, PatientUpdateDTO dados) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado com o id: " + id));
-
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setPhone(dados.phone());
-        patient.setCpf(dados.cpf());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
-
-        // senha n se mexe aqui. antes esse metodo gravava o valor recebido
-        // direto, sem passar pelo passwordEncoder, o q invalidava o login
-        // do paciente. troca de senha eh fluxo proprio (RN12)
-
-        return patientRepository.save(patient);
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
+        auditService.recordChartView(patient.getId());
+        return patient;
     }
 
-    public void delete(Long id) {
-        Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado com o id: " + id));
-        patientRepository.delete(patient);
+    // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
+    public List<Patient> getPatientsByPrescriberId(Long prescriberId, boolean archived) {
+        if (archived) {
+            return patientRepository.findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(prescriberId);
+        }
+        return patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId);
     }
 
-    public Patient registerPatient(RegisterDTO dados) {
-        if (usersRepository.findByEmail(dados.email()) != null) {
-            throw new ValidationException("email já cadastrado no sistema!");
+    // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)
+    // o prescritor sai do convite e o convite so vale uma vez
+    @Transactional
+    public Patient registerPatient(RegisterDTO registerData) {
+        // o termo aceito precisa ser o q esta valendo agora (RF36)
+        if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
+            throw new BusinessException(OUTDATED_TERM_MESSAGE);
         }
 
-        Prescriber prescriber = prescriberRepository.findByProfessionalCode(dados.professionalCode())
-                .orElseThrow(() -> new ValidationException("Código do prescritor inválido!"));
-
-        var patient = new Patient();
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setCpf(dados.cpf());
-        patient.setPhone(dados.phone());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address());
-        patient.setPassword(passwordEncoder.encode(dados.senha()));
-        patient.setPrescriber(prescriber);
-
-        Patient savedPatient = patientRepository.save(patient);
-
-        String title = "Novo Paciente Vinculado";
-        String message = "O paciente " + savedPatient.getName() + " acabou de se cadastrar e está vinculado a você.";
-        notificationService.createNotification(prescriber, title, message, "ALERT", "/lista-paciente");
-
-        return savedPatient;
-    }
-
-    public Patient registerPatientForPrescriber(PatientRegistrationDTO dados, String prescriberEmail) {
-        // primeiro a gente ve se o email do paciente novo ja existe
-        if (usersRepository.findByEmail(dados.email()) != null) {
-            throw new ValidationException("email do paciente já cadastrado no sistema!");
+        PatientInvite invite = patientInviteService.lockUsableInvite(registerData.inviteToken());
+        if (invite == null) {
+            throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
         }
 
-        // agora a gente busca o prescritor pelo email que veio da autenticacao
-        // se nao achar ele dispara um erro
-        Prescriber prescriber = prescriberRepository.findByEmail(prescriberEmail)
-                .orElseThrow(() -> new UsernameNotFoundException("Prescritor não encontrado com o email: " + prescriberEmail));
+        String email = InputCleaner.normalizeEmail(registerData.email());
+        if (usersRepository.existsByEmail(email)) {
+            throw new DuplicateValueException("email", "Este e-mail já tem conta. Se for o seu, entre pelo login");
+        }
+        String cpf = InputCleaner.keepOnlyDigits(registerData.cpf());
+        if (usersRepository.existsByCpf(cpf)) {
+            throw new DuplicateValueException("cpf", "Este CPF já tem conta. Se for o seu, entre pelo login");
+        }
 
-        // o resto da logica eh bem parecida com a que voce ja tinha
-        var patient = new Patient();
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setCpf(dados.cpf());
-        patient.setPhone(dados.phone());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
-        patient.setPassword(passwordEncoder.encode(dados.senha()));
-
-        // aqui a magica acontece, a gente associa o prescritor que encontramos
+        Prescriber prescriber = invite.getPrescriber();
+        Patient patient = new Patient();
+        patient.setName(registerData.name().trim());
+        patient.setEmail(email);
+        patient.setCpf(cpf);
+        patient.setBirthDate(registerData.birthDate());
+        patient.setPhone(InputCleaner.keepOnlyDigits(registerData.phone()));
+        patient.setAddress(registerData.address().toAddress());
+        patient.setPassword(passwordEncoder.encode(registerData.password()));
         patient.setPrescriber(prescriber);
-
         Patient savedPatient = patientRepository.save(patient);
 
-        // a notificacao continua igual
-        String title = "Novo Paciente Vinculado";
-        String message = "O paciente " + savedPatient.getName() + " acabou de ser cadastrado por você.";
-        notificationService.createNotification(prescriber, title, message, "ALERT", "/lista-paciente");
+        patientInviteService.markAsUsed(invite, savedPatient);
+        consentTermService.registerAcceptance(savedPatient, registerData.consentTermVersion());
 
+        notificationService.createNotification(prescriber, "Novo paciente vinculado",
+                savedPatient.getName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
         return savedPatient;
     }
 }

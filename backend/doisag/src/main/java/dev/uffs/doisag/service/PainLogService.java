@@ -1,13 +1,14 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.PainLog;
 import dev.uffs.doisag.repository.PainLogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -15,19 +16,24 @@ public class PainLogService {
     private final PainLogRepository painLogRepository;
     // aqui eh a injeçao do service q controla o status
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public PainLogService(PainLogRepository painLogRepository, ScaleAssignmentService scaleAssignmentService) {
+    public PainLogService(PainLogRepository painLogRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.painLogRepository = painLogRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // CREATE
+    @Transactional
     public PainLog create(PainLog painLog) {
         // primeiro salva o registro de dor no banco
         PainLog savedLog = painLogRepository.save(painLog);
 
         // depois de salvar avisa o sistema pra dar baixa na tarefa
         if (savedLog.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.REGISTRO_DOR, savedLog.getId(), savedLog.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedLog.getPatient().getId(),
                     ScaleType.REGISTRO_DOR
@@ -37,18 +43,16 @@ public class PainLogService {
         return savedLog;
     }
 
-    // READ ALL
-    public List<PainLog> getAll() {
-        return painLogRepository.findAll();
-    }
-
     // READ BY ID
     public PainLog getById(Long id) {
-        return painLogRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+        PainLog painLog = painLogRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Registro de dor não encontrado com o id: " + id));
+        auditService.recordChartView(painLog.getPatient().getId());
+        return painLog;
     }
 
     // UPDATE
+    @Transactional
     public PainLog update(Long id, PainLog logDetails) {
         // busca o diário de dor ou lança uma exceção
         PainLog existingLog = painLogRepository.findById(id)
@@ -56,7 +60,7 @@ public class PainLogService {
 
         // atualiza os campos
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setBasicActivityInterference(logDetails.getBasicActivityInterference());
         existingLog.setSocialActivityInterference(logDetails.getSocialActivityInterference());
         existingLog.setSleepInterference(logDetails.getSleepInterference());
@@ -64,15 +68,8 @@ public class PainLogService {
         existingLog.setExtraMedication(logDetails.getExtraMedication());
         existingLog.setObservation(logDetails.getObservation());
 
-        return painLogRepository.save(existingLog);
-    }
-
-    // DELETE
-    public void delete(Long id) {
-        // verifica se o diário de dor existe antes de deletar
-        if (!painLogRepository.existsById(id)) {
-            throw new EntityNotFoundException("diário de dor não encontrado com o id: " + id);
-        }
-        painLogRepository.deleteById(id);
+        PainLog savedRecord = painLogRepository.save(existingLog);
+        auditService.recordChange(AuditRecordType.REGISTRO_DOR, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 }

@@ -1,0 +1,30 @@
+/* so aparece se a tela demorar mais q um instante pra carregar */
+/* assim carregamento rapido n pisca nada na tela */
+
+.loader {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 0;
+}
+
+.spinner {
+    animation: showSpinner 0s linear 250ms forwards, spin 0.8s linear infinite;
+    border: 3px solid var(--color-border);
+    border-radius: 50%;
+    border-top-color: var(--color-primary);
+    height: 2.25rem;
+    opacity: 0;
+    width: 2.25rem;
+}
+
+@keyframes showSpinner {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
