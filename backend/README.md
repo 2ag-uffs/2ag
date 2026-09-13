@@ -159,4 +159,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base) já segue o padrão novo. os módulos clínicos (paciente, consulta, prescrição, escalas, acompanhamento e notificações) ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base) e o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha) já seguem o padrão novo. os módulos clínicos (paciente, consulta, prescrição, escalas, acompanhamento e notificações) ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

@@ -712,7 +712,11 @@ O RNF07 (backup automático com restauração testada) permanece essencial e é 
 | 0 — Fundação | Migração base, configuração, tratamento de erro, sessão, conta administrativa, integração contínua, layout e rotas do frontend |
 | Módulos | Requisito por requisito, na ordem deste documento: acesso e identidade, autorização, atendimento, agenda, escalas, evolução, notificações e exportação. Cada requisito é entregue completo, com backend, frontend e teste |
 
-As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 9.
+O RF03 (tela inicial) sai do módulo de acesso e identidade e passa para depois do módulo de escalas, porque reúne consultas, escalas e formulários que só são reescritos nesses módulos (decisão de 13/09/2026).
+
+As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 10.
+
+**Acesso e identidade concluído em 13/09/2026:** RF01, RN06, RF02.1, RF36, RF18 e RF35. O vínculo do paciente passou a ser por convite de uso único, o cadastro exige o aceite do termo (ainda em rascunho) e a recuperação de senha grava o link no log da API até o envio de e-mail ser configurado.
 
 ---
 

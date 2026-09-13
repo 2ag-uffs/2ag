@@ -10,7 +10,7 @@ o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisit
 
 ## situação
 
-o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
+o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. o módulo de **acesso e identidade** também está pronto: login, convite de paciente, cadastro com termo de consentimento, perfil e recuperação de senha. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
 
 **não use com dado real de paciente antes do fim dessa reconstrução.**
 
