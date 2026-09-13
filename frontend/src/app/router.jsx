@@ -151,6 +151,10 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/acompanhamento-protocolo/acompanhamento-protocolo.jsx")),
                             },
                             {
+                                path: "/paciente/:patientId/auditoria",
+                                lazy: lazyPage(() => import("../pages/patient-audit/patient-audit.jsx")),
+                            },
+                            {
                                 path: "/notificacoes-prescritor",
                                 lazy: lazyPage(() => import("../pages/notificacoes-prescritor/notificacoes-prescritor.jsx")),
                             },
@@ -171,6 +175,10 @@ const routes = [
                             {
                                 path: "/admin",
                                 lazy: lazyPage(() => import("../pages/admin/admin-prescribers.jsx")),
+                            },
+                            {
+                                path: "/admin/auditoria",
+                                lazy: lazyPage(() => import("../pages/admin/admin-audit.jsx")),
                             },
                         ],
                     },

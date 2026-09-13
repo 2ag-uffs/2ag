@@ -1,10 +1,12 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,30 +14,38 @@ import java.util.Optional;
 @Service
 public class AnamnesisService {
     private final AnamnesisRepository anamnesisRepository;
+    private final AuditService auditService;
 
-    public AnamnesisService(AnamnesisRepository anamnesisRepository) {
+    public AnamnesisService(AnamnesisRepository anamnesisRepository, AuditService auditService) {
         this.anamnesisRepository = anamnesisRepository;
+        this.auditService = auditService;
     }
 
     // CREATE
+    @Transactional
     public Anamnesis create(Anamnesis anamnesis) {
-        return anamnesisRepository.save(anamnesis);
+        Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
+        auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
+                savedAnamnesis.getPatient().getId());
+        return savedAnamnesis;
     }
 
     // anamneses de um paciente da mais recente pra mais antiga
     public List<Anamnesis> getByPatientId(Long patientId) {
+        auditService.recordChartView(patientId);
         return anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId);
     }
 
     // READ BY ID
     public Anamnesis getById(Long id) {
-        return anamnesisRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
-
-
+        Anamnesis anamnesis = anamnesisRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Anamnese não encontrada com o id: " + id));
+        auditService.recordChartView(anamnesis.getPatient().getId());
+        return anamnesis;
     }
 
     // UPDATE
+    @Transactional
     public Anamnesis update(Long id, Anamnesis anamnesisDetails) {
         // busca a anamnese ou lança uma exceção
         Anamnesis anamnesis = anamnesisRepository.findById(id)
@@ -66,6 +76,9 @@ public class AnamnesisService {
         anamnesis.setSubstanceUse(anamnesisDetails.getSubstanceUse());
         anamnesis.setPhysicalActivity(anamnesisDetails.getPhysicalActivity());
 
-        return anamnesisRepository.save(anamnesis);
+        Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
+        auditService.recordChange(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
+                savedAnamnesis.getPatient().getId());
+        return savedAnamnesis;
     }
 }

@@ -25,13 +25,16 @@ public class ProgressReportService {
 
     private final Map<ScaleType, AssessmentRepository<? extends BaseAssessment>> repositories =
             new EnumMap<>(ScaleType.class);
+    private final AuditService auditService;
 
     public ProgressReportService(FollowUpRepository followUpRepository,
                                  HamiltonScaleRepository hamiltonScaleRepository,
                                  PittsburghScaleRepository pittsburghScaleRepository,
                                  PainLogRepository painLogRepository,
                                  SleepLogRepository sleepLogRepository,
-                                 TEALogRepository teaLogRepository) {
+                                 TEALogRepository teaLogRepository,
+                                 AuditService auditService) {
+        this.auditService = auditService;
         repositories.put(ScaleType.ACOMPANHAMENTO_SEMANAL, followUpRepository);
         repositories.put(ScaleType.ESCALA_HAMILTON, hamiltonScaleRepository);
         repositories.put(ScaleType.ESCALA_PITTSBURGH, pittsburghScaleRepository);
@@ -43,6 +46,7 @@ public class ProgressReportService {
     public List<ProgressDataPointDTO> getPatientProgress(Long patientId,
                                                          TrackableAttribute attribute,
                                                          TimePeriod period) {
+        auditService.recordChartView(patientId);
         AssessmentRepository<? extends BaseAssessment> repository =
                 repositories.get(attribute.getScaleType());
         if (repository == null) {

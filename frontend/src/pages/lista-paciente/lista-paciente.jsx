@@ -46,6 +46,11 @@ export default function ListaPacientes() {
         navigate(`/paciente/${pacienteId}/acompanhamento`);
     };
 
+    // RF31: quem criou alterou ou abriu o prontuario desse paciente
+    const handleViewAudit = (paciente) => {
+        navigate(`/paciente/${paciente.id}/auditoria`, {state: {patientName: paciente.name}});
+    };
+
     const handleNewConsult = (patientId) => {
         navigate(`/consulta?patientId=${patientId}`);
     };
@@ -123,6 +128,9 @@ export default function ListaPacientes() {
                                     </button>
                                     <button className="button-tertiary" onClick={() => handleAcompanhamento(paciente.id)}>
                                         Acompanhamento
+                                    </button>
+                                    <button className="button-tertiary" onClick={() => handleViewAudit(paciente)}>
+                                        Histórico de Acesso
                                     </button>
                                 </div>
                             </div>

@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
@@ -15,6 +16,7 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,12 +34,15 @@ public class AppointmentService {
     // injecoes
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
+    private final AuditService auditService;
     private NotificationService notificationService;
 
     // removemos o NotificationService do construtor
-    public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository) {
+    public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
+                              AuditService auditService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
+        this.auditService = auditService;
     }
 
     // criamos um metodo setter para o spring injetar a dependencia depois
@@ -48,6 +53,7 @@ public class AppointmentService {
 
     // consulta registrada pelo prescritor. ele vem da sessao entao n da
     // pra registrar consulta no nome de outro profissional
+    @Transactional
     public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(dados.patientId())
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
@@ -75,12 +81,14 @@ public class AppointmentService {
         appointment.setDurationMinutes(dados.durationMinutes() == null ? DURACAO_PADRAO : dados.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
         notifyNewAppointment(savedAppointment);
         return savedAppointment;
     }
 
     // o paciente marca a propria consulta (RF10). o prescritor eh o do
     // vinculo e o paciente so escolhe data modalidade e duracao
+    @Transactional
     public Appointment requestByPatient(Long patientId, AppointmentRequestDTO requestData) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
@@ -103,6 +111,7 @@ public class AppointmentService {
                 requestData.durationMinutes() == null ? DURACAO_PADRAO : requestData.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
         notifyNewAppointment(savedAppointment);
         return savedAppointment;
     }
@@ -128,14 +137,22 @@ public class AppointmentService {
         );
     }
 
+    // abrir a consulta conta como abrir o prontuario do paciente
     public Appointment getById(Long id) {
-        return appointmentRepository.findById(id).
-                orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
-
+        Appointment appointment = findAppointment(id);
+        auditService.recordChartView(appointment.getPatient().getId());
+        return appointment;
     }
 
+    // busca usada dentro do servico q n conta como abrir o prontuario
+    private Appointment findAppointment(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + id));
+    }
+
+    @Transactional
     public Appointment update(Long id, AppointmentCreateDTO dados) {
-        Appointment appointment = getById(id);
+        Appointment appointment = findAppointment(id);
         // a propria consulta n conta como conflito com ela mesma
         recusaHorarioOcupado(appointment.getPrescriber(), dados.dateTime(), dados.durationMinutes(), id);
         appointment.setDateTime(dados.dateTime());
@@ -153,12 +170,16 @@ public class AppointmentService {
         if (dados.durationMinutes() != null) {
             appointment.setDurationMinutes(dados.durationMinutes());
         }
-        return appointmentRepository.save(appointment);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
+                savedAppointment.getPatient().getId());
+        return savedAppointment;
     }
 
     // as consultas de um paciente dentro da janela do grafico. cancelada
     // fica de fora: consulta que n aconteceu n explica mudanca nenhuma
     public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod periodo) {
+        auditService.recordChartView(patientId);
         LocalDate hoje = LocalDate.now();
         LocalDate inicio = hoje.minusDays(periodo.getDays());
 
@@ -194,14 +215,16 @@ public class AppointmentService {
 
     // consultas de um paciente da mais recente pra mais antiga
     public List<Appointment> getByPatientId(Long patientId) {
+        auditService.recordChartView(patientId);
         return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId);
     }
 
     // cancelar n apaga: a consulta fica no historico com status
     // CANCELADA. apagar perderia o registro de que ela existiu, e o
     // paciente e o prescritor precisam poder olhar pra tras e ver isso
+    @Transactional
     public Appointment cancel(Long id) {
-        Appointment appointment = getById(id);
+        Appointment appointment = findAppointment(id);
 
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new IllegalArgumentException("Esta consulta já está cancelada");
@@ -212,6 +235,7 @@ public class AppointmentService {
 
         appointment.setStatus(AppointmentStatus.CANCELADA);
         Appointment cancelada = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, cancelada.getId(), cancelada.getPatient().getId());
         avisaDoCancelamento(cancelada);
         return cancelada;
     }

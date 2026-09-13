@@ -1,11 +1,13 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.HamiltonScale;
 import dev.uffs.doisag.repository.HamiltonScaleRepository;
 import dev.uffs.doisag.enums.ScaleType;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -14,10 +16,13 @@ public class HamiltonScaleService {
     private final HamiltonScaleRepository hamiltonScaleRepository;
     // aqui vo injetar o serviço que controla as tarefas
     private final ScaleAssignmentService scaleAssignmentService;
+    private final AuditService auditService;
 
-    public HamiltonScaleService(HamiltonScaleRepository hamiltonScaleRepository, ScaleAssignmentService scaleAssignmentService) {
+    public HamiltonScaleService(HamiltonScaleRepository hamiltonScaleRepository, ScaleAssignmentService scaleAssignmentService,
+            AuditService auditService) {
         this.hamiltonScaleRepository = hamiltonScaleRepository;
         this.scaleAssignmentService = scaleAssignmentService;
+        this.auditService = auditService;
     }
 
     // método para calcular a pontuação total
@@ -40,6 +45,7 @@ public class HamiltonScaleService {
     }
 
     // CREATE
+    @Transactional
     public HamiltonScale create(HamiltonScale hamiltonScale) {
         // calcula e define a pontuação total antes de salvar
         Integer totalScore = calculateTotalScore(hamiltonScale);
@@ -50,6 +56,7 @@ public class HamiltonScaleService {
 
         // a gente avisa o outro service pra marcar a tarefa como concluida
         if (savedScale.getPatient() != null) {
+            auditService.recordCreation(AuditRecordType.ESCALA_HAMILTON, savedScale.getId(), savedScale.getPatient().getId());
             scaleAssignmentService.completeAssignedScale(
                     savedScale.getPatient().getId(),
                     ScaleType.ESCALA_HAMILTON // aqui coloco o tipo de escala
@@ -61,12 +68,14 @@ public class HamiltonScaleService {
 
     // READ BY ID
     public HamiltonScale getById(Long id) {
-        return hamiltonScaleRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
-
+        HamiltonScale scale = hamiltonScaleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Escala não encontrada com o id: " + id));
+        auditService.recordChartView(scale.getPatient().getId());
+        return scale;
     }
 
     // UPDATE
+    @Transactional
     public HamiltonScale update(Long id, HamiltonScale scaleDetails) {
         // busca a escala ou lança uma exceção
         HamiltonScale existingScale = hamiltonScaleRepository.findById(id)
@@ -93,6 +102,8 @@ public class HamiltonScaleService {
         Integer totalScore = calculateTotalScore(existingScale);
         existingScale.setHamScore(totalScore);
 
-        return hamiltonScaleRepository.save(existingScale);
+        HamiltonScale savedRecord = hamiltonScaleRepository.save(existingScale);
+        auditService.recordChange(AuditRecordType.ESCALA_HAMILTON, savedRecord.getId(), savedRecord.getPatient().getId());
+        return savedRecord;
     }
 }

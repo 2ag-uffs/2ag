@@ -3,11 +3,13 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.PrescriptionUpdateDTO;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.model.Appointment;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,14 +18,18 @@ import java.util.Optional;
 public class PrescriptionService {
     private final PrescriptionRepository prescriptionRepository;
     private final AppointmentRepository appointmentRepository; // precisa do repo de appointment
+    private final AuditService auditService;
 
     // injeto via construtor
-    public PrescriptionService(PrescriptionRepository prescriptionRepository, AppointmentRepository appointmentRepository) {
+    public PrescriptionService(PrescriptionRepository prescriptionRepository, AppointmentRepository appointmentRepository,
+                               AuditService auditService) {
         this.prescriptionRepository = prescriptionRepository;
         this.appointmentRepository = appointmentRepository;
+        this.auditService = auditService;
     }
 
     // CREATE
+    @Transactional
     public Prescription create(PrescriptionCreateDTO dto, Long appointmentId) {
         // busca a consulta ou lança nossa exceção personalizada
         Appointment appointment = appointmentRepository.findById(appointmentId)
@@ -60,21 +66,28 @@ public class PrescriptionService {
         newPrescription.setAppointment(appointment);
 
         // salva a nova prescrição já com a FK preenchida
-        return prescriptionRepository.save(newPrescription);
+        Prescription savedPrescription = prescriptionRepository.save(newPrescription);
+        auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
+                appointment.getPatient().getId());
+        return savedPrescription;
     }
 
     // prescricoes de um paciente da consulta mais recente pra mais antiga
     public List<Prescription> getByPatientId(Long patientId) {
+        auditService.recordChartView(patientId);
         return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDesc(patientId);
     }
 
     // READ BY ID
     public Prescription getById(Long id) {
-        return prescriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
+        Prescription prescription = prescriptionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
+        auditService.recordChartView(prescription.getAppointment().getPatient().getId());
+        return prescription;
     }
 
     // UPDATE
+    @Transactional
     public Prescription update(Long id, PrescriptionUpdateDTO dto) {
         // busca a prescrição ou lança uma exceção
         Prescription prescription = prescriptionRepository.findById(id)
@@ -89,10 +102,15 @@ public class PrescriptionService {
         prescription.setSpectrum(dto.spectrum());
         prescription.setObservation(dto.observation());
 
-        return prescriptionRepository.save(prescription);
+        Prescription savedPrescription = prescriptionRepository.save(prescription);
+        auditService.recordChange(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
+                savedPrescription.getAppointment().getPatient().getId());
+        return savedPrescription;
     }
 
     public List<Prescription> getByAppointmentId(Long appointmentId) {
+        appointmentRepository.findById(appointmentId)
+                .ifPresent(appointment -> auditService.recordChartView(appointment.getPatient().getId()));
         return prescriptionRepository.findByAppointmentId(appointmentId);
     }
 }

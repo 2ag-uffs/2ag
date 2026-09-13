@@ -29,16 +29,18 @@ public class PatientService {
     private final PatientInviteService patientInviteService;
     private final ConsentTermService consentTermService;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
     private NotificationService notificationService;
 
     public PatientService(PatientRepository patientRepository, UsersRepository usersRepository,
                           PatientInviteService patientInviteService, ConsentTermService consentTermService,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder, AuditService auditService) {
         this.patientRepository = patientRepository;
         this.usersRepository = usersRepository;
         this.patientInviteService = patientInviteService;
         this.consentTermService = consentTermService;
         this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     @Autowired
@@ -46,9 +48,12 @@ public class PatientService {
         this.notificationService = notificationService;
     }
 
+    // abrir os dados do paciente conta como abrir o prontuario
     public Patient getById(Long id) {
-        return patientRepository.findById(id)
+        Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
+        auditService.recordChartView(patient.getId());
+        return patient;
     }
 
     public List<Patient> getPatientsByPrescriberId(Long prescriberId) {

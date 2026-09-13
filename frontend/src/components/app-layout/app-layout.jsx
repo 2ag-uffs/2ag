@@ -1,5 +1,5 @@
 import {NavLink, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
-import {FiArrowLeft, FiBell, FiCalendar, FiHome, FiLogOut, FiTrendingUp, FiUser, FiUsers} from "react-icons/fi";
+import {FiArrowLeft, FiBell, FiCalendar, FiHome, FiLogOut, FiShield, FiTrendingUp, FiUser, FiUsers} from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
 import {getLoggedUser, logout} from "../../services/api.js";
 import styles from "./app-layout.module.css";
@@ -23,9 +23,11 @@ const MENU_BY_ROLE = {
     ],
     ADMIN: [
         {path: "/admin", label: "Prescritores", icon: FiUsers},
+        {path: "/admin/auditoria", label: "Auditoria", icon: FiShield},
     ],
 };
 
+// os links usam end pra /admin n ficar marcado quando a tela aberta eh /admin/auditoria
 function topLinkClass({isActive}) {
     return isActive ? styles.menuLink + " " + styles.menuLinkActive : styles.menuLink;
 }
@@ -80,7 +82,7 @@ export default function AppLayout() {
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         return (
-                            <NavLink key={item.path} to={item.path} className={topLinkClass}>
+                            <NavLink key={item.path} to={item.path} end={true} className={topLinkClass}>
                                 <Icon/>
                                 <span className={styles.menuLabel}>{item.label}</span>
                             </NavLink>
@@ -108,7 +110,7 @@ export default function AppLayout() {
                 {menuItems.map((item) => {
                     const Icon = item.icon;
                     return (
-                        <NavLink key={item.path} to={item.path} className={bottomLinkClass}>
+                        <NavLink key={item.path} to={item.path} end={true} className={bottomLinkClass}>
                             <Icon/>
                             <span>{item.label}</span>
                         </NavLink>

@@ -1,0 +1,11 @@
+/* auditoria do administrador */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.subtitle {
+    color: var(--color-text-secondary);
+}

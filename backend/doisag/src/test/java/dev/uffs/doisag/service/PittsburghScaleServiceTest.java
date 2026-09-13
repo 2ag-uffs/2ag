@@ -26,6 +26,9 @@ class PittsburghScaleServiceTest {
     @Mock
     private ScaleAssignmentService scaleAssignmentService;
 
+    @Mock
+    private AuditService auditService;
+
     @InjectMocks
     private PittsburghScaleService pittsburghScaleService;
 

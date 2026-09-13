@@ -24,15 +24,18 @@ public class DashboardService {
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
     private final AssignedScaleRepository assignedScaleRepository;
+    private final AuditService auditService;
 
     public DashboardService(
             PatientRepository patientRepository,
             AppointmentRepository appointmentRepository,
-            AssignedScaleRepository assignedScaleRepository
+            AssignedScaleRepository assignedScaleRepository,
+            AuditService auditService
     ) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
         this.assignedScaleRepository = assignedScaleRepository;
+        this.auditService = auditService;
     }
 
 
@@ -77,6 +80,7 @@ public class DashboardService {
 
     //método que monta o dashboard do paciente
     public PatientDashboardDTO getPatientDashboard(Long patientId) {
+        auditService.recordChartView(patientId);
 
         // implementar a lógica pra buscar consultas futuras do paciente
         List<PatientDashboardDTO.UpcomingAppointmentDTO> upcomingAppointments = Collections.emptyList();

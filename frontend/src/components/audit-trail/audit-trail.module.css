@@ -1,0 +1,82 @@
+/* trilha de auditoria usada pelo prescritor e pelo administrador */
+
+.trail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.filter {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.filter > div {
+    flex: 1 1 10rem;
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.filterButton {
+    flex: 0 0 auto;
+    padding: 0 1.25rem;
+}
+
+.status {
+    color: var(--color-text-secondary);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+}
+
+.item {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.moment {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    min-width: 7.5rem;
+}
+
+.details {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.details span {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.pagination {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.pageButton {
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+    flex: 0 0 auto;
+    padding: 0 1rem;
+}
+
+.pageButton:hover:not(:disabled) {
+    background-color: var(--color-surface-alt);
+}
