@@ -301,7 +301,7 @@
     color: var(--color-primary);
 }
 
-.appointment-type-badge.telemedicina {
+.appointment-type-badge.remota {
     background-color: rgba(191, 102, 63, 0.2);
     color: var(--color-terracotta-dark);
 }

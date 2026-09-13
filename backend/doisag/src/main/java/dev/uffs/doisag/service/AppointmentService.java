@@ -57,6 +57,9 @@ public class AppointmentService {
         appointment.setBloodPressure(dados.bloodPressure());
         appointment.setWeight(dados.weight());
         appointment.setHeight(dados.height());
+        // sem duracao a grade da agenda n sabe ate quando o horario
+        // esta ocupado, entao uma hora eh o padrao
+        appointment.setDurationMinutes(dados.durationMinutes() == null ? 60 : dados.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
@@ -106,6 +109,9 @@ public class AppointmentService {
         appointment.setBloodPressure(dados.bloodPressure());
         appointment.setWeight(dados.weight());
         appointment.setHeight(dados.height());
+        if (dados.durationMinutes() != null) {
+            appointment.setDurationMinutes(dados.durationMinutes());
+        }
         return appointmentRepository.save(appointment);
     }
 

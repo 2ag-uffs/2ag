@@ -47,6 +47,10 @@ public class Appointment {
     private Float weight;
     private Integer height;
 
+    // quanto tempo a consulta ocupa na agenda, em minutos. a tela ja
+    // perguntava isso e a resposta era descartada
+    private Integer durationMinutes;
+
     public String getPhysicalExam() {
         return physicalExam;
     }
@@ -85,6 +89,14 @@ public class Appointment {
 
     public void setHeight(Integer height) {
         this.height = height;
+    }
+
+    public Integer getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(Integer durationMinutes) {
+        this.durationMinutes = durationMinutes;
     }
     // relacionamento n:1, muitas consultas podem ser de um paciente
     @ManyToOne(fetch = FetchType.LAZY)

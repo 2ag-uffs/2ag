@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from 'react';
 import "../../styles/colors.css";
 import "../../styles/fonts.css";
 import "../../styles/button.css";
@@ -7,6 +7,39 @@ import "./agendamento-consulta-prescritor.css";
 import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
+import {apiService, ApiError} from "../../services/api.js";
+
+// o toISOString devolve a data em utc, entao aqui no brasil ele troca o
+// dia depois das 21h. a agenda compara data com data, entao precisa da
+// data local
+const dataLocal = (date) => {
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, "0");
+    const dia = String(date.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+};
+
+// a api guarda um instante so (dateTime) mais a duracao. a agenda
+// trabalha com data, hora de inicio e hora de fim, entao a conversao
+// fica aqui na borda, em vez de espalhada pela tela
+const daApi = (consulta) => {
+    const duracao = consulta.durationMinutes || 60;
+    const inicio = new Date(consulta.dateTime);
+    const fim = new Date(inicio.getTime() + duracao * 60000);
+    const hhmm = (d) => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    return {
+        id: consulta.id,
+        pacienteId: consulta.patientId,
+        pacienteNome: consulta.patientName,
+        data: dataLocal(inicio),
+        horarioInicio: hhmm(inicio),
+        horarioFim: hhmm(fim),
+        tipo: consulta.modality === "REMOTA" ? "remota" : "presencial",
+        status: consulta.status,
+        observacoes: consulta.clinicalObservation || "",
+        duracao,
+    };
+};
 
 // atencao: esta tela ainda n fala com a api. as consultas ficam so no
 // estado do componente e somem quando a pagina recarrega. por isso os
@@ -15,7 +48,11 @@ export default function AgendamentoPrescritor() {
     const navigate = useNavigate();
 
     const [aviso, setAviso] = useState(null);
+    const [erro, setErro] = useState(null);
+    const [carregando, setCarregando] = useState(true);
+    const [salvando, setSalvando] = useState(false);
     const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
+    const [observacoesEdicao, setObservacoesEdicao] = useState("");
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
@@ -30,74 +67,29 @@ export default function AgendamentoPrescritor() {
     const [observations, setObservations] = useState("");
     const [patientSearch, setPatientSearch] = useState("");
 
-    // Mock data para pacientes
-    const patients = [
-        {
-            id: 1,
-            nome: "João Silva",
-            email: "joao@email.com",
-            telefone: "(11) 99999-9999",
-            ultimaConsulta: "2025-05-01"
-        },
-        {
-            id: 2,
-            nome: "Maria Santos",
-            email: "maria@email.com",
-            telefone: "(11) 88888-8888",
-            ultimaConsulta: "2025-04-28"
-        },
-        {
-            id: 3,
-            nome: "Ana Costa",
-            email: "ana@email.com",
-            telefone: "(11) 77777-7777",
-            ultimaConsulta: "2025-05-03"
-        },
-        {
-            id: 4,
-            nome: "Pedro Lima",
-            email: "pedro@email.com",
-            telefone: "(11) 66666-6666",
-            ultimaConsulta: "2025-04-30"
-        }
-    ];
+    const [patients, setPatients] = useState([]);
+    const [appointments, setAppointments] = useState([]);
 
-    // Mock data para agendamentos
-    const [appointments, setAppointments] = useState([
-        {
-            id: 1,
-            pacienteId: 1,
-            pacienteNome: "João Silva",
-            data: "2025-05-08",
-            horarioInicio: "09:00",
-            horarioFim: "10:00",
-            tipo: "presencial",
-            status: "confirmado",
-            observacoes: "Consulta de acompanhamento"
-        },
-        {
-            id: 2,
-            pacienteId: 2,
-            pacienteNome: "Maria Santos",
-            data: "2025-05-08",
-            horarioInicio: "10:30",
-            horarioFim: "11:30",
-            tipo: "telemedicina",
-            status: "agendado",
-            observacoes: "Primeira consulta"
-        },
-        {
-            id: 3,
-            pacienteId: 3,
-            pacienteNome: "Ana Costa",
-            data: "2025-05-09",
-            horarioInicio: "14:00",
-            horarioFim: "15:00",
-            tipo: "presencial",
-            status: "confirmado",
-            observacoes: "Revisão de prescrição"
+    // carrega os pacientes do prescritor e as consultas dele.
+    // antes as duas listas eram fixas no codigo e sumiam ao recarregar
+    const carregar = useCallback(async () => {
+        try {
+            const [consultas, pacientes] = await Promise.all([
+                apiService.get("/consulta"),
+                apiService.get("/paciente"),
+            ]);
+            setAppointments(consultas.map(daApi));
+            setPatients(pacientes);
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : "Não foi possível carregar a agenda.");
+        } finally {
+            setCarregando(false);
         }
-    ]);
+    }, []);
+
+    useEffect(() => {
+        carregar();
+    }, [carregar]);
 
     // Horários de trabalho
     const workingHours = {
@@ -137,7 +129,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const isTimeSlotOccupied = (date, time) => {
-        const dateString = date.toISOString().split('T')[0];
+        const dateString = dataLocal(date);
         return appointments.some(apt =>
             apt.data === dateString &&
             apt.horarioInicio <= time &&
@@ -146,7 +138,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const getAppointmentAtTime = (date, time) => {
-        const dateString = date.toISOString().split('T')[0];
+        const dateString = dataLocal(date);
         return appointments.find(apt =>
             apt.data === dateString &&
             apt.horarioInicio <= time &&
@@ -158,6 +150,7 @@ export default function AgendamentoPrescritor() {
         if (isTimeSlotOccupied(date, time)) {
             const appointment = getAppointmentAtTime(date, time);
             setEditingAppointment(appointment);
+            setObservacoesEdicao(appointment.observacoes);
             setShowEditModal(true);
         } else {
             setSelectedDate(date);
@@ -166,59 +159,88 @@ export default function AgendamentoPrescritor() {
         }
     };
 
-    const handleCreateAppointment = () => {
+    const handleCreateAppointment = async () => {
         if (!selectedPatient || !selectedTimeSlot) {
-            setAviso("Selecione um paciente e um horário.");
+            setAviso(null);
+            setErro("Selecione um paciente e um horário.");
             return;
         }
 
-        const endTime = new Date(`2000-01-01T${selectedTimeSlot}`);
-        endTime.setMinutes(endTime.getMinutes() + duration);
-        const endTimeString = endTime.toTimeString().slice(0, 5);
-
-        const newAppointment = {
-            id: appointments.length + 1,
-            pacienteId: selectedPatient.id,
-            pacienteNome: selectedPatient.nome,
-            data: selectedDate.toISOString().split('T')[0],
-            horarioInicio: selectedTimeSlot,
-            horarioFim: endTimeString,
-            tipo: appointmentType,
-            status: "agendado",
-            observacoes: observations
-        };
-
-        setAppointments([...appointments, newAppointment]);
-
-        setAviso(
-            `Consulta de ${selectedPatient.nome} marcada para ` +
-            `${selectedDate.toLocaleDateString("pt-BR")} às ${selectedTimeSlot}.`,
-        );
-
-        // Reset form
-        setShowNewAppointmentModal(false);
-        setSelectedPatient(null);
-        setObservations("");
-        setPatientSearch("");
+        setErro(null);
+        setSalvando(true);
+        try {
+            await apiService.post("/consulta", {
+                patientId: selectedPatient.id,
+                dateTime: `${dataLocal(selectedDate)}T${selectedTimeSlot}:00`,
+                modality: appointmentType === "remota" ? "REMOTA" : "PRESENCIAL",
+                status: "AGENDADA",
+                clinicalObservation: observations,
+                durationMinutes: duration,
+            });
+            await carregar();
+            setAviso(
+                `Consulta de ${selectedPatient.name} marcada para ` +
+                `${selectedDate.toLocaleDateString("pt-BR")} às ${selectedTimeSlot}.`,
+            );
+            setShowNewAppointmentModal(false);
+            setSelectedPatient(null);
+            setObservations("");
+            setPatientSearch("");
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
+        } finally {
+            setSalvando(false);
+        }
     };
 
-    const handleEditAppointment = () => {
-        setAviso(`Agendamento de ${editingAppointment.pacienteNome} alterado.`);
-        setShowEditModal(false);
-        setEditingAppointment(null);
+    // o put pede a consulta inteira, n so o campo mexido, entao o resto
+    // vai de volta do jeito que veio
+    const handleEditAppointment = async () => {
+        setErro(null);
+        setSalvando(true);
+        try {
+            await apiService.put(`/consulta/${editingAppointment.id}`, {
+                patientId: editingAppointment.pacienteId,
+                dateTime: `${editingAppointment.data}T${editingAppointment.horarioInicio}:00`,
+                modality: editingAppointment.tipo === "remota" ? "REMOTA" : "PRESENCIAL",
+                status: editingAppointment.status,
+                clinicalObservation: observacoesEdicao,
+                durationMinutes: editingAppointment.duracao,
+            });
+            await carregar();
+            setAviso(`Agendamento de ${editingAppointment.pacienteNome} alterado.`);
+            setShowEditModal(false);
+            setEditingAppointment(null);
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : "Não foi possível alterar a consulta.");
+        } finally {
+            setSalvando(false);
+        }
     };
 
-    // o confirm do navegador virou modal, quem pergunta eh o botao
-    const handleCancelAppointment = () => {
+    // o backend trata cancelar como apagar, e eh o delete que dispara a
+    // notificacao pro paciente. existe um status CANCELADA no enum, que
+    // seria melhor por guardar o registro, mas isso eh decisao do modelo
+    const handleCancelAppointment = async () => {
         setConfirmandoCancelamento(false);
-        setAppointments(appointments.filter(apt => apt.id !== editingAppointment.id));
-        setAviso(`Consulta de ${editingAppointment.pacienteNome} cancelada.`);
-        setShowEditModal(false);
-        setEditingAppointment(null);
+        const nome = editingAppointment.pacienteNome;
+        setErro(null);
+        setSalvando(true);
+        try {
+            await apiService.delete(`/consulta/${editingAppointment.id}`);
+            await carregar();
+            setAviso(`Consulta de ${nome} cancelada.`);
+            setShowEditModal(false);
+            setEditingAppointment(null);
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : "Não foi possível cancelar a consulta.");
+        } finally {
+            setSalvando(false);
+        }
     };
 
     const filteredPatients = patients.filter(patient =>
-        patient.nome.toLowerCase().includes(patientSearch.toLowerCase())
+        patient.name.toLowerCase().includes(patientSearch.toLowerCase())
     );
 
     const formatDate = (date) => {
@@ -230,7 +252,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const getTodayAppointments = () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = dataLocal(new Date());
         return appointments.filter(apt => apt.data === today);
     };
 
@@ -258,6 +280,8 @@ export default function AgendamentoPrescritor() {
             />
 
             <main className="dashboard-main">
+                {carregando && <p>Carregando agenda...</p>}
+                {erro && <p className="aviso aviso--atencao">{erro}</p>}
                 {aviso && <p className="aviso">{aviso}</p>}
                 <div className="agendamento-header">
                     <div className="dashboard-welcome">
@@ -400,12 +424,12 @@ export default function AgendamentoPrescritor() {
                                                 className={`patient-item ${selectedPatient?.id === patient.id ? 'selected' : ''}`}
                                                 onClick={() => {
                                                     setSelectedPatient(patient);
-                                                    setPatientSearch(patient.nome);
+                                                    setPatientSearch(patient.name);
                                                 }}
                                             >
                                                 <div className="patient-info">
-                                                    <h4>{patient.nome}</h4>
-                                                    <p>Última consulta: {new Date(patient.ultimaConsulta).toLocaleDateString("pt-BR")}</p>
+                                                    <h4>{patient.name}</h4>
+                                                    <p>{patient.email}</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -428,11 +452,11 @@ export default function AgendamentoPrescritor() {
                                     <label className="radio-option">
                                         <input
                                             type="radio"
-                                            value="telemedicina"
-                                            checked={appointmentType === "telemedicina"}
+                                            value="remota"
+                                            checked={appointmentType === "remota"}
                                             onChange={(e) => setAppointmentType(e.target.value)}
                                         />
-                                        <span>Telemedicina</span>
+                                        <span>Remota</span>
                                     </label>
                                 </div>
                             </div>
@@ -467,10 +491,12 @@ export default function AgendamentoPrescritor() {
                                 Cancelar
                             </button>
                             <button
+                                type="button"
                                 className="button"
                                 onClick={handleCreateAppointment}
+                                disabled={salvando}
                             >
-                                Agendar Consulta
+                                {salvando ? "Agendando..." : "Agendar Consulta"}
                             </button>
                         </div>
                     </div>
@@ -502,7 +528,8 @@ export default function AgendamentoPrescritor() {
                             <div className="form-group">
                                 <label>Observações</label>
                                 <textarea
-                                    defaultValue={editingAppointment.observacoes}
+                                    value={observacoesEdicao}
+                                    onChange={(e) => setObservacoesEdicao(e.target.value)}
                                     placeholder="Observações sobre a consulta..."
                                     rows="3"
                                 />
@@ -523,10 +550,12 @@ export default function AgendamentoPrescritor() {
                                 Fechar
                             </button>
                             <button
+                                type="button"
                                 className="button"
                                 onClick={handleEditAppointment}
+                                disabled={salvando}
                             >
-                                Salvar Alterações
+                                {salvando ? "Salvando..." : "Salvar Alterações"}
                             </button>
                         </div>
                     </div>

@@ -104,7 +104,7 @@ export default function AgendamentoConsultaPaciente() {
         const consulta = {
             patientId: usuarioLogado.id,
             dateTime: `${selectedDate}T${selectedTime}`,
-            modality: consultaType === "presencial" ? "PRESENCIAL" : "TELEMEDICINA",
+            modality: consultaType === "presencial" ? "PRESENCIAL" : "REMOTA",
             clinicalObservation: observacoes,
         };
 
@@ -288,8 +288,8 @@ export default function AgendamentoConsultaPaciente() {
                                     <label className="radio-option">
                                         <input
                                             type="radio"
-                                            value="telemedicina"
-                                            checked={consultaType === "telemedicina"}
+                                            value="remota"
+                                            checked={consultaType === "remota"}
                                             onChange={(e) => setConsultaType(e.target.value)}
                                         />
                                         <span>Telemedicina</span>
@@ -328,7 +328,7 @@ export default function AgendamentoConsultaPaciente() {
                                         <strong>Horário:</strong> {selectedTime}
                                     </div>
                                     <div className="resumo-item">
-                                        <strong>Tipo:</strong> {consultaType === "presencial" ? "Presencial" : "Telemedicina"}
+                                        <strong>Tipo:</strong> {consultaType === "presencial" ? "Presencial" : "Remota"}
                                     </div>
                                 </div>
 

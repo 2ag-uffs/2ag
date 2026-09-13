@@ -27,6 +27,9 @@ public record AppointmentCreateDTO(
         String complementaryExams,
         String bloodPressure,
         Float weight,
-        Integer height
+        Integer height,
+
+        // quanto tempo a consulta ocupa na agenda
+        Integer durationMinutes
 ) {
 }
