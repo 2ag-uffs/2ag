@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.util.TimeZone;
 
 @SpringBootApplication
 // liga o preenchimento automatico de createdAt e updatedAt
@@ -26,6 +27,9 @@ import java.time.LocalDate;
 public class DoisagApplication {
 
 	public static void main(String[] args) {
+		// o sistema inteiro trabalha no horario de brasilia
+		// sem isso hoje e agora dependem do fuso da maquina onde a api roda
+		TimeZone.setDefault(TimeZone.getTimeZone("America/Sao_Paulo"));
 		SpringApplication.run(DoisagApplication.class, args);
 	}
 

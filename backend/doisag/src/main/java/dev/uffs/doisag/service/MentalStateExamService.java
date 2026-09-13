@@ -1,8 +1,8 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.dto.MentalStateExamCreateDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.MentalStateExam;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.MentalStateExamRepository;
@@ -44,7 +44,7 @@ public class MentalStateExamService {
     // entao ele nasce amarrado nela
     public MentalStateExam create(MentalStateExamCreateDTO dados, Long appointmentId) {
         var appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
 
         MentalStateExam exam = new MentalStateExam();
         exam.setAppointment(appointment);
@@ -72,7 +72,7 @@ public class MentalStateExamService {
     // READ BY ID
     public MentalStateExam getById(Long id) {
         return mentalStateExamRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
     }
 
     // UPDATE

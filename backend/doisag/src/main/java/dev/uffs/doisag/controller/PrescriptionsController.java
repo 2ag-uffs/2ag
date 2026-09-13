@@ -3,7 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.dto.PrescriptionUpdateDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.service.PrescriptionService;
 import org.springframework.http.HttpStatus;

@@ -1,6 +1,6 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.TEALog;
 import dev.uffs.doisag.repository.TEALogRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -60,7 +60,7 @@ public class TEALogService {
     // READ BY ID
     public TEALog getById(Long id) {
         return teaLogRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
     }
 
     // UPDATE

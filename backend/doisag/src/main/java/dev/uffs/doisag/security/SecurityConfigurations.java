@@ -62,6 +62,8 @@ public class SecurityConfigurations {
                     // permite o acesso público ao endpoint de login e register
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
+                    // verificacao de saude usada pelo docker
+                    req.requestMatchers(HttpMethod.GET, "/health").permitAll();
                     // qualquer outra requisição exige autenticação, e a regra
                     // de permissao vem do @PreAuthorize do metodo
                     req.anyRequest().authenticated();

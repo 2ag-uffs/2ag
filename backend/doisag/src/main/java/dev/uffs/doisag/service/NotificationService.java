@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.infra.ForbiddenException;
 import dev.uffs.doisag.dto.NotificationDTO;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Users;
@@ -32,7 +33,7 @@ public class NotificationService {
                 .orElseThrow(() -> new EntityNotFoundException("Notificação não encontrada"));
 
         if (!notification.getUser().getId().equals(userId)) {
-            throw new SecurityException("Acesso negado à notificação");
+            throw new ForbiddenException("Acesso negado à notificação");
         }
         notification.setRead(true);
         notificationRepository.save(notification);
@@ -53,7 +54,7 @@ public class NotificationService {
                 .orElseThrow(() -> new EntityNotFoundException("Notificação não encontrada"));
 
         if (!notification.getUser().getId().equals(userId)) {
-            throw new SecurityException("Acesso negado à notificação");
+            throw new ForbiddenException("Acesso negado à notificação");
         }
         notificationRepository.deleteById(notificationId);
     }

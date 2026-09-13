@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import dev.uffs.doisag.dto.CompletedScaleInfoDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
 import dev.uffs.doisag.dto.PendingScaleInfoDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 
 
 @Service
@@ -119,7 +119,7 @@ public class ScaleAssignmentService {
     public PatientScalesPageDTO getPatientScalesPageData(Long patientId) {
         // busca o paciente pra pegar o nome dele
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 
         // busco as escalas pendentes
         List<PendingScaleInfoDTO> pending = assignedScaleRepository

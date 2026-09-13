@@ -1,6 +1,6 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.FollowUp;
 import dev.uffs.doisag.repository.FollowUpRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -47,7 +47,7 @@ public class FollowUpService {
     // READ BY ID
     public FollowUp getById(Long id) {
         return followUpRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
     }
 
     // UPDATE

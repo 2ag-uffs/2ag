@@ -1,6 +1,6 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
@@ -51,7 +51,7 @@ public class AppointmentService {
     // entao n da pra marcar consulta na agenda de outro profissional
     public Appointment create(AppointmentCreateDTO dados, Prescriber prescritorLogado) {
         Patient patient = patientRepository.findById(dados.patientId())
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
 
         Prescriber prescriber = prescritorLogado != null ? prescritorLogado : patient.getPrescriber();
         if (prescriber == null) {
@@ -110,7 +110,7 @@ public class AppointmentService {
 
     public Appointment getById(Long id) {
         return appointmentRepository.findById(id).
-                orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
 
     }
 

@@ -4,7 +4,7 @@ import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AssignmentStatus;
 import dev.uffs.doisag.enums.ScaleType;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.AssignedScale;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -51,7 +51,7 @@ public class TreatmentProtocolService {
 
     public TreatmentProtocol create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
@@ -87,7 +87,7 @@ public class TreatmentProtocolService {
 
     public TreatmentProtocol getActiveByPatient(Long patientId) {
         return protocolRepository.findFirstByPatientIdAndActiveTrue(patientId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new NotFoundException(
                         "Nenhum acompanhamento em andamento para o paciente " + patientId));
     }
 

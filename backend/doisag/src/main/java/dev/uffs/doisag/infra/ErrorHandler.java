@@ -4,130 +4,132 @@ import dev.uffs.doisag.dto.ErrorResponseDTO;
 import dev.uffs.doisag.dto.ValidationErrorDetail;
 import dev.uffs.doisag.dto.ValidationResponseDTO;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
-import java.util.stream.Collectors;
+import java.util.List;
 
-// fiz para capturar todas as exceções da api
+// transforma qualquer erro da api numa resposta json no mesmo formato
+// quem chama sempre recebe status mensagem e caminho
 @RestControllerAdvice
 public class ErrorHandler {
 
-    // helper pra construir a resposta de erro padronizada
-    private ErrorResponseDTO buildErrorResponse(HttpStatus status, String message, HttpServletRequest request) {
-        return new ErrorResponseDTO(
+    private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
+
+    // registro q n existe
+    @ExceptionHandler({NotFoundException.class, EntityNotFoundException.class})
+    public ResponseEntity<ErrorResponseDTO> handleNotFound(RuntimeException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    }
+
+    // rota q n existe na api
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnknownRoute(NoResourceFoundException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, "Rota não encontrada", request);
+    }
+
+    // logado mas sem permissao pra aquele recurso
+    @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
+    public ResponseEntity<ErrorResponseDTO> handleForbidden(RuntimeException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Acesso negado", request);
+    }
+
+    // regra de negocio violada
+    // os modulos antigos ainda usam ValidationException e IllegalArgumentException pra isso
+    @ExceptionHandler({BusinessException.class, ValidationException.class, IllegalArgumentException.class})
+    public ResponseEntity<ErrorResponseDTO> handleBusinessRule(RuntimeException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    // requisicao mal montada como json quebrado tipo errado ou parametro faltando
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HandlerMethodValidationException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleBadRequest(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida. Confira os dados enviados", request);
+    }
+
+    // campos do dto q n passaram na validacao
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ValidationResponseDTO> handleInvalidFields(MethodArgumentNotValidException exception,
+                                                                     HttpServletRequest request) {
+        List<ValidationErrorDetail> fieldErrors = exception.getFieldErrors().stream()
+                .map(fieldError -> new ValidationErrorDetail(fieldError.getField(), fieldError.getDefaultMessage()))
+                .toList();
+
+        ValidationResponseDTO body = new ValidationResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "Confira os campos destacados",
+                request.getRequestURI(),
+                fieldErrors
+        );
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    // metodo http q a rota n aceita
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception,
+                                                                   HttpServletRequest request) {
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Método não permitido nesta rota", request);
+    }
+
+    // e-mail ou senha errados no login
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponseDTO> handleBadCredentials(BadCredentialsException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos", request);
+    }
+
+    // qualquer outra falha de autenticacao
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthentication(AuthenticationException exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar. Faça login novamente", request);
+    }
+
+    // registro duplicado ou ainda em uso por outro
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleDataConflict(DataIntegrityViolationException exception,
+                                                               HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, "Este registro já existe ou está em uso", request);
+    }
+
+    // erro q ninguem previu vira 500 e vai pro log com a pilha inteira
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception exception, HttpServletRequest request) {
+        log.error("erro inesperado em {}", request.getRequestURI(), exception);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro inesperado no servidor", request);
+    }
+
+    private ResponseEntity<ErrorResponseDTO> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
+        ErrorResponseDTO body = new ErrorResponseDTO(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,
                 request.getRequestURI()
         );
-    }
-
-    // trata 404 para qualquer ResourceNotFoundException que lançar
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDTO> handleResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
-    }
-
-    // trata 404 para a exceção padrão do jpa
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorResponseDTO> handleEntityNotFound(EntityNotFoundException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.NOT_FOUND, "Recurso não encontrado", request);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
-    }
-
-    // trata 400 para erros de validação de negócio (ex: email já existe)
-    @ExceptionHandler(jakarta.validation.ValidationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleBusinessValidation(jakarta.validation.ValidationException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
-    }
-
-    // trata 400 para argumentos inválidos (ex: enum não encontrado)
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
-    }
-
-    // trata 400 quando o json nem da pra ler: campo com tipo errado,
-    // enum com valor que n existe, data em formato invalido.
-    // sem isso o pega-tudo transformava erro do cliente em 500
-    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponseDTO> handleUnreadableBody(
-            org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.BAD_REQUEST,
-                "Corpo da requisição inválido. Verifique os campos enviados!", request);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
-    }
-
-    // trata 400 para falhas de validação de DTOs com @Valid
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationResponseDTO> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        // criei uma lista de objetos
-        var fieldErrors = ex.getFieldErrors().stream()
-                .map(error -> new ValidationErrorDetail(error.getField(), error.getDefaultMessage()))
-                .collect(Collectors.toList());
-
-        var responseDto = new ValidationResponseDTO(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "Erro de Validação",
-                request.getRequestURI(),
-                fieldErrors // aqui passamos a lista de erros
-        );
-        return ResponseEntity.badRequest().body(responseDto);
-    }
-
-    // trata 401 para falhas de autenticação (ex: token inválido)
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleAuthenticationError(AuthenticationException ex, HttpServletRequest request) {
-        String message = "Falha na autenticação. Verifique suas credenciais!";
-        var errorDto = buildErrorResponse(HttpStatus.UNAUTHORIZED, message, request);
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorDto);
-    }
-
-    // trata 401 para senha incorreta
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponseDTO> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos!", request);
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorDto);
-    }
-
-    // trata 403 quando o usuário está autenticado mas não tem permissão
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponseDTO> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        var errorDto = buildErrorResponse(HttpStatus.FORBIDDEN, "Acesso negado!", request);
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorDto);
-    }
-
-    // trata 409 para conflitos de dados no banco
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponseDTO> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
-        String message = "Erro de integridade de dados. O recurso pode já existir ou estar sendo usado!";
-        var errorDto = buildErrorResponse(HttpStatus.CONFLICT, message, request);
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorDto);
-    }
-
-    // pega-tudo: trata qualquer outra exceção não esperada como um erro 500
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDTO> handleGenericException(Exception ex, HttpServletRequest request) {
-        // loga o erro no console pra vc poder debugar
-        ex.printStackTrace();
-        String message = "Ocorreu um erro inesperado no servidor!";
-        var errorDto = buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, message, request);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorDto);
+        return ResponseEntity.status(status).body(body);
     }
 }

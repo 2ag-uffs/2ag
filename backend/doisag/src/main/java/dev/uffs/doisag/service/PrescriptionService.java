@@ -3,7 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.PrescriptionUpdateDTO;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
-import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.model.Appointment;
@@ -28,7 +28,7 @@ public class PrescriptionService {
     public Prescription create(PrescriptionCreateDTO dto, Long appointmentId) {
         // busca a consulta ou lança nossa exceção personalizada
         Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
 
         // cria a nova entidade a partir dos dados do DTO
         Prescription newPrescription = new Prescription();
@@ -72,14 +72,14 @@ public class PrescriptionService {
     // READ BY ID
     public Prescription getById(Long id) {
         return prescriptionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
     }
 
     // UPDATE
     public Prescription update(Long id, PrescriptionUpdateDTO dto) {
         // busca a prescrição ou lança uma exceção
         Prescription prescription = prescriptionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Prescrição não encontrada com o id: " + id));
+                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
 
         // atualiza os campos do objeto com os novos detalhes do DTO
         // garante que apenas os campos permitidos sejam alterados
