@@ -1,14 +1,9 @@
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import './historico-clinico-prescritor.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import Header from "../../components/header/header.jsx";
 import {apiService} from "../../services/api.js";
 
 export default function HistoricoClinicoPrescritor() {
-    const navigate = useNavigate();
     const location = useLocation();
     const { pacienteId } = useParams();
     // quem salvou algo em outra tela chega aqui com esse aviso
@@ -129,19 +124,9 @@ export default function HistoricoClinicoPrescritor() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pacienteId]);
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     if (loading) {
         return (
             <div className="historico-prescritor-page">
-                <Header
-                    title="Dr. Maria Santos - CRM 12345"
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
                 <main className="historico-main">
                     <div className="historico-title">
                         <h1>Histórico Clínico do Paciente</h1>
@@ -155,12 +140,6 @@ export default function HistoricoClinicoPrescritor() {
     if (error) {
         return (
             <div className="historico-prescritor-page">
-                <Header
-                    title="Dr. Maria Santos - CRM 12345"
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
                 <main className="historico-main">
                     <div className="historico-title">
                         <h1>Histórico Clínico do Paciente</h1>
@@ -176,12 +155,6 @@ export default function HistoricoClinicoPrescritor() {
 
     return (
         <div className="historico-prescritor-page">
-            <Header
-                title="Dr. Maria Santos - CRM 12345"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="historico-main">
                 {aviso && <p className="aviso">{aviso}</p>}

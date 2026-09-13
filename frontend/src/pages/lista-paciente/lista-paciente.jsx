@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import './lista-paciente.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function ListaPacientes() {
@@ -52,10 +48,6 @@ export default function ListaPacientes() {
         navigate(`/consulta?patientId=${patientId}`);
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     const filteredPacientes = pacientes.filter(paciente =>
         paciente.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -83,11 +75,6 @@ export default function ListaPacientes() {
 
     return (
         <div className="lista-pacientes-page">
-            <Header
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="lp-main">
                 <div className="lp-pacientes-header">

@@ -1,11 +1,6 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./diario-tea.css";
 
 // as mesmas quatro opcoes do formulario de dor, na ordem
@@ -62,7 +57,6 @@ export default function DiarioTea() {
 
     return (
         <div className="diario-tea">
-            <Header/>
             <main className="diario-tea__conteudo">
                 <h1>Acompanhamento semanal (TEA)</h1>
 

@@ -1,6 +1,5 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import "./diario-sono.css";
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
@@ -138,10 +137,6 @@ export default function DiarioSono() {
     };
 
 
-    const handleBack = () => {
-        navigate('/dashboard-paciente');
-    };
-
     // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
         setConfirmandoSaida(true);
@@ -149,10 +144,6 @@ export default function DiarioSono() {
 
     return (
         <div>
-            <Header
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}/>
             <div className="diario-sono-page">
                 <div className="diario-sono__content">
                     <div className="diario-sono__header">

@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import Modal from "../../components/modal/modal";
-import "../../styles/button.css";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/input.css";
 import "./dashboard-prescritor.css";
-import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function DashboardPrescritor() {
     const navigate = useNavigate();
@@ -15,7 +11,6 @@ export default function DashboardPrescritor() {
     const aviso = location.state && location.state.aviso;
 
     const [showModal, setShowModal] = useState(false);
-    const [prescritorInfo, setPrescritorInfo] = useState(null);
     const [dashboardData, setDashboardData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -31,11 +26,7 @@ export default function DashboardPrescritor() {
         }
 
         try {
-            const [prescritor, dashboard] = await Promise.all([
-                apiService.get(`/prescritor/${usuario.id}`),
-                apiService.get(`/dashboard/prescritor/${usuario.id}`),
-            ]);
-            setPrescritorInfo(prescritor);
+            const dashboard = await apiService.get(`/dashboard/prescritor/${usuario.id}`);
             setDashboardData(dashboard);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "Erro ao carregar o painel.");
@@ -47,12 +38,6 @@ export default function DashboardPrescritor() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-
-    const handleLogout = async (e) => {
-        e.preventDefault();
-        await logout();
-        navigate("/login");
-    };
 
     const handleNewConsult = (e) => {
         e.preventDefault();
@@ -69,11 +54,6 @@ export default function DashboardPrescritor() {
     const handleAgenda = (e) => {
         e.preventDefault();
         navigate("/agendamento-prescritor");
-    };
-
-    const handleNotificacoes = (e) => {
-        e.preventDefault();
-        navigate("/notificacoes-prescritor");
     };
 
     const handlePaciente = (e) => {
@@ -169,30 +149,6 @@ export default function DashboardPrescritor() {
 
     return (
         <div className="dashboard-prescritor">
-            <header className="dashboard-header">
-                <img
-                    src="/images/logotipo-icon-claro.svg"
-                    alt="Logo"
-                    className="logo"
-                />
-                <div className="dashboard-header__user">
-                    <span>
-                        {prescritorInfo?.name || "Nome do Doutor"} -{" "}
-                        {prescritorInfo?.registryType || "CRM"}{" "}
-                        {prescritorInfo?.registryNumber || "00000"}
-                    </span>
-                    <button
-                        className="button-secondary"
-                        onClick={handleNotificacoes}
-                    >
-                        Notificações
-                    </button>
-                    <button className="button-secondary" onClick={handleLogout}>
-                        Sair
-                    </button>
-                </div>
-            </header>
-
             <main className="dashboard-main">
                 {aviso && <p className="aviso">{aviso}</p>}
                 <div className="dashboard-welcome">

@@ -1,11 +1,6 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./escala-pittsburgh.css";
 
 // as frequencias do psqi, na ordem em que valem 0, 1, 2 e 3
@@ -110,7 +105,6 @@ export default function EscalaPittsburgh() {
 
     return (
         <div className="psqi">
-            <Header/>
             <main className="psqi__conteudo">
                 <h1>Índice de qualidade do sono de Pittsburgh</h1>
                 <p className="psqi__ajuda">

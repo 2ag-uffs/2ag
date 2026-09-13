@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import "../../styles/button.css";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/input.css";
 import "./dashboard-paciente.css";
-import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function DashboardPaciente() {
     const navigate = useNavigate();
@@ -40,15 +36,8 @@ export default function DashboardPaciente() {
             .finally(() => setIsLoading(false));
     }, [navigate]);
 
-    const handleLogout = async (e) => {
-        e.preventDefault();
-        await logout();
-        navigate("/login");
-    };
-
     const handleWeeklyMonitoring = () => navigate("/acompanhamento-paciente");
     const handleAgendarConsulta = () => navigate("/agendamento-consulta");
-    const handleNotificacoes = () => navigate("/notificacoes-paciente");
     const handleAnamnese = () => navigate("/anamnese");
     const handleProgresso = () => navigate("/progresso");
     const handleEscalas = () => {
@@ -78,28 +67,6 @@ export default function DashboardPaciente() {
 
     return (
         <div className="dashboard-paciente">
-            <header className="dashboard-header">
-                <div className="dashboard-header__logo">
-                    <img
-                        src="/images/logotipo-icon-claro.svg"
-                        alt="Logo"
-                        className="logo"
-                    />
-                </div>
-                <div className="dashboard-header__user">
-                    <span>Olá, {pacienteInfo?.name}</span>
-                    <button
-                        className="button-secondary"
-                        onClick={handleNotificacoes}
-                    >
-                        Notificações
-                    </button>
-                    <button className="button-secondary" onClick={handleLogout}>
-                        Sair
-                    </button>
-                </div>
-            </header>
-
             <main className="dashboard-main">
                 {aviso && <p className="aviso">{aviso}</p>}
                 <div className="dashboard-welcome">

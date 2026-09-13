@@ -11,11 +11,7 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
 import "./progresso.css";
 
 // o recharts precisa das cores como valor, n como var() do css.
@@ -160,7 +156,6 @@ export default function Progresso() {
     if (!patientId) {
         return (
             <div className="progresso">
-                <Header/>
                 <main className="progresso__conteudo">
                     <p className="progresso__erro">Não foi possível identificar o paciente.</p>
                 </main>
@@ -170,7 +165,6 @@ export default function Progresso() {
 
     return (
         <div className="progresso">
-            <Header/>
             <main className="progresso__conteudo">
                 <h1 className="progresso__titulo">Progresso do tratamento</h1>
 

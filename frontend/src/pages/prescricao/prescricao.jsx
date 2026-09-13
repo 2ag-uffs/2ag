@@ -1,11 +1,6 @@
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./prescricao.css";
 import {apiService, ApiError} from "../../services/api.js";
 import { useNavigate, useParams } from "react-router";
-import Header from "../../components/header/header.jsx";
 import React, { useState, useEffect } from "react";
 
 export default function Prescricao() {
@@ -13,7 +8,6 @@ export default function Prescricao() {
 
     // Estados para gerenciar dados
     const [patient, setPatient] = useState(null);
-    const [prescriber, setPrescriber] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -50,7 +44,6 @@ export default function Prescricao() {
             try {
                 const consulta = await apiService.get(`/consulta/${appointmentId}`);
                 setPatient({id: consulta.patientId, name: consulta.patientName});
-                setPrescriber({id: consulta.prescriberId, name: consulta.prescriberName});
             } catch (err) {
                 setError(err instanceof ApiError ? err.message : "Erro ao carregar dados da consulta");
             }
@@ -143,18 +136,8 @@ export default function Prescricao() {
         navigate("/dashboard-prescritor");
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     return (
         <div className="prescricao">
-            <Header
-                title={prescriber ? `Dr. ${prescriber.name} - ${prescriber.registryType} ${prescriber.registryNumber}` : "Carregando..."}
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
             <main className="prescricao-main">
                 <div className="precricao-title">
                     <h1>Nova Prescrição</h1>

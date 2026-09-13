@@ -1,13 +1,8 @@
 import {useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import "./login.css";
+import {homePathFor} from "../../app/role-home.js";
 import {apiService, setLoggedUser, ApiError} from "../../services/api.js";
-
-// tela inicial de cada perfil depois do login
-const HOME_BY_ROLE = {
-    PATIENT: "/dashboard-paciente",
-    PRESCRIBER: "/dashboard-prescritor",
-};
 
 export default function Login() {
     const navigate = useNavigate();
@@ -30,13 +25,7 @@ export default function Login() {
             setLoggedUser(null);
             const user = await apiService.post("/auth/login", {email: email, password: password});
             setLoggedUser(user);
-
-            const homePath = HOME_BY_ROLE[user.role];
-            if (homePath) {
-                navigate(homePath);
-            } else {
-                setError("Perfil de usuário não reconhecido.");
-            }
+            navigate(homePathFor(user), {replace: true});
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 setError(requestError.message);

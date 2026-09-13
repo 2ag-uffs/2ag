@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import './selecao-escalas.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import Header from "../../components/header/header.jsx";
 import {apiService} from "../../services/api.js";
 
 const ESCALAS_MAPEAMENTO = {
@@ -135,10 +131,6 @@ export default function SelecaoEscalas() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pacienteId]);
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     const handleSelecaoChange = (escalaId) => {
         setEscalasSelecionadas(prev => ({
             ...prev,
@@ -182,11 +174,6 @@ export default function SelecaoEscalas() {
     if (loading) {
         return (
             <div className="selecao-escalas">
-                <Header
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
                 <main className="selecao-main">
                     <div className="selecao-title">
                         <h1>Carregando...</h1>
@@ -200,11 +187,6 @@ export default function SelecaoEscalas() {
     if (error) {
         return (
             <div className="selecao-escalas">
-                <Header
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
                 <main className="selecao-main">
                     <div className="selecao-title">
                         <h1>Erro</h1>
@@ -220,11 +202,6 @@ export default function SelecaoEscalas() {
 
     return (
         <div className="selecao-escalas">
-            <Header
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="selecao-main">
                 <div className="selecao-title">

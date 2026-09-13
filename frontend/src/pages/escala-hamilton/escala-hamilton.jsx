@@ -2,7 +2,6 @@ import React, {useState} from 'react';
 import {useNavigate} from 'react-router';
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import './escala-hamilton.css';
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 
@@ -195,21 +194,11 @@ export default function HamAScale() {
         setConfirmandoSaida(true);
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     const total = calculateTotal();
     const anxietyLevel = getAnxietyLevel(total);
 
     return (
         <div className="escala-hamilton-algo">
-            <Header
-                title="João Silva"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <div className="escala-hamilton ">
                 <div className="escala-hamilton__content">

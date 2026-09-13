@@ -1,11 +1,6 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./perfil.css";
 
 // serve pro paciente e pro prescritor. a tela chamava um profileService
@@ -176,7 +171,6 @@ export default function Perfil() {
 
     return (
         <div className="perfil-container">
-            <Header/>
 
             <main className="perfil-main">
                 <div className="perfil-header">

@@ -1,10 +1,6 @@
 import {useNavigate, useParams} from 'react-router';
 import {useEffect, useState} from 'react';
 import './escala-clinica-paciente.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 
 export default function CentralEscalas() {
@@ -37,10 +33,6 @@ export default function CentralEscalas() {
         navigate(path);
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     if (isLoading) {
         return <div>Carregando avaliações...</div>;
     }
@@ -56,12 +48,6 @@ export default function CentralEscalas() {
 
     return (
         <div className="central-escalas-page">
-            <Header
-                title={pageData?.patientName || "Paciente"}
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="escalas-main">
                 <div className="escalas-title">

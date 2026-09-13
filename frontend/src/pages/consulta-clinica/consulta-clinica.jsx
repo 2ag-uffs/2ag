@@ -1,12 +1,7 @@
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./consulta-clinica.css";
 import {apiService, ApiError} from "../../services/api.js";
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import Header from "../../components/header/header.jsx";
 
 
 export default function ConsultaClinica() {
@@ -118,12 +113,6 @@ export default function ConsultaClinica() {
     if (!patient) {
         return (
             <div className="consulta-clinica">
-                <Header
-                    title=" "
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
                 <main className="consulta-main">
                     <div className="no-patient-found">
                         <div className="no-patient-found-message">
@@ -144,12 +133,6 @@ export default function ConsultaClinica() {
 
     return (
         <div className="consulta-clinica">
-            <Header
-                title="Dr. Maria Santos - CRM 12345"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="consulta-main">
                 <div className="consulta-title">

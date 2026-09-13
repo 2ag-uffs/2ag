@@ -1,0 +1,207 @@
+/* moldura das telas de quem esta logado */
+/* no computador o menu fica no cabecalho e no celular vai pra barra de baixo */
+
+.layout {
+    background-color: var(--color-background);
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+}
+
+/* barra fina no topo enquanto a proxima tela carrega */
+/* so aparece se a troca demorar mais q um instante */
+.loadingBar {
+    animation: loadingBarAppear 0s linear 150ms forwards, loadingBarGrow 1.5s ease-out forwards;
+    background-color: var(--color-peach);
+    height: 3px;
+    left: 0;
+    opacity: 0;
+    position: fixed;
+    top: 0;
+    width: 0;
+    z-index: 60;
+}
+
+@keyframes loadingBarAppear {
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes loadingBarGrow {
+    to {
+        width: 85%;
+    }
+}
+
+.header {
+    align-items: center;
+    background-color: var(--color-primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    color: var(--color-text-on-primary);
+    display: flex;
+    gap: 1rem;
+    min-height: 3.5rem;
+    padding: 0.5rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.headerStart,
+.headerEnd {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.headerEnd {
+    margin-left: auto;
+}
+
+.logo {
+    display: block;
+    height: 2rem;
+}
+
+.userName {
+    font-weight: 500;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* o button css global estica todo botao entao aqui precisa desfazer */
+.iconButton {
+    align-items: center;
+    background-color: transparent;
+    border: none;
+    border-radius: 999px;
+    color: inherit;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 1.25rem;
+    height: 2.5rem;
+    justify-content: center;
+    min-height: 0;
+    padding: 0;
+    width: 2.5rem;
+}
+
+.iconButton:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.topMenu {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: 1rem;
+}
+
+.menuLink {
+    align-items: center;
+    border-radius: 0.5rem;
+    color: inherit;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    transition: background-color 0.15s;
+}
+
+.menuLink:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.menuLinkActive {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.content {
+    flex: 1;
+    margin: 0 auto;
+    max-width: 75rem;
+    padding: 1.5rem;
+    width: 100%;
+}
+
+/* cada tela nova entra com um fade curto */
+/* so opacidade pq transform quebraria os modais com position fixed */
+.page {
+    animation: pageEnter 180ms ease-out;
+}
+
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.bottomMenu {
+    display: none;
+}
+
+/* em tela media o menu de cima mostra so os icones */
+@media (max-width: 1023px) {
+    .menuLabel {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .topMenu,
+    .userName {
+        display: none;
+    }
+
+    .content {
+        padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom));
+    }
+
+    .bottomMenu {
+        background-color: var(--color-surface);
+        border-top: 1px solid var(--color-border);
+        bottom: 0;
+        display: flex;
+        left: 0;
+        padding-bottom: env(safe-area-inset-bottom);
+        position: fixed;
+        right: 0;
+        z-index: 50;
+    }
+
+    .bottomLink {
+        align-items: center;
+        color: var(--color-text-secondary);
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        font-size: 0.7rem;
+        gap: 0.15rem;
+        padding: 0.5rem 0.25rem;
+        text-decoration: none;
+    }
+
+    .bottomLink svg {
+        font-size: 1.35rem;
+    }
+
+    .bottomLinkActive {
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page {
+        animation: none;
+    }
+}

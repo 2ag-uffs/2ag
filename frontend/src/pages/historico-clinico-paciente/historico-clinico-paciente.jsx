@@ -1,9 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import Header from "../../components/header/header.jsx";
-import "../../styles/button.css";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
 import "./historico-clinico-paciente.css";
 
 const dadosHistorico = {
@@ -67,13 +62,8 @@ const dadosHistorico = {
 };
 
 export default function HistoricoClinico() {
-    const navigate = useNavigate();
 
     const [aviso, setAviso] = useState(null);
-
-    const handleBack = () => {
-        navigate(-1);
-    };
 
     // exportar ainda n foi feito, entao o botao avisa em vez de fingir
     const handleExport = () => {
@@ -82,11 +72,6 @@ export default function HistoricoClinico() {
 
     return (
         <div className="historico-paciente__page">
-            <Header
-                showBackButton={true}
-                backButtonText={"Voltar"}
-                onBackClick={handleBack}
-            />
             <main className="historico-paciente__main">
                 {aviso && <p className="aviso aviso--atencao">{aviso}</p>}
                 <div className="historico-paciente__header">

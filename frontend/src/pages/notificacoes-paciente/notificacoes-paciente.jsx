@@ -1,7 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router';
 import './notificacoes-paciente.css';
-import Header from "../../components/header/header.jsx";
 import {apiService, getLoggedUser} from "../../services/api.js";
 
 // helper para traduzir os tipos de notificacao
@@ -252,12 +251,6 @@ export default function NotificacoesPaciente() {
     };
     return (
         <div className="notifications-page">
-            <Header
-                title="Notificações"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={() => navigate(-1)}
-            />
 
             <main className="notifications-main-content">
                 <div className="notifications-filter-bar">

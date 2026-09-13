@@ -1,11 +1,6 @@
 import {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router';
 import './anamnese.css';
-import '../../styles/colors.css';
-import '../../styles/fonts.css';
-import '../../styles/button.css';
-import '../../styles/input.css';
-import Header from "../../components/header/header.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
@@ -105,10 +100,6 @@ export default function Anamnese() {
         }
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
-
     // o confirm do navegador virou modal da propria tela
     const handleCancel = () => {
         setConfirmandoSaida(true);
@@ -116,12 +107,6 @@ export default function Anamnese() {
 
     return (
         <div className="anamnese-page">
-            <Header
-                title={userData?.name || "Carregando..."}
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="anamnese-main">
                 <form className="anamnese-form" onSubmit={handleSubmit}>

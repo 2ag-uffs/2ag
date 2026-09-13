@@ -1,11 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
-import "../../styles/colors.css";
-import "../../styles/fonts.css";
-import "../../styles/button.css";
-import "../../styles/input.css";
 import "./agendamento-consulta-paciente.css";
 import {useNavigate} from "react-router";
-import Header from "../../components/header/header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 // a agenda funciona em blocos de meia em meia hora, das 8h as 18h
@@ -184,12 +179,6 @@ export default function AgendamentoConsultaPaciente() {
 
     return (
         <div className="agendamento-consulta">
-            <Header
-                title="João Silva"
-                showBackButton={true}
-                backButtonText="Voltar"
-                onBackClick={handleBack}
-            />
 
             <main className="dashboard-main">
                 <div className="agendamento-header">
