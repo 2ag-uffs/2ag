@@ -300,3 +300,8 @@
     }
 }
 
+
+.escala-hamilton__erro {
+    color: var(--color-error, #c0392b);
+    margin-bottom: 12px;
+}

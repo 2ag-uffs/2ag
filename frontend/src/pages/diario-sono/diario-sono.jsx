@@ -399,6 +399,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Cansaço</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhum cansaço"
                                 rightLabel="Muito cansaço"
                                 count={7}
@@ -411,6 +413,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Estresse</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhum estresse"
                                 rightLabel="Muito estresse"
                                 value={data.stress}
@@ -422,6 +426,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Sonolência durante o dia</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhuma sonolência"
                                 rightLabel="Muita sonolência"
                                 value={data.daytimeSleepiness}
@@ -433,6 +439,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Desatenção</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhuma desatenção"
                                 rightLabel="Muita desatenção"
                                 value={data.inattention}
@@ -444,6 +452,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Irritabilidade</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhuma irritabilidade"
                                 rightLabel="Muita irritabilidade"
                                 value={data.irritability}
@@ -455,6 +465,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Dor</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Nenhuma dor"
                                 rightLabel="Muita dor"
                                 value={data.pain}
@@ -466,6 +478,8 @@ export default function DiarioSono() {
                         <div className="diario-sono__form__group">
                             <h3>Saúde</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={5}
                                 leftLabel="Sinto-me bem"
                                 rightLabel="Mal"
                                 value={data.healthPerception}

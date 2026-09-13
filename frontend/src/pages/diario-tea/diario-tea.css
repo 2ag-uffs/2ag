@@ -1,0 +1,120 @@
+.diario-tea {
+    min-height: 100vh;
+    background-color: var(--color-background, #f7f8f7);
+}
+
+.diario-tea__conteudo {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.diario-tea__conteudo h1 {
+    margin-bottom: 24px;
+}
+
+.diario-tea__bloco {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.diario-tea__bloco h2 {
+    font-size: 1rem;
+    margin-bottom: 16px;
+}
+
+.diario-tea__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 20px;
+}
+
+.diario-tea__campo input,
+.diario-tea__campo textarea {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    font-family: inherit;
+}
+
+.diario-tea__ajuda {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #666);
+}
+
+.diario-tea__escala {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.diario-tea__escala button {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    background-color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.diario-tea__escala button.selecionada {
+    background-color: var(--color-primary, #5b8c5a);
+    border-color: var(--color-primary, #5b8c5a);
+    color: #fff;
+}
+
+.diario-tea__linha {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.diario-tea__linha:last-child {
+    border-bottom: none;
+}
+
+.diario-tea__pergunta {
+    margin-bottom: 8px;
+}
+
+.diario-tea__opcoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.diario-tea__opcoes button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.diario-tea__opcoes button.selecionada {
+    background-color: var(--color-primary, #5b8c5a);
+    border-color: var(--color-primary, #5b8c5a);
+    color: #fff;
+}
+
+.diario-tea__erro {
+    color: var(--color-error, #c0392b);
+    margin-bottom: 12px;
+}
+
+.diario-tea__acoes {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .diario-tea__opcoes button {
+        flex: 1 1 45%;
+    }
+}

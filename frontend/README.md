@@ -148,14 +148,15 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 * ~~não existe tela de progresso~~ **resolvida**: `/progresso` para o paciente e `/paciente/:patientId/progresso` para o prescritor, as duas na mesma página (RF27, RF28). usa **recharts**
 * o `acompanhamento-semanal-prescritor.jsx` e o histórico ainda não exibem gráfico (RF07)
-* três rotas estão **comentadas** no fim do `routes.jsx` e as páginas não existem: `/escala-pittsburgh`, `/diario-dor` e `/diario-tea`. o backend designa essas escalas e manda o paciente pra elas, o que leva a uma tela em branco (RF08, RF24, RF25)
+* ~~três rotas comentadas e sem página: `/escala-pittsburgh`, `/diario-dor`, `/diario-tea`~~ **resolvido**: as três telas existem e salvam. **as 8 escalas do `ScaleType` agora têm rota** (RF08, RF23, RF24, RF25)
 * não existe exportação de dados em pdf ou csv (RF33)
 
 **telas que ainda não estão ligadas ao backend**
 
 * `agendamento-consulta-prescritor.jsx` **não faz nenhuma chamada ao backend** — a agenda inteira é dado fixo no código
 * `agendamento-consulta-paciente.jsx` chama `POST /consultas`, e a rota do backend é `/consulta`, no singular
-* 13 arquivos ainda montam o `fetch` na mão com o endereço fixo. a migração pro `services/api.js` está em andamento
+* 12 arquivos ainda montam o `fetch` na mão com o endereço fixo. a migração pro `services/api.js` está em andamento
+* **`mini-exame.jsx` não salva**: assim como acontecia no hamilton, ele calcula o total e mostra um `alert`, sem nunca chamar a api. o paciente (ou o prescritor) preenche e o dado não existe
 
 **estrutura**
 

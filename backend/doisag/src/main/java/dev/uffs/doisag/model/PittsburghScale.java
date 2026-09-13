@@ -25,6 +25,11 @@ public class PittsburghScale extends BaseAssessment {
     private Integer freqHavePain;
     @Column(columnDefinition = "TEXT")
     private String otherReasonToTroubleSleep;
+
+    // com que frequencia esse outro motivo atrapalhou. eh o item 5J do
+    // psqi: o campo de texto existia, mas sem a frequencia o componente
+    // de disturbios do sono fica com 8 itens em vez de 9 (RF23)
+    private Integer freqOtherReason;
     private Integer sleepQualityRating;
     private Integer freqUseSleepMedication;
     private Integer freqTroubleStayingAwake;
@@ -223,5 +228,13 @@ public class PittsburghScale extends BaseAssessment {
     @Override
     public Integer trackedValue(TrackableAttribute attribute) {
         return attribute == TrackableAttribute.ESCORE_PITTSBURGH ? psqiScore : null;
+    }
+
+    public Integer getFreqOtherReason() {
+        return freqOtherReason;
+    }
+
+    public void setFreqOtherReason(Integer freqOtherReason) {
+        this.freqOtherReason = freqOtherReason;
     }
 }

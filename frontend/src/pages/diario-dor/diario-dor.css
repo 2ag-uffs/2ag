@@ -1,0 +1,141 @@
+.diario-dor {
+    min-height: 100vh;
+    background-color: var(--color-background, #f7f8f7);
+}
+
+.diario-dor__conteudo {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.diario-dor__conteudo h1 {
+    margin-bottom: 24px;
+}
+
+.diario-dor__bloco {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.diario-dor__bloco h2 {
+    font-size: 1rem;
+    margin-bottom: 16px;
+}
+
+.diario-dor__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 20px;
+}
+
+.diario-dor__campo input,
+.diario-dor__campo textarea {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    font-family: inherit;
+}
+
+.diario-dor__ajuda {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #666);
+}
+
+/* a escala visual de 0 a 10, com as cores das tres faixas do formulario */
+.diario-dor__escala {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.diario-dor__nota {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    font-weight: 600;
+    cursor: pointer;
+    color: #333;
+}
+
+.diario-dor__nota--leve {
+    background-color: #d6e4f7;
+}
+
+.diario-dor__nota--moderada {
+    background-color: #fde7bf;
+}
+
+.diario-dor__nota--intensa {
+    background-color: #f7c9c4;
+}
+
+.diario-dor__nota.selecionada {
+    border-color: #333;
+}
+
+.diario-dor__legenda {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #666);
+}
+
+.diario-dor__linha {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.diario-dor__linha:last-child {
+    border-bottom: none;
+}
+
+.diario-dor__pergunta {
+    margin-bottom: 8px;
+}
+
+.diario-dor__opcoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.diario-dor__opcoes button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.diario-dor__opcoes button.selecionada {
+    background-color: var(--color-primary, #5b8c5a);
+    border-color: var(--color-primary, #5b8c5a);
+    color: #fff;
+}
+
+.diario-dor__erro {
+    color: var(--color-error, #c0392b);
+    margin-bottom: 12px;
+}
+
+.diario-dor__acoes {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* no celular as opcoes de frequencia ocupam a largura toda */
+@media (max-width: 600px) {
+    .diario-dor__opcoes button {
+        flex: 1 1 45%;
+    }
+}

@@ -25,6 +25,9 @@ import NotificacoesPrescritor from "../pages/notificacoes-prescritor/notificacoe
 import NotificacoesPaciente from "../pages/notificacoes-paciente/notificacoes-paciente.jsx";
 import Perfil from "../pages/perfil/perfil.jsx";
 import Progresso from "../pages/progresso/progresso.jsx";
+import DiarioDor from "../pages/diario-dor/diario-dor.jsx";
+import DiarioTea from "../pages/diario-tea/diario-tea.jsx";
+import EscalaPittsburgh from "../pages/escala-pittsburgh/escala-pittsburgh.jsx";
 
 
 const router = createBrowserRouter([
@@ -137,10 +140,21 @@ const router = createBrowserRouter([
         path: "/paciente/:patientId/progresso",
         element: <Progresso/>
     },
-    // "/escala-pittsburgh";
-    // "/diario-dor";
-    // "/diario-tea";
-
+    {
+        // essas tres rotas existiam so como comentario, e o ScaleType do
+        // backend ja apontava pra elas. designar uma dessas escalas
+        // levava o paciente pra uma tela em branco
+        path: "/escala-pittsburgh",
+        element: <EscalaPittsburgh/>
+    },
+    {
+        path: "/diario-dor",
+        element: <DiarioDor/>
+    },
+    {
+        path: "/diario-tea",
+        element: <DiarioTea/>
+    },
 ]);
 
 export default function Routes() {

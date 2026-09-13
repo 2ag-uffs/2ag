@@ -181,6 +181,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Dor</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Sem dor"
                                 rightLabel="Dor intensa"
                                 value={data.pain}
@@ -192,6 +194,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Sono</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Excelente"
                                 rightLabel="Muito ruim"
                                 value={data.sleep}
@@ -203,6 +207,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Humor</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Muito positivo"
                                 rightLabel="Deprimido"
                                 value={data.mood}
@@ -214,6 +220,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Tremor</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Ausente"
                                 rightLabel="Grave"
                                 value={data.shaking}
@@ -225,6 +233,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Ansiedade</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Tranquilo"
                                 rightLabel="Muito ansioso"
                                 value={data.anxiety}
@@ -236,6 +246,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Disposição/Energia</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Muito enérgico"
                                 rightLabel="Sem energia"
                                 value={data.energy}
@@ -247,6 +259,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Função Intestinal</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Normal"
                                 rightLabel="Irregular"
                                 value={data.bowelFunction}
@@ -261,6 +275,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Apetite</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Apetite saudável"
                                 rightLabel="Alteração no apetite"
                                 value={data.apetite}
@@ -272,6 +288,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Concentração</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Excelente"
                                 rightLabel="Muito baixa"
                                 value={data.focus}
@@ -283,6 +301,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Interação social</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Muito social"
                                 rightLabel="Isolado"
                                 value={data.socialInteraction}
@@ -297,6 +317,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Rigidez/Espasticidade</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Nenhuma"
                                 rightLabel="Intensa"
                                 value={data.rigidity}
@@ -311,6 +333,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Diminuição de Maconha Fumada/Outra Substância</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Completa"
                                 rightLabel="Nenhuma"
                                 value={data.substance}
@@ -325,6 +349,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Náusea e Vômito</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Ausente"
                                 rightLabel="Frequente"
                                 value={data.vomit}
@@ -336,6 +362,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Performance no Esporte</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Ótimo desempenho"
                                 rightLabel="Baixo desempeho"
                                 value={data.sport}
@@ -347,6 +375,8 @@ export default function AcompanhamentoSemanalPaciente() {
                         <div className="acompanhamento-paciente__form__group">
                             <h3>Doença dermatológica</h3>
                             <ScaleSelector
+                                    minValue={0}
+                                    maxValue={10}
                                 leftLabel="Nenhuma"
                                 rightLabel="Intensa"
                                 value={data.dermat}

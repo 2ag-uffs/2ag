@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router';
 import ScaleSelector from "../../components/scale-selector/scale-selector.jsx";
 import './escala-hamilton.css';
 import Header from "../../components/header/header.jsx";
+import {apiService, ApiError} from "../../services/api.js";
 
 const hamAItems = [
     {
@@ -100,6 +101,26 @@ const hamAItems = [
 
 export default function HamAScale() {
     const navigate = useNavigate();
+    // o id de cada item da tela mapeado pro campo da entidade
+    const CAMPOS_POR_ITEM = {
+        1: "anxiousMood",
+        2: "tension",
+        3: "fears",
+        4: "insomnia",
+        5: "cognition",
+        6: "depressedMood",
+        7: "somaticMotor",
+        8: "somaticSensory",
+        9: "cardiovascularSymptoms",
+        10: "respiratorySymptoms",
+        11: "gastrointestinalSymptoms",
+        12: "genitourinarySymptoms",
+        13: "autonomicSymptoms",
+    };
+
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro] = useState(null);
+
     const [data, setData] = useState({
         evaluationDate: '',
         scores: {},
@@ -127,16 +148,33 @@ export default function HamAScale() {
         return "Ansiedade grave";
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        setErro(null);
+
         if (!data.evaluationDate) {
-            alert('Por favor, preencha a data da avaliação.');
+            setErro('Por favor, preencha a data da avaliação.');
             return;
         }
 
-        const total = calculateTotal();
-        const anxietyLevel = getAnxietyLevel(total);
+        // monta o corpo com os nomes de campo da entidade.
+        // antes esta tela so mostrava um alert e n mandava nada pra api,
+        // entao o paciente preenchia e o dado simplesmente n existia
+        const escala = {assessmentDate: data.evaluationDate};
+        Object.entries(CAMPOS_POR_ITEM).forEach(([itemId, campo]) => {
+            escala[campo] = data.scores[itemId] ?? null;
+        });
 
-        alert(`Avaliação salva com sucesso!\nTotal: ${total}/52\nNível: ${anxietyLevel}`);
+        setSalvando(true);
+        try {
+            await apiService.post('/escala-hamilton', escala);
+            const total = calculateTotal();
+            alert('Avaliação salva! Total: ' + total + '/52. Nível: ' + getAnxietyLevel(total));
+            navigate('/dashboard-paciente');
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : 'Não foi possível salvar a avaliação.');
+        } finally {
+            setSalvando(false);
+        }
     };
 
     const handleCancel = () => {
@@ -200,6 +238,8 @@ export default function HamAScale() {
                                 <h3>{item.id}. {item.title}</h3>
                                 <p className="ham-a-description">{item.description}</p>
                                 <ScaleSelector
+                                    minValue={0}
+                                    maxValue={4}
                                     leftLabel={item.leftLabel}
                                     rightLabel={item.rightLabel}
                                     value={data.scores[item.id] || 0}
@@ -241,9 +281,11 @@ export default function HamAScale() {
                             </div>
                         </div>
 
+                        {erro && <p className="escala-hamilton__erro">{erro}</p>}
+
                         {/* Botões de Ação */}
                         <div className="escala-hamilton_end">
-                            <button className="button" onClick={handleSave}>
+                            <button className="button" onClick={handleSave} disabled={salvando}>
                                 Salvar Avaliação
                             </button>
                             <button className="button-secondary" onClick={handleCancel}>

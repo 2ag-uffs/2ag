@@ -404,7 +404,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 **funcionalidades incompletas**
 
   * não existe nenhum `@Scheduled` no projeto: o ciclo automático de acompanhamento de 90 dias e os lembretes de dose não existem. toda escala é designada manualmente (RF32, RF34)
-  * `ESCALA_PITTSBURGH`, `REGISTRO_DOR` e `REGISTRO_TEA` apontam pra rotas de frontend que não existem — designar essas três leva o paciente a uma tela em branco (RF08)
+  * ~~`ESCALA_PITTSBURGH`, `REGISTRO_DOR` e `REGISTRO_TEA` apontam pra rotas que não existem~~ **resolvido**: as três telas foram criadas, e todas as 8 rotas do `ScaleType` existem no frontend (RF08)
   * `MINI_EXAME_ESTADO_MENTAL` é designável ao paciente, mas quem preenche é o prescritor e `MentalStateExamService` não dá baixa na tarefa. a tarefa nunca conclui (RN09)
   * `CompletedScaleInfoDTO` devolve a string fixa `"Concluído"` no lugar do resultado da escala (RF08)
   * não existe exportação em pdf nem csv (RF33)
