@@ -1,10 +1,7 @@
 import {createBrowserRouter, Navigate, RouterProvider} from "react-router";
 import AcompanhamentoSemanalPaciente
     from "../pages/acompanhamento-semanal-paciente/acompanhamento-semanal-paciente.jsx";
-import AcompanhamentoSemanalPrescritor
-    from "../pages/acompanhamento-semanal-prescritor/acompanhamento-semanal-prescritor.jsx";
 import ConsultaClinica from "../pages/consulta-clinica/consulta-clinica.jsx";
-import DadosConsultorio from "../pages/dados-consultorio/dados-consultorio.jsx";
 import DashboardPaciente from "../pages/dashboard-paciente/dashboard-paciente.jsx";
 import DashboardPrescritor from "../pages/dashboard-prescritor/dashboard-prescritor.jsx";
 import Login from "../pages/login/login.jsx";
@@ -41,16 +38,8 @@ const router = createBrowserRouter([
         element: <Navigate to="/login" replace/>,
     },
     {
-        path: "/acompanhamento-prescritor",
-        element: <AcompanhamentoSemanalPrescritor/>,
-    },
-    {
         path: "/acompanhamento-paciente",
         element: <AcompanhamentoSemanalPaciente/>,
-    },
-    {
-        path: "/dados-consultorio",
-        element: <DadosConsultorio/>,
     },
     {
         path: "/dashboard-paciente",
