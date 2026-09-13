@@ -7,9 +7,13 @@ import "./agendamento-consulta-prescritor.css";
 import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 
+// atencao: esta tela ainda n fala com a api. as consultas ficam so no
+// estado do componente e somem quando a pagina recarrega. por isso os
+// avisos daqui n dizem que o paciente foi notificado, porque n foi
 export default function AgendamentoPrescritor() {
     const navigate = useNavigate();
 
+    const [aviso, setAviso] = useState(null);
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
@@ -162,7 +166,7 @@ export default function AgendamentoPrescritor() {
 
     const handleCreateAppointment = () => {
         if (!selectedPatient || !selectedTimeSlot) {
-            alert("Por favor, selecione um paciente e horário.");
+            setAviso("Selecione um paciente e um horário.");
             return;
         }
 
@@ -184,8 +188,10 @@ export default function AgendamentoPrescritor() {
 
         setAppointments([...appointments, newAppointment]);
 
-        // Simular notificação
-        alert(`Consulta agendada com sucesso!\n\nPaciente: ${selectedPatient.nome}\nData: ${selectedDate.toLocaleDateString("pt-BR")}\nHorário: ${selectedTimeSlot}\nTipo: ${appointmentType}\n\nNotificação enviada para o paciente.`);
+        setAviso(
+            `Consulta de ${selectedPatient.nome} marcada para ` +
+            `${selectedDate.toLocaleDateString("pt-BR")} às ${selectedTimeSlot}.`,
+        );
 
         // Reset form
         setShowNewAppointmentModal(false);
@@ -195,8 +201,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const handleEditAppointment = () => {
-        // Simular edição
-        alert(`Agendamento editado com sucesso!\n\nNotificação de alteração enviada para ${editingAppointment.pacienteNome}.`);
+        setAviso(`Agendamento de ${editingAppointment.pacienteNome} alterado.`);
         setShowEditModal(false);
         setEditingAppointment(null);
     };
@@ -204,7 +209,7 @@ export default function AgendamentoPrescritor() {
     const handleCancelAppointment = () => {
         if (window.confirm(`Tem certeza que deseja cancelar a consulta de ${editingAppointment.pacienteNome}?`)) {
             setAppointments(appointments.filter(apt => apt.id !== editingAppointment.id));
-            alert(`Consulta cancelada.\n\nNotificação de cancelamento enviada para ${editingAppointment.pacienteNome}.`);
+            setAviso(`Consulta de ${editingAppointment.pacienteNome} cancelada.`);
             setShowEditModal(false);
             setEditingAppointment(null);
         }
@@ -251,6 +256,7 @@ export default function AgendamentoPrescritor() {
             />
 
             <main className="dashboard-main">
+                {aviso && <p className="aviso">{aviso}</p>}
                 <div className="agendamento-header">
                     <div className="dashboard-welcome">
                         <h1>Gerenciar Agenda</h1>

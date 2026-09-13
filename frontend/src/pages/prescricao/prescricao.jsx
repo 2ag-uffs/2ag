@@ -127,8 +127,9 @@ export default function Prescricao() {
 
             await apiService.post(`/consulta/${appointmentId}/prescricao`, prescricao);
 
-            alert("Prescrição criada com sucesso!");
-            navigate(`/paciente/${patient.id}/historico`);
+            navigate(`/paciente/${patient.id}/historico`, {
+                state: {aviso: "Prescrição criada."},
+            });
 
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "Erro ao criar prescrição");

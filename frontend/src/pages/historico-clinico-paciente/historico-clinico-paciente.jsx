@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import Header from "../../components/header/header.jsx";
 import "../../styles/button.css";
@@ -68,16 +69,15 @@ const dadosHistorico = {
 export default function HistoricoClinico() {
     const navigate = useNavigate();
 
+    const [aviso, setAviso] = useState(null);
+
     const handleBack = () => {
         navigate(-1);
     };
 
+    // exportar ainda n foi feito, entao o botao avisa em vez de fingir
     const handleExport = () => {
-        // Em uma implementação real, essa função geraria um PDF ou CSV com os dados.
-        alert(
-            "Funcionalidade de exportação em desenvolvimento. Os dados seriam exportados aqui.",
-        );
-        console.log("Exportando dados:", dadosHistorico);
+        setAviso("A exportação ainda não está pronta.");
     };
 
     return (
@@ -88,6 +88,7 @@ export default function HistoricoClinico() {
                 onBackClick={handleBack}
             />
             <main className="historico-paciente__main">
+                {aviso && <p className="aviso aviso--atencao">{aviso}</p>}
                 <div className="historico-paciente__header">
                     <h1>Meu Histórico Clínico</h1>
                     <h2>

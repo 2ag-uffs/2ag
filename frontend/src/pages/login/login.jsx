@@ -86,7 +86,7 @@ export default function Login() {
                     />
                     <h2 className="login__content__title">Login</h2>
                     {cadastrado && !error && (
-                        <p className="login__aviso">Cadastro feito. Entre com seu e-mail e senha.</p>
+                        <p className="aviso">Cadastro feito. Entre com seu e-mail e senha.</p>
                     )}
                     {/* adiconei para mostrar o erro (resp: maiqueli) */}
                     {error && <p className="login__error-message">{error}</p>}

@@ -57,6 +57,8 @@ export default function SelecaoEscalas() {
     const [loading, setLoading] = useState(true);
     const [loadingSalvar, setLoadingSalvar] = useState(false);
     const [error, setError] = useState(null);
+    // o error acima derruba a tela toda, entao o recado de salvar fica aqui
+    const [avisoSalvar, setAvisoSalvar] = useState(null);
 
     const buscarDadosPaciente = () => apiService.get(`/paciente/${pacienteId}`);
 
@@ -145,29 +147,27 @@ export default function SelecaoEscalas() {
     };
 
     const handleSalvarSelecao = async () => {
+        const selecionadas = Object.keys(escalasSelecionadas).filter(id => escalasSelecionadas[id]);
+
+        const escalasParaSalvar = selecionadas.map(escalaId => {
+            const escala = escalasDisponiveis.find(e => e.id === escalaId);
+            return escala?.backendType;
+        }).filter(Boolean);
+
+        if (escalasParaSalvar.length === 0) {
+            setAvisoSalvar('Selecione pelo menos uma escala para salvar.');
+            return;
+        }
+
         try {
+            setAvisoSalvar(null);
             setLoadingSalvar(true);
-
-            const selecionadas = Object.keys(escalasSelecionadas).filter(id => escalasSelecionadas[id]);
-
-            const escalasParaSalvar = selecionadas.map(escalaId => {
-                const escala = escalasDisponiveis.find(e => e.id === escalaId);
-                return escala?.backendType;
-            }).filter(Boolean);
-
-            if (escalasParaSalvar.length === 0) {
-                alert('Selecione pelo menos uma escala para salvar.');
-                return;
-            }
-
             await salvarEscalasSelecionadas(escalasParaSalvar);
-
-            alert(`Escalas salvas com sucesso para ${paciente.nome}!`);
-            navigate('/dashboard-prescritor');
-
-        } catch (error) {
-            console.error('Erro ao salvar escalas:', error);
-            alert('Erro ao salvar escalas. Tente novamente.');
+            navigate('/dashboard-prescritor', {
+                state: {aviso: `Escalas salvas para ${paciente.nome}.`},
+            });
+        } catch {
+            setAvisoSalvar('Erro ao salvar escalas. Tente novamente.');
         } finally {
             setLoadingSalvar(false);
         }
@@ -231,6 +231,8 @@ export default function SelecaoEscalas() {
                     <h1>Selecionar Escalas para {paciente.nome}</h1>
                     <p>Escolha as escalas de avaliação que ficarão disponíveis para o paciente preencher.</p>
                 </div>
+
+                {avisoSalvar && <p className="aviso aviso--atencao">{avisoSalvar}</p>}
 
                 <div className="selecao-container">
                     <div className="selecao-filtros">

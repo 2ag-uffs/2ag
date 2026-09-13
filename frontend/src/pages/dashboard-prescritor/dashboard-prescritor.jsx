@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import Modal from "../../components/modal/modal";
 import "../../styles/button.css";
 import "../../styles/colors.css";
@@ -10,6 +10,9 @@ import {apiService, ApiError, getLoggedUser, clearToken} from "../../services/ap
 
 export default function DashboardPrescritor() {
     const navigate = useNavigate();
+    const location = useLocation();
+    // quem salvou algo em outra tela chega aqui com esse aviso
+    const aviso = location.state && location.state.aviso;
 
     const [showModal, setShowModal] = useState(false);
     const [prescritorInfo, setPrescritorInfo] = useState(null);
@@ -191,6 +194,7 @@ export default function DashboardPrescritor() {
             </header>
 
             <main className="dashboard-main">
+                {aviso && <p className="aviso">{aviso}</p>}
                 <div className="dashboard-welcome">
                     <h1>Painel do Prescritor!</h1>
                     <p>

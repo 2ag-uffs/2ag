@@ -43,6 +43,7 @@ export default function AcompanhamentoProtocolo() {
     const [carregando, setCarregando] = useState(true);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState(null);
+    const [aviso, setAviso] = useState(null);
 
     const carregar = () => {
         setCarregando(true);
@@ -99,7 +100,7 @@ export default function AcompanhamentoProtocolo() {
                 durationDays: Number(duracao),
                 items: itens,
             });
-            alert("Acompanhamento iniciado! O sistema vai enviar as escalas sozinho.");
+            setAviso("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
             carregar();
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : "Não foi possível iniciar o acompanhamento.");
@@ -136,6 +137,7 @@ export default function AcompanhamentoProtocolo() {
                 <h1>Acompanhamento automático</h1>
 
                 {erro && <p className="protocolo__erro">{erro}</p>}
+                {aviso && <p className="aviso">{aviso}</p>}
 
                 {protocoloAtivo ? (
                     <section className="protocolo__ativo">

@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import './historico-clinico-prescritor.css';
 import '../../styles/colors.css';
@@ -9,7 +9,10 @@ import {apiService} from "../../services/api.js";
 
 export default function HistoricoClinicoPrescritor() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { pacienteId } = useParams();
+    // quem salvou algo em outra tela chega aqui com esse aviso
+    const aviso = location.state && location.state.aviso;
 
     const [dadosPaciente, setDadosPaciente] = useState({
         nome: '',
@@ -181,6 +184,7 @@ export default function HistoricoClinicoPrescritor() {
             />
 
             <main className="historico-main">
+                {aviso && <p className="aviso">{aviso}</p>}
                 <div className="historico-title">
                     <h1>Histórico Clínico do Paciente</h1>
                 </div>

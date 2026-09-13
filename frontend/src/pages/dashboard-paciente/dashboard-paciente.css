@@ -255,12 +255,3 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
-
-/* aviso de formulario salvo, no lugar do alert */
-.dashboard-aviso {
-    color: var(--color-primary);
-    background-color: var(--color-primary-soft);
-    border-radius: 6px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-}

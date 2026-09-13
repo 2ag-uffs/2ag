@@ -208,7 +208,7 @@ export default function Perfil() {
                     </div>
                 </div>
 
-                {aviso && <p className="perfil-aviso">{aviso}</p>}
+                {aviso && <p className="aviso">{aviso}</p>}
                 {erro && <p className="error-message">{erro}</p>}
 
                 <div className="perfil-content">

@@ -101,7 +101,7 @@ export default function DashboardPaciente() {
             </header>
 
             <main className="dashboard-main">
-                {aviso && <p className="dashboard-aviso">{aviso}</p>}
+                {aviso && <p className="aviso">{aviso}</p>}
                 <div className="dashboard-welcome">
                     <h1>Painel do Paciente!</h1>
                     <p>
