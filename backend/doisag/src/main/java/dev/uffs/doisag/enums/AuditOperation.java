@@ -4,7 +4,8 @@ package dev.uffs.doisag.enums;
 public enum AuditOperation {
     CRIACAO("Criação"),
     ALTERACAO("Alteração"),
-    VISUALIZACAO("Acesso");
+    VISUALIZACAO("Acesso"),
+    ANULACAO("Anulação");
 
     private final String label;
 

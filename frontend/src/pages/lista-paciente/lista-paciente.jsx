@@ -52,7 +52,7 @@ export default function ListaPacientes() {
     };
 
     const handleNewConsult = (patientId) => {
-        navigate(`/consulta?patientId=${patientId}`);
+        navigate(`/paciente/${patientId}/consulta/nova`);
     };
 
     const filteredPacientes = pacientes.filter(paciente =>

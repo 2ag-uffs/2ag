@@ -188,6 +188,8 @@ public class AppointmentService {
                         patientId, inicio.atStartOfDay(), hoje.atTime(LocalTime.MAX))
                 .stream()
                 .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                // consulta anulada foi lancada por engano e n aconteceu
+                .filter(consulta -> !consulta.isAnnulled())
                 .map(AppointmentMarkerDTO::new)
                 .toList();
     }
@@ -199,6 +201,7 @@ public class AppointmentService {
                 .findByPrescriberIdAndDateTimeBetween(prescriberId, dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
                 .stream()
                 .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                .filter(consulta -> !consulta.isAnnulled())
                 .map(consulta -> {
                     int minutos = consulta.getDurationMinutes() == null ? DURACAO_PADRAO : consulta.getDurationMinutes();
                     LocalTime inicio = consulta.getDateTime().toLocalTime();
@@ -254,6 +257,7 @@ public class AppointmentService {
                 .filter(outra -> !outra.getId().equals(idQueEstaSendoAlterada))
                 // consulta cancelada devolveu o horario
                 .filter(outra -> outra.getStatus() != AppointmentStatus.CANCELADA)
+                .filter(outra -> !outra.isAnnulled())
                 .anyMatch(outra -> {
                     int duracaoOutra = outra.getDurationMinutes() == null ? DURACAO_PADRAO : outra.getDurationMinutes();
                     LocalDateTime inicioOutra = outra.getDateTime();

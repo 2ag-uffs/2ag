@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -50,6 +51,25 @@ public class Appointment {
     // quanto tempo a consulta ocupa na agenda, em minutos. a tela ja
     // perguntava isso e a resposta era descartada
     private Integer durationMinutes = 60;
+
+    // preenchido so quando o registro da consulta foi anulado
+    @Embedded
+    private Annulment annulment;
+
+    // a anulacao sai na resposta pelos dtos e n pela entidade crua
+    @JsonIgnore
+    public Annulment getAnnulment() {
+        return annulment;
+    }
+
+    public void setAnnulment(Annulment annulment) {
+        this.annulment = annulment;
+    }
+
+    @JsonIgnore
+    public boolean isAnnulled() {
+        return annulment != null;
+    }
 
     public String getPhysicalExam() {
         return physicalExam;

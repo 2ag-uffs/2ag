@@ -127,6 +127,18 @@ class PatientLinkTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"),
                 prescriberA, "montar acompanhamento");
+        assertForbidden(post("/pacientes/" + patientOfB + "/consultas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"x\"}"),
+                prescriberA, "registrar consulta clinica");
+        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/registro-clinico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"x\"}"),
+                prescriberA, "alterar registro clinico");
+        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/anulacao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"registro de outro prescritor\"}"),
+                prescriberA, "anular consulta");
         assertForbidden(put("/pacientes/" + patientOfB + "/acompanhamento/encerrar"),
                 prescriberA, "encerrar acompanhamento");
     }

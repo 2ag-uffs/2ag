@@ -48,6 +48,12 @@ public class AuditService {
                 new AuditEvent(findLoggedUser(), AuditOperation.ALTERACAO, recordType, recordId, patientId));
     }
 
+    @Transactional
+    public void recordAnnulment(AuditRecordType recordType, Long recordId, Long patientId) {
+        auditEventRepository.save(
+                new AuditEvent(findLoggedUser(), AuditOperation.ANULACAO, recordType, recordId, patientId));
+    }
+
     // o prescritor abrindo dado clinico de um paciente
     // o paciente olhando os proprios dados n entra na trilha
     @Transactional

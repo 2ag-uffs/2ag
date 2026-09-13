@@ -26,7 +26,11 @@ public record AppointmentResponseDTO(
         Long patientId,
         String patientName,
         Long prescriberId,
-        String prescriberName
+        String prescriberName,
+        boolean annulled,
+        LocalDateTime annulledAt,
+        String annulmentReason,
+        String annulledByName
 ) {
     public AppointmentResponseDTO(Appointment appointment) {
         this(
@@ -47,7 +51,11 @@ public record AppointmentResponseDTO(
                 appointment.getPatient().getId(),
                 appointment.getPatient().getName(),
                 appointment.getPrescriber().getId(),
-                appointment.getPrescriber().getName()
+                appointment.getPrescriber().getName(),
+                appointment.isAnnulled(),
+                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulledAt() : null,
+                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulmentReason() : null,
+                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulledBy().getName() : null
         );
     }
 }

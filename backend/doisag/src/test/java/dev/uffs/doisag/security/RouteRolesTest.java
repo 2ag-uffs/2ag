@@ -162,6 +162,12 @@ class RouteRolesTest {
                         .contentType(MediaType.APPLICATION_JSON).content(appointmentBody))
                 .andExpect(status().isForbidden());
 
+        // registrar o atendimento clinico
+        mockMvc.perform(post("/pacientes/" + patient.getId() + "/consultas").header("Authorization", patientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"escrito pelo paciente\"}"))
+                .andExpect(status().isForbidden());
+
         // emitir prescricao e aplicar o meem
         mockMvc.perform(post("/consulta/" + appointment.getId() + "/prescricao").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)

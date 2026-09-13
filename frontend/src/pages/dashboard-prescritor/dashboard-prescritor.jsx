@@ -36,9 +36,10 @@ export default function DashboardPrescritor() {
         fetchData();
     }, [fetchData]);
 
+    // toda consulta eh de um paciente entao comeca escolhendo ele na lista
     const handleNewConsult = (e) => {
         e.preventDefault();
-        navigate("/consulta");
+        navigate("/lista-paciente");
     };
 
     // prescricao n existe solta, ela sai de dentro de uma consulta.

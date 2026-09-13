@@ -119,8 +119,12 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/lista-paciente/lista-paciente.jsx")),
                             },
                             {
-                                path: "/consulta",
-                                lazy: lazyPage(() => import("../pages/consulta-clinica/consulta-clinica.jsx")),
+                                path: "/paciente/:patientId/consulta/nova",
+                                lazy: lazyPage(() => import("../pages/consultation-record/consultation-record.jsx")),
+                            },
+                            {
+                                path: "/consulta/:appointmentId/registro",
+                                lazy: lazyPage(() => import("../pages/consultation-record/consultation-record.jsx")),
                             },
                             {
                                 path: "/consulta/:appointmentId/prescricao",

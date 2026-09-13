@@ -11,6 +11,8 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     // método para buscar prescrições por consulta
     List<Prescription> findByAppointmentId(Long appointmentId);
 
+    boolean existsByAppointmentId(Long appointmentId);
+
     // prescricoes de um paciente da consulta mais recente pra mais antiga
     List<Prescription> findByAppointmentPatientIdOrderByAppointmentDateTimeDesc(Long patientId);
 }
