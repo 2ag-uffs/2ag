@@ -2,8 +2,10 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.AppointmentMarkerDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -132,6 +134,21 @@ public class AppointmentService {
             appointment.setDurationMinutes(dados.durationMinutes());
         }
         return appointmentRepository.save(appointment);
+    }
+
+    // as consultas de um paciente dentro da janela do grafico. cancelada
+    // fica de fora: consulta que n aconteceu n explica mudanca nenhuma
+    public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod periodo) {
+        LocalDate hoje = LocalDate.now();
+        LocalDate inicio = hoje.minusDays(periodo.getDays());
+
+        return appointmentRepository
+                .findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(
+                        patientId, inicio.atStartOfDay(), hoje.atTime(LocalTime.MAX))
+                .stream()
+                .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
+                .map(AppointmentMarkerDTO::new)
+                .toList();
     }
 
     // os horarios ja ocupados de um prescritor num dia, sem dizer de

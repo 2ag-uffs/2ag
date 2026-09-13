@@ -68,3 +68,55 @@
         min-width: 100%;
     }
 }
+
+/* a caixa de marcar as consultas fica na linha dos filtros, mas n
+   precisa da largura minima deles */
+.progresso__filtro--caixa {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.progresso__filtro--caixa label {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+}
+
+/* as consultas do periodo, embaixo do grafico */
+.progresso__consultas {
+    border-top: 1px solid var(--color-border);
+    margin-top: 16px;
+    padding-top: 12px;
+}
+
+.progresso__consultas h3 {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+
+.progresso__consultas ul {
+    list-style: none;
+    margin-bottom: 8px;
+}
+
+.progresso__consultas li {
+    border-bottom: 1px solid var(--color-border-light);
+    font-size: 0.9rem;
+    padding: 6px 0;
+}
+
+.progresso__consultas li:last-child {
+    border-bottom: none;
+}
+
+.progresso__marca {
+    background-color: var(--color-primary-soft);
+    border-radius: 1rem;
+    color: var(--color-primary);
+    font-size: 0.75rem;
+    margin-left: 8px;
+    padding: 2px 10px;
+}
+

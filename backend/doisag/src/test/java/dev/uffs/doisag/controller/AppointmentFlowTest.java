@@ -2,8 +2,12 @@ package dev.uffs.doisag.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
@@ -37,6 +41,7 @@ class AppointmentFlowTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PatientRepository patientRepository;
+    @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private TokenService tokenService;
 
@@ -51,12 +56,14 @@ class AppointmentFlowTest {
     private String tokenPacienteDeOutro;
     private Long pacienteId;
     private Long pacienteDeOutroId;
+    private Patient paciente;
+    private Prescriber prescritor;
 
     @BeforeEach
     void montaAgenda() {
-        Prescriber prescritor = salvaPrescritor("agenda-a@email.com", "AGA11");
+        prescritor = salvaPrescritor("agenda-a@email.com", "AGA11");
         Prescriber outro = salvaPrescritor("agenda-b@email.com", "AGB22");
-        Patient paciente = salvaPaciente("pac-agenda@email.com", prescritor);
+        paciente = salvaPaciente("pac-agenda@email.com", prescritor);
 
         Patient pacienteDeOutro = salvaPaciente("pac-de-outro@email.com", outro);
 
@@ -374,6 +381,86 @@ class AppointmentFlowTest {
     private String buscaDisponibilidade(String token) throws Exception {
         return mockMvc.perform(get("/consulta/disponibilidade")
                         .param("data", DAQUI_A_UM_MES)
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    // ---------- marcadores no grafico de evolucao ----------
+
+    // a consulta vira uma marca no grafico, pra dar pra ler a curva de
+    // sintoma junto com o que foi feito no atendimento
+    @Test
+    void marcadoresTrazemAsConsultasDoPacienteNoPeriodo() throws Exception {
+        salvaConsultaPassada(1);
+
+        JsonNode marcas = json.readTree(buscaMarcadores(tokenPaciente, "DIAS_30"));
+
+        assertThat(marcas).hasSize(1);
+        assertThat(marcas.get(0).get("data").asText()).isEqualTo(LocalDate.now().minusDays(1).toString());
+        assertThat(marcas.get(0).get("geraPrescricao").asBoolean()).isFalse();
+    }
+
+    // consulta que n aconteceu n explica mudanca nenhuma na curva
+    @Test
+    void marcadoresIgnoramConsultaCancelada() throws Exception {
+        Appointment consulta = salvaConsultaPassada(1);
+        consulta.setStatus(AppointmentStatus.CANCELADA);
+        appointmentRepository.save(consulta);
+
+        assertThat(json.readTree(buscaMarcadores(tokenPaciente, "DIAS_30"))).isEmpty();
+    }
+
+    @Test
+    void marcadoresRespeitamAJanelaDoGrafico() throws Exception {
+        salvaConsultaPassada(40);
+
+        assertThat(json.readTree(buscaMarcadores(tokenPaciente, "DIAS_30"))).isEmpty();
+        assertThat(json.readTree(buscaMarcadores(tokenPaciente, "DIAS_90"))).hasSize(1);
+    }
+
+    @Test
+    void prescritorVeOsMarcadoresDoProprioPaciente() throws Exception {
+        salvaConsultaPassada(1);
+
+        assertThat(json.readTree(buscaMarcadores(tokenPrescritor, "DIAS_30"))).hasSize(1);
+    }
+
+    // o marcador expoe consulta, entao segue a mesma regra de vinculo
+    @Test
+    void prescritorDeOutraClinicaNaoVeOsMarcadores() throws Exception {
+        salvaConsultaPassada(1);
+
+        mockMvc.perform(get("/pacientes/" + pacienteId + "/progresso/consultas")
+                        .param("periodo", "DIAS_30")
+                        .header("Authorization", tokenOutroPrescritor))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void pacienteNaoVeOsMarcadoresDeOutroPaciente() throws Exception {
+        mockMvc.perform(get("/pacientes/" + pacienteDeOutroId + "/progresso/consultas")
+                        .param("periodo", "DIAS_30")
+                        .header("Authorization", tokenPaciente))
+                .andExpect(status().isForbidden());
+    }
+
+    // o grafico olha pra tras e o endpoint de criar recusa passado, entao
+    // a consulta que ja aconteceu entra direto pelo repositorio
+    private Appointment salvaConsultaPassada(int diasAtras) {
+        Appointment consulta = new Appointment();
+        consulta.setPatient(paciente);
+        consulta.setPrescriber(prescritor);
+        consulta.setDateTime(LocalDate.now().minusDays(diasAtras).atTime(9, 0));
+        consulta.setModality(AppointmentModality.PRESENCIAL);
+        consulta.setStatus(AppointmentStatus.CONCLUIDA);
+        consulta.setDurationMinutes(60);
+        return appointmentRepository.save(consulta);
+    }
+
+    private String buscaMarcadores(String token, String periodo) throws Exception {
+        return mockMvc.perform(get("/pacientes/" + pacienteId + "/progresso/consultas")
+                        .param("periodo", periodo)
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();

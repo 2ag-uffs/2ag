@@ -2,8 +2,10 @@ import {useEffect, useMemo, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import {
     CartesianGrid,
+    Legend,
     Line,
     LineChart,
+    ReferenceLine,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -24,7 +26,11 @@ const lerToken = (nome, padrao) =>
 const CORES = {
     linha: lerToken("--color-chart-line", "#006633"),
     grade: lerToken("--color-chart-grid", "#e3dcd2"),
+    consulta: lerToken("--color-terracotta-dark", "#a44819"),
 };
+
+// aaaa-mm-dd vira dd/mm, que eh como o eixo do grafico mostra
+const diaEMes = (data) => data.slice(8, 10) + "/" + data.slice(5, 7);
 
 const PERIODOS = [
     {valor: "DIAS_15", texto: "Últimos 15 dias"},
@@ -48,6 +54,9 @@ export default function Progresso() {
     const [periodo, setPeriodo] = useState("DIAS_30");
 
     const [pontos, setPontos] = useState([]);
+    // as consultas do mesmo periodo, marcadas no grafico
+    const [consultas, setConsultas] = useState([]);
+    const [mostrarConsultas, setMostrarConsultas] = useState(true);
     const [carregando, setCarregando] = useState(false);
     const [erro, setErro] = useState(null);
 
@@ -82,6 +91,29 @@ export default function Progresso() {
 
     const atributoAtual = atributos.find((a) => a.name === atributoEscolhido);
 
+    // o eixo x eh categorico: so da pra marcar consulta em dia que tem
+    // ponto no grafico, senao o recharts n sabe onde por a linha
+    const marcasDeConsulta = useMemo(() => {
+        if (!mostrarConsultas) {
+            return [];
+        }
+        const diasComPonto = new Set(pontos.map((ponto) => ponto.data));
+        const vistos = new Set();
+        return consultas
+            .map((consulta) => ({...consulta, rotulo: diaEMes(consulta.data)}))
+            .filter((consulta) => {
+                if (!diasComPonto.has(consulta.rotulo) || vistos.has(consulta.rotulo)) {
+                    return false;
+                }
+                vistos.add(consulta.rotulo);
+                return true;
+            });
+    }, [consultas, pontos, mostrarConsultas]);
+
+    // as que ficaram de fora do eixo continuam valendo como informacao,
+    // entao aparecem na lista embaixo do grafico
+    const consultasNoPeriodo = consultas.length;
+
     // ao trocar de escala, o atributo escolhido pode n ser mais dela
     const trocarEscala = (novaEscala) => {
         setEscalaEscolhida(novaEscala);
@@ -100,13 +132,7 @@ export default function Progresso() {
         apiService
             .get(`/pacientes/${patientId}/progresso?atributo=${atributoEscolhido}&periodo=${periodo}`)
             .then((dados) => {
-                // a data vem como aaaa-mm-dd, o grafico mostra dd/mm
-                setPontos(
-                    dados.map((ponto) => ({
-                        data: ponto.date.slice(8, 10) + "/" + ponto.date.slice(5, 7),
-                        valor: ponto.value,
-                    })),
-                );
+                setPontos(dados.map((ponto) => ({data: diaEMes(ponto.date), valor: ponto.value})));
             })
             .catch((err) => {
                 setErro(err instanceof ApiError ? err.message : "Não foi possível carregar o progresso.");
@@ -114,6 +140,22 @@ export default function Progresso() {
             })
             .finally(() => setCarregando(false));
     }, [patientId, atributoEscolhido, periodo]);
+
+    // as consultas n dependem da escala escolhida, so do periodo, entao
+    // elas ficam num efeito separado pra n buscar de novo a cada troca
+    // de atributo
+    useEffect(() => {
+        if (!patientId) {
+            return;
+        }
+
+        apiService
+            .get(`/pacientes/${patientId}/progresso/consultas?periodo=${periodo}`)
+            .then(setConsultas)
+            // se as consultas falharem, o grafico ainda serve: elas sao
+            // contexto, n o dado principal
+            .catch(() => setConsultas([]));
+    }, [patientId, periodo]);
 
     if (!patientId) {
         return (
@@ -171,6 +213,18 @@ export default function Progresso() {
                             ))}
                         </select>
                     </div>
+
+                    <div className="progresso__filtro progresso__filtro--caixa">
+                        <label htmlFor="consultas">
+                            <input
+                                id="consultas"
+                                type="checkbox"
+                                checked={mostrarConsultas}
+                                onChange={(e) => setMostrarConsultas(e.target.checked)}
+                            />
+                            Marcar as consultas
+                        </label>
+                    </div>
                 </section>
 
                 {erro && <p className="progresso__erro">{erro}</p>}
@@ -205,6 +259,24 @@ export default function Progresso() {
                                         allowDecimals={false}
                                     />
                                     <Tooltip/>
+                                    <Legend/>
+                                    {/* a consulta vira uma linha vertical no dia em
+                                        que aconteceu, pra dar pra ler a curva junto
+                                        com o que foi feito no atendimento */}
+                                    {marcasDeConsulta.map((consulta) => (
+                                        <ReferenceLine
+                                            key={consulta.id}
+                                            x={consulta.rotulo}
+                                            stroke={CORES.consulta}
+                                            strokeDasharray="4 4"
+                                            label={{
+                                                value: consulta.geraPrescricao ? "consulta + receita" : "consulta",
+                                                position: "top",
+                                                fontSize: 11,
+                                                fill: CORES.consulta,
+                                            }}
+                                        />
+                                    ))}
                                     <Line
                                         type="monotone"
                                         dataKey="valor"
@@ -220,6 +292,31 @@ export default function Progresso() {
                                 Cada ponto é um preenchimento. Dia sem resposta não aparece no
                                 gráfico, em vez de aparecer como zero.
                             </p>
+
+                            {mostrarConsultas && consultasNoPeriodo > 0 && (
+                                <section className="progresso__consultas">
+                                    <h3>Consultas no período</h3>
+                                    <ul>
+                                        {consultas.map((consulta) => (
+                                            <li key={consulta.id}>
+                                                <strong>{diaEMes(consulta.data)}</strong>
+                                                {consulta.diagnosis ? " — " + consulta.diagnosis : ""}
+                                                {consulta.geraPrescricao && (
+                                                    <span className="progresso__marca">receita emitida</span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {/* so vira linha no grafico a consulta que caiu num
+                                        dia com preenchimento, entao a lista avisa */}
+                                    {marcasDeConsulta.length < consultasNoPeriodo && (
+                                        <p className="progresso__nota">
+                                            Consulta em dia sem preenchimento aparece aqui, mas não no
+                                            gráfico: não há ponto onde marcar.
+                                        </p>
+                                    )}
+                                </section>
+                            )}
                         </>
                     )}
                 </section>

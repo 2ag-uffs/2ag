@@ -1,9 +1,11 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.AppointmentMarkerDTO;
 import dev.uffs.doisag.dto.ProgressDataPointDTO;
 import dev.uffs.doisag.dto.TrackableAttributeDTO;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
+import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.ProgressReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,9 +18,12 @@ import java.util.List;
 public class ProgressReportController {
 
     private final ProgressReportService progressReportService;
+    private final AppointmentService appointmentService;
 
-    public ProgressReportController(ProgressReportService progressReportService) {
+    public ProgressReportController(ProgressReportService progressReportService,
+                                    AppointmentService appointmentService) {
         this.progressReportService = progressReportService;
+        this.appointmentService = appointmentService;
     }
 
     // catalogo do que da pra acompanhar, agrupado por escala.
@@ -43,5 +48,17 @@ public class ProgressReportController {
         List<ProgressDataPointDTO> progressData =
                 progressReportService.getPatientProgress(patientId, attribute, period);
         return ResponseEntity.ok(progressData);
+    }
+
+    // as consultas do mesmo periodo, pra marcar no grafico em que dia o
+    // paciente foi atendido. serve pra ler a curva junto com a conduta:
+    // se o sintoma virou depois de uma consulta, da pra ver
+    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @GetMapping("/pacientes/{patientId}/progresso/consultas")
+    public ResponseEntity<List<AppointmentMarkerDTO>> getAppointmentMarkers(
+            @PathVariable Long patientId,
+            @RequestParam("periodo") TimePeriod period
+    ) {
+        return ResponseEntity.ok(appointmentService.getMarcadoresDoPaciente(patientId, period));
     }
 }
