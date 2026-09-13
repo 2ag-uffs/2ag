@@ -62,7 +62,9 @@ async function request(path, options = {}) {
         const hadSession = loggedUser !== null;
         loggedUser = null;
         if (hadSession && !window.location.pathname.startsWith("/login")) {
-            window.location.href = "/login";
+            // o login avisa q a sessao acabou e depois volta pra tela onde a pessoa estava
+            const currentPath = window.location.pathname + window.location.search;
+            window.location.href = "/login?sessao=expirada&voltar=" + encodeURIComponent(currentPath);
         }
         const message = hadSession
             ? "Sua sessão expirou. Faça login novamente."

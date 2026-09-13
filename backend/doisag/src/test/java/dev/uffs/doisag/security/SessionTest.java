@@ -111,6 +111,14 @@ class SessionTest {
                 .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
     }
 
+    // a pessoa pode digitar o e-mail com letra maiuscula ou com espaco sobrando
+    @Test
+    void loginIgnoresUppercaseAndSpacesInTheEmail() throws Exception {
+        login("  Sessao-Paciente@EMAIL.com ", PATIENT_PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(patient.getId()));
+    }
+
     @Test
     void sessionCookieIdentifiesTheLoggedUser() throws Exception {
         Cookie sessionCookie = loginAndGetSessionCookie();

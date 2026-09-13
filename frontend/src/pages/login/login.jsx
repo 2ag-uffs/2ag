@@ -1,120 +1,100 @@
 import {useState} from "react";
-import {useLocation, useNavigate} from "react-router";
-import "./login.css";
+import {useLocation, useNavigate, useSearchParams} from "react-router";
+import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import PasswordField from "../../components/form/password-field.jsx";
+import TextField from "../../components/form/text-field.jsx";
 import {homePathFor} from "../../app/role-home.js";
-import {apiService, setLoggedUser, ApiError} from "../../services/api.js";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import styles from "./login.module.css";
+
+// aviso q outra tela pediu pro login mostrar
+function findNotice(searchParams, location) {
+    if (searchParams.get("sessao") === "expirada") {
+        return "Sua sessão expirou. Entre de novo para continuar de onde parou.";
+    }
+    if (location.state && location.state.notice) {
+        return location.state.notice;
+    }
+    return null;
+}
+
+// so aceita voltar pra uma tela do proprio sistema
+// senao alguem podia montar um link de login q manda a pessoa pra outro site
+function findReturnPath(searchParams) {
+    const returnPath = searchParams.get("voltar");
+    if (!returnPath || !returnPath.startsWith("/") || returnPath.startsWith("//") || returnPath.includes("\\")) {
+        return null;
+    }
+    return returnPath;
+}
 
 export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
-    // quem acabou de se cadastrar chega aqui com esse aviso
-    const justRegistered = Boolean(location.state && location.state.cadastrado);
+    const [searchParams] = useSearchParams();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [errorMessage, setErrorMessage] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const notice = findNotice(searchParams, location);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsLoading(true);
-        setError(null);
-
-        const email = event.target.email.value;
-        const password = event.target.password.value;
+        setIsSubmitting(true);
+        setErrorMessage(null);
 
         try {
-            // quem tenta entrar de novo comeca sem sessao na tela
-            setLoggedUser(null);
             const user = await apiService.post("/auth/login", {email: email, password: password});
             setLoggedUser(user);
-            navigate(homePathFor(user), {replace: true});
+            // quem caiu aqui pq a sessao acabou volta pra tela onde estava
+            const returnPath = findReturnPath(searchParams);
+            navigate(returnPath || homePathFor(user), {replace: true});
         } catch (requestError) {
             if (requestError instanceof ApiError) {
-                setError(requestError.message);
+                setErrorMessage(requestError.message);
             } else {
-                setError("Não foi possível falar com o servidor.");
+                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
             }
-        } finally {
-            setIsLoading(false);
+            setIsSubmitting(false);
         }
     };
 
-    const handleSignUp = (event) => {
-        event.preventDefault();
-        navigate("/sign-up");
-    };
-
     return (
-        <div className="login">
-            <section className="login__art">
-                <img
-                    alt="Logotipo 2AG"
-                    className="login__art__top-left"
-                    src="/images/logotipo-icon-claro.svg"
+        <AuthLayout title="Entrar">
+            {notice && !errorMessage && <p className={"aviso " + styles.message}>{notice}</p>}
+            {errorMessage && (
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">{errorMessage}</p>
+            )}
+
+            <form className={styles.form} onSubmit={handleSubmit}>
+                <TextField
+                    label="E-mail"
+                    name="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required={true}
                 />
-                <img
-                    alt="Logotipo 2AG"
-                    className="login__art__top-right"
-                    src="/images/logotipo-icon-claro.svg"
+                <PasswordField
+                    label="Senha"
+                    name="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required={true}
                 />
-                <img
-                    alt="Logotipo 2AG"
-                    className="login__art__center"
-                    src="/images/logotipo-vertical-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="login__art__bottom-left"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-                <img
-                    alt="Logotipo 2AG"
-                    className="login__art__bottom-right"
-                    src="/images/logotipo-icon-claro.svg"
-                />
-            </section>
-            <section className="login__content">
-                <div className="login__content-wrapper">
-                    <img
-                        alt="Logotipo 2AG"
-                        className="login__content__logo"
-                        src="/images/logotipo-horizontal.svg"
-                    />
-                    <h2 className="login__content__title">Login</h2>
-                    {justRegistered && !error && (
-                        <p className="aviso">Cadastro feito. Entre com seu e-mail e senha.</p>
-                    )}
-                    {error && <p className="login__error-message">{error}</p>}
-                    <form className="login__content__form" onSubmit={handleSubmit}>
-                        <div className="login__content__form__input-group">
-                            <label htmlFor="email">Email</label>
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                autoComplete="username"
-                                required={true}
-                            />
-                        </div>
-                        <div className="login__content__form__input-group">
-                            <label htmlFor="password">Senha</label>
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                required={true}
-                            />
-                        </div>
-                        <div className="login__content__form__actions">
-                            <button type="submit" disabled={isLoading}>
-                                {isLoading ? "Entrando..." : "Entrar"}
-                            </button>
-                            <button className="button-secondary" type="button" onClick={handleSignUp}>
-                                Criar conta
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-        </div>
+                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
+                    {isSubmitting ? "Entrando..." : "Entrar"}
+                </button>
+            </form>
+
+            <p className={styles.signUpNote}>
+                É paciente e ainda não tem conta? O cadastro é feito pelo link de convite que o seu prescritor envia.
+            </p>
+        </AuthLayout>
     );
 }

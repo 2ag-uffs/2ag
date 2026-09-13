@@ -1,0 +1,57 @@
+/* pecas de formulario usadas nas telas novas */
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.label {
+    font-weight: 500;
+}
+
+.hint {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.error {
+    color: var(--color-error);
+    font-size: 0.85rem;
+}
+
+.field input[aria-invalid="true"] {
+    border-color: var(--color-error);
+}
+
+.passwordBox {
+    display: flex;
+    position: relative;
+}
+
+.passwordBox input {
+    flex: 1;
+    min-width: 0;
+    padding-right: 3rem;
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.visibilityButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 999px;
+    color: var(--color-text-secondary);
+    flex: 0 0 auto;
+    font-size: 1.2rem;
+    height: 2.5rem;
+    min-height: 0;
+    position: absolute;
+    right: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2.5rem;
+}
+
+.visibilityButton:hover {
+    background-color: var(--color-surface-alt);
+}

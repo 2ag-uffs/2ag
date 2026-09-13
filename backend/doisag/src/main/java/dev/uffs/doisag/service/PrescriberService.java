@@ -2,6 +2,7 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.dto.PrescriberUpdateDTO;
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -38,13 +39,14 @@ public class PrescriberService {
         }
 
         // email tbm n pode repetir, senao o login n sabe quem eh quem
-        if (prescriberRepository.findByEmail(dados.email()).isPresent()) {
+        String email = InputCleaner.normalizeEmail(dados.email());
+        if (prescriberRepository.findByEmail(email).isPresent()) {
             throw new ValidationException("E-mail já cadastrado no sistema");
         }
 
         Prescriber prescriber = new Prescriber();
         prescriber.setName(dados.name());
-        prescriber.setEmail(dados.email());
+        prescriber.setEmail(email);
         prescriber.setCpf(dados.cpf());
         prescriber.setBirthDate(dados.birthDate());
         prescriber.setPhone(dados.phone());

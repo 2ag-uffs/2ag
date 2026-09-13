@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -33,7 +34,7 @@ public class AuthService {
     }
 
     public Users login(String email, String password) {
-        Users user = usersRepository.findByEmail(email).orElse(null);
+        Users user = usersRepository.findByEmail(InputCleaner.normalizeEmail(email)).orElse(null);
         if (user == null) {
             passwordEncoder.matches(password, unusedPasswordHash);
             throw new BadCredentialsException("e-mail sem conta");

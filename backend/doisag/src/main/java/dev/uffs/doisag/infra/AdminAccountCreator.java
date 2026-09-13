@@ -29,7 +29,7 @@ public class AdminAccountCreator implements ApplicationRunner {
                                @Value("${api.admin.password:}") String adminPassword) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
-        this.adminEmail = adminEmail;
+        this.adminEmail = InputCleaner.normalizeEmail(adminEmail);
         this.adminPassword = adminPassword;
     }
 
