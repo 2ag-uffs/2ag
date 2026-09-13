@@ -56,7 +56,6 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/logout` | apaga o cookie |
 | `GET /auth/me` | quem está logado |
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
-| `PUT /auth/senha` | troca a própria senha |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
 - a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário
@@ -75,6 +74,18 @@ os perfis são `PATIENT`, `PRESCRIBER` e `ADMIN`. quem pode o quê está no `@Pr
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
 
 o administrador não acessa nenhum dado clínico.
+
+## perfil
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /profile` | dados da própria conta |
+| `PUT /profile` | nome, data de nascimento, telefone e endereço |
+| `PUT /profile/email` | troca o e-mail de acesso pedindo a senha atual |
+| `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
+| `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
+
+as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perfil de outra pessoa.
 
 ## convite de paciente
 

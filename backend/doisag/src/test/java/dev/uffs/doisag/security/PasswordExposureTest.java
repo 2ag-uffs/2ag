@@ -94,8 +94,8 @@ class PasswordExposureTest {
     }
 
     @Test
-    void buscarPrescritorNaoPodeTrazerSenha() throws Exception {
-        String body = corpoDe("/prescritor/" + prescriberId);
+    void perfilNaoPodeTrazerSenha() throws Exception {
+        String body = corpoDe("/profile");
 
         assertThat(body).contains("Prescritora de Teste");
         assertThat(body).doesNotContain(KNOWN_HASH);

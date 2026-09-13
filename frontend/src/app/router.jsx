@@ -151,7 +151,7 @@ const routes = [
                         children: [
                             {
                                 path: "/perfil",
-                                lazy: lazyPage(() => import("../pages/perfil/perfil.jsx")),
+                                lazy: lazyPage(() => import("../pages/profile/profile.jsx")),
                             },
                         ],
                     },

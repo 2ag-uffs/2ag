@@ -1,6 +1,5 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
@@ -59,24 +58,6 @@ public class PatientService {
 
     public List<Patient> getPatientsByPrescriberId(Long prescriberId) {
         return patientRepository.findAllByPrescriberId(prescriberId);
-    }
-
-    public Patient update(Long id, PatientUpdateDTO dados) {
-        Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado com o id: " + id));
-
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setPhone(dados.phone());
-        patient.setCpf(dados.cpf());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
-
-        // senha n se mexe aqui. antes esse metodo gravava o valor recebido
-        // direto, sem passar pelo passwordEncoder, o q invalidava o login
-        // do paciente. troca de senha eh fluxo proprio (RN12)
-
-        return patientRepository.save(patient);
     }
 
     public void delete(Long id) {

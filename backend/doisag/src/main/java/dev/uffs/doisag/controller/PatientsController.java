@@ -1,10 +1,8 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.PatientResponseDTO;
-import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PatientService;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -50,14 +48,6 @@ public class PatientsController {
     @GetMapping("/{id}")
     public ResponseEntity<PatientResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(new PatientResponseDTO(patientService.getById(id)));
-    }
-
-    // update patient
-    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
-    @PutMapping("/{id}")
-    public ResponseEntity<PatientResponseDTO> update(@PathVariable Long id,
-                                                     @RequestBody @Valid PatientUpdateDTO dados) {
-        return ResponseEntity.ok(new PatientResponseDTO(patientService.update(id, dados)));
     }
 
     // delete patient. so o prescritor que acompanha o paciente

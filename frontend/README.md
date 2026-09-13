@@ -74,4 +74,4 @@ vale para todo código novo ou reescrito:
 
 ## situação das telas
 
-o layout, as rotas, o login, o cadastro e a tela do administrador já seguem o padrão novo. as telas clínicas ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.
+o layout, as rotas, o login, o cadastro, o perfil e a tela do administrador já seguem o padrão novo. as telas clínicas ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.

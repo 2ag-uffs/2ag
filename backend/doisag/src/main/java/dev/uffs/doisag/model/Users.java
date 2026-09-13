@@ -41,6 +41,12 @@ public abstract class Users implements UserDetails { // implementa a interface d
     private int failedLoginAttempts = 0;
     private LocalDateTime lockedUntil;
 
+    // a pessoa escolhe se quer receber lembretes e avisos por e-mail (RF18)
+    private boolean emailNotificationsEnabled = true;
+
+    // sessao emitida antes da ultima troca de senha deixa de valer
+    private LocalDateTime passwordChangedAt;
+
 
     public Users() {
     }
@@ -140,6 +146,23 @@ public abstract class Users implements UserDetails { // implementa a interface d
 
     public void setLockedUntil(LocalDateTime lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+
+    public boolean isEmailNotificationsEnabled() {
+        return emailNotificationsEnabled;
+    }
+
+    public void setEmailNotificationsEnabled(boolean emailNotificationsEnabled) {
+        this.emailNotificationsEnabled = emailNotificationsEnabled;
+    }
+
+    @JsonIgnore
+    public LocalDateTime getPasswordChangedAt() {
+        return passwordChangedAt;
+    }
+
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) {
+        this.passwordChangedAt = passwordChangedAt;
     }
 
     // cada tipo de conta diz o proprio papel

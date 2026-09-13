@@ -123,7 +123,7 @@ class AdminPrescribersTest {
         Prescriber prescriber = savePrescriber("admin-desativa@email.com", "ADM03");
         String prescriberToken = "Bearer " + tokenService.generateToken(prescriber);
 
-        mockMvc.perform(get("/prescritor/" + prescriber.getId()).header("Authorization", prescriberToken))
+        mockMvc.perform(get("/profile").header("Authorization", prescriberToken))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/admin/prescribers/" + prescriber.getId() + "/active")
@@ -133,7 +133,7 @@ class AdminPrescribersTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
 
-        mockMvc.perform(get("/prescritor/" + prescriber.getId()).header("Authorization", prescriberToken))
+        mockMvc.perform(get("/profile").header("Authorization", prescriberToken))
                 .andExpect(status().isUnauthorized());
     }
 

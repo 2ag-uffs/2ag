@@ -47,7 +47,7 @@ public class PatientAccessService {
     }
 
     // versao pro caso em que o proprio usuario logado eh o alvo, tipo
-    // /prescritor/{id}: o prescritor mexe na ficha dele e mais nada
+    // a lista de pacientes pelo id do prescritor
     public boolean isSelf(Long userId, Authentication authentication) {
         Users loggedUser = loggedUserOf(authentication);
         return loggedUser != null && userId != null && userId.equals(loggedUser.getId());
@@ -76,21 +76,6 @@ public class PatientAccessService {
                     return consulta.getPatient().getId().equals(loggedUser.getId());
                 })
                 .orElse(false);
-    }
-
-    // quem pode ver a ficha de um prescritor: ele mesmo, ou um paciente
-    // que esta vinculado a ele
-    public boolean canViewPrescriber(Long prescriberId, Authentication authentication) {
-        Users loggedUser = loggedUserOf(authentication);
-        if (loggedUser == null || prescriberId == null) {
-            return false;
-        }
-        if (prescriberId.equals(loggedUser.getId())) {
-            return true;
-        }
-        // aqui o paciente eh o usuario logado e o prescritor eh o alvo
-        return loggedUser instanceof Patient
-                && patientRepository.existsByIdAndPrescriberId(loggedUser.getId(), prescriberId);
     }
 
     // o principal eh o nosso Users pq o SecurityFilter coloca a entidade

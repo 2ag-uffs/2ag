@@ -1,7 +1,5 @@
 package dev.uffs.doisag.controller;
 
-import dev.uffs.doisag.dto.ApiResponseDTO;
-import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.LoginDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.dto.SessionUserDTO;
@@ -9,7 +7,6 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.service.AuthService;
-import dev.uffs.doisag.service.PasswordService;
 import dev.uffs.doisag.service.PatientService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,14 +27,12 @@ public class AuthenticationController {
     private final AuthService authService;
     private final SessionCookieService sessionCookieService;
     private final PatientService patientService;
-    private final PasswordService passwordService;
 
     public AuthenticationController(AuthService authService, SessionCookieService sessionCookieService,
-                                    PatientService patientService, PasswordService passwordService) {
+                                    PatientService patientService) {
         this.authService = authService;
         this.sessionCookieService = sessionCookieService;
         this.patientService = patientService;
-        this.passwordService = passwordService;
     }
 
     // confere a senha e devolve o cookie da sessao junto com os dados de quem entrou
@@ -69,13 +63,5 @@ public class AuthenticationController {
         Patient patient = patientService.registerPatient(registerData);
         sessionCookieService.writeSession(response, patient);
         return ResponseEntity.status(HttpStatus.CREATED).body(new SessionUserDTO(patient));
-    }
-
-    // cada um so troca a propria senha entao a rota n tem id
-    @PutMapping("/senha")
-    public ApiResponseDTO changePassword(@RequestBody @Valid ChangePasswordDTO passwordData,
-                                         @AuthenticationPrincipal Users loggedUser) {
-        passwordService.trocarSenha(loggedUser, passwordData);
-        return new ApiResponseDTO("Senha alterada com sucesso.");
     }
 }

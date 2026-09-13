@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 
 // descobre quem esta fazendo a requisicao
 // o token vem do cookie da sessao ou do cabecalho authorization q os testes usam
@@ -62,6 +63,11 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return;
             }
 
+            // a sessao emitida antes da ultima troca de senha deixa de valer
+            if (wasIssuedBeforePasswordChange(sessionToken, user)) {
+                return;
+            }
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -75,6 +81,16 @@ public class SecurityFilter extends OncePerRequestFilter {
             // a requisicao segue sem login e o SecurityErrorHandler responde 401
             SecurityContextHolder.clearContext();
         }
+    }
+
+    // o token guarda a hora de emissao em segundos inteiros
+    // por isso a troca de senha tbm eh gravada em segundos inteiros
+    private boolean wasIssuedBeforePasswordChange(SessionToken sessionToken, Users user) {
+        if (user.getPasswordChangedAt() == null) {
+            return false;
+        }
+        Instant passwordChangedAt = user.getPasswordChangedAt().atZone(ZoneId.systemDefault()).toInstant();
+        return sessionToken.issuedAt().isBefore(passwordChangedAt);
     }
 
     private String readBearerToken(HttpServletRequest request) {

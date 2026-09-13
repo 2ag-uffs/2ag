@@ -90,20 +90,19 @@ public class ErrorHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    // campo recusado por regra q so o servico confere como a senha atual errada
+    @ExceptionHandler(InvalidFieldException.class)
+    public ResponseEntity<ValidationResponseDTO> handleInvalidField(InvalidFieldException exception,
+                                                                    HttpServletRequest request) {
+        return buildFieldResponse(HttpStatus.BAD_REQUEST, exception.getField(), exception.getMessage(), request);
+    }
+
     // valor unico q ja pertence a outra conta
     // vai com o nome do campo pro formulario destacar onde esta o problema
     @ExceptionHandler(DuplicateValueException.class)
     public ResponseEntity<ValidationResponseDTO> handleDuplicateValue(DuplicateValueException exception,
                                                                       HttpServletRequest request) {
-        ValidationResponseDTO body = new ValidationResponseDTO(
-                LocalDateTime.now(),
-                HttpStatus.CONFLICT.value(),
-                HttpStatus.CONFLICT.getReasonPhrase(),
-                exception.getMessage(),
-                request.getRequestURI(),
-                List.of(new ValidationErrorDetail(exception.getField(), exception.getMessage()))
-        );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        return buildFieldResponse(HttpStatus.CONFLICT, exception.getField(), exception.getMessage(), request);
     }
 
     // metodo http q a rota n aceita
@@ -149,6 +148,19 @@ public class ErrorHandler {
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("erro inesperado em {}", request.getRequestURI(), exception);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro inesperado no servidor", request);
+    }
+
+    private ResponseEntity<ValidationResponseDTO> buildFieldResponse(HttpStatus status, String field, String message,
+                                                                     HttpServletRequest request) {
+        ValidationResponseDTO body = new ValidationResponseDTO(
+                LocalDateTime.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                request.getRequestURI(),
+                List.of(new ValidationErrorDetail(field, message))
+        );
+        return ResponseEntity.status(status).body(body);
     }
 
     private ResponseEntity<ErrorResponseDTO> buildResponse(HttpStatus status, String message, HttpServletRequest request) {

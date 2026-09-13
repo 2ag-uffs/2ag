@@ -1,17 +1,16 @@
 package dev.uffs.doisag.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
-// troca de senha do proprio usuario logado. pede a senha atual de
-// proposito: sem ela, quem pegasse um token esquecido num computador
-// trocava a senha e tomava a conta
+// troca de senha da propria conta (RF18)
+// pede a senha atual de proposito pq sem ela quem achasse um computador logado tomava a conta
 public record ChangePasswordDTO(
-        @NotBlank(message = "A senha atual é obrigatória")
-        String senhaAtual,
+        @NotBlank(message = "Informe a senha atual")
+        String currentPassword,
 
-        @NotBlank(message = "A nova senha é obrigatória")
-        @Size(min = 8, message = "A nova senha deve ter pelo menos 8 caracteres")
-        String novaSenha
+        @NotBlank(message = "Informe a nova senha")
+        @Pattern(regexp = PasswordRules.PATTERN, message = PasswordRules.MESSAGE)
+        String newPassword
 ) {
 }
