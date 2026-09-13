@@ -1,158 +1,144 @@
-import { useState } from "react";
-import "./historico-clinico-paciente.css";
+import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
+import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
+import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
+import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
+import SectionLinks from "../../components/section-links/section-links.jsx";
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {isInTheFuture} from "../../utils/date-format.js";
+import styles from "./historico-clinico-paciente.module.css";
 
-const dadosHistorico = {
-    anamnese:
-        "Paciente relata início de sintomas de ansiedade há cerca de 6 meses, associados a estresse no trabalho. Refere dificuldade para dormir, irritabilidade e falta de concentração. Nega histórico familiar de transtornos psiquiátricos. Tabagista (10 cigarros/dia), etilista social. Nega uso de outras substâncias.",
-    diagnosticos: [
-        {
-            id: 1,
-            data: "15/05/2025",
-            diagnostico: "Transtorno de Ansiedade Generalizada (CID-10 F41.1)",
-        },
-        {
-            id: 2,
-            data: "22/03/2025",
-            diagnostico: "Hipertensão Arterial Sistêmica (CID-10 I10)",
-        },
-    ],
-    tratamentos: [
-        {
-            id: 1,
-            data: "15/05/2025",
-            tratamento:
-                "Psicoterapia Cognitivo-Comportamental (TCC), sessões semanais.",
-        },
-        {
-            id: 2,
-            data: "15/05/2025",
-            tratamento: "Atividade física regular (3x por semana).",
-        },
-    ],
-    evolucoes: [
-        {
-            id: 1,
-            data: "01/07/2025",
-            evolucao:
-                "Paciente relata melhora na qualidade do sono e diminuição da irritabilidade após início da TCC.",
-        },
-        {
-            id: 2,
-            data: "15/06/2025",
-            evolucao:
-                "Apresenta boa adesão às sessões de psicoterapia e às recomendações de atividade física.",
-        },
-    ],
-    prescricoes: [
-        {
-            id: 1,
-            data: "15/05/2025",
-            medicamento: "Sertralina",
-            dose: "50mg",
-            posologia: "1 comprimido pela manhã",
-        },
-        {
-            id: 2,
-            data: "22/03/2025",
-            medicamento: "Losartana Potássica",
-            dose: "50mg",
-            posologia: "1 comprimido pela manhã",
-        },
-    ],
-};
+// historico clinico do proprio paciente (RF12)
+// mostra so o q foi registrado de verdade e o registro anulado aparece com o motivo
+export default function HistoricoClinicoPaciente() {
+    const navigate = useNavigate();
+    const loggedUser = getLoggedUser();
+    const [history, setHistory] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
-export default function HistoricoClinico() {
+    useEffect(() => {
+        let isCurrentRequest = true;
+        const patientPath = "/pacientes/" + loggedUser.id;
 
-    const [aviso, setAviso] = useState(null);
+        Promise.all([
+            apiService.get(patientPath + "/consultas"),
+            apiService.get(patientPath + "/prescricoes"),
+            apiService.get(patientPath + "/anamneses"),
+            apiService.get(patientPath + "/escalas/central"),
+        ])
+            .then(([appointments, prescriptions, anamneses, scalesPage]) => {
+                if (isCurrentRequest) {
+                    setHistory({appointments, prescriptions, anamneses, scalesPage});
+                }
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar seu histórico. Confira sua internet e tente de novo.");
+                }
+            });
 
-    // exportar ainda n foi feito, entao o botao avisa em vez de fingir
-    const handleExport = () => {
-        setAviso("A exportação ainda não está pronta.");
-    };
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [loggedUser.id]);
+
+    if (loadError) {
+        return <p className="aviso aviso--atencao">{loadError}</p>;
+    }
+
+    if (history === null) {
+        return <p className={styles.status}>Carregando...</p>;
+    }
+
+    const {appointments, prescriptions, anamneses, scalesPage} = history;
+    // consulta marcada pro futuro aparece no inicio e aqui entra so a q ja aconteceu
+    const pastAppointments = appointments.filter((appointment) => !isInTheFuture(appointment.dateTime));
+    // a vigente aparece primeiro
+    const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
+        .concat(prescriptions.filter((prescription) => !prescription.current));
 
     return (
-        <div className="historico-paciente__page">
-            <main className="historico-paciente__main">
-                {aviso && <p className="aviso aviso--atencao">{aviso}</p>}
-                <div className="historico-paciente__header">
-                    <h1>Meu Histórico Clínico</h1>
-                    <h2>
-                        Aqui você encontra um resumo completo de suas
-                        informações de saúde registradas na plataforma.
-                    </h2>
-                    <button className="button-primary" onClick={handleExport}>
-                        Exportar Dados
-                    </button>
-                </div>
+        <section className={styles.page}>
+            <div>
+                <h1>Meu histórico clínico</h1>
+                <p className={styles.subtitle}>
+                    Tudo o que foi registrado no seu acompanhamento. Registros anulados continuam aqui, com o motivo.
+                </p>
+            </div>
 
-                <div className="historico-paciente__content">
-                    <section className="historico-paciente__section">
-                        <h3>Anamnese</h3>
-                        <p>{dadosHistorico.anamnese}</p>
-                    </section>
+            <SectionLinks
+                label="Partes do histórico"
+                sections={[
+                    {id: "consultas", label: "Consultas (" + pastAppointments.length + ")"},
+                    {id: "prescricoes", label: "Prescrições (" + prescriptions.length + ")"},
+                    {id: "anamnese", label: "Anamnese (" + anamneses.length + ")"},
+                    {id: "escalas", label: "Escalas"},
+                ]}
+            />
 
-                    <section className="historico-paciente__section">
-                        <h3>Diagnósticos Realizados</h3>
-                        <ul>
-                            {dadosHistorico.diagnosticos.map((item) => (
-                                <li key={item.id}>
-                                    <strong>{item.data}: </strong>
-                                    {item.diagnostico}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+            <section id="consultas" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Consultas</h2>
+                {pastAppointments.length === 0 ? (
+                    <p className={styles.status}>Nenhuma consulta realizada ainda.</p>
+                ) : (
+                    <div className={styles.list}>
+                        {pastAppointments.map((appointment) => (
+                            <ConsultationCard key={appointment.id} appointment={appointment}/>
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    <section className="historico-paciente__section">
-                        <h3>Tratamentos Prescritos</h3>
-                        <ul>
-                            {dadosHistorico.tratamentos.map((item) => (
-                                <li key={item.id}>
-                                    <strong>{item.data}: </strong>
-                                    {item.tratamento}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+            <section id="prescricoes" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Prescrições</h2>
+                {orderedPrescriptions.length === 0 ? (
+                    <p className={styles.status}>Nenhuma prescrição emitida ainda.</p>
+                ) : (
+                    <div className={styles.list}>
+                        {orderedPrescriptions.map((prescription) => (
+                            <PrescriptionCard key={prescription.id} prescription={prescription}/>
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    <section className="historico-paciente__section">
-                        <h3>Evoluções no Quadro Clínico</h3>
-                        <ul>
-                            {dadosHistorico.evolucoes.map((item) => (
-                                <li key={item.id}>
-                                    <strong>{item.data}: </strong>
-                                    {item.evolucao}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
+            <section id="anamnese" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Anamnese</h2>
+                {anamneses.length === 0 ? (
+                    <div className={styles.emptyAnamnesis}>
+                        <p className={styles.status}>Você ainda não preencheu a anamnese.</p>
+                        <button type="button" className={styles.secondaryButton} onClick={() => navigate("/anamnese")}>
+                            Preencher anamnese
+                        </button>
+                    </div>
+                ) : (
+                    <div className={styles.list}>
+                        {anamneses.map((anamnesis) => (
+                            <AnamnesisView key={anamnesis.id} anamnesis={anamnesis}/>
+                        ))}
+                    </div>
+                )}
+            </section>
 
-                    <section className="historico-paciente__section">
-                        <h3>Prescrições Anteriores</h3>
-                        <div className="historico-paciente__prescriptions">
-                            {dadosHistorico.prescricoes.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="historico-paciente__prescription-item"
-                                >
-                                    <div className="historico-paciente__prescription-item__header">
-                                        <p>{item.medicamento}</p>
-                                        <span>{item.data}</span>
-                                    </div>
-                                    <p>
-                                        <strong>Dose: </strong>
-                                        {item.dose}
-                                    </p>
-                                    <p>
-                                        <strong>Posologia: </strong>
-                                        {item.posologia}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                </div>
-            </main>
-        </div>
+            <section id="escalas" className={styles.section}>
+                <h2 className={styles.sectionTitle}>Escalas</h2>
+                <ScaleSummary
+                    scalesPage={scalesPage}
+                    pendingTitle="Para responder"
+                    pendingAction={(
+                        <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
+                        >
+                            Responder agora
+                        </button>
+                    )}
+                />
+            </section>
+        </section>
     );
 }
