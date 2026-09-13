@@ -1,19 +1,72 @@
+/*
+ * paleta da marca 2ag. os valores vem do manual, resumido em
+ * docs/identidade-visual.md
+ *
+ * o manual usa o sistema 60-30-10: primaria dominante, secundaria nos
+ * detalhes, e as cores de destaque em no maximo 10%, pra botao e call
+ * to action.
+ *
+ * como isso virou interface: a primaria domina a identidade (cabecalho,
+ * navegacao, botao principal) e o corpo de leitura fica num neutro
+ * claro. o manual diz que a primaria ocupa 60% como fundo, mas isso eh
+ * regra de material impresso: 60% da tela em verde escuro atrapalha
+ * quem preenche formulario de 15 itens ou le prontuario.
+ * os tons claros das superficies sao derivados da palha, que eh
+ * exatamente o que o manual manda fazer com os subtons pra web
+ */
+
 :root {
-    --color-primary: #193e21;
-    --color-primary-dark: #0f2a15;
+    /* ---- cores da marca ---- */
+    --color-primary: #006633;           /* verde escuro, "de confianca" */
+    --color-secondary: #77954f;         /* verde claro, "fitoterapico" */
+    --color-straw: #ffeeda;             /* palha, "calma e estabilidade" */
+    --color-peach: #f8bf7d;             /* pessego, "vitalidade e conforto" */
+    --color-terracotta: #bf663f;        /* terracota, "raizes e organico" */
+    --color-neutral-black: #1d1b1b;     /* preto neutro */
+
+    /* ---- subtons derivados das cores acima ---- */
+    --color-primary-dark: #004d26;
+    --color-primary-light: #1a7a4a;
+    --color-primary-soft: #e0ede6;      /* verde bem diluido, pra realce */
+    --color-secondary-dark: #5f7a3e;
+    --color-secondary-light: #93ad72;
+    --color-terracotta-dark: #9c4f2f;   /* versao com contraste pra texto */
+
+    /* ---- superficies ---- */
+    --color-background: #fdf8f2;        /* palha diluida */
+    --color-surface: #ffffff;
+    --color-surface-alt: #f6f1ea;       /* cartao sobre o fundo */
+
+    /* ---- texto ----
+     * branco sobre a primaria da 7,1:1, passa no AA e no AAA.
+     * sobre a secundaria da so 3,4:1, entao ali o texto vai escuro */
+    --color-text-primary: #1d1b1b;
+    --color-text-headings: #006633;
+    --color-text-secondary: #5c5a57;
+    --color-text-on-primary: #ffffff;
+    --color-text-on-secondary: #1d1b1b;
+
+    /* ---- bordas ---- */
+    --color-border: #e3dcd2;
+    --color-border-light: #efe9e1;
+
+    /* ---- estados ---- */
+    --color-error: #9c4f2f;             /* terracota escurecida, 5,9:1 */
+    --color-error-soft: #f6e3d9;        /* fundo da caixa de erro */
+    --color-error-border: #e8c6b4;
+    --color-success: #006633;
+    --color-warning: #bf663f;
+
+    /* ---- nomes antigos, mantidos pra n quebrar as telas ---- */
     --color-accent-agree: #77954f;
     --color-accent-disagree: #bf663f;
-    --color-neutral: #adb5bd;
-    --color-background: #f5f8f0;
-    --color-surface: #ffffff;
-    --color-surface-alt: #f4f4f4;
-
-    --color-text-primary: #2a3142;
-    --color-text-headings: #193e21;
-    --color-text-secondary: #5a6375;
-    --color-text-on-primary: #ffffff;
-    --color-border: #e2e2e2;
-    --color-border-light: #f0f0f0;
+    --color-neutral: #a8a49e;
+    --color-text-muted: #5c5a57;
     --color-btn-light-bg: #77954f;
     --color-btn-light-bg-transparent: #77954f6e;
+
+    /* ---- cores do grafico de evolucao ----
+     * saem da paleta em vez do padrao da biblioteca */
+    --color-chart-line: #006633;
+    --color-chart-grid: #e3dcd2;
 }

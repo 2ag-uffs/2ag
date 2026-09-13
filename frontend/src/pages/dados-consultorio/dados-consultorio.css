@@ -1,18 +1,18 @@
 .dados-consultorio-container {
     min-height: 100vh;
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-alt);
     font-family: sans-serif;
 }
 
 .dados-header {
     background-color: white;
     padding: 1.5rem 2rem;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--color-border-light);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .dados-header h1 {
-    color: #193E21;
+    color: var(--color-primary);
     margin: 0;
     font-size: 1.8rem;
 }
@@ -40,12 +40,12 @@
     padding: 1rem 2rem;
     border: none;
     background: white;
-    color: #666;
+    color: var(--color-text-muted);
     cursor: pointer;
     font-size: 1rem;
     font-weight: 500;
     transition: all 0.3s ease;
-    border-right: 1px solid #e9ecef;
+    border-right: 1px solid var(--color-border-light);
 }
 
 .tab:last-child {
@@ -53,12 +53,12 @@
 }
 
 .tab.active {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
 }
 
 .tab:hover:not(.active) {
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-alt);
 }
 
 .form-container {
@@ -71,7 +71,7 @@
 .company-section {
     margin-bottom: 2rem;
     padding-bottom: 2rem;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-border-light);
 }
 
 .company-card {
@@ -84,17 +84,17 @@
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background-color: #f8f9fa;
-    border: 3px solid #e9ecef;
+    background-color: var(--color-surface-alt);
+    border: 3px solid var(--color-border-light);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 2rem;
-    color: #666;
+    color: var(--color-text-muted);
 }
 
 .photo-upload-btn {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
     padding: 0.5rem 1rem;
     border-radius: 4px;
@@ -104,17 +104,17 @@
 }
 
 .photo-upload-btn:hover {
-    background-color: #0f2a15;
+    background-color: var(--color-primary-dark);
 }
 
 .company-info h2 {
-    color: #193E21;
+    color: var(--color-primary);
     margin: 0 0 0.5rem 0;
     font-size: 1.5rem;
 }
 
 .company-info p {
-    color: #666;
+    color: var(--color-text-muted);
     margin: 0;
     font-size: 1rem;
 }
@@ -126,7 +126,7 @@
 }
 
 .form-section {
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-border-light);
     padding-bottom: 2rem;
 }
 
@@ -136,7 +136,7 @@
 }
 
 .form-section h3 {
-    color: #193E21;
+    color: var(--color-primary);
     margin: 0 0 1.5rem 0;
     font-size: 1.2rem;
 }
@@ -160,14 +160,14 @@
 
 .form-company label {
     font-weight: bold;
-    color: #555;
+    color: var(--color-text-muted);
     font-size: 0.9rem;
 }
 
 .form-input,
 .form-select {
     padding: 0.75rem;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--color-border-light);
     border-radius: 6px;
     font-size: 1rem;
     background: white;
@@ -177,11 +177,11 @@
 .form-input:focus,
 .form-select:focus {
     outline: none;
-    border-color: #193E21;
+    border-color: var(--color-primary);
 }
 
 .form-company small {
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 0.8rem;
     margin-top: 0.25rem;
 }
@@ -192,7 +192,7 @@
     gap: 1rem;
     margin-top: 2rem;
     padding-top: 2rem;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--color-border-light);
 }
 
 .btn {
@@ -206,22 +206,22 @@
 }
 
 .btn-primary {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #0f2a15;
+    background-color: var(--color-primary-dark);
 }
 
 .btn-secondary {
     background-color: white;
-    color: #193E21;
-    border-color: #193E21;
+    color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
 .btn-secondary:hover {
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-alt);
 }
 
 /* Responsividade */

@@ -8,7 +8,7 @@
 }
 
 .diario-sono__content {
-    background-color: var(--color-surface, #ffffff);
+    background-color: var(--color-surface);
     border-radius: 0.5rem;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -19,7 +19,7 @@
 
 .diario-sono__header {
     align-items: center;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: center;
     flex-direction: column;
@@ -30,14 +30,14 @@
 .diario-sono__header h1 {
     font-size: 2rem;
     font-weight: 600;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
 }
 
 .diario-sono__header h2 {
     font-size: 1rem;
     font-weight: 400;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     margin: 0;
 }
 
@@ -45,7 +45,7 @@
     text-align: center;
     font-size: 1rem;
     font-weight: 200;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
     margin: 0 auto 0.5rem auto;
     width: auto;
     display: block;
@@ -58,7 +58,7 @@
 }
 
 .diario-sono__form__row {
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     gap: 20px;
     padding: 15px;
@@ -76,7 +76,7 @@
 .diario-sono__form__row label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
     margin-bottom: 0.25rem;
     line-height: 1.2;
     min-height: 2.1rem;
@@ -87,11 +87,11 @@
 .diario-sono__form__row input,
 .diario-sono__form__row select {
     padding: 0.75rem;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     border-radius: 0.375rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #1f2937);
-    background-color: var(--color-surface, #ffffff);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
     transition: border-color 0.2s;
     height: 3rem;
     box-sizing: border-box;
@@ -100,7 +100,7 @@
 .diario-sono__form__row input:focus,
 .diario-sono__form__row select:focus {
     outline: none;
-    border-color: var(--color-primary, #059669);
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -117,7 +117,7 @@
 
 .diario-sono__form__group {
     align-items: center;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -126,12 +126,12 @@
 
 .diario-sono__form__group textarea {
     width: 100%;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
     padding: 0.75rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #1f2937);
-    background-color: var(--color-surface, #ffffff);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
     transition: border-color 0.2s;
     resize: vertical;
     min-height: 100px;
@@ -139,7 +139,7 @@
 
 .diario-sono__form__group textarea:focus {
     outline: none;
-    border-color: var(--color-primary, #059669);
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -157,15 +157,15 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem;
-    background-color: var(--color-background, #f8fafc);
+    background-color: var(--color-background);
     border-radius: 0.5rem;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     margin: 0.5rem 0;
 }
 
 .diario-sono__scale-label {
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     width: 120px;
     text-align: center;
     font-weight: 500;
@@ -181,9 +181,9 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 2px solid var(--color-border, #e5e7eb);
-    background-color: var(--color-surface, #ffffff);
-    color: var(--color-text-primary, #1f2937);
+    border: 2px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -191,21 +191,21 @@
 }
 
 .diario-sono__scale-button:hover {
-    border-color: var(--color-primary, #059669);
+    border-color: var(--color-primary);
     transform: scale(1.05);
     box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
 }
 
 .diario-sono__scale-button.selected {
-    background-color: var(--color-primary, #059669);
-    border-color: var(--color-primary-dark, #047857);
+    background-color: var(--color-primary);
+    border-color: var(--color-primary-dark);
     color: white;
     transform: scale(1.1);
     box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
 }
 
 .diario-sono_button {
-    background-color: var(--color-primary, #059669);
+    background-color: var(--color-primary);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -217,13 +217,13 @@
 }
 
 .diario-sono_button:hover {
-    background-color: var(--color-primary-dark, #047857);
+    background-color: var(--color-primary-dark);
 }
 
 .diario-sono_button-secondary {
     background-color: transparent;
-    color: var(--color-text-primary, #1f2937);
-    border: 1px solid var(--color-border, #e5e7eb);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
     padding: 0.75rem 1.5rem;
     border-radius: 0.375rem;
     font-size: 1rem;
@@ -233,8 +233,8 @@
 }
 
 .diario-sono_button-secondary:hover {
-    background-color: var(--color-background, #f8fafc);
-    border-color: var(--color-text-secondary, #6b7280);
+    background-color: var(--color-background);
+    border-color: var(--color-text-secondary);
 }
 
 /* o container do interruptor */
@@ -260,7 +260,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background-color: var(--color-border);
     transition: .4s;
     border-radius: 28px;
 }

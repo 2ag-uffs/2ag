@@ -164,7 +164,7 @@ export default function Prescricao() {
 
                 {/* Exibição de erro */}
                 {error && (
-                    <div style={{ color: 'red', padding: '10px', backgroundColor: '#ffe6e6', borderRadius: '4px', margin: '10px 0' }}>
+                    <div className="prescricao-erro">
                         {error}
                     </div>
                 )}

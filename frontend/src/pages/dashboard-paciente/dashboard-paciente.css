@@ -89,7 +89,7 @@
 
 .card-badge {
     background-color: var(--color-accent-agree);
-    color: var(--color-text-on-primary);
+    color: var(--color-text-on-secondary);
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.8rem;
@@ -97,7 +97,8 @@
 }
 
 .card-badge.warning {
-    background-color: var(--color-accent-disagree);
+    background-color: var(--color-terracotta-dark);
+    color: var(--color-text-on-primary);
 }
 
 .card-content {
@@ -151,7 +152,7 @@
 }
 
 .status-pendente {
-    color: var(--color-accent-disagree);
+    color: var(--color-terracotta-dark);
     font-size: 0.8rem;
     font-weight: 600;
     background-color: rgba(191, 102, 63, 0.1);
@@ -160,7 +161,7 @@
 }
 
 .status-completo {
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
     font-size: 0.8rem;
     font-weight: 600;
     background-color: rgba(119, 149, 79, 0.1);

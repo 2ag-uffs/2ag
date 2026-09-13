@@ -1,5 +1,5 @@
 .dashboard-header {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
     padding: 1rem 2rem;
     display: flex;
@@ -25,8 +25,8 @@
 
 .dashboard-header .button-secondary {
     background-color: white;
-    color: #193E21;
-    border: 1px solid #193E21;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
     padding: 8px 15px;
     border-radius: 0.5rem;
     cursor: pointer;
@@ -36,7 +36,7 @@
 }
 
 .dashboard-header .button-secondary:hover {
-    background-color: #e0e0e0;
+    background-color: var(--color-border-light);
 }
 
 /* Responsividade para mobile */

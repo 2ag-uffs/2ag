@@ -6,7 +6,7 @@
 
 /* Header - reutilizando estilos da dashboard */
 .dashboard-header {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
     padding: 1rem 2rem;
     display: flex;
@@ -39,7 +39,7 @@
     margin: 0 auto;
 }
 
-/* Header especÌfico do agendamento */
+/* Header espec√≠fico do agendamento */
 .agendamento-header {
     margin-bottom: 2rem;
 }
@@ -47,7 +47,7 @@
 .back-button {
     background: none;
     border: none;
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
     font-size: 1rem;
     cursor: pointer;
     margin-bottom: 1rem;
@@ -111,7 +111,7 @@
 
 .card-badge {
     background-color: var(--color-accent-agree);
-    color: var(--color-text-on-primary);
+    color: var(--color-text-on-secondary);
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.8rem;
@@ -165,7 +165,7 @@
     width: 100%;
     height: 100%;
     background-color: var(--color-accent-agree);
-    color: white;
+    color: var(--color-text-on-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -201,7 +201,7 @@
     height: 24px;
     border-radius: 50%;
     background-color: var(--color-accent-agree);
-    color: white;
+    color: var(--color-text-on-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -214,7 +214,7 @@
     opacity: 1;
 }
 
-/* Calend·rio */
+/* Calend√°rio */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
@@ -263,7 +263,7 @@
     color: var(--color-text-headings);
 }
 
-/* Hor·rios */
+/* Hor√°rios */
 .horarios-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -289,7 +289,7 @@
 .horario-button.selected {
     border-color: var(--color-accent-agree);
     background-color: var(--color-accent-agree);
-    color: white;
+    color: var(--color-text-on-secondary);
 }
 
 /* Estados vazios */
@@ -304,7 +304,7 @@
     font-style: italic;
 }
 
-/* Formul·rio */
+/* Formul√°rio */
 .form-group {
     margin-bottom: 1.5rem;
 }

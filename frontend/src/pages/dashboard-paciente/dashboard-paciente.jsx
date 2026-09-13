@@ -117,7 +117,7 @@ export default function DashboardPaciente() {
             <header className="dashboard-header">
                 <div className="dashboard-header__logo">
                     <img
-                        src="/images/logotipo-icon.svg"
+                        src="/images/logotipo-icon-claro.svg"
                         alt="Logo"
                         className="logo"
                     />

@@ -1,12 +1,12 @@
 .escala-hamilton-algo {
     min-height: 100vh;
-    background-color: var(--color-background, #f8fafc);
+    background-color: var(--color-background);
     display: flex;
     flex-direction: column;
 }
 
 .escala-hamilton-header {
-    background-color: var(--color-primary, #059669);
+    background-color: var(--color-primary);
     color: white;
     padding: 1rem 2rem;
     display: flex;
@@ -39,7 +39,7 @@
 }
 
 .escala-hamilton__content {
-    background-color: var(--color-surface, #ffffff);
+    background-color: var(--color-surface);
     border-radius: 0.5rem;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     display: flex;
@@ -50,7 +50,7 @@
 
 .escala-hamilton__header {
     align-items: center;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: center;
     flex-direction: column;
@@ -61,14 +61,14 @@
 .escala-hamilton__header h1 {
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
 }
 
 .escala-hamilton__header h2 {
     font-size: 1rem;
     font-weight: 400;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     margin: 0;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .escala-hamilton__form__row {
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     gap: 1rem;
     padding: 1rem;
@@ -95,28 +95,28 @@
 .escala-hamilton__form__row label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
 }
 
 .escala-hamilton__form__row input {
     padding: 0.75rem;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     border-radius: 0.375rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #1f2937);
-    background-color: var(--color-surface, #ffffff);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
     transition: border-color 0.2s;
 }
 
 .escala-hamilton__form__row input:focus {
     outline: none;
-    border-color: var(--color-primary, #059669);
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
 .escala-hamilton__form__group {
     align-items: center;
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -126,18 +126,18 @@
 .escala-hamilton__form__group h3 {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--color-text-primary, #1f2937);
+    color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
 }
 
 .escala-hamilton__form__group textarea {
     width: 100%;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
     border-radius: 0.5rem;
     padding: 0.75rem;
     font-size: 1rem;
-    color: var(--color-text-primary, #1f2937);
-    background-color: var(--color-surface, #ffffff);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
     transition: border-color 0.2s;
     resize: vertical;
     min-height: 100px;
@@ -145,7 +145,7 @@
 
 .escala-hamilton__form__group textarea:focus {
     outline: none;
-    border-color: var(--color-primary, #059669);
+    border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -159,7 +159,7 @@
 /* Estilos específicos para HAM-A */
 .ham-a-description {
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     margin: 0 0 1rem 0;
     line-height: 1.5;
     font-style: italic;
@@ -171,30 +171,30 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.75rem;
-    background-color: var(--color-background, #f8fafc);
+    background-color: var(--color-background);
     border-radius: 0.375rem;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
 }
 
 .ham-a-total__score {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--color-primary, #059669);
+    color: var(--color-primary);
 }
 
 .ham-a-total__level {
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .ham-a-interpretation {
-    background-color: var(--color-background, #f8fafc);
+    background-color: var(--color-background);
     border-radius: 0.5rem;
     padding: 1rem;
-    border: 1px solid var(--color-border, #e5e7eb);
+    border: 1px solid var(--color-border);
 }
 
 .ham-a-interpretation ul {
@@ -204,12 +204,12 @@
 
 .ham-a-interpretation li {
     margin-bottom: 0.5rem;
-    color: var(--color-text-secondary, #6b7280);
+    color: var(--color-text-secondary);
 }
 
 .ham-a-current-result {
     padding: 0.75rem;
-    background-color: var(--color-primary, #059669);
+    background-color: var(--color-primary);
     color: white;
     border-radius: 0.375rem;
     text-align: center;
@@ -217,7 +217,7 @@
 
 /* Botões - assumindo que as classes button e button-secondary já existem */
 .button {
-    background-color: var(--color-primary, #059669);
+    background-color: var(--color-primary);
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -229,13 +229,13 @@
 }
 
 .button:hover {
-    background-color: var(--color-primary-dark, #047857);
+    background-color: var(--color-primary-dark);
 }
 
 .button-secondary {
     background-color: transparent;
-    color: var(--color-text-primary, #1f2937);
-    border: 1px solid var(--color-border, #e5e7eb);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
     padding: 0.75rem 1.5rem;
     border-radius: 0.375rem;
     font-size: 1rem;
@@ -245,8 +245,8 @@
 }
 
 .button-secondary:hover {
-    background-color: var(--color-background, #f8fafc);
-    border-color: var(--color-text-secondary, #6b7280);
+    background-color: var(--color-background);
+    border-color: var(--color-text-secondary);
 }
 
 /* Responsividade */
@@ -302,6 +302,6 @@
 
 
 .escala-hamilton__erro {
-    color: var(--color-error, #c0392b);
+    color: var(--color-error);
     margin-bottom: 12px;
 }

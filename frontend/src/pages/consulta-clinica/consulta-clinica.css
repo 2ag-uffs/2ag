@@ -5,7 +5,7 @@
 }
 
 .consulta-header {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
     padding: 1rem 2rem;
     display: flex;

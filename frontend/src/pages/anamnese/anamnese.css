@@ -102,7 +102,7 @@
 }
 
 .anamnese-actions {
-    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    border-bottom: 1px solid var(--color-border);
     display: flex;
     gap: 20px;
     padding: 15px;

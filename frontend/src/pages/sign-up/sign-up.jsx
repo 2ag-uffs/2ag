@@ -224,27 +224,27 @@ export default function SignUp() {
                 <img
                     alt="Logotipo 2AG"
                     className="sign__art__top-left"
-                    src="/images/logotipo-icon.svg"
+                    src="/images/logotipo-icon-claro.svg"
                 />
                 <img
                     alt="Logotipo 2AG"
                     className="sign__art__top-right"
-                    src="/images/logotipo-icon.svg"
+                    src="/images/logotipo-icon-claro.svg"
                 />
                 <img
                     alt="Logotipo 2AG"
                     className="sign__art__center"
-                    src="/images/logotipo-vertical.svg"
+                    src="/images/logotipo-vertical-claro.svg"
                 />
                 <img
                     alt="Logotipo 2AG"
                     className="sign__art__bottom-left"
-                    src="/images/logotipo-icon.svg"
+                    src="/images/logotipo-icon-claro.svg"
                 />
                 <img
                     alt="Logotipo 2AG"
                     className="sign__art__bottom-right"
-                    src="/images/logotipo-icon.svg"
+                    src="/images/logotipo-icon-claro.svg"
                 />
             </section>
         </div>

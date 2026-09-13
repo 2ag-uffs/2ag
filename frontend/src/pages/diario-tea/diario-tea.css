@@ -1,6 +1,6 @@
 .diario-tea {
     min-height: 100vh;
-    background-color: var(--color-background, #f7f8f7);
+    background-color: var(--color-background);
 }
 
 .diario-tea__conteudo {
@@ -14,7 +14,7 @@
 }
 
 .diario-tea__bloco {
-    background-color: #fff;
+    background-color: var(--color-surface);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 20px;
@@ -37,13 +37,13 @@
 .diario-tea__campo textarea {
     padding: 8px;
     border-radius: 6px;
-    border: 1px solid var(--color-border, #ccc);
+    border: 1px solid var(--color-border);
     font-family: inherit;
 }
 
 .diario-tea__ajuda {
     font-size: 0.85rem;
-    color: var(--color-text-muted, #666);
+    color: var(--color-text-muted);
 }
 
 .diario-tea__escala {
@@ -56,21 +56,21 @@
     width: 44px;
     height: 44px;
     border-radius: 6px;
-    border: 1px solid var(--color-border, #ccc);
-    background-color: #fff;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
     font-weight: 600;
     cursor: pointer;
 }
 
 .diario-tea__escala button.selecionada {
-    background-color: var(--color-primary, #5b8c5a);
-    border-color: var(--color-primary, #5b8c5a);
-    color: #fff;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-on-primary);
 }
 
 .diario-tea__linha {
     padding: 12px 0;
-    border-bottom: 1px solid var(--color-border, #eee);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .diario-tea__linha:last-child {
@@ -90,20 +90,20 @@
 .diario-tea__opcoes button {
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid var(--color-border, #ccc);
-    background-color: #fff;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
     cursor: pointer;
     font-size: 0.85rem;
 }
 
 .diario-tea__opcoes button.selecionada {
-    background-color: var(--color-primary, #5b8c5a);
-    border-color: var(--color-primary, #5b8c5a);
-    color: #fff;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-on-primary);
 }
 
 .diario-tea__erro {
-    color: var(--color-error, #c0392b);
+    color: var(--color-error);
     margin-bottom: 12px;
 }
 

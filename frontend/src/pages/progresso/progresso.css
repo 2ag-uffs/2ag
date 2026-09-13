@@ -1,6 +1,6 @@
 .progresso {
     min-height: 100vh;
-    background-color: var(--color-background, #f7f8f7);
+    background-color: var(--color-background);
 }
 
 .progresso__conteudo {
@@ -31,12 +31,12 @@
 .progresso__filtro select {
     padding: 8px;
     border-radius: 6px;
-    border: 1px solid var(--color-border, #ccc);
-    background-color: #fff;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
 }
 
 .progresso__grafico {
-    background-color: #fff;
+    background-color: var(--color-surface);
     border-radius: 8px;
     padding: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -49,7 +49,7 @@
 
 .progresso__vazio,
 .progresso__nota {
-    color: var(--color-text-muted, #666);
+    color: var(--color-text-muted);
     font-size: 0.9rem;
 }
 
@@ -58,7 +58,7 @@
 }
 
 .progresso__erro {
-    color: var(--color-error, #c0392b);
+    color: var(--color-error);
     margin-bottom: 16px;
 }
 

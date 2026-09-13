@@ -1,19 +1,19 @@
 :root {
-    --primary-color: #193E21;
-    --background-color: #f4f7f6;
-    --surface-color: #ffffff;
-    --border-color: #e4e7eb;
-    --text-primary: #343a40;
-    --text-secondary: #6c757d;
+    --primary-color: var(--color-primary);
+    --background-color: var(--color-background);
+    --surface-color: var(--color-surface);
+    --border-color: var(--color-border);
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-muted);
     --font-family: "Yaldevi Colombo", sans-serif;
 
-    --color-appointment: #3498db;
-    --color-form: #f39c12;
-    --color-alert: #e74c3c;
-    --color-default-icon: #6c757d;
+    --color-appointment: var(--color-primary);
+    --color-form: var(--color-secondary-dark);
+    --color-alert: var(--color-error);
+    --color-default-icon: var(--color-text-muted);
 
-    --selection-color: #e6f2ff;
-    --selection-border-color: #007bff;
+    --selection-color: var(--color-primary-soft);
+    --selection-border-color: var(--color-primary);
 }
 
 .notifications-page {
@@ -56,7 +56,7 @@
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 0.5rem;
-    background-color: #fdfdfd;
+    background-color: var(--color-surface);
     min-width: 180px;
 }
 
@@ -83,7 +83,7 @@
 }
 
 .clear-filters-btn:hover {
-    background-color: #eef1f0;
+    background-color: var(--color-surface-alt);
 }
 
 .filter-btn {
@@ -92,7 +92,7 @@
 }
 
 .filter-btn:hover {
-    background-color: #2d5a37;
+    background-color: var(--color-primary);
 }
 
 .selection-count {
@@ -102,8 +102,8 @@
 }
 
 .action-btn {
-    background-color: #f0f0f0;
-    border-color: #ccc;
+    background-color: var(--color-border-light);
+    border-color: var(--color-border);
     color: var(--text-primary);
 }
 
@@ -157,7 +157,7 @@
 }
 
 .notifications-sidebar li:hover {
-    background-color: #eef1f0;
+    background-color: var(--color-surface-alt);
 }
 
 .notifications-sidebar li.active {
@@ -210,7 +210,7 @@
 
 .notification-card.unread {
     border-left: 4px solid var(--primary-color);
-    background-color: #f8fffe;
+    background-color: var(--color-surface-alt);
 }
 
 .notification-card.selected {
@@ -255,12 +255,12 @@
 }
 
 .notification-card[data-type="PATIENT"] .notification-icon {
-    color: #2ecc71;
+    color: var(--color-primary-light);
 }
 
 /* Verde para Pacientes */
 .notification-card[data-type="PRESCRIPTION"] .notification-icon {
-    color: #9b59b6;
+    color: var(--color-terracotta);
 }
 
 /* Roxo para Prescrições */
@@ -283,7 +283,7 @@
 }
 
 .notification-timestamp {
-    color: #999;
+    color: var(--color-text-muted);
     font-size: 0.75rem;
 }
 
@@ -304,7 +304,7 @@
 }
 
 .notification-actions .mark-read-btn {
-    color: #28a745;
+    color: var(--color-primary);
 }
 
 .notification-actions .mark-read-btn:hover {
@@ -312,7 +312,7 @@
 }
 
 .notification-actions .delete-btn {
-    color: #dc3545;
+    color: var(--color-error);
 }
 
 .notification-actions .delete-btn:hover {
@@ -336,7 +336,7 @@
 }
 
 .notification-message {
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 1rem;
     line-height: 1.5;
     margin: 0;

@@ -6,7 +6,7 @@
 
 /* Header - reutilizando estilos da dashboard */
 .dashboard-header {
-    background-color: #193E21;
+    background-color: var(--color-primary);
     color: white;
     padding: 1rem 2rem;
     display: flex;
@@ -39,7 +39,7 @@
     margin: 0 auto;
 }
 
-/* Header especÌfico do agendamento */
+/* Header espec√≠fico do agendamento */
 .agendamento-header {
     margin-bottom: 2rem;
 }
@@ -47,7 +47,7 @@
 .back-button {
     background: none;
     border: none;
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
     font-size: 1rem;
     cursor: pointer;
     margin-bottom: 1rem;
@@ -111,7 +111,7 @@
 
 .card-badge {
     background-color: var(--color-accent-agree);
-    color: var(--color-text-on-primary);
+    color: var(--color-text-on-secondary);
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
     font-size: 0.8rem;
@@ -124,7 +124,7 @@
     gap: 1rem;
 }
 
-/* NavegaÁ„o da semana */
+/* Navega√ß√£o da semana */
 .week-navigation {
     display: flex;
     align-items: center;
@@ -143,7 +143,7 @@
 
 .nav-button:hover {
     background-color: var(--color-accent-agree);
-    color: white;
+    color: var(--color-text-on-secondary);
     border-color: var(--color-accent-agree);
 }
 
@@ -154,7 +154,7 @@
     text-align: center;
 }
 
-/* Grid do calend·rio */
+/* Grid do calend√°rio */
 .calendar-grid {
     display: grid;
     grid-template-columns: 80px repeat(7, 1fr);
@@ -225,7 +225,7 @@
 
 .time-slot.occupied {
     background-color: var(--color-accent-agree);
-    color: white;
+    color: var(--color-text-on-secondary);
 }
 
 .time-slot.occupied:hover {
@@ -268,7 +268,7 @@
 .appointment-time {
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
     min-width: 60px;
 }
 
@@ -298,12 +298,12 @@
 
 .appointment-type-badge.presencial {
     background-color: rgba(119, 149, 79, 0.2);
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
 }
 
 .appointment-type-badge.telemedicina {
-    background-color: rgba(63, 131, 191, 0.2);
-    color: #3f83bf;
+    background-color: rgba(191, 102, 63, 0.2);
+    color: var(--color-terracotta-dark);
 }
 
 .appointment-actions {
@@ -392,7 +392,7 @@
     border-top: 1px solid var(--color-border-light);
 }
 
-/* Formul·rio */
+/* Formul√°rio */
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -515,7 +515,7 @@ textarea:focus {
     border-color: var(--color-accent-agree);
 }
 
-/* Resumo do agendamento no modal de ediÁ„o */
+/* Resumo do agendamento no modal de edi√ß√£o */
 .appointment-summary {
     background-color: var(--color-surface-alt);
     padding: 1rem;
@@ -536,10 +536,10 @@ textarea:focus {
     margin: 0.25rem 0;
 }
 
-/* Bot„o de perigo */
+/* Bot√£o de perigo */
 .button-danger {
-    background-color: var(--color-accent-disagree);
-    color: white;
+    background-color: var(--color-terracotta-dark);
+    color: var(--color-text-on-primary);
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 0.5rem;

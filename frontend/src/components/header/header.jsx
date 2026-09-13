@@ -40,7 +40,7 @@ export default function Header({showBackButton, backButtonText, onBackClick}) {
 
     return (
         <header className="dashboard-header">
-            <img src="/images/logotipo-icon.svg" alt="Logo" className="logo"/>
+            <img src="/images/logotipo-icon-claro.svg" alt="Logo" className="logo"/>
             <div className="dashboard-header__user">
                 {/* agora o nome exibido vem do nosso estado userName */}
                 <span>{userName}</span>

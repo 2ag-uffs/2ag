@@ -16,6 +16,16 @@ import "../../styles/fonts.css";
 import "../../styles/button.css";
 import "./progresso.css";
 
+// o recharts precisa das cores como valor, n como var() do css.
+// entao a gente le o token no momento de montar a tela
+const lerToken = (nome, padrao) =>
+    getComputedStyle(document.documentElement).getPropertyValue(nome).trim() || padrao;
+
+const CORES = {
+    linha: lerToken("--color-chart-line", "#006633"),
+    grade: lerToken("--color-chart-grid", "#e3dcd2"),
+};
+
 const PERIODOS = [
     {valor: "DIAS_15", texto: "Últimos 15 dias"},
     {valor: "DIAS_30", texto: "Últimos 30 dias"},
@@ -181,7 +191,9 @@ export default function Progresso() {
                             </h2>
                             <ResponsiveContainer width="100%" height={320}>
                                 <LineChart data={pontos} margin={{top: 16, right: 24, bottom: 8, left: 0}}>
-                                    <CartesianGrid strokeDasharray="3 3"/>
+                                    {/* as cores saem da paleta da marca, n do
+                                        padrao do recharts */}
+                                    <CartesianGrid strokeDasharray="3 3" stroke={CORES.grade}/>
                                     <XAxis dataKey="data"/>
                                     {/* a faixa vem do backend: 0 a 10 e 0 a 56 n
                                         podem dividir o mesmo eixo */}
@@ -197,8 +209,10 @@ export default function Progresso() {
                                         type="monotone"
                                         dataKey="valor"
                                         name={atributoAtual ? atributoAtual.displayName : "valor"}
+                                        stroke={CORES.linha}
                                         strokeWidth={2}
-                                        dot={{r: 4}}
+                                        dot={{r: 4, fill: CORES.linha}}
+                                        activeDot={{r: 6}}
                                     />
                                 </LineChart>
                             </ResponsiveContainer>

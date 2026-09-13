@@ -103,11 +103,11 @@
 
 /* adiconei (respo: maiqueli)*/
 .login__error-message {
-    color: #B00020; /* um vermelho escuro */
+    color: var(--color-error); /* um vermelho escuro */
     font-weight: 500;
-    background-color: #F8D7DA; /* um fundo rosa claro */
+    background-color: var(--color-error-soft); /* um fundo rosa claro */
     padding: 0.75rem;
-    border: 1px solid #F5C6CB; /* uma borda vermelha clara */
+    border: 1px solid var(--color-error-border); /* uma borda vermelha clara */
     border-radius: 4px;
     text-align: center;
     width: 100%;

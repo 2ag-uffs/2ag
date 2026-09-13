@@ -262,18 +262,19 @@
 }
 
 .score-normal {
-    background-color: #4caf50;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
 }
 
+/* o pessego eh claro demais pra texto branco, aqui o texto vai escuro */
 .score-mild {
-    background-color: #ff9800;
-    color: white;
+    background-color: var(--color-peach);
+    color: var(--color-text-primary);
 }
 
 .score-severe {
-    background-color: #f44336;
-    color: white;
+    background-color: var(--color-error);
+    color: var(--color-text-on-primary);
 }
 
 /* Actions */
@@ -411,7 +412,7 @@
 /* ---- reescrita da tela: 11 secoes, 30 pontos ---- */
 .meem {
     min-height: 100vh;
-    background-color: var(--color-background, #f7f8f7);
+    background-color: var(--color-background);
 }
 
 .meem__conteudo {
@@ -435,18 +436,18 @@
 .meem__campo select {
     padding: 8px;
     border-radius: 6px;
-    border: 1px solid var(--color-border, #ccc);
+    border: 1px solid var(--color-border);
     max-width: 360px;
     font-family: inherit;
 }
 
 .meem__ajuda {
     font-size: 0.85rem;
-    color: var(--color-text-muted, #666);
+    color: var(--color-text-muted);
 }
 
 .meem__bloco {
-    background-color: #fff;
+    background-color: var(--color-surface);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 16px;
@@ -465,7 +466,7 @@
 .meem__pontos {
     font-size: 0.85rem;
     font-weight: 400;
-    color: var(--color-text-muted, #666);
+    color: var(--color-text-muted);
 }
 
 .meem__itens {
@@ -483,11 +484,11 @@
 }
 
 .meem__resultado {
-    background-color: #fff;
+    background-color: var(--color-surface);
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 20px;
-    border-left: 4px solid var(--color-primary, #5b8c5a);
+    border-left: 4px solid var(--color-primary);
 }
 
 .meem__resultado h2 {
@@ -496,7 +497,7 @@
 }
 
 .meem__erro {
-    color: var(--color-error, #c0392b);
+    color: var(--color-error);
     margin-bottom: 12px;
 }
 

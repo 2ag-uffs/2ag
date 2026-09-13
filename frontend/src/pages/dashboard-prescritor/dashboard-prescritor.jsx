@@ -231,7 +231,7 @@ export default function DashboardPrescritor() {
         <div className="dashboard-prescritor">
             <header className="dashboard-header">
                 <img
-                    src="/images/logotipo-icon.svg"
+                    src="/images/logotipo-icon-claro.svg"
                     alt="Logo"
                     className="logo"
                 />

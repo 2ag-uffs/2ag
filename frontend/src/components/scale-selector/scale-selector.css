@@ -49,11 +49,13 @@
 /* hover para botões de agree não selecionados */
 .scale-selector__content > button:nth-child(-n+3):not(.selected):hover {
     background-color: var(--color-accent-agree);
+    color: var(--color-text-on-secondary);
 }
 
 /* hover para botões de disagree não selecionados */
 .scale-selector__content > button:nth-last-of-type(-n+3):not(.selected):hover {
-    background-color: var(--color-accent-disagree);
+    background-color: var(--color-terracotta-dark);
+    color: var(--color-text-on-primary);
 }
 
 /* hover para botões neutro não selecionado */
@@ -79,6 +81,7 @@
 
 .scale-selector__content > button:nth-child(-n + 3).selected {
     background-color: var(--color-accent-agree);
+    color: var(--color-text-on-secondary);
 }
 
 .scale-selector__content > button:nth-last-of-type(-n + 3) {
@@ -86,7 +89,8 @@
 }
 
 .scale-selector__content > button:nth-last-of-type(-n + 3).selected {
-    background-color: var(--color-accent-disagree);
+    background-color: var(--color-terracotta-dark);
+    color: var(--color-text-on-primary);
 }
 
 /* telas pequenas */

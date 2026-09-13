@@ -141,7 +141,7 @@
 }
 
 .prescricao-status.ativa {
-    color: var(--color-accent-agree);
+    color: var(--color-secondary-dark);
     background-color: rgba(119, 149, 79, 0.1);
 }
 
@@ -160,7 +160,7 @@
 }
 
 .alerta-icon.warning {
-    color: var(--color-accent-disagree);
+    color: var(--color-terracotta-dark);
 }
 
 .alerta-icon.info {
@@ -367,4 +367,14 @@
         margin-bottom: 2rem;
         padding-bottom: 1.5rem;
     }
+}
+
+/* caixa de erro do formulario */
+.prescricao-erro {
+    color: var(--color-error);
+    background-color: var(--color-error-soft);
+    border: 1px solid var(--color-error-border);
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
 }

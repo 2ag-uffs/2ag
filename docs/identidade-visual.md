@@ -1,8 +1,6 @@
 # identidade visual
 
-O que a marca 2ag define e o que ainda falta aplicar na interface. Os arquivos originais estão em [`docs/identidade-visual/`](./identidade-visual/).
-
-**Ainda não foi implementado.** Este documento é o registro do que precisa ser feito.
+O que a marca 2ag define e como isso está aplicado na interface. Os arquivos originais estão em [`docs/identidade-visual/`](./identidade-visual/).
 
 ---
 
@@ -52,7 +50,7 @@ Os **subtons** (variações tonais das cores principais) estão em `tons-e-subto
 | **Yaldevi** | corpo de texto | "contemporânea, profissional e minimalista", "escreve um texto inteiro sem cansar seus olhos" |
 | **Belleza** | complementar, títulos | "elegância, rebusco e delicadeza por meio dos traços" |
 
-A Yaldevi **já está no projeto** (`frontend/public/fonts/`, seis pesos). A Belleza não.
+As duas estão em `frontend/public/fonts/`: a Yaldevi em seis pesos e a Belleza em regular. `frontend/src/styles/fonts.css` aplica a Belleza em `h1`, `h2` e `h3`, e o corpo herda a Yaldevi.
 
 ---
 
@@ -77,52 +75,54 @@ Sobre fundo sem contraste · esticar horizontalmente · aumentar o tamanho do s�
 
 ---
 
-## o que diverge hoje
+## o que já está aplicado
 
-### a cor primária da interface não é a da marca
+### paleta
 
-```css
-/* frontend/src/styles/colors.css */
---color-primary: #193e21;   /* a marca é #006633 */
-```
+`frontend/src/styles/colors.css` é a única fonte de cor do frontend. As cinco cores da marca estão lá com o nome que o manual usa, mais os subtons derivados delas para estados como hover, borda e faixa de gráfico.
 
-E os **logotipos em uso já são `#006633`** — então hoje o logo e a interface usam verdes diferentes na mesma tela.
+Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, amarela e vermelha da escala de dor, que copiam o formulário impresso que a clínica já usa.
 
-### o resto da paleta
+### contraste
 
-| Token atual | Valor | Situação |
+| Combinação | Razão | WCAG |
 | :--- | :--- | :--- |
-| `--color-primary` | `#193e21` | ❌ deveria ser `#006633` |
-| `--color-accent-agree` | `#77954f` | ✅ é a secundária da marca |
-| `--color-accent-disagree` | `#bf663f` | ✅ é a terracota |
-| `--color-background` | `#f5f8f0` | ❌ fora da paleta (`#FFEEDA` é a palha da marca) |
-| `--color-neutral` | `#adb5bd` | ❌ cinza genérico, fora da paleta |
-| — | `#F8BF7D` | ❌ pêssego não existe no CSS |
-| — | `#1D1B1B` | ❌ preto neutro não existe no CSS |
+| branco sobre `#006633` | 7,1:1 | AAA |
+| palha `#FFEEDA` sobre `#006633` | 6,3:1 | AA |
+| `#1D1B1B` sobre o fundo `#FDF8F2` | 16,2:1 | AAA |
+| `#006633` sobre o fundo `#FDF8F2` | 6,7:1 | AA |
+| branco sobre `#77954F` | 3,4:1 | ❌ reprova |
+| `#1D1B1B` sobre `#77954F` | 5,1:1 | AA |
+| `#9C4F2F` sobre branco | 5,9:1 | AA |
+| `#BF663F` sobre branco | 4,0:1 | ❌ reprova |
 
-### os SVGs em uso são exports antigos
+Por isso o texto sobre a secundária vai escuro (`--color-text-on-secondary`) e a terracota de erro é uma versão escurecida da cor da marca (`--color-error`), não a `#BF663F` original. A `#BF663F` continua na paleta, mas em preenchimento e ícone, não em texto pequeno.
 
-Os de `frontend/public/images/` têm `clip-path`, `viewBox` maior e proporção diferente dos oficiais. A cor está certa, o resto não. Trocar muda a proporção (3,87 para 4,10 no horizontal), então mexe no layout de todas as telas que exibem o logo.
+### logotipo
+
+Os três SVGs oficiais substituíram os exports antigos em `frontend/public/images/`. As proporções do símbolo e da versão vertical são idênticas às anteriores; o horizontal ficou 6% mais largo na mesma altura, e como o cabeçalho dimensiona por altura, nenhuma tela precisou mudar.
+
+O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006633` sólido e o cabeçalho também, existem duas variantes em palha (`logotipo-icon-claro.svg` e `logotipo-vertical-claro.svg`) usadas no cabeçalho e na arte lateral do login e do cadastro. A versão verde continua no fundo branco.
+
+### gráfico de progresso
+
+A tela de progresso lê `--color-chart-line` e `--color-chart-grid` do CSS em tempo de execução, porque o Recharts precisa da cor como valor e não aceita `var()`.
 
 ---
 
-## uma decisão de design antes de aplicar
+## o que falta
+
+1. **Subtons do manual.** `tons-e-subtons.pdf` só existe como imagem, sem texto extraível. Os subtons que estão no CSS hoje foram derivados por conta própria a partir das cores principais. Quando alguém extrair os valores oficiais, é só trocar.
+2. **Confirmar a leitura do 60‑30‑10** (abaixo).
+
+---
+
+## uma decisão de design que vale confirmar
 
 O sistema 60‑30‑10 diz que a **primária ocupa 60% e serve de fundo**. Isso funciona em material impresso, mas aplicar literalmente aqui significaria **60% da tela em verde escuro `#006633`**.
 
 O 2ag é um sistema clínico: o paciente passa minutos preenchendo formulário de 15 itens, e a prescritora lê prontuário e gráfico de evolução. Fundo escuro em 60% da tela prejudica leitura longa e contraste de texto.
 
-A leitura que faz sentido para interface é: a **primária domina a identidade** (cabeçalho, barra de navegação, botões principais, elementos de marca), e o corpo de leitura usa o neutro claro da paleta — a palha `#FFEEDA`, que já é cor da marca.
+A leitura aplicada foi: a **primária domina a identidade** (cabeçalho, barra de navegação, botões principais, arte do login, elementos de marca), e o corpo de leitura usa um neutro derivado da palha (`#FDF8F2`), que é o que o manual manda fazer com os subtons para web.
 
-**Vale confirmar com quem fez o manual** antes de aplicar. É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir.
-
----
-
-## ordem sugerida quando for implementar
-
-1. Trocar `--color-primary` para `#006633` e conferir contraste do texto sobre ele (WCAG AA pede 4.5:1 para texto normal)
-2. Acrescentar os tokens que faltam: pêssego, palha e preto neutro
-3. Extrair os subtons do PDF e transformar em tokens — são eles que resolvem estados como hover, desabilitado e faixas de gráfico
-4. Adicionar a Belleza para títulos
-5. Trocar os SVGs pelos oficiais e ajustar o dimensionamento nas telas que exibem o logo
-6. Revisar a tela de progresso: as cores do gráfico devem sair da paleta, não do padrão da biblioteca
+**Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface`.
