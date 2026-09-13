@@ -1,4 +1,4 @@
-/* cartao de uma prescricao */
+/* cartao de uma consulta */
 
 .card {
     background-color: var(--color-surface);
@@ -9,11 +9,6 @@
     gap: 0.75rem;
     overflow-wrap: anywhere;
     padding: 1rem 1.25rem;
-}
-
-.cardCurrent {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px var(--color-primary-soft);
 }
 
 .header {
@@ -32,8 +27,8 @@
     font-size: 0.9rem;
 }
 
-.badgeCurrent,
-.badgeReplaced,
+.badgeDone,
+.badgeOther,
 .badgeAnnulled {
     border-radius: 999px;
     flex: 0 0 auto;
@@ -42,12 +37,12 @@
     padding: 0.2rem 0.7rem;
 }
 
-.badgeCurrent {
+.badgeDone {
     background-color: var(--color-primary-soft);
     color: var(--color-primary);
 }
 
-.badgeReplaced {
+.badgeOther {
     background-color: var(--color-surface-alt);
     color: var(--color-text-secondary);
 }
@@ -57,10 +52,14 @@
     color: var(--color-error);
 }
 
+.vitalSigns {
+    font-weight: 600;
+}
+
 .details {
-    display: grid;
-    gap: 0.5rem 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     margin: 0;
 }
 
@@ -72,22 +71,6 @@
 .details dd {
     margin: 0;
     white-space: pre-line;
-}
-
-.block h4 {
-    font-size: 0.95rem;
-    margin-bottom: 0.25rem;
-}
-
-.block p {
-    white-space: pre-line;
-}
-
-.steps {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding-left: 1.25rem;
 }
 
 .actions {

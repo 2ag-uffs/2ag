@@ -4,6 +4,7 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {ageFrom} from "../../utils/date-format.js";
 import styles from "./consultation-record.module.css";
 
 const MODALITY_OPTIONS = [
@@ -34,21 +35,6 @@ function toInputDateTime(date) {
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
     return year + "-" + month + "-" + day + "T" + hours + ":" + minutes;
-}
-
-function ageFrom(birthDate) {
-    if (!birthDate) {
-        return null;
-    }
-    const today = new Date();
-    const birth = new Date(birthDate + "T00:00:00");
-    let age = today.getFullYear() - birth.getFullYear();
-    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()
-        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
-    if (!hadBirthdayThisYear) {
-        age = age - 1;
-    }
-    return age;
 }
 
 // o formulario guarda texto vazio e a api espera null

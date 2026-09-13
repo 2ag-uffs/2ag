@@ -1,14 +1,7 @@
+import AnnulmentNotice from "../annulment-notice/annulment-notice.jsx";
+import {formatDate} from "../../utils/date-format.js";
 import {compositionSummary, labelOf, prescriptionStatusLabel, SPECTRUM_OPTIONS} from "../../utils/prescription-labels.js";
 import styles from "./prescription-card.module.css";
-
-// data da api no formato brasileiro sem deixar a data sem hora virar o dia anterior
-function formatDate(isoDate) {
-    if (!isoDate) {
-        return "";
-    }
-    const dateOnly = isoDate.length === 10 ? isoDate + "T00:00:00" : isoDate;
-    return new Date(dateOnly).toLocaleDateString("pt-BR");
-}
 
 function badgeClassOf(prescription) {
     if (prescription.current) {
@@ -116,12 +109,7 @@ export default function PrescriptionCard({prescription, actions}) {
                 </div>
             )}
 
-            {prescription.annulled && (
-                <p className={styles.annulment}>
-                    Anulada em {formatDate(prescription.annulledAt)} por {prescription.annulledByName}.
-                    Motivo: {prescription.annulmentReason}
-                </p>
-            )}
+            {prescription.annulled && <AnnulmentNotice record={prescription}/>}
 
             {actions && <div className={styles.actions}>{actions}</div>}
         </article>
