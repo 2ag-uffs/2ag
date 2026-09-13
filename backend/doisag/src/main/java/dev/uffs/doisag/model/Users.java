@@ -33,6 +33,13 @@ public abstract class Users implements UserDetails { // implementa a interface d
     @Embedded
     private Address address;
 
+    // conta desativada n entra no sistema
+    private boolean active = true;
+
+    // tentativas erradas seguidas no login e ate quando a conta fica bloqueada
+    private int failedLoginAttempts = 0;
+    private LocalDateTime lockedUntil;
+
 
     public Users() {
     }
@@ -108,6 +115,32 @@ public abstract class Users implements UserDetails { // implementa a interface d
         this.phone = phone;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    @JsonIgnore
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    @JsonIgnore
+    public LocalDateTime getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(LocalDateTime lockedUntil) {
+        this.lockedUntil = lockedUntil;
+    }
+
     // a partir daqui vou trabalhar os metodos de permissão do usuário a partir do userdetails implemnetado
 
     // o papel diz o que a pessoa eh no dominio, n o quanto ela pode.
@@ -159,7 +192,7 @@ public abstract class Users implements UserDetails { // implementa a interface d
     @JsonIgnore
     @Override
     public boolean isEnabled() {
-        return true;
+        return active;
     }
 
     // quando o registro nasceu e quando foi mexido pela ultima vez.

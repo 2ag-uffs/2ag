@@ -49,7 +49,7 @@ public class Appointment {
 
     // quanto tempo a consulta ocupa na agenda, em minutos. a tela ja
     // perguntava isso e a resposta era descartada
-    private Integer durationMinutes;
+    private Integer durationMinutes = 60;
 
     public String getPhysicalExam() {
         return physicalExam;
