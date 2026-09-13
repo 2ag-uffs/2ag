@@ -31,19 +31,9 @@ public class PrescriptionsController {
         return new ResponseEntity<>(new PrescriptionResponseDTO(createdPrescription), HttpStatus.CREATED);
     }
 
-    // endpoint para LER todas as prescrições
-    // GET /prescricao
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping("/prescricao")
-    public List<PrescriptionResponseDTO> getAll() {
-        return prescriptionService.getAll()
-                .stream()
-                .map(PrescriptionResponseDTO::new)
-                .toList();
-    }
     // endpoint para LER uma prescrição por ID
     // GET /prescricao/{id}
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
     @GetMapping("/prescricao/{id}")
     public ResponseEntity<PrescriptionResponseDTO> getById( @PathVariable Long id) {
         Prescription prescription = prescriptionService.getById(id);
@@ -59,7 +49,7 @@ public class PrescriptionsController {
             return ResponseEntity.ok(new PrescriptionResponseDTO(updatedPrescription));
     }
 
-    @PreAuthorize("@patientAccess.canAccessAppointment(#appointmentId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @GetMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<List<PrescriptionResponseDTO>> getPrescriptionsByAppointment(@PathVariable Long appointmentId) {
         List<PrescriptionResponseDTO> dtos = prescriptionService.getByAppointmentId(appointmentId)

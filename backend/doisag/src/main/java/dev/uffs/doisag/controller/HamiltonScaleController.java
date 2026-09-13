@@ -8,8 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/escala-hamilton")
 public class HamiltonScaleController {
@@ -31,17 +29,9 @@ public class HamiltonScaleController {
         return hamiltonScaleService.create(hamiltonScale);
     }
 
-    // endpoint para LER todas as escalas hamilton
-    // GET /escala-hamilton
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<HamiltonScale> getAll() {
-        return hamiltonScaleService.getAll();
-    }
-
     // endpoint para LER uma escala hamilton por ID
     // GET /escala-hamilton/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<HamiltonScale> getById(@PathVariable Long id) {
         HamiltonScale hamiltonScale = hamiltonScaleService.getById(id);
@@ -50,7 +40,8 @@ public class HamiltonScaleController {
 
     // endpoint para ATUALIZAR uma escala hamilton
     // PUT /escala-hamilton/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('ESCALA_HAMILTON', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<HamiltonScale> update(@PathVariable Long id, @RequestBody HamiltonScale scaleDetails) {
             HamiltonScale updatedScale = hamiltonScaleService.update(id, scaleDetails);

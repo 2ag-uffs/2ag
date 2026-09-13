@@ -3,6 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
+import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.TimePeriod;
@@ -45,17 +46,11 @@ public class AppointmentService {
         this.notificationService = notificationService;
     }
 
-    // create. quando quem marca eh o prescritor, ele vem do token. quando
-    // eh o paciente (RF10), o prescritor eh o que ele ja tem vinculado,
-    // entao n da pra marcar consulta na agenda de outro profissional
-    public Appointment create(AppointmentCreateDTO dados, Prescriber prescritorLogado) {
+    // consulta registrada pelo prescritor. ele vem da sessao entao n da
+    // pra registrar consulta no nome de outro profissional
+    public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(dados.patientId())
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
-
-        Prescriber prescriber = prescritorLogado != null ? prescritorLogado : patient.getPrescriber();
-        if (prescriber == null) {
-            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
-        }
 
         recusaDataNoPassado(dados.dateTime());
         recusaHorarioOcupado(prescriber, dados.dateTime(), dados.durationMinutes(), null);
@@ -80,31 +75,57 @@ public class AppointmentService {
         appointment.setDurationMinutes(dados.durationMinutes() == null ? DURACAO_PADRAO : dados.durationMinutes());
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyNewAppointment(savedAppointment);
+        return savedAppointment;
+    }
 
+    // o paciente marca a propria consulta (RF10). o prescritor eh o do
+    // vinculo e o paciente so escolhe data modalidade e duracao
+    public Appointment requestByPatient(Long patientId, AppointmentRequestDTO requestData) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+
+        Prescriber prescriber = patient.getPrescriber();
+        if (prescriber == null) {
+            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
+        }
+
+        recusaDataNoPassado(requestData.dateTime());
+        recusaHorarioOcupado(prescriber, requestData.dateTime(), requestData.durationMinutes(), null);
+
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPrescriber(prescriber);
+        appointment.setDateTime(requestData.dateTime());
+        appointment.setModality(requestData.modality());
+        appointment.setStatus(AppointmentStatus.AGENDADA);
+        appointment.setDurationMinutes(
+                requestData.durationMinutes() == null ? DURACAO_PADRAO : requestData.durationMinutes());
+
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        notifyNewAppointment(savedAppointment);
+        return savedAppointment;
+    }
+
+    private void notifyNewAppointment(Appointment appointment) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String formattedDateTime = savedAppointment.getDateTime().format(formatter);
+        String formattedDateTime = appointment.getDateTime().format(formatter);
 
         notificationService.createNotification(
-                savedAppointment.getPatient(),
+                appointment.getPatient(),
                 "Consulta Agendada!",
-                "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi agendada para " + formattedDateTime + ".",
+                "Sua consulta com " + appointment.getPrescriber().getName() + " foi agendada para " + formattedDateTime + ".",
                 "APPOINTMENT",
                 "/agendamento-consulta"
         );
 
         notificationService.createNotification(
-                savedAppointment.getPrescriber(),
+                appointment.getPrescriber(),
                 "Novo Agendamento",
-                "Você tem uma nova consulta com " + savedAppointment.getPatient().getName() + " em " + formattedDateTime + ".",
+                "Você tem uma nova consulta com " + appointment.getPatient().getName() + " em " + formattedDateTime + ".",
                 "APPOINTMENT",
                 "/agendamento-prescritor"
         );
-
-        return savedAppointment;
-    }
-
-    public List<Appointment> getAll() {
-        return appointmentRepository.findAll();
     }
 
     public Appointment getById(Long id) {
@@ -169,6 +190,11 @@ public class AppointmentService {
     // consultas de um prescritor especifico
     public List<Appointment> getByPrescriberId(Long prescriberId) {
         return appointmentRepository.findByPrescriberId(prescriberId);
+    }
+
+    // consultas de um paciente da mais recente pra mais antiga
+    public List<Appointment> getByPatientId(Long patientId) {
+        return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId);
     }
 
     // cancelar n apaga: a consulta fica no historico com status

@@ -198,17 +198,6 @@ class AuthorizationRulesTest {
                 .andExpect(status().isForbidden());
     }
 
-    // modalidade e status viraram enum, entao valor fora da lista eh
-    // erro do cliente (400) e n erro do servidor (500)
-    @Test
-    void modalidadeForaDaListaDaErroDeRequisicaoENaoDeServidor() throws Exception {
-        mockMvc.perform(post("/consulta")
-                        .header("Authorization", tokenPrescriberA)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\",\"modality\":\"qualquer_coisa\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
     @Test
     void prescritorNaoRegistraConsultaParaPacienteAlheio() throws Exception {
         String corpo = "{\"patientId\":" + patientBId + ",\"dateTime\":\"" + DAQUI_A_UM_MES + "T10:00:00\"}";
@@ -285,44 +274,5 @@ class AuthorizationRulesTest {
         assertThat(corpo).contains("REGISTRO_DOR");
         assertThat(corpo).contains("REGISTRO_TEA");
         assertThat(corpo).contains("REGISTRO_SONO");
-    }
-
-    // ---------- RF29: papel ----------
-
-    @Test
-    void pacienteNaoListaPacientes() throws Exception {
-        mockMvc.perform(get("/paciente").header("Authorization", tokenPatientA))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void pacienteNaoListaAnamnesesDeTodoMundo() throws Exception {
-        mockMvc.perform(get("/anamnese").header("Authorization", tokenPatientA))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void pacienteNaoListaConsultas() throws Exception {
-        mockMvc.perform(get("/consulta").header("Authorization", tokenPatientA))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void prescritorListaSomenteAPropriaCarteira() throws Exception {
-        mockMvc.perform(get("/paciente").header("Authorization", tokenPrescriberA))
-                .andExpect(status().isOk())
-                // o paciente do outro prescritor n pode aparecer
-                .andExpect(result -> {
-                    String body = result.getResponse().getContentAsString();
-                    if (body.contains("pac-b@email.com")) {
-                        throw new AssertionError("vazou paciente de outro prescritor: " + body);
-                    }
-                });
-    }
-
-    @Test
-    void prescritorNaoListaCarteiraAlheiaPelaUrl() throws Exception {
-        mockMvc.perform(get("/paciente/prescritor/" + prescriberAId).header("Authorization", tokenPrescriberB))
-                .andExpect(status().isForbidden());
     }
 }

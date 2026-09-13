@@ -7,8 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/mini-exame")
 public class MentalStateExamController {
@@ -26,14 +24,6 @@ public class MentalStateExamController {
     public MentalStateExam create(@PathVariable Long appointmentId,
                                   @RequestBody MentalStateExamCreateDTO dados) {
         return mentalStateExamService.create(dados, appointmentId);
-    }
-
-    // endpoint para LER todos os exames
-    // GET /mini-exame
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<MentalStateExam> getAll() {
-        return mentalStateExamService.getAll();
     }
 
     // endpoint para LER um exame por ID

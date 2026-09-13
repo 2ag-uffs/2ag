@@ -37,10 +37,10 @@ class ProtectedRoutesTest {
         mockMvc.perform(get("/paciente"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/escala-hamilton"))
+        mockMvc.perform(get("/pacientes/1/escalas"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/anamnese"))
+        mockMvc.perform(get("/profile"))
                 .andExpect(status().isUnauthorized());
     }
 

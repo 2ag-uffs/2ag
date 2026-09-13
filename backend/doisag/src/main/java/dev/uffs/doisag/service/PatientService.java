@@ -46,10 +46,6 @@ public class PatientService {
         this.notificationService = notificationService;
     }
 
-    public List<Patient> getAll() {
-        return patientRepository.findAll();
-    }
-
     public Patient getById(Long id) {
         return patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));

@@ -14,8 +14,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 // regras de seguranca da api
-// aqui ficam so as rotas publicas e todo o resto exige login
-// quem pode fazer o q fica no PreAuthorize de cada metodo
+// aqui ficam as rotas publicas e uma primeira barreira por perfil
+// quem pode fazer o q e o vinculo com o paciente ficam no PreAuthorize de cada metodo
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -49,7 +49,12 @@ public class SecurityConfigurations {
                     routes.requestMatchers(HttpMethod.GET, "/consent-term").permitAll();
                     // verificacao de saude usada pelo docker
                     routes.requestMatchers(HttpMethod.GET, "/health").permitAll();
-                    routes.anyRequest().authenticated();
+                    // o administrador so entra na administracao e nos dados da propria conta
+                    routes.requestMatchers("/admin/**").hasRole("ADMIN");
+                    routes.requestMatchers("/auth/me", "/profile", "/profile/**")
+                            .hasAnyRole("PATIENT", "PRESCRIBER", "ADMIN");
+                    // o resto eh dado clinico ou de uso do paciente e do prescritor
+                    routes.anyRequest().hasAnyRole("PATIENT", "PRESCRIBER");
                 })
                 // sem login responde 401 e sem permissao responde 403 os dois em json
                 .exceptionHandling(errors -> errors

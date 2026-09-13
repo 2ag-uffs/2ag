@@ -3,6 +3,7 @@ package dev.uffs.doisag.dto;
 import dev.uffs.doisag.model.Prescription;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record PrescriptionResponseDTO(
@@ -22,6 +23,7 @@ public record PrescriptionResponseDTO(
         LocalDate nextConsultationDate,
         List<DoseEscalationStepDTO> escalationSteps,
         Long appointmentId, // Campo extra para dar contexto ao cliente
+        LocalDateTime appointmentDateTime,
         Long patientId,
         String patientName
 ) {
@@ -44,6 +46,7 @@ public record PrescriptionResponseDTO(
                 prescription.getNextConsultationDate(),
                 prescription.getEscalationSteps().stream().map(DoseEscalationStepDTO::new).toList(),
                 prescription.getAppointment().getId(),
+                prescription.getAppointment().getDateTime(),
                 prescription.getAppointment().getPatient().getId(),
                 prescription.getAppointment().getPatient().getName()
         );

@@ -8,8 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/escala-pittsburgh")
 public class PittsburghScaleController {
@@ -31,17 +29,9 @@ public class PittsburghScaleController {
         return pittsburghScaleService.create(pittsburghScale);
     }
 
-    // endpoint para LER todas as escalas pittsburgh
-    // GET /escala-pittsburgh
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<PittsburghScale> getAll() {
-        return pittsburghScaleService.getAll();
-    }
-
     // endpoint para LER uma escala pittsburgh por ID
     // GET /escala-pittsburgh/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_PITTSBURGH', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('ESCALA_PITTSBURGH', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PittsburghScale> getById(@PathVariable Long id) {
         PittsburghScale pittsburghScale = pittsburghScaleService.getById(id);
@@ -50,7 +40,8 @@ public class PittsburghScaleController {
 
     // endpoint para ATUALIZAR uma escala pittsburgh
     // PUT /escala-pittsburgh/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ESCALA_PITTSBURGH', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('ESCALA_PITTSBURGH', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<PittsburghScale> update(@PathVariable Long id, @RequestBody PittsburghScale scaleDetails) {
             PittsburghScale updatedScale = pittsburghScaleService.update(id, scaleDetails);

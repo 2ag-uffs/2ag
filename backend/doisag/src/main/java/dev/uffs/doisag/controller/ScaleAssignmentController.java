@@ -41,7 +41,7 @@ public class ScaleAssignmentController {
         return ResponseEntity.created(location).body(newAssignmentDto);
     }
 
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     // o tipo da resposta agora é uma lista do nosso DTO
     public ResponseEntity<List<AssignedScaleResponseDTO>> getAssignedScales(@PathVariable Long patientId) {
@@ -49,7 +49,7 @@ public class ScaleAssignmentController {
         return ResponseEntity.ok(scalesDto);
     }
 
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/central") // sub-path para ser mais específico
     public ResponseEntity<PatientScalesPageDTO> getPatientScalesPage(@PathVariable Long patientId) {
         PatientScalesPageDTO pageData = scaleAssignmentService.getPatientScalesPageData(patientId);

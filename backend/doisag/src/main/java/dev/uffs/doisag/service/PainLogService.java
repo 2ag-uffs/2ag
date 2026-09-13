@@ -7,7 +7,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -35,11 +34,6 @@ public class PainLogService {
         }
         // retorna a scala salva
         return savedLog;
-    }
-
-    // READ ALL
-    public List<PainLog> getAll() {
-        return painLogRepository.findAll();
     }
 
     // READ BY ID

@@ -8,8 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/registro-tea")
 public class TEALogController {
@@ -31,17 +29,9 @@ public class TEALogController {
         return teaLogService.create(teaLog);
     }
 
-    // endpoint para LER todos os registros de tea
-    // GET /registro-tea
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<TEALog> getAll() {
-        return teaLogService.getAll();
-    }
-
     // endpoint para LER um registro de tea por ID
     // GET /registro-tea/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<TEALog> getById(@PathVariable Long id) {
         TEALog teaLog = teaLogService.getById(id);
@@ -50,7 +40,8 @@ public class TEALogController {
 
     // endpoint para ATUALIZAR um registro de tea
     // PUT /registro-tea/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('REGISTRO_TEA', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<TEALog> update(@PathVariable Long id, @RequestBody TEALog logDetails) {
             TEALog updatedLog = teaLogService.update(id, logDetails);

@@ -7,7 +7,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -37,11 +36,6 @@ public class FollowUpService {
 
         // retorna o objeto salvo
         return savedFollowUp;
-    }
-
-    // READ ALL
-    public List<FollowUp> getAll() {
-        return followUpRepository.findAll();
     }
 
     // READ BY ID

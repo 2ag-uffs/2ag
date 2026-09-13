@@ -29,7 +29,7 @@ public class DashboardController {
     }
 
     // endpoint pro dashboard do paciente, mesma lógica, mas pro paciente logado
-    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @GetMapping("/paciente/{id}")
     public ResponseEntity<PatientDashboardDTO> getPatientDashboard(@PathVariable Long id) {
         PatientDashboardDTO dashboardData = dashboardService.getPatientDashboard(id);

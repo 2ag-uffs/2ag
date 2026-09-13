@@ -63,9 +63,9 @@ public class PrescriptionService {
         return prescriptionRepository.save(newPrescription);
     }
 
-    // READ ALL
-    public List<Prescription> getAll() {
-        return prescriptionRepository.findAll();
+    // prescricoes de um paciente da consulta mais recente pra mais antiga
+    public List<Prescription> getByPatientId(Long patientId) {
+        return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDesc(patientId);
     }
 
     // READ BY ID

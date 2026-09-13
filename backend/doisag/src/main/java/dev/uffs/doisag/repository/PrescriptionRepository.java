@@ -10,4 +10,7 @@ import java.util.List;
 public interface PrescriptionRepository extends JpaRepository<Prescription, Long> {
     // método para buscar prescrições por consulta
     List<Prescription> findByAppointmentId(Long appointmentId);
+
+    // prescricoes de um paciente da consulta mais recente pra mais antiga
+    List<Prescription> findByAppointmentPatientIdOrderByAppointmentDateTimeDesc(Long patientId);
 }

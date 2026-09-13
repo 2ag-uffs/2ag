@@ -104,6 +104,14 @@ class AppointmentFlowTest {
                 + "}";
     }
 
+    // o paciente so manda data e modalidade
+    private String corpoDoPaciente(String dataHora, String modalidade) {
+        return "{"
+                + "\"dateTime\":\"" + dataHora + "\","
+                + "\"modality\":\"" + modalidade + "\""
+                + "}";
+    }
+
     private String corpoDaConsulta(String dataHora, String modalidade, Integer duracao, String observacao) {
         return "{"
                 + "\"patientId\":" + pacienteId + ","
@@ -239,10 +247,10 @@ class AppointmentFlowTest {
 
     @Test
     void pacienteMarcaConsultaParaSiComOProprioPrescritor() throws Exception {
-        String resposta = mockMvc.perform(post("/consulta")
+        String resposta = mockMvc.perform(post("/consulta/agendamento")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteId, DAQUI_A_UM_MES + "T11:00:00", "REMOTA")))
+                        .content(corpoDoPaciente(DAQUI_A_UM_MES + "T11:00:00", "REMOTA")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -252,12 +260,13 @@ class AppointmentFlowTest {
         assertThat(criada.get("prescriberName").asText()).isEqualTo("Prescritor AGA11");
     }
 
+    // a rota do prescritor aceita campo clinico entao o paciente usa a dele
     @Test
-    void pacienteNaoMarcaConsultaNoNomeDeOutro() throws Exception {
+    void pacienteNaoUsaARotaDoPrescritorParaMarcar() throws Exception {
         mockMvc.perform(post("/consulta")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteDeOutroId, DAQUI_A_UM_MES + "T11:00:00", "PRESENCIAL")))
+                        .content(corpoSimples(pacienteId, DAQUI_A_UM_MES + "T11:00:00", "PRESENCIAL")))
                 .andExpect(status().isForbidden());
     }
 
@@ -265,10 +274,10 @@ class AppointmentFlowTest {
     void naoMarcaConsultaNoPassado() throws Exception {
         String ontem = LocalDate.now().minusDays(1).toString();
 
-        mockMvc.perform(post("/consulta")
+        mockMvc.perform(post("/consulta/agendamento")
                         .header("Authorization", tokenPaciente)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(corpoSimples(pacienteId, ontem + "T09:00:00", "PRESENCIAL")))
+                        .content(corpoDoPaciente(ontem + "T09:00:00", "PRESENCIAL")))
                 .andExpect(status().isBadRequest());
     }
 

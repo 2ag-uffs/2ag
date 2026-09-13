@@ -8,8 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/anamnese")
 public class AnamnesisController {
@@ -31,17 +29,9 @@ public class AnamnesisController {
         return anamnesisService.create(anamnesis);
     }
 
-    // endpoint para LER todas as anamneses
-    // GET /anamnese
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping
-    public List<Anamnesis> getAll() {
-        return anamnesisService.getAll();
-    }
-
     // endpoint para LER uma anamnese por ID
     // GET /anamnese/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<Anamnesis> getById(@PathVariable Long id) {
         Anamnesis anamnesis = anamnesisService.getById(id);
@@ -50,7 +40,8 @@ public class AnamnesisController {
 
     // endpoint para ATUALIZAR uma anamnese
     // PUT /anamnese/{id}
-    @PreAuthorize("@assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
+    // so o paciente corrige o q ele mesmo respondeu
+    @PreAuthorize("hasRole('PATIENT') and @assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<Anamnesis> update(@PathVariable Long id, @RequestBody Anamnesis anamnesisDetails) {
             Anamnesis updatedAnamnesis = anamnesisService.update(id, anamnesisDetails);

@@ -22,9 +22,9 @@ public class AnamnesisService {
         return anamnesisRepository.save(anamnesis);
     }
 
-    // READ ALL
-    public List<Anamnesis> getAll() {
-        return anamnesisRepository.findAll();
+    // anamneses de um paciente da mais recente pra mais antiga
+    public List<Anamnesis> getByPatientId(Long patientId) {
+        return anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId);
     }
 
     // READ BY ID

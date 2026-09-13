@@ -1,6 +1,7 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
 import dev.uffs.doisag.model.Appointment;
@@ -29,16 +30,21 @@ public class AppointmentsController {
         this.appointmentService = appointmentService;
     }
 
-    // create. vale pros dois papeis: o prescritor marca pra paciente da
-    // carteira dele (RF11) e o paciente marca pra si (RF10). o canAccess
-    // ja cobre os dois casos, entao n tem mais hasRole aqui.
-    // o loggedPrescriber vem nulo quando quem chama eh paciente, e ai o
-    // prescritor da consulta sai do vinculo dele
-    @PreAuthorize("@patientAccess.canAccess(#dados.patientId(), authentication)")
+    // o prescritor registra consulta pra paciente da carteira dele (RF11)
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#dados.patientId(), authentication)")
     @PostMapping
     public AppointmentResponseDTO create(@RequestBody @Valid AppointmentCreateDTO dados,
                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
         return new AppointmentResponseDTO(appointmentService.create(dados, loggedPrescriber));
+    }
+
+    // o paciente marca a propria consulta com o prescritor do vinculo (RF10)
+    // a rota eh separada pra ele nunca escrever campo clinico
+    @PreAuthorize("hasRole('PATIENT')")
+    @PostMapping("/agendamento")
+    public AppointmentResponseDTO requestAppointment(@RequestBody @Valid AppointmentRequestDTO requestData,
+                                                     @AuthenticationPrincipal Patient loggedPatient) {
+        return new AppointmentResponseDTO(appointmentService.requestByPatient(loggedPatient.getId(), requestData));
     }
 
     // os horarios ocupados do prescritor do paciente logado, pra ele

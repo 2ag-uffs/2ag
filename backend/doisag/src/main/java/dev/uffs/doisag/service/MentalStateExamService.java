@@ -9,7 +9,6 @@ import dev.uffs.doisag.repository.MentalStateExamRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -62,11 +61,6 @@ public class MentalStateExamService {
 
         exam.setScore(calculateTotalScore(exam));
         return mentalStateExamRepository.save(exam);
-    }
-
-    // READ ALL
-    public List<MentalStateExam> getAll() {
-        return mentalStateExamRepository.findAll();
     }
 
     // READ BY ID

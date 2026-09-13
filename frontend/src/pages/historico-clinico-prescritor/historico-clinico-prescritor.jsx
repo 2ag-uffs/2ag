@@ -32,9 +32,12 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarAnamnese = async () => {
         try {
-            const anamneses = await apiService.get(`/anamnese`);
-            const anamnesePaciente = anamneses.find(anamnese => anamnese.patient?.id === parseInt(pacienteId));
-            return anamnesePaciente?.description || 'Nenhuma informação de anamnese registrada.';
+            // a lista ja vem so desse paciente e da mais recente pra mais antiga
+            const anamneses = await apiService.get(`/pacientes/${pacienteId}/anamneses`);
+            if (anamneses.length === 0) {
+                return 'Nenhuma informação de anamnese registrada.';
+            }
+            return anamneses[0].reasonForVisit || 'A anamnese foi preenchida sem o motivo da consulta.';
         } catch (error) {
             console.error('Erro ao buscar anamnese:', error);
             return 'Erro ao carregar anamnese.';
@@ -43,19 +46,18 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarConsultas = async () => {
         try {
-            const consultas = await apiService.get(`/consulta`);
-            const consultasPaciente = consultas.filter(consulta => consulta.patient?.id === parseInt(pacienteId));
+            const consultas = await apiService.get(`/pacientes/${pacienteId}/consultas`);
 
-            const diagnosticos = consultasPaciente.map(consulta => ({
+            const diagnosticos = consultas.map(consulta => ({
                 id: consulta.id,
-                data: new Date(consulta.consultationDate).toLocaleDateString('pt-BR'),
+                data: new Date(consulta.dateTime).toLocaleDateString('pt-BR'),
                 diagnostico: consulta.diagnosis || 'Diagnóstico não informado'
             }));
 
-            const tratamentos = consultasPaciente.map(consulta => ({
+            const tratamentos = consultas.map(consulta => ({
                 id: consulta.id,
-                data: new Date(consulta.consultationDate).toLocaleDateString('pt-BR'),
-                tratamento: consulta.treatment || 'Tratamento não informado'
+                data: new Date(consulta.dateTime).toLocaleDateString('pt-BR'),
+                tratamento: consulta.therapeuticPlan || 'Tratamento não informado'
             }));
 
             return { diagnosticos, tratamentos };
@@ -67,12 +69,11 @@ export default function HistoricoClinicoPrescritor() {
 
     const buscarPrescricoes = async () => {
         try {
-            const prescricoes = await apiService.get(`/prescricao`);
-            const prescricoesPaciente = prescricoes.filter(prescricao => prescricao.patient?.id === parseInt(pacienteId));
+            const prescricoes = await apiService.get(`/pacientes/${pacienteId}/prescricoes`);
 
-            return prescricoesPaciente.map(prescricao => ({
+            return prescricoes.map(prescricao => ({
                 id: prescricao.id,
-                data: new Date(prescricao.createdAt || Date.now()).toLocaleDateString('pt-BR'),
+                data: new Date(prescricao.appointmentDateTime).toLocaleDateString('pt-BR'),
                 medicamento: prescricao.productDescription || 'Medicamento não informado',
                 dose: prescricao.concentration || 'Dose não informada',
                 posologia: prescricao.posology || 'Posologia não informada'

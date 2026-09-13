@@ -33,7 +33,7 @@ public class TreatmentProtocolController {
     }
 
     // o paciente tambem pode ver o proprio acompanhamento
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     public TreatmentProtocolResponseDTO getActive(@PathVariable Long patientId) {
         return new TreatmentProtocolResponseDTO(treatmentProtocolService.getActiveByPatient(patientId));

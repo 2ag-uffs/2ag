@@ -7,7 +7,6 @@ import dev.uffs.doisag.enums.ScaleType;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -58,11 +57,6 @@ public class HamiltonScaleService {
         }
         // retorna a escala salva
         return savedScale;
-    }
-
-    // READ ALL
-    public List<HamiltonScale> getAll() {
-        return hamiltonScaleRepository.findAll();
     }
 
     // READ BY ID

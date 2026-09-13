@@ -32,19 +32,8 @@ public class PatientsController {
                 .toList();
     }
 
-    // mesma coisa que o de cima, mas com o id na url. so vale se o id
-    // for o do proprio prescritor logado
-    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.isSelf(#prescriberId, authentication)")
-    @GetMapping("/prescritor/{prescriberId}")
-    public List<PatientResponseDTO> getPatientsByPrescriber(@PathVariable Long prescriberId) {
-        return patientService.getPatientsByPrescriberId(prescriberId)
-                .stream()
-                .map(PatientResponseDTO::new)
-                .toList();
-    }
-
     // read by id patient
-    @PreAuthorize("@patientAccess.canAccess(#id, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PatientResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(new PatientResponseDTO(patientService.getById(id)));

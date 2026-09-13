@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,6 +52,7 @@ public class AuthenticationController {
     }
 
     // quem esta logado agora
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER', 'ADMIN')")
     @GetMapping("/me")
     public SessionUserDTO getLoggedUser(@AuthenticationPrincipal Users loggedUser) {
         return new SessionUserDTO(loggedUser);

@@ -12,6 +12,7 @@ import dev.uffs.doisag.service.ProfileService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 // toda rota usa a conta da sessao entao nenhuma recebe id
 @RestController
 @RequestMapping("/profile")
+@PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER', 'ADMIN')")
 public class ProfileController {
 
     private final ProfileService profileService;

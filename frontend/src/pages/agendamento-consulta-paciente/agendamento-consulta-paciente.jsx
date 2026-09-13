@@ -30,7 +30,6 @@ export default function AgendamentoConsultaPaciente() {
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedTime, setSelectedTime] = useState(null);
     const [consultaType, setConsultaType] = useState("presencial");
-    const [observacoes, setObservacoes] = useState("");
     const [erro, setErro] = useState(null);
     const [enviando, setEnviando] = useState(false);
     const [carregando, setCarregando] = useState(true);
@@ -131,13 +130,10 @@ export default function AgendamentoConsultaPaciente() {
         setEnviando(true);
 
         try {
-            // o prescritor n vai no corpo: o backend pega o do vinculo
-            await apiService.post("/consulta", {
-                patientId: usuarioLogado.id,
+            // o paciente e o prescritor saem da sessao e do vinculo entao n vao no corpo
+            await apiService.post("/consulta/agendamento", {
                 dateTime: `${selectedDate}T${selectedTime}:00`,
                 modality: consultaType === "presencial" ? "PRESENCIAL" : "REMOTA",
-                status: "AGENDADA",
-                clinicalObservation: observacoes,
                 durationMinutes: DURACAO,
             });
             navigate("/dashboard-paciente", {state: {aviso: "Consulta agendada."}});
@@ -311,17 +307,6 @@ export default function AgendamentoConsultaPaciente() {
                                         <span>Telemedicina</span>
                                     </label>
                                 </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label htmlFor="observacoes">Observações (opcional)</label>
-                                <textarea
-                                    id="observacoes"
-                                    value={observacoes}
-                                    onChange={(e) => setObservacoes(e.target.value)}
-                                    placeholder="Descreva brevemente o motivo da consulta ou observações importantes..."
-                                    rows="3"
-                                />
                             </div>
                         </div>
                     </section>

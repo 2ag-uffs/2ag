@@ -158,7 +158,7 @@ class AdminPrescribersTest {
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/prescritor")
-                        .header("Authorization", adminToken())
+                        .header("Authorization", prescriberToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(NEW_PRESCRIBER_JSON))
                 .andExpect(status().isNotFound());

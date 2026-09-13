@@ -19,7 +19,7 @@ public class SleepReportController {
     }
 
     // endpoint que o front vai chamar pra pegar o resumo da semana
-    @PreAuthorize("@patientAccess.canAccess(#patientId, authentication)")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     public ResponseEntity<WeeklySleepReportDTO> getWeeklyReport(@PathVariable Long patientId) {
         WeeklySleepReportDTO report = sleepReportService.generateWeeklyReport(patientId);

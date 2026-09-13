@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import dev.uffs.doisag.enums.ScaleType;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -67,11 +66,6 @@ public class SleepLogService {
         }
         // retorna a escala salva
         return savedLog;
-    }
-
-    // READ ALL
-    public List<SleepLog> getAll() {
-        return sleepLogRepository.findAll();
     }
 
     // READ BY ID

@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.time.LocalTime;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -190,11 +189,6 @@ public class PittsburghScaleService {
         }
         // retornamos a scala salva
         return savedScale;
-    }
-
-    // READ ALL
-    public List<PittsburghScale> getAll() {
-        return pittsburghScaleRepository.findAll();
     }
 
     // READ BY ID

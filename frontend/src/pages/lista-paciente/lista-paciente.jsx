@@ -20,7 +20,7 @@ export default function ListaPacientes() {
         }
 
         apiService
-            .get(`/paciente/prescritor/${prescritor.id}`)
+            .get("/paciente")
             .then(setPacientes)
             .catch((err) => {
                 setError(err instanceof ApiError ? err.message : "Erro ao buscar pacientes.");

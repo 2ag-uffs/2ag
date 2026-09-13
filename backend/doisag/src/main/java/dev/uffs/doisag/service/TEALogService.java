@@ -7,7 +7,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import dev.uffs.doisag.enums.ScaleType;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -50,11 +49,6 @@ public class TEALogService {
         }
         // retorna a escala salva
         return savedScale;
-    }
-
-    // READ ALL
-    public List<TEALog> getAll() {
-        return teaLogRepository.findAll();
     }
 
     // READ BY ID
