@@ -255,12 +255,12 @@
 }
 
 .notification-card[data-type="PATIENT"] .notification-icon {
-    color: var(--color-primary-light);
+    color: var(--color-primary-dark);
 }
 
 /* Verde para Pacientes */
 .notification-card[data-type="PRESCRIPTION"] .notification-icon {
-    color: var(--color-terracotta);
+    color: var(--color-terracotta-mid);
 }
 
 /* Roxo para Prescrições */

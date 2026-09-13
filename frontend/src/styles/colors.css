@@ -1,41 +1,55 @@
 /*
- * paleta da marca 2ag. os valores vem do manual, resumido em
- * docs/identidade-visual.md
+ * paleta da marca 2ag. os valores vem do manual e da cartela de tons e
+ * subtons, resumidos em docs/identidade-visual.md
+ *
+ * a cartela tem 5 familias com 3 tons cada. nas tres primeiras a cor
+ * base do manual eh o tom 1, nas duas de verde eh o tom 2, por isso a
+ * ordem de cada bloco aqui parece trocada
  *
  * o manual usa o sistema 60-30-10: primaria dominante, secundaria nos
  * detalhes, e as cores de destaque em no maximo 10%, pra botao e call
  * to action.
  *
  * como isso virou interface: a primaria domina a identidade (cabecalho,
- * navegacao, botao principal) e o corpo de leitura fica num neutro
- * claro. o manual diz que a primaria ocupa 60% como fundo, mas isso eh
- * regra de material impresso: 60% da tela em verde escuro atrapalha
- * quem preenche formulario de 15 itens ou le prontuario.
- * os tons claros das superficies sao derivados da palha, que eh
- * exatamente o que o manual manda fazer com os subtons pra web
+ * navegacao, botao principal) e o corpo de leitura fica na palha. o
+ * manual diz que a primaria ocupa 60% como fundo, mas isso eh regra de
+ * material impresso: 60% da tela em verde escuro atrapalha quem
+ * preenche formulario de 15 itens ou le prontuario
  */
 
 :root {
-    /* ---- cores da marca ---- */
-    --color-primary: #006633;           /* verde escuro, "de confianca" */
-    --color-secondary: #77954f;         /* verde claro, "fitoterapico" */
-    --color-straw: #ffeeda;             /* palha, "calma e estabilidade" */
-    --color-peach: #f8bf7d;             /* pessego, "vitalidade e conforto" */
-    --color-terracotta: #bf663f;        /* terracota, "raizes e organico" */
-    --color-neutral-black: #1d1b1b;     /* preto neutro */
+    /* ---- palha, "calma e estabilidade" ---- */
+    --color-straw: #ffeeda;             /* tom 1, a cor do manual */
+    --color-straw-mid: #ffe6c9;         /* tom 2 */
+    --color-straw-dark: #ffd7a8;        /* tom 3 */
 
-    /* ---- subtons derivados das cores acima ---- */
-    --color-primary-dark: #004d26;
-    --color-primary-light: #1a7a4a;
-    --color-primary-soft: #e0ede6;      /* verde bem diluido, pra realce */
-    --color-secondary-dark: #5f7a3e;
-    --color-secondary-light: #93ad72;
-    --color-terracotta-dark: #9c4f2f;   /* versao com contraste pra texto */
+    /* ---- pessego, "vitalidade e conforto" ---- */
+    --color-peach: #f8bf7d;             /* tom 1, a cor do manual */
+    --color-peach-mid: #f8b466;         /* tom 2 */
+    --color-peach-dark: #f8ad57;        /* tom 3 */
+
+    /* ---- terracota, "raizes e organico" ---- */
+    --color-terracotta: #bf663f;        /* tom 1, a cor do manual */
+    --color-terracotta-mid: #bf563f;    /* tom 2 */
+    --color-terracotta-dark: #a44819;   /* tom 3 */
+
+    /* ---- verde claro, "fitoterapico" ---- */
+    --color-secondary-light: #819d5b;   /* tom 1 */
+    --color-secondary: #77954f;         /* tom 2, a cor do manual */
+    --color-secondary-dark: #637d40;    /* tom 3 */
+
+    /* ---- verde escuro, "de confianca" ---- */
+    --color-primary-light: #006625;     /* tom 1, mesma claridade da base */
+    --color-primary: #006633;           /* tom 2, a cor do manual */
+    --color-primary-dark: #193e21;      /* tom 3 */
+
+    /* ---- preto neutro ---- */
+    --color-neutral-black: #1d1b1b;
 
     /* ---- superficies ---- */
-    --color-background: #fdf8f2;        /* palha diluida */
+    --color-background: #ffeeda;        /* a palha, tom 1 */
     --color-surface: #ffffff;
-    --color-surface-alt: #f6f1ea;       /* cartao sobre o fundo */
+    --color-surface-alt: #ffe6c9;       /* a palha, tom 2, pra cartao */
 
     /* ---- texto ----
      * branco sobre a primaria da 7,1:1, passa no AA e no AAA.
@@ -46,21 +60,24 @@
     --color-text-on-primary: #ffffff;
     --color-text-on-secondary: #1d1b1b;
 
-    /* ---- bordas ---- */
+    /* ---- derivados, n saem da cartela ----
+     * a cartela n tem tom neutro pra borda, divisor e realce fraco,
+     * entao esses quatro sao diluicoes nossas */
     --color-border: #e3dcd2;
     --color-border-light: #efe9e1;
+    --color-primary-soft: #e0ede6;      /* verde bem diluido, pra selecao */
+    --color-neutral: #a8a49e;
 
     /* ---- estados ---- */
-    --color-error: #9c4f2f;             /* terracota escurecida, 5,9:1 */
-    --color-error-soft: #f6e3d9;        /* fundo da caixa de erro */
-    --color-error-border: #e8c6b4;
+    --color-error: #a44819;             /* terracota tom 3, 6,0:1 */
+    --color-error-soft: #f1e4dd;        /* fundo da caixa de erro */
+    --color-error-border: #dfbfae;
     --color-success: #006633;
-    --color-warning: #bf663f;
+    --color-warning: #bf563f;           /* terracota tom 2, 4,6:1 */
 
     /* ---- nomes antigos, mantidos pra n quebrar as telas ---- */
     --color-accent-agree: #77954f;
     --color-accent-disagree: #bf663f;
-    --color-neutral: #a8a49e;
     --color-text-muted: #5c5a57;
     --color-btn-light-bg: #77954f;
     --color-btn-light-bg-transparent: #77954f6e;
