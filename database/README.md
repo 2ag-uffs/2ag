@@ -1,110 +1,88 @@
-# configurando o banco postgres pro projeto doisag
+# banco de dados do 2ag
 
-aqui tá o guia pra instalar e configurar o postgres pro backend do doisag rodar
+guia para instalar e configurar o postgres para a api do 2ag. com docker nada disso é necessário: o `docker compose up` sobe o banco sozinho (veja o [README da raiz](../README.md)).
 
 ## primeiro passo: instalar o postgresql
 
-escolha o guia pro seu sistema operacional
+### windows
 
-### se você usa windows
+1. **download**: baixe o instalador no site oficial do postgresql
+2. **instalação**: execute o instalador e siga as instruções
+    - quando ele pedir uma senha para o usuário **postgres**, anote essa senha
+    - deixe marcada a opção de instalar as **command line tools**
+3. **path**: adicione a pasta `bin` do postgres às variáveis de ambiente para usar os comandos no terminal. o caminho costuma ser `c:\program files\postgresql\<versão>\bin`
 
-1.  **download**: baixa o instalador do site oficial do postgresql
-2.  **instalação**: executa o instalador e segue as instruções
-      - quando ele pedir pra criar uma senha pro usuário **postgres**, anota essa senha, você vai precisar dela
-      - garante que a opção de instalar as **'command line tools'** esteja marcada
-3.  **configurar o path**: você precisa adicionar o caminho da pasta `bin` do postgres nas variáveis de ambiente do seu sistema pra conseguir usar os comandos no terminal
-      - o caminho geralmente é algo como `c:\program files\postgresql\<versão>\bin`
-
-### se você usa macos
-
-1.  **instalar homebrew**: se você ainda não tiver o homebrew, instala ele primeiro
-2.  **instalar o postgres**: depois abre o terminal e roda:
-    ```bash
-    brew install postgresql
-    ```
-3.  **iniciar o serviço**: pra garantir que o banco de dados esteja sempre rodando, você pode iniciar o serviço com:
-    ```bash
-    brew services start postgresql
-    ```
-
-### se você usa linux
-
-1.  **instalar o postgres**: só abrir o terminal e rodar:
-    ```bash
-    sudo apt update
-    sudo apt install postgresql postgresql-contrib
-    ```
-
-## segundo passo: criar o banco e os usuários
-
-depois de instalar, você precisa entrar no `psql` pra configurar as coisas.
-
-  - **no windows**: abre o terminal e digita `psql -U postgres` e coloca a senha que você criou
-  - **no macos**: é só rodar `psql postgres` no terminal
-  - **no linux**: é `sudo -u postgres psql`
-
-### criar um superusuário pessoal
-
-é uma boa ideia criar um usuário só pra você não ficar usando o `postgres` padrão o tempo todo. dentro do `psql`, rode o comando:
-
-```sql
-create role <seu_nome_de_usuario> with login superuser password '<sua_senha_segura>';
-```
-
-*lembra de trocar `<seu_nome_de_usuario>` e `<sua_senha_segura>` pelos seus dados. depois de criar, pode sair do `psql` com `\q`.*
-
-### criar o usuário e o banco da aplicação
-
-1.  entra no `psql` de novo, mas dessa vez com o seu usuário: `psql -U <seu_nome_de_usuario> -d postgres`. ele vai pedir sua senha
-2.  lá dentro, cria o usuário que a aplicação vai usar, o nome dele é `admindoisag`:
-    ```sql
-    create user admindoisag with password '<senha_para_a_aplicacao>';
-    ```
-    *escolha uma senha forte e anote ela*
-3.  agora cria o banco de dados com o nome `doisag` e já define o `admindoisag` como dono:
-    ```sql
-    create database doisag owner admindoisag;
-    ```
-4.  pode sair do psql com `\q`
-
-## terceiro passo: configurar o projeto
-
-a senha do banco **não vai em arquivo**, ela vem de variável de ambiente. nenhum segredo fica versionado no repositório.
-
-antes de subir o backend, exporte as duas variáveis obrigatórias:
+### macos
 
 ```bash
-export DATABASE_PASSWORD='<a senha que você criou pro admindoisag>'
-export JWT_SECRET="$(openssl rand -base64 48)"
+brew install postgresql
+brew services start postgresql
 ```
 
-se quiser os usuários de teste criados na primeira subida, exporte também:
+### linux
+
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+```
+
+## segundo passo: criar o usuário e o banco da aplicação
+
+entre no `psql`:
+
+- **windows**: `psql -U postgres`, com a senha criada na instalação
+- **macos**: `psql postgres`
+- **linux**: `sudo -u postgres psql`
+
+lá dentro, crie o usuário da aplicação e o banco:
+
+```sql
+create user admindoisag with password '<senha_para_a_aplicacao>';
+create database doisag owner admindoisag;
+```
+
+escolha uma senha forte e anote. para sair do `psql`, use `\q`.
+
+## terceiro passo: configurar a api
+
+a senha do banco não fica em arquivo, ela vem de variável de ambiente:
+
+```bash
+export DATABASE_PASSWORD='<a senha que você criou para o admindoisag>'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SESSION_SECURE_COOKIE=false
+```
+
+para ter contas de teste na primeira subida, exporte também:
 
 ```bash
 export SEED_DADOS_TESTE=true
 ```
 
-no IntelliJ o caminho é `Run` → `Edit Configurations` → `Environment variables`, na configuração do `DoisagApplication`.
+no intellij, o caminho é `run` → `edit configurations` → `environment variables`, na configuração do `DoisagApplication`. a lista completa de variáveis está no [`backend/README.md`](../backend/README.md#configuração).
 
-a lista completa de variáveis está no [`backend/README.md`](../backend/README.md#configuração)
-
-## quarto passo: subir a aplicação
+## quarto passo: subir a api
 
 ```bash
 cd backend/doisag
 ./mvnw spring-boot:run
 ```
 
-na primeira vez que sobe, o **flyway** cria as tabelas a partir das migrações em `backend/doisag/src/main/resources/db/migration/`. se você exportou `SEED_DADOS_TESTE=true`, um `CommandLineRunner` também cria os usuários de teste
+na primeira subida o **flyway** cria as tabelas a partir das migrações em `backend/doisag/src/main/resources/db/migration/`. com `SEED_DADOS_TESTE=true` também são criadas as contas de teste, todas com a senha `Senha@123`: `admin@email.com`, `prescritor@email.com` e `paciente@email.com`.
 
-> pra rodar os **testes** você n precisa de nada disso: `./mvnw clean install` usa h2 em memoria e passa sem postgres instalado. o banco de verdade só é necessário pra rodar a aplicação
+> para rodar os **testes** nada disso é necessário: `./mvnw clean install` usa h2 em memória.
 
-## sobre os scripts sql
+## banco criado antes de 13/09/2026
 
-a pasta `physical-model/` tem os scripts de criação (`script-creates.sql`), inserção de exemplo (`script-insert.sql`) e consultas (`scrip-select.sql`)
+as migrações foram consolidadas numa base única nessa data. um banco local criado antes precisa ser recriado, senão o flyway recusa a subida:
 
-> ⚠️ **eles são registro histórico, não a fonte de verdade**. o esquema de verdade vive nas migrações do flyway, em `backend/doisag/src/main/resources/db/migration/`. esses scripts foram feitos na modelagem de 2025 e já divergem do modelo atual — não use pra criar banco
+```sql
+drop database doisag;
+create database doisag owner admindoisag;
+```
 
-## conclusão
+## modelagem de 2025
 
-agora seu ambiente tá todo configurado, quando você rodar o backend ele vai conseguir conectar no banco de dados sem problemas. para um passo a passo focado em linux veja o [`passo-a-passo-banco.md`](./passo-a-passo-banco.md)
+as pastas `conceptual-model/`, `logical-model/` e `physical-model/` guardam a modelagem feita em 2025. **são registro histórico, não a fonte de verdade**: o esquema atual vive nas migrações do flyway e já diverge desses arquivos. não use os scripts dessas pastas para criar banco.
+
+para um passo a passo focado em linux, veja o [`passo-a-passo-banco.md`](./passo-a-passo-banco.md).

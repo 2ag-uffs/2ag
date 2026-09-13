@@ -1,124 +1,73 @@
-## **configuração do PostgreSQL para o projeto doisag**
+# postgres para o 2ag no linux
 
-guia rápido pra quem **usa Linux (Debian/Ubuntu)** e **não tem PostgreSQL instalado**
+guia rápido para quem usa **linux (debian ou ubuntu)** e ainda não tem o postgresql instalado. para os outros sistemas, veja o [`README.md`](./README.md) desta pasta.
 
-para os outros sistemas operacionais, veja o [`README.md`](./README.md) desta pasta
-
-
-### **instalar o PostgreSQL**
-
-No terminal, rode:
+## instalar
 
 ```bash
 sudo apt update
 sudo apt install postgresql postgresql-contrib
 ```
 
----
-
-### **verificar se o serviço está ativo**
+confira se o serviço está ativo:
 
 ```bash
 sudo systemctl status postgresql
 ```
 
-Se aparecer active (running) está tudo certo.
-Se não, ative:
+se não aparecer `active (running)`, ative:
 
 ```bash
 sudo systemctl start postgresql
 ```
 
----
+## criar o usuário e o banco
 
-### **acessar o console do PostgreSQL**
+entre no console:
 
 ```bash
 sudo -u postgres psql
 ```
 
-Vai aparecer um prompt tipo:
-
-```
-postgres=#
-```
-
----
-
-### **criar o usuário da aplicação**
-
-Ainda dentro do psql, crie o usuário `admindoisag`. Escolha uma senha e anote, porque você vai precisar dela no próximo passo:
+crie o usuário da aplicação e o banco. anote a senha, ela é usada no próximo passo:
 
 ```sql
 CREATE USER admindoisag WITH PASSWORD '<sua_senha>';
-```
-
----
-
-### **criar o banco de dados e definir o dono**
-
-```sql
 CREATE DATABASE doisag OWNER admindoisag;
 ```
 
----
+saia com `\q`.
 
-### **garantir que o usuário tem todos os privilégios**
+## configurar a api
 
-```sql
-GRANT ALL PRIVILEGES ON DATABASE doisag TO admindoisag;
-```
-
----
-
-### **sair do console**
-
-```sql
-\q
-```
-
----
-
-### **configurar as credenciais**
-
-A senha **não vai em arquivo versionado**. Exporte as variáveis antes de subir a aplicação:
+a senha não vai em arquivo versionado. exporte as variáveis antes de subir a api:
 
 ```bash
 export DATABASE_PASSWORD='<a senha que você criou acima>'
 export JWT_SECRET="$(openssl rand -base64 48)"
+export SESSION_SECURE_COOKIE=false
 export SEED_DADOS_TESTE=true
 ```
 
-> `DATABASE_PASSWORD` e `JWT_SECRET` não têm valor padrão: a aplicação não sobe sem elas. Isso é intencional — é melhor falhar do que subir com credencial publicada no repositório.
+`DATABASE_PASSWORD` e `JWT_SECRET` não têm valor padrão: a api não sobe sem elas, de propósito.
 
----
-
-### **rodar a aplicação**
-
-Na pasta do backend rode:
+## subir a api
 
 ```bash
 cd backend/doisag
 ./mvnw spring-boot:run
 ```
 
-Se tudo der certo, a API vai subir em:
+a api fica em `http://localhost:8080/api`. só o **jdk 17** é obrigatório: o `mvnw` baixa o maven sozinho.
 
-```
-http://localhost:8080
-```
+## contas de teste
 
-> Não precisa instalar o Maven: o `mvnw` do repositório baixa a versão correta sozinho. Só o **JDK 17** é obrigatório.
->
-> E pra rodar os **testes** você não precisa do banco: `./mvnw clean install` usa H2 em memória e passa em máquina limpa.
+com `SEED_DADOS_TESTE=true`, a primeira subida cria três contas, todas com a senha `Senha@123`:
 
-### **usuários de teste já cadastrados**
+| perfil | e-mail |
+| :--- | :--- |
+| administrador | `admin@email.com` |
+| prescritor | `prescritor@email.com` |
+| paciente | `paciente@email.com` |
 
-Ao rodar o projeto pela primeira vez, um `CommandLineRunner` já cria dois usuários para teste:
-
-| perfil | email | senha |
-| :--- | :--- | :--- |
-| prescritor | `prescritor@email.com` | `123456` |
-| paciente | `paciente@email.com` | `123456` |
-
-> ⚠️ esse seed roda em **toda** inicialização, sem distinção de ambiente — num deploy real ele criaria uma conta de prescritor com senha `123456` em produção. Limitar ao profile `dev` é parte do RNF15
+o seed nunca pode ser ligado em produção.

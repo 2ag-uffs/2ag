@@ -1,165 +1,73 @@
-# frontend do sistema 2ag
+# frontend do 2ag
 
-interface web do sistema 2ag, que consome a api do [`backend`](../backend/README.md)
-
-o documento de requisitos vigente é o [`docs/requisitos-v2.md`](../docs/requisitos-v2.md). este README descreve **o que existe hoje** — o que falta está na seção [limitações conhecidas](#limitações-conhecidas)
-
----
+interface web do 2ag, pensada primeiro para o celular. consome a api do [`backend`](../backend/README.md).
 
 ## tecnologias
 
-* **react 19**
-* **vite 6** como build e servidor de desenvolvimento
-* **react router dom 7** pra navegação no lado do cliente
-* **react-icons** pros ícones
-* **css puro**, sem framework de estilo
+- react 19 e vite 6
+- react router 7, com cada tela carregada sob demanda
+- recharts no gráfico de evolução
+- react-icons nos ícones do menu
+- css puro, com css modules nos componentes novos
 
----
+## rodando
 
-## como rodar
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-1. **pré-requisitos**: node.js 18+ e npm
-
-2. **instalação**:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-3. **execução**:
-   ```bash
-   npm run dev
-   ```
-
-4. **acesso**: `http://localhost:5173`
-
-o backend precisa estar rodando em `http://localhost:8080`, senão o login não funciona
-
-### outros comandos
+abra http://localhost:5173. o vite repassa as chamadas de `/api` para a api em `http://localhost:8080`, então a api precisa estar rodando. se ela estiver em outra porta, crie o arquivo `frontend/.env.local` com a linha `API_URL=http://localhost:8081`. esse arquivo fica fora do git.
 
 | comando | o que faz |
 | :--- | :--- |
-| `npm run dev` | sobe o servidor de desenvolvimento |
-| `npm run build` | gera o build de produção em `dist/` |
-| `npm run preview` | serve o build de produção localmente |
-| `npm run lint` | roda o eslint — **quebrado hoje**, ver limitações |
-
----
+| `npm run dev` | servidor de desenvolvimento |
+| `npm run build` | build de produção em `dist/` |
+| `npm run preview` | serve o build de produção |
+| `npm run lint` | eslint |
 
 ## estrutura
 
 ```
 src/
-├── main.jsx                 ponto de entrada, importa os estilos globais
-├── index.css
-├── routes/
-│   └── routes.jsx           todas as rotas da aplicação
-├── styles/                  design system global
-│   ├── colors.css           variáveis de cor em :root
-│   ├── fonts.css
-│   ├── button.css
-│   └── input.css
-├── components/              componentes reutilizáveis
-│   ├── header/
+├── main.jsx                  carrega a sessão e monta as rotas
+├── app/
+│   ├── router.jsx            todas as rotas, cada tela num arquivo baixado sob demanda
+│   ├── route-guards.js       quem pode abrir cada rota
+│   └── role-home.js          tela inicial de cada perfil
+├── components/
+│   ├── app-layout/           cabeçalho, menu e barra inferior no celular
+│   ├── page-loader/          indicador de carregamento
+│   ├── status-page/          página não encontrada e erro inesperado
 │   ├── modal/
 │   └── scale-selector/
-└── pages/                   uma pasta por página, com .jsx e .css juntos
+├── pages/                    uma pasta por tela
+├── services/api.js           cliente único da api
+└── styles/                   cores, fontes e estilos globais
 ```
 
-`public/` guarda os recursos estáticos: fontes, logotipos e imagens
+## navegação
 
-### estilização
+- **layout por perfil:** paciente, prescritor e administrador têm menu próprio. no celular o menu vira uma barra inferior
+- **rotas protegidas:** as regras ficam em `app/route-guards.js` e rodam antes da tela abrir. quem não tem acesso volta para a própria tela inicial. a api confere tudo de novo, porque esconder rota não protege dado
+- **carregamento sob demanda:** cada tela é um arquivo separado. enquanto a próxima tela baixa, a atual continua visível e uma barra fina aparece no topo
+- **transição:** cada tela nova entra com um fade curto, desligado para quem pede menos movimento no sistema operacional
+- **rota inexistente e erro inesperado:** caem numa página própria, com caminho de volta ao início
 
-a abordagem é dupla, como descrito no relatório técnico:
+## sessão
 
-1. um **design system global** em `src/styles/`, com variáveis css em `:root` pra garantir consistência visual
-2. **css por componente**, um arquivo por página, pra evitar conflito de especificidade entre telas
+a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login.
 
-### nomenclatura
+## padrão de código
 
-segue o padrão definido no [README da raiz](../README.md#nomenclatura): arquivos e pastas em **kebab-case**, funções e variáveis em **camelCase**, componentes e tipos em **PascalCase**, constantes em **SCREAMING_SNAKE_CASE**
+vale para todo código novo ou reescrito:
 
----
+- arquivos e pastas em kebab-case, componentes em PascalCase, variáveis e funções em camelCase, tudo em inglês
+- css modules (`nome.module.css`) em componente novo, para o estilo de uma tela não vazar para outra
+- comentários curtos, em minúsculas, sem acento e sem pontuação
+- texto que aparece na tela em português
 
-## páginas
+## situação das telas
 
-### paciente
-
-| rota | página |
-| :--- | :--- |
-| `/login` | login |
-| `/sign-up` | cadastro de paciente |
-| `/dashboard-paciente` | painel inicial |
-| `/anamnese` | formulário de anamnese |
-| `/acompanhamento-paciente` | ficha de acompanhamento semanal |
-| `/pacientes/:patientId/escalas` | central de escalas |
-| `/escala-hamilton` | escala de ansiedade de hamilton |
-| `/diario-sono` | diário de sono |
-| `/agendamento-consulta` | agendamento de consulta |
-| `/historico-paciente` | histórico clínico |
-| `/notificacoes-paciente` | notificações |
-| `/perfil` | perfil do usuário |
-
-### prescritor
-
-| rota | página |
-| :--- | :--- |
-| `/dashboard-prescritor` | painel inicial |
-| `/lista-paciente` | lista de pacientes |
-| `/consulta` | consulta clínica |
-| `/consulta/:appointmentId/prescricao` | nova prescrição, a partir de uma consulta |
-| `/mini-exame` | mini-exame do estado mental |
-| `/acompanhamento-prescritor` | acompanhamento do paciente |
-| `/paciente/:pacienteId/selecao-escalas` | designar escalas |
-| `/paciente/:pacienteId/historico` | histórico clínico do paciente |
-| `/agendamento-prescritor` | agenda |
-| `/notificacoes-prescritor` | notificações |
-| `/dados-consultorio` | dados do consultório |
-
----
-
-## autenticação
-
-o login chama `POST /auth/login`, guarda o jwt em `localStorage` na chave `authToken` e decodifica o payload com `atob` pra descobrir o perfil do usuário:
-
-* `ROLE_USER` → redireciona pra `/dashboard-paciente`
-* `ROLE_ADMIN` → redireciona pra `/dashboard-prescritor`
-
-toda chamada autenticada manda o header `Authorization: Bearer <token>`
-
----
-
-## limitações conhecidas
-
-levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que resolve
-
-**configuração**
-
-* **parcialmente resolvido**: existe o `src/services/api.js`, que lê o endereço de `VITE_API_URL`, injeta o token, trata 401 e expõe os erros por campo. `login.jsx`, `consulta-clinica.jsx` e `prescricao.jsx` já usam. faltam 12 arquivos (RNF15)
-* o `eslint.config.js` está dentro de `public/`, então é publicado como arquivo estático e o eslint não encontra a configuração. na prática **`npm run lint` nunca rodou** neste projeto
-
-**segurança**
-
-* **não existe proteção de rota**. não há componente de rota protegida: qualquer url abre direto, inclusive `/dashboard-prescritor`. a separação entre perfis acontece só no redirecionamento depois do login (RF29, RF30)
-* o token fica em `localStorage`, o que é vulnerável a xss
-* a função `parseJwt` está duplicada em várias páginas e o perfil do usuário é lido do payload sem validação de assinatura — o que é aceitável pra decidir o que mostrar na tela, mas hoje é a única barreira que existe
-
-**telas que faltam**
-
-* ~~não existe tela de progresso~~ **resolvida**: `/progresso` para o paciente e `/paciente/:patientId/progresso` para o prescritor, as duas na mesma página (RF27, RF28). usa **recharts**
-* o `acompanhamento-semanal-prescritor.jsx` e o histórico ainda não exibem gráfico (RF07)
-* ~~três rotas comentadas e sem página: `/escala-pittsburgh`, `/diario-dor`, `/diario-tea`~~ **resolvido**: as três telas existem e salvam. **as 8 escalas do `ScaleType` agora têm rota** (RF08, RF23, RF24, RF25)
-* não existe exportação de dados em pdf ou csv (RF33)
-
-**telas que ainda não estão ligadas ao backend**
-
-* `agendamento-consulta-prescritor.jsx` **não faz nenhuma chamada ao backend** — a agenda inteira é dado fixo no código
-* `agendamento-consulta-paciente.jsx` chama `POST /consultas`, e a rota do backend é `/consulta`, no singular
-* 12 arquivos ainda montam o `fetch` na mão com o endereço fixo. a migração pro `services/api.js` está em andamento
-* ~~`mini-exame.jsx` não salva~~ **resolvido**: a tela foi reescrita com as 11 seções do instrumento e salva a partir da consulta
-
-**estrutura**
-
-* não há rota de fallback (404), nem `ErrorBoundary`, nem layout compartilhado entre as páginas
-* não há estado global de autenticação: cada página lê o token e decodifica por conta própria
-* todo texto de interface está embutido no jsx, sem arquivo de dicionário, então não há como traduzir a interface (RNF12)
+o layout, as rotas e a tela do administrador já seguem o padrão novo. as demais telas, incluindo login e cadastro, ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.
