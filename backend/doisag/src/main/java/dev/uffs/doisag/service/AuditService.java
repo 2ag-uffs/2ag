@@ -14,9 +14,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 // grava e le a trilha de auditoria do prontuario (RF31)
 // quem fez sai da sessao e fica nulo quando quem faz eh o proprio sistema
@@ -31,6 +35,11 @@ public class AuditService {
     public static final int CHART_VIEW_WINDOW_MINUTES = 30;
 
     private final AuditEventRepository auditEventRepository;
+
+    // hora do ultimo acesso gravado de cada prescritor em cada paciente
+    // o historico abre varias listas juntas e quando as outras chegam a gravacao da primeira
+    // ainda n foi confirmada no banco entao so olhar o banco deixava passar acesso repetido
+    private final Map<String, LocalDateTime> lastChartViews = new HashMap<>();
 
     public AuditService(AuditEventRepository auditEventRepository) {
         this.auditEventRepository = auditEventRepository;
@@ -64,6 +73,13 @@ public class AuditService {
         }
 
         LocalDateTime windowStart = LocalDateTime.now().minusMinutes(CHART_VIEW_WINDOW_MINUTES);
+        String viewKey = loggedUser.getId() + "-" + patientId;
+        if (!claimChartView(viewKey, windowStart)) {
+            return;
+        }
+        forgetChartViewIfRolledBack(viewKey);
+
+        // depois de reiniciar a api a memoria comeca vazia mas o banco ainda lembra do acesso
         boolean alreadyRecorded = auditEventRepository.existsByActorIdAndPatientIdAndOperationAndOccurredAtAfter(
                 loggedUser.getId(), patientId, AuditOperation.VISUALIZACAO, windowStart);
         if (alreadyRecorded) {
@@ -71,6 +87,36 @@ public class AuditService {
         }
         auditEventRepository.save(
                 new AuditEvent(loggedUser, AuditOperation.VISUALIZACAO, AuditRecordType.PRONTUARIO, null, patientId));
+    }
+
+    // so a primeira chamada de cada janela ganha o direito de gravar o acesso
+    private synchronized boolean claimChartView(String viewKey, LocalDateTime windowStart) {
+        LocalDateTime lastView = lastChartViews.get(viewKey);
+        if (lastView != null && lastView.isAfter(windowStart)) {
+            return false;
+        }
+        lastChartViews.put(viewKey, LocalDateTime.now());
+        return true;
+    }
+
+    private synchronized void forgetChartView(String viewKey) {
+        lastChartViews.remove(viewKey);
+    }
+
+    // se a leitura der erro o banco desfaz a gravacao do acesso
+    // entao a memoria esquece tbm e a proxima abertura grava de novo
+    private void forgetChartViewIfRolledBack(String viewKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    forgetChartView(viewKey);
+                }
+            }
+        });
     }
 
     // trilha de um paciente com as duas datas inclusive
