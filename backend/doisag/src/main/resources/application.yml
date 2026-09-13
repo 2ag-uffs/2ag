@@ -38,6 +38,11 @@ api:
     duration-minutes: ${SESSION_DURATION_MINUTES:120}
     # o cookie so trafega em https e no computador local sem https fica false
     secure-cookie: ${SESSION_SECURE_COOKIE:true}
+  admin:
+    # conta administrativa criada na primeira subida
+    # sem essas duas variaveis nenhuma conta de administrador eh criada
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}

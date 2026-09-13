@@ -7,8 +7,10 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ValidationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,9 +74,18 @@ public class PrescriberService {
         return prescriberRepository.save(prescriber);
     }
 
-    // read all prescriber
-    public List<Prescriber> getAll() {
-        return prescriberRepository.findAll();
+    // lista pro administrador em ordem de nome
+    public List<Prescriber> listAllByName() {
+        return prescriberRepository.findAll(Sort.by("name"));
+    }
+
+    // ativa ou desativa a conta sem apagar nada
+    // conta desativada perde o acesso na proxima requisicao
+    @Transactional
+    public Prescriber changeActive(Long prescriberId, boolean active) {
+        Prescriber prescriber = getById(prescriberId);
+        prescriber.setActive(active);
+        return prescriberRepository.save(prescriber);
     }
 
     // read by id prescriber
@@ -102,13 +113,5 @@ public class PrescriberService {
         // prescritor, trocar aqui quebraria o vinculo de todos eles
 
         return prescriberRepository.save(prescriber);
-    }
-
-    // delete prescriber
-    public void delete(Long id) {
-        if (!prescriberRepository.existsById(id)) {
-            throw new EntityNotFoundException("Prescritor não encontrado com o id: " + id);
-        }
-        prescriberRepository.deleteById(id);
     }
 }

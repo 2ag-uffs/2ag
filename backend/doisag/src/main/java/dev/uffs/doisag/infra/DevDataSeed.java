@@ -1,6 +1,7 @@
 package dev.uffs.doisag.infra;
 
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
+import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
@@ -46,8 +47,23 @@ public class DevDataSeed implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        createAdminIfMissing();
         Prescriber prescriber = createPrescriberIfMissing();
         createPatientIfMissing(prescriber);
+    }
+
+    private void createAdminIfMissing() {
+        String email = "admin@email.com";
+        if (usersRepository.findByEmail(email).isPresent()) {
+            return;
+        }
+
+        Admin admin = new Admin();
+        admin.setName("Administrador de Teste");
+        admin.setEmail(email);
+        admin.setPassword(passwordEncoder.encode(DEV_PASSWORD));
+        usersRepository.save(admin);
+        log.info("seed de desenvolvimento criou o administrador {}", email);
     }
 
     private Prescriber createPrescriberIfMissing() {

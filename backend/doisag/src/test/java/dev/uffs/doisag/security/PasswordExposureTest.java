@@ -41,6 +41,7 @@ class PasswordExposureTest {
     @Autowired private TokenService tokenService;
 
     private Long patientId;
+    private Long prescriberId;
     private String tokenPrescriber;
 
     @BeforeEach
@@ -53,6 +54,7 @@ class PasswordExposureTest {
         prescriber.setRegistryType("CRBM");
         prescriber.setRegistryNumber("99999");
         prescriber = prescriberRepository.save(prescriber);
+        prescriberId = prescriber.getId();
 
         Patient patient = new Patient();
         patient.setName("Paciente de Teste");
@@ -94,7 +96,7 @@ class PasswordExposureTest {
 
     @Test
     void buscarPrescritorNaoPodeTrazerSenha() throws Exception {
-        String body = corpoDe("/prescritor");
+        String body = corpoDe("/prescritor/" + prescriberId);
 
         assertThat(body).contains("Prescritora de Teste");
         assertThat(body).doesNotContain(KNOWN_HASH);
