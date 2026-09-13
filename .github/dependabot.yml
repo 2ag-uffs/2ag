@@ -1,0 +1,22 @@
+# o dependabot so estava olhando o package-lock.json do frontend.
+# o pom.xml nunca foi escaneado, entao o backend n estava limpo, estava
+# sem verificacao. aqui a gente declara os dois.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: maven
+    directory: /backend/doisag
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # as proprias actions tbm envelhecem
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
