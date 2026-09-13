@@ -370,6 +370,12 @@ export default function ConsultaClinica() {
                                     </button>
                                     <button
                                         type="button"
+                                        onClick={() => navigate(`/consulta/${consultaSalvaId}/mini-exame`)}
+                                    >
+                                        Aplicar mini-exame
+                                    </button>
+                                    <button
+                                        type="button"
                                         className="button-secondary"
                                         onClick={() => navigate(`/paciente/${patientId}/historico`)}
                                     >

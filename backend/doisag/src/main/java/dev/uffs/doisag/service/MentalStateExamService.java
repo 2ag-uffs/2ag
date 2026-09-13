@@ -1,7 +1,10 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.infra.ResourceNotFoundException;
+import dev.uffs.doisag.dto.MentalStateExamCreateDTO;
+import dev.uffs.doisag.infra.ResourceNotFoundException;
 import dev.uffs.doisag.model.MentalStateExam;
+import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.MentalStateExamRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
@@ -12,9 +15,12 @@ import java.util.Optional;
 @Service
 public class MentalStateExamService {
     private final MentalStateExamRepository mentalStateExamRepository;
+    private final AppointmentRepository appointmentRepository;
 
-    public MentalStateExamService(MentalStateExamRepository mentalStateExamRepository) {
+    public MentalStateExamService(MentalStateExamRepository mentalStateExamRepository,
+                                  AppointmentRepository appointmentRepository) {
         this.mentalStateExamRepository = mentalStateExamRepository;
+        this.appointmentRepository = appointmentRepository;
     }
 
     // método privado para calcular a pontuação total
@@ -27,14 +33,35 @@ public class MentalStateExamService {
                 exam.getRecall(),
                 exam.getNaming(),
                 exam.getRepetition(),
-                exam.getCommand());
+                exam.getCommand(),
+                exam.getReading(),
+                exam.getWriting(),
+                exam.getCopying());
     }
 
     // CREATE
-    public MentalStateExam create(MentalStateExam mentalStateExam) {
-        Integer totalScore = calculateTotalScore(mentalStateExam);
-        mentalStateExam.setScore(totalScore);
-        return mentalStateExamRepository.save(mentalStateExam);
+    // o MEEM eh aplicado pelo prescritor durante a consulta (RF26),
+    // entao ele nasce amarrado nela
+    public MentalStateExam create(MentalStateExamCreateDTO dados, Long appointmentId) {
+        var appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Consulta não encontrada com o id: " + appointmentId));
+
+        MentalStateExam exam = new MentalStateExam();
+        exam.setAppointment(appointment);
+        exam.setTemporalOrientation(dados.temporalOrientation());
+        exam.setSpatialOrientation(dados.spatialOrientation());
+        exam.setRegistration(dados.registration());
+        exam.setAttentionAndCalculation(dados.attentionAndCalculation());
+        exam.setRecall(dados.recall());
+        exam.setNaming(dados.naming());
+        exam.setRepetition(dados.repetition());
+        exam.setCommand(dados.command());
+        exam.setReading(dados.reading());
+        exam.setWriting(dados.writing());
+        exam.setCopying(dados.copying());
+
+        exam.setScore(calculateTotalScore(exam));
+        return mentalStateExamRepository.save(exam);
     }
 
     // READ ALL

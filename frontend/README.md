@@ -156,7 +156,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 * `agendamento-consulta-prescritor.jsx` **não faz nenhuma chamada ao backend** — a agenda inteira é dado fixo no código
 * `agendamento-consulta-paciente.jsx` chama `POST /consultas`, e a rota do backend é `/consulta`, no singular
 * 12 arquivos ainda montam o `fetch` na mão com o endereço fixo. a migração pro `services/api.js` está em andamento
-* **`mini-exame.jsx` não salva**: assim como acontecia no hamilton, ele calcula o total e mostra um `alert`, sem nunca chamar a api. o paciente (ou o prescritor) preenche e o dado não existe
+* ~~`mini-exame.jsx` não salva~~ **resolvido**: a tela foi reescrita com as 11 seções do instrumento e salva a partir da consulta
 
 **estrutura**
 

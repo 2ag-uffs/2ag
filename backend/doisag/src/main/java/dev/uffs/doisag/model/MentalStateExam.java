@@ -23,6 +23,12 @@ public class MentalStateExam {
     private Integer naming;
     private Integer repetition;
     private Integer command;
+
+    // as tres secoes que faltavam. sem elas o teto era 27 e n 30, o que
+    // desloca todas as faixas de interpretacao do instrumento (RF26)
+    private Integer reading;
+    private Integer writing;
+    private Integer copying;
     private Integer score;
 
     public MentalStateExam(Appointment appointment, Integer temporalOrientation, Integer spatialOrientation, Integer registration, Integer attentionAndCalculation, Integer recall, Integer naming, Integer repetition, Integer command, Integer score) {
@@ -136,5 +142,29 @@ public class MentalStateExam {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Integer getReading() {
+        return reading;
+    }
+
+    public void setReading(Integer reading) {
+        this.reading = reading;
+    }
+
+    public Integer getWriting() {
+        return writing;
+    }
+
+    public void setWriting(Integer writing) {
+        this.writing = writing;
+    }
+
+    public Integer getCopying() {
+        return copying;
+    }
+
+    public void setCopying(Integer copying) {
+        this.copying = copying;
     }
 }

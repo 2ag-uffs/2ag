@@ -385,7 +385,7 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
   * `GET /paciente` deixou de devolver todos os pacientes do sistema e passou a devolver só a carteira do prescritor logado
   * ~~falta cobrir o dono por registro nas 7 rotas de escala~~ **resolvido**: o `AssessmentAccessService` resolve o dono de qualquer uma das 7 escalas (todas herdam de `BaseAssessment`, que sabe de qual paciente é) e delega pro `PatientAccessService`
   * ~~o `POST` das escalas aceita o campo `patient` no corpo~~ **resolvido**: o dono passou a ser sempre o paciente logado, e o `id` é zerado pra `POST` não sobrescrever registro existente
-  * o **MEEM** continua com regra só por papel. ele se liga a `Appointment` e não a `Patient`, então a checagem de dono passa pela consulta — falta fazer
+  * ~~o **MEEM** continua com regra só por papel~~ **resolvido**: a criação passou a ser aninhada na consulta e usa `@patientAccess.canAccessAppointment`
   * ~~`POST /prescritor` é público e cria conta com privilégio~~ **resolvido**: exige `ROLE_ADMIN`, papel que ninguém tem ainda. o cadastro de prescritor saiu da tela de sign-up, que agora é só de paciente
   * ~~os controllers retornam entidade jpa crua e o jackson serializa o `password`~~ **resolvido**: `/paciente` e `/prescritor` devolvem DTO, e o `Users` tem `@JsonIgnore` no `password` e nos acessores do `UserDetails` como rede de proteção. os 7 endpoints de escala ainda devolvem a entidade, mas o paciente aninhado já não carrega senha — falta trocar por DTO pra parar de expor o paciente inteiro
   * a chave do jwt e a senha do banco estão em arquivo versionado (RNF15)
@@ -396,16 +396,16 @@ levantadas na auditoria de 12/09/2026. cada item aponta o requisito da v2.0 que 
 
 **escalas clínicas** — os escores não correspondem aos instrumentos
 
-  * **pittsburgh**: o escore é a soma crua de 13 campos, dando faixa de 0 a 39. o psqi real tem 7 componentes derivados e vai de 0 a 21, com corte em 5. o número atual não é comparável a nenhum ponto de corte publicado (RF23)
-  * **meem**: só 8 seções implementadas, máximo de 27 pontos. faltam leitura, escrita e cópia dos pentágonos pra fechar os 30 (RF26)
-  * **hamilton**: 13 itens em vez de 14, máximo de 52 em vez de 56 (RF21)
+  * ~~**pittsburgh**: soma crua de 13 campos, faixa de 0 a 39~~ **resolvido**: algoritmo oficial de 7 componentes derivados, faixa de 0 a 21, com o corte publicado em 5. a eficiência do sono passou a ser calculada a partir dos horários, e não perguntada (RF23)
+  * ~~**meem**: só 8 seções, máximo de 27 pontos~~ **resolvido**: as 11 seções do instrumento, fechando 30 pontos, com faixa de corte por escolaridade (RF26)
+  * ~~**hamilton**: 13 itens em vez de 14~~ **resolvido**: 14 itens, escore de 0 a 56, comparável com as faixas do formulário da clínica (RF21)
   * ~~os campos das escalas usam `int` primitivo, item não respondido vira `0`~~ **resolvido**: os 89 campos viraram `Integer`, escala com item faltando fica **sem escore** em vez de somar só o que veio, e o gráfico de progresso pula o dia em vez de plotar zero (RN10)
 
 **funcionalidades incompletas**
 
   * não existe nenhum `@Scheduled` no projeto: o ciclo automático de acompanhamento de 90 dias e os lembretes de dose não existem. toda escala é designada manualmente (RF32, RF34)
   * ~~`ESCALA_PITTSBURGH`, `REGISTRO_DOR` e `REGISTRO_TEA` apontam pra rotas que não existem~~ **resolvido**: as três telas foram criadas, e todas as 8 rotas do `ScaleType` existem no frontend (RF08)
-  * `MINI_EXAME_ESTADO_MENTAL` é designável ao paciente, mas quem preenche é o prescritor e `MentalStateExamService` não dá baixa na tarefa. a tarefa nunca conclui (RN09)
+  * ~~`MINI_EXAME_ESTADO_MENTAL` é designável ao paciente~~ **resolvido**: designar o MEEM agora é recusado com 400. ele é aplicado pelo prescritor dentro da consulta, em `POST /mini-exame/consulta/{appointmentId}` (RN09)
   * `CompletedScaleInfoDTO` devolve a string fixa `"Concluído"` no lugar do resultado da escala (RF08)
   * não existe exportação em pdf nem csv (RF33)
   * **parcialmente resolvido**: toda entidade clínica ganhou `createdAt` e `updatedAt`, preenchidos pelo Spring. ainda falta o **autor** da alteração e o registro imutável de quem acessou o quê, que é o resto do RF31

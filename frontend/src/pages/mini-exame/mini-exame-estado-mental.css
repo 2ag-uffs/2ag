@@ -407,3 +407,101 @@
 }
 
 
+
+/* ---- reescrita da tela: 11 secoes, 30 pontos ---- */
+.meem {
+    min-height: 100vh;
+    background-color: var(--color-background, #f7f8f7);
+}
+
+.meem__conteudo {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.meem__conteudo h1 {
+    margin-bottom: 24px;
+}
+
+.meem__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 20px;
+}
+
+.meem__campo input,
+.meem__campo select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #ccc);
+    max-width: 360px;
+    font-family: inherit;
+}
+
+.meem__ajuda {
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #666);
+}
+
+.meem__bloco {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.meem__bloco h2 {
+    font-size: 1rem;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.meem__pontos {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--color-text-muted, #666);
+}
+
+.meem__itens {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.meem__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.meem__resultado {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--color-primary, #5b8c5a);
+}
+
+.meem__resultado h2 {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.meem__erro {
+    color: var(--color-error, #c0392b);
+    margin-bottom: 12px;
+}
+
+.meem__acoes {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}

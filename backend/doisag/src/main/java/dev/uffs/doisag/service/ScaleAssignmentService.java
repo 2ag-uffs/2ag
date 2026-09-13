@@ -47,6 +47,14 @@ public class ScaleAssignmentService {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new EntityNotFoundException("Paciente não encontrado"));
 
+        // o MEEM eh aplicado pelo prescritor durante a consulta, o paciente
+        // n preenche sozinho (RN09). antes dava pra designar, e a tarefa
+        // ficava pendente pra sempre pq n existia como concluir
+        if (assignScaleDTO.scaleType() == ScaleType.MINI_EXAME_ESTADO_MENTAL) {
+            throw new jakarta.validation.ValidationException(
+                    "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta");
+        }
+
         AssignedScale newAssignment = new AssignedScale();
         newAssignment.setPatient(patient);
         newAssignment.setPrescriber(patient.getPrescriber());

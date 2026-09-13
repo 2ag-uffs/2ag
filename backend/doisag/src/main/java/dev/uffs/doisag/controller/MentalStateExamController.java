@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.MentalStateExamCreateDTO;
 import dev.uffs.doisag.model.MentalStateExam;
 import dev.uffs.doisag.service.MentalStateExamService;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +21,12 @@ public class MentalStateExamController {
 
     // endpoint para CRIAR um novo exame
     // POST /mini-exame
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @PostMapping
-    public MentalStateExam create(@RequestBody MentalStateExam mentalStateExam) {
-        return mentalStateExamService.create(mentalStateExam);
+    // o MEEM sai de dentro de uma consulta, igual a prescricao
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
+    @PostMapping("/consulta/{appointmentId}")
+    public MentalStateExam create(@PathVariable Long appointmentId,
+                                  @RequestBody MentalStateExamCreateDTO dados) {
+        return mentalStateExamService.create(dados, appointmentId);
     }
 
     // endpoint para LER todos os exames

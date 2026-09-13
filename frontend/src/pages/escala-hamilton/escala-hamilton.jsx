@@ -96,6 +96,15 @@ const hamAItems = [
         description: "Boca seca, rubor, palidez, tendência a sudorese, mãos molhadas, inquietação, tensão, dor de cabeça, tontura, pelos eriçados.",
         leftLabel: "Ausente",
         rightLabel: "Muito grave"
+    },
+    {
+        // o 14o item faltava, entao o escore ia ate 52 em vez de 56 e n
+        // dava pra comparar com as faixas do formulario da clinica
+        id: 14,
+        title: "Comportamento durante a entrevista",
+        description: "Inquietação, impaciência ou intranquilidade, tremor das mãos, testa franzida, fácies tensa, suspiros ou respiração rápida, palidez facial, engolir em seco, eructação, tiques.",
+        leftLabel: "Ausente",
+        rightLabel: "Muito grave"
     }
 ];
 
@@ -116,6 +125,7 @@ export default function HamAScale() {
         11: "gastrointestinalSymptoms",
         12: "genitourinarySymptoms",
         13: "autonomicSymptoms",
+        14: "interviewBehavior",
     };
 
     const [salvando, setSalvando] = useState(false);
@@ -168,7 +178,7 @@ export default function HamAScale() {
         try {
             await apiService.post('/escala-hamilton', escala);
             const total = calculateTotal();
-            alert('Avaliação salva! Total: ' + total + '/52. Nível: ' + getAnxietyLevel(total));
+            alert('Avaliação salva! Total: ' + total + '/56. Nível: ' + getAnxietyLevel(total));
             navigate('/dashboard-paciente');
         } catch (err) {
             setErro(err instanceof ApiError ? err.message : 'Não foi possível salvar a avaliação.');
@@ -226,7 +236,7 @@ export default function HamAScale() {
                             <div>
                                 <label>Total da Pontuação</label>
                                 <div className="ham-a-total">
-                                    <span className="ham-a-total__score">{total}/52</span>
+                                    <span className="ham-a-total__score">{total}/56</span>
                                     <span className="ham-a-total__level">{anxietyLevel}</span>
                                 </div>
                             </div>

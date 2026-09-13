@@ -20,6 +20,11 @@ public class HamiltonScale extends BaseAssessment {
     private Integer gastrointestinalSymptoms;
     private Integer genitourinarySymptoms;
     private Integer autonomicSymptoms;
+
+    // 14o item do instrumento: comportamento durante a entrevista.
+    // faltava, entao o escore ia ate 52 em vez de 56 e n dava pra
+    // comparar com as faixas do formulario (RF21)
+    private Integer interviewBehavior;
     private Integer hamScore;
 
     public HamiltonScale(Long id, LocalDate assessmentDate, Patient patient, Integer anxiousMood, Integer tension, Integer fears, Integer insomnia, Integer cognition, Integer depressedMood, Integer somaticMotor, Integer somaticSensory, Integer cardiovascularSymptoms, Integer respiratorySymptoms, Integer gastrointestinalSymptoms, Integer genitourinarySymptoms, Integer autonomicSymptoms, Integer hamScore) {
@@ -157,5 +162,13 @@ public class HamiltonScale extends BaseAssessment {
     @Override
     public Integer trackedValue(TrackableAttribute attribute) {
         return attribute == TrackableAttribute.ESCORE_HAMILTON ? hamScore : null;
+    }
+
+    public Integer getInterviewBehavior() {
+        return interviewBehavior;
+    }
+
+    public void setInterviewBehavior(Integer interviewBehavior) {
+        this.interviewBehavior = interviewBehavior;
     }
 }

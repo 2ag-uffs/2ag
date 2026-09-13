@@ -52,12 +52,12 @@ class HamiltonScaleServiceTest {
         scale.setGastrointestinalSymptoms(4);
         scale.setGenitourinarySymptoms(4);
         scale.setAutonomicSymptoms(4);
+        scale.setInterviewBehavior(4);
 
         HamiltonScale saved = hamiltonScaleService.create(scale);
 
-        // 13 itens x 4 = 52. o instrumento tem 14 itens e vai ate 56,
-        // entao esse valor muda quando o RF21 for corrigido
-        assertThat(saved.getHamScore()).isEqualTo(52);
+        // 14 itens x 4 = 56, que eh o maximo do instrumento
+        assertThat(saved.getHamScore()).isEqualTo(56);
     }
 
     @Test
@@ -91,12 +91,13 @@ class HamiltonScaleServiceTest {
         scale.setRespiratorySymptoms(2);
         scale.setGastrointestinalSymptoms(2);
         scale.setGenitourinarySymptoms(2);
-        // autonomicSymptoms fica sem resposta
+        scale.setAutonomicSymptoms(2);
+        // interviewBehavior fica sem resposta
 
         HamiltonScale saved = hamiltonScaleService.create(scale);
 
-        // somar so os 12 respondidos daria 24, q a prescritora leria
-        // como ansiedade moderada. escala incompleta n tem escore
+        // somar so os 13 respondidos daria 26, q a prescritora leria
+        // como ansiedade grave. escala incompleta n tem escore
         assertThat(saved.getHamScore()).isNull();
     }
 }

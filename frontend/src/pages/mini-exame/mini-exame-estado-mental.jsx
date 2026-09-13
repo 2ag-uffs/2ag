@@ -1,430 +1,248 @@
-import React, { useState } from "react";
-import "./mini-exame-estado-mental.css";
+import {useState} from "react";
+import {useNavigate, useParams} from "react-router";
 import Header from "../../components/header/header.jsx";
-import {useNavigate} from "react-router";
+import {apiService, ApiError} from "../../services/api.js";
+import "../../styles/colors.css";
+import "../../styles/fonts.css";
+import "../../styles/button.css";
+import "../../styles/input.css";
+import "./mini-exame-estado-mental.css";
+
+// as 11 secoes do instrumento, na ordem do formulario da clinica.
+// cada item vale 1 ponto, entao a nota da secao eh quantos itens a
+// pessoa acertou. o total fecha 30.
+//
+// antes esta tela tinha so 6 secoes, somando 17 pontos, e mesmo assim
+// interpretava o resultado contra as faixas de 30. ou seja ninguem
+// conseguia ser classificado como normal: 17 de 17 ja caia em
+// "comprometimento leve"
+const SECOES = [
+    {
+        campo: "temporalOrientation",
+        titulo: "Orientação temporal",
+        pontos: 5,
+        itens: [
+            "Qual é a hora aproximada?",
+            "Em que dia da semana estamos?",
+            "Que dia do mês é hoje?",
+            "Em que mês estamos?",
+            "Em que ano estamos?",
+        ],
+    },
+    {
+        campo: "spatialOrientation",
+        titulo: "Orientação espacial",
+        pontos: 5,
+        itens: [
+            "Em que local estamos?",
+            "Que local é este aqui?",
+            "Em que bairro nós estamos ou qual é o endereço daqui?",
+            "Em que cidade nós estamos?",
+            "Em que estado nós estamos?",
+        ],
+    },
+    {
+        campo: "registration",
+        titulo: "Registro",
+        pontos: 3,
+        ajuda: "Peça para repetir: CARRO, VASO, TIJOLO",
+        itens: ["Repetiu CARRO", "Repetiu VASO", "Repetiu TIJOLO"],
+    },
+    {
+        campo: "attentionAndCalculation",
+        titulo: "Atenção e cálculo",
+        pontos: 5,
+        ajuda: "Subtrair 7 sucessivamente a partir de 100: 93, 86, 79, 72, 65",
+        itens: ["93", "86", "79", "72", "65"],
+    },
+    {
+        campo: "recall",
+        titulo: "Memória de evocação",
+        pontos: 3,
+        ajuda: "Quais os três objetos perguntados anteriormente?",
+        itens: ["Lembrou CARRO", "Lembrou VASO", "Lembrou TIJOLO"],
+    },
+    {
+        campo: "naming",
+        titulo: "Nomeação",
+        pontos: 2,
+        itens: ["Nomeou o relógio", "Nomeou a caneta"],
+    },
+    {
+        campo: "repetition",
+        titulo: "Repetição",
+        pontos: 1,
+        itens: ['Repetiu "Nem aqui, nem ali, nem lá"'],
+    },
+    {
+        campo: "command",
+        titulo: "Comando de três estágios",
+        pontos: 3,
+        ajuda: "Apanhe esta folha de papel com a mão direita, dobre-a ao meio e coloque-a no chão",
+        itens: ["Pegou o papel", "Dobrou ao meio", "Colocou no chão"],
+    },
+    {
+        campo: "reading",
+        titulo: "Leitura",
+        pontos: 1,
+        itens: ['Leu e executou "Feche os seus olhos"'],
+    },
+    {
+        campo: "writing",
+        titulo: "Escrita",
+        pontos: 1,
+        itens: ["Escreveu uma frase com sentido"],
+    },
+    {
+        campo: "copying",
+        titulo: "Cópia",
+        pontos: 1,
+        itens: ["Copiou os dois pentágonos com intersecção"],
+    },
+];
+
+const TOTAL_POSSIVEL = SECOES.reduce((soma, secao) => soma + secao.pontos, 0);
+
+// as faixas variam por escolaridade, entao o resultado sempre aparece
+// junto com a escolaridade escolhida (RN14)
+const CORTES_POR_ESCOLARIDADE = [
+    {valor: "analfabeto", texto: "Analfabeto", corte: 20},
+    {valor: "1a4", texto: "1 a 4 anos de estudo", corte: 25},
+    {valor: "5a8", texto: "5 a 8 anos de estudo", corte: 26},
+    {valor: "9a11", texto: "9 a 11 anos de estudo", corte: 28},
+    {valor: "acima11", texto: "Mais de 11 anos de estudo", corte: 29},
+];
 
 export default function MiniExameEstadoMental() {
     const navigate = useNavigate();
+    const {appointmentId} = useParams();
 
-    const [data, setData] = useState({
-        nomePaciente: "",
-        dataAvaliacao: "",
-        registro: {
-            carro: false,
-            vaso: false,
-            tijolo: false,
-            pontuacao: 0
-        },
-        atencaoCalculo: {
-            resultado1: "", // 100-7 = 93
-            resultado2: "", // 93-7 = 86
-            resultado3: "", // 86-7 = 79
-            resultado4: "", // 79-7 = 72
-            resultado5: "", // 72-7 = 65
-            pontuacao: 0
-        },
-        memoriaEvocacao: {
-            carro: false,
-            vaso: false,
-            tijolo: false,
-            pontuacao: 0
-        },
-        nomearObjetos: {
-            relogio: false,
-            caneta: false,
-            pontuacao: 0
-        },
-        repetir: {
-            frase: false, // "Nem aqui, nem ali, nem lá"
-            pontuacao: 0
-        },
-        comandoEstagios: {
-            pegarPapel: false,
-            dobrarMeio: false,
-            colocarChao: false,
-            pontuacao: 0
-        },
-        pontuacaoTotal: 0
-    });
+    const [assessmentDate, setAssessmentDate] = useState(new Date().toISOString().split("T")[0]);
+    const [escolaridade, setEscolaridade] = useState("5a8");
+    // guarda quais itens de cada secao foram marcados
+    const [marcados, setMarcados] = useState({});
 
-    const updateRegistro = (item, checked) => {
-        setData(prev => {
-            const newRegistro = { ...prev.registro, [item]: checked };
-            const pontuacao = Object.values(newRegistro).filter(val => val === true).length - 1; // -1 para não contar a pontuação
-            return {
-                ...prev,
-                registro: { ...newRegistro, pontuacao }
-            };
-        });
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro] = useState(null);
+
+    const alternarItem = (campo, indice) => {
+        const chave = campo + "-" + indice;
+        setMarcados((antes) => ({...antes, [chave]: !antes[chave]}));
     };
 
-    const updateAtencaoCalculo = (campo, valor) => {
-        setData(prev => {
-            const newAtencao = { ...prev.atencaoCalculo, [campo]: valor };
-            
-            // Verificar respostas corretas
-            const respostasCorretas = {
-                resultado1: "93",
-                resultado2: "86", 
-                resultado3: "79",
-                resultado4: "72",
-                resultado5: "65"
-            };
-            
-            let pontuacao = 0;
-            Object.keys(respostasCorretas).forEach(key => {
-                if (newAtencao[key] === respostasCorretas[key]) {
-                    pontuacao++;
-                }
-            });
-            
-            return {
-                ...prev,
-                atencaoCalculo: { ...newAtencao, pontuacao }
-            };
-        });
-    };
+    const pontosDaSecao = (secao) =>
+        secao.itens.filter((_, indice) => marcados[secao.campo + "-" + indice]).length;
 
-    const updateMemoriaEvocacao = (item, checked) => {
-        setData(prev => {
-            const newMemoria = { ...prev.memoriaEvocacao, [item]: checked };
-            const pontuacao = Object.values(newMemoria).filter(val => val === true).length - 1; // -1 para não contar a pontuação
-            return {
-                ...prev,
-                memoriaEvocacao: { ...newMemoria, pontuacao }
-            };
-        });
-    };
+    const total = SECOES.reduce((soma, secao) => soma + pontosDaSecao(secao), 0);
 
-    const updateNomearObjetos = (item, checked) => {
-        setData(prev => {
-            const newNomear = { ...prev.nomearObjetos, [item]: checked };
-            const pontuacao = Object.values(newNomear).filter(val => val === true).length - 1; // -1 para não contar a pontuação
-            return {
-                ...prev,
-                nomearObjetos: { ...newNomear, pontuacao }
-            };
-        });
-    };
+    const corte = CORTES_POR_ESCOLARIDADE.find((c) => c.valor === escolaridade).corte;
 
-    const updateRepetir = (checked) => {
-        setData(prev => ({
-            ...prev,
-            repetir: { frase: checked, pontuacao: checked ? 1 : 0 }
-        }));
-    };
-
-    const updateComandoEstagios = (item, checked) => {
-        setData(prev => {
-            const newComando = { ...prev.comandoEstagios, [item]: checked };
-            const pontuacao = Object.values(newComando).filter(val => val === true).length - 1; // -1 para não contar a pontuação
-            return {
-                ...prev,
-                comandoEstagios: { ...newComando, pontuacao }
-            };
-        });
-    };
-
-    // Calcular pontuação total
-    const calcularPontuacaoTotal = () => {
-        return data.registro.pontuacao + 
-               data.atencaoCalculo.pontuacao + 
-               data.memoriaEvocacao.pontuacao + 
-               data.nomearObjetos.pontuacao + 
-               data.repetir.pontuacao + 
-               data.comandoEstagios.pontuacao;
-    };
-
-    const handleSubmit = (e) => {
+    const salvar = async (e) => {
         e.preventDefault();
-        const pontuacaoTotal = calcularPontuacaoTotal();
-        const dadosCompletos = { ...data, pontuacaoTotal };
-        console.log('Dados do MEEM:', dadosCompletos);
-        // Aqui você pode implementar a lógica para salvar os dados
+        setErro(null);
+
+        if (!appointmentId) {
+            setErro("Esta avaliação precisa ser aberta a partir de uma consulta.");
+            return;
+        }
+
+        const avaliacao = {assessmentDate};
+        SECOES.forEach((secao) => {
+            avaliacao[secao.campo] = pontosDaSecao(secao);
+        });
+
+        setSalvando(true);
+        try {
+            // antes esta tela so dava console.log e nada era salvo
+            await apiService.post(`/mini-exame/consulta/${appointmentId}`, avaliacao);
+            alert("Mini-exame salvo! Total: " + total + " de " + TOTAL_POSSIVEL);
+            navigate(-1);
+        } catch (err) {
+            setErro(err instanceof ApiError ? err.message : "Não foi possível salvar a avaliação.");
+        } finally {
+            setSalvando(false);
+        }
     };
 
-    const handleBack = () => {
-        navigate(-1);
-    };
     return (
         <div className="meem">
-            <div className="meem__content">
-                <Header
-                    title="João Silva"
-                    showBackButton={true}
-                    backButtonText="Voltar"
-                    onBackClick={handleBack}
-                />
+            <Header/>
+            <main className="meem__conteudo">
+                <h1>Mini-Exame do Estado Mental (MEEM)</h1>
 
-                <form onSubmit={handleSubmit} className="meem__form">
-                    {/* Informações do Paciente */}
-                    <div className="meem__section">
-                        <h3>Informações do Paciente</h3>
-                        <div className="meem__row">
-                            <div className="meem__field">
-                                <label htmlFor="nomePaciente">Nome do Paciente</label>
-                                <input
-                                    id="nomePaciente"
-                                    type="text"
-                                    value={data.nomePaciente}
-                                    onChange={(e) => setData(prev => ({ ...prev, nomePaciente: e.target.value }))}
-                                    placeholder="Digite o nome do paciente"
-                                />
-                            </div>
-                            <div className="meem__field">
-                                <label htmlFor="dataAvaliacao">Data da Avaliação</label>
-                                <input
-                                    id="dataAvaliacao"
-                                    type="date"
-                                    value={data.dataAvaliacao}
-                                    onChange={(e) => setData(prev => ({ ...prev, dataAvaliacao: e.target.value }))}
-                                />
-                            </div>
-                        </div>
+                <form onSubmit={salvar}>
+                    <div className="meem__campo">
+                        <label htmlFor="data">Data da avaliação</label>
+                        <input
+                            id="data"
+                            type="date"
+                            value={assessmentDate}
+                            onChange={(e) => setAssessmentDate(e.target.value)}
+                            required={true}
+                        />
                     </div>
 
-                    {/* Registro (3 pontos) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Registro</h3>
-                            <div className="meem__score">
-                                <span>{data.registro.pontuacao}/3 pontos</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">Repetir: CARRO, VASO, TIJOLO</p>
-                        <div className="meem__checkbox-group">
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.registro.carro}
-                                    onChange={(e) => updateRegistro('carro', e.target.checked)}
-                                />
-                                <span>CARRO</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.registro.vaso}
-                                    onChange={(e) => updateRegistro('vaso', e.target.checked)}
-                                />
-                                <span>VASO</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.registro.tijolo}
-                                    onChange={(e) => updateRegistro('tijolo', e.target.checked)}
-                                />
-                                <span>TIJOLO</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Atenção e Cálculo (5 pontos) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Atenção e Cálculo</h3>
-                            <div className="meem__score">
-                                <span>{data.atencaoCalculo.pontuacao}/5 pontos</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">Subtrair de 7 em 7, começando de 100:</p>
-                        <div className="meem__calculation-group">
-                            <div className="meem__calculation">
-                                <label>100 - 7 =</label>
-                                <input
-                                    type="number"
-                                    value={data.atencaoCalculo.resultado1}
-                                    onChange={(e) => updateAtencaoCalculo('resultado1', e.target.value)}
-                                    placeholder="93"
-                                />
-                            </div>
-                            <div className="meem__calculation">
-                                <label>93 - 7 =</label>
-                                <input
-                                    type="number"
-                                    value={data.atencaoCalculo.resultado2}
-                                    onChange={(e) => updateAtencaoCalculo('resultado2', e.target.value)}
-                                    placeholder="86"
-                                />
-                            </div>
-                            <div className="meem__calculation">
-                                <label>86 - 7 =</label>
-                                <input
-                                    type="number"
-                                    value={data.atencaoCalculo.resultado3}
-                                    onChange={(e) => updateAtencaoCalculo('resultado3', e.target.value)}
-                                    placeholder="79"
-                                />
-                            </div>
-                            <div className="meem__calculation">
-                                <label>79 - 7 =</label>
-                                <input
-                                    type="number"
-                                    value={data.atencaoCalculo.resultado4}
-                                    onChange={(e) => updateAtencaoCalculo('resultado4', e.target.value)}
-                                    placeholder="72"
-                                />
-                            </div>
-                            <div className="meem__calculation">
-                                <label>72 - 7 =</label>
-                                <input
-                                    type="number"
-                                    value={data.atencaoCalculo.resultado5}
-                                    onChange={(e) => updateAtencaoCalculo('resultado5', e.target.value)}
-                                    placeholder="65"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Memória de Evocação (3 pontos) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Memória de Evocação</h3>
-                            <div className="meem__score">
-                                <span>{data.memoriaEvocacao.pontuacao}/3 pontos</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">Quais os três objetos perguntados anteriormente?</p>
-                        <div className="meem__checkbox-group">
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.memoriaEvocacao.carro}
-                                    onChange={(e) => updateMemoriaEvocacao('carro', e.target.checked)}
-                                />
-                                <span>CARRO</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.memoriaEvocacao.vaso}
-                                    onChange={(e) => updateMemoriaEvocacao('vaso', e.target.checked)}
-                                />
-                                <span>VASO</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.memoriaEvocacao.tijolo}
-                                    onChange={(e) => updateMemoriaEvocacao('tijolo', e.target.checked)}
-                                />
-                                <span>TIJOLO</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Nomear 2 Objetos (2 pontos) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Nomear 2 Objetos</h3>
-                            <div className="meem__score">
-                                <span>{data.nomearObjetos.pontuacao}/2 pontos</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">Mostrar e pedir para nomear:</p>
-                        <div className="meem__checkbox-group">
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.nomearObjetos.relogio}
-                                    onChange={(e) => updateNomearObjetos('relogio', e.target.checked)}
-                                />
-                                <span>RELÓGIO</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.nomearObjetos.caneta}
-                                    onChange={(e) => updateNomearObjetos('caneta', e.target.checked)}
-                                />
-                                <span>CANETA</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Repetir (1 ponto) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Repetir</h3>
-                            <div className="meem__score">
-                                <span>{data.repetir.pontuacao}/1 ponto</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">Repetir a frase:</p>
-                        <div className="meem__phrase-box">
-                            <p className="meem__phrase">"Nem aqui, nem ali, nem lá"</p>
-                        </div>
-                        <div className="meem__checkbox-group">
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.repetir.frase}
-                                    onChange={(e) => updateRepetir(e.target.checked)}
-                                />
-                                <span>Repetiu corretamente</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Comando de Estágios (3 pontos) */}
-                    <div className="meem__section">
-                        <div className="meem__section-header">
-                            <h3>Comando de Estágios</h3>
-                            <div className="meem__score">
-                                <span>{data.comandoEstagios.pontuacao}/3 pontos</span>
-                            </div>
-                        </div>
-                        <p className="meem__instruction">
-                            Dar o comando: "Apanhe esta folha de papel com a mão direita, dobre-a ao meio e coloque-a no chão."
+                    <div className="meem__campo">
+                        <label htmlFor="escolaridade">Escolaridade do paciente</label>
+                        <p className="meem__ajuda">
+                            A faixa de corte do instrumento muda conforme a escolaridade.
                         </p>
-                        <div className="meem__checkbox-group">
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.comandoEstagios.pegarPapel}
-                                    onChange={(e) => updateComandoEstagios('pegarPapel', e.target.checked)}
-                                />
-                                <span>Apanhou o papel com a mão direita</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.comandoEstagios.dobrarMeio}
-                                    onChange={(e) => updateComandoEstagios('dobrarMeio', e.target.checked)}
-                                />
-                                <span>Dobrou ao meio</span>
-                            </label>
-                            <label className="meem__checkbox">
-                                <input
-                                    type="checkbox"
-                                    checked={data.comandoEstagios.colocarChao}
-                                    onChange={(e) => updateComandoEstagios('colocarChao', e.target.checked)}
-                                />
-                                <span>Colocou no chão</span>
-                            </label>
-                        </div>
+                        <select
+                            id="escolaridade"
+                            value={escolaridade}
+                            onChange={(e) => setEscolaridade(e.target.value)}
+                        >
+                            {CORTES_POR_ESCOLARIDADE.map((c) => (
+                                <option key={c.valor} value={c.valor}>{c.texto}</option>
+                            ))}
+                        </select>
                     </div>
 
-                    {/* Pontuação Total */}
-                    <div className="meem__total-score">
-                        <h3>Pontuação Total: {calcularPontuacaoTotal()}/17 pontos</h3>
-                        <div className="meem__score-interpretation">
-                            {calcularPontuacaoTotal() >= 24 && <p className="score-normal">Normal (≥24 pontos)</p>}
-                            {calcularPontuacaoTotal() >= 18 && calcularPontuacaoTotal() < 24 && <p className="score-mild">Comprometimento leve (18-23 pontos)</p>}
-                            {calcularPontuacaoTotal() < 18 && <p className="score-severe">Comprometimento grave (&lt;18 pontos)</p>}
-                        </div>
-                    </div>
+                    {SECOES.map((secao) => (
+                        <section className="meem__bloco" key={secao.campo}>
+                            <h2>
+                                {secao.titulo}
+                                <span className="meem__pontos">
+                                    {pontosDaSecao(secao)} de {secao.pontos}
+                                </span>
+                            </h2>
+                            {secao.ajuda && <p className="meem__ajuda">{secao.ajuda}</p>}
+                            <div className="meem__itens">
+                                {secao.itens.map((texto, indice) => (
+                                    <label className="meem__item" key={indice}>
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(marcados[secao.campo + "-" + indice])}
+                                            onChange={() => alternarItem(secao.campo, indice)}
+                                        />
+                                        <span>{texto}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </section>
+                    ))}
 
-                    <div className="meem__actions">
-                        <button type="submit" className="meem__submit">
-                            Salvar Avaliação MEEM
+                    <section className="meem__resultado">
+                        <h2>Total: {total} de {TOTAL_POSSIVEL} pontos</h2>
+                        <p>
+                            {total >= corte
+                                ? `Dentro do esperado para esta escolaridade (corte ${corte}).`
+                                : `Abaixo do corte para esta escolaridade (corte ${corte}).`}
+                        </p>
+                    </section>
+
+                    {erro && <p className="meem__erro">{erro}</p>}
+
+                    <div className="meem__acoes">
+                        <button type="submit" disabled={salvando}>
+                            {salvando ? "Salvando..." : "Salvar avaliação"}
+                        </button>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Cancelar
                         </button>
                     </div>
                 </form>
-            </div>
+            </main>
         </div>
     );
 }
-

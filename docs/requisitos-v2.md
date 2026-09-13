@@ -771,4 +771,6 @@ A sequência é deliberada: segurança antes de funcionalidade, porque cada tela
 
 **Fase 1 concluída em 12/09/2026:** RF29, RF30, RF31 (parcial), RF02.2, RN12, RNF03, RNF04 e RNF05. Nenhuma entidade de usuário atravessa a API, autorização por papel e por vínculo em todas as rotas, dono verificado por registro nas escalas, e falha de autenticação responde 401.
 
+**Fase 4 (parcial) e Fase 3 concluídas em 12/09/2026:** RF21, RF23, RF26, RF27, RF28, RN09, RN13 e RN14, além do religamento das telas de consulta e prescrição. Os três escores clínicos passaram a seguir o algoritmo oficial do instrumento, as oito escalas têm tela, e o gráfico de evolução funciona para qualquer uma delas.
+
 **Fase 2 concluída em 12/09/2026:** RN04, RN10, RN11, RNF14 e a parte de datas do RF31. Escala incompleta ficou sem escore, texto clínico deixou de truncar em 255, CPF virou único, toda entidade clínica guarda quando foi criada e alterada, e o esquema passou a ter uma fonte de verdade só, com o Hibernate em `validate`.

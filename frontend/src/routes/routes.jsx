@@ -78,7 +78,9 @@ const router = createBrowserRouter([
         element: <DiarioSono/>,
     },
     {
-        path: "/mini-exame",
+        // o MEEM eh aplicado pelo prescritor durante a consulta (RF26),
+        // entao ele precisa saber de qual consulta veio
+        path: "/consulta/:appointmentId/mini-exame",
         element: <MiniExame/>
     },
     {

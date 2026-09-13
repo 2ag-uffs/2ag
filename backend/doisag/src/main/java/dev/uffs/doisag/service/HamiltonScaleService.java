@@ -36,7 +36,8 @@ public class HamiltonScaleService {
                 scale.getRespiratorySymptoms(),
                 scale.getGastrointestinalSymptoms(),
                 scale.getGenitourinarySymptoms(),
-                scale.getAutonomicSymptoms());
+                scale.getAutonomicSymptoms(),
+                scale.getInterviewBehavior());
     }
 
     // CREATE
