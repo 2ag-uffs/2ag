@@ -80,6 +80,59 @@ Já respondido: **todas as oito escalas são essenciais**, nenhuma sai do piloto
 
 ---
 
+## 6. Quem aplica a escala de Hamilton
+
+**Status:** aberta · **afeta:** RF21 e RN09
+
+No instrumento original a HAM-A é pontuada por quem entrevista, e o item 14 é "comportamento durante a entrevista", que só o avaliador observa. O sistema hoje entrega a escala para o paciente responder sozinho.
+
+**Perguntar:**
+
+- Você aplica a HAM-A em entrevista, pontuando cada item, ou o paciente responde sozinho?
+- Se o paciente responde, como fica o item 14?
+
+**Por que importa:** se a aplicação é em entrevista, a HAM-A passa para o lado do prescritor, como o MEEM, e deixa de virar tarefa do paciente.
+
+---
+
+## 7. Como a consulta é marcada
+
+**Status:** aberta · **afeta:** RF10 e RF11
+
+A proposta é que o prescritor cadastre os horários disponíveis, o paciente solicite um horário e o prescritor confirme.
+
+**Perguntar:**
+
+- Você prefere confirmar cada solicitação ou deixar o paciente marcar direto?
+- Quais dias e horários você atende? Isso muda de semana para semana?
+- Quanto tempo dura cada tipo de consulta (primeira consulta, retorno)?
+
+---
+
+## 8. Agenda do Amplimed
+
+**Status:** aberta · **afeta:** escopo da agenda (RF10 e RF11)
+
+**Perguntar:**
+
+- A agenda do Amplimed já está em uso na clínica?
+- Se estiver, faz sentido manter uma segunda agenda no 2ag, ou basta registrar as consultas que já aconteceram?
+
+**Por que importa:** manter duas agendas obriga a lançar cada horário duas vezes, que é justamente o retrabalho que o sistema existe para eliminar.
+
+---
+
+## 9. Lembrete de dose
+
+**Status:** aberta · **afeta:** RF34
+
+**Perguntar:**
+
+- Os pacientes usariam notificação no celular, e-mail ou outro canal para lembrar da dose?
+- Os horários de dose são fixos por prescrição, ou cada paciente ajusta à própria rotina?
+
+---
+
 ## respondidas
 
 | Quando | Pergunta | Resposta |
