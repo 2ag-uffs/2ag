@@ -155,6 +155,15 @@ const routes = [
                             },
                         ],
                     },
+                    {
+                        loader: requireRole("ADMIN"),
+                        children: [
+                            {
+                                path: "/admin",
+                                lazy: lazyPage(() => import("../pages/admin/admin-prescribers.jsx")),
+                            },
+                        ],
+                    },
                 ],
             },
             {
