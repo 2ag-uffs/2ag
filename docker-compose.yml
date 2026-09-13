@@ -45,6 +45,13 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
       TZ: America/Sao_Paulo
     # a api tbm n expoe porta e quem conversa com ela eh o nginx do front
     healthcheck:

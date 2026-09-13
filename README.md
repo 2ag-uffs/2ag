@@ -42,6 +42,7 @@ cp .env.example .env
 - `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
+- `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova. sem `MAIL_HOST`, a mensagem aparece só no log da api
 
 `POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: sem elas a aplicação não sobe.
 

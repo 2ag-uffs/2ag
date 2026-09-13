@@ -2,12 +2,10 @@ package dev.uffs.doisag.email;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 // envio de mentira q so escreve o e-mail no log
-// serve enquanto o servidor de e-mail n estiver configurado
+// o EmailConfig usa esse quando MAIL_HOST n esta preenchido
 // cuidado pq o link de recuperacao de senha aparece inteiro no log
-@Component
 public class LogEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(LogEmailSender.class);

@@ -1,7 +1,7 @@
 package dev.uffs.doisag.email;
 
 // quem manda e-mail no sistema
-// hoje so existe a versao q escreve no log ate o servidor de e-mail ser configurado
+// o EmailConfig escolhe entre o envio pelo servidor smtp e o q so escreve no log
 public interface EmailSender {
 
     void send(EmailMessage message);

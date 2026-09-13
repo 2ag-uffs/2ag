@@ -26,6 +26,20 @@ spring:
     # fica ligado so ate o ultimo modulo antigo ser reescrito
     # os modulos novos carregam tudo dentro do servico e n dependem disso
     open-in-view: true
+  mail:
+    # servidor q manda os e-mails como o link de criar senha nova
+    # sem MAIL_HOST a api n manda nada e so escreve a mensagem no log
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MAIL_SMTP_STARTTLS:true}
+      # sem limite de tempo um servidor fora do ar prenderia a requisicao de quem pediu o e-mail
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
 
 api:
   security:
@@ -49,3 +63,6 @@ api:
   # endereco onde as pessoas abrem o sistema
   # vai nos links enviados por e-mail como o de criar uma senha nova
   public-url: ${PUBLIC_URL:http://localhost:5173}
+  email:
+    # endereco q aparece como remetente e quando fica vazio vale o MAIL_USERNAME
+    from: ${MAIL_FROM:}
