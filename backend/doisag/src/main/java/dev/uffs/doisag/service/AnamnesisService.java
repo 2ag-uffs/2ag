@@ -43,7 +43,7 @@ public class AnamnesisService {
 
         // atualiza os campos do objeto com os novos detalhes
         anamnesis.setAssessmentDate(anamnesisDetails.getAssessmentDate());
-        anamnesis.setPatient(anamnesisDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         anamnesis.setReasonForVisit(anamnesisDetails.getReasonForVisit());
         anamnesis.setProfession(anamnesisDetails.getProfession());
         anamnesis.setDiet(anamnesisDetails.getDiet());

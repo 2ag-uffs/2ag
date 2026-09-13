@@ -46,6 +46,11 @@ public class MentalStateExam {
     public MentalStateExam() {
     }
 
+    // sem esse getter o exame saia na resposta da api sem o id
+    public Long getId() {
+        return id;
+    }
+
     public Appointment getAppointment() {
         return appointment;
     }

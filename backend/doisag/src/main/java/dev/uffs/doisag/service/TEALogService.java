@@ -64,7 +64,7 @@ public class TEALogService {
 
         // atualiza os campos
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setFreqAggressiveness(logDetails.getFreqAggressiveness());
         existingLog.setFreqAgitation(logDetails.getFreqAgitation());
         existingLog.setFreqSleepIssues(logDetails.getFreqSleepIssues());

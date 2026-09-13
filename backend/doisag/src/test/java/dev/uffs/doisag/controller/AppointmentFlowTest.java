@@ -378,6 +378,24 @@ class AppointmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
     }
 
+    // ---------- catalogo do grafico de evolucao ----------
+
+    @Test
+    void catalogoDeAtributosListaTodasAsEscalas() throws Exception {
+        String corpo = mockMvc.perform(get("/progresso/atributos")
+                        .header("Authorization", tokenPrescritor))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // se alguma escala sumir do catalogo o seletor da tela fica sem opcao
+        assertThat(corpo).contains("ACOMPANHAMENTO_SEMANAL");
+        assertThat(corpo).contains("ESCALA_HAMILTON");
+        assertThat(corpo).contains("ESCALA_PITTSBURGH");
+        assertThat(corpo).contains("REGISTRO_DOR");
+        assertThat(corpo).contains("REGISTRO_TEA");
+        assertThat(corpo).contains("REGISTRO_SONO");
+    }
+
     // ---------- marcadores no grafico de evolucao ----------
 
     // a consulta vira uma marca no grafico, pra dar pra ler a curva de

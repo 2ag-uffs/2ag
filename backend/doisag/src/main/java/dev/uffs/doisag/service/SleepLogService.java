@@ -82,7 +82,7 @@ public class SleepLogService {
 
         // atualiza todos os campos com os novos dados vindos do frontend
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setBedTime(logDetails.getBedTime());
         existingLog.setWakeUpTime(logDetails.getWakeUpTime());
         existingLog.setTimeToFallAsleep(logDetails.getTimeToFallAsleep());

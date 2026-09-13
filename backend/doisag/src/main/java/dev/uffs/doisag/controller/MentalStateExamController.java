@@ -28,7 +28,7 @@ public class MentalStateExamController {
 
     // endpoint para LER um exame por ID
     // GET /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessMentalStateExam(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<MentalStateExam> getById(@PathVariable Long id) {
         MentalStateExam mentalStateExam = mentalStateExamService.getById(id);
@@ -37,7 +37,7 @@ public class MentalStateExamController {
 
     // endpoint para ATUALIZAR um exame
     // PUT /mini-exame/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessMentalStateExam(#id, authentication)")
     @PutMapping("/{id}")
     public ResponseEntity<MentalStateExam> update(@PathVariable Long id, @RequestBody MentalStateExam examDetails) {
             MentalStateExam updatedExam = mentalStateExamService.update(id, examDetails);

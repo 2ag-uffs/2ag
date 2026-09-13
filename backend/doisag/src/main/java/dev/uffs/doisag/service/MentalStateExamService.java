@@ -75,7 +75,7 @@ public class MentalStateExamService {
                 .orElseThrow(() -> new EntityNotFoundException("exame de estado mental não encontrado com o id: " + id));
 
         // atualiza os campos
-        existingExam.setAppointment(examDetails.getAppointment());
+        // a consulta onde o exame foi aplicado n muda na edicao
         existingExam.setTemporalOrientation(examDetails.getTemporalOrientation());
         existingExam.setSpatialOrientation(examDetails.getSpatialOrientation());
         existingExam.setRegistration(examDetails.getRegistration());

@@ -74,7 +74,7 @@ public class HamiltonScaleService {
 
         // atualiza os campos do objeto com os novos detalhes
         existingScale.setAssessmentDate(scaleDetails.getAssessmentDate());
-        existingScale.setPatient(scaleDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingScale.setAnxiousMood(scaleDetails.getAnxiousMood());
         existingScale.setTension(scaleDetails.getTension());
         existingScale.setFears(scaleDetails.getFears());

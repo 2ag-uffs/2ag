@@ -50,7 +50,7 @@ public class PainLogService {
 
         // atualiza os campos
         existingLog.setAssessmentDate(logDetails.getAssessmentDate());
-        existingLog.setPatient(logDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingLog.setBasicActivityInterference(logDetails.getBasicActivityInterference());
         existingLog.setSocialActivityInterference(logDetails.getSocialActivityInterference());
         existingLog.setSleepInterference(logDetails.getSleepInterference());

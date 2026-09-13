@@ -4,7 +4,6 @@ import dev.uffs.doisag.dto.AppointmentCreateDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.BusySlotDTO;
-import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -13,7 +12,6 @@ import java.time.LocalDate;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import dev.uffs.doisag.service.AppointmentService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -73,42 +71,23 @@ public class AppointmentsController {
                 .toList();
     }
 
-    // read by id
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    // o vinculo com o paciente da consulta eh conferido antes de abrir
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @GetMapping("/{id}")
-    public ResponseEntity<AppointmentResponseDTO> getById(@PathVariable Long id,
-                                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment appointment = appointmentService.getById(id);
-        // consulta de paciente de outro prescritor n eh da conta dele
-        if (!appointment.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointment));
+    public AppointmentResponseDTO getById(@PathVariable Long id) {
+        return new AppointmentResponseDTO(appointmentService.getById(id));
     }
 
-    // update
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}")
-    public ResponseEntity<AppointmentResponseDTO> update(@PathVariable Long id,
-                                                         @RequestBody @Valid AppointmentCreateDTO dados,
-                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.update(id, dados)));
+    public AppointmentResponseDTO update(@PathVariable Long id, @RequestBody @Valid AppointmentCreateDTO dados) {
+        return new AppointmentResponseDTO(appointmentService.update(id, dados));
     }
 
-    // cancelar. n eh delete de proposito: a consulta continua no
-    // historico com status CANCELADA, e o paciente recebe o aviso
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    // cancelar n apaga e a consulta continua no historico com status CANCELADA
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/cancelar")
-    public ResponseEntity<AppointmentResponseDTO> cancel(@PathVariable Long id,
-                                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment atual = appointmentService.getById(id);
-        if (!atual.getPrescriber().getId().equals(loggedPrescriber.getId())) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(new AppointmentResponseDTO(appointmentService.cancel(id)));
+    public AppointmentResponseDTO cancel(@PathVariable Long id) {
+        return new AppointmentResponseDTO(appointmentService.cancel(id));
     }
 }

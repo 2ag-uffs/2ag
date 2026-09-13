@@ -204,7 +204,7 @@ public class PittsburghScaleService {
 
         // atualiza os campos
         existingScale.setAssessmentDate(scaleDetails.getAssessmentDate());
-        existingScale.setPatient(scaleDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         existingScale.setUsualBedTime(scaleDetails.getUsualBedTime());
         existingScale.setMinutesToFallAsleep(scaleDetails.getMinutesToFallAsleep());
         existingScale.setUsualWakeUpTime(scaleDetails.getUsualWakeUpTime());

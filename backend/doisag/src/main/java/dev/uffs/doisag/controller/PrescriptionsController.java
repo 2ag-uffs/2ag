@@ -33,7 +33,7 @@ public class PrescriptionsController {
 
     // endpoint para LER uma prescrição por ID
     // GET /prescricao/{id}
-    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
     @GetMapping("/prescricao/{id}")
     public ResponseEntity<PrescriptionResponseDTO> getById( @PathVariable Long id) {
         Prescription prescription = prescriptionService.getById(id);
@@ -42,7 +42,7 @@ public class PrescriptionsController {
 
     // endpoint para ATUALIZAR uma prescrição
     // PUT /prescricao/{id}
-    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
     @PutMapping("/prescricao/{id}")
     public ResponseEntity<PrescriptionResponseDTO> update(@PathVariable Long id, @RequestBody PrescriptionUpdateDTO dto) {
             Prescription updatedPrescription = prescriptionService.update(id, dto);

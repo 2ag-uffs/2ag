@@ -52,7 +52,7 @@ public class FollowUpService {
 
         // atualiza os campos do objeto com os novos detalhes
         followUp.setAssessmentDate(followUpDetails.getAssessmentDate());
-        followUp.setPatient(followUpDetails.getPatient());
+        // o paciente dono do registro n muda na edicao
         followUp.setMorningDrops(followUpDetails.getMorningDrops());
         followUp.setAfternoonDrops(followUpDetails.getAfternoonDrops());
         followUp.setComment(followUpDetails.getComment());
