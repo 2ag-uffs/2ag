@@ -1,12 +1,10 @@
 package dev.uffs.doisag.controller;
 
-import dev.uffs.doisag.dto.PatientRegistrationDTO;
 import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.dto.PatientUpdateDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PatientService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -68,18 +66,5 @@ public class PatientsController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         patientService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    // o prescritor logado cadastra um paciente ja vinculado a ele
-    @PreAuthorize("hasRole('PRESCRIBER')")
-    @PostMapping("/cadastrar-para-prescritor")
-    public ResponseEntity<PatientResponseDTO> registerPatientForPrescriber(
-            @RequestBody @Valid PatientRegistrationDTO dados,
-            Authentication authentication) {
-        // o vinculo vem do token, n do corpo da requisicao
-        String prescriberEmail = authentication.getName();
-
-        var novoPaciente = patientService.registerPatientForPrescriber(dados, prescriberEmail);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new PatientResponseDTO(novoPaciente));
     }
 }

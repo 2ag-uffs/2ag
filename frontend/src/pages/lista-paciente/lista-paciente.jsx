@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import './lista-paciente.css';
+import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 
 export default function ListaPacientes() {
@@ -9,6 +10,7 @@ export default function ListaPacientes() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isInviteOpen, setIsInviteOpen] = useState(false);
 
     useEffect(() => {
         const prescritor = getLoggedUser();
@@ -86,6 +88,9 @@ export default function ListaPacientes() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                    <button type="button" className="lp-invite-button" onClick={() => setIsInviteOpen(true)}>
+                        Convidar paciente
+                    </button>
                 </div>
 
                 <div className="lp-pacientes-lista">
@@ -123,10 +128,15 @@ export default function ListaPacientes() {
                             </div>
                         ))
                     ) : (
-                        <p>Nenhum paciente encontrado.</p>
+                        <p className="lp-empty-state">
+                            {pacientes.length === 0
+                                ? "Você ainda não tem pacientes. Use o botão Convidar paciente para enviar o link de cadastro."
+                                : "Nenhum paciente encontrado."}
+                        </p>
                     )}
                 </div>
             </main>
+            <InvitePatientModal show={isInviteOpen} onClose={() => setIsInviteOpen(false)}/>
         </div>
     );
 }

@@ -15,8 +15,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
-import dev.uffs.doisag.dto.PatientRegistrationDTO;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 
 import java.util.List;
@@ -102,40 +100,6 @@ public class PatientService {
 
         String title = "Novo Paciente Vinculado";
         String message = "O paciente " + savedPatient.getName() + " acabou de se cadastrar e está vinculado a você.";
-        notificationService.createNotification(prescriber, title, message, "ALERT", "/lista-paciente");
-
-        return savedPatient;
-    }
-
-    public Patient registerPatientForPrescriber(PatientRegistrationDTO dados, String prescriberEmail) {
-        // primeiro a gente ve se o email do paciente novo ja existe
-        if (usersRepository.findByEmail(dados.email()).isPresent()) {
-            throw new ValidationException("email do paciente já cadastrado no sistema!");
-        }
-
-        // agora a gente busca o prescritor pelo email que veio da autenticacao
-        // se nao achar ele dispara um erro
-        Prescriber prescriber = prescriberRepository.findByEmail(prescriberEmail)
-                .orElseThrow(() -> new UsernameNotFoundException("Prescritor não encontrado com o email: " + prescriberEmail));
-
-        // o resto da logica eh bem parecida com a que voce ja tinha
-        var patient = new Patient();
-        patient.setName(dados.name());
-        patient.setEmail(dados.email());
-        patient.setCpf(dados.cpf());
-        patient.setPhone(dados.phone());
-        patient.setBirthDate(dados.birthDate());
-        patient.setAddress(dados.address() == null ? null : dados.address().toAddress());
-        patient.setPassword(passwordEncoder.encode(dados.senha()));
-
-        // aqui a magica acontece, a gente associa o prescritor que encontramos
-        patient.setPrescriber(prescriber);
-
-        Patient savedPatient = patientRepository.save(patient);
-
-        // a notificacao continua igual
-        String title = "Novo Paciente Vinculado";
-        String message = "O paciente " + savedPatient.getName() + " acabou de ser cadastrado por você.";
         notificationService.createNotification(prescriber, title, message, "ALERT", "/lista-paciente");
 
         return savedPatient;
