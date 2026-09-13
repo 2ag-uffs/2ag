@@ -64,7 +64,12 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 - conta desativada perde o acesso na requisição seguinte
 - testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`
 
-os perfis são `PATIENT`, `PRESCRIBER` e `ADMIN`. quem pode o quê está no `@PreAuthorize` de cada rota, e o vínculo entre prescritor e paciente é conferido no `PatientAccessService`.
+os perfis são `PATIENT`, `PRESCRIBER` e `ADMIN`. a autorização tem duas camadas:
+
+- o `SecurityConfigurations` barra pelo perfil antes de chegar no controller: o administrador só entra em `/admin/**` e nos dados da própria conta, e as outras rotas são de paciente e prescritor
+- cada rota declara no `@PreAuthorize` os perfis que podem usá-la e, quando o dado é de um paciente, confere o vínculo no `PatientAccessService`: o paciente só vê os próprios dados e o prescritor só vê os pacientes vinculados a ele
+
+o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declarar perfil. o `PatientLinkTest` cobre as regras de vínculo, inclusive trocando o id na url.
 
 ## administração
 
@@ -114,6 +119,35 @@ o banco guarda só o hash do código que vai no link.
 
 o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data.
 
+## histórico clínico
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /pacientes/{patientId}/anamneses` | resumo das anamneses do paciente, da mais recente para a mais antiga |
+| `GET /pacientes/{patientId}/consultas` | consultas do paciente |
+| `GET /pacientes/{patientId}/prescricoes` | prescrições do paciente, com a data da consulta que gerou cada uma |
+
+nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo paciente ou pelo prescritor logado.
+
+o paciente marca consulta em `POST /consulta/agendamento`, só com data, modalidade e duração. `POST /consulta` é do prescritor e aceita os campos clínicos.
+
+## guarda do prontuário
+
+o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /pacientes/{patientId}/acompanhamento/encerrar` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
+
+## trilha de auditoria
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /patients/{patientId}/audit-events?from=&to=&page=` | trilha de um paciente, para o prescritor dele |
+| `GET /admin/audit-events?from=&to=&page=` | ações de prescritores e do sistema, para o administrador, sem nome de paciente |
+
+- `from` e `to` são datas no formato `aaaa-mm-dd`, as duas inclusive. cada página traz 30 eventos, do mais recente para o mais antigo
+- os serviços gravam quem criou ou alterou consulta, prescrição, anamnese, escala, designação e acompanhamento, na mesma transação da mudança
+- abrir o prontuário também entra na trilha quando quem abre é o prescritor, uma linha por paciente a cada 30 minutos
+- o que o job diário faz aparece com autor `Sistema`
+- a tabela `audit_event` só recebe inserção: o repositório não tem método de alterar nem de apagar, e nenhuma rota escreve nela
+
 ## erros
 
 toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. erro de validação traz também `errors`, com a mensagem de cada campo.
@@ -159,4 +193,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base) e o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha) já seguem o padrão novo. os módulos clínicos (paciente, consulta, prescrição, escalas, acompanhamento e notificações) ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha) e o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria) já seguem o padrão novo. os módulos clínicos (paciente, consulta, prescrição, escalas, acompanhamento e notificações) ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

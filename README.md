@@ -10,7 +10,7 @@ o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisit
 
 ## situação
 
-o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. o módulo de **acesso e identidade** também está pronto: login, convite de paciente, cadastro com termo de consentimento, perfil e recuperação de senha. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
+o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. o módulo de **acesso e identidade** também está pronto: login, convite de paciente, cadastro com termo de consentimento, perfil e recuperação de senha. o de **autorização** também: perfil e vínculo conferidos no servidor em toda rota, fim da exclusão de dado clínico e trilha de auditoria. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
 
 **não use com dado real de paciente antes do fim dessa reconstrução.**
 
@@ -156,6 +156,7 @@ docs/        requisitos, escalas clínicas, identidade visual e documentos da ex
 
 - o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
 - o administrador cuida só das contas: ele não vê prontuário.
+- nenhum dado clínico é apagado, e toda criação, alteração e abertura de prontuário fica na trilha de auditoria. o prescritor consulta a trilha de cada paciente pela lista de pacientes, e o administrador consulta em Auditoria, sem ver nome de paciente.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
 - nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.
 

@@ -718,6 +718,28 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 **Acesso e identidade concluído em 13/09/2026:** RF01, RN06, RF02.1, RF36, RF18 e RF35. O vínculo do paciente passou a ser por convite de uso único, o cadastro exige o aceite do termo (ainda em rascunho) e a recuperação de senha grava o link no log da API até o envio de e-mail ser configurado.
 
+**Autorização concluída em 13/09/2026:** RF29, RF30 e RF31, com os critérios de RNF03 e RNF04 que dependem deles.
+
+- **Perfil:** toda rota declara os perfis que podem usá-la. Um teste percorre a API inteira e falha se alguma rota não declarar.
+- **Listagens:** saíram as que devolviam o sistema inteiro.
+- **Consultas:** o paciente marca consulta por uma rota própria, que não aceita campo clínico.
+- **Vínculo:** é conferido no servidor em toda leitura e escrita, e a edição não troca mais o dono do registro.
+- **Exclusão física:** as rotas que apagavam dado clínico foram removidas.
+- **Trilha de auditoria:** registra quem cria ou altera consulta, prescrição, anamnese, escala, designação e acompanhamento. Registra também quando o prescritor abre o prontuário, uma linha por visita de até 30 minutos.
+- **Quem consulta a trilha:**
+  - o prescritor, para os próprios pacientes;
+  - o administrador, com as ações de prescritores e do sistema e o paciente identificado só pelo número.
+- **URLs:** nenhuma rota leva dado pessoal. Os caminhos usam só identificadores numéricos.
+
+Ficam para os módulos seguintes, onde cada entidade é reescrita:
+
+- **Atendimento:**
+  - anulação de registro com motivo, que substitui a exclusão;
+  - arquivamento de paciente;
+  - preservação da versão anterior da prescrição (RF05).
+- **Escalas:** a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou.
+- **Agenda:** o campo de observação que o paciente preenchia ao marcar consulta, que saiu por gravar texto do paciente em campo clínico.
+
 ---
 
 ## Anexo A — Algoritmos das escalas validadas
