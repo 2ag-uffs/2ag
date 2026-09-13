@@ -1,0 +1,24 @@
+/* prescricoes do paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 52rem;
+}
+
+.subtitle,
+.status {
+    color: var(--color-text-secondary);
+}
+
+.sectionTitle {
+    font-size: 1.15rem;
+    margin-top: 0.5rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}

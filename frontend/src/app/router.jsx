@@ -74,6 +74,10 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/historico-clinico-paciente/historico-clinico-paciente.jsx")),
                             },
                             {
+                                path: "/minhas-prescricoes",
+                                lazy: lazyPage(() => import("../pages/my-prescriptions/my-prescriptions.jsx")),
+                            },
+                            {
                                 path: "/anamnese",
                                 lazy: lazyPage(() => import("../pages/anamnese/anamnese.jsx")),
                             },
@@ -128,7 +132,7 @@ const routes = [
                             },
                             {
                                 path: "/consulta/:appointmentId/prescricao",
-                                lazy: lazyPage(() => import("../pages/prescricao/prescricao.jsx")),
+                                lazy: lazyPage(() => import("../pages/prescription-form/prescription-form.jsx")),
                             },
                             {
                                 path: "/consulta/:appointmentId/mini-exame",

@@ -171,7 +171,7 @@ class RouteRolesTest {
         // emitir prescricao e aplicar o meem
         mockMvc.perform(post("/consulta/" + appointment.getId() + "/prescricao").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productDescription\":\"Oleo CBD\",\"posology\":\"2 gotas\"}"))
+                        .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/mini-exame/consulta/" + appointment.getId()).header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"recall\":3}"))

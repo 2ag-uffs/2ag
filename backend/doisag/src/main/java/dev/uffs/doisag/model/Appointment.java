@@ -242,6 +242,8 @@ public class Appointment {
         this.patient = patient;
     }
 
+    // as prescricoes saem pelos dtos e n penduradas na consulta
+    @JsonIgnore
     public List<Prescription> getPrescriptions() {
         return prescriptions;
     }

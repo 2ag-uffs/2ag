@@ -130,7 +130,7 @@ class AuditTrailTest {
         mockMvc.perform(post("/consulta/" + appointment.getId() + "/prescricao")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productDescription\":\"Oleo de CBD\",\"posology\":\"2 gotas\"}"))
+                        .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isCreated());
 
         readPatientTrail(TODAY, TODAY, 0)

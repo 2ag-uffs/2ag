@@ -109,11 +109,12 @@ class PatientLinkTest {
                 prescriberA, "cancelar consulta");
         assertForbidden(post("/consulta/" + recordsOfB.appointmentId() + "/prescricao")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productDescription\":\"Oleo de CBD\",\"posology\":\"1 gota\"}"),
+                        .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"),
                 prescriberA, "emitir prescricao");
-        assertForbidden(put("/prescricao/" + recordsOfB.prescriptionId())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"posology\":\"10 gotas\"}"),
-                prescriberA, "alterar prescricao");
+        assertForbidden(put("/prescricao/" + recordsOfB.prescriptionId() + "/anulacao")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"prescricao de outro prescritor\"}"),
+                prescriberA, "anular prescricao");
         assertForbidden(post("/mini-exame/consulta/" + recordsOfB.appointmentId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"recall\":3}"),
                 prescriberA, "aplicar meem");
@@ -197,7 +198,7 @@ class PatientLinkTest {
         mockMvc.perform(post("/consulta/" + recordsOfA.appointmentId() + "/prescricao")
                         .header("Authorization", bearerTokenOf(prescriberA))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"productDescription\":\"Oleo de CBD\",\"posology\":\"1 gota\"}"))
+                        .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(put("/consulta/" + recordsOfA.appointmentId() + "/cancelar")

@@ -1,26 +1,41 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.dto.PrescriptionUpdateDTO;
-import dev.uffs.doisag.model.Prescription;
+import dev.uffs.doisag.dto.AnnulmentDTO;
+import dev.uffs.doisag.dto.DoseEscalationStepDTO;
+import dev.uffs.doisag.dto.PrescriptionComponentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.enums.PrescriptionStatus;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Annulment;
+import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.DoseEscalationStep;
+import dev.uffs.doisag.model.Prescription;
+import dev.uffs.doisag.model.PrescriptionComponent;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
-import dev.uffs.doisag.model.Appointment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
+// prescricao (RF05)
+// emitir uma nova substitui a vigente e a anterior fica no historico
+// prescricao errada eh anulada com motivo e nunca apagada nem editada
 @Service
 public class PrescriptionService {
+
+    public static final String ANNULLED_CONSULTATION_MESSAGE = "Consulta anulada não gera prescrição";
+    public static final String CANCELED_CONSULTATION_MESSAGE = "Consulta cancelada não gera prescrição";
+    public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
+
     private final PrescriptionRepository prescriptionRepository;
-    private final AppointmentRepository appointmentRepository; // precisa do repo de appointment
+    private final AppointmentRepository appointmentRepository;
     private final AuditService auditService;
 
-    // injeto via construtor
     public PrescriptionService(PrescriptionRepository prescriptionRepository, AppointmentRepository appointmentRepository,
                                AuditService auditService) {
         this.prescriptionRepository = prescriptionRepository;
@@ -28,89 +43,103 @@ public class PrescriptionService {
         this.auditService = auditService;
     }
 
-    // CREATE
     @Transactional
-    public Prescription create(PrescriptionCreateDTO dto, Long appointmentId) {
-        // busca a consulta ou lança nossa exceção personalizada
+    public Prescription create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+        if (appointment.isAnnulled()) {
+            throw new BusinessException(ANNULLED_CONSULTATION_MESSAGE);
+        }
+        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
+            throw new BusinessException(CANCELED_CONSULTATION_MESSAGE);
+        }
 
-        // cria a nova entidade a partir dos dados do DTO
-        Prescription newPrescription = new Prescription();
-        newPrescription.setProductDescription(dto.productDescription());
-        newPrescription.setPosology(dto.posology());
-        newPrescription.setBrand(dto.brand());
-        newPrescription.setConcentration(dto.concentration());
-        newPrescription.setSpectrum(dto.spectrum());
-        newPrescription.setVolume(dto.volume());
-        newPrescription.setAdministrationRoute(dto.administrationRoute());
-        newPrescription.setObservation(dto.observation());
-        newPrescription.setInstructions(dto.instructions());
-        newPrescription.setPrecautions(dto.precautions());
-        newPrescription.setExpectedEffects(dto.expectedEffects());
-        newPrescription.setTreatmentDurationDays(dto.treatmentDurationDays());
-        newPrescription.setNextConsultationDate(dto.nextConsultationDate());
+        Long patientId = appointment.getPatient().getId();
+        replaceCurrentPrescriptions(patientId);
+
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(appointment);
+        prescription.setProductDescription(prescriptionData.productDescription());
+        prescription.setBrand(prescriptionData.brand());
+        prescription.setBatch(prescriptionData.batch());
+        prescription.setSpectrum(prescriptionData.spectrum());
+        prescription.setVolume(prescriptionData.volume());
+        prescription.setPosology(prescriptionData.posology());
+        prescription.setAdministrationRoute(prescriptionData.administrationRoute());
+        prescription.setInstructions(prescriptionData.instructions());
+        prescription.setPrecautions(prescriptionData.precautions());
+        prescription.setExpectedEffects(prescriptionData.expectedEffects());
+        prescription.setObservation(prescriptionData.observation());
+        prescription.setTreatmentDurationDays(prescriptionData.treatmentDurationDays());
+        prescription.setNextConsultationDate(prescriptionData.nextConsultationDate());
+
+        for (PrescriptionComponentDTO componentData : prescriptionData.components()) {
+            prescription.addComponent(new PrescriptionComponent(
+                    componentData.cannabinoid(), componentData.concentration(), componentData.unit()));
+        }
 
         // cada degrau do escalonamento vira uma linha propria
-        if (dto.escalationSteps() != null) {
-            for (var passo : dto.escalationSteps()) {
-                var step = new dev.uffs.doisag.model.DoseEscalationStep();
-                step.setWeek(passo.week());
-                step.setDosage(passo.dosage());
-                step.setNote(passo.note());
-                newPrescription.addEscalationStep(step);
+        if (prescriptionData.escalationSteps() != null) {
+            for (DoseEscalationStepDTO stepData : prescriptionData.escalationSteps()) {
+                DoseEscalationStep step = new DoseEscalationStep();
+                step.setWeek(stepData.week());
+                step.setDosage(stepData.dosage());
+                step.setNote(stepData.note());
+                prescription.addEscalationStep(step);
             }
         }
 
-        // associa a prescrição com a consulta encontrada
-        newPrescription.setAppointment(appointment);
+        Prescription savedPrescription = prescriptionRepository.save(prescription);
+        auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(), patientId);
+        return savedPrescription;
+    }
 
-        // salva a nova prescrição já com a FK preenchida
-        Prescription savedPrescription = prescriptionRepository.save(newPrescription);
-        auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
-                appointment.getPatient().getId());
+    // prescricao errada fica no historico marcada como anulada e deixa de valer
+    @Transactional
+    public Prescription annul(Long prescriptionId, AnnulmentDTO annulmentData, Users loggedUser) {
+        Prescription prescription = findPrescription(prescriptionId);
+        if (prescription.isAnnulled()) {
+            throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
+        }
+
+        prescription.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
+        Prescription savedPrescription = prescriptionRepository.save(prescription);
+        auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
+                savedPrescription.getAppointment().getPatient().getId());
         return savedPrescription;
     }
 
     // prescricoes de um paciente da consulta mais recente pra mais antiga
     public List<Prescription> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDesc(patientId);
+        return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(patientId);
     }
 
-    // READ BY ID
     public Prescription getById(Long id) {
-        Prescription prescription = prescriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
+        Prescription prescription = findPrescription(id);
         auditService.recordChartView(prescription.getAppointment().getPatient().getId());
         return prescription;
-    }
-
-    // UPDATE
-    @Transactional
-    public Prescription update(Long id, PrescriptionUpdateDTO dto) {
-        // busca a prescrição ou lança uma exceção
-        Prescription prescription = prescriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
-
-        // atualiza os campos do objeto com os novos detalhes do DTO
-        // garante que apenas os campos permitidos sejam alterados
-        prescription.setProductDescription(dto.productDescription());
-        prescription.setPosology(dto.posology());
-        prescription.setBrand(dto.brand());
-        prescription.setConcentration(dto.concentration());
-        prescription.setSpectrum(dto.spectrum());
-        prescription.setObservation(dto.observation());
-
-        Prescription savedPrescription = prescriptionRepository.save(prescription);
-        auditService.recordChange(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
-                savedPrescription.getAppointment().getPatient().getId());
-        return savedPrescription;
     }
 
     public List<Prescription> getByAppointmentId(Long appointmentId) {
         appointmentRepository.findById(appointmentId)
                 .ifPresent(appointment -> auditService.recordChartView(appointment.getPatient().getId()));
         return prescriptionRepository.findByAppointmentId(appointmentId);
+    }
+
+    // a prescricao q estava valendo passa a ser historico
+    private void replaceCurrentPrescriptions(Long patientId) {
+        List<Prescription> currentPrescriptions = prescriptionRepository
+                .findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patientId, PrescriptionStatus.VIGENTE);
+        for (Prescription currentPrescription : currentPrescriptions) {
+            currentPrescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
+            prescriptionRepository.save(currentPrescription);
+            auditService.recordChange(AuditRecordType.PRESCRICAO, currentPrescription.getId(), patientId);
+        }
+    }
+
+    private Prescription findPrescription(Long id) {
+        return prescriptionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
     }
 }

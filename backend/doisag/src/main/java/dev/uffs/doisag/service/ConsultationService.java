@@ -104,7 +104,7 @@ public class ConsultationService {
         if (appointment.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
-        if (prescriptionRepository.existsByAppointmentId(appointmentId)) {
+        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
             throw new BusinessException(HAS_PRESCRIPTION_MESSAGE);
         }
 

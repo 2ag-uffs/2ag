@@ -2,6 +2,7 @@ import { useLocation, useParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import './historico-clinico-prescritor.css';
 import {apiService} from "../../services/api.js";
+import {compositionSummary} from "../../utils/prescription-labels.js";
 
 export default function HistoricoClinicoPrescritor() {
     const location = useLocation();
@@ -75,7 +76,7 @@ export default function HistoricoClinicoPrescritor() {
                 id: prescricao.id,
                 data: new Date(prescricao.appointmentDateTime).toLocaleDateString('pt-BR'),
                 medicamento: prescricao.productDescription || 'Medicamento não informado',
-                dose: prescricao.concentration || 'Dose não informada',
+                dose: compositionSummary(prescricao.components) || 'Composição não informada',
                 posologia: prescricao.posology || 'Posologia não informada'
             }));
         } catch (error) {

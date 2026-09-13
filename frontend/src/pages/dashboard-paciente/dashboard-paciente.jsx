@@ -94,7 +94,7 @@ export default function DashboardPaciente() {
                             <span className="action-icon">📊</span>
                             <span>Ver Escalas</span>
                         </button>
-                        <button className="action-button">
+                        <button className="action-button" onClick={() => navigate("/minhas-prescricoes")}>
                             <span className="action-icon">💊</span>
                             <span>Minhas Prescrições</span>
                         </button>

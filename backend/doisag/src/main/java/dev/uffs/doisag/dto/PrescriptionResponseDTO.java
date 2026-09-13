@@ -1,54 +1,86 @@
 package dev.uffs.doisag.dto;
 
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Prescription;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+// o q a api devolve de uma prescricao com a composicao do oleo e a situacao dela (RF05)
 public record PrescriptionResponseDTO(
         Long id,
+        String status,
+        boolean current,
         String productDescription,
-        String posology,
         String brand,
-        String concentration,
+        String batch,
         String spectrum,
+        List<PrescriptionComponentDTO> components,
         String volume,
+        String posology,
         String administrationRoute,
-        String observation,
+        List<DoseEscalationStepDTO> escalationSteps,
         String instructions,
         String precautions,
         String expectedEffects,
+        String observation,
         Integer treatmentDurationDays,
         LocalDate nextConsultationDate,
-        List<DoseEscalationStepDTO> escalationSteps,
-        Long appointmentId, // Campo extra para dar contexto ao cliente
+        LocalDateTime createdAt,
+        Long appointmentId,
         LocalDateTime appointmentDateTime,
         Long patientId,
-        String patientName
+        String patientName,
+        String prescriberName,
+        boolean annulled,
+        LocalDateTime annulledAt,
+        String annulmentReason,
+        String annulledByName
 ) {
-    // Construtor auxiliar para facilitar a conversão da Entidade para o DTO
     public PrescriptionResponseDTO(Prescription prescription) {
         this(
                 prescription.getId(),
+                prescription.getStatus().name(),
+                prescription.isCurrent(),
                 prescription.getProductDescription(),
-                prescription.getPosology(),
                 prescription.getBrand(),
-                prescription.getConcentration(),
-                prescription.getSpectrum(),
+                prescription.getBatch(),
+                prescription.getSpectrum() == null ? null : prescription.getSpectrum().name(),
+                prescription.getComponents().stream().map(PrescriptionComponentDTO::new).toList(),
                 prescription.getVolume(),
+                prescription.getPosology(),
                 prescription.getAdministrationRoute(),
-                prescription.getObservation(),
+                prescription.getEscalationSteps().stream().map(DoseEscalationStepDTO::new).toList(),
                 prescription.getInstructions(),
                 prescription.getPrecautions(),
                 prescription.getExpectedEffects(),
+                prescription.getObservation(),
                 prescription.getTreatmentDurationDays(),
                 prescription.getNextConsultationDate(),
-                prescription.getEscalationSteps().stream().map(DoseEscalationStepDTO::new).toList(),
+                prescription.getCreatedAt(),
                 prescription.getAppointment().getId(),
                 prescription.getAppointment().getDateTime(),
                 prescription.getAppointment().getPatient().getId(),
-                prescription.getAppointment().getPatient().getName()
+                prescription.getAppointment().getPatient().getName(),
+                prescription.getAppointment().getPrescriber().getName(),
+                prescription.isAnnulled(),
+                annulledAtOf(prescription.getAnnulment()),
+                reasonOf(prescription.getAnnulment()),
+                annulledByNameOf(prescription.getAnnulment())
         );
+    }
+
+    // a anulacao pode ser nula entao cada campo sai de um metodo pra n poluir o construtor
+    private static LocalDateTime annulledAtOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulledAt();
+    }
+
+    private static String reasonOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulmentReason();
+    }
+
+    private static String annulledByNameOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulledBy().getName();
     }
 }
