@@ -19,8 +19,13 @@ button,
     flex: 1;
     font-size: 1rem;
     font-weight: 600;
+    line-height: 1.2;
     min-height: 3rem;
     justify-content: center;
+    /* o texto precisa de folga ate a borda, senao a palavra parece
+       grande demais pro botao */
+    padding: 0.5rem 1.25rem;
+    text-align: center;
     transition: background-color 0.2s;
 }
 
@@ -35,5 +40,18 @@ button:hover,
 }
 
 .button-secondary:hover {
+    background-color: var(--color-surface-alt);
+}
+
+/* acao discreta ao lado das outras, tipo apagar ou ver detalhe.
+   n concorre com o botao principal da linha */
+.button-tertiary {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--color-primary);
+    font-weight: 400;
+}
+
+.button-tertiary:hover {
     background-color: var(--color-surface-alt);
 }
