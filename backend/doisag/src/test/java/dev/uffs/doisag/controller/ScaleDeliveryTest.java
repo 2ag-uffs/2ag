@@ -66,7 +66,7 @@ class ScaleDeliveryTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales.length()").value(1))
                 .andExpect(jsonPath("$.pendingScales[0].name").value("Escala de ansiedade de Hamilton"))
-                .andExpect(jsonPath("$.pendingScales[0].rota").value("/escalas/hamilton"));
+                .andExpect(jsonPath("$.pendingScales[0].path").value("/escalas/hamilton"));
 
         mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas/central").header("Authorization", patientToken))
                 .andExpect(status().isOk())
@@ -134,7 +134,7 @@ class ScaleDeliveryTest {
         String patientToken = bearerTokenOf(patient);
         mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pendingScales[0].rota").value("/anamnese"));
+                .andExpect(jsonPath("$.pendingScales[0].path").value("/anamnese"));
 
         mockMvc.perform(post("/anamnese")
                         .header("Authorization", patientToken)

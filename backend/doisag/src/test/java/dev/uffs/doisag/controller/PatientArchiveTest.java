@@ -77,7 +77,7 @@ class PatientArchiveTest {
                 .andExpect(jsonPath("$[0].id").value(patient.getId().intValue()));
         mockMvc.perform(get("/dashboard/prescritor/" + prescriber.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.activePatientsCount").value(1));
+                .andExpect(jsonPath("$.activePatients").value(1));
     }
 
     @Test

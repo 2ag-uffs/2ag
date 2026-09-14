@@ -1,0 +1,109 @@
+/* painel do prescritor */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 64rem;
+}
+
+.subtitle,
+.empty,
+.meta,
+.note {
+    color: var(--color-text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+.stats {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.stat {
+    align-items: flex-start;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    font: inherit;
+    gap: 0.125rem;
+    padding: 0.875rem 1rem;
+    text-align: left;
+}
+
+button.stat {
+    cursor: pointer;
+}
+
+.statNumber {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.shortcuts button {
+    flex: 0 0 auto;
+}
+
+.cards {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.card > button {
+    align-self: flex-start;
+    flex: 0 0 auto;
+    margin-top: auto;
+}
+
+.cardTitle {
+    font-size: 1.125rem;
+    margin: 0;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.item {
+    align-items: center;
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+}
+
+.item:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.item button {
+    flex: 0 0 auto;
+}
