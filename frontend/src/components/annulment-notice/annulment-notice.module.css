@@ -2,8 +2,10 @@
 
 .notice {
     background-color: var(--color-error-soft);
-    border-radius: 0.5rem;
+    border-left: 3px solid var(--color-error);
+    border-radius: var(--radius-sm);
     color: var(--color-error);
-    padding: 0.5rem 0.75rem;
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
     white-space: pre-line;
 }
