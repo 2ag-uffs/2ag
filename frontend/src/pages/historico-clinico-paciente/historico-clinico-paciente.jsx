@@ -128,6 +128,7 @@ export default function HistoricoClinicoPaciente() {
                 <ScaleSummary
                     scalesPage={scalesPage}
                     pendingTitle="Para responder"
+                    onOpenResponse={(response) => navigate("/escalas/resposta/" + response.id)}
                     pendingAction={(
                         <button
                             type="button"

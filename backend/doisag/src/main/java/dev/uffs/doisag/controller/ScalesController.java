@@ -1,6 +1,7 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.AnnulmentDTO;
+import dev.uffs.doisag.dto.AssignableScaleDTO;
 import dev.uffs.doisag.dto.ScaleDefinitionDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
 import dev.uffs.doisag.dto.ScaleResponseDTO;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
 import java.util.List;
 
 // as escalas: o formulario de cada uma e as respostas (RF08 e RF21 a RF26)
@@ -46,6 +48,16 @@ public class ScalesController {
     public List<ScaleDefinitionDTO> getDefinitions() {
         return catalog.all().stream()
                 .map(ScaleDefinitionDTO::new)
+                .toList();
+    }
+
+    // o q o prescritor pode enviar pro paciente responder (RN09)
+    @PreAuthorize("hasRole('PRESCRIBER')")
+    @GetMapping("/designaveis")
+    public List<AssignableScaleDTO> getAssignableScales() {
+        return Arrays.stream(ScaleType.values())
+                .filter(ScaleType::isFilledByPatient)
+                .map(AssignableScaleDTO::new)
                 .toList();
     }
 

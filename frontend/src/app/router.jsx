@@ -58,10 +58,6 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/dashboard-paciente/dashboard-paciente.jsx")),
                             },
                             {
-                                path: "/acompanhamento-paciente",
-                                lazy: lazyPage(() => import("../pages/acompanhamento-semanal-paciente/acompanhamento-semanal-paciente.jsx")),
-                            },
-                            {
                                 path: "/agendamento-consulta",
                                 lazy: lazyPage(() => import("../pages/agendamento-consulta-paciente/agendamento-consulta-paciente.jsx")),
                             },
@@ -82,24 +78,8 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/anamnese/anamnese.jsx")),
                             },
                             {
-                                path: "/escala-hamilton",
-                                lazy: lazyPage(() => import("../pages/escala-hamilton/escala-hamilton.jsx")),
-                            },
-                            {
-                                path: "/escala-pittsburgh",
-                                lazy: lazyPage(() => import("../pages/escala-pittsburgh/escala-pittsburgh.jsx")),
-                            },
-                            {
-                                path: "/diario-sono",
-                                lazy: lazyPage(() => import("../pages/diario-sono/diario-sono.jsx")),
-                            },
-                            {
-                                path: "/diario-dor",
-                                lazy: lazyPage(() => import("../pages/diario-dor/diario-dor.jsx")),
-                            },
-                            {
-                                path: "/diario-tea",
-                                lazy: lazyPage(() => import("../pages/diario-tea/diario-tea.jsx")),
+                                path: "/escalas/:slug",
+                                lazy: lazyPage(() => import("../pages/escala/escala.jsx")),
                             },
                             {
                                 path: "/progresso",
@@ -136,7 +116,7 @@ const routes = [
                             },
                             {
                                 path: "/consulta/:appointmentId/mini-exame",
-                                lazy: lazyPage(() => import("../pages/mini-exame/mini-exame-estado-mental.jsx")),
+                                lazy: lazyPage(() => import("../pages/mini-exame/mini-exame.jsx")),
                             },
                             {
                                 path: "/agendamento-prescritor",
@@ -178,6 +158,10 @@ const routes = [
                             {
                                 path: "/perfil",
                                 lazy: lazyPage(() => import("../pages/profile/profile.jsx")),
+                            },
+                            {
+                                path: "/escalas/resposta/:responseId",
+                                lazy: lazyPage(() => import("../pages/resposta-escala/resposta-escala.jsx")),
                             },
                         ],
                     },

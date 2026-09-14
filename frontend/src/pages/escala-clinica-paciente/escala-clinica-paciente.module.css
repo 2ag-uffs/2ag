@@ -1,0 +1,87 @@
+/* central de escalas do paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 52rem;
+}
+
+.subtitle,
+.empty,
+.period {
+    color: var(--color-text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+.sectionTitle {
+    font-size: 1.125rem;
+    margin: 0 0 0.75rem;
+}
+
+.cards,
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.card,
+.row {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.card button {
+    flex: 0 0 auto;
+    margin-top: auto;
+}
+
+.row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.row button {
+    flex: 0 0 auto;
+}
+
+.cardTitle {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.deadline,
+.progress {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.result {
+    font-weight: 600;
+    margin: 0.25rem 0 0;
+}
+
+.annulled {
+    color: var(--color-error);
+    margin: 0.25rem 0 0;
+}

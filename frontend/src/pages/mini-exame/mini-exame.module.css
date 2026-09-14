@@ -1,0 +1,43 @@
+/* mini-exame do estado mental aplicado na consulta */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 46rem;
+}
+
+.subtitle {
+    color: var(--color-text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+.form,
+.saved {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.saved {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.result {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.actions button {
+    flex: 0 0 auto;
+}

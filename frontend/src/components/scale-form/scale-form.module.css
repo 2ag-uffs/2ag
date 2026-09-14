@@ -1,0 +1,136 @@
+/* os itens de uma escala, desenhados a partir da definicao da api */
+
+.items {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.item {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+}
+
+.field {
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+}
+
+.legend,
+.labelBox {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0;
+}
+
+.label {
+    font-weight: 600;
+}
+
+.help {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+.computed {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.input,
+.textarea {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font: inherit;
+    max-width: 16rem;
+    padding: 0.5rem 0.625rem;
+}
+
+.textarea {
+    max-width: none;
+    resize: vertical;
+}
+
+.input:disabled,
+.textarea:disabled {
+    background-color: var(--color-background);
+}
+
+/* a regua de notas: cada numero eh um botao de radio */
+.scores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.score input,
+.option input {
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+}
+
+.score span {
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+}
+
+.score input:checked + span,
+.option input:checked + span {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.score input:focus-visible + span,
+.option input:focus-visible + span {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.anchors {
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin: 0;
+}
+
+.options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.option span {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: block;
+    padding: 0.5rem 0.75rem;
+}
+
+fieldset:disabled .score span,
+fieldset:disabled .option span {
+    background-color: var(--color-background);
+    cursor: default;
+}

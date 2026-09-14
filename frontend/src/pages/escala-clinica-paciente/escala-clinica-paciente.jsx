@@ -1,119 +1,124 @@
-import {useNavigate, useParams} from 'react-router';
-import {useEffect, useState} from 'react';
-import './escala-clinica-paciente.css';
+import {useEffect, useState} from "react";
+import {useNavigate, useParams} from "react-router";
 import {apiService, ApiError} from "../../services/api.js";
+import {formatDate} from "../../utils/date-format.js";
+import styles from "./escala-clinica-paciente.module.css";
 
+// central de escalas do paciente (RF08)
+//
+// mostra o q esta esperando resposta, com o prazo de cada tarefa, e o
+// historico com o resultado real de cada escala respondida
 export default function CentralEscalas() {
-    const navigate = useNavigate();
     const {patientId} = useParams();
+    const navigate = useNavigate();
 
-    const [pageData, setPageData] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [page, setPage] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
-        if (!patientId) {
-            return;
-        }
+        let isCurrentRequest = true;
 
-        apiService
-            .get(`/pacientes/${patientId}/escalas/central`)
-            .then(setPageData)
-            .catch((err) => {
-                if (err instanceof ApiError && err.status === 403) {
-                    setError('Você não tem permissão para ver estes dados.');
-                } else {
-                    setError('Falha ao buscar os dados das avaliações.');
+        apiService.get("/pacientes/" + patientId + "/escalas/central")
+            .then((loadedPage) => {
+                if (isCurrentRequest) {
+                    setPage(loadedPage);
+                    setLoadError(null);
                 }
             })
-            .finally(() => setIsLoading(false));
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar suas avaliações. Confira sua internet e tente de novo.");
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [patientId]);
 
-    const handleNavigate = (path) => {
-        navigate(path);
-    };
-
-    if (isLoading) {
-        return <div>Carregando avaliações...</div>;
+    if (loadError) {
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
-    if (error) {
-        return <div>Erro: {error}</div>;
-    }
-
-    // Garante que o componente não quebre se pageData ainda for nulo
-    if (!pageData) {
-        return <div>Não foi possível carregar os dados.</div>;
+    if (!page) {
+        return <p>Carregando avaliações...</p>;
     }
 
     return (
-        <div className="central-escalas-page">
+        <section className={styles.page}>
+            <header>
+                <h1>Minhas avaliações clínicas</h1>
+                <p className={styles.subtitle}>
+                    Acompanhe o que está esperando resposta e o resultado do que você já respondeu.
+                </p>
+            </header>
 
-            <main className="escalas-main">
-                <div className="escalas-title">
-                    <h1>Minhas Avaliações Clínicas</h1>
-                    <p>Acompanhe suas avaliações pendentes e seu histórico de respostas.</p>
-                </div>
-                <section className="secao-escalas">
-                    <h2>Avaliações Pendentes</h2>
-                    <div className="escalas-pendentes-container">
-                        {pageData.pendingScales.length > 0 ? (
-                            pageData.pendingScales.map((escala) => (
-                                <div key={escala.id} className="escala-card">
-                                    <h3>{escala.scaleName}</h3>
-                                    <p>{escala.description}</p>
-                                    <button className="button-primary" onClick={() => handleNavigate(escala.path)}>
-                                        Preencher
-                                    </button>
+            <section>
+                <h2 className={styles.sectionTitle}>Esperando resposta ({page.pending.length})</h2>
+                {page.pending.length === 0 ? (
+                    <p className={styles.empty}>Nenhuma avaliação esperando resposta agora.</p>
+                ) : (
+                    <ul className={styles.cards}>
+                        {page.pending.map((task) => (
+                            <li key={task.id} className={styles.card}>
+                                <h3 className={styles.cardTitle}>{task.scaleName}</h3>
+                                <p className={styles.deadline}>
+                                    {task.late
+                                        ? "O prazo era " + formatDate(task.periodEnd)
+                                        : "Responda até " + formatDate(task.periodEnd)}
+                                </p>
+                                {task.totalDays > 1 && (
+                                    <p className={styles.progress}>
+                                        {task.answeredDays} de {task.totalDays} dias preenchidos
+                                    </p>
+                                )}
+                                <button type="button" className="button" onClick={() => navigate(task.path)}>
+                                    Preencher
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <section>
+                <h2 className={styles.sectionTitle}>Respondidas ({page.history.length})</h2>
+                {page.history.length === 0 ? (
+                    <p className={styles.empty}>Você ainda não respondeu nenhuma avaliação.</p>
+                ) : (
+                    <ul className={styles.list}>
+                        {page.history.map((response) => (
+                            <li key={response.id} className={styles.row}>
+                                <div>
+                                    <h3 className={styles.cardTitle}>{response.scaleName}</h3>
+                                    <p className={styles.period}>{periodTextOf(response)}</p>
+                                    <p className={styles.result}>{response.result}</p>
+                                    {response.annulled && <p className={styles.annulled}>Anulada pelo prescritor</p>}
+                                    {response.reviewed && !response.annulled && (
+                                        <p className={styles.period}>O prescritor já analisou</p>
+                                    )}
                                 </div>
-                            ))
-                        ) : (
-                            <p>Nenhuma avaliação pendente no momento.</p>
-                        )}
-                    </div>
-                </section>
-                <section className="secao-escalas">
-                    <h2>Histórico de Avaliações</h2>
-                    <div className="historico-tabela-container">
-                        <table className="historico-tabela">
-                            <thead>
-                            <tr>
-                                <th>Nome da Escala</th>
-                                <th>Data de Conclusão</th>
-                                <th>Resultado</th>
-                                <th>Ações</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {pageData.completedScales.length > 0 ? (
-                                pageData.completedScales.map((escala) => (
-                                    <tr key={escala.id}>
-                                        <td>{escala.scaleName}</td>
-                                        {/* Formata a data para o padrão brasileiro */}
-                                        <td>{new Date(escala.completionDate + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                                        <td>{escala.result}</td>
-                                        <td className="tabela-acoes">
-                                            <button className="button-tertiary"
-                                                    onClick={() => handleNavigate(escala.viewPath)}>Ver Respostas
-                                            </button>
-                                            <button className="button-tertiary"
-                                                    onClick={() => handleNavigate('/progresso')}>Ver Progresso
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="4" style={{textAlign: 'center'}}>Nenhuma avaliação foi concluída
-                                        ainda.
-                                    </td>
-                                </tr>
-                            )}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </main>
-        </div>
+                                <button
+                                    type="button"
+                                    className="button-secondary"
+                                    onClick={() => navigate("/escalas/" + response.slug + "?data=" + response.periodStart)}
+                                >
+                                    {response.editableByPatient ? "Ver e corrigir" : "Ver respostas"}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+        </section>
     );
+}
+
+// o diario fala de um dia e os acompanhamentos de um periodo
+function periodTextOf(response) {
+    return response.periodStart === response.periodEnd
+        ? formatDate(response.periodStart)
+        : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
 }

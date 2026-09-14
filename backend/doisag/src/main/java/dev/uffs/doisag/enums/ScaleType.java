@@ -8,30 +8,44 @@ import java.util.Arrays;
 // o slug eh o q aparece na url e na api pra n expor o nome do enum
 public enum ScaleType {
 
-    ACOMPANHAMENTO_SEMANAL("Acompanhamento semanal", "acompanhamento-semanal", true),
-    REGISTRO_SONO("Diário do sono", "diario-sono", true),
-    ESCALA_HAMILTON("Escala de ansiedade de Hamilton", "hamilton", true),
-    ESCALA_PITTSBURGH("Índice de qualidade do sono de Pittsburgh", "pittsburgh", true),
-    REGISTRO_DOR("Acompanhamento semanal de dor", "registro-dor", true),
-    REGISTRO_TEA("Acompanhamento semanal de TEA", "registro-tea", true),
+    ACOMPANHAMENTO_SEMANAL("Acompanhamento semanal", "acompanhamento-semanal", true,
+            "Gotas e sintomas do dia a dia, um dia de cada vez"),
+    REGISTRO_SONO("Diário do sono", "diario-sono", true,
+            "Horários, despertares e como foi o dia, um dia de cada vez"),
+    ESCALA_HAMILTON("Escala de ansiedade de Hamilton", "hamilton", true,
+            "Intensidade dos sintomas de ansiedade, com escore de 0 a 56"),
+    ESCALA_PITTSBURGH("Índice de qualidade do sono de Pittsburgh", "pittsburgh", true,
+            "Qualidade do sono no último mês, com índice de 0 a 21"),
+    REGISTRO_DOR("Acompanhamento semanal de dor", "registro-dor", true,
+            "Intensidade da dor na semana e o quanto ela atrapalhou"),
+    REGISTRO_TEA("Acompanhamento semanal de TEA", "registro-tea", true,
+            "Qualidade de vida e frequência dos comportamentos na semana"),
     // RN09 o MEEM eh aplicado pelo prescritor na consulta e n vira tarefa
-    MINI_EXAME_ESTADO_MENTAL("Mini-Exame do Estado Mental (MEEM)", "mini-exame", false),
+    MINI_EXAME_ESTADO_MENTAL("Mini-Exame do Estado Mental (MEEM)", "mini-exame", false,
+            "Aplicado pelo prescritor durante a consulta"),
     // a anamnese tem tela propria desde o modulo de atendimento (RF19)
     // e entra aqui so pq tbm eh uma tarefa q o prescritor envia
-    ANAMNESE("Avaliação inicial", "anamnese", true);
+    ANAMNESE("Avaliação inicial", "anamnese", true,
+            "Ficha de triagem com histórico de saúde, hábitos e expectativas");
 
     private final String displayName;
     private final String slug;
     private final boolean filledByPatient;
+    private final String description;
 
-    ScaleType(String displayName, String slug, boolean filledByPatient) {
+    ScaleType(String displayName, String slug, boolean filledByPatient, String description) {
         this.displayName = displayName;
         this.slug = slug;
         this.filledByPatient = filledByPatient;
+        this.description = description;
     }
 
     public String getDisplayName() {
         return displayName;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public String getSlug() {
