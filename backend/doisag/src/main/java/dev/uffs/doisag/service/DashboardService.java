@@ -2,75 +2,59 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PatientDashboardDTO;
 import dev.uffs.doisag.dto.PrescriberDashboardDTO;
-import dev.uffs.doisag.dto.PrescriberDashboardDTO.AppointmentSummaryDTO;
-import dev.uffs.doisag.enums.AssignmentStatus;
+import dev.uffs.doisag.dto.ScaleTaskDTO;
 import dev.uffs.doisag.repository.AppointmentRepository;
-import dev.uffs.doisag.repository.AssignedScaleRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.stereotype.Service;
-
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+// o painel de cada perfil, juntando o q vem da agenda e das escalas (RF03)
 @Service
 public class DashboardService {
 
-    // injetando os repositórios que a gente vai precisar consultar
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
-    private final AssignedScaleRepository assignedScaleRepository;
+    private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
 
-    public DashboardService(
-            PatientRepository patientRepository,
-            AppointmentRepository appointmentRepository,
-            AssignedScaleRepository assignedScaleRepository,
-            AuditService auditService
-    ) {
+    public DashboardService(PatientRepository patientRepository,
+                            AppointmentRepository appointmentRepository,
+                            ScaleTaskService scaleTaskService,
+                            AuditService auditService) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
-        this.assignedScaleRepository = assignedScaleRepository;
+        this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
     }
 
-
-    // método que monta o dashboard do prescritor, ele junta info de vários lugares e empacota no dto
     public PrescriberDashboardDTO getPrescriberDashboard(Long prescriberId) {
-
-        // busca o número de pacientes ativos
         long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNull(prescriberId);
 
-        // busca as consultas agendadas pra hoje
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay(); // comecinho do dia de hoje
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX); // finalzão do dia de hoje
-
-        // declara a variável todaysAppointments
-        List<AppointmentSummaryDTO> todaysAppointments = appointmentRepository
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        List<PrescriberDashboardDTO.AppointmentSummaryDTO> todaysAppointments = appointmentRepository
                 .findByPrescriberIdAndDateTimeBetween(prescriberId, startOfDay, endOfDay)
                 .stream()
                 // pedido sem resposta e consulta cancelada recusada ou anulada n contam como consulta do dia
                 .filter(apt -> apt.getStatus().isConfirmed() && !apt.isAnnulled())
-                .map(apt -> new AppointmentSummaryDTO(apt.getId(), apt.getPatient().getName(), apt.getModality()))
-                .collect(Collectors.toList());
-
-        // busca as escalas pendentes que o prescritor designou
-        List<PrescriberDashboardDTO.PendingFormSummaryDTO> pendingForms = assignedScaleRepository
-                // uso o enum importado diretamente
-                .findByPrescriberIdAndStatus(prescriberId, AssignmentStatus.PENDENTE)
-                .stream()
-                .map(scale -> new PrescriberDashboardDTO.PendingFormSummaryDTO(
-                        scale.getId(),
-                        scale.getPatient().getName(),
-                        scale.getScaleType().toString() // converte o enum pra string
-                ))
+                .map(apt -> new PrescriberDashboardDTO.AppointmentSummaryDTO(apt.getId(), apt.getPatient().getName(), apt.getModality()))
                 .toList();
 
-        // montando o objeto final que vai pro front
+        // as escalas q ainda esperam resposta, com as atrasadas na frente
+        List<PrescriberDashboardDTO.PendingFormSummaryDTO> pendingForms = scaleTaskService
+                .getPendingOfPrescriber(prescriberId)
+                .stream()
+                .map(task -> new PrescriberDashboardDTO.PendingFormSummaryDTO(
+                        task.id(),
+                        task.patientName(),
+                        task.late() ? task.scaleName() + " (atrasada)" : task.scaleName()))
+                .toList();
+
         return new PrescriberDashboardDTO(
                 activePatients,
                 todaysAppointments.size(),
@@ -80,26 +64,25 @@ public class DashboardService {
         );
     }
 
-    //método que monta o dashboard do paciente
     public PatientDashboardDTO getPatientDashboard(Long patientId) {
         auditService.recordChartView(patientId);
-
-        // implementar a lógica pra buscar consultas futuras do paciente
+        // as consultas futuras do paciente entram junto com o RF03
         List<PatientDashboardDTO.UpcomingAppointmentDTO> upcomingAppointments = Collections.emptyList();
 
-        // busca as escalas pendentes para o paciente logado
-        List<PatientDashboardDTO.PendingScaleDTO> pendingScales = assignedScaleRepository
-                .findByPatientIdAndStatus(patientId, AssignmentStatus.PENDENTE)
+        List<PatientDashboardDTO.PendingScaleDTO> pendingScales = scaleTaskService
+                .getPatientScalesPage(patientId)
+                .pending()
                 .stream()
-                .map(scale -> new PatientDashboardDTO.PendingScaleDTO(
-                        // Usamos os novos métodos do enum para preencher o DTO
-                        scale.getScaleType().getDisplayName(), // pega o nome amigável
-                        scale.getStatus().toString(),
-                        scale.getScaleType().getPath()      // pega a rota
-                ))
-                .collect(Collectors.toList());
+                .map(this::pendingScaleOf)
+                .toList();
 
-        // montando o dto do paciente
         return new PatientDashboardDTO(upcomingAppointments, pendingScales);
+    }
+
+    private PatientDashboardDTO.PendingScaleDTO pendingScaleOf(ScaleTaskDTO task) {
+        return new PatientDashboardDTO.PendingScaleDTO(
+                task.scaleName(),
+                task.status().toString(),
+                task.path());
     }
 }

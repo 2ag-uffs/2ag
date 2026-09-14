@@ -66,12 +66,15 @@ class ScaleDeliveryTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales.length()").value(1))
                 .andExpect(jsonPath("$.pendingScales[0].name").value("Escala de ansiedade de Hamilton"))
-                .andExpect(jsonPath("$.pendingScales[0].rota").value("/escala-hamilton"));
+                .andExpect(jsonPath("$.pendingScales[0].rota").value("/escalas/hamilton"));
 
         mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas/central").header("Authorization", patientToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pendingScales.length()").value(1))
-                .andExpect(jsonPath("$.pendingScales[0].path").value("/escala-hamilton"));
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].path").value("/escalas/hamilton"))
+                // a tarefa vale por um periodo e o prazo aparece pro paciente
+                .andExpect(jsonPath("$.pending[0].periodEnd").value(LocalDate.now().plusDays(6).toString()))
+                .andExpect(jsonPath("$.pending[0].status").value("PENDENTE"));
 
         // o aviso leva o paciente direto pra central de escalas
         mockMvc.perform(get("/notifications").header("Authorization", patientToken))
@@ -85,16 +88,27 @@ class ScaleDeliveryTest {
         sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
 
         String patientToken = bearerTokenOf(patient);
-        mockMvc.perform(post("/escala-hamilton")
-                        .header("Authorization", patientToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":2}"))
-                .andExpect(status().isOk());
+        answerHamilton(patientToken).andExpect(status().isCreated());
 
         mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas/central").header("Authorization", patientToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pendingScales.length()").value(0))
-                .andExpect(jsonPath("$.completedScales.length()").value(1));
+                .andExpect(jsonPath("$.pending.length()").value(0))
+                .andExpect(jsonPath("$.history.length()").value(1))
+                // RF08 a lista mostra o escore com a faixa, e n o texto fixo concluido
+                .andExpect(jsonPath("$.history[0].result").value("14 de 56 · Ansiedade temporária"));
+    }
+
+    // RF15 o prescritor fica sabendo q o paciente respondeu
+    @Test
+    void answeringAScaleNotifiesThePrescriber() throws Exception {
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        answerHamilton(bearerTokenOf(patient)).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Escala respondida"))
+                .andExpect(jsonPath("$[0].link").value("/paciente/" + patient.getId() + "/historico"));
     }
 
     // mandar de novo uma escala q o paciente ainda n respondeu n cria tarefa repetida
@@ -103,7 +117,8 @@ class ScaleDeliveryTest {
         sendScale("REGISTRO_DOR").andExpect(status().isCreated());
         sendScale("REGISTRO_DOR").andExpect(status().isCreated());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas")
+                        .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(patient)))
@@ -111,7 +126,7 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
-    // a anamnese enviada tambem sai da lista de pendentes quando o paciente preenche
+    // a anamnese tem tela propria mas tambem sai da lista de pendentes
     @Test
     void anamnesisSentByThePrescriberIsClosedWhenThePatientFillsIt() throws Exception {
         sendScale("ANAMNESE").andExpect(status().isCreated());
@@ -144,6 +159,19 @@ class ScaleDeliveryTest {
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"scaleType\":\"" + scaleType + "\"}"));
+    }
+
+    // os 14 itens em 1 dao 14 pontos, q eh ansiedade temporaria
+    private ResultActions answerHamilton(String patientToken) throws Exception {
+        return mockMvc.perform(post("/escalas/hamilton/respostas")
+                .header("Authorization", patientToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answers\":{\"humorAnsioso\":1,\"tensao\":1,\"medos\":1,\"insonia\":1,"
+                        + "\"intelectual\":1,\"humorDeprimido\":1,\"somatizacoesMotoras\":1,"
+                        + "\"somatizacoesSensoriais\":1,\"sintomasCardiovasculares\":1,"
+                        + "\"sintomasRespiratorios\":1,\"sintomasGastrointestinais\":1,"
+                        + "\"sintomasGeniturinarios\":1,\"sintomasAutonomicos\":1,"
+                        + "\"comportamentoNaEntrevista\":1}}"));
     }
 
     private String bearerTokenOf(Users user) {

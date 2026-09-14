@@ -4,7 +4,6 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
-import dev.uffs.doisag.repository.MentalStateExamRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import org.springframework.security.core.Authentication;
@@ -24,15 +23,12 @@ public class PatientAccessService {
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
     private final PrescriptionRepository prescriptionRepository;
-    private final MentalStateExamRepository mentalStateExamRepository;
 
     public PatientAccessService(PatientRepository patientRepository, AppointmentRepository appointmentRepository,
-                                PrescriptionRepository prescriptionRepository,
-                                MentalStateExamRepository mentalStateExamRepository) {
+                                PrescriptionRepository prescriptionRepository) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
         this.prescriptionRepository = prescriptionRepository;
-        this.mentalStateExamRepository = mentalStateExamRepository;
     }
 
     public boolean canAccess(Long patientId, Authentication authentication) {
@@ -78,16 +74,6 @@ public class PatientAccessService {
         }
         return prescriptionRepository.findById(prescriptionId)
                 .map(prescription -> canAccessAppointment(prescription.getAppointment().getId(), authentication))
-                .orElse(false);
-    }
-
-    // o meem tambem eh aplicado dentro da consulta
-    public boolean canAccessMentalStateExam(Long examId, Authentication authentication) {
-        if (examId == null) {
-            return false;
-        }
-        return mentalStateExamRepository.findById(examId)
-                .map(exam -> canAccessAppointment(exam.getAppointment().getId(), authentication))
                 .orElse(false);
     }
 

@@ -2,9 +2,10 @@ package dev.uffs.doisag.dto;
 
 import java.util.List;
 
-// o pacotão de dados que o meu backend vai mandar para a tela de escala-clinica-paciente sei la o nome
+// tudo q a central de escalas do paciente mostra (RF08)
 public record PatientScalesPageDTO(
         String patientName,
-        List<PendingScaleInfoDTO> pendingScales,
-        List<CompletedScaleInfoDTO> completedScales
-) {}
+        List<ScaleTaskDTO> pending,
+        List<ScaleResponseSummaryDTO> history
+) {
+}

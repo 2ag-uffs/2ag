@@ -1,9 +1,10 @@
 package dev.uffs.doisag.security;
 
-import dev.uffs.doisag.model.HamiltonScale;
+import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
-import dev.uffs.doisag.repository.HamiltonScaleRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +38,7 @@ class PasswordExposureTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
-    @Autowired private HamiltonScaleRepository hamiltonScaleRepository;
+    @Autowired private ScaleResponseRepository scaleResponseRepository;
     @Autowired private TokenService tokenService;
 
     private Long patientId;
@@ -106,12 +107,14 @@ class PasswordExposureTest {
     // ou seja o vazamento n estava so nas rotas de usuario
     @Test
     void escalaNaoPodeTrazerSenhaDoPacienteAninhado() throws Exception {
-        HamiltonScale scale = new HamiltonScale();
-        scale.setAssessmentDate(LocalDate.now());
+        ScaleResponse scale = new ScaleResponse();
+        scale.setScaleType(ScaleType.ESCALA_HAMILTON);
+        scale.setPeriodStart(LocalDate.now());
+        scale.setPeriodEnd(LocalDate.now());
         scale.setPatient(patientRepository.findById(patientId).orElseThrow());
-        Long scaleId = hamiltonScaleRepository.save(scale).getId();
+        Long scaleId = scaleResponseRepository.save(scale).getId();
 
-        String body = corpoDe("/escala-hamilton/" + scaleId);
+        String body = corpoDe("/escalas/respostas/" + scaleId);
 
         assertThat(body).doesNotContain(KNOWN_HASH);
         assertThat(body).doesNotContain("password");

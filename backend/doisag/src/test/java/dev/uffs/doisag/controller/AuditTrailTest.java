@@ -274,11 +274,11 @@ class AuditTrailTest {
     }
 
     private void fillHamiltonScaleAsThePatient() throws Exception {
-        mockMvc.perform(post("/escala-hamilton")
+        mockMvc.perform(post("/escalas/hamilton/respostas")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + TODAY + "\",\"anxiousMood\":2}"))
-                .andExpect(status().isOk());
+                        .content("{\"answers\":{\"humorAnsioso\":2}}"))
+                .andExpect(status().isCreated());
     }
 
     private ResultActions readPatientTrail(LocalDate from, LocalDate to, int page) throws Exception {

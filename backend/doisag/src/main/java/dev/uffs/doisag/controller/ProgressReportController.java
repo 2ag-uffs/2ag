@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -32,9 +31,7 @@ public class ProgressReportController {
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
     @GetMapping("/progresso/atributos")
     public List<TrackableAttributeDTO> getTrackableAttributes() {
-        return Arrays.stream(TrackableAttribute.values())
-                .map(TrackableAttributeDTO::new)
-                .toList();
+        return progressReportService.getTrackableAttributes();
     }
 
     // endpoint que o front chama pra montar os graficos

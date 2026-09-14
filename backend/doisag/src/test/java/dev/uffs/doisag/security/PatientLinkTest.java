@@ -9,18 +9,16 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Appointment;
-import dev.uffs.doisag.model.HamiltonScale;
-import dev.uffs.doisag.model.MentalStateExam;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
-import dev.uffs.doisag.repository.HamiltonScaleRepository;
-import dev.uffs.doisag.repository.MentalStateExamRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -62,8 +62,7 @@ class PatientLinkTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PrescriptionRepository prescriptionRepository;
-    @Autowired private MentalStateExamRepository mentalStateExamRepository;
-    @Autowired private HamiltonScaleRepository hamiltonScaleRepository;
+    @Autowired private ScaleResponseRepository scaleResponseRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private TokenService tokenService;
 
@@ -120,11 +119,11 @@ class PatientLinkTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"prescricao de outro prescritor\"}"),
                 prescriberA, "anular prescricao");
-        assertForbidden(post("/mini-exame/consulta/" + recordsOfB.appointmentId())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"recall\":3}"),
+        assertForbidden(post("/escalas/mini-exame/consulta/" + recordsOfB.appointmentId())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":3}}"),
                 prescriberA, "aplicar meem");
-        assertForbidden(put("/mini-exame/" + recordsOfB.examId())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"recall\":0}"),
+        assertForbidden(put("/escalas/respostas/" + recordsOfB.examId())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":0}}"),
                 prescriberA, "alterar meem");
         assertForbidden(post("/pacientes/" + patientOfB + "/escalas")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"scaleType\":\"ESCALA_HAMILTON\"}"),
@@ -158,9 +157,9 @@ class PatientLinkTest {
 
     @Test
     void patientCannotEditAnotherPatientsAnswers() throws Exception {
-        assertForbidden(put("/escala-hamilton/" + recordsOfB.scaleId())
+        assertForbidden(put("/escalas/respostas/" + recordsOfB.scaleId())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":0}"),
+                        .content("{\"answers\":{\"humorAnsioso\":0}}"),
                 recordsOfA.patient(), "alterar escala de outro paciente");
     }
 
@@ -220,61 +219,65 @@ class PatientLinkTest {
     // o corpo aponta pro paciente B mas a escala continua sendo do A
     @Test
     void editingAScaleNeverMovesItToAnotherPatient() throws Exception {
-        String bodyPointingToB = "{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":1,"
+        String bodyPointingToB = "{\"answers\":{\"humorAnsioso\":1},"
                 + "\"patient\":{\"id\":" + recordsOfB.patient().getId() + "}}";
 
-        mockMvc.perform(put("/escala-hamilton/" + recordsOfA.scaleId())
+        mockMvc.perform(put("/escalas/respostas/" + recordsOfA.scaleId())
                         .header("Authorization", bearerTokenOf(recordsOfA.patient()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
                 .andExpect(status().isOk());
 
-        HamiltonScale savedScale = hamiltonScaleRepository.findById(recordsOfA.scaleId()).orElseThrow();
+        ScaleResponse savedScale = scaleResponseRepository.findById(recordsOfA.scaleId()).orElseThrow();
         assertThat(savedScale.getPatient().getId()).isEqualTo(recordsOfA.patient().getId());
-        assertThat(savedScale.getAnxiousMood()).isEqualTo(1);
+        assertThat(savedScale.valueOf("humorAnsioso")).isEqualTo(1);
     }
 
     @Test
     void editingAMentalStateExamNeverMovesItToAnotherAppointment() throws Exception {
-        String bodyPointingToB = "{\"recall\":2,\"appointment\":{\"id\":" + recordsOfB.appointmentId() + "}}";
+        String bodyPointingToB = "{\"answers\":{\"registro\":2},"
+                + "\"appointment\":{\"id\":" + recordsOfB.appointmentId() + "}}";
 
-        mockMvc.perform(put("/mini-exame/" + recordsOfA.examId())
+        mockMvc.perform(put("/escalas/respostas/" + recordsOfA.examId())
                         .header("Authorization", bearerTokenOf(prescriberA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
                 .andExpect(status().isOk());
 
-        MentalStateExam savedExam = mentalStateExamRepository.findById(recordsOfA.examId()).orElseThrow();
+        ScaleResponse savedExam = scaleResponseRepository.findById(recordsOfA.examId()).orElseThrow();
         assertThat(savedExam.getAppointment().getId()).isEqualTo(recordsOfA.appointmentId());
     }
 
     // o corpo aponta pro paciente B mas quem esta logado eh o A
     @Test
     void creatingAScaleUsesTheLoggedPatientAndNotTheBody() throws Exception {
-        String bodyPointingToB = "{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":3,"
+        String bodyPointingToB = "{\"answers\":{\"humorAnsioso\":3},"
                 + "\"patient\":{\"id\":" + recordsOfB.patient().getId() + "}}";
 
-        String response = mockMvc.perform(post("/escala-hamilton")
+        String response = mockMvc.perform(post("/escalas/hamilton/respostas")
                         .header("Authorization", bearerTokenOf(recordsOfA.patient()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
         Long createdScaleId = new ObjectMapper().readTree(response).get("id").asLong();
-        HamiltonScale createdScale = hamiltonScaleRepository.findById(createdScaleId).orElseThrow();
+        ScaleResponse createdScale = scaleResponseRepository.findById(createdScaleId).orElseThrow();
         assertThat(createdScale.getPatient().getId()).isEqualTo(recordsOfA.patient().getId());
     }
 
     // o prescritor le as respostas mas quem responde e corrige eh o paciente
     @Test
     void prescriberCannotFillOrEditThePatientsAnswers() throws Exception {
-        assertForbidden(post("/escala-hamilton").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":2}"),
+        assertForbidden(post("/escalas/hamilton/respostas").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"humorAnsioso\":2}}"),
                 prescriberA, "preencher escala do paciente");
-        assertForbidden(put("/escala-hamilton/" + recordsOfA.scaleId()).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":0}"),
-                prescriberA, "alterar a resposta do paciente");
+        // aqui n eh 403 pq o paciente eh da carteira dele: a regra diz q a
+        // correcao da resposta do paciente eh anulacao com motivo
+        assertThat(statusOf(put("/escalas/respostas/" + recordsOfA.scaleId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"humorAnsioso\":0}}"), prescriberA))
+                .as("alterar a resposta do paciente").isEqualTo(400);
     }
 
     @Test
@@ -291,14 +294,14 @@ class PatientLinkTest {
                 "/dashboard/paciente/" + patientId,
                 "/pacientes/" + patientId + "/escalas",
                 "/pacientes/" + patientId + "/escalas/central",
+                "/pacientes/" + patientId + "/escalas/respostas",
                 "/pacientes/" + patientId + "/progresso?atributo=ESCORE_HAMILTON&periodo=DIAS_30",
                 "/pacientes/" + patientId + "/progresso/consultas?periodo=DIAS_30",
-                "/pacientes/" + patientId + "/relatorio-sono",
                 "/pacientes/" + patientId + "/acompanhamento",
                 "/pacientes/" + patientId + "/anamneses",
                 "/pacientes/" + patientId + "/consultas",
                 "/pacientes/" + patientId + "/prescricoes",
-                "/escala-hamilton/" + records.scaleId(),
+                "/escalas/respostas/" + records.scaleId(),
                 "/prescricao/" + records.prescriptionId(),
                 "/appointments/" + records.appointmentId() + "/prescriptions"
         );
@@ -308,7 +311,7 @@ class PatientLinkTest {
     private List<String> prescriberOnlyReadRoutes(ClinicalRecords records) {
         return List.of(
                 "/consulta/" + records.appointmentId(),
-                "/mini-exame/" + records.examId()
+                "/escalas/respostas/" + records.examId()
         );
     }
 
@@ -358,21 +361,28 @@ class PatientLinkTest {
         prescription.setPosology("2 gotas a noite");
         prescription = prescriptionRepository.save(prescription);
 
-        MentalStateExam exam = new MentalStateExam();
+        ScaleResponse exam = new ScaleResponse();
+        exam.setPatient(patient);
+        exam.setPrescriber(prescriber);
         exam.setAppointment(appointment);
-        exam.setRecall(3);
-        exam = mentalStateExamRepository.save(exam);
+        exam.setScaleType(ScaleType.MINI_EXAME_ESTADO_MENTAL);
+        exam.setPeriodStart(LocalDate.now());
+        exam.setPeriodEnd(LocalDate.now());
+        exam.setAnswers(new LinkedHashMap<>(Map.of("registro", 3)));
+        exam = scaleResponseRepository.save(exam);
 
-        HamiltonScale scale = new HamiltonScale();
+        ScaleResponse scale = new ScaleResponse();
         scale.setPatient(patient);
-        scale.setAssessmentDate(LocalDate.now());
-        scale.setAnxiousMood(2);
-        scale = hamiltonScaleRepository.save(scale);
+        scale.setScaleType(ScaleType.ESCALA_HAMILTON);
+        scale.setPeriodStart(LocalDate.now());
+        scale.setPeriodEnd(LocalDate.now());
+        scale.setAnswers(new LinkedHashMap<>(Map.of("humorAnsioso", 2)));
+        scale = scaleResponseRepository.save(scale);
 
         ProtocolItemDTO weeklyHamilton = new ProtocolItemDTO(
                 ScaleType.ESCALA_HAMILTON, ScaleType.ESCALA_HAMILTON.getDisplayName(), Periodicity.SEMANAL);
         treatmentProtocolService.create(patient.getId(),
-                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, List.of(weeklyHamilton)), prescriber);
+                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null, List.of(weeklyHamilton)), prescriber);
 
         return new ClinicalRecords(patient, appointment.getId(), prescription.getId(), exam.getId(), scale.getId());
     }

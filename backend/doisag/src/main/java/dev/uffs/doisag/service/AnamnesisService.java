@@ -27,13 +27,13 @@ public class AnamnesisService {
 
     private final AnamnesisRepository anamnesisRepository;
     private final AuditService auditService;
-    private final ScaleAssignmentService scaleAssignmentService;
+    private final ScaleTaskService scaleTaskService;
 
     public AnamnesisService(AnamnesisRepository anamnesisRepository, AuditService auditService,
-                            ScaleAssignmentService scaleAssignmentService) {
+                            ScaleTaskService scaleTaskService) {
         this.anamnesisRepository = anamnesisRepository;
         this.auditService = auditService;
-        this.scaleAssignmentService = scaleAssignmentService;
+        this.scaleTaskService = scaleTaskService;
     }
 
     @Transactional
@@ -46,7 +46,7 @@ public class AnamnesisService {
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), patient.getId());
         // preencher a anamnese da baixa na tarefa q o prescritor enviou igual as outras escalas
-        scaleAssignmentService.completeAssignedScale(patient.getId(), ScaleType.ANAMNESE);
+        scaleTaskService.completeTask(patient.getId(), ScaleType.ANAMNESE);
         return savedAnamnesis;
     }
 

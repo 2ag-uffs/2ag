@@ -1,32 +1,30 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
-import dev.uffs.doisag.enums.AssignmentStatus;
+import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
-import dev.uffs.doisag.model.AssignedScale;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ProtocolItem;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
-import dev.uffs.doisag.repository.AssignedScaleRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.TreatmentProtocolRepository;
-import jakarta.validation.ValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
-// cuida do acompanhamento automatico dos 90 dias (RF32).
+// cuida do acompanhamento automatico dos 90 dias (RF32)
 //
 // o prescritor monta o protocolo uma vez, dizendo quais escalas o
 // paciente responde e de quanto em quanto tempo. dai um job diario
-// designa o que venceu, sem ninguem precisar lembrar.
+// fecha o q venceu e envia o q chegou a hora, sem ninguem lembrar
 //
 // era a dor principal da entrevista de 2025: a prescritora acumula a
 // parte clinica e a administrativa, e mandava formulario um por um
@@ -41,19 +39,19 @@ public class TreatmentProtocolService {
 
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
-    private final AssignedScaleRepository assignedScaleRepository;
-    private final ScaleAssignmentService scaleAssignmentService;
+    private final ScaleTaskRepository taskRepository;
+    private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
 
     public TreatmentProtocolService(TreatmentProtocolRepository protocolRepository,
                                     PatientRepository patientRepository,
-                                    AssignedScaleRepository assignedScaleRepository,
-                                    ScaleAssignmentService scaleAssignmentService,
+                                    ScaleTaskRepository taskRepository,
+                                    ScaleTaskService scaleTaskService,
                                     AuditService auditService) {
         this.protocolRepository = protocolRepository;
         this.patientRepository = patientRepository;
-        this.assignedScaleRepository = assignedScaleRepository;
-        this.scaleAssignmentService = scaleAssignmentService;
+        this.taskRepository = taskRepository;
+        this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
     }
 
@@ -61,16 +59,14 @@ public class TreatmentProtocolService {
     public TreatmentProtocol create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
-
         // paciente arquivado n recebe envio automatico ate o prescritor reativar
         if (patient.isArchived()) {
-            throw new ValidationException(ARCHIVED_PATIENT_MESSAGE);
+            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
         }
-
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
         protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(anterior -> {
-            throw new ValidationException("Este paciente já tem um acompanhamento em andamento");
+            throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
         });
 
         LocalDate inicio = dados.startDate() != null ? dados.startDate() : LocalDate.now();
@@ -82,13 +78,15 @@ public class TreatmentProtocolService {
         protocol.setStartDate(inicio);
         protocol.setEndDate(inicio.plusDays(duracao));
         protocol.setActive(true);
+        // a programacao de horarios q aparece no topo do diario do sono (RF22)
+        protocol.setSleepBedTime(dados.sleepBedTime());
+        protocol.setSleepWakeTime(dados.sleepWakeTime());
 
         dados.items().forEach(itemDto -> {
             // o MEEM eh aplicado pelo prescritor na consulta, n entra no
             // acompanhamento automatico do paciente (RN09)
-            if (itemDto.scaleType() == ScaleType.MINI_EXAME_ESTADO_MENTAL) {
-                throw new ValidationException(
-                        "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta");
+            if (!itemDto.scaleType().isFilledByPatient()) {
+                throw new BusinessException(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
             }
             ProtocolItem item = new ProtocolItem();
             item.setScaleType(itemDto.scaleType());
@@ -139,57 +137,49 @@ public class TreatmentProtocolService {
     @Transactional
     public int designarEscalasVencidas(LocalDate hoje) {
         int designadas = 0;
-
         for (TreatmentProtocol protocol : protocolRepository.findByActiveTrue()) {
             if (hoje.isBefore(protocol.getStartDate())) {
                 continue;
             }
-
             // passou dos 90 dias: encerra e n designa mais nada
             if (hoje.isAfter(protocol.getEndDate())) {
                 endProtocol(protocol);
                 continue;
             }
-
             for (ProtocolItem item : protocol.getItems()) {
                 if (estaNaHora(protocol, item, hoje)) {
-                    scaleAssignmentService.assignScaleToPatient(
-                            protocol.getPatient().getId(),
-                            new AssignScaleDTO(item.getScaleType()),
-                            hoje);
+                    scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
+                            item.getPeriodicity().getDays());
                     designadas++;
                 }
             }
         }
-
         return designadas;
     }
 
-    // olha quando essa escala foi designada pela ultima vez em vez de
+    // olha quando essa escala foi enviada pela ultima vez em vez de
     // contar os dias desde o inicio. assim, se o servidor ficar fora do
     // ar por uns dias, o acompanhamento continua de onde parou em vez de
     // pular a rodada
     private boolean estaNaHora(TreatmentProtocol protocol, ProtocolItem item, LocalDate hoje) {
-        Optional<AssignedScale> ultima = assignedScaleRepository
-                .findFirstByPatientIdAndScaleTypeOrderByAssignedDateDesc(
-                        protocol.getPatient().getId(), item.getScaleType());
-
+        Optional<ScaleTask> ultima = scaleTaskService.lastTaskOf(protocol.getPatient().getId(), item.getScaleType());
         if (ultima.isEmpty()) {
-            // primeira vez: designa assim que o acompanhamento comeca
+            // primeira vez: envia assim que o acompanhamento comeca
             return true;
         }
-
-        long diasDesdeAUltima = ChronoUnit.DAYS.between(ultima.get().getAssignedDate(), hoje);
-        return diasDesdeAUltima >= item.getPeriodicity().getDays();
+        // a tarefa anterior so eh substituida quando o periodo dela acaba,
+        // entao a mesma escala nunca fica pendente duas vezes
+        return hoje.isAfter(ultima.get().getPeriodEnd());
     }
 
-    // escalas que o paciente ainda n respondeu e ja passaram do prazo.
-    // o prescritor ve isso no painel dele
-    public long contarPendenciasAtrasadas(Long patientId, LocalDate hoje) {
-        return assignedScaleRepository
-                .findByPatientIdAndStatus(patientId, AssignmentStatus.PENDENTE)
-                .stream()
-                .filter(escala -> ChronoUnit.DAYS.between(escala.getAssignedDate(), hoje) > 7)
-                .count();
+    // escalas q venceram sem resposta. o prescritor ve isso no painel dele
+    public long contarPendenciasAtrasadas(Long patientId) {
+        return taskRepository.countByPatientIdAndStatus(patientId, ScaleTaskStatus.NAO_RESPONDIDA);
+    }
+
+    public ScaleType[] escalasDoProtocolo(Long patientId) {
+        return findActiveProtocol(patientId).getItems().stream()
+                .map(ProtocolItem::getScaleType)
+                .toArray(ScaleType[]::new);
     }
 }

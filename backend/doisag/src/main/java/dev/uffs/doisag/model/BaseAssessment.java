@@ -4,7 +4,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
-import dev.uffs.doisag.enums.TrackableAttribute;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -74,13 +73,5 @@ public abstract class BaseAssessment {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
-    }
-
-    // quanto vale um atributo neste registro. cada escala responde pelos
-    // atributos dela; o que n for dela devolve null.
-    // eh isso que deixa o servico de progresso funcionar pra qualquer
-    // escala sem conhecer os campos de nenhuma (RNF08)
-    public Integer trackedValue(TrackableAttribute attribute) {
-        return null;
     }
 }
