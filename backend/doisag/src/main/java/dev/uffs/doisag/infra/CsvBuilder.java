@@ -36,6 +36,20 @@ public class CsvBuilder {
         if (value == null) {
             return "\"\"";
         }
-        return "\"" + String.valueOf(value).replace("\"", "\"\"") + "\"";
+        String text = String.valueOf(value);
+        // texto q comeca como formula rodaria no excel de quem abre o arquivo
+        // o apostrofo na frente faz o excel mostrar como texto e numero fica como esta
+        if (value instanceof CharSequence && startsLikeFormula(text)) {
+            text = "'" + text;
+        }
+        return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+
+    private boolean startsLikeFormula(String text) {
+        if (text.isEmpty()) {
+            return false;
+        }
+        char first = text.charAt(0);
+        return first == '=' || first == '+' || first == '-' || first == '@' || first == '\t' || first == '\r';
     }
 }
