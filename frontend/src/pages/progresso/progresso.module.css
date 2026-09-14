@@ -28,6 +28,11 @@
     min-width: 0;
 }
 
+/* o nome do paciente costuma ser mais comprido q os outros filtros */
+.patientFilter {
+    flex: 2 1 16rem;
+}
+
 .filter label {
     font-size: var(--text-sm);
     font-weight: 500;

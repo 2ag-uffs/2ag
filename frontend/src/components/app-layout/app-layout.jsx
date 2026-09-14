@@ -27,6 +27,7 @@ const ROLE_LABELS = {
 // itens do menu de cada perfil
 // o menu lateral mostra todos e a barra de baixo do celular so os com mobile
 // prefixes deixa o item marcado tbm nas telas q ficam dentro dele
+// pattern marca o item numa tela q tbm cairia no prefixo de outro item
 function menuFor(user) {
     if (!user) {
         return [];
@@ -47,6 +48,7 @@ function menuFor(user) {
         return [
             {path: "/painel-prescritor", label: "Início", icon: FiHome, mobile: true},
             {path: "/lista-paciente", label: "Pacientes", icon: FiUsers, mobile: true, prefixes: ["/paciente/", "/consulta/"]},
+            {path: "/progresso-pacientes", label: "Progresso", icon: FiTrendingUp, pattern: /^\/paciente\/[^/]+\/progresso$/},
             {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar, mobile: true},
             {path: "/agenda/disponibilidade", label: "Horários de atendimento", icon: FiClock},
             {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},
@@ -57,6 +59,19 @@ function menuFor(user) {
         {path: "/administracao", label: "Prescritores", icon: FiUsers, mobile: true},
         {path: "/administracao/auditoria", label: "Auditoria", icon: FiShield, mobile: true},
     ];
+}
+
+// so um item fica marcado por vez
+// o pattern vem antes pq /paciente/5/progresso tbm comeca com o prefixo da lista de pacientes
+function findActiveItem(items, pathname) {
+    const patternItem = items.find((item) => item.pattern && item.pattern.test(pathname));
+    if (patternItem) {
+        return patternItem;
+    }
+    return items.find((item) => {
+        const prefixes = item.prefixes || [];
+        return pathname === item.path || prefixes.some((prefix) => pathname.startsWith(prefix));
+    });
 }
 
 // moldura de todas as telas de quem esta logado
@@ -73,13 +88,10 @@ export default function AppLayout() {
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
 
-    const isActive = (item) => {
-        if (location.pathname === item.path) {
-            return true;
-        }
-        const prefixes = item.prefixes || [];
-        return prefixes.some((prefix) => location.pathname.startsWith(prefix));
-    };
+    // a barra do celular tem menos itens entao ela acha o item marcado dela
+    // assim no progresso de um paciente o celular marca a lista de pacientes
+    const activeSideItem = findActiveItem(menuItems, location.pathname);
+    const activeBottomItem = findActiveItem(mobileItems, location.pathname);
 
     // quem abriu o link direto n tem pra onde voltar entao vai pro inicio
     const handleBack = () => {
@@ -109,7 +121,7 @@ export default function AppLayout() {
                 <nav className={styles.sideMenu} aria-label="Menu principal">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
-                        const active = isActive(item);
+                        const active = item === activeSideItem;
                         return (
                             <Link
                                 key={item.path}
@@ -169,7 +181,7 @@ export default function AppLayout() {
             <nav className={styles.bottomMenu} aria-label="Menu">
                 {mobileItems.map((item) => {
                     const Icon = item.icon;
-                    const active = isActive(item);
+                    const active = item === activeBottomItem;
                     return (
                         <Link
                             key={item.path}
