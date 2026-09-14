@@ -1,6 +1,5 @@
 package dev.uffs.doisag.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
@@ -14,11 +13,12 @@ import dev.uffs.doisag.service.PatientInviteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 
@@ -65,7 +65,7 @@ class PatientInviteTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return objectMapper.readTree(responseBody).get("token").asText();
+        return objectMapper.readTree(responseBody).get("token").asString();
     }
 
     // salva o convite direto no banco pra montar os casos de vencido e usado

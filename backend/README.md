@@ -4,9 +4,9 @@ api em java que guarda os dados clínicos e aplica as regras de acesso. o que o 
 
 ## tecnologias
 
-- java 17 e spring boot 3.5
+- java 17 e spring boot 4.1
 - spring data jpa com hibernate, e **flyway** para o esquema do banco
-- spring security com sessão em cookie `httpOnly` assinada com jwt (jjwt 0.11.5)
+- spring security com sessão em cookie `httpOnly` assinada com jwt (jjwt 0.13)
 - postgresql em produção e h2 em memória nos testes
 - maven, pelo wrapper `mvnw` que já vem no repositório
 

@@ -1,9 +1,10 @@
 package dev.uffs.doisag.infra;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,7 +16,7 @@ import java.util.Map;
 @Converter
 public class ScaleAnswersConverter implements AttributeConverter<Map<String, Object>, String> {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     @Override
     public String convertToDatabaseColumn(Map<String, Object> answers) {
