@@ -17,7 +17,7 @@ o jeito mais fácil é com docker:
 para rodar sem docker:
 
 - jdk 17 (o maven não precisa, o repositório já tem o `mvnw`)
-- node 20 ou mais novo
+- node 22.22 ou mais novo
 - postgres
 
 ---
