@@ -40,7 +40,7 @@ export default function ListaPacientes() {
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/paciente?arquivados=" + showArchived)
+        apiService.get("/patients?archived=" + showArchived)
             .then((patientList) => {
                 if (isCurrentRequest) {
                     setPatients(patientList);
@@ -80,7 +80,7 @@ export default function ListaPacientes() {
         setActionError(null);
         setBusyPatientId(patient.id);
         try {
-            await apiService.put("/paciente/" + patient.id + "/arquivamento");
+            await apiService.put("/patients/" + patient.id + "/archive");
             setNotice(patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.");
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
@@ -95,7 +95,7 @@ export default function ListaPacientes() {
         setActionError(null);
         setBusyPatientId(patient.id);
         try {
-            await apiService.put("/paciente/" + patient.id + "/reativacao");
+            await apiService.put("/patients/" + patient.id + "/reactivate");
             setNotice(patient.name + " voltou para a lista de ativos.");
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {

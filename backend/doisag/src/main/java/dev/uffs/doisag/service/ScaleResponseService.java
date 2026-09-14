@@ -49,8 +49,6 @@ public class ScaleResponseService {
     public static final String INVALID_PERIOD_MESSAGE = "O fim do período precisa ser depois do início";
     public static final String PRESCRIBER_SCALE_MESSAGE =
             "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta";
-    public static final String PATIENT_SCALE_MESSAGE =
-            "Essa resposta é do paciente. Para corrigir, anule com o motivo";
     public static final String REVIEWED_MESSAGE =
             "O prescritor já analisou esta resposta. Fale com ele para corrigir";
     public static final String ANNULLED_MESSAGE = "Resposta anulada não muda mais";
@@ -110,7 +108,7 @@ public class ScaleResponseService {
                 .orElseGet(ScaleResponse::new);
         boolean isNew = response.getId() == null;
         if (!isNew) {
-            checkCanBeChanged(response, true);
+            checkCanBeChanged(response);
         }
 
         response.setPatient(patient);
@@ -162,10 +160,13 @@ public class ScaleResponseService {
     // o paciente corrige enquanto o prescritor n analisou, e depois
     // disso a correcao passa a ser anulacao com motivo
     @Transactional
-    public ScaleResponseDTO update(Long responseId, ScaleResponseCreateDTO answerData, boolean byPatient) {
+    public ScaleResponseDTO update(Long responseId, ScaleResponseCreateDTO answerData) {
         ScaleResponse response = findResponse(responseId);
-        checkWhoAnswers(response, byPatient);
-        checkCanBeChanged(response, byPatient);
+        // o MEEM eh do prescritor e corrigir ele eh anular e aplicar de novo
+        if (!response.getScaleType().isFilledByPatient()) {
+            throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
+        }
+        checkCanBeChanged(response);
 
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
         fillAnswersAndScore(response, definition, answerData.answers());
@@ -368,23 +369,11 @@ public class ScaleResponseService {
                 : periodStart;
     }
 
-    // cada um corrige o q respondeu: o paciente as escalas dele e o
-    // prescritor so o MEEM, q ele mesmo aplicou na consulta
-    private void checkWhoAnswers(ScaleResponse response, boolean byPatient) {
-        boolean patientScale = response.getScaleType().isFilledByPatient();
-        if (byPatient && !patientScale) {
-            throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
-        }
-        if (!byPatient && patientScale) {
-            throw new BusinessException(PATIENT_SCALE_MESSAGE);
-        }
-    }
-
-    private void checkCanBeChanged(ScaleResponse response, boolean byPatient) {
+    private void checkCanBeChanged(ScaleResponse response) {
         if (response.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
         }
-        if (byPatient && response.isReviewed()) {
+        if (response.isReviewed()) {
             throw new BusinessException(REVIEWED_MESSAGE);
         }
     }

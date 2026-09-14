@@ -103,7 +103,7 @@ class AuditTrailTest {
     void appointmentCreatedAndCanceledByThePrescriberIsRecorded() throws Exception {
         String appointmentBody = "{\"patientId\":" + patient.getId() + ",\"dateTime\":\""
                 + TODAY.plusMonths(1) + "T09:00:00\",\"modality\":\"PRESENCIAL\"}";
-        String response = mockMvc.perform(post("/consulta")
+        String response = mockMvc.perform(post("/appointments")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(appointmentBody))
@@ -111,7 +111,7 @@ class AuditTrailTest {
                 .andReturn().getResponse().getContentAsString();
         Long appointmentId = new ObjectMapper().readTree(response).get("id").asLong();
 
-        mockMvc.perform(put("/consulta/" + appointmentId + "/cancelar").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(put("/appointments/" + appointmentId + "/cancel").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
 
         // o evento mais recente vem primeiro
@@ -127,7 +127,7 @@ class AuditTrailTest {
     void prescriptionIsRecordedAsCreation() throws Exception {
         Appointment appointment = saveAppointment();
 
-        mockMvc.perform(post("/consulta/" + appointment.getId() + "/prescricao")
+        mockMvc.perform(post("/appointments/" + appointment.getId() + "/prescriptions")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
@@ -142,11 +142,11 @@ class AuditTrailTest {
     @Test
     void openingTheChartSeveralTimesRecordsOneAccess() throws Exception {
         String prescriberToken = bearerTokenOf(prescriber);
-        mockMvc.perform(get("/paciente/" + patient.getId()).header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/consultas").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", prescriberToken))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/prescricoes").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", prescriberToken))
                 .andExpect(status().isOk());
 
         readPatientTrail(TODAY, TODAY, 0)
@@ -158,7 +158,7 @@ class AuditTrailTest {
 
     @Test
     void patientReadingTheirOwnDataIsNotRecorded() throws Exception {
-        mockMvc.perform(get("/paciente/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk());
 
         readPatientTrail(TODAY, TODAY, 0).andExpect(jsonPath("$.totalEvents").value(0));
@@ -206,7 +206,7 @@ class AuditTrailTest {
     @Test
     void adminSeesWhatStaffDidWithoutPatientNamesOrPatientActions() throws Exception {
         fillHamiltonScaleAsThePatient();
-        mockMvc.perform(get("/paciente/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
 
         Admin admin = new Admin();
@@ -232,7 +232,7 @@ class AuditTrailTest {
 
     @Test
     void automaticFollowUpIsRecordedAsTheSystem() throws Exception {
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/acompanhamento")
+        mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"))
@@ -274,7 +274,7 @@ class AuditTrailTest {
     }
 
     private void fillHamiltonScaleAsThePatient() throws Exception {
-        mockMvc.perform(post("/escalas/hamilton/respostas")
+        mockMvc.perform(post("/scales/hamilton/responses")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"answers\":{\"humorAnsioso\":2}}"))

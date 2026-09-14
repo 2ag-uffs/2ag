@@ -18,7 +18,7 @@ export default function CentralEscalas() {
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/pacientes/" + patientId + "/escalas/central")
+        apiService.get("/patients/" + patientId + "/scales/overview")
             .then((loadedPage) => {
                 if (isCurrentRequest) {
                     setPage(loadedPage);

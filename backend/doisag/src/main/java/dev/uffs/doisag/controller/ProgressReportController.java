@@ -30,18 +30,18 @@ public class ProgressReportController {
     // fica fora da rota de paciente pq n depende de nenhum: eh a lista
     // de possibilidades do sistema
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
-    @GetMapping("/progresso/atributos")
+    @GetMapping("/progress/attributes")
     public List<TrackableAttributeDTO> getTrackableAttributes() {
         return progressReportService.getTrackableAttributes();
     }
 
     // endpoint que o front chama pra montar os graficos
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/pacientes/{patientId}/progresso")
+    @GetMapping("/patients/{patientId}/progress")
     public ResponseEntity<List<ProgressDataPointDTO>> getProgress(
             @PathVariable Long patientId,
-            @RequestParam("atributo") TrackableAttribute attribute,
-            @RequestParam("periodo") TimePeriod period
+            @RequestParam("attribute") TrackableAttribute attribute,
+            @RequestParam("period") TimePeriod period
     ) {
         List<ProgressDataPointDTO> progressData =
                 progressReportService.getPatientProgress(patientId, attribute, period);
@@ -50,10 +50,10 @@ public class ProgressReportController {
 
     // o q o paciente escreveu nas escalas do periodo (RF07)
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/pacientes/{patientId}/progresso/comentarios")
+    @GetMapping("/patients/{patientId}/progress/comments")
     public ResponseEntity<List<ProgressCommentDTO>> getComments(
             @PathVariable Long patientId,
-            @RequestParam("periodo") TimePeriod period
+            @RequestParam("period") TimePeriod period
     ) {
         return ResponseEntity.ok(progressReportService.getPatientComments(patientId, period));
     }
@@ -62,10 +62,10 @@ public class ProgressReportController {
     // paciente foi atendido. serve pra ler a curva junto com a conduta:
     // se o sintoma virou depois de uma consulta, da pra ver
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/pacientes/{patientId}/progresso/consultas")
+    @GetMapping("/patients/{patientId}/progress/appointments")
     public ResponseEntity<List<AppointmentMarkerDTO>> getAppointmentMarkers(
             @PathVariable Long patientId,
-            @RequestParam("periodo") TimePeriod period
+            @RequestParam("period") TimePeriod period
     ) {
         return ResponseEntity.ok(appointmentService.getMarcadoresDoPaciente(patientId, period));
     }

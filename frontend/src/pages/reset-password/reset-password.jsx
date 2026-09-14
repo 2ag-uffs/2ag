@@ -47,7 +47,7 @@ export default function ResetPassword() {
         setIsSubmitting(true);
         try {
             await apiService.post("/auth/password-reset/confirm", {token: token, newPassword: newPassword});
-            navigate("/login", {replace: true, state: {notice: "Senha nova criada. Entre com ela."}});
+            navigate("/entrar", {replace: true, state: {notice: "Senha nova criada. Entre com ela."}});
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();

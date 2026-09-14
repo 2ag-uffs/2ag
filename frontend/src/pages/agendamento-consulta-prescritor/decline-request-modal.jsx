@@ -16,7 +16,7 @@ export default function DeclineRequestModal({request, onClose, onDeclined}) {
         setFormError(null);
         setIsSaving(true);
         try {
-            await apiService.put("/consulta/" + request.id + "/recusa", {
+            await apiService.put("/appointments/" + request.id + "/decline", {
                 reason: reason.trim() === "" ? null : reason.trim(),
             });
             onDeclined();

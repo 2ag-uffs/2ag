@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 // horarios de atendimento do prescritor logado (RF11)
 @RestController
-@RequestMapping("/agenda/disponibilidade")
+@RequestMapping("/availability")
 public class AvailabilityController {
 
     private final AvailabilityService availabilityService;

@@ -74,7 +74,7 @@ export default function Progresso() {
     // o catalogo vem do backend, entao a tela n tem uma lista de escalas
     // e atributos repetida aqui dentro pra ficar desatualizada
     useEffect(() => {
-        apiService.get("/progresso/atributos")
+        apiService.get("/progress/attributes")
             .then((loadedAttributes) => {
                 setAttributes(loadedAttributes);
                 if (loadedAttributes.length > 0) {
@@ -110,7 +110,7 @@ export default function Progresso() {
         setIsLoading(true);
         setLoadError(null);
 
-        apiService.get("/pacientes/" + patientId + "/progresso?atributo=" + chosenAttribute + "&periodo=" + period)
+        apiService.get("/patients/" + patientId + "/progress?attribute=" + chosenAttribute + "&period=" + period)
             .then((series) => setPoints(series))
             .catch((requestError) => {
                 setLoadError(requestError instanceof ApiError
@@ -128,7 +128,7 @@ export default function Progresso() {
             setDosePoints([]);
             return;
         }
-        const url = "/pacientes/" + patientId + "/progresso?periodo=" + period + "&atributo=";
+        const url = "/patients/" + patientId + "/progress?period=" + period + "&attribute=";
         Promise.all([apiService.get(url + "GOTAS_MANHA"), apiService.get(url + "GOTAS_TARDE")])
             .then(([morning, afternoon]) => setDosePoints(sumByDate(morning, afternoon)))
             .catch(() => setDosePoints([]));
@@ -140,13 +140,13 @@ export default function Progresso() {
         if (!patientId) {
             return;
         }
-        apiService.get("/pacientes/" + patientId + "/progresso/consultas?periodo=" + period)
+        apiService.get("/patients/" + patientId + "/progress/appointments?period=" + period)
             // se as consultas falharem o grafico ainda serve: elas sao
             // contexto, n o dado principal
             .then(setAppointments)
             .catch(() => setAppointments([]));
 
-        apiService.get("/pacientes/" + patientId + "/progresso/comentarios?periodo=" + period)
+        apiService.get("/patients/" + patientId + "/progress/comments?period=" + period)
             .then(setComments)
             .catch(() => setComments([]));
     }, [patientId, period]);
@@ -399,8 +399,8 @@ export default function Progresso() {
                 {chartRows.length > 0 && (
                     <a
                         className="button-secondary"
-                        href={"/api/pacientes/" + patientId + "/exportacao/evolucao.csv?atributo="
-                            + chosenAttribute + "&periodo=" + period}
+                        href={"/api/patients/" + patientId + "/export/progress.csv?attribute="
+                            + chosenAttribute + "&period=" + period}
                         download={true}
                     >
                         Baixar esta série em CSV

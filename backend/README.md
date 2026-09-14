@@ -128,9 +128,9 @@ o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda 
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /pacientes/{patientId}/anamneses` | resumo das anamneses do paciente, da mais recente para a mais antiga |
-| `GET /pacientes/{patientId}/consultas` | consultas do paciente |
-| `GET /pacientes/{patientId}/prescricoes` | prescrições do paciente, com a data da consulta que gerou cada uma |
+| `GET /patients/{patientId}/anamneses` | resumo das anamneses do paciente, da mais recente para a mais antiga |
+| `GET /patients/{patientId}/appointments` | consultas do paciente |
+| `GET /patients/{patientId}/prescriptions` | prescrições do paciente, com a data da consulta que gerou cada uma |
 
 nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo paciente ou pelo prescritor logado.
 
@@ -138,19 +138,19 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /agenda/disponibilidade` | horários de atendimento da semana e duração padrão das consultas do prescritor logado |
-| `PUT /agenda/disponibilidade` | troca os horários de atendimento e a duração padrão, de 15 a 240 minutos |
-| `GET /consulta?inicio=&fim=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira |
-| `GET /consulta/pedidos` | pedidos esperando a resposta do prescritor logado |
-| `POST /consulta` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `durationMinutes`, vale a duração padrão |
-| `GET /consulta/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |
-| `PUT /consulta/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo |
-| `PUT /consulta/{id}/confirmacao` | o prescritor confirma o pedido |
-| `PUT /consulta/{id}/recusa` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
-| `PUT /consulta/{id}/cancelar` | o paciente ou o prescritor cancela o pedido ou a consulta |
-| `GET /consulta/horarios-livres?inicio=&fim=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias |
-| `POST /consulta/agendamento` | o paciente pede um horário livre, com modalidade e motivo opcional |
-| `GET /consulta/minhas` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
+| `GET /availability` | horários de atendimento da semana e duração padrão das consultas do prescritor logado |
+| `PUT /availability` | troca os horários de atendimento e a duração padrão, de 15 a 240 minutos |
+| `GET /appointments?from=&to=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira |
+| `GET /appointments/requests` | pedidos esperando a resposta do prescritor logado |
+| `POST /appointments` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `durationMinutes`, vale a duração padrão |
+| `GET /appointments/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |
+| `PUT /appointments/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo |
+| `PUT /appointments/{id}/confirm` | o prescritor confirma o pedido |
+| `PUT /appointments/{id}/decline` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
+| `PUT /appointments/{id}/cancel` | o paciente ou o prescritor cancela o pedido ou a consulta |
+| `GET /appointments/free-slots?from=&to=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias |
+| `POST /appointments/requests` | o paciente pede um horário livre, com modalidade e motivo opcional |
+| `GET /appointments/mine` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
 
 - `inicio` e `fim` são datas no formato `aaaa-mm-dd`, as duas inclusive
 - os horários livres saem da divisão dos períodos de atendimento pela duração padrão, sem os que já passaram e sem os que se sobrepõem a um pedido ou consulta
@@ -158,7 +158,7 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
-- só consulta confirmada recebe registro clínico (`PUT /consulta/{id}/registro-clinico`) e prescrição (`POST /consulta/{id}/prescricao`)
+- só consulta confirmada recebe registro clínico (`PUT /appointments/{id}/clinical-record`) e prescrição (`POST /appointments/{id}/prescriptions`)
 
 ## escalas
 
@@ -166,20 +166,20 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /escalas/definicoes` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos |
-| `GET /escalas/definicoes/{slug}` | o formulário de uma escala |
-| `GET /escalas/designaveis` | as escalas que o prescritor pode enviar ao paciente |
-| `POST /escalas/{slug}/respostas` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
-| `GET /escalas/{slug}/respostas` | as respostas do paciente logado naquela escala, que a grade da semana usa |
-| `GET /escalas/respostas/{id}` | uma resposta com o escore, a faixa e o valor de cada item |
-| `PUT /escalas/respostas/{id}` | corrige a resposta |
-| `PUT /escalas/respostas/{id}/analise` | o prescritor marca que já conferiu, e o paciente para de editar |
-| `PUT /escalas/respostas/{id}/anulacao` | anula a resposta com motivo |
-| `POST /escalas/mini-exame/consulta/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta |
-| `POST /pacientes/{patientId}/escalas` | envia uma escala avulsa ao paciente |
-| `GET /pacientes/{patientId}/escalas` | as tarefas de escala do paciente |
-| `GET /pacientes/{patientId}/escalas/central` | o que espera resposta e o que já foi respondido |
-| `GET /pacientes/{patientId}/escalas/respostas` | as escalas respondidas, para o histórico |
+| `GET /scales/definitions` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos |
+| `GET /scales/definitions/{slug}` | o formulário de uma escala |
+| `GET /scales/assignable` | as escalas que o prescritor pode enviar ao paciente |
+| `POST /scales/{slug}/responses` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
+| `GET /scales/{slug}/responses` | as respostas do paciente logado naquela escala, que a grade da semana usa |
+| `GET /scales/responses/{id}` | uma resposta com o escore, a faixa e o valor de cada item |
+| `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou. o MEEM não se corrige: o prescritor anula e aplica de novo |
+| `PUT /scales/responses/{id}/review` | o prescritor marca que já conferiu, e o paciente para de editar |
+| `PUT /scales/responses/{id}/annul` | anula a resposta com motivo |
+| `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta |
+| `POST /patients/{patientId}/scales` | envia uma escala avulsa ao paciente |
+| `GET /patients/{patientId}/scales` | as tarefas de escala do paciente |
+| `GET /patients/{patientId}/scales/overview` | o que espera resposta e o que já foi respondido |
+| `GET /patients/{patientId}/scales/responses` | as escalas respondidas, para o histórico |
 
 - cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10)
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
@@ -191,11 +191,11 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /pacientes/{patientId}/exportacao/consultas.csv` | as consultas do paciente, com a conduta de cada atendimento |
-| `GET /pacientes/{patientId}/exportacao/prescricoes.csv` | as prescrições, com composição, posologia e vigência |
-| `GET /pacientes/{patientId}/exportacao/escalas.csv` | as escalas respondidas, uma linha por item, com o escore e a faixa |
-| `GET /pacientes/{patientId}/exportacao/anamnese.csv` | a anamnese, uma linha por pergunta respondida |
-| `GET /pacientes/{patientId}/exportacao/evolucao.csv?atributo=&periodo=` | a série de um atributo no período |
+| `GET /patients/{patientId}/export/appointments.csv` | as consultas do paciente, com a conduta de cada atendimento |
+| `GET /patients/{patientId}/export/prescriptions.csv` | as prescrições, com composição, posologia e vigência |
+| `GET /patients/{patientId}/export/scales.csv` | as escalas respondidas, uma linha por item, com o escore e a faixa |
+| `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
+| `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
 
 - todas aceitam `anonimo=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente aparece só por um número. só o prescritor pode pedir esse modo
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
@@ -226,8 +226,8 @@ os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /dashboard/paciente/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos |
-| `GET /dashboard/prescritor/{id}` | pacientes ativos, consultas de hoje, pedidos de consulta esperando resposta e escalas vencidas sem resposta |
+| `GET /dashboard/patient/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos |
+| `GET /dashboard/prescriber/{id}` | pacientes ativos, consultas de hoje, pedidos de consulta esperando resposta e escalas vencidas sem resposta |
 
 cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cartão leva para a tela que tem a lista inteira. nada aparece aqui sem origem no resto do sistema.
 
@@ -235,10 +235,10 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cart
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /progresso/atributos` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo e as faixas do instrumento |
-| `GET /pacientes/{patientId}/progresso?atributo=&periodo=` | a série do atributo no período, uma data e um valor por preenchimento |
-| `GET /pacientes/{patientId}/progresso/consultas?periodo=` | as consultas do período, para marcar no gráfico em que dia houve atendimento |
-| `GET /pacientes/{patientId}/progresso/comentarios?periodo=` | o que o paciente escreveu nas escalas do período, por data |
+| `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo e as faixas do instrumento |
+| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento |
+| `GET /patients/{patientId}/progress/appointments?period=` | as consultas do período, para marcar no gráfico em que dia houve atendimento |
+| `GET /patients/{patientId}/progress/comments?period=` | o que o paciente escreveu nas escalas do período, por data |
 
 - `periodo` é `DIAS_15`, `DIAS_30`, `DIAS_60`, `DIAS_90` ou `TUDO`. o `TUDO` é o "todo o tempo" da tela do prescritor
 - dia sem resposta não vira ponto no zero: ele simplesmente não entra na série (RN10)
@@ -247,7 +247,7 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cart
 
 ## guarda do prontuário
 
-o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /pacientes/{patientId}/acompanhamento/encerrar` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
+o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /patients/{patientId}/treatment-protocol/end` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
 
 ## trilha de auditoria
 

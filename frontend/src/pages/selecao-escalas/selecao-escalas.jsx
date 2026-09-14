@@ -24,9 +24,9 @@ export default function SelecaoEscalas() {
         let isCurrentRequest = true;
 
         Promise.all([
-            apiService.get("/paciente/" + patientId),
-            apiService.get("/pacientes/" + patientId + "/escalas"),
-            apiService.get("/escalas/designaveis"),
+            apiService.get("/patients/" + patientId),
+            apiService.get("/patients/" + patientId + "/scales"),
+            apiService.get("/scales/assignable"),
         ])
             .then(([patient, tasks, assignable]) => {
                 if (isCurrentRequest) {
@@ -77,7 +77,7 @@ export default function SelecaoEscalas() {
         try {
             // uma de cada vez pra saber o q chegou ao paciente se alguma falhar
             for (const scale of scalesToSend) {
-                await apiService.post("/pacientes/" + patientId + "/escalas", {scaleType: scale.type});
+                await apiService.post("/patients/" + patientId + "/scales", {scaleType: scale.type});
                 sent.push(scale.type);
             }
             navigate("/paciente/" + patientId + "/historico", {

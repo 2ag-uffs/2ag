@@ -78,7 +78,7 @@ class PasswordExposureTest {
 
     @Test
     void listarPacientesNaoPodeTrazerSenha() throws Exception {
-        String body = corpoDe("/paciente");
+        String body = corpoDe("/patients");
 
         assertThat(body).contains("Paciente de Teste"); // veio conteudo mesmo
         assertThat(body).doesNotContain(KNOWN_HASH);
@@ -87,7 +87,7 @@ class PasswordExposureTest {
 
     @Test
     void buscarPacientePorIdNaoPodeTrazerSenha() throws Exception {
-        String body = corpoDe("/paciente/" + patientId);
+        String body = corpoDe("/patients/" + patientId);
 
         assertThat(body).contains("Paciente de Teste");
         assertThat(body).doesNotContain(KNOWN_HASH);
@@ -114,7 +114,7 @@ class PasswordExposureTest {
         scale.setPatient(patientRepository.findById(patientId).orElseThrow());
         Long scaleId = scaleResponseRepository.save(scale).getId();
 
-        String body = corpoDe("/escalas/respostas/" + scaleId);
+        String body = corpoDe("/scales/responses/" + scaleId);
 
         assertThat(body).doesNotContain(KNOWN_HASH);
         assertThat(body).doesNotContain("password");

@@ -14,7 +14,7 @@ export default function MyPrescriptions() {
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/pacientes/" + loggedUser.id + "/prescricoes")
+        apiService.get("/patients/" + loggedUser.id + "/prescriptions")
             .then((prescriptionList) => {
                 if (isCurrentRequest) {
                     setPrescriptions(prescriptionList);

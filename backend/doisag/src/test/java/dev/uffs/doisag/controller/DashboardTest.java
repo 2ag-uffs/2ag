@@ -163,13 +163,13 @@ class DashboardTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions patientPanel() throws Exception {
-        return mockMvc.perform(get("/dashboard/paciente/" + patient.getId())
+        return mockMvc.perform(get("/dashboard/patient/" + patient.getId())
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk());
     }
 
     private org.springframework.test.web.servlet.ResultActions prescriberPanel() throws Exception {
-        return mockMvc.perform(get("/dashboard/prescritor/" + prescriber.getId())
+        return mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId())
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
     }

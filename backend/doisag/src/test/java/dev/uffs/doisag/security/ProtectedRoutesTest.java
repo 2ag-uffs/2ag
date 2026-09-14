@@ -34,10 +34,10 @@ class ProtectedRoutesTest {
 
     @Test
     void semTokenDevolve401() throws Exception {
-        mockMvc.perform(get("/paciente"))
+        mockMvc.perform(get("/patients"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/pacientes/1/escalas"))
+        mockMvc.perform(get("/patients/1/scales"))
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(get("/profile"))
@@ -48,17 +48,17 @@ class ProtectedRoutesTest {
     // o front n consegue ler a mensagem
     @Test
     void erroDeAutenticacaoVemEmJsonNoFormatoPadrao() throws Exception {
-        mockMvc.perform(get("/paciente"))
+        mockMvc.perform(get("/patients"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.path").value("/paciente"))
+                .andExpect(jsonPath("$.path").value("/patients"))
                 .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void tokenComTextoQueNaoEhJwtDevolve401() throws Exception {
-        mockMvc.perform(get("/paciente").header("Authorization", "Bearer isso-nao-e-um-jwt"))
+        mockMvc.perform(get("/patients").header("Authorization", "Bearer isso-nao-e-um-jwt"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -73,7 +73,7 @@ class ProtectedRoutesTest {
                 .signWith(Keys.hmacShaKeyFor(outraChave.getBytes(StandardCharsets.UTF_8)))
                 .compact();
 
-        mockMvc.perform(get("/paciente").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/patients").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -86,7 +86,7 @@ class ProtectedRoutesTest {
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
 
-        mockMvc.perform(get("/paciente").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/patients").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
     }
 }

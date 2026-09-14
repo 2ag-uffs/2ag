@@ -67,15 +67,15 @@ class PatientArchiveTest {
                 .andExpect(jsonPath("$.archived").value(true))
                 .andExpect(jsonPath("$.archivedAt").isNotEmpty());
 
-        mockMvc.perform(get("/paciente").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients").header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(activePatient.getId().intValue()));
-        mockMvc.perform(get("/paciente?arquivados=true").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients?archived=true").header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(patient.getId().intValue()));
-        mockMvc.perform(get("/dashboard/prescritor/" + prescriber.getId()).header("Authorization", prescriberToken))
+        mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.activePatients").value(1));
     }
@@ -88,19 +88,19 @@ class PatientArchiveTest {
 
         archive(patient, prescriber).andExpect(status().isOk());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/acompanhamento").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/treatment-protocol").header("Authorization", prescriberToken))
                 .andExpect(status().isNotFound());
         // o job do dia n manda mais nada pro arquivado
         treatmentProtocolService.designarEscalasVencidas(LocalDate.now());
-        mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(jsonPath("$.pendingScales.length()").value(0));
 
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/escalas")
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
                         .header("Authorization", prescriberToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"scaleType\":\"ESCALA_HAMILTON\"}"))
                 .andExpect(status().isCreated());
-        mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(jsonPath("$.pendingScales.length()").value(1));
     }
 
@@ -109,9 +109,9 @@ class PatientArchiveTest {
         archive(patient, prescriber).andExpect(status().isOk());
 
         String patientToken = bearerTokenOf(patient);
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/consultas").header("Authorization", patientToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", patientToken))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/prescricoes").header("Authorization", patientToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
                 .andExpect(status().isOk());
     }
 
@@ -127,7 +127,7 @@ class PatientArchiveTest {
         reactivate(patient, prescriber)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.archived").value(false));
-        mockMvc.perform(get("/paciente").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients").header("Authorization", prescriberToken))
                 .andExpect(jsonPath("$.length()").value(2));
         startFollowUp(prescriberToken).andExpect(status().isCreated());
     }
@@ -171,17 +171,17 @@ class PatientArchiveTest {
     }
 
     private ResultActions archive(Patient archivedPatient, Users user) throws Exception {
-        return mockMvc.perform(put("/paciente/" + archivedPatient.getId() + "/arquivamento")
+        return mockMvc.perform(put("/patients/" + archivedPatient.getId() + "/archive")
                 .header("Authorization", bearerTokenOf(user)));
     }
 
     private ResultActions reactivate(Patient reactivatedPatient, Users user) throws Exception {
-        return mockMvc.perform(put("/paciente/" + reactivatedPatient.getId() + "/reativacao")
+        return mockMvc.perform(put("/patients/" + reactivatedPatient.getId() + "/reactivate")
                 .header("Authorization", bearerTokenOf(user)));
     }
 
     private ResultActions startFollowUp(String prescriberToken) throws Exception {
-        return mockMvc.perform(post("/pacientes/" + patient.getId() + "/acompanhamento")
+        return mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
                 .header("Authorization", prescriberToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(FOLLOW_UP_BODY));

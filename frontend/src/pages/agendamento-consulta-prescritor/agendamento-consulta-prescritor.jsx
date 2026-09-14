@@ -59,10 +59,10 @@ export default function AgendamentoPrescritor() {
         let isCurrentRequest = true;
 
         Promise.all([
-            apiService.get("/consulta?inicio=" + weekStartIso + "&fim=" + weekEndIso),
-            apiService.get("/consulta/pedidos"),
-            apiService.get("/agenda/disponibilidade"),
-            apiService.get("/paciente"),
+            apiService.get("/appointments?from=" + weekStartIso + "&to=" + weekEndIso),
+            apiService.get("/appointments/requests"),
+            apiService.get("/availability"),
+            apiService.get("/patients"),
         ])
             .then(([weekAppointments, waitingRequests, availability, patients]) => {
                 if (isCurrentRequest) {
@@ -98,7 +98,7 @@ export default function AgendamentoPrescritor() {
         setActionError(null);
         setBusyAppointmentId(request.id);
         try {
-            await apiService.put("/consulta/" + request.id + "/confirmacao");
+            await apiService.put("/appointments/" + request.id + "/confirm");
             finishAction("Consulta de " + request.patientName + " confirmada. O paciente recebeu o aviso.");
         } catch (requestError) {
             showActionError(requestError);
@@ -114,7 +114,7 @@ export default function AgendamentoPrescritor() {
         setActionError(null);
         setBusyAppointmentId(appointment.id);
         try {
-            await apiService.put("/consulta/" + appointment.id + "/cancelar");
+            await apiService.put("/appointments/" + appointment.id + "/cancel");
             finishAction("Consulta de " + appointment.patientName + " cancelada. O paciente recebeu o aviso.");
         } catch (requestError) {
             showActionError(requestError);
@@ -125,7 +125,7 @@ export default function AgendamentoPrescritor() {
 
     // se a api recusar o erro volta pro modal mostrar
     const createAppointment = async (values) => {
-        await apiService.post("/consulta", {
+        await apiService.post("/appointments", {
             patientId: Number(values.patientId),
             dateTime: toApiDateTime(values.date, values.time),
             modality: values.modality,
@@ -138,7 +138,7 @@ export default function AgendamentoPrescritor() {
 
     const rescheduleAppointment = async (values) => {
         const patientName = rescheduleTarget.patientName;
-        await apiService.put("/consulta/" + rescheduleTarget.id, {
+        await apiService.put("/appointments/" + rescheduleTarget.id, {
             dateTime: toApiDateTime(values.date, values.time),
             modality: values.modality,
             durationMinutes: Number(values.durationMinutes),

@@ -33,7 +33,7 @@ import java.util.List;
 // agenda de consultas (RF10 e RF11)
 // o registro clinico do q aconteceu na consulta fica no ConsultationController
 @RestController
-@RequestMapping("/consulta")
+@RequestMapping("/appointments")
 public class AppointmentsController {
 
     private final AppointmentService appointmentService;
@@ -54,7 +54,7 @@ public class AppointmentsController {
     // o paciente pede um horario livre da agenda do prescritor dele
     // a rota eh separada pra ele nunca escrever campo clinico
     @PreAuthorize("hasRole('PATIENT')")
-    @PostMapping("/agendamento")
+    @PostMapping("/requests")
     public ResponseEntity<AgendaAppointmentDTO> request(@RequestBody @Valid AppointmentRequestDTO requestData,
                                                         @AuthenticationPrincipal Patient loggedPatient) {
         Appointment appointment = appointmentService.request(loggedPatient.getId(), requestData);
@@ -64,17 +64,17 @@ public class AppointmentsController {
     // horarios livres de alguns dias na agenda do prescritor do paciente logado
     // devolve so inicio e fim sem dizer quem ocupa o resto
     @PreAuthorize("hasRole('PATIENT')")
-    @GetMapping("/horarios-livres")
+    @GetMapping("/free-slots")
     public List<TimeSlotDTO> getFreeSlots(
-            @RequestParam("inicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam("fim") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @AuthenticationPrincipal Patient loggedPatient) {
         return appointmentService.getFreeSlotsForPatient(loggedPatient.getId(), from, to);
     }
 
     // proximos pedidos e consultas do paciente logado
     @PreAuthorize("hasRole('PATIENT')")
-    @GetMapping("/minhas")
+    @GetMapping("/mine")
     public List<AgendaAppointmentDTO> getMyUpcomingAppointments(@AuthenticationPrincipal Patient loggedPatient) {
         return toAgendaList(appointmentService.getUpcomingForPatient(loggedPatient.getId()));
     }
@@ -83,15 +83,15 @@ public class AppointmentsController {
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<AgendaAppointmentDTO> getAgenda(
-            @RequestParam(name = "inicio", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(name = "fim", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @AuthenticationPrincipal Prescriber loggedPrescriber) {
         return toAgendaList(appointmentService.getAgenda(loggedPrescriber.getId(), from, to));
     }
 
     // pedidos de pacientes esperando a resposta do prescritor logado
     @PreAuthorize("hasRole('PRESCRIBER')")
-    @GetMapping("/pedidos")
+    @GetMapping("/requests")
     public List<AgendaAppointmentDTO> getWaitingRequests(@AuthenticationPrincipal Prescriber loggedPrescriber) {
         return toAgendaList(appointmentService.getWaitingRequests(loggedPrescriber.getId()));
     }
@@ -111,14 +111,14 @@ public class AppointmentsController {
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
-    @PutMapping("/{id}/confirmacao")
+    @PutMapping("/{id}/confirm")
     public AgendaAppointmentDTO confirm(@PathVariable Long id) {
         return new AgendaAppointmentDTO(appointmentService.confirm(id));
     }
 
     // o motivo da recusa eh opcional e vai no aviso pro paciente
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
-    @PutMapping("/{id}/recusa")
+    @PutMapping("/{id}/decline")
     public AgendaAppointmentDTO decline(@PathVariable Long id,
                                         @RequestBody(required = false) @Valid AppointmentDeclineDTO declineData) {
         return new AgendaAppointmentDTO(appointmentService.decline(id, declineData));
@@ -126,7 +126,7 @@ public class AppointmentsController {
 
     // o paciente e o prescritor cancelam e a regra das 24 horas vale so pro paciente
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
-    @PutMapping("/{id}/cancelar")
+    @PutMapping("/{id}/cancel")
     public AgendaAppointmentDTO cancel(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {
         return new AgendaAppointmentDTO(appointmentService.cancel(id, loggedUser));
     }

@@ -31,14 +31,14 @@ export default function HistoricoClinicoPrescritor() {
 
     useEffect(() => {
         let isCurrentRequest = true;
-        const patientPath = "/pacientes/" + patientId;
+        const patientPath = "/patients/" + patientId;
 
         Promise.all([
-            apiService.get("/paciente/" + patientId),
-            apiService.get(patientPath + "/consultas"),
-            apiService.get(patientPath + "/prescricoes"),
+            apiService.get("/patients/" + patientId),
+            apiService.get(patientPath + "/appointments"),
+            apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
-            apiService.get(patientPath + "/escalas/central"),
+            apiService.get(patientPath + "/scales/overview"),
         ])
             .then(([patient, appointments, prescriptions, anamneses, scalesPage]) => {
                 if (isCurrentRequest) {
@@ -61,7 +61,7 @@ export default function HistoricoClinicoPrescritor() {
     // marcar como analisada trava a correcao do paciente naquela resposta
     const reviewScale = async (response) => {
         try {
-            await apiService.put("/escalas/respostas/" + response.id + "/analise");
+            await apiService.put("/scales/responses/" + response.id + "/review");
             setNotice("Escala marcada como analisada. O paciente não corrige mais essa resposta.");
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
@@ -137,7 +137,7 @@ export default function HistoricoClinicoPrescritor() {
                     onClick={() => setAnnulmentTarget({
                         title: "Anular consulta",
                         recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
-                        endpoint: "/consulta/" + appointment.id + "/anulacao",
+                        endpoint: "/appointments/" + appointment.id + "/annul",
                     })}
                 >
                     Anular
@@ -158,7 +158,7 @@ export default function HistoricoClinicoPrescritor() {
                     title: "Anular prescrição",
                     recordDescription: prescription.productDescription + ", emitida em "
                         + formatDate(prescription.appointmentDateTime),
-                    endpoint: "/prescricao/" + prescription.id + "/anulacao",
+                    endpoint: "/prescriptions/" + prescription.id + "/annul",
                 })}
             >
                 Anular
@@ -177,7 +177,7 @@ export default function HistoricoClinicoPrescritor() {
                 onClick={() => setAnnulmentTarget({
                     title: "Anular anamnese",
                     recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
-                    endpoint: "/anamnese/" + anamnesis.id + "/anulacao",
+                    endpoint: "/anamneses/" + anamnesis.id + "/annul",
                 })}
             >
                 Anular
@@ -327,7 +327,7 @@ export default function HistoricoClinicoPrescritor() {
                     onAnnul={(response) => setAnnulmentTarget({
                         title: "Anular escala respondida",
                         recordDescription: response.scaleName + " de " + formatDate(response.periodStart),
-                        endpoint: "/escalas/respostas/" + response.id + "/anulacao",
+                        endpoint: "/scales/responses/" + response.id + "/annul",
                     })}
                 />
             </section>

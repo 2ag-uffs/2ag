@@ -158,7 +158,7 @@ export default function SignUp() {
         try {
             const user = await apiService.post("/auth/register", requestBody);
             setLoggedUser(user);
-            navigate("/dashboard-paciente", {replace: true});
+            navigate("/painel-paciente", {replace: true});
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
@@ -198,7 +198,7 @@ export default function SignUp() {
         return (
             <AuthLayout title="Criar conta">
                 <p className={"aviso aviso--atencao " + styles.message}>{statusMessage}</p>
-                <Link to="/login" className={"button button-secondary " + styles.linkButton}>
+                <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
                     Já tenho conta
                 </Link>
             </AuthLayout>
@@ -371,7 +371,7 @@ export default function SignUp() {
             </form>
 
             <p className={styles.loginNote}>
-                Já tem conta? <Link to="/login">Entrar</Link>
+                Já tem conta? <Link to="/entrar">Entrar</Link>
             </p>
 
             <Modal show={isTermOpen} title="Termo de consentimento" onClickClose={() => setIsTermOpen(false)}>

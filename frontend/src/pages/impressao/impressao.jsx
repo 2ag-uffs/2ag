@@ -33,14 +33,14 @@ export default function Impressao() {
         if (!patientId) {
             return;
         }
-        const patientPath = "/pacientes/" + patientId;
+        const patientPath = "/patients/" + patientId;
 
         Promise.all([
-            apiService.get("/paciente/" + patientId),
-            apiService.get(patientPath + "/consultas"),
-            apiService.get(patientPath + "/prescricoes"),
+            apiService.get("/patients/" + patientId),
+            apiService.get(patientPath + "/appointments"),
+            apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
-            apiService.get(patientPath + "/escalas/respostas"),
+            apiService.get(patientPath + "/scales/responses"),
         ])
             .then(([patient, appointments, prescriptions, anamneses, scales]) => {
                 setHistory({patient, appointments, prescriptions, anamneses, scales});

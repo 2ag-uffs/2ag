@@ -132,7 +132,7 @@ class AnamnesisTest {
                 .andExpect(jsonPath("$.annulmentReason").value("Preenchida no lugar de outra pessoa"))
                 .andExpect(jsonPath("$.annulledByName").value("Prescritora da anamnese"));
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/anamneses").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/anamneses").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].annulled").value(true));
@@ -150,7 +150,7 @@ class AnamnesisTest {
     void onlyThePatientFillsAndOnlyThePrescriberAnnuls() throws Exception {
         Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
 
-        mockMvc.perform(post("/anamnese")
+        mockMvc.perform(post("/anamneses")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(answers())))
@@ -177,21 +177,21 @@ class AnamnesisTest {
     }
 
     private ResultActions fillAnamnesis(Map<String, Object> answers) throws Exception {
-        return mockMvc.perform(post("/anamnese")
+        return mockMvc.perform(post("/anamneses")
                 .header("Authorization", bearerTokenOf(patient))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(answers)));
     }
 
     private ResultActions updateAnamnesis(Long anamnesisId, Map<String, Object> answers, Users user) throws Exception {
-        return mockMvc.perform(put("/anamnese/" + anamnesisId)
+        return mockMvc.perform(put("/anamneses/" + anamnesisId)
                 .header("Authorization", bearerTokenOf(user))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(answers)));
     }
 
     private ResultActions annul(Long anamnesisId, String reason, Users user) throws Exception {
-        return mockMvc.perform(put("/anamnese/" + anamnesisId + "/anulacao")
+        return mockMvc.perform(put("/anamneses/" + anamnesisId + "/annul")
                 .header("Authorization", bearerTokenOf(user))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("reason", reason))));

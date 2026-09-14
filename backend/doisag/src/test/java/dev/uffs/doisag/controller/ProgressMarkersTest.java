@@ -59,7 +59,7 @@ class ProgressMarkersTest {
     // se alguma escala sumir do catalogo o seletor da tela fica sem opcao
     @Test
     void attributeCatalogListsEveryScale() throws Exception {
-        String body = mockMvc.perform(get("/progresso/atributos").header("Authorization", bearerTokenOf(prescriber)))
+        String body = mockMvc.perform(get("/progress/attributes").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -108,12 +108,12 @@ class ProgressMarkersTest {
     void otherPrescriberAndOtherPatientDoNotSeeTheMarkers() throws Exception {
         saveConsultation(1, AppointmentStatus.CONCLUIDA);
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/consultas")
-                        .param("periodo", "DIAS_30")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", "DIAS_30")
                         .header("Authorization", bearerTokenOf(otherPrescriber)))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/consultas")
-                        .param("periodo", "DIAS_30")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", "DIAS_30")
                         .header("Authorization", bearerTokenOf(patientOfOtherPrescriber)))
                 .andExpect(status().isForbidden());
     }
@@ -131,8 +131,8 @@ class ProgressMarkersTest {
     }
 
     private String markersOf(String token, String period) throws Exception {
-        return mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/consultas")
-                        .param("periodo", period)
+        return mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", period)
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();

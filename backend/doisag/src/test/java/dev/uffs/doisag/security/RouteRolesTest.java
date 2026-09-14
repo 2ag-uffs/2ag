@@ -154,40 +154,40 @@ class RouteRolesTest {
     void patientCannotUseClinicalManagementRoutes() throws Exception {
         String patientToken = bearerTokenOf(patient);
 
-        mockMvc.perform(get("/paciente").header("Authorization", patientToken))
+        mockMvc.perform(get("/patients").header("Authorization", patientToken))
                 .andExpect(status().isForbidden());
 
         // registrar e alterar consulta mesmo sendo a propria
         String appointmentBody = "{\"patientId\":" + patient.getId() + ",\"dateTime\":\"" + NEXT_MONTH
                 + "T15:00:00\",\"modality\":\"PRESENCIAL\"}";
-        mockMvc.perform(post("/consulta").header("Authorization", patientToken)
+        mockMvc.perform(post("/appointments").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content(appointmentBody))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/consulta/" + appointment.getId()).header("Authorization", patientToken)
+        mockMvc.perform(put("/appointments/" + appointment.getId()).header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content(appointmentBody))
                 .andExpect(status().isForbidden());
 
         // registrar o atendimento clinico
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/consultas").header("Authorization", patientToken)
+        mockMvc.perform(post("/patients/" + patient.getId() + "/appointments").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"escrito pelo paciente\"}"))
                 .andExpect(status().isForbidden());
 
         // emitir prescricao e aplicar o meem
-        mockMvc.perform(post("/consulta/" + appointment.getId() + "/prescricao").header("Authorization", patientToken)
+        mockMvc.perform(post("/appointments/" + appointment.getId() + "/prescriptions").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post("/escalas/mini-exame/consulta/" + appointment.getId())
+        mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointment.getId())
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":3}}"))
                 .andExpect(status().isForbidden());
 
         // designar escala e montar o acompanhamento de 90 dias
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/escalas").header("Authorization", patientToken)
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"scaleType\":\"ESCALA_HAMILTON\"}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/acompanhamento").header("Authorization", patientToken)
+        mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"))
                 .andExpect(status().isForbidden());
@@ -228,7 +228,7 @@ class RouteRolesTest {
         Prescriber otherPrescriber = savePrescriber("perfil-outro-prescritor@email.com");
         savePatient("perfil-paciente-de-outro@email.com", otherPrescriber);
 
-        mockMvc.perform(get("/paciente").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/patients").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].email").value("perfil-paciente@email.com"));
@@ -248,7 +248,7 @@ class RouteRolesTest {
         period.setEndTime(LocalTime.of(18, 0));
         availabilityRepository.save(period);
 
-        mockMvc.perform(post("/consulta/agendamento").header("Authorization", bearerTokenOf(patient))
+        mockMvc.perform(post("/appointments/requests").header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("SOLICITADA"))

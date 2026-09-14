@@ -8,26 +8,26 @@ import styles from "./app-layout.module.css";
 // no celular os mesmos itens aparecem na barra de baixo
 const MENU_BY_ROLE = {
     PATIENT: [
-        {path: "/dashboard-paciente", label: "Início", icon: FiHome},
+        {path: "/painel-paciente", label: "Início", icon: FiHome},
         {path: "/progresso", label: "Progresso", icon: FiTrendingUp},
         {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar},
         {path: "/notificacoes", label: "Avisos", icon: FiBell},
         {path: "/perfil", label: "Perfil", icon: FiUser},
     ],
     PRESCRIBER: [
-        {path: "/dashboard-prescritor", label: "Início", icon: FiHome},
+        {path: "/painel-prescritor", label: "Início", icon: FiHome},
         {path: "/lista-paciente", label: "Pacientes", icon: FiUsers},
         {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar},
         {path: "/notificacoes", label: "Avisos", icon: FiBell},
         {path: "/perfil", label: "Perfil", icon: FiUser},
     ],
     ADMIN: [
-        {path: "/admin", label: "Prescritores", icon: FiUsers},
-        {path: "/admin/auditoria", label: "Auditoria", icon: FiShield},
+        {path: "/administracao", label: "Prescritores", icon: FiUsers},
+        {path: "/administracao/auditoria", label: "Auditoria", icon: FiShield},
     ],
 };
 
-// os links usam end pra /admin n ficar marcado quando a tela aberta eh /admin/auditoria
+// os links usam end pra /administracao n ficar marcado quando a tela aberta eh /administracao/auditoria
 function topLinkClass({isActive}) {
     return isActive ? styles.menuLink + " " + styles.menuLinkActive : styles.menuLink;
 }
@@ -59,7 +59,7 @@ export default function AppLayout() {
 
     const handleLogout = async () => {
         await logout();
-        navigate("/login", {replace: true});
+        navigate("/entrar", {replace: true});
     };
 
     return (

@@ -87,7 +87,7 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.prescriberName").value("Prescritora do registro"))
                 .andExpect(jsonPath("$.annulled").value(false));
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/consultas").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].clinicalObservation").value("Dor lombar ha dois anos"));
@@ -177,7 +177,7 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.annulledByName").value("Prescritora do registro"));
 
         String prescriberToken = bearerTokenOf(prescriber);
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/consultas").header("Authorization", prescriberToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].annulled").value(true));
@@ -213,7 +213,7 @@ class ConsultationRecordTest {
     @Test
     void consultationWithPrescriptionIsNotAnnulledFirst() throws Exception {
         Long appointmentId = registeredConsultationId();
-        mockMvc.perform(post("/consulta/" + appointmentId + "/prescricao")
+        mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
@@ -230,8 +230,8 @@ class ConsultationRecordTest {
         Long appointmentId = registeredConsultationId();
         annul(appointmentId, "Consulta lancada duas vezes").andExpect(status().isOk());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/consultas")
-                        .param("periodo", "DIAS_30")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", "DIAS_30")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
@@ -242,12 +242,12 @@ class ConsultationRecordTest {
         Long appointmentId = registeredConsultationId();
         String patientToken = bearerTokenOf(patient);
 
-        mockMvc.perform(post("/pacientes/" + patient.getId() + "/consultas")
+        mockMvc.perform(post("/patients/" + patient.getId() + "/appointments")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(clinicalRecord())))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/consulta/" + appointmentId + "/anulacao")
+        mockMvc.perform(put("/appointments/" + appointmentId + "/annul")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"quero apagar\"}"))
@@ -267,7 +267,7 @@ class ConsultationRecordTest {
     }
 
     private ResultActions registerConsultation(Map<String, Object> record) throws Exception {
-        return mockMvc.perform(post("/pacientes/" + patient.getId() + "/consultas")
+        return mockMvc.perform(post("/patients/" + patient.getId() + "/appointments")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(record)));
@@ -281,14 +281,14 @@ class ConsultationRecordTest {
     }
 
     private ResultActions updateRecord(Long appointmentId, Map<String, Object> record) throws Exception {
-        return mockMvc.perform(put("/consulta/" + appointmentId + "/registro-clinico")
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/clinical-record")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(record)));
     }
 
     private ResultActions annul(Long appointmentId, String reason) throws Exception {
-        return mockMvc.perform(put("/consulta/" + appointmentId + "/anulacao")
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/annul")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("reason", reason))));

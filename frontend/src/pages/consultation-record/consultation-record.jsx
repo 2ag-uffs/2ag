@@ -89,12 +89,12 @@ export default function ConsultationRecord() {
         let isCurrentRequest = true;
 
         const loadPage = isNewConsultation
-            ? apiService.get("/paciente/" + patientId).then((foundPatient) => {
+            ? apiService.get("/patients/" + patientId).then((foundPatient) => {
                 if (isCurrentRequest) {
                     setPatient({id: foundPatient.id, name: foundPatient.name, birthDate: foundPatient.birthDate});
                 }
             })
-            : apiService.get("/consulta/" + appointmentId).then((appointment) => {
+            : apiService.get("/appointments/" + appointmentId).then((appointment) => {
                 if (!isCurrentRequest) {
                     return;
                 }
@@ -157,8 +157,8 @@ export default function ConsultationRecord() {
 
         try {
             const savedAppointment = isNewConsultation
-                ? await apiService.post("/pacientes/" + patientId + "/consultas", requestBody)
-                : await apiService.put("/consulta/" + appointmentId + "/registro-clinico", requestBody);
+                ? await apiService.post("/patients/" + patientId + "/appointments", requestBody)
+                : await apiService.put("/appointments/" + appointmentId + "/clinical-record", requestBody);
             setSavedAppointmentId(savedAppointment.id);
         } catch (requestError) {
             if (requestError instanceof ApiError) {

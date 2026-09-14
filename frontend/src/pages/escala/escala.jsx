@@ -40,8 +40,8 @@ export default function Escala() {
         let isCurrentRequest = true;
 
         Promise.all([
-            apiService.get("/escalas/definicoes/" + slug),
-            apiService.get("/escalas/" + slug + "/respostas"),
+            apiService.get("/scales/definitions/" + slug),
+            apiService.get("/scales/" + slug + "/responses"),
         ])
             .then(([loadedDefinition, loadedResponses]) => {
                 if (isCurrentRequest) {
@@ -74,7 +74,7 @@ export default function Escala() {
         if (slug !== "diario-sono") {
             return;
         }
-        apiService.get("/pacientes/" + loggedUser.id + "/acompanhamento")
+        apiService.get("/patients/" + loggedUser.id + "/treatment-protocol")
             .then(setSleepSchedule)
             .catch(() => setSleepSchedule(null));
     }, [slug, loggedUser.id]);
@@ -128,7 +128,7 @@ export default function Escala() {
         setNotice(null);
         setIsSaving(true);
         try {
-            const saved = await apiService.post("/escalas/" + slug + "/respostas", {
+            const saved = await apiService.post("/scales/" + slug + "/responses", {
                 periodStart: selectedDay,
                 periodEnd: isPeriod ? periodEnd : selectedDay,
                 answers: answersPayload(definition.items, values),

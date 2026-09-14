@@ -68,9 +68,9 @@ export default function AgendamentoConsultaPaciente() {
         const lastDay = toIsoDate(addDays(new Date(), DAYS_AHEAD - 1));
 
         Promise.all([
-            apiService.get("/paciente/" + loggedUser.id),
-            apiService.get("/consulta/minhas"),
-            apiService.get("/consulta/horarios-livres?inicio=" + firstDay + "&fim=" + lastDay),
+            apiService.get("/patients/" + loggedUser.id),
+            apiService.get("/appointments/mine"),
+            apiService.get("/appointments/free-slots?from=" + firstDay + "&to=" + lastDay),
         ])
             .then(([patient, upcomingAppointments, freeSlots]) => {
                 if (isCurrentRequest) {
@@ -117,7 +117,7 @@ export default function AgendamentoConsultaPaciente() {
         setNotice(null);
         setActionError(null);
         try {
-            await apiService.post("/consulta/agendamento", {
+            await apiService.post("/appointments/requests", {
                 dateTime: slotStart,
                 modality,
                 patientNote: patientNote.trim() === "" ? null : patientNote.trim(),
@@ -142,7 +142,7 @@ export default function AgendamentoConsultaPaciente() {
         setActionError(null);
         setBusyAppointmentId(appointment.id);
         try {
-            await apiService.put("/consulta/" + appointment.id + "/cancelar");
+            await apiService.put("/appointments/" + appointment.id + "/cancel");
             setNotice(appointment.status === "SOLICITADA"
                 ? "Pedido cancelado. O horário voltou a ficar livre."
                 : "Consulta cancelada. Seu prescritor recebeu o aviso.");

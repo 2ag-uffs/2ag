@@ -21,13 +21,13 @@ export default function RespostaEscala() {
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/escalas/respostas/" + responseId)
+        apiService.get("/scales/responses/" + responseId)
             .then((loadedResponse) => {
                 if (!isCurrentRequest) {
                     return null;
                 }
                 setResponse(loadedResponse);
-                return apiService.get("/escalas/definicoes/" + loadedResponse.slug);
+                return apiService.get("/scales/definitions/" + loadedResponse.slug);
             })
             .then((loadedDefinition) => {
                 if (isCurrentRequest && loadedDefinition) {

@@ -35,7 +35,7 @@ export default function AgendaDisponibilidade() {
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/agenda/disponibilidade")
+        apiService.get("/availability")
             .then((availability) => {
                 if (isCurrentRequest) {
                     setDurationMinutes(String(availability.appointmentDurationMinutes));
@@ -92,7 +92,7 @@ export default function AgendaDisponibilidade() {
 
         setIsSaving(true);
         try {
-            await apiService.put("/agenda/disponibilidade", {
+            await apiService.put("/availability", {
                 appointmentDurationMinutes: Number(durationMinutes),
                 periods: periods.map((period) => ({
                     dayOfWeek: period.dayOfWeek,

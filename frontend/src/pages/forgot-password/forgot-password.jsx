@@ -46,7 +46,7 @@ export default function ForgotPassword() {
                     em alguns minutos. Ele vale por 30 minutos.
                 </p>
                 <p className={styles.note}>Não chegou? Confira a caixa de spam ou peça de novo daqui a pouco.</p>
-                <Link to="/login" className={"button button-secondary " + styles.linkButton}>
+                <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
                     Voltar para o login
                 </Link>
             </AuthLayout>
@@ -80,7 +80,7 @@ export default function ForgotPassword() {
                 </button>
             </form>
 
-            <Link to="/login" className={styles.backLink}>Voltar para o login</Link>
+            <Link to="/entrar" className={styles.backLink}>Voltar para o login</Link>
         </AuthLayout>
     );
 }

@@ -20,7 +20,7 @@ public class DashboardController {
 
     // endpoint pro dashboard do prescritor, o front chama aqui passando o id do prescritor logado
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.isSelf(#id, authentication)")
-    @GetMapping("/prescritor/{id}")
+    @GetMapping("/prescriber/{id}")
     public ResponseEntity<PrescriberDashboardDTO> getPrescriberDashboard(@PathVariable Long id) {
         // chama o service pra buscar os dados
         PrescriberDashboardDTO dashboardData = dashboardService.getPrescriberDashboard(id);
@@ -30,7 +30,7 @@ public class DashboardController {
 
     // endpoint pro dashboard do paciente, mesma lógica, mas pro paciente logado
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
-    @GetMapping("/paciente/{id}")
+    @GetMapping("/patient/{id}")
     public ResponseEntity<PatientDashboardDTO> getPatientDashboard(@PathVariable Long id) {
         PatientDashboardDTO dashboardData = dashboardService.getPatientDashboard(id);
         return ResponseEntity.ok(dashboardData);

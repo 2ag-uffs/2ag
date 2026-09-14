@@ -77,9 +77,9 @@ export default function PrescriptionForm() {
         let isCurrentRequest = true;
 
         const loadPage = async () => {
-            const foundAppointment = await apiService.get("/consulta/" + appointmentId);
+            const foundAppointment = await apiService.get("/appointments/" + appointmentId);
             // a vigente aparece pra prescritora saber o q vai ser substituido
-            const prescriptions = await apiService.get("/pacientes/" + foundAppointment.patientId + "/prescricoes");
+            const prescriptions = await apiService.get("/patients/" + foundAppointment.patientId + "/prescriptions");
             if (isCurrentRequest) {
                 setAppointment(foundAppointment);
                 setCurrentPrescription(prescriptions.find((prescription) => prescription.current) || null);
@@ -161,7 +161,7 @@ export default function PrescriptionForm() {
         };
 
         try {
-            await apiService.post("/consulta/" + appointmentId + "/prescricao", requestBody);
+            await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
             setWasIssued(true);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
@@ -207,7 +207,7 @@ export default function PrescriptionForm() {
                     >
                         Ver histórico do paciente
                     </button>
-                    <button type="button" className={styles.secondaryButton} onClick={() => navigate("/dashboard-prescritor")}>
+                    <button type="button" className={styles.secondaryButton} onClick={() => navigate("/painel-prescritor")}>
                         Voltar ao painel
                     </button>
                 </div>

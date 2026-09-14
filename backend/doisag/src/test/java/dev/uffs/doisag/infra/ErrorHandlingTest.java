@@ -69,24 +69,24 @@ class ErrorHandlingTest {
 
     @Test
     void invalidEnumParameterReturns400() throws Exception {
-        mockMvc.perform(get("/pacientes/" + patientId + "/progresso")
-                        .param("atributo", "DOR")
-                        .param("periodo", "XYZ")
+        mockMvc.perform(get("/patients/" + patientId + "/progress")
+                        .param("attribute", "DOR")
+                        .param("period", "XYZ")
                         .header("Authorization", patientToken))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void missingParameterReturns400() throws Exception {
-        mockMvc.perform(get("/pacientes/" + patientId + "/progresso")
-                        .param("atributo", "DOR")
+        mockMvc.perform(get("/patients/" + patientId + "/progress")
+                        .param("attribute", "DOR")
                         .header("Authorization", patientToken))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void unsupportedMethodReturns405() throws Exception {
-        mockMvc.perform(patch("/paciente/" + patientId).header("Authorization", patientToken))
+        mockMvc.perform(patch("/patients/" + patientId).header("Authorization", patientToken))
                 .andExpect(status().isMethodNotAllowed());
     }
 

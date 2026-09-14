@@ -29,7 +29,7 @@ public class ConsultationController {
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @PostMapping("/pacientes/{patientId}/consultas")
+    @PostMapping("/patients/{patientId}/appointments")
     public ResponseEntity<AppointmentResponseDTO> register(@PathVariable Long patientId,
                                                            @RequestBody @Valid ConsultationRecordDTO recordData,
                                                            @AuthenticationPrincipal Prescriber loggedPrescriber) {
@@ -38,14 +38,14 @@ public class ConsultationController {
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
-    @PutMapping("/consulta/{appointmentId}/registro-clinico")
+    @PutMapping("/appointments/{appointmentId}/clinical-record")
     public AppointmentResponseDTO updateRecord(@PathVariable Long appointmentId,
                                                @RequestBody @Valid ConsultationRecordDTO recordData) {
         return new AppointmentResponseDTO(consultationService.updateRecord(appointmentId, recordData));
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
-    @PutMapping("/consulta/{appointmentId}/anulacao")
+    @PutMapping("/appointments/{appointmentId}/annul")
     public AppointmentResponseDTO annul(@PathVariable Long appointmentId,
                                         @RequestBody @Valid AnnulmentDTO annulmentData,
                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {

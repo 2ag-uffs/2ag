@@ -121,7 +121,7 @@ class ProgressReportTest {
     // conseguir marcar os cortes
     @Test
     void oCatalogoDeAtributosTrazAFaixaDasEscalasValidadas() throws Exception {
-        String body = mockMvc.perform(get("/progresso/atributos")
+        String body = mockMvc.perform(get("/progress/attributes")
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -144,8 +144,8 @@ class ProgressReportTest {
         savePainLog(TODAY, Map.of("intensidadeDor", 4, "observacao", "Esqueci a dose da tarde"));
         saveFollowUp(TODAY.minusDays(3), Map.of("dor", 7, "comentario", "Dormi mal a semana toda"));
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/comentarios")
-                        .param("periodo", "DIAS_30")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/comments")
+                        .param("period", "DIAS_30")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
@@ -175,17 +175,17 @@ class ProgressReportTest {
         otherPrescriber.setPassword("hash");
         Users saved = prescriberRepository.save(otherPrescriber);
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso/comentarios")
-                        .param("periodo", "DIAS_30")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/comments")
+                        .param("period", "DIAS_30")
                         .header("Authorization", bearerTokenOf(saved)))
                 .andExpect(status().isForbidden());
     }
 
     private org.springframework.test.web.servlet.ResultActions progress(String attribute, String period)
             throws Exception {
-        return mockMvc.perform(get("/pacientes/" + patient.getId() + "/progresso")
-                        .param("atributo", attribute)
-                        .param("periodo", period)
+        return mockMvc.perform(get("/patients/" + patient.getId() + "/progress")
+                        .param("attribute", attribute)
+                        .param("period", period)
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk());
     }

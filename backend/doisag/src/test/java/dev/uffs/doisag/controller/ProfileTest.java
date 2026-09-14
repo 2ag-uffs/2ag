@@ -265,7 +265,7 @@ class ProfileTest {
                         .content("{\"senhaAtual\":\"Senha@123\",\"novaSenha\":\"Senha-Nova#2026\"}"))
                 .andExpect(status().isNotFound());
 
-        mockMvc.perform(put("/paciente/" + patient.getId())
+        mockMvc.perform(put("/patients/" + patient.getId())
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(PATIENT_PROFILE_JSON))

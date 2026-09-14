@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/paciente")
+@RequestMapping("/patients")
 public class PatientsController {
     private final PatientService patientService;
     private final PatientArchiveService patientArchiveService;
@@ -34,7 +34,7 @@ public class PatientsController {
     // os arquivados so vem quando a tela pede a aba deles
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
-    public List<PatientResponseDTO> getMyPatients(@RequestParam(name = "arquivados", defaultValue = "false") boolean archived,
+    public List<PatientResponseDTO> getMyPatients(@RequestParam(name = "archived", defaultValue = "false") boolean archived,
                                                   Authentication authentication) {
         Long prescriberId = ((Users) authentication.getPrincipal()).getId();
         return patientService.getPatientsByPrescriberId(prescriberId, archived)
@@ -51,13 +51,13 @@ public class PatientsController {
 
     // arquivar tira o paciente da lista de ativos e encerra o acompanhamento automatico dele
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
-    @PutMapping("/{id}/arquivamento")
+    @PutMapping("/{id}/archive")
     public PatientResponseDTO archive(@PathVariable Long id, @AuthenticationPrincipal Prescriber loggedPrescriber) {
         return new PatientResponseDTO(patientArchiveService.archive(id, loggedPrescriber));
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
-    @PutMapping("/{id}/reativacao")
+    @PutMapping("/{id}/reactivate")
     public PatientResponseDTO reactivate(@PathVariable Long id) {
         return new PatientResponseDTO(patientArchiveService.reactivate(id));
     }

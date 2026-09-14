@@ -100,51 +100,51 @@ class PatientLinkTest {
         String appointmentBody = "{\"patientId\":" + patientOfB + ",\"dateTime\":\"" + NEXT_MONTH
                 + "T15:00:00\",\"modality\":\"PRESENCIAL\"}";
 
-        assertForbidden(post("/consulta").contentType(MediaType.APPLICATION_JSON).content(appointmentBody),
+        assertForbidden(post("/appointments").contentType(MediaType.APPLICATION_JSON).content(appointmentBody),
                 prescriberA, "registrar consulta");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId())
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId())
                         .contentType(MediaType.APPLICATION_JSON).content(appointmentBody),
                 prescriberA, "alterar consulta");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/cancelar"),
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/cancel"),
                 prescriberA, "cancelar consulta");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/confirmacao"),
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/confirm"),
                 prescriberA, "confirmar pedido de consulta");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/recusa"),
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/decline"),
                 prescriberA, "recusar pedido de consulta");
-        assertForbidden(post("/consulta/" + recordsOfB.appointmentId() + "/prescricao")
+        assertForbidden(post("/appointments/" + recordsOfB.appointmentId() + "/prescriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"),
                 prescriberA, "emitir prescricao");
-        assertForbidden(put("/prescricao/" + recordsOfB.prescriptionId() + "/anulacao")
+        assertForbidden(put("/prescriptions/" + recordsOfB.prescriptionId() + "/annul")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"prescricao de outro prescritor\"}"),
                 prescriberA, "anular prescricao");
-        assertForbidden(post("/escalas/mini-exame/consulta/" + recordsOfB.appointmentId())
+        assertForbidden(post("/scales/mental-state-exam/appointments/" + recordsOfB.appointmentId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":3}}"),
                 prescriberA, "aplicar meem");
-        assertForbidden(put("/escalas/respostas/" + recordsOfB.examId())
+        assertForbidden(put("/scales/responses/" + recordsOfB.examId())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":0}}"),
                 prescriberA, "alterar meem");
-        assertForbidden(post("/pacientes/" + patientOfB + "/escalas")
+        assertForbidden(post("/patients/" + patientOfB + "/scales")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"scaleType\":\"ESCALA_HAMILTON\"}"),
                 prescriberA, "designar escala");
-        assertForbidden(post("/pacientes/" + patientOfB + "/acompanhamento")
+        assertForbidden(post("/patients/" + patientOfB + "/treatment-protocol")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"),
                 prescriberA, "montar acompanhamento");
-        assertForbidden(post("/pacientes/" + patientOfB + "/consultas")
+        assertForbidden(post("/patients/" + patientOfB + "/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"x\"}"),
                 prescriberA, "registrar consulta clinica");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/registro-clinico")
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/clinical-record")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"x\"}"),
                 prescriberA, "alterar registro clinico");
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/anulacao")
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/annul")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"registro de outro prescritor\"}"),
                 prescriberA, "anular consulta");
-        assertForbidden(put("/pacientes/" + patientOfB + "/acompanhamento/encerrar"),
+        assertForbidden(put("/patients/" + patientOfB + "/treatment-protocol/end"),
                 prescriberA, "encerrar acompanhamento");
     }
 
@@ -157,7 +157,7 @@ class PatientLinkTest {
 
     @Test
     void patientCannotEditAnotherPatientsAnswers() throws Exception {
-        assertForbidden(put("/escalas/respostas/" + recordsOfB.scaleId())
+        assertForbidden(put("/scales/responses/" + recordsOfB.scaleId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"answers\":{\"humorAnsioso\":0}}"),
                 recordsOfA.patient(), "alterar escala de outro paciente");
@@ -165,7 +165,7 @@ class PatientLinkTest {
 
     @Test
     void patientCannotCancelAnotherPatientsAppointment() throws Exception {
-        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/cancelar"),
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/cancel"),
                 recordsOfA.patient(), "cancelar consulta de outro paciente");
     }
 
@@ -205,13 +205,13 @@ class PatientLinkTest {
 
     @Test
     void prescriberWritesForTheirOwnPatient() throws Exception {
-        mockMvc.perform(post("/consulta/" + recordsOfA.appointmentId() + "/prescricao")
+        mockMvc.perform(post("/appointments/" + recordsOfA.appointmentId() + "/prescriptions")
                         .header("Authorization", bearerTokenOf(prescriberA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(put("/consulta/" + recordsOfA.appointmentId() + "/cancelar")
+        mockMvc.perform(put("/appointments/" + recordsOfA.appointmentId() + "/cancel")
                         .header("Authorization", bearerTokenOf(prescriberA)))
                 .andExpect(status().isOk());
     }
@@ -222,7 +222,7 @@ class PatientLinkTest {
         String bodyPointingToB = "{\"answers\":{\"humorAnsioso\":1},"
                 + "\"patient\":{\"id\":" + recordsOfB.patient().getId() + "}}";
 
-        mockMvc.perform(put("/escalas/respostas/" + recordsOfA.scaleId())
+        mockMvc.perform(put("/scales/responses/" + recordsOfA.scaleId())
                         .header("Authorization", bearerTokenOf(recordsOfA.patient()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
@@ -234,15 +234,16 @@ class PatientLinkTest {
     }
 
     @Test
-    void editingAMentalStateExamNeverMovesItToAnotherAppointment() throws Exception {
+    void aMentalStateExamIsNeverEditedNorMovedToAnotherAppointment() throws Exception {
         String bodyPointingToB = "{\"answers\":{\"registro\":2},"
                 + "\"appointment\":{\"id\":" + recordsOfB.appointmentId() + "}}";
 
-        mockMvc.perform(put("/escalas/respostas/" + recordsOfA.examId())
+        // MEEM aplicado com erro eh anulado e aplicado de novo entao nem o prescritor dele edita
+        mockMvc.perform(put("/scales/responses/" + recordsOfA.examId())
                         .header("Authorization", bearerTokenOf(prescriberA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
         ScaleResponse savedExam = scaleResponseRepository.findById(recordsOfA.examId()).orElseThrow();
         assertThat(savedExam.getAppointment().getId()).isEqualTo(recordsOfA.appointmentId());
@@ -254,7 +255,7 @@ class PatientLinkTest {
         String bodyPointingToB = "{\"answers\":{\"humorAnsioso\":3},"
                 + "\"patient\":{\"id\":" + recordsOfB.patient().getId() + "}}";
 
-        String response = mockMvc.perform(post("/escalas/hamilton/respostas")
+        String response = mockMvc.perform(post("/scales/hamilton/responses")
                         .header("Authorization", bearerTokenOf(recordsOfA.patient()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
@@ -269,48 +270,46 @@ class PatientLinkTest {
     // o prescritor le as respostas mas quem responde e corrige eh o paciente
     @Test
     void prescriberCannotFillOrEditThePatientsAnswers() throws Exception {
-        assertForbidden(post("/escalas/hamilton/respostas").contentType(MediaType.APPLICATION_JSON)
+        assertForbidden(post("/scales/hamilton/responses").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"answers\":{\"humorAnsioso\":2}}"),
                 prescriberA, "preencher escala do paciente");
-        // aqui n eh 403 pq o paciente eh da carteira dele: a regra diz q a
-        // correcao da resposta do paciente eh anulacao com motivo
-        assertThat(statusOf(put("/escalas/respostas/" + recordsOfA.scaleId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"answers\":{\"humorAnsioso\":0}}"), prescriberA))
-                .as("alterar a resposta do paciente").isEqualTo(400);
+        // mesmo com o paciente na carteira dele a correcao da resposta do paciente eh anulacao com motivo
+        assertForbidden(put("/scales/responses/" + recordsOfA.scaleId()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"humorAnsioso\":0}}"),
+                prescriberA, "alterar a resposta do paciente");
     }
 
     @Test
     void prescriberCannotOpenAnotherPrescribersDashboard() throws Exception {
-        assertThat(statusOf(get("/dashboard/prescritor/" + prescriberA.getId()), prescriberB)).isEqualTo(403);
-        assertThat(statusOf(get("/dashboard/prescritor/" + prescriberA.getId()), prescriberA)).isEqualTo(200);
+        assertThat(statusOf(get("/dashboard/prescriber/" + prescriberA.getId()), prescriberB)).isEqualTo(403);
+        assertThat(statusOf(get("/dashboard/prescriber/" + prescriberA.getId()), prescriberA)).isEqualTo(200);
     }
 
     // tudo q o paciente e o prescritor dele conseguem ler do paciente
     private List<String> sharedReadRoutes(ClinicalRecords records) {
         Long patientId = records.patient().getId();
         return List.of(
-                "/paciente/" + patientId,
-                "/dashboard/paciente/" + patientId,
-                "/pacientes/" + patientId + "/escalas",
-                "/pacientes/" + patientId + "/escalas/central",
-                "/pacientes/" + patientId + "/escalas/respostas",
-                "/pacientes/" + patientId + "/progresso?atributo=ESCORE_HAMILTON&periodo=DIAS_30",
-                "/pacientes/" + patientId + "/progresso/consultas?periodo=DIAS_30",
-                "/pacientes/" + patientId + "/acompanhamento",
-                "/pacientes/" + patientId + "/anamneses",
-                "/pacientes/" + patientId + "/consultas",
-                "/pacientes/" + patientId + "/prescricoes",
-                "/escalas/respostas/" + records.scaleId(),
-                "/prescricao/" + records.prescriptionId()
+                "/patients/" + patientId,
+                "/dashboard/patient/" + patientId,
+                "/patients/" + patientId + "/scales",
+                "/patients/" + patientId + "/scales/overview",
+                "/patients/" + patientId + "/scales/responses",
+                "/patients/" + patientId + "/progress?attribute=ESCORE_HAMILTON&period=DIAS_30",
+                "/patients/" + patientId + "/progress/appointments?period=DIAS_30",
+                "/patients/" + patientId + "/treatment-protocol",
+                "/patients/" + patientId + "/anamneses",
+                "/patients/" + patientId + "/appointments",
+                "/patients/" + patientId + "/prescriptions",
+                "/scales/responses/" + records.scaleId(),
+                "/prescriptions/" + records.prescriptionId()
         );
     }
 
     // leituras q so o prescritor faz
     private List<String> prescriberOnlyReadRoutes(ClinicalRecords records) {
         return List.of(
-                "/consulta/" + records.appointmentId(),
-                "/escalas/respostas/" + records.examId()
+                "/appointments/" + records.appointmentId(),
+                "/scales/responses/" + records.examId()
         );
     }
 

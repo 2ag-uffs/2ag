@@ -26,7 +26,7 @@ const routes = [
         children: [
             {path: "/", loader: redirectHome},
             {
-                path: "/login",
+                path: "/entrar",
                 loader: redirectLoggedUserHome,
                 lazy: lazyPage(() => import("../pages/login/login.jsx")),
             },
@@ -54,7 +54,7 @@ const routes = [
                         loader: requireRole("PATIENT"),
                         children: [
                             {
-                                path: "/dashboard-paciente",
+                                path: "/painel-paciente",
                                 lazy: lazyPage(() => import("../pages/dashboard-paciente/dashboard-paciente.jsx")),
                             },
                             {
@@ -95,7 +95,7 @@ const routes = [
                         loader: requireRole("PRESCRIBER"),
                         children: [
                             {
-                                path: "/dashboard-prescritor",
+                                path: "/painel-prescritor",
                                 lazy: lazyPage(() => import("../pages/dashboard-prescritor/dashboard-prescritor.jsx")),
                             },
                             {
@@ -173,11 +173,11 @@ const routes = [
                         loader: requireRole("ADMIN"),
                         children: [
                             {
-                                path: "/admin",
+                                path: "/administracao",
                                 lazy: lazyPage(() => import("../pages/admin/admin-prescribers.jsx")),
                             },
                             {
-                                path: "/admin/auditoria",
+                                path: "/administracao/auditoria",
                                 lazy: lazyPage(() => import("../pages/admin/admin-audit.jsx")),
                             },
                         ],

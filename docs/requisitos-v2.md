@@ -822,6 +822,8 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 - **Limpeza:** saiu uma rota de prescrições por consulta que nenhuma tela usava, o `open-in-view` foi desligado e os modais de confirmação passaram ao mesmo padrão de componente do resto do sistema.
 - **Conferido sem mudança:** toda rota da API exige perfil e, quando o dado é de paciente, o vínculo com ele; o cookie da sessão é `HttpOnly` e `SameSite=Strict`; e o login bloqueia depois de tentativas erradas seguidas.
 
+**Rotas em 14/09/2026:** as rotas da API passaram a seguir o inglês do código (`/patients`, `/appointments`, `/scales`) e as do site ficaram todas em português (`/entrar`, `/painel-paciente`, `/administracao`). O MEEM deixou de ter correção direta: aplicado com erro, o prescritor anula com motivo e aplica de novo, como já acontece com a consulta e a prescrição.
+
 ---
 
 ## Anexo A — Algoritmos das escalas validadas

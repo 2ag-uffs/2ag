@@ -141,10 +141,10 @@ class AdminPrescribersTest {
     void adminDoesNotSeeClinicalData() throws Exception {
         Patient patient = savePatient(savePrescriber("admin-clinico@email.com", "ADM04"));
 
-        mockMvc.perform(get("/paciente/" + patient.getId()).header("Authorization", adminToken()))
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", adminToken()))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas").header("Authorization", adminToken()))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales").header("Authorization", adminToken()))
                 .andExpect(status().isForbidden());
     }
 

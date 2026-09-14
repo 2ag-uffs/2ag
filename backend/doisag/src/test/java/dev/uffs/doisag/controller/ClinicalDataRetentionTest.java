@@ -87,10 +87,10 @@ class ClinicalDataRetentionTest {
 
     @Test
     void deletingAPatientOrAPrescriptionIsNotAllowed() throws Exception {
-        mockMvc.perform(delete("/paciente/" + patient.getId()).header("Authorization", prescriberToken))
+        mockMvc.perform(delete("/patients/" + patient.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isMethodNotAllowed());
 
-        mockMvc.perform(delete("/prescricao/1").header("Authorization", prescriberToken))
+        mockMvc.perform(delete("/prescriptions/1").header("Authorization", prescriberToken))
                 .andExpect(status().isMethodNotAllowed());
     }
 
@@ -101,7 +101,7 @@ class ClinicalDataRetentionTest {
         treatmentProtocolService.create(patient.getId(),
                 new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null, List.of(weeklyHamilton)), prescriber);
 
-        mockMvc.perform(put("/pacientes/" + patient.getId() + "/acompanhamento/encerrar")
+        mockMvc.perform(put("/patients/" + patient.getId() + "/treatment-protocol/end")
                         .header("Authorization", prescriberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));

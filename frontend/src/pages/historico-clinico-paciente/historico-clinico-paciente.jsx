@@ -25,13 +25,13 @@ export default function HistoricoClinicoPaciente() {
 
     useEffect(() => {
         let isCurrentRequest = true;
-        const patientPath = "/pacientes/" + loggedUser.id;
+        const patientPath = "/patients/" + loggedUser.id;
 
         Promise.all([
-            apiService.get(patientPath + "/consultas"),
-            apiService.get(patientPath + "/prescricoes"),
+            apiService.get(patientPath + "/appointments"),
+            apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
-            apiService.get(patientPath + "/escalas/central"),
+            apiService.get(patientPath + "/scales/overview"),
         ])
             .then(([appointments, prescriptions, anamneses, scalesPage]) => {
                 if (isCurrentRequest) {

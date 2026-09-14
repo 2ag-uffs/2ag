@@ -12,7 +12,7 @@ export function requireRole(...allowedRoles) {
     return () => {
         const loggedUser = getLoggedUser();
         if (!loggedUser) {
-            return redirect("/login");
+            return redirect("/entrar");
         }
         if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)) {
             return redirect(homePathFor(loggedUser));

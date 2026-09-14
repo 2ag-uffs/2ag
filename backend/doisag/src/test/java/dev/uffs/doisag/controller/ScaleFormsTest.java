@@ -105,7 +105,7 @@ class ScaleFormsTest {
                 "{\"dor\":5,\"sono\":6}").andExpect(status().isCreated()));
 
         org.assertj.core.api.Assertions.assertThat(secondId).isEqualTo(firstId);
-        mockMvc.perform(get("/escalas/acompanhamento-semanal/respostas")
+        mockMvc.perform(get("/scales/acompanhamento-semanal/responses")
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -122,7 +122,7 @@ class ScaleFormsTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value("4 de 10 · Dor moderada"));
 
-        mockMvc.perform(put("/escalas/respostas/" + responseId + "/analise")
+        mockMvc.perform(put("/scales/responses/" + responseId + "/review")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reviewed").value(true))
@@ -140,10 +140,9 @@ class ScaleFormsTest {
                 .andExpect(status().isCreated()));
 
         updateResponse(responseId, "{\"intensidadeDor\":2}", prescriber)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("anule com o motivo")));
+                .andExpect(status().isForbidden());
 
-        mockMvc.perform(put("/escalas/respostas/" + responseId + "/anulacao")
+        mockMvc.perform(put("/scales/responses/" + responseId + "/annul")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"respondida pela pessoa errada\"}"))
@@ -199,14 +198,14 @@ class ScaleFormsTest {
     }
 
     private ResultActions answerScale(String slug, String answers) throws Exception {
-        return mockMvc.perform(post("/escalas/" + slug + "/respostas")
+        return mockMvc.perform(post("/scales/" + slug + "/responses")
                 .header("Authorization", bearerTokenOf(patient))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"answers\":" + answers + "}"));
     }
 
     private ResultActions updateResponse(Long responseId, String answers, Users loggedUser) throws Exception {
-        return mockMvc.perform(put("/escalas/respostas/" + responseId)
+        return mockMvc.perform(put("/scales/responses/" + responseId)
                 .header("Authorization", bearerTokenOf(loggedUser))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"answers\":" + answers + "}"));
@@ -214,7 +213,7 @@ class ScaleFormsTest {
 
     // o exame inteiro, q da os 30 pontos
     private ResultActions applyMentalStateExam(Long appointmentId, Users loggedUser) throws Exception {
-        return mockMvc.perform(post("/escalas/mini-exame/consulta/" + appointmentId)
+        return mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointmentId)
                 .header("Authorization", bearerTokenOf(loggedUser))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,\"orientacaoEspacial\":5,"

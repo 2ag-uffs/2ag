@@ -112,7 +112,7 @@ public class TreatmentProtocolService {
     }
 
     @Transactional
-    public TreatmentProtocol encerrar(Long patientId) {
+    public TreatmentProtocol end(Long patientId) {
         return endProtocol(findActiveProtocol(patientId));
     }
 

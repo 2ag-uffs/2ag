@@ -110,7 +110,7 @@ class ExportTest {
 
     @Test
     void oPacienteBaixaAsProprias() throws Exception {
-        String csv = download("consultas.csv", "", patient);
+        String csv = download("appointments.csv", "", patient);
 
         assertThat(csv).contains("\"Paciente\";\"Data\";\"Hora\"");
         assertThat(csv).contains("Paciente da exportação");
@@ -121,7 +121,7 @@ class ExportTest {
     // o arquivo tem q vir como anexo, senao o navegador abre em vez de baixar
     @Test
     void oArquivoVemComoAnexoEEmCsv() throws Exception {
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/exportacao/consultas.csv")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
@@ -134,7 +134,7 @@ class ExportTest {
     // RNF04 no modo anonimo nenhum dado pessoal sai
     @Test
     void oModoAnonimoTiraONomeDoPaciente() throws Exception {
-        String csv = download("consultas.csv", "?anonimo=true", prescriber);
+        String csv = download("appointments.csv", "?anonymous=true", prescriber);
 
         assertThat(csv).contains("\"Identificador\"");
         assertThat(csv).contains("paciente " + patient.getId());
@@ -146,15 +146,15 @@ class ExportTest {
 
     @Test
     void oModoAnonimoEhSoDoPrescritor() throws Exception {
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/exportacao/consultas.csv")
-                        .param("anonimo", "true")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("anonymous", "true")
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void asEscalasSaemComUmaLinhaPorItem() throws Exception {
-        String csv = download("escalas.csv", "", patient);
+        String csv = download("scales.csv", "", patient);
 
         assertThat(csv).contains("\"Escala\";\"Início do período\"");
         assertThat(csv).contains("Acompanhamento semanal");
@@ -164,7 +164,7 @@ class ExportTest {
 
     @Test
     void aAnamneseSaiComPerguntaEResposta() throws Exception {
-        String csv = download("anamnese.csv", "", patient);
+        String csv = download("anamneses.csv", "", patient);
 
         assertThat(csv).contains("\"Motivo principal\";\"Dor nas costas há dois anos\"");
         assertThat(csv).contains("\"Sono\";\"Durmo mal\"");
@@ -172,7 +172,7 @@ class ExportTest {
 
     @Test
     void aEvolucaoSaiComDataEValor() throws Exception {
-        String csv = download("evolucao.csv", "?atributo=DOR&periodo=DIAS_30", patient);
+        String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
 
         assertThat(csv).contains("\"Atributo\";\"Data\";\"Valor\"");
         assertThat(csv).contains("\"DOR\"");
@@ -181,7 +181,7 @@ class ExportTest {
 
     @Test
     void asPrescricoesSaemComPosologia() throws Exception {
-        String csv = download("prescricoes.csv", "", patient);
+        String csv = download("prescriptions.csv", "", patient);
 
         assertThat(csv).contains("Óleo de CBD 10%");
         assertThat(csv).contains("2 gotas pela manhã");
@@ -196,13 +196,13 @@ class ExportTest {
         otherPrescriber.setPassword("hash");
         Users saved = prescriberRepository.save(otherPrescriber);
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/exportacao/consultas.csv")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
                         .header("Authorization", bearerTokenOf(saved)))
                 .andExpect(status().isForbidden());
     }
 
     private String download(String file, String query, Users loggedUser) throws Exception {
-        return mockMvc.perform(get("/pacientes/" + patient.getId() + "/exportacao/" + file + query)
+        return mockMvc.perform(get("/patients/" + patient.getId() + "/export/" + file + query)
                         .header("Authorization", bearerTokenOf(loggedUser)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);

@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 // ficha de anamnese (RF19)
 // o paciente preenche e corrige e so o prescritor dele anula
 @RestController
-@RequestMapping("/anamnese")
+@RequestMapping("/anamneses")
 public class AnamnesisController {
 
     private final AnamnesisService anamnesisService;
@@ -54,7 +54,7 @@ public class AnamnesisController {
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
-    @PutMapping("/{id}/anulacao")
+    @PutMapping("/{id}/annul")
     public AnamnesisResponseDTO annul(@PathVariable Long id,
                                       @RequestBody @Valid AnnulmentDTO annulmentData,
                                       @AuthenticationPrincipal Prescriber loggedPrescriber) {

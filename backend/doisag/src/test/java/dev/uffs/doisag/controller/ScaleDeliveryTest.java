@@ -62,13 +62,13 @@ class ScaleDeliveryTest {
         sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
 
         String patientToken = bearerTokenOf(patient);
-        mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales.length()").value(1))
                 .andExpect(jsonPath("$.pendingScales[0].name").value("Escala de ansiedade de Hamilton"))
                 .andExpect(jsonPath("$.pendingScales[0].path").value("/escalas/hamilton"));
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas/central").header("Authorization", patientToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pending.length()").value(1))
                 .andExpect(jsonPath("$.pending[0].path").value("/escalas/hamilton"))
@@ -91,7 +91,7 @@ class ScaleDeliveryTest {
         String patientToken = bearerTokenOf(patient);
         answerHamilton(patientToken).andExpect(status().isCreated());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas/central").header("Authorization", patientToken))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pending.length()").value(0))
                 .andExpect(jsonPath("$.history.length()").value(1))
@@ -118,7 +118,7 @@ class ScaleDeliveryTest {
         sendScale("REGISTRO_DOR").andExpect(status().isCreated());
         sendScale("REGISTRO_DOR").andExpect(status().isCreated());
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/escalas")
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
@@ -133,18 +133,18 @@ class ScaleDeliveryTest {
         sendScale("ANAMNESE").andExpect(status().isCreated());
 
         String patientToken = bearerTokenOf(patient);
-        mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales[0].path").value("/anamnese"));
 
-        mockMvc.perform(post("/anamnese")
+        mockMvc.perform(post("/anamneses")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"assessmentDate\":\"" + LocalDate.now()
                                 + "\",\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/dashboard/paciente/" + patient.getId()).header("Authorization", patientToken))
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales.length()").value(0));
     }
@@ -156,7 +156,7 @@ class ScaleDeliveryTest {
     }
 
     private ResultActions sendScale(String scaleType) throws Exception {
-        return mockMvc.perform(post("/pacientes/" + patient.getId() + "/escalas")
+        return mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"scaleType\":\"" + scaleType + "\"}"));
@@ -164,7 +164,7 @@ class ScaleDeliveryTest {
 
     // os 14 itens em 1 dao 14 pontos, q eh ansiedade temporaria
     private ResultActions answerHamilton(String patientToken) throws Exception {
-        return mockMvc.perform(post("/escalas/hamilton/respostas")
+        return mockMvc.perform(post("/scales/hamilton/responses")
                 .header("Authorization", patientToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"answers\":{\"humorAnsioso\":1,\"tensao\":1,\"medos\":1,\"insonia\":1,"

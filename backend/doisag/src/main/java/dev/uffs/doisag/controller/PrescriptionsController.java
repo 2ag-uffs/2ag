@@ -31,7 +31,7 @@ public class PrescriptionsController {
 
     // a prescricao sempre nasce dentro de uma consulta e substitui a vigente
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
-    @PostMapping("/consulta/{appointmentId}/prescricao")
+    @PostMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<PrescriptionResponseDTO> create(@PathVariable Long appointmentId,
                                                           @RequestBody @Valid PrescriptionCreateDTO prescriptionData) {
         Prescription createdPrescription = prescriptionService.create(prescriptionData, appointmentId);
@@ -39,13 +39,13 @@ public class PrescriptionsController {
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
-    @GetMapping("/prescricao/{id}")
+    @GetMapping("/prescriptions/{id}")
     public PrescriptionResponseDTO getById(@PathVariable Long id) {
         return new PrescriptionResponseDTO(prescriptionService.getById(id));
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
-    @PutMapping("/prescricao/{id}/anulacao")
+    @PutMapping("/prescriptions/{id}/annul")
     public PrescriptionResponseDTO annul(@PathVariable Long id,
                                          @RequestBody @Valid AnnulmentDTO annulmentData,
                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {

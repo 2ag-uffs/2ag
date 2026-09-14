@@ -38,11 +38,11 @@ export default function AcompanhamentoProtocolo() {
 
     const load = useCallback(() => {
         setIsLoading(true);
-        apiService.get("/escalas/designaveis")
+        apiService.get("/scales/assignable")
             .then(setScales)
             .catch(() => setScales([]));
 
-        apiService.get("/pacientes/" + patientId + "/acompanhamento")
+        apiService.get("/patients/" + patientId + "/treatment-protocol")
             .then(setProtocol)
             .catch((requestError) => {
                 // 404 aqui so quer dizer que ainda n existe acompanhamento
@@ -85,7 +85,7 @@ export default function AcompanhamentoProtocolo() {
 
         setIsSaving(true);
         try {
-            await apiService.post("/pacientes/" + patientId + "/acompanhamento", {
+            await apiService.post("/patients/" + patientId + "/treatment-protocol", {
                 startDate,
                 durationDays: Number(durationDays),
                 sleepBedTime: sleepBedTime === "" ? null : sleepBedTime,
@@ -105,7 +105,7 @@ export default function AcompanhamentoProtocolo() {
         setIsEndingOpen(false);
         setFormError(null);
         try {
-            await apiService.put("/pacientes/" + patientId + "/acompanhamento/encerrar");
+            await apiService.put("/patients/" + patientId + "/treatment-protocol/end");
             setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente.");
             load();
         } catch (requestError) {

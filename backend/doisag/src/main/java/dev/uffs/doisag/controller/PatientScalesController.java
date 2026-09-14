@@ -23,7 +23,7 @@ import java.util.List;
 
 // as escalas de um paciente: o q foi enviado e o q ja foi respondido
 @RestController
-@RequestMapping("/pacientes/{patientId}/escalas")
+@RequestMapping("/patients/{patientId}/scales")
 public class PatientScalesController {
 
     private final ScaleTaskService taskService;
@@ -52,14 +52,14 @@ public class PatientScalesController {
 
     // a central de escalas do paciente (RF08)
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/central")
+    @GetMapping("/overview")
     public PatientScalesPageDTO getScalesPage(@PathVariable Long patientId) {
         return taskService.getPatientScalesPage(patientId);
     }
 
     // as escalas respondidas, q o historico do prescritor mostra (RF13)
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/respostas")
+    @GetMapping("/responses")
     public List<ScaleResponseSummaryDTO> getResponses(@PathVariable Long patientId) {
         return responseService.getByPatientId(patientId);
     }

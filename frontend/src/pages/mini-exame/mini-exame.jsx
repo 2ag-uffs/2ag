@@ -28,8 +28,8 @@ export default function MiniExame() {
         let isCurrentRequest = true;
 
         Promise.all([
-            apiService.get("/escalas/definicoes/mini-exame"),
-            apiService.get("/consulta/" + appointmentId),
+            apiService.get("/scales/definitions/mini-exame"),
+            apiService.get("/appointments/" + appointmentId),
         ])
             .then(([loadedDefinition, loadedAppointment]) => {
                 if (isCurrentRequest) {
@@ -60,7 +60,7 @@ export default function MiniExame() {
         setFormError(null);
         setIsSaving(true);
         try {
-            const exam = await apiService.post("/escalas/mini-exame/consulta/" + appointmentId, {
+            const exam = await apiService.post("/scales/mental-state-exam/appointments/" + appointmentId, {
                 answers: answersPayload(definition.items, values),
             });
             setSavedExam(exam);

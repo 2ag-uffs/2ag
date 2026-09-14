@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 // um arquivo por tipo: quem exporta escolhe o que quer levar. o paciente
 // leva os proprios dados e o prescritor os dos pacientes dele (RF30)
 @RestController
-@RequestMapping("/pacientes/{patientId}/exportacao")
+@RequestMapping("/patients/{patientId}/export")
 public class ExportController {
 
     private final ExportService exportService;
@@ -33,47 +33,47 @@ public class ExportController {
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/consultas.csv")
+    @GetMapping("/appointments.csv")
     public ResponseEntity<byte[]> appointments(@PathVariable Long patientId,
-                                               @RequestParam(name = "anonimo", defaultValue = "false") boolean anonymous,
+                                               @RequestParam(name = "anonymous", defaultValue = "false") boolean anonymous,
                                                @AuthenticationPrincipal Users loggedUser) {
         return csv(exportService.appointmentsCsv(patientId, anonymous, loggedUser),
                 exportService.fileName("consultas", patientId, anonymous));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/prescricoes.csv")
+    @GetMapping("/prescriptions.csv")
     public ResponseEntity<byte[]> prescriptions(@PathVariable Long patientId,
-                                                @RequestParam(name = "anonimo", defaultValue = "false") boolean anonymous,
+                                                @RequestParam(name = "anonymous", defaultValue = "false") boolean anonymous,
                                                 @AuthenticationPrincipal Users loggedUser) {
         return csv(exportService.prescriptionsCsv(patientId, anonymous, loggedUser),
                 exportService.fileName("prescricoes", patientId, anonymous));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/escalas.csv")
+    @GetMapping("/scales.csv")
     public ResponseEntity<byte[]> scales(@PathVariable Long patientId,
-                                         @RequestParam(name = "anonimo", defaultValue = "false") boolean anonymous,
+                                         @RequestParam(name = "anonymous", defaultValue = "false") boolean anonymous,
                                          @AuthenticationPrincipal Users loggedUser) {
         return csv(exportService.scaleResponsesCsv(patientId, anonymous, loggedUser),
                 exportService.fileName("escalas", patientId, anonymous));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/evolucao.csv")
+    @GetMapping("/progress.csv")
     public ResponseEntity<byte[]> progress(@PathVariable Long patientId,
-                                           @RequestParam("atributo") TrackableAttribute attribute,
-                                           @RequestParam("periodo") TimePeriod period,
-                                           @RequestParam(name = "anonimo", defaultValue = "false") boolean anonymous,
+                                           @RequestParam("attribute") TrackableAttribute attribute,
+                                           @RequestParam("period") TimePeriod period,
+                                           @RequestParam(name = "anonymous", defaultValue = "false") boolean anonymous,
                                            @AuthenticationPrincipal Users loggedUser) {
         return csv(exportService.progressCsv(patientId, attribute, period, anonymous, loggedUser),
                 exportService.fileName("evolucao", patientId, anonymous));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/anamnese.csv")
+    @GetMapping("/anamneses.csv")
     public ResponseEntity<byte[]> anamnesis(@PathVariable Long patientId,
-                                            @RequestParam(name = "anonimo", defaultValue = "false") boolean anonymous,
+                                            @RequestParam(name = "anonymous", defaultValue = "false") boolean anonymous,
                                             @AuthenticationPrincipal Users loggedUser) {
         return csv(exportService.anamnesisCsv(patientId, anonymous, loggedUser),
                 exportService.fileName("anamnese", patientId, anonymous));

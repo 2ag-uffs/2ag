@@ -81,7 +81,7 @@ export default function Anamnese() {
         }
         let isCurrentRequest = true;
 
-        apiService.get("/anamnese/" + anamnesisId)
+        apiService.get("/anamneses/" + anamnesisId)
             .then((savedAnamnesis) => {
                 if (!isCurrentRequest) {
                     return;
@@ -117,7 +117,7 @@ export default function Anamnese() {
     }, [isCorrection, anamnesisId]);
 
     // quem desiste volta pra tela de onde veio a ficha
-    const exitPath = isCorrection ? "/historico-paciente" : "/dashboard-paciente";
+    const exitPath = isCorrection ? "/historico-paciente" : "/painel-paciente";
 
     const updateAnswer = (fieldName, value) => {
         setAnswers((currentAnswers) => ({...currentAnswers, [fieldName]: value}));
@@ -138,10 +138,10 @@ export default function Anamnese() {
 
         try {
             if (isCorrection) {
-                await apiService.put("/anamnese/" + anamnesisId, requestBody);
+                await apiService.put("/anamneses/" + anamnesisId, requestBody);
                 navigate(exitPath, {state: {notice: "Correção da anamnese salva. O seu prescritor já vê a ficha nova."}});
             } else {
-                await apiService.post("/anamnese", requestBody);
+                await apiService.post("/anamneses", requestBody);
                 navigate(exitPath, {state: {notice: "Ficha de anamnese enviada. Obrigado por responder."}});
             }
         } catch (requestError) {

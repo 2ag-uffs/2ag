@@ -213,7 +213,7 @@ class TreatmentProtocolServiceTest {
     void depoisDeEncerradoNaoDesignaMais() {
         criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
         treatmentProtocolService.designarEscalasVencidas(INICIO);
-        treatmentProtocolService.encerrar(paciente.getId());
+        treatmentProtocolService.end(paciente.getId());
 
         int designadas = treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(7));
 

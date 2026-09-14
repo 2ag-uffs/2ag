@@ -30,10 +30,10 @@ export default function DashboardPaciente() {
 
     useEffect(() => {
         if (!loggedUser) {
-            navigate("/login");
+            navigate("/entrar");
             return;
         }
-        apiService.get("/dashboard/paciente/" + loggedUser.id)
+        apiService.get("/dashboard/patient/" + loggedUser.id)
             .then(setPanel)
             .catch((requestError) => {
                 setLoadError(requestError instanceof ApiError

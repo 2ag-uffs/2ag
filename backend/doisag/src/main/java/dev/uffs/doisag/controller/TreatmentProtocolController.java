@@ -12,7 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/pacientes/{patientId}/acompanhamento")
+@RequestMapping("/patients/{patientId}/treatment-protocol")
 public class TreatmentProtocolController {
 
     private final TreatmentProtocolService treatmentProtocolService;
@@ -41,8 +41,8 @@ public class TreatmentProtocolController {
 
     // encerrar n apaga nada o protocolo fica guardado como inativo
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @PutMapping("/encerrar")
-    public TreatmentProtocolResponseDTO encerrar(@PathVariable Long patientId) {
-        return new TreatmentProtocolResponseDTO(treatmentProtocolService.encerrar(patientId));
+    @PutMapping("/end")
+    public TreatmentProtocolResponseDTO end(@PathVariable Long patientId) {
+        return new TreatmentProtocolResponseDTO(treatmentProtocolService.end(patientId));
     }
 }

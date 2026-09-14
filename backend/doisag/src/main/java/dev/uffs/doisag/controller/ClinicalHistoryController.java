@@ -17,7 +17,7 @@ import java.util.List;
 // historico clinico de um paciente (RF12 e RF13)
 // toda lista ja sai filtrada pelo paciente e nenhuma traz o sistema inteiro
 @RestController
-@RequestMapping("/pacientes/{patientId}")
+@RequestMapping("/patients/{patientId}")
 public class ClinicalHistoryController {
 
     private final AnamnesisService anamnesisService;
@@ -41,7 +41,7 @@ public class ClinicalHistoryController {
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/consultas")
+    @GetMapping("/appointments")
     public List<AppointmentResponseDTO> getAppointments(@PathVariable Long patientId) {
         return appointmentService.getByPatientId(patientId)
                 .stream()
@@ -50,7 +50,7 @@ public class ClinicalHistoryController {
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
-    @GetMapping("/prescricoes")
+    @GetMapping("/prescriptions")
     public List<PrescriptionResponseDTO> getPrescriptions(@PathVariable Long patientId) {
         return prescriptionService.getByPatientId(patientId)
                 .stream()

@@ -100,7 +100,7 @@ class PrescriptionFlowTest {
         Long firstPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Primeiro oleo");
         Long secondPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Dose ajustada");
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/prescricoes").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[?(@.id == " + secondPrescriptionId + ")].status", contains("VIGENTE")))
@@ -177,7 +177,7 @@ class PrescriptionFlowTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PrescriptionService.ALREADY_ANNULLED_MESSAGE));
 
-        mockMvc.perform(get("/pacientes/" + patient.getId() + "/prescricoes").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].annulled").value(true));
@@ -198,7 +198,7 @@ class PrescriptionFlowTest {
     void prescriptionIsNeverEditedInPlace() throws Exception {
         Long prescriptionId = issuedPrescriptionId(registeredConsultationId(), "Oleo");
 
-        mockMvc.perform(put("/prescricao/" + prescriptionId)
+        mockMvc.perform(put("/prescriptions/" + prescriptionId)
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"posology\":\"10 gotas\"}"))
@@ -211,14 +211,14 @@ class PrescriptionFlowTest {
         Long prescriptionId = issuedPrescriptionId(appointmentId, "Oleo");
         String patientToken = bearerTokenOf(patient);
 
-        mockMvc.perform(get("/prescricao/" + prescriptionId).header("Authorization", patientToken))
+        mockMvc.perform(get("/prescriptions/" + prescriptionId).header("Authorization", patientToken))
                 .andExpect(status().isOk());
-        mockMvc.perform(post("/consulta/" + appointmentId + "/prescricao")
+        mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(prescriptionWith("Oleo do paciente"))))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/prescricao/" + prescriptionId + "/anulacao")
+        mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"quero apagar\"}"))
@@ -247,7 +247,7 @@ class PrescriptionFlowTest {
     }
 
     private Long registeredConsultationId() throws Exception {
-        String response = mockMvc.perform(post("/pacientes/" + patient.getId() + "/consultas")
+        String response = mockMvc.perform(post("/patients/" + patient.getId() + "/appointments")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"modality\":\"PRESENCIAL\",\"diagnosis\":\"Dor cronica\"}"))
@@ -257,7 +257,7 @@ class PrescriptionFlowTest {
     }
 
     private ResultActions issuePrescription(Long appointmentId, Map<String, Object> prescription) throws Exception {
-        return mockMvc.perform(post("/consulta/" + appointmentId + "/prescricao")
+        return mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(prescription)));
@@ -271,14 +271,14 @@ class PrescriptionFlowTest {
     }
 
     private ResultActions annulPrescription(Long prescriptionId, String reason) throws Exception {
-        return mockMvc.perform(put("/prescricao/" + prescriptionId + "/anulacao")
+        return mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("reason", reason))));
     }
 
     private ResultActions annulConsultation(Long appointmentId, String reason) throws Exception {
-        return mockMvc.perform(put("/consulta/" + appointmentId + "/anulacao")
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/annul")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("reason", reason))));

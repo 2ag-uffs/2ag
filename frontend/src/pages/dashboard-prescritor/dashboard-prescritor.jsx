@@ -23,10 +23,10 @@ export default function DashboardPrescritor() {
 
     const loadPanel = useCallback(() => {
         if (!loggedUser) {
-            navigate("/login");
+            navigate("/entrar");
             return;
         }
-        apiService.get("/dashboard/prescritor/" + loggedUser.id)
+        apiService.get("/dashboard/prescriber/" + loggedUser.id)
             .then(setPanel)
             .catch((requestError) => {
                 setLoadError(requestError instanceof ApiError

@@ -89,7 +89,7 @@ class AgendaTest {
         saveAvailability(45, List.of(period(1, "08:00", "12:00"), period(3, "14:00", "18:00")))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/agenda/disponibilidade").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.appointmentDurationMinutes").value(45))
                 .andExpect(jsonPath("$.periods.length()").value(2))
@@ -115,7 +115,7 @@ class AgendaTest {
     void newWeekReplacesTheOldOne() throws Exception {
         saveAvailability(30, List.of(period(5, "13:00", "17:00"))).andExpect(status().isOk());
 
-        mockMvc.perform(get("/agenda/disponibilidade").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(jsonPath("$.periods.length()").value(1))
                 .andExpect(jsonPath("$.periods[0].dayOfWeek").value(5));
     }
@@ -161,9 +161,9 @@ class AgendaTest {
     // a tela busca varios dias de uma vez pra mostrar so os dias q tem horario
     @Test
     void freeSlotsOfSeveralDaysComeTogether() throws Exception {
-        mockMvc.perform(get("/consulta/horarios-livres")
-                        .param("inicio", AGENDA_DAY.toString())
-                        .param("fim", AGENDA_DAY.plusDays(7).toString())
+        mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.plusDays(7).toString())
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(8));
@@ -171,9 +171,9 @@ class AgendaTest {
 
     @Test
     void freeSlotsCoverOneMonthAtMost() throws Exception {
-        mockMvc.perform(get("/consulta/horarios-livres")
-                        .param("inicio", AGENDA_DAY.toString())
-                        .param("fim", AGENDA_DAY.plusDays(31).toString())
+        mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.plusDays(31).toString())
                         .header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(AppointmentService.RANGE_TOO_LONG_MESSAGE));
@@ -190,7 +190,7 @@ class AgendaTest {
                 .andExpect(jsonPath("$.patientNote").value("Dor lombar piorou"))
                 .andExpect(jsonPath("$.prescriberName").value("Dra Agenda"));
 
-        mockMvc.perform(get("/consulta/pedidos").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/appointments/requests").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].patientName").value("Paciente da agenda"));
@@ -305,7 +305,7 @@ class AgendaTest {
         Map<String, Object> body = scheduleBody(patient, AGENDA_DAY.atTime(9, 0), null);
         body.put("modality", "TELEMEDICINA");
 
-        mockMvc.perform(post("/consulta")
+        mockMvc.perform(post("/appointments")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(body)))
@@ -397,9 +397,9 @@ class AgendaTest {
         schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated());
         schedule(otherPatient, AGENDA_DAY.plusDays(7).atTime(9, 0), null).andExpect(status().isCreated());
 
-        String body = mockMvc.perform(get("/consulta")
-                        .param("inicio", AGENDA_DAY.toString())
-                        .param("fim", AGENDA_DAY.plusDays(6).toString())
+        String body = mockMvc.perform(get("/appointments")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.plusDays(6).toString())
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -407,7 +407,7 @@ class AgendaTest {
                 .andReturn().getResponse().getContentAsString();
         assertThat(body).doesNotContain("diagnosis", "therapeuticPlan");
 
-        mockMvc.perform(get("/consulta").header("Authorization", bearerTokenOf(prescriber)))
+        mockMvc.perform(get("/appointments").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
@@ -417,7 +417,7 @@ class AgendaTest {
         request(patient, AGENDA_DAY.atTime(11, 0), null).andExpect(status().isCreated());
         request(otherPatient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
 
-        mockMvc.perform(get("/consulta/minhas").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/appointments/mine").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].status").value("AGENDADA"))
@@ -430,12 +430,12 @@ class AgendaTest {
     void anotherPrescriberOrPatientCannotSeeAnswerOrCancel() throws Exception {
         Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
 
-        mockMvc.perform(get("/consulta/" + requestId).header("Authorization", bearerTokenOf(otherPrescriber)))
+        mockMvc.perform(get("/appointments/" + requestId).header("Authorization", bearerTokenOf(otherPrescriber)))
                 .andExpect(status().isForbidden());
         confirm(requestId, otherPrescriber).andExpect(status().isForbidden());
         cancel(requestId, otherPrescriber).andExpect(status().isForbidden());
         cancel(requestId, patientOfOtherPrescriber).andExpect(status().isForbidden());
-        mockMvc.perform(get("/consulta").header("Authorization", bearerTokenOf(otherPrescriber)))
+        mockMvc.perform(get("/appointments").header("Authorization", bearerTokenOf(otherPrescriber)))
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
@@ -444,20 +444,20 @@ class AgendaTest {
         Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
 
         confirm(requestId, patient).andExpect(status().isForbidden());
-        mockMvc.perform(put("/consulta/" + requestId + "/recusa").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(put("/appointments/" + requestId + "/decline").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/agenda/disponibilidade").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void prescriberCannotUseThePatientRoutes() throws Exception {
-        mockMvc.perform(get("/consulta/horarios-livres")
-                        .param("inicio", AGENDA_DAY.toString())
-                        .param("fim", AGENDA_DAY.toString())
+        mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.toString())
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post("/consulta/agendamento")
+        mockMvc.perform(post("/appointments/requests")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(requestBody(AGENDA_DAY.atTime(10, 0), null))))
@@ -468,7 +468,7 @@ class AgendaTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("appointmentDurationMinutes", durationMinutes);
         body.put("periods", periods);
-        return mockMvc.perform(put("/agenda/disponibilidade")
+        return mockMvc.perform(put("/availability")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
@@ -483,9 +483,9 @@ class AgendaTest {
     }
 
     private ResultActions freeSlotsOf(Patient slotsPatient) throws Exception {
-        return mockMvc.perform(get("/consulta/horarios-livres")
-                        .param("inicio", AGENDA_DAY.toString())
-                        .param("fim", AGENDA_DAY.toString())
+        return mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.toString())
                         .header("Authorization", bearerTokenOf(slotsPatient)))
                 .andExpect(status().isOk());
     }
@@ -501,7 +501,7 @@ class AgendaTest {
 
     private ResultActions schedule(Patient scheduledPatient, LocalDateTime dateTime, Integer durationMinutes)
             throws Exception {
-        return mockMvc.perform(post("/consulta")
+        return mockMvc.perform(post("/appointments")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(scheduleBody(scheduledPatient, dateTime, durationMinutes))));
@@ -517,20 +517,20 @@ class AgendaTest {
 
     private ResultActions request(Patient requestingPatient, LocalDateTime dateTime, String patientNote)
             throws Exception {
-        return mockMvc.perform(post("/consulta/agendamento")
+        return mockMvc.perform(post("/appointments/requests")
                 .header("Authorization", bearerTokenOf(requestingPatient))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(requestBody(dateTime, patientNote))));
     }
 
     private ResultActions confirm(Long appointmentId, Users user) throws Exception {
-        return mockMvc.perform(put("/consulta/" + appointmentId + "/confirmacao")
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/confirm")
                 .header("Authorization", bearerTokenOf(user)));
     }
 
     // sem motivo a recusa vai sem corpo nenhum
     private ResultActions decline(Long appointmentId, String reason) throws Exception {
-        MockHttpServletRequestBuilder declineRequest = put("/consulta/" + appointmentId + "/recusa")
+        MockHttpServletRequestBuilder declineRequest = put("/appointments/" + appointmentId + "/decline")
                 .header("Authorization", bearerTokenOf(prescriber));
         if (reason != null) {
             declineRequest.contentType(MediaType.APPLICATION_JSON)
@@ -543,14 +543,14 @@ class AgendaTest {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("dateTime", dateTime.toString());
         body.put("modality", modality);
-        return mockMvc.perform(put("/consulta/" + appointmentId)
+        return mockMvc.perform(put("/appointments/" + appointmentId)
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
     }
 
     private ResultActions cancel(Long appointmentId, Users user) throws Exception {
-        return mockMvc.perform(put("/consulta/" + appointmentId + "/cancelar")
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/cancel")
                 .header("Authorization", bearerTokenOf(user)));
     }
 

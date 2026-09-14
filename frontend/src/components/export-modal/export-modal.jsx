@@ -5,10 +5,10 @@ import styles from "./export-modal.module.css";
 
 // o q da pra levar, um arquivo por tipo
 const FILES = [
-    {file: "consultas.csv", label: "Consultas", help: "Data, conduta e o que foi registrado em cada atendimento"},
-    {file: "prescricoes.csv", label: "Prescrições", help: "Óleo, composição, posologia e vigência de cada uma"},
-    {file: "escalas.csv", label: "Escalas respondidas", help: "Uma linha por item respondido, com o escore e a faixa"},
-    {file: "anamnese.csv", label: "Anamnese", help: "A ficha de triagem, pergunta por pergunta"},
+    {file: "appointments.csv", label: "Consultas", help: "Data, conduta e o que foi registrado em cada atendimento"},
+    {file: "prescriptions.csv", label: "Prescrições", help: "Óleo, composição, posologia e vigência de cada uma"},
+    {file: "scales.csv", label: "Escalas respondidas", help: "Uma linha por item respondido, com o escore e a faixa"},
+    {file: "anamneses.csv", label: "Anamnese", help: "A ficha de triagem, pergunta por pergunta"},
 ];
 
 // exportacao dos dados do paciente (RF33)
@@ -20,7 +20,7 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
     const [isAnonymous, setIsAnonymous] = useState(false);
 
     const downloadUrl = (file) =>
-        "/api/pacientes/" + patientId + "/exportacao/" + file + (isAnonymous ? "?anonimo=true" : "");
+        "/api/patients/" + patientId + "/export/" + file + (isAnonymous ? "?anonymous=true" : "");
 
     return (
         <Modal show={true} title="Exportar dados" onClickClose={onClose}>
