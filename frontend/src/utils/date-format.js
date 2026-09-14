@@ -26,9 +26,47 @@ export function formatDateTime(isoText) {
     return dateTime.toLocaleDateString("pt-BR") + " às " + time;
 }
 
+export function formatTime(isoText) {
+    if (!isoText) {
+        return "";
+    }
+    return toLocalDate(isoText).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+}
+
+// dia da semana por extenso junto com o dia e o mes
+export function formatWeekdayAndDate(isoText) {
+    if (!isoText) {
+        return "";
+    }
+    const date = toLocalDate(isoText);
+    const weekday = date.toLocaleDateString("pt-BR", {weekday: "long"});
+    const dayAndMonth = date.toLocaleDateString("pt-BR", {day: "2-digit", month: "2-digit"});
+    return weekday.charAt(0).toUpperCase() + weekday.slice(1) + " " + dayAndMonth;
+}
+
 // true quando a data e hora ainda n chegou
 export function isInTheFuture(isoText) {
     return toLocalDate(isoText) > new Date();
+}
+
+// data local no formato ano mes dia q a api usa sem passar por utc
+export function toIsoDate(date) {
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return date.getFullYear() + "-" + month + "-" + day;
+}
+
+// data nova somando dias sem mexer na original
+export function addDays(date, days) {
+    const newDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    newDate.setDate(newDate.getDate() + days);
+    return newDate;
+}
+
+// a segunda feira da semana de uma data
+export function mondayOf(date) {
+    const daysSinceMonday = (date.getDay() + 6) % 7;
+    return addDays(date, -daysSinceMonday);
 }
 
 // idade em anos completos

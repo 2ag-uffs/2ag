@@ -76,7 +76,7 @@ export default function HistoricoClinicoPrescritor() {
     // entao a proxima consulta marcada eh a ultima futura da lista
     const pastAppointments = appointments.filter((appointment) => !isInTheFuture(appointment.dateTime));
     const upcomingAppointments = appointments.filter((appointment) => isInTheFuture(appointment.dateTime)
-        && !appointment.annulled && appointment.status !== "CANCELADA");
+        && !appointment.annulled && appointment.status === "AGENDADA");
     const nextAppointment = upcomingAppointments.length > 0
         ? upcomingAppointments[upcomingAppointments.length - 1]
         : null;
@@ -85,9 +85,11 @@ export default function HistoricoClinicoPrescritor() {
     const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
         .concat(prescriptions.filter((prescription) => !prescription.current));
 
-    // consulta anulada ou cancelada fica so pra leitura
+    // so a consulta confirmada e n anulada recebe registro prescricao e anulacao
     const consultationActions = (appointment) => {
-        if (appointment.annulled || appointment.status === "CANCELADA") {
+        const isConfirmed = appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO"
+            || appointment.status === "CONCLUIDA";
+        if (appointment.annulled || !isConfirmed) {
             return null;
         }
         return (

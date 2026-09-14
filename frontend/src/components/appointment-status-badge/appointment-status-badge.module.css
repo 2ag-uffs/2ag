@@ -1,0 +1,36 @@
+/* etiqueta com a situacao da consulta ou do pedido */
+
+.waiting,
+.scheduled,
+.done,
+.inactive {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    display: inline-block;
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.15rem 0.7rem;
+}
+
+/* pedido esperando resposta ganha borda pra chamar atencao sem parecer erro */
+.waiting {
+    background-color: var(--color-surface);
+    border-color: var(--color-warning);
+    color: var(--color-text-headings);
+}
+
+.scheduled {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.done {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-headings);
+}
+
+.inactive {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}

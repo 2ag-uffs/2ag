@@ -53,6 +53,8 @@ public class DashboardService {
         List<AppointmentSummaryDTO> todaysAppointments = appointmentRepository
                 .findByPrescriberIdAndDateTimeBetween(prescriberId, startOfDay, endOfDay)
                 .stream()
+                // pedido sem resposta e consulta cancelada recusada ou anulada n contam como consulta do dia
+                .filter(apt -> apt.getStatus().isConfirmed() && !apt.isAnnulled())
                 .map(apt -> new AppointmentSummaryDTO(apt.getId(), apt.getPatient().getName(), apt.getModality()))
                 .collect(Collectors.toList());
 

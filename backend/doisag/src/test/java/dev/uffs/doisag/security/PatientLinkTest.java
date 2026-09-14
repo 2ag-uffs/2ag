@@ -98,7 +98,8 @@ class PatientLinkTest {
     @Test
     void prescriberCannotWritePatientsOfAnotherPrescriber() throws Exception {
         Long patientOfB = recordsOfB.patient().getId();
-        String appointmentBody = "{\"patientId\":" + patientOfB + ",\"dateTime\":\"" + NEXT_MONTH + "T15:00:00\"}";
+        String appointmentBody = "{\"patientId\":" + patientOfB + ",\"dateTime\":\"" + NEXT_MONTH
+                + "T15:00:00\",\"modality\":\"PRESENCIAL\"}";
 
         assertForbidden(post("/consulta").contentType(MediaType.APPLICATION_JSON).content(appointmentBody),
                 prescriberA, "registrar consulta");
@@ -107,6 +108,10 @@ class PatientLinkTest {
                 prescriberA, "alterar consulta");
         assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/cancelar"),
                 prescriberA, "cancelar consulta");
+        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/confirmacao"),
+                prescriberA, "confirmar pedido de consulta");
+        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/recusa"),
+                prescriberA, "recusar pedido de consulta");
         assertForbidden(post("/consulta/" + recordsOfB.appointmentId() + "/prescricao")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"),
@@ -157,6 +162,12 @@ class PatientLinkTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"assessmentDate\":\"" + LocalDate.now() + "\",\"anxiousMood\":0}"),
                 recordsOfA.patient(), "alterar escala de outro paciente");
+    }
+
+    @Test
+    void patientCannotCancelAnotherPatientsAppointment() throws Exception {
+        assertForbidden(put("/consulta/" + recordsOfB.appointmentId() + "/cancelar"),
+                recordsOfA.patient(), "cancelar consulta de outro paciente");
     }
 
     // o administrador cuida das contas e n abre prontuario

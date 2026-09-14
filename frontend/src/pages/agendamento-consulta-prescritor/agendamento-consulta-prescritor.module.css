@@ -1,0 +1,185 @@
+/* agenda do prescritor */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 60rem;
+}
+
+.header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.subtitle,
+.status,
+.meta {
+    color: var(--color-text-secondary);
+}
+
+.meta {
+    font-size: 0.9rem;
+}
+
+.headerActions,
+.weekNavigation,
+.appointmentActions,
+.modalActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sectionTitle {
+    font-size: 1.25rem;
+}
+
+.weekHeader {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.days {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.day {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.9rem 1.1rem;
+}
+
+.dayName {
+    font-size: 1rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.appointment {
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 0.9rem;
+}
+
+.appointmentTime {
+    display: flex;
+    flex-direction: column;
+    min-width: 4.5rem;
+}
+
+.appointmentTime span {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.appointmentInfo {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.appointmentTitle {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.patientName {
+    font-weight: 600;
+}
+
+.patientNote {
+    font-size: 0.9rem;
+    white-space: pre-line;
+}
+
+.modalForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.modalDescription {
+    font-weight: 600;
+}
+
+.formRow {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.modalActions {
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+    flex: 0 0 auto;
+    padding: 0 1rem;
+}
+
+.secondaryButton {
+    background-color: var(--color-surface);
+    color: var(--color-primary);
+}
+
+.secondaryButton:hover {
+    background-color: var(--color-surface-alt);
+}
+
+.dangerButton {
+    background-color: var(--color-surface);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.dangerButton:hover {
+    background-color: var(--color-error-soft);
+}
+
+/* no celular os botoes do modal empilham com o voltar em cima */
+@media screen and (max-width: 578px) {
+    .modalActions {
+        flex-direction: column;
+    }
+}

@@ -52,6 +52,10 @@ public class Appointment {
     // perguntava isso e a resposta era descartada
     private Integer durationMinutes = 60;
 
+    // o q o paciente escreveu ao pedir o horario e nunca vai pros campos clinicos
+    @Column(columnDefinition = "TEXT")
+    private String patientNote;
+
     // preenchido so quando o registro da consulta foi anulado
     @Embedded
     private Annulment annulment;
@@ -117,6 +121,14 @@ public class Appointment {
 
     public void setDurationMinutes(Integer durationMinutes) {
         this.durationMinutes = durationMinutes;
+    }
+
+    public String getPatientNote() {
+        return patientNote;
+    }
+
+    public void setPatientNote(String patientNote) {
+        this.patientNote = patientNote;
     }
     // relacionamento n:1, muitas consultas podem ser de um paciente
     @ManyToOne(fetch = FetchType.LAZY)

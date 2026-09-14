@@ -1,9 +1,13 @@
 package dev.uffs.doisag.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
@@ -20,6 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +49,7 @@ class PrescriptionFlowTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PrescriberRepository prescriberRepository;
+    @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private TokenService tokenService;
 
@@ -138,6 +144,23 @@ class PrescriptionFlowTest {
         issuePrescription(appointmentId, prescriptionWith("Oleo"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PrescriptionService.ANNULLED_CONSULTATION_MESSAGE));
+    }
+
+    // pedido de consulta sem resposta ou recusado n gera prescricao
+    @Test
+    void unconfirmedAppointmentDoesNotIssueAPrescription() throws Exception {
+        Appointment request = new Appointment();
+        request.setPatient(patient);
+        request.setPrescriber(prescriber);
+        request.setDateTime(LocalDateTime.now().plusDays(3));
+        request.setModality(AppointmentModality.PRESENCIAL);
+        request.setStatus(AppointmentStatus.SOLICITADA);
+        request.setDurationMinutes(60);
+        Long requestId = appointmentRepository.save(request).getId();
+
+        issuePrescription(requestId, prescriptionWith("Oleo"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriptionService.NOT_CONFIRMED_CONSULTATION_MESSAGE));
     }
 
     @Test

@@ -2,17 +2,21 @@ package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.AppointmentModality;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-// o q o paciente manda quando marca a propria consulta
-// so data modalidade e duracao pq campo clinico eh do prescritor
+// o q o paciente manda quando pede um horario (RF10)
+// a duracao eh a do prescritor e nenhum campo clinico entra por aqui
 public record AppointmentRequestDTO(
-        @NotNull(message = "A data e hora são obrigatórias")
+        @NotNull(message = "Escolha o horário")
         LocalDateTime dateTime,
 
+        @NotNull(message = "Escolha se a consulta é presencial ou remota")
         AppointmentModality modality,
 
-        Integer durationMinutes
+        // o motivo q o paciente conta pro prescritor e fica fora do registro clinico
+        @Size(max = 1000, message = "O motivo pode ter até 1000 caracteres")
+        String patientNote
 ) {
 }

@@ -1,5 +1,6 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
@@ -79,6 +80,7 @@ class DataIntegrityTest {
         appointment.setDateTime(LocalDateTime.now());
         appointment.setPatient(novoPaciente("consulta@email.com", "52998224725"));
         appointment.setPrescriber(prescriber);
+        appointment.setStatus(AppointmentStatus.CONCLUIDA);
         appointment.setClinicalObservation(TEXTO_LONGO);
         appointment.setTherapeuticPlan(TEXTO_LONGO);
         appointment.setEvolution(TEXTO_LONGO);
