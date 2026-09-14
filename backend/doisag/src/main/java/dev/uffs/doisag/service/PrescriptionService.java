@@ -30,6 +30,7 @@ public class PrescriptionService {
 
     public static final String ANNULLED_CONSULTATION_MESSAGE = "Consulta anulada não gera prescrição";
     public static final String CANCELED_CONSULTATION_MESSAGE = "Consulta cancelada não gera prescrição";
+    public static final String NOT_CONFIRMED_CONSULTATION_MESSAGE = "Só consulta confirmada na agenda gera prescrição";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
 
     private final PrescriptionRepository prescriptionRepository;
@@ -52,6 +53,10 @@ public class PrescriptionService {
         }
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new BusinessException(CANCELED_CONSULTATION_MESSAGE);
+        }
+        // pedido sem resposta ou recusado n virou consulta
+        if (!appointment.getStatus().isConfirmed()) {
+            throw new BusinessException(NOT_CONFIRMED_CONSULTATION_MESSAGE);
         }
 
         Long patientId = appointment.getPatient().getId();

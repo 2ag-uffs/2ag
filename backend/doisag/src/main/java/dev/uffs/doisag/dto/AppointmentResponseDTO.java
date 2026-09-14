@@ -6,8 +6,8 @@ import dev.uffs.doisag.model.Appointment;
 
 import java.time.LocalDateTime;
 
-// o que a api devolve de uma consulta. sem a entidade crua, entao sem
-// o paciente e o prescritor inteiros pendurados
+// o que a api devolve de uma consulta sem a entidade crua
+// entao sem o paciente e o prescritor inteiros pendurados
 public record AppointmentResponseDTO(
         Long id,
         LocalDateTime dateTime,
@@ -23,6 +23,7 @@ public record AppointmentResponseDTO(
         Float weight,
         Integer height,
         Integer durationMinutes,
+        String patientNote,
         Long patientId,
         String patientName,
         Long prescriberId,
@@ -48,6 +49,7 @@ public record AppointmentResponseDTO(
                 appointment.getWeight(),
                 appointment.getHeight(),
                 appointment.getDurationMinutes(),
+                appointment.getPatientNote(),
                 appointment.getPatient().getId(),
                 appointment.getPatient().getName(),
                 appointment.getPrescriber().getId(),

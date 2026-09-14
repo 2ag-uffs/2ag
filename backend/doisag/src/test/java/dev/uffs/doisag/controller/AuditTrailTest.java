@@ -107,7 +107,7 @@ class AuditTrailTest {
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(appointmentBody))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         Long appointmentId = new ObjectMapper().readTree(response).get("id").asLong();
 

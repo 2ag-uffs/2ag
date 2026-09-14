@@ -29,6 +29,7 @@ public class ConsultationService {
     public static final String EMPTY_RECORD_MESSAGE = "Preencha pelo menos um campo clínico da consulta";
     public static final String ANNULLED_MESSAGE = "Consulta anulada não pode ser alterada";
     public static final String CANCELED_MESSAGE = "Consulta cancelada não recebe registro clínico";
+    public static final String NOT_CONFIRMED_MESSAGE = "Só consulta confirmada na agenda recebe registro clínico";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta consulta já foi anulada";
     public static final String HAS_PRESCRIPTION_MESSAGE =
             "Esta consulta tem prescrição. Anule a prescrição antes de anular a consulta";
@@ -63,7 +64,7 @@ public class ConsultationService {
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
         appointment.setDateTime(dateTime);
-        appointment.setDurationMinutes(AppointmentService.DURACAO_PADRAO);
+        appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
         appointment.setStatus(AppointmentStatus.CONCLUIDA);
         copyClinicalFields(recordData, appointment);
 
@@ -81,6 +82,10 @@ public class ConsultationService {
         }
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new BusinessException(CANCELED_MESSAGE);
+        }
+        // pedido sem resposta ou recusado n virou consulta
+        if (!appointment.getStatus().isConfirmed()) {
+            throw new BusinessException(NOT_CONFIRMED_MESSAGE);
         }
 
         LocalDateTime dateTime = recordData.dateTime() == null ? appointment.getDateTime() : recordData.dateTime();

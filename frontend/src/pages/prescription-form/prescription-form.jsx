@@ -220,6 +220,8 @@ export default function PrescriptionForm() {
         blockedMessage = "Esta consulta foi anulada e não gera prescrição.";
     } else if (appointment.status === "CANCELADA") {
         blockedMessage = "Esta consulta foi cancelada e não gera prescrição.";
+    } else if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA") {
+        blockedMessage = "Só consulta confirmada na agenda gera prescrição.";
     }
     const compositionError = compositionErrorOf(fieldErrors);
 

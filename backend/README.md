@@ -134,7 +134,31 @@ o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda 
 
 nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo paciente ou pelo prescritor logado.
 
-o paciente marca consulta em `POST /consulta/agendamento`, só com data, modalidade e duração. `POST /consulta` é do prescritor e aceita os campos clínicos.
+## agenda
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /agenda/disponibilidade` | horários de atendimento da semana e duração padrão das consultas do prescritor logado |
+| `PUT /agenda/disponibilidade` | troca os horários de atendimento e a duração padrão, de 15 a 240 minutos |
+| `GET /consulta?inicio=&fim=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira |
+| `GET /consulta/pedidos` | pedidos esperando a resposta do prescritor logado |
+| `POST /consulta` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `durationMinutes`, vale a duração padrão |
+| `GET /consulta/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |
+| `PUT /consulta/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo |
+| `PUT /consulta/{id}/confirmacao` | o prescritor confirma o pedido |
+| `PUT /consulta/{id}/recusa` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
+| `PUT /consulta/{id}/cancelar` | o paciente ou o prescritor cancela o pedido ou a consulta |
+| `GET /consulta/horarios-livres?inicio=&fim=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias |
+| `POST /consulta/agendamento` | o paciente pede um horário livre, com modalidade e motivo opcional |
+| `GET /consulta/minhas` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
+
+- `inicio` e `fim` são datas no formato `aaaa-mm-dd`, as duas inclusive
+- os horários livres saem da divisão dos períodos de atendimento pela duração padrão, sem os que já passaram e sem os que se sobrepõem a um pedido ou consulta
+- o pedido do paciente segura o horário até a resposta. a recusa e o cancelamento liberam o horário
+- o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
+- a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
+- cada mudança gera uma notificação para a outra parte
+- só consulta confirmada recebe registro clínico (`PUT /consulta/{id}/registro-clinico`) e prescrição (`POST /consulta/{id}/prescricao`)
 
 ## guarda do prontuário
 
@@ -198,4 +222,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha) e o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria) já seguem o padrão novo. os módulos clínicos (paciente, consulta, prescrição, escalas, acompanhamento e notificações) ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente) e o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) já seguem o padrão novo. escalas, acompanhamento, painel inicial e notificações ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

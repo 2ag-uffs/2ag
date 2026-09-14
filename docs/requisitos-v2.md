@@ -749,12 +749,26 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Escalas enviadas:** o paciente sempre recebe a escala que o prescritor envia. Reenviar uma escala ainda pendente não cria tarefa repetida.
 - **Trilha de auditoria:** a abertura do prontuário gera uma linha por visita, mesmo quando a tela carrega várias listas ao mesmo tempo.
 
+**E-mail configurado em 13/09/2026:** com `MAIL_HOST` definido, o link de recuperação de senha sai por e-mail pelo servidor SMTP. Sem ele, o link continua indo para o log da API.
+
+**Agenda concluída em 13/09/2026:** RF10 e RF11.
+
+- **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.
+- **Pedido do paciente:**
+  - o paciente escolhe um horário livre dos próximos 30 dias e pode escrever o motivo da consulta, que fica fora dos campos clínicos;
+  - o pedido segura o horário até o prescritor confirmar ou recusar;
+  - a recusa pode levar um motivo, que chega ao paciente no aviso, e libera o horário.
+- **Agenda do prescritor:** mostra os pedidos esperando resposta e as consultas da semana. O prescritor também marca consulta direto, com a duração padrão ou outra, remarca e cancela. Dois agendamentos do mesmo prescritor nunca ocupam o mesmo horário (RN08).
+- **Cancelamento:** o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. Depois disso, só o prescritor cancela.
+- **Avisos:** pedir, marcar, confirmar, recusar, remarcar e cancelar geram notificação no sistema para a outra parte. O lembrete antes da consulta (RF34) fica para o módulo de notificações.
+- **Registro clínico:** só a consulta confirmada na agenda recebe registro clínico e prescrição.
+
 Ficam para os módulos seguintes, onde cada entidade é reescrita:
 
 - **Escalas:**
   - a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou;
-  - os resultados do MEEM no histórico do prescritor, que ainda não têm listagem por paciente.
-- **Agenda:** o campo de observação que o paciente preenchia ao marcar consulta, que saiu por gravar texto do paciente em campo clínico.
+  - os resultados do MEEM no histórico do prescritor, que ainda não têm listagem por paciente;
+  - o MEEM ligado a uma consulta, que ainda aceita consulta não confirmada na agenda.
 
 ---
 

@@ -105,6 +105,10 @@ export default function ConsultationRecord() {
                         + appointment.annulmentReason);
                 } else if (appointment.status === "CANCELADA") {
                     setBlockedMessage("Esta consulta foi cancelada e não recebe registro clínico.");
+                } else if (appointment.status === "SOLICITADA") {
+                    setBlockedMessage("Este pedido de consulta ainda não foi confirmado na agenda. Confirme antes de registrar o atendimento.");
+                } else if (appointment.status === "RECUSADA") {
+                    setBlockedMessage("Este pedido de consulta foi recusado e não recebe registro clínico.");
                 }
             });
 

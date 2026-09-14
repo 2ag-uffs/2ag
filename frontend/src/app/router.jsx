@@ -143,6 +143,10 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/agendamento-consulta-prescritor/agendamento-consulta-prescritor.jsx")),
                             },
                             {
+                                path: "/agenda/disponibilidade",
+                                lazy: lazyPage(() => import("../pages/agenda-disponibilidade/agenda-disponibilidade.jsx")),
+                            },
+                            {
                                 path: "/paciente/:pacienteId/selecao-escalas",
                                 lazy: lazyPage(() => import("../pages/selecao-escalas/selecao-escalas.jsx")),
                             },

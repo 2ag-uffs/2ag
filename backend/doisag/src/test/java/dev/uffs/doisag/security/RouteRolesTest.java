@@ -6,9 +6,11 @@ import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.PrescriberAvailability;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +32,7 @@ import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +77,7 @@ class RouteRolesTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
+    @Autowired private PrescriberAvailabilityRepository availabilityRepository;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -154,7 +158,8 @@ class RouteRolesTest {
                 .andExpect(status().isForbidden());
 
         // registrar e alterar consulta mesmo sendo a propria
-        String appointmentBody = "{\"patientId\":" + patient.getId() + ",\"dateTime\":\"" + NEXT_MONTH + "T15:00:00\"}";
+        String appointmentBody = "{\"patientId\":" + patient.getId() + ",\"dateTime\":\"" + NEXT_MONTH
+                + "T15:00:00\",\"modality\":\"PRESENCIAL\"}";
         mockMvc.perform(post("/consulta").header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON).content(appointmentBody))
                 .andExpect(status().isForbidden());
@@ -234,10 +239,18 @@ class RouteRolesTest {
         String body = "{\"dateTime\":\"" + NEXT_MONTH + "T14:00:00\",\"modality\":\"REMOTA\","
                 + "\"diagnosis\":\"escrito pelo paciente\",\"therapeuticPlan\":\"escrito pelo paciente\"}";
 
+        // o paciente so pede horario livre entao a agenda do prescritor precisa ter o periodo aberto
+        PrescriberAvailability period = new PrescriberAvailability();
+        period.setPrescriber(prescriber);
+        period.setDayOfWeek(NEXT_MONTH.getDayOfWeek().getValue());
+        period.setStartTime(LocalTime.of(8, 0));
+        period.setEndTime(LocalTime.of(18, 0));
+        availabilityRepository.save(period);
+
         mockMvc.perform(post("/consulta/agendamento").header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("AGENDADA"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SOLICITADA"))
                 .andExpect(jsonPath("$.diagnosis").doesNotExist())
                 .andExpect(jsonPath("$.therapeuticPlan").doesNotExist());
     }

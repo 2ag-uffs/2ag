@@ -1,0 +1,163 @@
+/* consultas do paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 52rem;
+}
+
+.subtitle,
+.status,
+.meta {
+    color: var(--color-text-secondary);
+}
+
+.meta {
+    font-size: 0.9rem;
+}
+
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+}
+
+.section,
+.step {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.sectionTitle {
+    font-size: 1.25rem;
+}
+
+.stepTitle {
+    font-size: 1rem;
+}
+
+.days,
+.slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+.dayButton,
+.dayButtonSelected {
+    align-items: flex-start;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-height: 3.25rem;
+    padding: 0.4rem 0.8rem;
+    text-align: left;
+}
+
+.dayButton,
+.slotButton {
+    background-color: var(--color-surface);
+}
+
+.dayButton {
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.dayButton:hover {
+    background-color: var(--color-surface-alt);
+}
+
+.weekday {
+    font-weight: 600;
+}
+
+.slotCount {
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+.slotButton,
+.slotButtonSelected,
+.primaryButton,
+.dangerButton {
+    flex: 0 0 auto;
+    padding: 0 1rem;
+}
+
+.slotButton {
+    color: var(--color-primary);
+}
+
+.slotButton:hover {
+    background-color: var(--color-primary-soft);
+}
+
+.formRow {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.summary {
+    font-weight: 600;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.appointment {
+    align-items: center;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    justify-content: space-between;
+    padding: 0.75rem 0.9rem;
+}
+
+.appointmentInfo {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.appointmentTitle {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.dangerButton {
+    background-color: var(--color-surface);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+.dangerButton:hover {
+    background-color: var(--color-error-soft);
+}

@@ -158,6 +158,7 @@ docs/        requisitos, escalas clínicas, identidade visual e documentos da ex
 - o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
 - o administrador cuida só das contas: ele não vê prontuário.
 - nenhum dado clínico é apagado, e toda criação, alteração e abertura de prontuário fica na trilha de auditoria. o prescritor consulta a trilha de cada paciente pela lista de pacientes, e o administrador consulta em Auditoria, sem ver nome de paciente.
+- o paciente pede consulta só nos horários de atendimento que o prescritor cadastra, e o horário fica reservado até o prescritor responder.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
 - nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.
 

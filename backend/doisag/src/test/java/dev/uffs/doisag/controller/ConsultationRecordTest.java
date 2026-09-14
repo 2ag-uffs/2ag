@@ -156,6 +156,16 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.message").value(ConsultationService.CANCELED_MESSAGE));
     }
 
+    // pedido de consulta ainda sem resposta n virou consulta
+    @Test
+    void waitingRequestDoesNotReceiveARecord() throws Exception {
+        Appointment request = saveAppointment(AppointmentStatus.SOLICITADA, LocalDateTime.now().minusDays(1));
+
+        updateRecord(request.getId(), clinicalRecord())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.NOT_CONFIRMED_MESSAGE));
+    }
+
     @Test
     void annulledConsultationStaysInTheHistoryWithTheReason() throws Exception {
         Long appointmentId = registeredConsultationId();

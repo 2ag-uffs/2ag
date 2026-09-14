@@ -1,588 +1,423 @@
-import { useCallback, useEffect, useState } from 'react';
-import "./agendamento-consulta-prescritor.css";
+import {useEffect, useState} from "react";
+import {useNavigate} from "react-router";
+import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {modalityLabelOf} from "../../utils/appointment-labels.js";
+import {
+    addDays,
+    formatDate,
+    formatDateTime,
+    formatTime,
+    formatWeekdayAndDate,
+    isInTheFuture,
+    mondayOf,
+    toIsoDate,
+} from "../../utils/date-format.js";
+import AppointmentFormModal from "./appointment-form-modal.jsx";
+import DeclineRequestModal from "./decline-request-modal.jsx";
+import styles from "./agendamento-consulta-prescritor.module.css";
 
-// o toISOString devolve a data em utc, entao aqui no brasil ele troca o
-// dia depois das 21h. a agenda compara data com data, entao precisa da
-// data local
-const dataLocal = (date) => {
-    const ano = date.getFullYear();
-    const mes = String(date.getMonth() + 1).padStart(2, "0");
-    const dia = String(date.getDate()).padStart(2, "0");
-    return `${ano}-${mes}-${dia}`;
-};
+const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
-// consulta cancelada continua na lista, pra ficar registrado que
-// existiu, mas o horario dela volta a ficar livre
-const cancelada = (consulta) => consulta.status === "CANCELADA";
+// data e hora do formulario no formato q a api espera
+function toApiDateTime(date, time) {
+    return date + "T" + time + ":00";
+}
 
-const STATUS_LEGIVEL = {
-    AGENDADA: "Agendada",
-    EM_ANDAMENTO: "Em andamento",
-    CONCLUIDA: "Concluída",
-    CANCELADA: "Cancelada",
-};
+// os sete dias da semana a partir da segunda
+function weekDaysFrom(monday) {
+    const days = [];
+    for (let offset = 0; offset < 7; offset++) {
+        days.push(toIsoDate(addDays(monday, offset)));
+    }
+    return days;
+}
 
-// a api guarda um instante so (dateTime) mais a duracao. a agenda
-// trabalha com data, hora de inicio e hora de fim, entao a conversao
-// fica aqui na borda, em vez de espalhada pela tela
-const daApi = (consulta) => {
-    const duracao = consulta.durationMinutes || 60;
-    const inicio = new Date(consulta.dateTime);
-    const fim = new Date(inicio.getTime() + duracao * 60000);
-    const hhmm = (d) => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
-    return {
-        id: consulta.id,
-        pacienteId: consulta.patientId,
-        pacienteNome: consulta.patientName,
-        data: dataLocal(inicio),
-        horarioInicio: hhmm(inicio),
-        horarioFim: hhmm(fim),
-        tipo: consulta.modality === "REMOTA" ? "remota" : "presencial",
-        status: consulta.status,
-        observacoes: consulta.clinicalObservation || "",
-        duracao,
-    };
-};
-
-// atencao: esta tela ainda n fala com a api. as consultas ficam so no
-// estado do componente e somem quando a pagina recarrega. por isso os
-// avisos daqui n dizem que o paciente foi notificado, porque n foi
+// agenda do prescritor (RF11)
+// pedidos dos pacientes pra responder e as consultas da semana com atalho pros horarios de atendimento
 export default function AgendamentoPrescritor() {
+    const navigate = useNavigate();
+    const [weekStart, setWeekStart] = useState(() => mondayOf(new Date()));
+    const [agenda, setAgenda] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [actionError, setActionError] = useState(null);
+    // somar um aqui busca a agenda de novo sem esconder a tela
+    const [reloadCount, setReloadCount] = useState(0);
+    const [isCreating, setIsCreating] = useState(false);
+    const [rescheduleTarget, setRescheduleTarget] = useState(null);
+    const [declineTarget, setDeclineTarget] = useState(null);
+    const [cancelTarget, setCancelTarget] = useState(null);
+    // consulta com pedido em andamento pra n mandar duas vezes
+    const [busyAppointmentId, setBusyAppointmentId] = useState(null);
 
-    const [aviso, setAviso] = useState(null);
-    const [erro, setErro] = useState(null);
-    const [carregando, setCarregando] = useState(true);
-    const [salvando, setSalvando] = useState(false);
-    const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
-    const [observacoesEdicao, setObservacoesEdicao] = useState("");
-    const [currentWeek, setCurrentWeek] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
-    const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [editingAppointment, setEditingAppointment] = useState(null);
-
-    // Estados do formulário
-    const [selectedPatient, setSelectedPatient] = useState(null);
-    const [appointmentType, setAppointmentType] = useState("presencial");
-    const [duration, setDuration] = useState(60);
-    const [observations, setObservations] = useState("");
-    const [patientSearch, setPatientSearch] = useState("");
-
-    const [patients, setPatients] = useState([]);
-    const [appointments, setAppointments] = useState([]);
-
-    // carrega os pacientes do prescritor e as consultas dele.
-    // antes as duas listas eram fixas no codigo e sumiam ao recarregar
-    const carregar = useCallback(async () => {
-        try {
-            const [consultas, pacientes] = await Promise.all([
-                apiService.get("/consulta"),
-                apiService.get("/paciente"),
-            ]);
-            setAppointments(consultas.map(daApi));
-            setPatients(pacientes);
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível carregar a agenda.");
-        } finally {
-            setCarregando(false);
-        }
-    }, []);
+    const weekStartIso = toIsoDate(weekStart);
+    const weekEndIso = toIsoDate(addDays(weekStart, 6));
 
     useEffect(() => {
-        carregar();
-    }, [carregar]);
+        let isCurrentRequest = true;
 
-    // Horários de trabalho
-    const workingHours = {
-        start: 8,
-        end: 18,
-        interval: 30 // minutos
-    };
-
-    const getWeekDays = (date) => {
-        const week = [];
-        const startOfWeek = new Date(date);
-        const day = startOfWeek.getDay();
-        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Ajustar para segunda-feira
-        startOfWeek.setDate(diff);
-
-        for (let i = 0; i < 7; i++) {
-            const day = new Date(startOfWeek);
-            day.setDate(startOfWeek.getDate() + i);
-            week.push(day);
-        }
-        return week;
-    };
-
-    const generateTimeSlots = () => {
-        const slots = [];
-        for (let hour = workingHours.start; hour < workingHours.end; hour++) {
-            for (let minute = 0; minute < 60; minute += workingHours.interval) {
-                const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                slots.push(time);
-            }
-        }
-        return slots;
-    };
-
-    const isTimeSlotOccupied = (date, time) => {
-        const dateString = dataLocal(date);
-        return appointments.some(apt =>
-            !cancelada(apt) &&
-            apt.data === dateString &&
-            apt.horarioInicio <= time &&
-            apt.horarioFim > time
-        );
-    };
-
-    const getAppointmentAtTime = (date, time) => {
-        const dateString = dataLocal(date);
-        return appointments.find(apt =>
-            !cancelada(apt) &&
-            apt.data === dateString &&
-            apt.horarioInicio <= time &&
-            apt.horarioFim > time
-        );
-    };
-
-    const handleTimeSlotClick = (date, time) => {
-        if (isTimeSlotOccupied(date, time)) {
-            const appointment = getAppointmentAtTime(date, time);
-            setEditingAppointment(appointment);
-            setObservacoesEdicao(appointment.observacoes);
-            setShowEditModal(true);
-        } else {
-            setSelectedDate(date);
-            setSelectedTimeSlot(time);
-            setShowNewAppointmentModal(true);
-        }
-    };
-
-    const handleCreateAppointment = async () => {
-        if (!selectedPatient || !selectedTimeSlot) {
-            setAviso(null);
-            setErro("Selecione um paciente e um horário.");
-            return;
-        }
-
-        setErro(null);
-        setSalvando(true);
-        try {
-            await apiService.post("/consulta", {
-                patientId: selectedPatient.id,
-                dateTime: `${dataLocal(selectedDate)}T${selectedTimeSlot}:00`,
-                modality: appointmentType === "remota" ? "REMOTA" : "PRESENCIAL",
-                status: "AGENDADA",
-                clinicalObservation: observations,
-                durationMinutes: duration,
+        Promise.all([
+            apiService.get("/consulta?inicio=" + weekStartIso + "&fim=" + weekEndIso),
+            apiService.get("/consulta/pedidos"),
+            apiService.get("/agenda/disponibilidade"),
+            apiService.get("/paciente"),
+        ])
+            .then(([weekAppointments, waitingRequests, availability, patients]) => {
+                if (isCurrentRequest) {
+                    setAgenda({weekAppointments, waitingRequests, availability, patients});
+                    setLoadError(null);
+                }
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar a agenda. Confira sua internet e tente de novo.");
+                }
             });
-            await carregar();
-            setAviso(
-                `Consulta de ${selectedPatient.name} marcada para ` +
-                `${selectedDate.toLocaleDateString("pt-BR")} às ${selectedTimeSlot}.`,
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [weekStartIso, weekEndIso, reloadCount]);
+
+    const finishAction = (message) => {
+        setNotice(message);
+        setActionError(null);
+        setReloadCount((currentCount) => currentCount + 1);
+    };
+
+    const showActionError = (requestError) => {
+        setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+    };
+
+    const confirmRequest = async (request) => {
+        setNotice(null);
+        setActionError(null);
+        setBusyAppointmentId(request.id);
+        try {
+            await apiService.put("/consulta/" + request.id + "/confirmacao");
+            finishAction("Consulta de " + request.patientName + " confirmada. O paciente recebeu o aviso.");
+        } catch (requestError) {
+            showActionError(requestError);
+        } finally {
+            setBusyAppointmentId(null);
+        }
+    };
+
+    const cancelAppointment = async () => {
+        const appointment = cancelTarget;
+        setCancelTarget(null);
+        setNotice(null);
+        setActionError(null);
+        setBusyAppointmentId(appointment.id);
+        try {
+            await apiService.put("/consulta/" + appointment.id + "/cancelar");
+            finishAction("Consulta de " + appointment.patientName + " cancelada. O paciente recebeu o aviso.");
+        } catch (requestError) {
+            showActionError(requestError);
+        } finally {
+            setBusyAppointmentId(null);
+        }
+    };
+
+    // se a api recusar o erro volta pro modal mostrar
+    const createAppointment = async (values) => {
+        await apiService.post("/consulta", {
+            patientId: Number(values.patientId),
+            dateTime: toApiDateTime(values.date, values.time),
+            modality: values.modality,
+            durationMinutes: Number(values.durationMinutes),
+        });
+        setIsCreating(false);
+        setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
+        finishAction("Consulta marcada. O paciente recebeu o aviso.");
+    };
+
+    const rescheduleAppointment = async (values) => {
+        const patientName = rescheduleTarget.patientName;
+        await apiService.put("/consulta/" + rescheduleTarget.id, {
+            dateTime: toApiDateTime(values.date, values.time),
+            modality: values.modality,
+            durationMinutes: Number(values.durationMinutes),
+        });
+        setRescheduleTarget(null);
+        setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
+        finishAction("Consulta de " + patientName + " remarcada. O paciente recebeu o aviso.");
+    };
+
+    const handleDeclined = () => {
+        const patientName = declineTarget.patientName;
+        setDeclineTarget(null);
+        finishAction("Pedido de " + patientName + " recusado. O paciente recebeu o aviso.");
+    };
+
+    const openForm = (setTarget, target) => {
+        setNotice(null);
+        setActionError(null);
+        setTarget(target);
+    };
+
+    if (loadError && agenda === null) {
+        return <p className="aviso aviso--atencao">{loadError}</p>;
+    }
+
+    if (agenda === null) {
+        return <p className={styles.status}>Carregando...</p>;
+    }
+
+    const {weekAppointments, waitingRequests, availability, patients} = agenda;
+
+    // o botao de cada consulta depende da situacao dela
+    const appointmentActions = (appointment) => {
+        const isBusy = busyAppointmentId === appointment.id;
+        if (appointment.annulled) {
+            return null;
+        }
+        if (appointment.status === "SOLICITADA") {
+            return (
+                <>
+                    {isInTheFuture(appointment.dateTime) && (
+                        <button
+                            type="button"
+                            className={styles.primaryButton}
+                            onClick={() => confirmRequest(appointment)}
+                            disabled={isBusy}
+                        >
+                            Confirmar
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => openForm(setDeclineTarget, appointment)}
+                        disabled={isBusy}
+                    >
+                        Recusar
+                    </button>
+                </>
             );
-            setShowNewAppointmentModal(false);
-            setSelectedPatient(null);
-            setObservations("");
-            setPatientSearch("");
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
-        } finally {
-            setSalvando(false);
         }
+        if (appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO") {
+            const hasStarted = !isInTheFuture(appointment.dateTime);
+            return (
+                <>
+                    {hasStarted ? (
+                        <button
+                            type="button"
+                            className={styles.primaryButton}
+                            onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
+                        >
+                            Registrar atendimento
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => openForm(setRescheduleTarget, appointment)}
+                            disabled={isBusy}
+                        >
+                            Remarcar
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() => openForm(setCancelTarget, appointment)}
+                        disabled={isBusy}
+                    >
+                        Cancelar
+                    </button>
+                </>
+            );
+        }
+        if (appointment.status === "CONCLUIDA") {
+            return (
+                <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
+                >
+                    Ver histórico
+                </button>
+            );
+        }
+        return null;
     };
 
-    // o put pede a consulta inteira, n so o campo mexido, entao o resto
-    // vai de volta do jeito que veio
-    const handleEditAppointment = async () => {
-        setErro(null);
-        setSalvando(true);
-        try {
-            await apiService.put(`/consulta/${editingAppointment.id}`, {
-                patientId: editingAppointment.pacienteId,
-                dateTime: `${editingAppointment.data}T${editingAppointment.horarioInicio}:00`,
-                modality: editingAppointment.tipo === "remota" ? "REMOTA" : "PRESENCIAL",
-                status: editingAppointment.status,
-                clinicalObservation: observacoesEdicao,
-                durationMinutes: editingAppointment.duracao,
-            });
-            await carregar();
-            setAviso(`Agendamento de ${editingAppointment.pacienteNome} alterado.`);
-            setShowEditModal(false);
-            setEditingAppointment(null);
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível alterar a consulta.");
-        } finally {
-            setSalvando(false);
-        }
-    };
-
-    // cancelar muda o status, n apaga: o registro fica no historico e o
-    // horario volta a ficar livre na grade
-    const handleCancelAppointment = async () => {
-        setConfirmandoCancelamento(false);
-        const nome = editingAppointment.pacienteNome;
-        setErro(null);
-        setSalvando(true);
-        try {
-            await apiService.put(`/consulta/${editingAppointment.id}/cancelar`);
-            await carregar();
-            setAviso(`Consulta de ${nome} cancelada.`);
-            setShowEditModal(false);
-            setEditingAppointment(null);
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível cancelar a consulta.");
-        } finally {
-            setSalvando(false);
-        }
-    };
-
-    const filteredPatients = patients.filter(patient =>
-        patient.name.toLowerCase().includes(patientSearch.toLowerCase())
+    const renderAppointment = (appointment, showDate) => (
+        <li key={appointment.id} className={styles.appointment}>
+            <div className={styles.appointmentTime}>
+                {showDate && <span>{formatDate(appointment.dateTime)}</span>}
+                <strong>{formatTime(appointment.dateTime)}</strong>
+                <span>{appointment.durationMinutes} min</span>
+            </div>
+            <div className={styles.appointmentInfo}>
+                <div className={styles.appointmentTitle}>
+                    <span className={styles.patientName}>{appointment.patientName}</span>
+                    <AppointmentStatusBadge appointment={appointment}/>
+                </div>
+                <p className={styles.meta}>{modalityLabelOf(appointment.modality)}</p>
+                {appointment.patientNote && <p className={styles.patientNote}>Motivo: {appointment.patientNote}</p>}
+            </div>
+            <div className={styles.appointmentActions}>{appointmentActions(appointment)}</div>
+        </li>
     );
 
-    const formatDate = (date) => {
-        return date.toLocaleDateString("pt-BR", {
-            weekday: "short",
-            day: "2-digit",
-            month: "2-digit"
-        });
-    };
-
-    const getTodayAppointments = () => {
-        const today = dataLocal(new Date());
-        return appointments.filter(apt => apt.data === today);
-    };
-
-    const navigateWeek = (direction) => {
-        const newWeek = new Date(currentWeek);
-        newWeek.setDate(currentWeek.getDate() + (direction * 7));
-        setCurrentWeek(newWeek);
-    };
-
-    // Estado para armazenar os dias da semana
-    const [weekDays, setWeekDays] = useState([]);
-
-    // UseEffect para inicializar e atualizar weekDays quando currentWeek muda
-    useEffect(() => {
-        setWeekDays(getWeekDays(currentWeek));
-    }, [currentWeek]);
-
     return (
-        <div className="agendamento-prescritor">
+        <section className={styles.page}>
+            <div className={styles.header}>
+                <div>
+                    <h1>Agenda</h1>
+                    <p className={styles.subtitle}>
+                        Responda os pedidos dos pacientes e acompanhe as consultas da semana.
+                    </p>
+                </div>
+                <div className={styles.headerActions}>
+                    <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => openForm(setIsCreating, true)}
+                        disabled={patients.length === 0}
+                    >
+                        Nova consulta
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => navigate("/agenda/disponibilidade")}
+                    >
+                        Horários de atendimento
+                    </button>
+                </div>
+            </div>
 
-            <main className="dashboard-main">
-                {carregando && <p>Carregando agenda...</p>}
-                {erro && <p className="aviso aviso--atencao">{erro}</p>}
-                {aviso && <p className="aviso">{aviso}</p>}
-                <div className="agendamento-header">
-                    <div className="dashboard-welcome">
-                        <h1>Gerenciar Agenda</h1>
-                        <p>Agende consultas para seus pacientes e gerencie sua agenda de forma eficiente.</p>
+            {availability.periods.length === 0 && (
+                <p className="aviso aviso--atencao">
+                    Você ainda não cadastrou horários de atendimento, então seus pacientes não conseguem pedir
+                    consulta. Cadastre em Horários de atendimento.
+                </p>
+            )}
+            {notice && <p className="aviso" role="status">{notice}</p>}
+            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+            {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+
+            <section className={styles.section} aria-labelledby="pedidos-aguardando">
+                <h2 id="pedidos-aguardando" className={styles.sectionTitle}>
+                    Pedidos aguardando resposta ({waitingRequests.length})
+                </h2>
+                {waitingRequests.length === 0 ? (
+                    <p className={styles.status}>Nenhum pedido esperando resposta.</p>
+                ) : (
+                    <ul className={styles.list}>
+                        {waitingRequests.map((request) => renderAppointment(request, true))}
+                    </ul>
+                )}
+            </section>
+
+            <section className={styles.section} aria-labelledby="semana-da-agenda">
+                <div className={styles.weekHeader}>
+                    <h2 id="semana-da-agenda" className={styles.sectionTitle}>
+                        Semana de {formatDate(weekStartIso)} a {formatDate(weekEndIso)}
+                    </h2>
+                    <div className={styles.weekNavigation}>
+                        <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => setWeekStart(addDays(weekStart, -7))}
+                        >
+                            Semana anterior
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => setWeekStart(mondayOf(new Date()))}
+                        >
+                            Esta semana
+                        </button>
+                        <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => setWeekStart(addDays(weekStart, 7))}
+                        >
+                            Próxima semana
+                        </button>
                     </div>
                 </div>
-
-                <div className="agenda-container">
-                    {/* Calendário Semanal */}
-                    <section className="dashboard-card calendar-section">
-                        <div className="card-header">
-                            <h2>Agenda Semanal</h2>
-                            <div className="week-navigation">
-                                <button className="nav-button" onClick={() => navigateWeek(-1)}>
-                                    Anterior
-                                </button>
-                                <span className="week-display">
-                                    {weekDays.length > 0 ? `${weekDays[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - ${weekDays[6].toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}` : 'Carregando...'}
-                                </span>
-                                <button className="nav-button" onClick={() => navigateWeek(1)}>
-                                    Próxima
-                                </button>
-                            </div>
-                        </div>
-                        <div className="calendar-grid">
-                            <div className="time-column">
-                                <div className="time-header"></div>
-                                {generateTimeSlots().map(time => (
-                                    <div key={time} className="time-slot-label">
-                                        {time}
-                                    </div>
-                                ))}
-                            </div>
-                            {weekDays.map(day => (
-                                <div key={day.toISOString()} className="day-column">
-                                    <div className="day-header">
-                                        <span className="day-name">{formatDate(day)}</span>
-                                    </div>
-                                    {generateTimeSlots().map(time => {
-                                        const isOccupied = isTimeSlotOccupied(day, time);
-                                        const appointment = getAppointmentAtTime(day, time);
-
-                                        return (
-                                            <div
-                                                key={`${day.toISOString()}-${time}`}
-                                                className={`time-slot ${isOccupied ? 'occupied' : 'free'}`}
-                                                onClick={() => handleTimeSlotClick(day, time)}
-                                            >
-                                                {isOccupied && appointment && (
-                                                    <div className="appointment-info">
-                                                        <span className="patient-name">{appointment.pacienteNome}</span>
-                                                        <span className="appointment-type">{appointment.tipo}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Agendamentos de Hoje */}
-                    <section className="dashboard-card today-appointments">
-                        <div className="card-header">
-                            <h2>Agendamentos de Hoje</h2>
-                            <span className="card-badge">{getTodayAppointments().length} consultas</span>
-                        </div>
-                        <div className="card-content">
-                            {getTodayAppointments().length === 0 ? (
-                                <div className="empty-state">
-                                    <p>Nenhum agendamento para hoje</p>
-                                </div>
-                            ) : (
-                                getTodayAppointments().map(appointment => (
-                                    <div
-                                        key={appointment.id}
-                                        className={`appointment-item ${cancelada(appointment) ? "cancelada" : ""}`}
-                                    >
-                                        <div className="appointment-time">{appointment.horarioInicio}</div>
-                                        <div className="appointment-details">
-                                            <h3>{appointment.pacienteNome}</h3>
-                                            <p>{appointment.observacoes}</p>
-                                            <span className={`appointment-type-badge ${appointment.tipo}`}>
-                                                {appointment.tipo}
-                                            </span>
-                                            {cancelada(appointment) && (
-                                                <span className="appointment-status-badge">Cancelada</span>
-                                            )}
-                                        </div>
-                                        <div className="appointment-actions">
-                                            {/* consulta cancelada n abre pra editar */}
-                                            {!cancelada(appointment) && (
-                                                <button
-                                                    type="button"
-                                                    className="button-secondary"
-                                                    onClick={() => {
-                                                        setEditingAppointment(appointment);
-                                                        setObservacoesEdicao(appointment.observacoes);
-                                                        setShowEditModal(true);
-                                                    }}
-                                                >
-                                                    Editar
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-                </div>
-            </main>
-
-            {/* Modal de Novo Agendamento */}
-            {showNewAppointmentModal && (
-                <div className="modal-overlay" onClick={() => setShowNewAppointmentModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Novo Agendamento</h2>
-                            <button
-                                className="close-button"
-                                onClick={() => setShowNewAppointmentModal(false)}
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="form-group">
-                                <label>Data e Horário</label>
-                                <div className="datetime-display">
-                                    {selectedDate.toLocaleDateString("pt-BR")} às {selectedTimeSlot}
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Buscar Paciente</label>
-                                <input
-                                    type="text"
-                                    value={patientSearch}
-                                    onChange={(e) => setPatientSearch(e.target.value)}
-                                    placeholder="Digite o nome do paciente..."
-                                    className="patient-search"
-                                />
-                                {patientSearch && (
-                                    <div className="patient-list">
-                                        {filteredPatients.map(patient => (
-                                            <div
-                                                key={patient.id}
-                                                className={`patient-item ${selectedPatient?.id === patient.id ? 'selected' : ''}`}
-                                                onClick={() => {
-                                                    setSelectedPatient(patient);
-                                                    setPatientSearch(patient.name);
-                                                }}
-                                            >
-                                                <div className="patient-info">
-                                                    <h4>{patient.name}</h4>
-                                                    <p>{patient.email}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                <div className={styles.days}>
+                    {weekDaysFrom(weekStart).map((dayIso) => {
+                        const dayAppointments = weekAppointments.filter((appointment) =>
+                            appointment.dateTime.slice(0, 10) === dayIso);
+                        return (
+                            <div key={dayIso} className={styles.day}>
+                                <h3 className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</h3>
+                                {dayAppointments.length === 0 ? (
+                                    <p className={styles.status}>Nenhuma consulta.</p>
+                                ) : (
+                                    <ul className={styles.list}>
+                                        {dayAppointments.map((appointment) => renderAppointment(appointment, false))}
+                                    </ul>
                                 )}
                             </div>
-
-                            <div className="form-group">
-                                <label>Tipo de Consulta</label>
-                                <div className="radio-group">
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="presencial"
-                                            checked={appointmentType === "presencial"}
-                                            onChange={(e) => setAppointmentType(e.target.value)}
-                                        />
-                                        <span>Presencial</span>
-                                    </label>
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="remota"
-                                            checked={appointmentType === "remota"}
-                                            onChange={(e) => setAppointmentType(e.target.value)}
-                                        />
-                                        <span>Remota</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Duração (minutos)</label>
-                                <select
-                                    value={duration}
-                                    onChange={(e) => setDuration(parseInt(e.target.value))}
-                                >
-                                    <option value={30}>30 minutos</option>
-                                    <option value={60}>60 minutos</option>
-                                    <option value={90}>90 minutos</option>
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Observações</label>
-                                <textarea
-                                    value={observations}
-                                    onChange={(e) => setObservations(e.target.value)}
-                                    placeholder="Observações sobre a consulta..."
-                                    rows="3"
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                className="button-secondary"
-                                onClick={() => setShowNewAppointmentModal(false)}
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                className="button"
-                                onClick={handleCreateAppointment}
-                                disabled={salvando}
-                            >
-                                {salvando ? "Agendando..." : "Agendar Consulta"}
-                            </button>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
+            </section>
+
+            {isCreating && (
+                <AppointmentFormModal
+                    title="Nova consulta"
+                    submitLabel="Marcar consulta"
+                    patients={patients}
+                    initialValues={{
+                        patientId: "",
+                        date: toIsoDate(new Date()),
+                        time: "",
+                        modality: "PRESENCIAL",
+                        durationMinutes: String(availability.appointmentDurationMinutes),
+                    }}
+                    onSubmit={createAppointment}
+                    onClose={() => setIsCreating(false)}
+                />
             )}
 
-            {/* Modal de Edição */}
-            {showEditModal && editingAppointment && (
-                <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Editar Agendamento</h2>
-                            <button
-                                className="close-button"
-                                onClick={() => setShowEditModal(false)}
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="appointment-summary">
-                                <h3>{editingAppointment.pacienteNome}</h3>
-                                <p>Data: {new Date(editingAppointment.data).toLocaleDateString("pt-BR")}</p>
-                                <p>Horário: {editingAppointment.horarioInicio} - {editingAppointment.horarioFim}</p>
-                                <p>Tipo: {editingAppointment.tipo}</p>
-                                <p>Status: {STATUS_LEGIVEL[editingAppointment.status] || editingAppointment.status}</p>
-                            </div>
+            {rescheduleTarget && (
+                <AppointmentFormModal
+                    title={"Remarcar consulta de " + rescheduleTarget.patientName}
+                    submitLabel="Remarcar"
+                    initialValues={{
+                        date: rescheduleTarget.dateTime.slice(0, 10),
+                        time: rescheduleTarget.dateTime.slice(11, 16),
+                        modality: rescheduleTarget.modality,
+                        durationMinutes: String(rescheduleTarget.durationMinutes),
+                    }}
+                    onSubmit={rescheduleAppointment}
+                    onClose={() => setRescheduleTarget(null)}
+                />
+            )}
 
-                            <div className="form-group">
-                                <label>Observações</label>
-                                <textarea
-                                    value={observacoesEdicao}
-                                    onChange={(e) => setObservacoesEdicao(e.target.value)}
-                                    placeholder="Observações sobre a consulta..."
-                                    rows="3"
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                type="button"
-                                className="button-danger"
-                                onClick={() => setConfirmandoCancelamento(true)}
-                            >
-                                Cancelar Consulta
-                            </button>
-                            <button
-                                className="button-secondary"
-                                onClick={() => setShowEditModal(false)}
-                            >
-                                Fechar
-                            </button>
-                            <button
-                                type="button"
-                                className="button"
-                                onClick={handleEditAppointment}
-                                disabled={salvando}
-                            >
-                                {salvando ? "Salvando..." : "Salvar Alterações"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            {declineTarget && (
+                <DeclineRequestModal
+                    request={declineTarget}
+                    onClose={() => setDeclineTarget(null)}
+                    onDeclined={handleDeclined}
+                />
             )}
 
             <ModalConfirmacao
-                show={confirmandoCancelamento}
+                show={cancelTarget !== null}
                 titulo="Cancelar consulta"
-                mensagem={
-                    editingAppointment
-                        ? `A consulta de ${editingAppointment.pacienteNome} sai da agenda. Quer cancelar?`
-                        : ""
-                }
-                textoConfirmar="Sim, cancelar"
-                textoCancelar="Manter consulta"
-                onConfirmar={handleCancelAppointment}
-                onCancelar={() => setConfirmandoCancelamento(false)}
+                mensagem={cancelTarget !== null
+                    ? "A consulta de " + cancelTarget.patientName + " em " + formatDateTime(cancelTarget.dateTime)
+                    + " vai ser cancelada e o paciente recebe um aviso."
+                    : ""}
+                textoConfirmar="Cancelar consulta"
+                textoCancelar="Voltar"
+                onConfirmar={cancelAppointment}
+                onCancelar={() => setCancelTarget(null)}
             />
-        </div>
+        </section>
     );
 }
-
-

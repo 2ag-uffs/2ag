@@ -1,18 +1,7 @@
 import AnnulmentNotice from "../annulment-notice/annulment-notice.jsx";
+import {modalityLabelOf, statusLabelOf} from "../../utils/appointment-labels.js";
 import {formatDateTime} from "../../utils/date-format.js";
 import styles from "./consultation-card.module.css";
-
-const MODALITY_LABELS = {
-    PRESENCIAL: "Presencial",
-    REMOTA: "Remota",
-};
-
-const STATUS_LABELS = {
-    AGENDADA: "Agendada",
-    EM_ANDAMENTO: "Em andamento",
-    CONCLUIDA: "Concluída",
-    CANCELADA: "Cancelada",
-};
 
 // campos do registro clinico na ordem em q o prescritor preenche
 const CLINICAL_FIELDS = [
@@ -23,13 +12,6 @@ const CLINICAL_FIELDS = [
     {name: "therapeuticPlan", label: "Conduta e plano terapêutico"},
     {name: "complementaryExams", label: "Exames complementares"},
 ];
-
-function statusLabelOf(appointment) {
-    if (appointment.annulled) {
-        return "Anulada";
-    }
-    return STATUS_LABELS[appointment.status] || appointment.status;
-}
 
 function badgeClassOf(appointment) {
     if (appointment.annulled) {
@@ -65,7 +47,7 @@ export default function ConsultationCard({appointment, actions}) {
                 <div>
                     <h3>{formatDateTime(appointment.dateTime)}</h3>
                     <p className={styles.meta}>
-                        {MODALITY_LABELS[appointment.modality] || "Modalidade não informada"}
+                        {modalityLabelOf(appointment.modality)}
                         {appointment.prescriberName ? " com " + appointment.prescriberName : ""}
                     </p>
                 </div>

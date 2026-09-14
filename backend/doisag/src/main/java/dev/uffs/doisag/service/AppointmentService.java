@@ -1,18 +1,25 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.enums.AuditRecordType;
-import dev.uffs.doisag.infra.NotFoundException;
-import dev.uffs.doisag.dto.AppointmentCreateDTO;
+import dev.uffs.doisag.dto.AppointmentDeclineDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
-import dev.uffs.doisag.dto.BusySlotDTO;
+import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
+import dev.uffs.doisag.dto.AppointmentScheduleDTO;
+import dev.uffs.doisag.dto.TimeSlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
+import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
-import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.model.PrescriberAvailability;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -22,119 +29,275 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
+// agenda de consultas (RF10 e RF11)
+// o paciente pede um horario livre da agenda do prescritor dele e o pedido segura o horario ate a resposta
+// o prescritor confirma recusa marca remarca e cancela
+// o paciente cancela o pedido a qualquer hora e a consulta marcada so com 24 horas de antecedencia
 @Service
 public class AppointmentService {
 
-    // a agenda trabalha em blocos de uma hora quando ninguem diz outra coisa
-    public static final int DURACAO_PADRAO = 60;
+    public static final String PAST_DATE_MESSAGE = "Não é possível marcar consulta em um horário que já passou";
+    public static final String SLOT_TAKEN_MESSAGE = "Já existe consulta marcada nesse horário";
+    public static final String SLOT_NOT_FREE_MESSAGE = "Esse horário não está livre na agenda. Escolha outro";
+    public static final String NO_PRESCRIBER_MESSAGE = "Você ainda não tem um prescritor vinculado";
+    public static final String ALREADY_ANSWERED_MESSAGE = "Este pedido de consulta já foi respondido";
+    public static final String CLOSED_APPOINTMENT_MESSAGE = "Esta consulta não pode mais ser alterada";
+    public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
+    public static final String LATE_CANCELLATION_MESSAGE =
+            "Faltam menos de 24 horas para a consulta. Para cancelar, fale com o seu prescritor";
+    public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
+    public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
-    // injecoes
+    // antecedencia minima pro paciente cancelar sozinho a consulta marcada
+    public static final int PATIENT_CANCELLATION_HOURS = 24;
+
+    // o paciente ve no maximo um mes de horarios livres por vez
+    public static final int MAX_FREE_SLOT_DAYS = 31;
+
+    private static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
+    private static final String PRESCRIBER_AGENDA_LINK = "/agendamento-prescritor";
+    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
+
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
+    private final PrescriberRepository prescriberRepository;
+    private final PrescriberAvailabilityRepository availabilityRepository;
     private final AuditService auditService;
     private NotificationService notificationService;
 
-    // removemos o NotificationService do construtor
     public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
-                              AuditService auditService) {
+                              PrescriberRepository prescriberRepository,
+                              PrescriberAvailabilityRepository availabilityRepository, AuditService auditService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
+        this.prescriberRepository = prescriberRepository;
+        this.availabilityRepository = availabilityRepository;
         this.auditService = auditService;
     }
 
-    // criamos um metodo setter para o spring injetar a dependencia depois
+    // injetado pelo setter pra n formar ciclo na montagem dos servicos
     @Autowired
     public void setNotificationService(@Lazy NotificationService notificationService) {
         this.notificationService = notificationService;
     }
 
-    // consulta registrada pelo prescritor. ele vem da sessao entao n da
-    // pra registrar consulta no nome de outro profissional
+    // o prescritor marca direto pra paciente da carteira dele e a consulta ja nasce confirmada
     @Transactional
-    public Appointment create(AppointmentCreateDTO dados, Prescriber prescriber) {
-        Patient patient = patientRepository.findById(dados.patientId())
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + dados.patientId()));
+    public Appointment schedule(AppointmentScheduleDTO scheduleData, Long prescriberId) {
+        Patient patient = findPatient(scheduleData.patientId());
+        Prescriber prescriber = findPrescriber(prescriberId);
+        int durationMinutes = scheduleData.durationMinutes() == null
+                ? prescriber.getAppointmentDurationMinutes()
+                : scheduleData.durationMinutes();
 
-        recusaDataNoPassado(dados.dateTime());
-        recusaHorarioOcupado(prescriber, dados.dateTime(), dados.durationMinutes(), null);
+        checkNotInThePast(scheduleData.dateTime());
+        checkSlotIsFree(prescriberId, scheduleData.dateTime(), durationMinutes, null);
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
-        appointment.setDateTime(dados.dateTime());
-        appointment.setModality(dados.modality());
-        appointment.setStatus(dados.status());
-        appointment.setDiagnosis(dados.diagnosis());
-        appointment.setClinicalObservation(dados.clinicalObservation());
-        appointment.setTherapeuticPlan(dados.therapeuticPlan());
-        appointment.setEvolution(dados.evolution());
-        appointment.setPhysicalExam(dados.physicalExam());
-        appointment.setComplementaryExams(dados.complementaryExams());
-        appointment.setBloodPressure(dados.bloodPressure());
-        appointment.setWeight(dados.weight());
-        appointment.setHeight(dados.height());
-        // sem duracao a grade da agenda n sabe ate quando o horario
-        // esta ocupado, entao uma hora eh o padrao
-        appointment.setDurationMinutes(dados.durationMinutes() == null ? DURACAO_PADRAO : dados.durationMinutes());
+        appointment.setDateTime(scheduleData.dateTime());
+        appointment.setModality(scheduleData.modality());
+        appointment.setDurationMinutes(durationMinutes);
+        appointment.setStatus(AppointmentStatus.AGENDADA);
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
-        notifyNewAppointment(savedAppointment);
+        notificationService.createNotification(patient, "Consulta marcada",
+                "Sua consulta com " + prescriber.getName() + " foi marcada para "
+                        + formatDateTime(savedAppointment) + ".",
+                "APPOINTMENT", PATIENT_AGENDA_LINK);
         return savedAppointment;
     }
 
-    // o paciente marca a propria consulta (RF10). o prescritor eh o do
-    // vinculo e o paciente so escolhe data modalidade e duracao
+    // o paciente pede um dos horarios livres da agenda do prescritor dele
     @Transactional
-    public Appointment requestByPatient(Long patientId, AppointmentRequestDTO requestData) {
-        Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
-
+    public Appointment request(Long patientId, AppointmentRequestDTO requestData) {
+        Patient patient = findPatient(patientId);
         Prescriber prescriber = patient.getPrescriber();
         if (prescriber == null) {
-            throw new IllegalArgumentException("Você ainda não tem um prescritor vinculado");
+            throw new BusinessException(NO_PRESCRIBER_MESSAGE);
         }
 
-        recusaDataNoPassado(requestData.dateTime());
-        recusaHorarioOcupado(prescriber, requestData.dateTime(), requestData.durationMinutes(), null);
+        // so vale um dos horarios livres entao fora do atendimento ocupado ou passado n entra
+        boolean isFreeSlot = getFreeSlots(prescriber.getId(), requestData.dateTime().toLocalDate())
+                .stream()
+                .anyMatch(slot -> slot.start().equals(requestData.dateTime()));
+        if (!isFreeSlot) {
+            throw new BusinessException(SLOT_NOT_FREE_MESSAGE);
+        }
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
         appointment.setDateTime(requestData.dateTime());
         appointment.setModality(requestData.modality());
-        appointment.setStatus(AppointmentStatus.AGENDADA);
-        appointment.setDurationMinutes(
-                requestData.durationMinutes() == null ? DURACAO_PADRAO : requestData.durationMinutes());
+        appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
+        appointment.setStatus(AppointmentStatus.SOLICITADA);
+        appointment.setPatientNote(textOrNull(requestData.patientNote()));
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
-        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patient.getId());
-        notifyNewAppointment(savedAppointment);
+        auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
+        notificationService.createNotification(prescriber, "Pedido de consulta",
+                patient.getName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
+                "APPOINTMENT", PRESCRIBER_AGENDA_LINK);
         return savedAppointment;
     }
 
-    private void notifyNewAppointment(Appointment appointment) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String formattedDateTime = appointment.getDateTime().format(formatter);
+    @Transactional
+    public Appointment confirm(Long appointmentId) {
+        Appointment appointment = findAppointment(appointmentId);
+        checkIsWaitingAnswer(appointment);
+        // outro pedido do mesmo horario pode ter sido confirmado antes desse
+        if (overlapsAny(appointment.getDateTime(), endOf(appointment), confirmedAppointmentsOnTheDayOf(appointment))) {
+            throw new BusinessException(SLOT_TAKEN_MESSAGE);
+        }
 
-        notificationService.createNotification(
-                appointment.getPatient(),
-                "Consulta Agendada!",
-                "Sua consulta com " + appointment.getPrescriber().getName() + " foi agendada para " + formattedDateTime + ".",
-                "APPOINTMENT",
-                "/agendamento-consulta"
-        );
+        appointment.setStatus(AppointmentStatus.AGENDADA);
+        Appointment savedAppointment = saveChange(appointment);
+        notificationService.createNotification(savedAppointment.getPatient(), "Consulta confirmada",
+                "Sua consulta com " + savedAppointment.getPrescriber().getName() + " em "
+                        + formatDateTime(savedAppointment) + " foi confirmada.",
+                "APPOINTMENT", PATIENT_AGENDA_LINK);
+        return savedAppointment;
+    }
 
-        notificationService.createNotification(
-                appointment.getPrescriber(),
-                "Novo Agendamento",
-                "Você tem uma nova consulta com " + appointment.getPatient().getName() + " em " + formattedDateTime + ".",
-                "APPOINTMENT",
-                "/agendamento-prescritor"
-        );
+    // o pedido recusado devolve o horario pra agenda
+    @Transactional
+    public Appointment decline(Long appointmentId, AppointmentDeclineDTO declineData) {
+        Appointment appointment = findAppointment(appointmentId);
+        checkIsWaitingAnswer(appointment);
+
+        appointment.setStatus(AppointmentStatus.RECUSADA);
+        Appointment savedAppointment = saveChange(appointment);
+
+        String message = "Seu pedido de consulta para " + formatDateTime(savedAppointment)
+                + " não foi aceito. Escolha outro horário na agenda.";
+        String reason = declineData == null ? null : textOrNull(declineData.reason());
+        if (reason != null) {
+            message = message + " Motivo: " + reason;
+        }
+        notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta recusado",
+                message, "ALERT", PATIENT_AGENDA_LINK);
+        return savedAppointment;
+    }
+
+    // remarcar muda quando e como a consulta acontece e avisa o paciente
+    // o pedido remarcado pelo prescritor ja fica confirmado no horario novo
+    @Transactional
+    public Appointment reschedule(Long appointmentId, AppointmentRescheduleDTO rescheduleData) {
+        Appointment appointment = findAppointment(appointmentId);
+        boolean canBeMoved = appointment.getStatus() == AppointmentStatus.SOLICITADA
+                || appointment.getStatus() == AppointmentStatus.AGENDADA;
+        if (appointment.isAnnulled() || !canBeMoved) {
+            throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
+        }
+
+        int durationMinutes = rescheduleData.durationMinutes() == null
+                ? appointment.getDurationMinutes()
+                : rescheduleData.durationMinutes();
+        checkNotInThePast(rescheduleData.dateTime());
+        checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
+                appointment.getId());
+
+        appointment.setDateTime(rescheduleData.dateTime());
+        appointment.setModality(rescheduleData.modality());
+        appointment.setDurationMinutes(durationMinutes);
+        appointment.setStatus(AppointmentStatus.AGENDADA);
+        Appointment savedAppointment = saveChange(appointment);
+        notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada",
+                "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "
+                        + formatDateTime(savedAppointment) + ".",
+                "APPOINTMENT", PATIENT_AGENDA_LINK);
+        return savedAppointment;
+    }
+
+    // cancelar n apaga e a consulta continua no historico como cancelada
+    // o pedido ainda sem resposta o paciente cancela a qualquer hora
+    @Transactional
+    public Appointment cancel(Long appointmentId, Users loggedUser) {
+        Appointment appointment = findAppointment(appointmentId);
+        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
+            throw new BusinessException(ALREADY_CANCELED_MESSAGE);
+        }
+        if (appointment.isAnnulled() || !isOpen(appointment.getStatus())) {
+            throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
+        }
+
+        boolean canceledByPatient = loggedUser instanceof Patient;
+        boolean isLateForThePatient = appointment.getStatus() != AppointmentStatus.SOLICITADA
+                && appointment.getDateTime().isBefore(LocalDateTime.now().plusHours(PATIENT_CANCELLATION_HOURS));
+        if (canceledByPatient && isLateForThePatient) {
+            throw new BusinessException(LATE_CANCELLATION_MESSAGE);
+        }
+
+        appointment.setStatus(AppointmentStatus.CANCELADA);
+        Appointment savedAppointment = saveChange(appointment);
+        if (canceledByPatient) {
+            notificationService.createNotification(savedAppointment.getPrescriber(), "Consulta cancelada pelo paciente",
+                    savedAppointment.getPatient().getName() + " cancelou a consulta de "
+                            + formatDateTime(savedAppointment) + ".",
+                    "ALERT", PRESCRIBER_AGENDA_LINK);
+        } else {
+            notificationService.createNotification(savedAppointment.getPatient(), "Consulta cancelada",
+                    "Sua consulta com " + savedAppointment.getPrescriber().getName() + " de "
+                            + formatDateTime(savedAppointment) + " foi cancelada.",
+                    "ALERT", PATIENT_AGENDA_LINK);
+        }
+        return savedAppointment;
+    }
+
+    // horarios livres de alguns dias na agenda do prescritor do paciente
+    // a tela busca o mes inteiro de uma vez e mostra so os dias q tem horario
+    @Transactional(readOnly = true)
+    public List<TimeSlotDTO> getFreeSlotsForPatient(Long patientId, LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw new BusinessException(INVALID_RANGE_MESSAGE);
+        }
+        if (ChronoUnit.DAYS.between(from, to) >= MAX_FREE_SLOT_DAYS) {
+            throw new BusinessException(RANGE_TOO_LONG_MESSAGE);
+        }
+
+        Prescriber prescriber = findPatient(patientId).getPrescriber();
+        if (prescriber == null) {
+            return List.of();
+        }
+
+        List<TimeSlotDTO> freeSlots = new ArrayList<>();
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            freeSlots.addAll(getFreeSlots(prescriber.getId(), day));
+        }
+        return freeSlots;
+    }
+
+    // agenda do prescritor entre duas datas e sem as datas vem inteira
+    @Transactional(readOnly = true)
+    public List<Appointment> getAgenda(Long prescriberId, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            return appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriberId);
+        }
+        if (from.isAfter(to)) {
+            throw new BusinessException(INVALID_RANGE_MESSAGE);
+        }
+        return appointmentRepository.findByPrescriberIdAndDateTimeBetweenOrderByDateTimeAsc(
+                prescriberId, from.atStartOfDay(), to.atTime(LocalTime.MAX));
+    }
+
+    // pedidos de pacientes q ainda esperam a resposta do prescritor
+    @Transactional(readOnly = true)
+    public List<Appointment> getWaitingRequests(Long prescriberId) {
+        return appointmentRepository.findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
+                prescriberId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
+    }
+
+    // proximos pedidos e consultas do paciente com a situacao de cada um
+    @Transactional(readOnly = true)
+    public List<Appointment> getUpcomingForPatient(Long patientId) {
+        return appointmentRepository.findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(patientId, LocalDateTime.now());
     }
 
     // abrir a consulta conta como abrir o prontuario do paciente
@@ -144,157 +307,145 @@ public class AppointmentService {
         return appointment;
     }
 
-    // busca usada dentro do servico q n conta como abrir o prontuario
-    private Appointment findAppointment(Long id) {
-        return appointmentRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + id));
-    }
-
-    @Transactional
-    public Appointment update(Long id, AppointmentCreateDTO dados) {
-        Appointment appointment = findAppointment(id);
-        // a propria consulta n conta como conflito com ela mesma
-        recusaHorarioOcupado(appointment.getPrescriber(), dados.dateTime(), dados.durationMinutes(), id);
-        appointment.setDateTime(dados.dateTime());
-        appointment.setModality(dados.modality());
-        appointment.setStatus(dados.status());
-        appointment.setDiagnosis(dados.diagnosis());
-        appointment.setClinicalObservation(dados.clinicalObservation());
-        appointment.setTherapeuticPlan(dados.therapeuticPlan());
-        appointment.setEvolution(dados.evolution());
-        appointment.setPhysicalExam(dados.physicalExam());
-        appointment.setComplementaryExams(dados.complementaryExams());
-        appointment.setBloodPressure(dados.bloodPressure());
-        appointment.setWeight(dados.weight());
-        appointment.setHeight(dados.height());
-        if (dados.durationMinutes() != null) {
-            appointment.setDurationMinutes(dados.durationMinutes());
-        }
-        Appointment savedAppointment = appointmentRepository.save(appointment);
-        auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
-                savedAppointment.getPatient().getId());
-        return savedAppointment;
-    }
-
-    // as consultas de um paciente dentro da janela do grafico. cancelada
-    // fica de fora: consulta que n aconteceu n explica mudanca nenhuma
-    public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod periodo) {
-        auditService.recordChartView(patientId);
-        LocalDate hoje = LocalDate.now();
-        LocalDate inicio = hoje.minusDays(periodo.getDays());
-
-        return appointmentRepository
-                .findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(
-                        patientId, inicio.atStartOfDay(), hoje.atTime(LocalTime.MAX))
-                .stream()
-                .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
-                // consulta anulada foi lancada por engano e n aconteceu
-                .filter(consulta -> !consulta.isAnnulled())
-                .map(AppointmentMarkerDTO::new)
-                .toList();
-    }
-
-    // os horarios ja ocupados de um prescritor num dia, sem dizer de
-    // quem sao. eh o que o paciente ve pra escolher horario (RF10)
-    public List<BusySlotDTO> getHorariosOcupados(Long prescriberId, LocalDate dia) {
-        return appointmentRepository
-                .findByPrescriberIdAndDateTimeBetween(prescriberId, dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
-                .stream()
-                .filter(consulta -> consulta.getStatus() != AppointmentStatus.CANCELADA)
-                .filter(consulta -> !consulta.isAnnulled())
-                .map(consulta -> {
-                    int minutos = consulta.getDurationMinutes() == null ? DURACAO_PADRAO : consulta.getDurationMinutes();
-                    LocalTime inicio = consulta.getDateTime().toLocalTime();
-                    return new BusySlotDTO(inicio, inicio.plusMinutes(minutos));
-                })
-                .sorted((a, b) -> a.inicio().compareTo(b.inicio()))
-                .toList();
-    }
-
-    // consultas de um prescritor especifico
-    public List<Appointment> getByPrescriberId(Long prescriberId) {
-        return appointmentRepository.findByPrescriberId(prescriberId);
-    }
-
     // consultas de um paciente da mais recente pra mais antiga
     public List<Appointment> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
         return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId);
     }
 
-    // cancelar n apaga: a consulta fica no historico com status
-    // CANCELADA. apagar perderia o registro de que ela existiu, e o
-    // paciente e o prescritor precisam poder olhar pra tras e ver isso
-    @Transactional
-    public Appointment cancel(Long id) {
-        Appointment appointment = findAppointment(id);
+    // as consultas de um paciente dentro da janela do grafico
+    // entra so a consulta confirmada e n anulada pq o q n aconteceu n explica mudanca nenhuma
+    public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod period) {
+        auditService.recordChartView(patientId);
+        LocalDate today = LocalDate.now();
+        LocalDate start = today.minusDays(period.getDays());
 
-        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
-            throw new IllegalArgumentException("Esta consulta já está cancelada");
-        }
-        if (appointment.getStatus() == AppointmentStatus.CONCLUIDA) {
-            throw new IllegalArgumentException("Consulta já concluída não pode ser cancelada");
-        }
-
-        appointment.setStatus(AppointmentStatus.CANCELADA);
-        Appointment cancelada = appointmentRepository.save(appointment);
-        auditService.recordChange(AuditRecordType.CONSULTA, cancelada.getId(), cancelada.getPatient().getId());
-        avisaDoCancelamento(cancelada);
-        return cancelada;
-    }
-
-    // RN08: dois agendamentos do mesmo prescritor n podem ocupar o
-    // mesmo horario. a conta de sobreposicao fica aqui em vez de virar
-    // query, porque a duracao eh coluna separada do inicio
-    private void recusaHorarioOcupado(Prescriber prescriber, LocalDateTime inicio, Integer duracao, Long idQueEstaSendoAlterada) {
-        int minutos = duracao == null ? DURACAO_PADRAO : duracao;
-        LocalDateTime fim = inicio.plusMinutes(minutos);
-        LocalDate dia = inicio.toLocalDate();
-
-        boolean ocupado = appointmentRepository
-                .findByPrescriberIdAndDateTimeBetween(prescriber.getId(), dia.atStartOfDay(), dia.atTime(LocalTime.MAX))
+        return appointmentRepository
+                .findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(
+                        patientId, start.atStartOfDay(), today.atTime(LocalTime.MAX))
                 .stream()
-                .filter(outra -> !outra.getId().equals(idQueEstaSendoAlterada))
-                // consulta cancelada devolveu o horario
-                .filter(outra -> outra.getStatus() != AppointmentStatus.CANCELADA)
-                .filter(outra -> !outra.isAnnulled())
-                .anyMatch(outra -> {
-                    int duracaoOutra = outra.getDurationMinutes() == null ? DURACAO_PADRAO : outra.getDurationMinutes();
-                    LocalDateTime inicioOutra = outra.getDateTime();
-                    LocalDateTime fimOutra = inicioOutra.plusMinutes(duracaoOutra);
-                    return inicio.isBefore(fimOutra) && inicioOutra.isBefore(fim);
-                });
+                .filter(appointment -> appointment.getStatus().isConfirmed())
+                .filter(appointment -> !appointment.isAnnulled())
+                .map(AppointmentMarkerDTO::new)
+                .toList();
+    }
 
-        if (ocupado) {
-            throw new IllegalArgumentException("Já existe consulta marcada nesse horário");
+    // os periodos de atendimento do dia divididos pela duracao da consulta
+    // sai o q ja passou e o q encosta em pedido ou consulta q segura o horario
+    private List<TimeSlotDTO> getFreeSlots(Long prescriberId, LocalDate day) {
+        Prescriber prescriber = findPrescriber(prescriberId);
+        int durationMinutes = prescriber.getAppointmentDurationMinutes();
+        List<PrescriberAvailability> periods = availabilityRepository
+                .findByPrescriberIdAndDayOfWeekOrderByStartTimeAsc(prescriberId, day.getDayOfWeek().getValue());
+        if (periods.isEmpty()) {
+            return List.of();
+        }
+
+        List<Appointment> takenAppointments = appointmentsHoldingTimeOn(prescriberId, day, null);
+        LocalDateTime now = LocalDateTime.now();
+        List<TimeSlotDTO> freeSlots = new ArrayList<>();
+        for (PrescriberAvailability period : periods) {
+            LocalDateTime slotStart = day.atTime(period.getStartTime());
+            LocalDateTime periodEnd = day.atTime(period.getEndTime());
+            while (!slotStart.plusMinutes(durationMinutes).isAfter(periodEnd)) {
+                LocalDateTime slotEnd = slotStart.plusMinutes(durationMinutes);
+                if (slotStart.isAfter(now) && !overlapsAny(slotStart, slotEnd, takenAppointments)) {
+                    freeSlots.add(new TimeSlotDTO(slotStart, slotEnd));
+                }
+                slotStart = slotEnd;
+            }
+        }
+        return freeSlots;
+    }
+
+    private Appointment saveChange(Appointment appointment) {
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
+                savedAppointment.getPatient().getId());
+        return savedAppointment;
+    }
+
+    private void checkIsWaitingAnswer(Appointment appointment) {
+        if (appointment.isAnnulled() || appointment.getStatus() != AppointmentStatus.SOLICITADA) {
+            throw new BusinessException(ALREADY_ANSWERED_MESSAGE);
         }
     }
 
-    // RF10: n da pra marcar consulta pra tras
-    private void recusaDataNoPassado(LocalDateTime quando) {
-        if (quando.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Não é possível agendar em uma data que já passou");
+    // pedido esperando resposta e consulta marcada ou em andamento ainda podem ser canceladas
+    private boolean isOpen(AppointmentStatus status) {
+        return status == AppointmentStatus.SOLICITADA
+                || status == AppointmentStatus.AGENDADA
+                || status == AppointmentStatus.EM_ANDAMENTO;
+    }
+
+    private void checkNotInThePast(LocalDateTime dateTime) {
+        if (dateTime.isBefore(LocalDateTime.now())) {
+            throw new BusinessException(PAST_DATE_MESSAGE);
         }
     }
 
-    private void avisaDoCancelamento(Appointment appointment) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
-        String formattedDateTime = appointment.getDateTime().format(formatter);
+    // RN08 dois horarios do mesmo prescritor n se sobrepoem
+    private void checkSlotIsFree(Long prescriberId, LocalDateTime start, int durationMinutes, Long ignoredAppointmentId) {
+        List<Appointment> takenAppointments =
+                appointmentsHoldingTimeOn(prescriberId, start.toLocalDate(), ignoredAppointmentId);
+        if (overlapsAny(start, start.plusMinutes(durationMinutes), takenAppointments)) {
+            throw new BusinessException(SLOT_TAKEN_MESSAGE);
+        }
+    }
 
-        notificationService.createNotification(
-                appointment.getPatient(),
-                "Consulta Cancelada",
-                "Sua consulta com " + appointment.getPrescriber().getName() + " do dia " + formattedDateTime + " foi cancelada.",
-                "ALERT",
-                "/agendamento-consulta"
-        );
+    // pedidos e consultas do dia q seguram o horario
+    private List<Appointment> appointmentsHoldingTimeOn(Long prescriberId, LocalDate day, Long ignoredAppointmentId) {
+        return appointmentRepository
+                .findByPrescriberIdAndDateTimeBetween(prescriberId, day.atStartOfDay(), day.atTime(LocalTime.MAX))
+                .stream()
+                .filter(appointment -> !appointment.getId().equals(ignoredAppointmentId))
+                .filter(appointment -> appointment.getStatus().holdsTimeSlot())
+                .filter(appointment -> !appointment.isAnnulled())
+                .toList();
+    }
 
-        notificationService.createNotification(
-                appointment.getPrescriber(),
-                "Consulta Cancelada",
-                "A consulta com " + appointment.getPatient().getName() + " do dia " + formattedDateTime + " foi cancelada.",
-                "ALERT",
-                "/agendamento-prescritor"
-        );
+    // consultas ja confirmadas no dia do pedido sem contar o proprio pedido
+    private List<Appointment> confirmedAppointmentsOnTheDayOf(Appointment request) {
+        return appointmentsHoldingTimeOn(request.getPrescriber().getId(), request.getDateTime().toLocalDate(),
+                request.getId())
+                .stream()
+                .filter(appointment -> appointment.getStatus().isConfirmed())
+                .toList();
+    }
+
+    private boolean overlapsAny(LocalDateTime start, LocalDateTime end, List<Appointment> appointments) {
+        for (Appointment appointment : appointments) {
+            if (start.isBefore(endOf(appointment)) && appointment.getDateTime().isBefore(end)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private LocalDateTime endOf(Appointment appointment) {
+        return appointment.getDateTime().plusMinutes(appointment.getDurationMinutes());
+    }
+
+    private String formatDateTime(Appointment appointment) {
+        return appointment.getDateTime().format(DATE_TIME_FORMAT);
+    }
+
+    private String textOrNull(String text) {
+        return text == null || text.isBlank() ? null : text.trim();
+    }
+
+    private Appointment findAppointment(Long appointmentId) {
+        return appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+    }
+
+    private Patient findPatient(Long patientId) {
+        return patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+    }
+
+    private Prescriber findPrescriber(Long prescriberId) {
+        return prescriberRepository.findById(prescriberId)
+                .orElseThrow(() -> new NotFoundException("Prescritor não encontrado com o id: " + prescriberId));
     }
 }

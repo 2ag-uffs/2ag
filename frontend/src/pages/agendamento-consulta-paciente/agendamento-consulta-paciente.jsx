@@ -1,361 +1,337 @@
-import {useCallback, useEffect, useState} from "react";
-import "./agendamento-consulta-paciente.css";
-import {useNavigate} from "react-router";
+import {useEffect, useState} from "react";
+import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
+import SelectField from "../../components/form/select-field.jsx";
+import TextAreaField from "../../components/form/text-area-field.jsx";
+import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
+import {addDays, formatDateTime, formatTime, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
+import styles from "./agendamento-consulta-paciente.module.css";
 
-// a agenda funciona em blocos de meia em meia hora, das 8h as 18h
-const HORA_INICIAL = 8;
-const HORA_FINAL = 18;
-const DURACAO = 60;
+const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
-// o toISOString devolve utc e troca o dia depois das 21h aqui
-const dataLocal = (date) => {
-    const ano = date.getFullYear();
-    const mes = String(date.getMonth() + 1).padStart(2, "0");
-    const dia = String(date.getDate()).padStart(2, "0");
-    return `${ano}-${mes}-${dia}`;
-};
+// quantos dias pra frente o paciente ve horario livre
+const DAYS_AHEAD = 30;
 
-const paraMinutos = (hhmm) => {
-    const [hora, minuto] = hhmm.split(":").map(Number);
-    return hora * 60 + minuto;
-};
+// o paciente cancela sozinho a consulta marcada so com essa antecedencia
+const PATIENT_CANCELLATION_HOURS = 24;
 
-export default function AgendamentoConsultaPaciente() {
-    const navigate = useNavigate();
-
-    // o paciente tem um prescritor so, o dele. antes a tela oferecia tres
-    // medicos inventados, com nota de avaliacao e tudo (RF10)
-    const [prescritor, setPrescritor] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(null);
-    const [selectedTime, setSelectedTime] = useState(null);
-    const [consultaType, setConsultaType] = useState("presencial");
-    const [erro, setErro] = useState(null);
-    const [enviando, setEnviando] = useState(false);
-    const [carregando, setCarregando] = useState(true);
-    // os horarios que o prescritor ja tem ocupados no dia escolhido
-    const [ocupados, setOcupados] = useState([]);
-    const [buscandoHorarios, setBuscandoHorarios] = useState(false);
-
-    // o prescritor vem do vinculo do paciente, n de uma lista
-    useEffect(() => {
-        const usuarioLogado = getLoggedUser();
-        if (!usuarioLogado) {
-            navigate("/login");
-            return;
+// separa os horarios livres pelo dia
+function groupSlotsByDay(freeSlots) {
+    const slotsByDay = {};
+    freeSlots.forEach((slot) => {
+        const dayIso = slot.start.slice(0, 10);
+        if (!slotsByDay[dayIso]) {
+            slotsByDay[dayIso] = [];
         }
-
-        apiService
-            .get(`/paciente/${usuarioLogado.id}`)
-            .then((paciente) => {
-                if (paciente.prescriberId) {
-                    setPrescritor({id: paciente.prescriberId, nome: paciente.prescriberName});
-                }
-            })
-            .catch((err) => {
-                setErro(err instanceof ApiError ? err.message : "Não foi possível carregar seus dados.");
-            })
-            .finally(() => setCarregando(false));
-    }, [navigate]);
-
-    // os horarios livres do dia saem da agenda do prescritor. a api
-    // devolve so os intervalos ocupados, sem dizer de quem sao
-    const buscarOcupados = useCallback(async (data) => {
-        setBuscandoHorarios(true);
-        try {
-            setOcupados(await apiService.get(`/consulta/disponibilidade?data=${data}`));
-        } catch {
-            setOcupados([]);
-            setErro("Não foi possível ver os horários do seu prescritor.");
-        } finally {
-            setBuscandoHorarios(false);
-        }
-    }, []);
-
-    // todos os blocos do dia, marcando quais ja estao tomados
-    const horariosDoDia = () => {
-        const blocos = [];
-        for (let hora = HORA_INICIAL; hora < HORA_FINAL; hora++) {
-            for (let minuto = 0; minuto < 60; minuto += 30) {
-                blocos.push(String(hora).padStart(2, "0") + ":" + String(minuto).padStart(2, "0"));
-            }
-        }
-
-        const agora = new Date();
-        const hoje = dataLocal(agora);
-        const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
-
-        return blocos.map((horario) => {
-            const inicio = paraMinutos(horario);
-            const fim = inicio + DURACAO;
-            const tomado = ocupados.some((faixa) => {
-                const inicioOutro = paraMinutos(faixa.inicio);
-                const fimOutro = paraMinutos(faixa.fim);
-                return inicio < fimOutro && inicioOutro < fim;
-            });
-            // horario que ja passou hoje tbm n serve
-            const passou = selectedDate === hoje && inicio <= minutosAgora;
-            return {horario, livre: !tomado && !passou};
-        });
-    };
-
-    const handleBack = () => {
-        navigate(-1);
-    };
-
-    const handleDateSelect = (date) => {
-        setSelectedDate(date);
-        setSelectedTime(null);
-        setErro(null);
-        buscarOcupados(date);
-    };
-
-    const handleTimeSelect = (time) => {
-        setSelectedTime(time);
-    };
-
-    const handleConfirmarAgendamento = async () => {
-        if (!selectedDate || !selectedTime) {
-            setErro("Escolha a data e o horário.");
-            return;
-        }
-
-        const usuarioLogado = getLoggedUser();
-        if (!usuarioLogado) {
-            navigate("/login");
-            return;
-        }
-
-        setErro(null);
-        setEnviando(true);
-
-        try {
-            // o paciente e o prescritor saem da sessao e do vinculo entao n vao no corpo
-            await apiService.post("/consulta/agendamento", {
-                dateTime: `${selectedDate}T${selectedTime}:00`,
-                modality: consultaType === "presencial" ? "PRESENCIAL" : "REMOTA",
-                durationMinutes: DURACAO,
-            });
-            navigate("/dashboard-paciente", {state: {aviso: "Consulta agendada."}});
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível agendar a consulta.");
-            // o horario pode ter sido tomado enquanto a tela estava aberta
-            buscarOcupados(selectedDate);
-        } finally {
-            setEnviando(false);
-        }
-    };
-
-
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("pt-BR");
-    };
-
-    // os proximos 14 dias. domingo fica de fora, o resto abre e quem
-    // diz o que sobrou de horario eh a agenda do prescritor
-    const generateCalendarDays = () => {
-        const today = new Date();
-        const days = [];
-
-        for (let i = 0; i < 14; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i);
-
-            days.push({
-                date: dataLocal(date),
-                day: date.getDate(),
-                dayName: date.toLocaleDateString("pt-BR", {weekday: "short"}),
-                available: date.getDay() !== 0
-            });
-        }
-
-        return days;
-    };
-
-    return (
-        <div className="agendamento-consulta">
-
-            <main className="dashboard-main">
-                <div className="agendamento-header">
-                    <div className="dashboard-welcome">
-                        <h1>Agendar Nova Consulta</h1>
-                        <p>Escolha a data e o horário que melhor se adequam à sua agenda.</p>
-                    </div>
-                </div>
-
-                <div className="agendamento-grid">
-    {/* o paciente tem um prescritor so, o dele. n ha o que escolher */}
-                    <section className="dashboard-card">
-                        <div className="card-header">
-                            <h2>Seu Prescritor</h2>
-                        </div>
-                        <div className="card-content">
-                            {carregando && <p>Carregando...</p>}
-                            {!carregando && !prescritor && (
-                                <div className="empty-state">
-                                    <p>Você ainda não tem um prescritor vinculado. Fale com a clínica.</p>
-                                </div>
-                            )}
-                            {prescritor && (
-                                <div className="prescritor-item selected">
-                                    <div className="prescritor-avatar">
-                                        <div className="avatar-placeholder">
-                                            {prescritor.nome.split(' ').map(parte => parte[0]).join('')}
-                                        </div>
-                                    </div>
-                                    <div className="prescritor-info">
-                                        <h3>{prescritor.nome}</h3>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Calendário */}
-                    <section className="dashboard-card">
-                        <div className="card-header">
-                            <h2>Escolha a Data</h2>
-                            {selectedDate && (
-                                <span className="card-badge">{formatDate(selectedDate)}</span>
-                            )}
-                        </div>
-                        <div className="card-content">
-                            {!prescritor ? (
-                                <div className="empty-state">
-                                    <p>Sem prescritor vinculado, não há agenda para mostrar</p>
-                                </div>
-                            ) : (
-                                <div className="calendar-grid">
-                                    {generateCalendarDays().map((day) => (
-                                        <button
-                                            key={day.date}
-                                            className={`calendar-day ${day.available ? 'available' : 'unavailable'} ${selectedDate === day.date ? 'selected' : ''}`}
-                                            onClick={() => day.available && handleDateSelect(day.date)}
-                                            disabled={!day.available}
-                                        >
-                                            <span className="day-name">{day.dayName}</span>
-                                            <span className="day-number">{day.day}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Seleção de Horário */}
-                    <section className="dashboard-card">
-                        <div className="card-header">
-                            <h2>Escolha o Horário</h2>
-                            {selectedTime && (
-                                <span className="card-badge">{selectedTime}</span>
-                            )}
-                        </div>
-                        <div className="card-content">
-                            {!selectedDate && (
-                                <div className="empty-state">
-                                    <p>Selecione uma data para ver os horários disponíveis</p>
-                                </div>
-                            )}
-                            {selectedDate && buscandoHorarios && <p>Vendo a agenda...</p>}
-                            {selectedDate && !buscandoHorarios && (
-                                <div className="horarios-grid">
-                                    {/* horario ocupado aparece, mas desabilitado: some
-                                        um botao do nada confunde mais do que ajuda */}
-                                    {horariosDoDia().map(({horario, livre}) => (
-                                        <button
-                                            type="button"
-                                            key={horario}
-                                            className={`horario-button ${selectedTime === horario ? 'selected' : ''}`}
-                                            onClick={() => handleTimeSelect(horario)}
-                                            disabled={!livre}
-                                            title={livre ? "" : "Horário já ocupado"}
-                                        >
-                                            {horario}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Detalhes da Consulta */}
-                    <section className="dashboard-card">
-                        <div className="card-header">
-                            <h2>Detalhes da Consulta</h2>
-                        </div>
-                        <div className="card-content">
-                            <div className="form-group">
-                                <label>Tipo de Consulta</label>
-                                <div className="radio-group">
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="presencial"
-                                            checked={consultaType === "presencial"}
-                                            onChange={(e) => setConsultaType(e.target.value)}
-                                        />
-                                        <span>Presencial</span>
-                                    </label>
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="remota"
-                                            checked={consultaType === "remota"}
-                                            onChange={(e) => setConsultaType(e.target.value)}
-                                        />
-                                        <span>Telemedicina</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Resumo do Agendamento */}
-                    {(prescritor && selectedDate && selectedTime) && (
-                        <section className="dashboard-card resumo-card">
-                            <div className="card-header">
-                                <h2>Resumo do Agendamento</h2>
-                            </div>
-                            <div className="card-content">
-                                <div className="resumo-info">
-                                    <div className="resumo-item">
-                                        <strong>Prescritor:</strong> {prescritor.nome}
-                                    </div>
-                                    <div className="resumo-item">
-                                        <strong>Data:</strong> {formatDate(selectedDate)}
-                                    </div>
-                                    <div className="resumo-item">
-                                        <strong>Horário:</strong> {selectedTime}
-                                    </div>
-                                    <div className="resumo-item">
-                                        <strong>Tipo:</strong> {consultaType === "presencial" ? "Presencial" : "Remota"}
-                                    </div>
-                                </div>
-
-                                {erro && <p className="agendamento-erro">{erro}</p>}
-
-                                <div className="resumo-actions">
-                                    <button className="button-secondary" onClick={handleBack} disabled={enviando}>
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="button"
-                                        onClick={handleConfirmarAgendamento}
-                                        disabled={enviando || !prescritor}
-                                    >
-                                        {enviando ? "Agendando..." : "Confirmar agendamento"}
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
-                    )}
-                </div>
-            </main>
-        </div>
-    );
+        slotsByDay[dayIso].push(slot);
+    });
+    return slotsByDay;
 }
 
+// o pedido o paciente cancela a qualquer hora e a consulta marcada com 24 horas de antecedencia
+function canPatientCancel(appointment) {
+    if (appointment.annulled) {
+        return false;
+    }
+    if (appointment.status === "SOLICITADA") {
+        return true;
+    }
+    if (appointment.status !== "AGENDADA") {
+        return false;
+    }
+    const millisecondsUntil = new Date(appointment.dateTime.slice(0, 19)).getTime() - Date.now();
+    return millisecondsUntil >= PATIENT_CANCELLATION_HOURS * 60 * 60 * 1000;
+}
 
+// consultas do paciente (RF10)
+// o paciente pede um horario livre na agenda do prescritor e acompanha os pedidos e as consultas marcadas
+export default function AgendamentoConsultaPaciente() {
+    const loggedUser = getLoggedUser();
+    const [page, setPage] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [actionError, setActionError] = useState(null);
+    // somar um aqui busca tudo de novo sem esconder a tela
+    const [reloadCount, setReloadCount] = useState(0);
+    const [selectedDay, setSelectedDay] = useState(null);
+    const [selectedSlot, setSelectedSlot] = useState(null);
+    const [modality, setModality] = useState("PRESENCIAL");
+    const [patientNote, setPatientNote] = useState("");
+    const [isSending, setIsSending] = useState(false);
+    const [cancelTarget, setCancelTarget] = useState(null);
+    const [busyAppointmentId, setBusyAppointmentId] = useState(null);
 
+    useEffect(() => {
+        let isCurrentRequest = true;
+        const firstDay = toIsoDate(new Date());
+        const lastDay = toIsoDate(addDays(new Date(), DAYS_AHEAD - 1));
+
+        Promise.all([
+            apiService.get("/paciente/" + loggedUser.id),
+            apiService.get("/consulta/minhas"),
+            apiService.get("/consulta/horarios-livres?inicio=" + firstDay + "&fim=" + lastDay),
+        ])
+            .then(([patient, upcomingAppointments, freeSlots]) => {
+                if (isCurrentRequest) {
+                    setPage({patient, upcomingAppointments, freeSlots});
+                    setLoadError(null);
+                }
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar suas consultas. Confira sua internet e tente de novo.");
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [loggedUser.id, reloadCount]);
+
+    const reload = () => {
+        setReloadCount((currentCount) => currentCount + 1);
+    };
+
+    const showActionError = (requestError) => {
+        setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+    };
+
+    const chooseDay = (dayIso) => {
+        setSelectedDay(dayIso);
+        setSelectedSlot(null);
+        setNotice(null);
+        setActionError(null);
+    };
+
+    const chooseSlot = (slotStart) => {
+        setSelectedSlot(slotStart);
+        setNotice(null);
+        setActionError(null);
+    };
+
+    const sendRequest = async (slotStart) => {
+        setIsSending(true);
+        setNotice(null);
+        setActionError(null);
+        try {
+            await apiService.post("/consulta/agendamento", {
+                dateTime: slotStart,
+                modality,
+                patientNote: patientNote.trim() === "" ? null : patientNote.trim(),
+            });
+            setNotice("Pedido enviado para " + page.patient.prescriberName
+                + ". O horário fica reservado e você recebe um aviso quando o pedido for respondido.");
+            setSelectedSlot(null);
+            setPatientNote("");
+        } catch (requestError) {
+            showActionError(requestError);
+        } finally {
+            setIsSending(false);
+            // mesmo com erro vale buscar de novo pq o horario pode ter sido pedido por outra pessoa
+            reload();
+        }
+    };
+
+    const cancelAppointment = async () => {
+        const appointment = cancelTarget;
+        setCancelTarget(null);
+        setNotice(null);
+        setActionError(null);
+        setBusyAppointmentId(appointment.id);
+        try {
+            await apiService.put("/consulta/" + appointment.id + "/cancelar");
+            setNotice(appointment.status === "SOLICITADA"
+                ? "Pedido cancelado. O horário voltou a ficar livre."
+                : "Consulta cancelada. Seu prescritor recebeu o aviso.");
+            reload();
+        } catch (requestError) {
+            showActionError(requestError);
+        } finally {
+            setBusyAppointmentId(null);
+        }
+    };
+
+    if (loadError && page === null) {
+        return <p className="aviso aviso--atencao">{loadError}</p>;
+    }
+
+    if (page === null) {
+        return <p className={styles.status}>Carregando...</p>;
+    }
+
+    const {patient, upcomingAppointments, freeSlots} = page;
+    const hasPrescriber = patient.prescriberId !== null;
+    const slotsByDay = groupSlotsByDay(freeSlots);
+    const availableDays = Object.keys(slotsByDay).sort();
+    // o dia escolhido pode ter ficado sem horario depois de buscar de novo
+    const currentDay = selectedDay !== null && slotsByDay[selectedDay] ? selectedDay : availableDays[0];
+    const daySlots = currentDay ? slotsByDay[currentDay] : [];
+    const currentSlot = daySlots.some((slot) => slot.start === selectedSlot) ? selectedSlot : null;
+
+    return (
+        <section className={styles.page}>
+            <div>
+                <h1>Consultas</h1>
+                <p className={styles.subtitle}>
+                    {hasPrescriber
+                        ? "Peça um horário na agenda de " + patient.prescriberName
+                        + ". O horário fica reservado até o pedido ser respondido."
+                        : "Você ainda não tem um prescritor vinculado. Fale com a clínica."}
+                </p>
+            </div>
+
+            {notice && <p className="aviso" role="status">{notice}</p>}
+            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+            {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+
+            {hasPrescriber && (
+                <section className={styles.card} aria-labelledby="pedir-consulta">
+                    <h2 id="pedir-consulta" className={styles.sectionTitle}>Pedir consulta</h2>
+
+                    {availableDays.length === 0 ? (
+                        <p className={styles.status}>
+                            Não há horário livre nos próximos {DAYS_AHEAD} dias. Tente de novo mais tarde ou fale com
+                            a clínica.
+                        </p>
+                    ) : (
+                        <>
+                            <div className={styles.step}>
+                                <h3 className={styles.stepTitle}>Dia</h3>
+                                <div className={styles.days} role="group" aria-label="Dias com horário livre">
+                                    {availableDays.map((dayIso) => (
+                                        <button
+                                            key={dayIso}
+                                            type="button"
+                                            className={dayIso === currentDay ? styles.dayButtonSelected : styles.dayButton}
+                                            aria-pressed={dayIso === currentDay}
+                                            onClick={() => chooseDay(dayIso)}
+                                        >
+                                            <span className={styles.weekday}>{formatWeekdayAndDate(dayIso)}</span>
+                                            <span className={styles.slotCount}>
+                                                {slotsByDay[dayIso].length === 1
+                                                    ? "1 horário"
+                                                    : slotsByDay[dayIso].length + " horários"}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className={styles.step}>
+                                <h3 className={styles.stepTitle}>Horário</h3>
+                                <div className={styles.slots} role="group" aria-label="Horários livres do dia">
+                                    {daySlots.map((slot) => (
+                                        <button
+                                            key={slot.start}
+                                            type="button"
+                                            className={slot.start === currentSlot ? styles.slotButtonSelected : styles.slotButton}
+                                            aria-pressed={slot.start === currentSlot}
+                                            onClick={() => chooseSlot(slot.start)}
+                                        >
+                                            {formatTime(slot.start)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {currentSlot && (
+                                <div className={styles.step}>
+                                    <div className={styles.formRow}>
+                                        <SelectField
+                                            label="Modalidade"
+                                            name="modality"
+                                            options={MODALITY_OPTIONS}
+                                            value={modality}
+                                            onChange={(event) => setModality(event.target.value)}
+                                            disabled={isSending}
+                                        />
+                                    </div>
+                                    <TextAreaField
+                                        label="Motivo da consulta (opcional)"
+                                        name="patientNote"
+                                        hint="Conte em poucas palavras o que você quer tratar. Isso ajuda seu prescritor a se preparar."
+                                        rows={3}
+                                        maxLength={1000}
+                                        value={patientNote}
+                                        onChange={(event) => setPatientNote(event.target.value)}
+                                        disabled={isSending}
+                                    />
+                                    <p className={styles.summary}>
+                                        Pedido para {formatDateTime(currentSlot)} com {patient.prescriberName}.
+                                    </p>
+                                    <div className={styles.actions}>
+                                        <button
+                                            type="button"
+                                            className={styles.primaryButton}
+                                            onClick={() => sendRequest(currentSlot)}
+                                            disabled={isSending}
+                                        >
+                                            {isSending ? "Enviando..." : "Pedir consulta"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </section>
+            )}
+
+            <section className={styles.section} aria-labelledby="proximas-consultas">
+                <h2 id="proximas-consultas" className={styles.sectionTitle}>Próximas consultas e pedidos</h2>
+                {upcomingAppointments.length === 0 ? (
+                    <p className={styles.status}>Nenhuma consulta ou pedido pela frente.</p>
+                ) : (
+                    <ul className={styles.list}>
+                        {upcomingAppointments.map((appointment) => (
+                            <li key={appointment.id} className={styles.appointment}>
+                                <div className={styles.appointmentInfo}>
+                                    <div className={styles.appointmentTitle}>
+                                        <strong>{formatDateTime(appointment.dateTime)}</strong>
+                                        <AppointmentStatusBadge appointment={appointment}/>
+                                    </div>
+                                    <p className={styles.meta}>
+                                        {modalityLabelOf(appointment.modality)} com {appointment.prescriberName}
+                                    </p>
+                                    {appointment.patientNote && (
+                                        <p className={styles.meta}>Motivo: {appointment.patientNote}</p>
+                                    )}
+                                    {appointment.status === "AGENDADA" && !appointment.annulled
+                                        && !canPatientCancel(appointment) && (
+                                        <p className={styles.meta}>
+                                            Faltam menos de 24 horas. Para cancelar, fale com o seu prescritor.
+                                        </p>
+                                    )}
+                                </div>
+                                {canPatientCancel(appointment) && (
+                                    <button
+                                        type="button"
+                                        className={styles.dangerButton}
+                                        onClick={() => setCancelTarget(appointment)}
+                                        disabled={busyAppointmentId === appointment.id}
+                                    >
+                                        {appointment.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <ModalConfirmacao
+                show={cancelTarget !== null}
+                titulo={cancelTarget !== null && cancelTarget.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
+                mensagem={cancelTarget !== null
+                    ? "O horário de " + formatDateTime(cancelTarget.dateTime) + " volta a ficar livre na agenda. Quer cancelar?"
+                    : ""}
+                textoConfirmar="Sim, cancelar"
+                textoCancelar="Voltar"
+                onConfirmar={cancelAppointment}
+                onCancelar={() => setCancelTarget(null)}
+            />
+        </section>
+    );
+}
