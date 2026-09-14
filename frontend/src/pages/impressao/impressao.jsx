@@ -1,8 +1,10 @@
 import {useEffect, useMemo, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiPrinter} from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {ageFrom, formatDate, formatDateTime} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
@@ -70,7 +72,7 @@ export default function Impressao() {
     }
 
     if (!history) {
-        return <p>Carregando o histórico...</p>;
+        return <SkeletonPage cards={3}/>;
     }
 
     const {patient, appointments, prescriptions, anamneses, scales} = history;
@@ -87,6 +89,7 @@ export default function Impressao() {
                     <label htmlFor="periodo">Período</label>
                     <select
                         id="periodo"
+                        className={styles.select}
                         value={periodDays}
                         onChange={(event) => setPeriodDays(Number(event.target.value))}
                     >
@@ -100,6 +103,7 @@ export default function Impressao() {
                         Voltar
                     </button>
                     <button type="button" className="button" onClick={() => window.print()}>
+                        <FiPrinter aria-hidden="true"/>
                         Imprimir ou salvar em PDF
                     </button>
                 </div>
@@ -157,28 +161,30 @@ export default function Impressao() {
                 {scalesInPeriod.length === 0 ? (
                     <p className={styles.empty}>Nenhuma escala respondida no período.</p>
                 ) : (
-                    <table className={styles.table}>
-                        <thead>
-                        <tr>
-                            <th>Escala</th>
-                            <th>Período</th>
-                            <th>Resultado</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {scalesInPeriod.map((scale) => (
-                            <tr key={scale.id}>
-                                <td>{scale.scaleName}</td>
-                                <td>
-                                    {scale.periodStart === scale.periodEnd
-                                        ? formatDate(scale.periodStart)
-                                        : formatDate(scale.periodStart) + " a " + formatDate(scale.periodEnd)}
-                                </td>
-                                <td>{scale.annulled ? "anulada" : scale.result}</td>
+                    <div className={styles.tableWrap}>
+                        <table className={styles.table}>
+                            <thead>
+                            <tr>
+                                <th>Escala</th>
+                                <th>Período</th>
+                                <th>Resultado</th>
                             </tr>
-                        ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            {scalesInPeriod.map((scale) => (
+                                <tr key={scale.id}>
+                                    <td>{scale.scaleName}</td>
+                                    <td>
+                                        {scale.periodStart === scale.periodEnd
+                                            ? formatDate(scale.periodStart)
+                                            : formatDate(scale.periodStart) + " a " + formatDate(scale.periodEnd)}
+                                    </td>
+                                    <td>{scale.annulled ? "anulada" : scale.result}</td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </section>
 

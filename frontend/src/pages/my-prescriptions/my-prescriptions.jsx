@@ -1,5 +1,9 @@
 import {useEffect, useState} from "react";
+import {FiFileText} from "react-icons/fi";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import styles from "./my-prescriptions.module.css";
 
@@ -38,37 +42,46 @@ export default function MyPrescriptions() {
         };
     }, [loggedUser.id]);
 
+    if (isLoading) {
+        return <SkeletonPage cards={2}/>;
+    }
+
     const currentPrescription = prescriptions.find((prescription) => prescription.current);
     const previousPrescriptions = prescriptions.filter((prescription) => !prescription.current);
 
     return (
         <section className={styles.page}>
-            <div>
-                <h1>Minhas prescrições</h1>
-                <p className={styles.subtitle}>
-                    A prescrição vigente é a que vale agora. As anteriores ficam guardadas no histórico.
-                </p>
-            </div>
+            <PageHeader
+                title="Minhas prescrições"
+                subtitle="A prescrição vigente é a que vale agora. As anteriores ficam guardadas no histórico."
+            />
 
-            {isLoading && <p className={styles.status}>Carregando...</p>}
-            {errorMessage && <p className="aviso aviso--atencao">{errorMessage}</p>}
+            {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
 
-            {!isLoading && !errorMessage && (
+            {!errorMessage && (
                 <>
-                    <h2 className={styles.sectionTitle}>Vigente</h2>
-                    {currentPrescription
-                        ? <PrescriptionCard prescription={currentPrescription}/>
-                        : <p className={styles.status}>Você não tem prescrição vigente no momento.</p>}
+                    <section className={styles.section}>
+                        <h2 className={styles.sectionTitle}>Vigente</h2>
+                        {currentPrescription ? (
+                            <PrescriptionCard prescription={currentPrescription}/>
+                        ) : (
+                            <EmptyState
+                                icon={FiFileText}
+                                message="Você não tem prescrição vigente no momento."
+                                isCompact={true}
+                            />
+                        )}
+                    </section>
 
                     {previousPrescriptions.length > 0 && (
-                        <>
+                        <section className={styles.section}>
                             <h2 className={styles.sectionTitle}>Histórico</h2>
                             <div className={styles.list}>
                                 {previousPrescriptions.map((prescription) => (
                                     <PrescriptionCard key={prescription.id} prescription={prescription}/>
                                 ))}
                             </div>
-                        </>
+                        </section>
                     )}
                 </>
             )}

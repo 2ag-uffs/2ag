@@ -1,11 +1,15 @@
 import {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
+import {FiActivity, FiCalendar, FiDownload, FiFileText} from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import ExportModal from "../../components/export-modal/export-modal.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {isInTheFuture} from "../../utils/date-format.js";
 import styles from "./historico-clinico-paciente.module.css";
@@ -52,11 +56,11 @@ export default function HistoricoClinicoPaciente() {
     }, [loggedUser.id]);
 
     if (loadError) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (history === null) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={3}/>;
     }
 
     const {appointments, prescriptions, anamneses, scalesPage} = history;
@@ -68,18 +72,16 @@ export default function HistoricoClinicoPaciente() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1>Meu histórico clínico</h1>
-                    <p className={styles.subtitle}>
-                        Tudo o que foi registrado no seu acompanhamento. Registros anulados continuam aqui,
-                        com o motivo.
-                    </p>
-                </div>
-                <button type="button" className="button-secondary" onClick={() => setIsExportOpen(true)}>
-                    Exportar
-                </button>
-            </div>
+            <PageHeader
+                title="Meu histórico clínico"
+                subtitle="Tudo o que foi registrado no seu acompanhamento. Registros anulados continuam aqui, com o motivo."
+                actions={(
+                    <button type="button" className="button-secondary" onClick={() => setIsExportOpen(true)}>
+                        <FiDownload aria-hidden="true"/>
+                        Exportar
+                    </button>
+                )}
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
 
@@ -105,7 +107,7 @@ export default function HistoricoClinicoPaciente() {
             <section id="consultas" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Consultas</h2>
                 {pastAppointments.length === 0 ? (
-                    <p className={styles.status}>Nenhuma consulta realizada ainda.</p>
+                    <EmptyState icon={FiCalendar} message="Nenhuma consulta realizada ainda." isCompact={true}/>
                 ) : (
                     <div className={styles.list}>
                         {pastAppointments.map((appointment) => (
@@ -118,7 +120,7 @@ export default function HistoricoClinicoPaciente() {
             <section id="prescricoes" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Prescrições</h2>
                 {orderedPrescriptions.length === 0 ? (
-                    <p className={styles.status}>Nenhuma prescrição emitida ainda.</p>
+                    <EmptyState icon={FiFileText} message="Nenhuma prescrição emitida ainda." isCompact={true}/>
                 ) : (
                     <div className={styles.list}>
                         {orderedPrescriptions.map((prescription) => (
@@ -131,12 +133,16 @@ export default function HistoricoClinicoPaciente() {
             <section id="anamnese" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Anamnese</h2>
                 {anamneses.length === 0 ? (
-                    <div className={styles.emptyAnamnesis}>
-                        <p className={styles.status}>Você ainda não preencheu a anamnese.</p>
-                        <button type="button" className={styles.secondaryButton} onClick={() => navigate("/anamnese")}>
-                            Preencher anamnese
-                        </button>
-                    </div>
+                    <EmptyState
+                        icon={FiActivity}
+                        message="Você ainda não preencheu a anamnese."
+                        isCompact={true}
+                        action={(
+                            <button type="button" className="button-secondary button-small" onClick={() => navigate("/anamnese")}>
+                                Preencher anamnese
+                            </button>
+                        )}
+                    />
                 ) : (
                     <div className={styles.list}>
                         {anamneses.map((anamnesis) => (
@@ -146,7 +152,7 @@ export default function HistoricoClinicoPaciente() {
                                 actions={anamnesis.annulled ? null : (
                                     <button
                                         type="button"
-                                        className="button-tertiary"
+                                        className="button-tertiary button-small"
                                         onClick={() => navigate("/anamnese?id=" + anamnesis.id)}
                                     >
                                         Corrigir
@@ -167,7 +173,7 @@ export default function HistoricoClinicoPaciente() {
                     pendingAction={(
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className={"button button-small " + styles.pendingButton}
                             onClick={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
                         >
                             Responder agora

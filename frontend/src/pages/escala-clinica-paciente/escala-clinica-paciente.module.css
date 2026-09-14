@@ -3,85 +3,172 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    max-width: 52rem;
+    gap: var(--space-6);
+    max-width: var(--width-default);
 }
 
-.subtitle,
-.empty,
-.period {
-    color: var(--color-text-secondary);
-    margin: 0.25rem 0 0;
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
 
 .sectionTitle {
-    font-size: 1.125rem;
-    margin: 0 0 0.75rem;
+    align-items: center;
+    display: flex;
+    font-size: var(--text-xl);
+    gap: var(--space-2);
 }
 
-.cards,
-.list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+.count {
+    background-color: var(--color-primary-soft);
+    border-radius: var(--radius-pill);
+    color: var(--color-primary);
+    font-family: "Yaldevi Colombo", sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    min-width: 1.75rem;
+    padding: 0 var(--space-2);
+    text-align: center;
 }
+
+/* ---- escalas esperando resposta ---- */
 
 .cards {
     display: grid;
+    gap: var(--space-4);
     grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-}
-
-.card,
-.row {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    padding: 1rem 1.25rem;
+    list-style: none;
 }
 
 .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    padding: var(--space-5);
+}
+
+/* prazo q passou ganha o traco pessego na esquerda */
+.cardLate {
+    box-shadow: inset 4px 0 0 var(--color-peach), var(--shadow-sm);
 }
 
 .card button {
-    flex: 0 0 auto;
+    align-self: flex-start;
     margin-top: auto;
+}
+
+.cardTitle {
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+}
+
+.deadline,
+.period,
+.progressText {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.deadlineLate {
+    color: var(--color-warning);
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+}
+
+.progressBar {
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-pill);
+    height: 0.375rem;
+    overflow: hidden;
+}
+
+.progressFill {
+    background-color: var(--color-secondary);
+    display: block;
+    height: 100%;
+    transition: width var(--duration-base) var(--easing-standard);
+}
+
+/* ---- respondidas ---- */
+
+.list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
 }
 
 .row {
     align-items: center;
+    border-top: 1px solid var(--color-border-light);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: var(--space-2) var(--space-4);
     justify-content: space-between;
+    padding: var(--space-3) 0;
 }
 
-.row button {
-    flex: 0 0 auto;
+.row:first-child {
+    border-top: 0;
+    padding-top: 0;
 }
 
-.cardTitle {
-    font-size: 1rem;
-    margin: 0;
+.row:last-child {
+    padding-bottom: 0;
 }
 
-.deadline,
-.progress {
-    color: var(--color-text-secondary);
-    margin: 0;
+.rowText {
+    align-items: flex-start;
+    display: flex;
+    flex: 1 1 14rem;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
 }
 
 .result {
+    color: var(--color-text-headings);
     font-weight: 600;
-    margin: 0.25rem 0 0;
 }
 
-.annulled {
+.tagAnnulled,
+.tagReviewed {
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    margin-top: var(--space-1);
+    padding: 0 var(--space-2);
+}
+
+.tagAnnulled {
+    background-color: var(--color-error-soft);
     color: var(--color-error);
-    margin: 0.25rem 0 0;
+}
+
+.tagReviewed {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 47.99rem) {
+    .card {
+        padding: var(--space-4);
+    }
+
+    .row button {
+        flex: 1 1 auto;
+    }
 }

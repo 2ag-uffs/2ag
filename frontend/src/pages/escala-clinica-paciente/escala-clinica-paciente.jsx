@@ -1,5 +1,10 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiCheckCircle} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import styles from "./escala-clinica-paciente.module.css";
@@ -43,68 +48,89 @@ export default function CentralEscalas() {
     }
 
     if (!page) {
-        return <p>Carregando avaliações...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Minhas avaliações clínicas</h1>
-                <p className={styles.subtitle}>
-                    Acompanhe o que está esperando resposta e o resultado do que você já respondeu.
-                </p>
-            </header>
+            <PageHeader
+                title="Minhas avaliações clínicas"
+                subtitle="Acompanhe o que está esperando resposta e o resultado do que você já respondeu."
+            />
 
-            <section>
-                <h2 className={styles.sectionTitle}>Esperando resposta ({page.pending.length})</h2>
+            <section className={styles.section}>
+                <h2 className={styles.sectionTitle}>
+                    Esperando resposta
+                    <span className={styles.count}>{page.pending.length}</span>
+                </h2>
                 {page.pending.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma avaliação esperando resposta agora.</p>
+                    <EmptyState
+                        icon={FiCheckCircle}
+                        message="Nenhuma avaliação esperando resposta agora. Você está em dia."
+                        isCompact={true}
+                    />
                 ) : (
                     <ul className={styles.cards}>
-                        {page.pending.map((task) => (
-                            <li key={task.id} className={styles.card}>
-                                <h3 className={styles.cardTitle}>{task.scaleName}</h3>
-                                <p className={styles.deadline}>
-                                    {task.late
-                                        ? "O prazo era " + formatDate(task.periodEnd)
-                                        : "Responda até " + formatDate(task.periodEnd)}
-                                </p>
-                                {task.totalDays > 1 && (
-                                    <p className={styles.progress}>
-                                        {task.answeredDays} de {task.totalDays} dias preenchidos
+                        {page.pending.map((task) => {
+                            // quanto do periodo ja foi preenchido, nos diarios de varios dias
+                            const filledPercent = task.totalDays > 1
+                                ? Math.round((task.answeredDays / task.totalDays) * 100)
+                                : 0;
+                            return (
+                                <li key={task.id} className={task.late ? styles.card + " " + styles.cardLate : styles.card}>
+                                    <h3 className={styles.cardTitle}>{task.scaleName}</h3>
+                                    <p className={task.late ? styles.deadlineLate : styles.deadline}>
+                                        {task.late
+                                            ? "O prazo era " + formatDate(task.periodEnd)
+                                            : "Responda até " + formatDate(task.periodEnd)}
                                     </p>
-                                )}
-                                <button type="button" className="button" onClick={() => navigate(task.path)}>
-                                    Preencher
-                                </button>
-                            </li>
-                        ))}
+                                    {task.totalDays > 1 && (
+                                        <div className={styles.progress}>
+                                            <div
+                                                className={styles.progressBar}
+                                                role="progressbar"
+                                                aria-valuemin={0}
+                                                aria-valuemax={task.totalDays}
+                                                aria-valuenow={task.answeredDays}
+                                            >
+                                                <span className={styles.progressFill} style={{width: filledPercent + "%"}}/>
+                                            </div>
+                                            <span className={styles.progressText}>
+                                                {task.answeredDays} de {task.totalDays} dias preenchidos
+                                            </span>
+                                        </div>
+                                    )}
+                                    <button type="button" className="button button-small" onClick={() => navigate(task.path)}>
+                                        Responder
+                                    </button>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </section>
 
-            <section>
-                <h2 className={styles.sectionTitle}>Respondidas ({page.history.length})</h2>
+            <Card title="Respondidas" count={page.history.length}>
                 {page.history.length === 0 ? (
-                    <p className={styles.empty}>Você ainda não respondeu nenhuma avaliação.</p>
+                    <p className={styles.period}>Você ainda não respondeu nenhuma avaliação.</p>
                 ) : (
                     <ul className={styles.list}>
                         {page.history.map((response) => (
                             <li key={response.id} className={styles.row}>
-                                <div>
+                                <div className={styles.rowText}>
                                     <h3 className={styles.cardTitle}>{response.scaleName}</h3>
                                     <p className={styles.period}>{periodTextOf(response)}</p>
                                     <p className={styles.result}>{response.result}</p>
-                                    {response.annulled && <p className={styles.annulled}>Anulada pelo prescritor</p>}
+                                    {response.annulled && <span className={styles.tagAnnulled}>Anulada pelo prescritor</span>}
                                     {response.reviewed && !response.annulled && (
-                                        <p className={styles.period}>O prescritor já analisou</p>
+                                        <span className={styles.tagReviewed}>O prescritor já analisou</span>
                                     )}
                                 </div>
                                 {/* o q ainda da pra corrigir abre o formulario e o resto so a leitura */}
                                 {/* o MEEM cai sempre na leitura pq quem aplica eh o prescritor */}
                                 <button
                                     type="button"
-                                    className="button-secondary"
+                                    className="button-secondary button-small"
                                     onClick={() => navigate(response.editableByPatient
                                         ? "/escalas/" + response.slug + "?data=" + response.periodStart
                                         : "/escalas/resposta/" + response.id)}
@@ -115,7 +141,7 @@ export default function CentralEscalas() {
                         ))}
                     </ul>
                 )}
-            </section>
+            </Card>
         </section>
     );
 }

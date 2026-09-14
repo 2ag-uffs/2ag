@@ -15,8 +15,14 @@
 
 .compact {
     flex-direction: row;
+    flex-wrap: wrap;
     padding: var(--space-4) var(--space-5);
     text-align: left;
+}
+
+/* no compacto o texto ocupa o meio e a acao vai pro canto */
+.compact p {
+    flex: 1 1 12rem;
 }
 
 .icon {

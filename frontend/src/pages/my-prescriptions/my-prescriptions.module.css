@@ -3,22 +3,22 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    max-width: 52rem;
+    gap: var(--space-6);
+    max-width: var(--width-narrow);
 }
 
-.subtitle,
-.status {
-    color: var(--color-text-secondary);
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
 
 .sectionTitle {
-    font-size: 1.15rem;
-    margin-top: 0.5rem;
+    font-size: var(--text-xl);
 }
 
 .list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3);
 }

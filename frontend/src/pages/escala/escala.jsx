@@ -1,6 +1,10 @@
 import {useEffect, useMemo, useState} from "react";
 import {useNavigate, useParams, useSearchParams} from "react-router";
+import {FiCheck, FiMoon} from "react-icons/fi";
+import {FormActions} from "../../components/form-section/form-section.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
 import {answersPayload, answersToValues} from "../../utils/scale-answers.js";
@@ -147,43 +151,43 @@ export default function Escala() {
     }
 
     if (!definition) {
-        return <p>Carregando a escala...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>{definition.title}</h1>
-                <p className={styles.instruction}>{definition.instruction}</p>
-            </header>
+            <PageHeader title={definition.title} subtitle={definition.instruction}/>
 
             {sleepSchedule && (sleepSchedule.sleepBedTime || sleepSchedule.sleepWakeTime) && (
                 <p className={styles.schedule}>
+                    <FiMoon aria-hidden="true"/>
                     Programação do seu prescritor: dormir às {sleepSchedule.sleepBedTime || "—"} e
                     levantar às {sleepSchedule.sleepWakeTime || "—"}.
                 </p>
             )}
 
             {isDiary && (
-                <section>
+                <section className={styles.daysSection}>
                     <h2 className={styles.sectionTitle}>Dia da semana</h2>
-                    <div className={styles.days} role="group">
-                        {weekDays.map((dayIso) => (
-                            <button
-                                key={dayIso}
-                                type="button"
-                                className={dayIso === selectedDay ? styles.dayChosen : styles.day}
-                                aria-pressed={dayIso === selectedDay}
-                                onClick={() => setSelectedDay(dayIso)}
-                            >
-                                <span>{formatWeekdayAndDate(dayIso)}</span>
-                                <span className={styles.dayMark}>
-                                    {responses.some((response) => response.periodStart === dayIso)
-                                        ? "preenchido"
-                                        : "em branco"}
-                                </span>
-                            </button>
-                        ))}
+                    <div className={styles.days} role="group" aria-label="Dias da semana">
+                        {weekDays.map((dayIso) => {
+                            const isFilled = responses.some((response) => response.periodStart === dayIso);
+                            return (
+                                <button
+                                    key={dayIso}
+                                    type="button"
+                                    className={dayIso === selectedDay ? styles.day + " " + styles.dayChosen : styles.day}
+                                    aria-pressed={dayIso === selectedDay}
+                                    onClick={() => setSelectedDay(dayIso)}
+                                >
+                                    <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
+                                    <span className={isFilled ? styles.dayMark + " " + styles.dayFilled : styles.dayMark}>
+                                        {isFilled && <FiCheck aria-hidden="true"/>}
+                                        {isFilled ? "preenchido" : "em branco"}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </section>
             )}
@@ -191,19 +195,21 @@ export default function Escala() {
             <form className={styles.form} onSubmit={save}>
                 {!isDiary && (
                     <div className={styles.period}>
-                        <label htmlFor="periodStart">
-                            {isPeriod ? "Início do período" : "Data da avaliação"}
-                        </label>
-                        <input
-                            id="periodStart"
-                            type="date"
-                            max={today}
-                            value={selectedDay}
-                            disabled={isReadOnly}
-                            onChange={(event) => setSelectedDay(event.target.value)}
-                        />
+                        <div className={styles.dateField}>
+                            <label htmlFor="periodStart">
+                                {isPeriod ? "Início do período" : "Data da avaliação"}
+                            </label>
+                            <input
+                                id="periodStart"
+                                type="date"
+                                max={today}
+                                value={selectedDay}
+                                disabled={isReadOnly}
+                                onChange={(event) => setSelectedDay(event.target.value)}
+                            />
+                        </div>
                         {isPeriod && (
-                            <>
+                            <div className={styles.dateField}>
                                 <label htmlFor="periodEnd">Fim do período</label>
                                 <input
                                     id="periodEnd"
@@ -212,7 +218,7 @@ export default function Escala() {
                                     disabled={isReadOnly}
                                     onChange={(event) => setPeriodEnd(event.target.value)}
                                 />
-                            </>
+                            </div>
                         )}
                     </div>
                 )}
@@ -226,7 +232,10 @@ export default function Escala() {
                 )}
 
                 {currentResponse && currentResponse.result && (
-                    <p className={styles.result}>Resultado: {currentResponse.result}</p>
+                    <div className={styles.result}>
+                        <span className={styles.resultLabel}>Resultado</span>
+                        <strong>{currentResponse.result}</strong>
+                    </div>
                 )}
 
                 {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
@@ -239,7 +248,13 @@ export default function Escala() {
                     disabled={isReadOnly || isSaving}
                 />
 
-                <div className={styles.actions}>
+                {isPeriod && currentResponse && (
+                    <p className={styles.periodNote}>
+                        Período respondido: {formatDate(currentResponse.periodStart)} a {formatDate(currentResponse.periodEnd)}.
+                    </p>
+                )}
+
+                <FormActions>
                     <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                         Voltar
                     </button>
@@ -248,14 +263,8 @@ export default function Escala() {
                             {isSaving ? "Salvando..." : "Salvar respostas"}
                         </button>
                     )}
-                </div>
+                </FormActions>
             </form>
-
-            {isPeriod && currentResponse && (
-                <p className={styles.periodNote}>
-                    Período respondido: {formatDate(currentResponse.periodStart)} a {formatDate(currentResponse.periodEnd)}.
-                </p>
-            )}
         </section>
     );
 }

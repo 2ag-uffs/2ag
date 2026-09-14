@@ -1,8 +1,13 @@
 import {useEffect, useState} from "react";
+import {FiCalendar, FiUserX} from "react-icons/fi";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
+import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {addDays, formatDateTime, formatTime, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
@@ -155,11 +160,11 @@ export default function AgendamentoConsultaPaciente() {
     };
 
     if (loadError && page === null) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (page === null) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     const {patient, upcomingAppointments, freeSlots} = page;
@@ -173,33 +178,39 @@ export default function AgendamentoConsultaPaciente() {
 
     return (
         <section className={styles.page}>
-            <div>
-                <h1>Consultas</h1>
-                <p className={styles.subtitle}>
-                    {hasPrescriber
-                        ? "Peça um horário na agenda de " + patient.prescriberName
-                        + ". O horário fica reservado até o pedido ser respondido."
-                        : "Você ainda não tem um prescritor vinculado. Fale com a clínica."}
-                </p>
-            </div>
+            <PageHeader
+                title="Consultas"
+                subtitle={hasPrescriber
+                    ? "Peça um horário na agenda de " + patient.prescriberName + ". O horário fica reservado até o pedido ser respondido."
+                    : "Acompanhe seus pedidos e consultas."}
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
             {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
-            {hasPrescriber && (
-                <section className={styles.card} aria-labelledby="pedir-consulta">
-                    <h2 id="pedir-consulta" className={styles.sectionTitle}>Pedir consulta</h2>
+            {!hasPrescriber && (
+                <EmptyState
+                    icon={FiUserX}
+                    message="Você ainda não tem um prescritor vinculado. Fale com a clínica para receber o convite."
+                />
+            )}
 
+            {hasPrescriber && (
+                <Card title="Pedir consulta">
                     {availableDays.length === 0 ? (
-                        <p className={styles.status}>
-                            Não há horário livre nos próximos {DAYS_AHEAD} dias. Tente de novo mais tarde ou fale com
-                            a clínica.
-                        </p>
+                        <EmptyState
+                            icon={FiCalendar}
+                            message={"Não há horário livre nos próximos " + DAYS_AHEAD + " dias. Tente de novo mais tarde ou fale com a clínica."}
+                            isCompact={true}
+                        />
                     ) : (
-                        <>
+                        <div className={styles.steps}>
                             <div className={styles.step}>
-                                <h3 className={styles.stepTitle}>Dia</h3>
+                                <h3 className={styles.stepTitle}>
+                                    <span className={styles.stepNumber}>1</span>
+                                    Escolha o dia
+                                </h3>
                                 <div className={styles.days} role="group" aria-label="Dias com horário livre">
                                     {availableDays.map((dayIso) => (
                                         <button
@@ -221,7 +232,10 @@ export default function AgendamentoConsultaPaciente() {
                             </div>
 
                             <div className={styles.step}>
-                                <h3 className={styles.stepTitle}>Horário</h3>
+                                <h3 className={styles.stepTitle}>
+                                    <span className={styles.stepNumber}>2</span>
+                                    Escolha o horário
+                                </h3>
                                 <div className={styles.slots} role="group" aria-label="Horários livres do dia">
                                     {daySlots.map((slot) => (
                                         <button
@@ -239,6 +253,10 @@ export default function AgendamentoConsultaPaciente() {
 
                             {currentSlot && (
                                 <div className={styles.step}>
+                                    <h3 className={styles.stepTitle}>
+                                        <span className={styles.stepNumber}>3</span>
+                                        Confirme o pedido
+                                    </h3>
                                     <div className={styles.formRow}>
                                         <SelectField
                                             label="Modalidade"
@@ -260,12 +278,13 @@ export default function AgendamentoConsultaPaciente() {
                                         disabled={isSending}
                                     />
                                     <p className={styles.summary}>
+                                        <FiCalendar aria-hidden="true"/>
                                         Pedido para {formatDateTime(currentSlot)} com {patient.prescriberName}.
                                     </p>
                                     <div className={styles.actions}>
                                         <button
                                             type="button"
-                                            className={styles.primaryButton}
+                                            className="button"
                                             onClick={() => sendRequest(currentSlot)}
                                             disabled={isSending}
                                         >
@@ -274,15 +293,14 @@ export default function AgendamentoConsultaPaciente() {
                                     </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
-                </section>
+                </Card>
             )}
 
-            <section className={styles.section} aria-labelledby="proximas-consultas">
-                <h2 id="proximas-consultas" className={styles.sectionTitle}>Próximas consultas e pedidos</h2>
+            <Card title="Próximas consultas e pedidos" count={upcomingAppointments.length}>
                 {upcomingAppointments.length === 0 ? (
-                    <p className={styles.status}>Nenhuma consulta ou pedido pela frente.</p>
+                    <p className={styles.meta}>Nenhuma consulta ou pedido pela frente.</p>
                 ) : (
                     <ul className={styles.list}>
                         {upcomingAppointments.map((appointment) => (
@@ -308,7 +326,7 @@ export default function AgendamentoConsultaPaciente() {
                                 {canPatientCancel(appointment) && (
                                     <button
                                         type="button"
-                                        className={styles.dangerButton}
+                                        className="button-danger button-small"
                                         onClick={() => setCancelTarget(appointment)}
                                         disabled={busyAppointmentId === appointment.id}
                                     >
@@ -319,7 +337,7 @@ export default function AgendamentoConsultaPaciente() {
                         ))}
                     </ul>
                 )}
-            </section>
+            </Card>
 
             <ConfirmModal
                 show={cancelTarget !== null}
