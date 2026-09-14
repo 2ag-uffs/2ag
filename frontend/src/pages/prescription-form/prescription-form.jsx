@@ -1,8 +1,13 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiCheckCircle, FiPlus} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
+import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {
     ADMINISTRATION_ROUTE_OPTIONS,
@@ -181,36 +186,38 @@ export default function PrescriptionForm() {
     };
 
     if (isLoading) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (wasIssued) {
         return (
             <section className={styles.page}>
-                <div className={styles.header}>
-                    <h1>Prescrição emitida</h1>
-                    <p>{appointment.patientName}</p>
-                </div>
-                <p className="aviso">
-                    A prescrição agora é a vigente do paciente.
-                    {currentPrescription ? " A anterior passou para o histórico." : ""}
-                </p>
-                <div className={styles.actions}>
-                    <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
-                    >
-                        Ver histórico do paciente
-                    </button>
-                    <button type="button" className={styles.secondaryButton} onClick={() => navigate("/painel-prescritor")}>
-                        Voltar ao painel
-                    </button>
-                </div>
+                <PageHeader title="Prescrição emitida" subtitle={appointment.patientName}/>
+                <Card>
+                    <div className={styles.success}>
+                        <FiCheckCircle className={styles.successIcon} aria-hidden="true"/>
+                        <p>
+                            A prescrição agora é a vigente do paciente.
+                            {currentPrescription ? " A anterior passou para o histórico." : ""}
+                        </p>
+                    </div>
+                    <div className={styles.nextSteps}>
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
+                        >
+                            Ver histórico do paciente
+                        </button>
+                        <button type="button" className="button-secondary" onClick={() => navigate("/painel-prescritor")}>
+                            Voltar ao painel
+                        </button>
+                    </div>
+                </Card>
             </section>
         );
     }
@@ -227,10 +234,10 @@ export default function PrescriptionForm() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <h1>Nova prescrição</h1>
-                <p>{appointment.patientName} · consulta de {formatDate(appointment.dateTime)}</p>
-            </div>
+            <PageHeader
+                title="Nova prescrição"
+                subtitle={appointment.patientName + " · consulta de " + formatDate(appointment.dateTime)}
+            />
 
             {blockedMessage && <p className="aviso aviso--atencao">{blockedMessage}</p>}
             {!blockedMessage && currentPrescription && (
@@ -244,8 +251,7 @@ export default function PrescriptionForm() {
 
             {!blockedMessage && (
                 <form className={styles.form} onSubmit={handleSubmit}>
-                    <fieldset className={styles.section} disabled={isSaving}>
-                        <legend>Produto</legend>
+                    <FormSection title="Produto" disabled={isSaving}>
                         <TextField
                             label="Produto"
                             name="productDescription"
@@ -255,7 +261,7 @@ export default function PrescriptionForm() {
                             error={fieldErrors.productDescription}
                             required={true}
                         />
-                        <div className={styles.row}>
+                        <FieldRow>
                             <TextField
                                 label="Marca (opcional)"
                                 name="brand"
@@ -268,8 +274,8 @@ export default function PrescriptionForm() {
                                 value={form.batch}
                                 onChange={(event) => updateField("batch", event.target.value)}
                             />
-                        </div>
-                        <div className={styles.row}>
+                        </FieldRow>
+                        <FieldRow>
                             <SelectField
                                 label="Espectro"
                                 name="spectrum"
@@ -289,12 +295,14 @@ export default function PrescriptionForm() {
                                 value={form.volume}
                                 onChange={(event) => updateField("volume", event.target.value)}
                             />
-                        </div>
-                    </fieldset>
+                        </FieldRow>
+                    </FormSection>
 
-                    <fieldset className={styles.section} disabled={isSaving}>
-                        <legend>Composição do óleo</legend>
-                        <p className={styles.hint}>Um canabinoide por linha, cada um com a própria concentração.</p>
+                    <FormSection
+                        title="Composição do óleo"
+                        description="Um canabinoide por linha, cada um com a própria concentração."
+                        disabled={isSaving}
+                    >
                         {components.map((component, index) => (
                             <div key={index} className={styles.componentRow}>
                                 <SelectField
@@ -325,7 +333,7 @@ export default function PrescriptionForm() {
                                 {components.length > 1 && (
                                     <button
                                         type="button"
-                                        className={styles.removeButton}
+                                        className={"button-tertiary button-small " + styles.removeButton}
                                         onClick={() => removeComponent(index)}
                                         aria-label={"Tirar o canabinoide da linha " + (index + 1)}
                                     >
@@ -337,15 +345,15 @@ export default function PrescriptionForm() {
                         {compositionError && <p className={styles.fieldError}>{compositionError}</p>}
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className={"button-secondary button-small " + styles.addButton}
                             onClick={() => setComponents((currentComponents) => [...currentComponents, newComponent()])}
                         >
+                            <FiPlus aria-hidden="true"/>
                             Adicionar canabinoide
                         </button>
-                    </fieldset>
+                    </FormSection>
 
-                    <fieldset className={styles.section} disabled={isSaving}>
-                        <legend>Posologia</legend>
+                    <FormSection title="Posologia" disabled={isSaving}>
                         <TextAreaField
                             label="Posologia"
                             name="posology"
@@ -386,7 +394,7 @@ export default function PrescriptionForm() {
                                 />
                                 <button
                                     type="button"
-                                    className={styles.removeButton}
+                                    className={"button-tertiary button-small " + styles.removeButton}
                                     onClick={() => removeEscalationStep(index)}
                                     aria-label={"Tirar a semana " + (index + 1)}
                                 >
@@ -396,15 +404,15 @@ export default function PrescriptionForm() {
                         ))}
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className={"button-secondary button-small " + styles.addButton}
                             onClick={() => setEscalationSteps((currentSteps) => [...currentSteps, newEscalationStep()])}
                         >
+                            <FiPlus aria-hidden="true"/>
                             Adicionar semana
                         </button>
-                    </fieldset>
+                    </FormSection>
 
-                    <fieldset className={styles.section} disabled={isSaving}>
-                        <legend>Orientações ao paciente</legend>
+                    <FormSection title="Orientações ao paciente" disabled={isSaving}>
                         <TextAreaField
                             label="Instruções de uso"
                             name="instructions"
@@ -425,11 +433,10 @@ export default function PrescriptionForm() {
                             value={form.expectedEffects}
                             onChange={(event) => updateField("expectedEffects", event.target.value)}
                         />
-                    </fieldset>
+                    </FormSection>
 
-                    <fieldset className={styles.section} disabled={isSaving}>
-                        <legend>Acompanhamento</legend>
-                        <div className={styles.row}>
+                    <FormSection title="Acompanhamento" disabled={isSaving}>
+                        <FieldRow>
                             <TextField
                                 label="Duração do tratamento em dias"
                                 name="treatmentDurationDays"
@@ -447,17 +454,17 @@ export default function PrescriptionForm() {
                                 value={form.nextConsultationDate}
                                 onChange={(event) => updateField("nextConsultationDate", event.target.value)}
                             />
-                        </div>
-                    </fieldset>
+                        </FieldRow>
+                    </FormSection>
 
-                    <div className={styles.actions}>
-                        <button type="button" className={styles.secondaryButton} onClick={() => navigate(-1)}>
+                    <FormActions>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Voltar
                         </button>
-                        <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                        <button type="submit" className="button" disabled={isSaving}>
                             {isSaving ? "Emitindo..." : "Emitir prescrição"}
                         </button>
-                    </div>
+                    </FormActions>
                 </form>
             )}
         </section>

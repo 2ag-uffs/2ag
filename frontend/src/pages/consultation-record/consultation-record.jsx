@@ -1,8 +1,13 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiCheckCircle} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
+import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom} from "../../utils/date-format.js";
 import styles from "./consultation-record.module.css";
@@ -176,44 +181,49 @@ export default function ConsultationRecord() {
     };
 
     if (isLoading) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={1}/>;
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (savedAppointmentId !== null) {
         return (
             <section className={styles.page}>
-                <div className={styles.header}>
-                    <h1>{isNewConsultation ? "Consulta registrada" : "Registro atualizado"}</h1>
-                    <p>{patient.name}</p>
-                </div>
-                <p className="aviso">O registro clínico foi salvo. O que você quer fazer agora?</p>
-                <div className={styles.nextSteps}>
-                    <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => navigate("/consulta/" + savedAppointmentId + "/prescricao")}
-                    >
-                        Emitir prescrição
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/consulta/" + savedAppointmentId + "/mini-exame")}
-                    >
-                        Aplicar mini-exame
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/paciente/" + patient.id + "/historico")}
-                    >
-                        Ver histórico do paciente
-                    </button>
-                </div>
+                <PageHeader
+                    title={isNewConsultation ? "Consulta registrada" : "Registro atualizado"}
+                    subtitle={patient.name}
+                />
+                <Card>
+                    <div className={styles.success}>
+                        <FiCheckCircle className={styles.successIcon} aria-hidden="true"/>
+                        <p>O registro clínico foi salvo. O que você quer fazer agora?</p>
+                    </div>
+                    <div className={styles.nextSteps}>
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => navigate("/consulta/" + savedAppointmentId + "/prescricao")}
+                        >
+                            Emitir prescrição
+                        </button>
+                        <button
+                            type="button"
+                            className="button-secondary"
+                            onClick={() => navigate("/consulta/" + savedAppointmentId + "/mini-exame")}
+                        >
+                            Aplicar mini-exame
+                        </button>
+                        <button
+                            type="button"
+                            className="button-tertiary"
+                            onClick={() => navigate("/paciente/" + patient.id + "/historico")}
+                        >
+                            Ver histórico do paciente
+                        </button>
+                    </div>
+                </Card>
             </section>
         );
     }
@@ -223,18 +233,17 @@ export default function ConsultationRecord() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <h1>{isNewConsultation ? "Nova consulta" : "Registro da consulta"}</h1>
-                <p>{patient.name}{age !== null ? " · " + age + " anos" : ""}</p>
-            </div>
+            <PageHeader
+                title={isNewConsultation ? "Nova consulta" : "Registro da consulta"}
+                subtitle={patient.name + (age !== null ? " · " + age + " anos" : "")}
+            />
 
             {blockedMessage && <p className="aviso aviso--atencao">{blockedMessage}</p>}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
             <form className={styles.form} onSubmit={handleSubmit}>
-                <fieldset className={styles.section} disabled={isReadOnly || isSaving}>
-                    <legend>Quando e como</legend>
-                    <div className={styles.row}>
+                <FormSection title="Quando e como" disabled={isReadOnly || isSaving}>
+                    <FieldRow>
                         <TextField
                             label="Data e hora"
                             name="dateTime"
@@ -252,11 +261,10 @@ export default function ConsultationRecord() {
                             onChange={(event) => updateField("modality", event.target.value)}
                             error={fieldErrors.modality}
                         />
-                    </div>
-                </fieldset>
+                    </FieldRow>
+                </FormSection>
 
-                <fieldset className={styles.section} disabled={isReadOnly || isSaving}>
-                    <legend>Queixa e exame</legend>
+                <FormSection title="Queixa e exame" disabled={isReadOnly || isSaving}>
                     <TextAreaField
                         label="Queixa principal e observações"
                         name="clinicalObservation"
@@ -271,7 +279,7 @@ export default function ConsultationRecord() {
                         onChange={(event) => updateField("physicalExam", event.target.value)}
                         error={fieldErrors.physicalExam}
                     />
-                    <div className={styles.row}>
+                    <FieldRow>
                         <TextField
                             label="Pressão arterial"
                             name="bloodPressure"
@@ -299,11 +307,10 @@ export default function ConsultationRecord() {
                             onChange={(event) => updateField("height", event.target.value)}
                             error={fieldErrors.height}
                         />
-                    </div>
-                </fieldset>
+                    </FieldRow>
+                </FormSection>
 
-                <fieldset className={styles.section} disabled={isReadOnly || isSaving}>
-                    <legend>Avaliação</legend>
+                <FormSection title="Avaliação" disabled={isReadOnly || isSaving}>
                     <TextAreaField
                         label="Evolução do quadro"
                         name="evolution"
@@ -319,10 +326,9 @@ export default function ConsultationRecord() {
                         onChange={(event) => updateField("diagnosis", event.target.value)}
                         error={fieldErrors.diagnosis}
                     />
-                </fieldset>
+                </FormSection>
 
-                <fieldset className={styles.section} disabled={isReadOnly || isSaving}>
-                    <legend>Conduta</legend>
+                <FormSection title="Conduta" disabled={isReadOnly || isSaving}>
                     <TextAreaField
                         label="Conduta e plano terapêutico"
                         name="therapeuticPlan"
@@ -338,18 +344,18 @@ export default function ConsultationRecord() {
                         onChange={(event) => updateField("complementaryExams", event.target.value)}
                         error={fieldErrors.complementaryExams}
                     />
-                </fieldset>
+                </FormSection>
 
-                <div className={styles.actions}>
-                    <button type="button" className={styles.secondaryButton} onClick={() => navigate(-1)}>
+                <FormActions>
+                    <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                         Voltar
                     </button>
                     {!isReadOnly && (
-                        <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                        <button type="submit" className="button" disabled={isSaving}>
                             {isSaving ? "Salvando..." : "Salvar consulta"}
                         </button>
                     )}
-                </div>
+                </FormActions>
             </form>
         </section>
     );

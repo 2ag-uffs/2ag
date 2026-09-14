@@ -1,0 +1,64 @@
+/* blocos dos formularios compridos */
+
+.section {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin: 0;
+    min-width: 0;
+    padding: var(--space-5);
+}
+
+/* o float tira a legenda de cima da borda e ela vira o titulo do bloco */
+.legend {
+    color: var(--color-text-headings);
+    float: left;
+    font-family: "Belleza", "Yaldevi Colombo", sans-serif;
+    font-size: var(--text-lg);
+    padding: 0;
+    width: 100%;
+}
+
+.description {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    margin-top: calc(-1 * var(--space-3));
+}
+
+.row {
+    display: grid;
+    gap: var(--space-3) var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.actions {
+    background: linear-gradient(to bottom, rgba(244, 246, 244, 0), var(--color-background) 35%);
+    bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    padding: var(--space-6) 0 var(--space-4);
+    position: sticky;
+    z-index: var(--layer-sticky);
+}
+
+@media (max-width: 47.99rem) {
+    .section {
+        padding: var(--space-4);
+    }
+
+    /* no celular a barra de navegacao fica embaixo, entao os botoes param logo acima dela */
+    .actions {
+        bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom));
+        padding-bottom: var(--space-3);
+    }
+
+    .actions > * {
+        flex: 1 1 auto;
+    }
+}

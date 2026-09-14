@@ -1,7 +1,11 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
+import {FiChevronLeft, FiChevronRight, FiClock} from "react-icons/fi";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
+import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {
@@ -54,6 +58,8 @@ export default function AgendamentoPrescritor() {
 
     const weekStartIso = toIsoDate(weekStart);
     const weekEndIso = toIsoDate(addDays(weekStart, 6));
+    const todayIso = toIsoDate(new Date());
+    const isCurrentWeek = weekStartIso === toIsoDate(mondayOf(new Date()));
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -161,11 +167,11 @@ export default function AgendamentoPrescritor() {
     };
 
     if (loadError && agenda === null) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (agenda === null) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     const {weekAppointments, waitingRequests, availability, patients} = agenda;
@@ -182,7 +188,7 @@ export default function AgendamentoPrescritor() {
                     {isInTheFuture(appointment.dateTime) && (
                         <button
                             type="button"
-                            className={styles.primaryButton}
+                            className="button button-small"
                             onClick={() => confirmRequest(appointment)}
                             disabled={isBusy}
                         >
@@ -191,7 +197,7 @@ export default function AgendamentoPrescritor() {
                     )}
                     <button
                         type="button"
-                        className={styles.secondaryButton}
+                        className="button-secondary button-small"
                         onClick={() => openForm(setDeclineTarget, appointment)}
                         disabled={isBusy}
                     >
@@ -207,7 +213,7 @@ export default function AgendamentoPrescritor() {
                     {hasStarted ? (
                         <button
                             type="button"
-                            className={styles.primaryButton}
+                            className="button button-small"
                             onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
                         >
                             Registrar atendimento
@@ -215,7 +221,7 @@ export default function AgendamentoPrescritor() {
                     ) : (
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className="button-secondary button-small"
                             onClick={() => openForm(setRescheduleTarget, appointment)}
                             disabled={isBusy}
                         >
@@ -224,7 +230,7 @@ export default function AgendamentoPrescritor() {
                     )}
                     <button
                         type="button"
-                        className={styles.dangerButton}
+                        className="button-danger button-small"
                         onClick={() => openForm(setCancelTarget, appointment)}
                         disabled={isBusy}
                     >
@@ -237,7 +243,7 @@ export default function AgendamentoPrescritor() {
             return (
                 <button
                     type="button"
-                    className={styles.secondaryButton}
+                    className="button-secondary button-small"
                     onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
                 >
                     Ver histórico
@@ -250,9 +256,9 @@ export default function AgendamentoPrescritor() {
     const renderAppointment = (appointment, showDate) => (
         <li key={appointment.id} className={styles.appointment}>
             <div className={styles.appointmentTime}>
-                {showDate && <span>{formatDate(appointment.dateTime)}</span>}
+                {showDate && <span className={styles.appointmentDate}>{formatDate(appointment.dateTime)}</span>}
                 <strong>{formatTime(appointment.dateTime)}</strong>
-                <span>{appointment.durationMinutes} min</span>
+                <span className={styles.duration}>{appointment.durationMinutes} min</span>
             </div>
             <div className={styles.appointmentInfo}>
                 <div className={styles.appointmentTitle}>
@@ -268,54 +274,59 @@ export default function AgendamentoPrescritor() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1>Agenda</h1>
-                    <p className={styles.subtitle}>
-                        Responda os pedidos dos pacientes e acompanhe as consultas da semana.
-                    </p>
-                </div>
-                <div className={styles.headerActions}>
-                    <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => openForm(setIsCreating, true)}
-                        disabled={patients.length === 0}
-                    >
-                        Nova consulta
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/agenda/disponibilidade")}
-                    >
-                        Horários de atendimento
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Agenda"
+                subtitle="Responda os pedidos dos pacientes e acompanhe as consultas da semana."
+                actions={(
+                    <>
+                        <button
+                            type="button"
+                            className="button-secondary"
+                            onClick={() => navigate("/agenda/disponibilidade")}
+                        >
+                            <FiClock aria-hidden="true"/>
+                            Horários de atendimento
+                        </button>
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => openForm(setIsCreating, true)}
+                            disabled={patients.length === 0}
+                        >
+                            Nova consulta
+                        </button>
+                    </>
+                )}
+            />
 
             {availability.periods.length === 0 && (
-                <p className="aviso aviso--atencao">
-                    Você ainda não cadastrou horários de atendimento, então seus pacientes não conseguem pedir
-                    consulta. Cadastre em Horários de atendimento.
-                </p>
+                <div className={"aviso aviso--atencao " + styles.warning}>
+                    <span>
+                        Você ainda não cadastrou horários de atendimento, então seus pacientes não conseguem pedir
+                        consulta.
+                    </span>
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => navigate("/agenda/disponibilidade")}
+                    >
+                        Cadastrar horários
+                    </button>
+                </div>
             )}
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
             {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
-            <section className={styles.section} aria-labelledby="pedidos-aguardando">
-                <h2 id="pedidos-aguardando" className={styles.sectionTitle}>
-                    Pedidos aguardando resposta ({waitingRequests.length})
-                </h2>
+            <Card title="Pedidos aguardando resposta" count={waitingRequests.length}>
                 {waitingRequests.length === 0 ? (
-                    <p className={styles.status}>Nenhum pedido esperando resposta.</p>
+                    <p className={styles.empty}>Nenhum pedido esperando resposta.</p>
                 ) : (
                     <ul className={styles.list}>
                         {waitingRequests.map((request) => renderAppointment(request, true))}
                     </ul>
                 )}
-            </section>
+            </Card>
 
             <section className={styles.section} aria-labelledby="semana-da-agenda">
                 <div className={styles.weekHeader}>
@@ -325,24 +336,29 @@ export default function AgendamentoPrescritor() {
                     <div className={styles.weekNavigation}>
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className="button-secondary button-small"
                             onClick={() => setWeekStart(addDays(weekStart, -7))}
+                            aria-label="Semana anterior"
+                            title="Semana anterior"
                         >
-                            Semana anterior
+                            <FiChevronLeft aria-hidden="true"/>
                         </button>
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className="button-tertiary button-small"
                             onClick={() => setWeekStart(mondayOf(new Date()))}
+                            disabled={isCurrentWeek}
                         >
                             Esta semana
                         </button>
                         <button
                             type="button"
-                            className={styles.secondaryButton}
+                            className="button-secondary button-small"
                             onClick={() => setWeekStart(addDays(weekStart, 7))}
+                            aria-label="Próxima semana"
+                            title="Próxima semana"
                         >
-                            Próxima semana
+                            <FiChevronRight aria-hidden="true"/>
                         </button>
                     </div>
                 </div>
@@ -350,11 +366,15 @@ export default function AgendamentoPrescritor() {
                     {weekDaysFrom(weekStart).map((dayIso) => {
                         const dayAppointments = weekAppointments.filter((appointment) =>
                             appointment.dateTime.slice(0, 10) === dayIso);
+                        const isToday = dayIso === todayIso;
                         return (
-                            <div key={dayIso} className={styles.day}>
-                                <h3 className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</h3>
+                            <div key={dayIso} className={isToday ? styles.day + " " + styles.dayToday : styles.day}>
+                                <h3 className={styles.dayName}>
+                                    {formatWeekdayAndDate(dayIso)}
+                                    {isToday && <span className={styles.todayTag}>hoje</span>}
+                                </h3>
                                 {dayAppointments.length === 0 ? (
-                                    <p className={styles.status}>Nenhuma consulta.</p>
+                                    <p className={styles.dayEmpty}>Nenhuma consulta.</p>
                                 ) : (
                                     <ul className={styles.list}>
                                         {dayAppointments.map((appointment) => renderAppointment(appointment, false))}
