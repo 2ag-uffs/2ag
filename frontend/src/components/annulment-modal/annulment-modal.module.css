@@ -3,27 +3,33 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
 }
 
+/* o registro q vai ser anulado aparece numa faixa pra ninguem anular o errado */
 .recordDescription {
+    background-color: var(--color-background);
+    border-radius: var(--radius-md);
     font-weight: 600;
+    padding: var(--space-3) var(--space-4);
 }
 
 .note {
     color: var(--color-text-secondary);
+    font-size: var(--text-sm);
 }
 
 .actions {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     justify-content: flex-end;
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
 }
 
 /* no celular os botoes empilham e o voltar fica em cima */
-@media screen and (max-width: 578px) {
+@media (max-width: 47.99rem) {
     .actions {
         flex-direction: column;
     }

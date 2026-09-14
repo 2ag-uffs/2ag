@@ -8,6 +8,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
+import {initialsOf} from "../../utils/initials.js";
 import styles from "./lista-paciente.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -19,16 +20,6 @@ function patientDetailsOf(patient) {
         return ageText + " · no arquivo desde " + formatDate(patient.archivedAt);
     }
     return ageText;
-}
-
-// as iniciais do primeiro e do ultimo nome, pro circulo ao lado do nome
-function initialsOf(name) {
-    const words = name.split(" ").filter((word) => word !== "");
-    if (words.length === 0) {
-        return "?";
-    }
-    const lastWord = words.length > 1 ? words[words.length - 1] : "";
-    return (words[0].charAt(0) + lastWord.charAt(0)).toUpperCase();
 }
 
 // carteira de pacientes do prescritor

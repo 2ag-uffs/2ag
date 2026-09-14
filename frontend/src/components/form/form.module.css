@@ -1,27 +1,35 @@
-/* pecas de formulario usadas nas telas novas */
+/* pecas de formulario usadas em todas as telas */
 
 .field {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: var(--space-1);
+    min-width: 0;
 }
 
 .label {
-    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    font-weight: 600;
 }
 
 .hint {
     color: var(--color-text-secondary);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
 }
 
 .error {
     color: var(--color-error);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
 }
 
-.field input[aria-invalid="true"] {
+/* campo com erro ganha a borda e um halo na cor de erro */
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
     border-color: var(--color-error);
+    box-shadow: 0 0 0 3px var(--color-error-soft);
 }
 
 .passwordBox {
@@ -35,72 +43,65 @@
     padding-right: 3rem;
 }
 
-/* o button css global estica todo botao entao aqui o tamanho eh fixo */
+/* o olho de mostrar a senha fica dentro do campo */
 .visibilityButton {
+    align-items: center;
     background-color: transparent;
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     color: var(--color-text-secondary);
-    flex: 0 0 auto;
+    display: inline-flex;
     font-size: 1.2rem;
-    height: 2.5rem;
+    height: 2.25rem;
+    justify-content: center;
     min-height: 0;
     padding: 0;
     position: absolute;
-    right: 0.25rem;
+    right: var(--space-1);
     top: 50%;
     transform: translateY(-50%);
-    width: 2.5rem;
+    width: 2.25rem;
 }
 
 .visibilityButton:hover {
     background-color: var(--color-surface-alt);
+    color: var(--color-text-primary);
 }
 
 .select {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     color: var(--color-text-primary);
-    font-size: 1rem;
-    min-height: 48px;
-    padding: 0 0.75rem;
-}
-
-.select:focus {
-    border-color: var(--color-primary);
-    outline: 2px solid var(--color-primary-soft);
-    outline-offset: 0;
-}
-
-.field select[aria-invalid="true"] {
-    border-color: var(--color-error);
+    font: inherit;
+    min-height: var(--control-height);
+    padding: 0 var(--space-3);
+    width: 100%;
 }
 
 .textArea {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     color: var(--color-text-primary);
     font: inherit;
+    line-height: var(--leading-normal);
     min-height: 5rem;
-    padding: 0.75rem;
+    padding: var(--space-3);
     resize: vertical;
 }
 
-.textArea:focus {
-    border-color: var(--color-primary);
-    outline: 2px solid var(--color-primary-soft);
-    outline-offset: 0;
-}
-
-.field textarea[aria-invalid="true"] {
-    border-color: var(--color-error);
+.select:disabled,
+.textArea:disabled,
+.field input:disabled {
+    background-color: var(--color-background);
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
 }
 
 .checklist {
     display: grid;
-    gap: 0.15rem;
+    gap: var(--space-1);
     list-style: none;
 }
 
@@ -109,12 +110,14 @@
     align-items: center;
     color: var(--color-text-secondary);
     display: flex;
-    font-size: 0.85rem;
-    gap: 0.4rem;
+    font-size: var(--text-sm);
+    gap: var(--space-2);
+    transition: color var(--duration-fast) var(--easing-standard);
 }
 
 .checklistItemMet {
     color: var(--color-primary);
+    font-weight: 600;
 }
 
 /* texto so pra leitor de tela */

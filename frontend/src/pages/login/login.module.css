@@ -3,21 +3,19 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
-/* o button css global estica o botao entao aqui ele n cresce */
 .submitButton {
-    flex: 0 0 auto;
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
 }
 
 .forgotLink {
     align-self: flex-end;
     color: var(--color-primary);
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-top: -0.5rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-top: calc(-1 * var(--space-2));
 }
 
 /* o espaco entre os blocos ja vem do gap da moldura */
@@ -28,6 +26,6 @@
 .signUpNote {
     border-top: 1px solid var(--color-border);
     color: var(--color-text-secondary);
-    font-size: 0.9rem;
-    padding-top: 1.25rem;
+    font-size: var(--text-sm);
+    padding-top: var(--space-5);
 }

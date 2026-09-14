@@ -1,8 +1,13 @@
 import {useCallback, useEffect, useState} from "react";
+import {FiUserPlus, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
-import Modal from "../../components/modal/modal.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
+import Modal from "../../components/modal/modal.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {initialsOf} from "../../utils/initials.js";
 import styles from "./admin-prescribers.module.css";
 
 // conselhos profissionais aceitos no cadastro
@@ -35,6 +40,7 @@ function FormField({
                 value={value}
                 autoComplete={autoComplete}
                 required={isRequired}
+                aria-invalid={error ? "true" : undefined}
                 onChange={(event) => onChange(fieldName, event.target.value)}
             />
             {error && <span className={styles.fieldError}>{error}</span>}
@@ -162,51 +168,79 @@ export default function AdminPrescribers() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.pageHeader}>
-                <div>
-                    <h1>Prescritores</h1>
-                    <p className={styles.subtitle}>
-                        Contas de quem atende na clínica. Desativar tira o acesso sem apagar nenhum histórico.
-                    </p>
-                </div>
-                <button type="button" className={styles.primaryButton} onClick={openForm}>
-                    Novo prescritor
-                </button>
-            </div>
+            <PageHeader
+                title="Prescritores"
+                subtitle="Contas de quem atende na clínica. Desativar tira o acesso sem apagar nenhum histórico."
+                actions={(
+                    <button type="button" className="button" onClick={openForm}>
+                        <FiUserPlus aria-hidden="true"/>
+                        Novo prescritor
+                    </button>
+                )}
+            />
 
-            {notice && <p className="aviso">{notice}</p>}
-            {pageError && <p className="aviso aviso--atencao">{pageError}</p>}
-            {isLoading && <p>Carregando...</p>}
+            {notice && <p className="aviso" role="status">{notice}</p>}
+            {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
 
-            {!isLoading && !pageError && prescribers.length === 0 && (
-                <p className={styles.emptyState}>Nenhum prescritor cadastrado ainda.</p>
+            {isLoading && (
+                <ul className={styles.list} role="status" aria-label="Carregando prescritores">
+                    {[0, 1, 2].map((index) => (
+                        <li key={index} className={styles.row}>
+                            <SkeletonBlock width="2.75rem" height="2.75rem" isRound={true}/>
+                            <div className={styles.rowText}>
+                                <SkeletonBlock width="12rem" height="1rem"/>
+                                <SkeletonBlock width="9rem" height="0.875rem"/>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
             )}
 
-            <ul className={styles.list}>
-                {prescribers.map((prescriber) => (
-                    <li key={prescriber.id} className={styles.card}>
-                        <div className={styles.cardInfo}>
-                            <strong>{prescriber.name}</strong>
-                            <span>{prescriber.email}</span>
-                            <span>
-                                {prescriber.registryType} {prescriber.registryNumber} · {prescriber.profession}
-                            </span>
-                        </div>
-                        <div className={styles.cardActions}>
-                            <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
-                                {prescriber.active ? "Ativo" : "Desativado"}
-                            </span>
-                            <button
-                                type="button"
-                                className={styles.secondaryButton}
-                                onClick={() => setPrescriberToToggle(prescriber)}
+            {!isLoading && !pageError && prescribers.length === 0 && (
+                <EmptyState
+                    icon={FiUsers}
+                    message="Nenhum prescritor cadastrado ainda."
+                    action={(
+                        <button type="button" className="button" onClick={openForm}>
+                            Cadastrar o primeiro
+                        </button>
+                    )}
+                />
+            )}
+
+            {!isLoading && prescribers.length > 0 && (
+                <ul className={styles.list}>
+                    {prescribers.map((prescriber) => (
+                        <li key={prescriber.id} className={styles.row}>
+                            <span
+                                className={prescriber.active ? styles.avatar : styles.avatar + " " + styles.avatarInactive}
+                                aria-hidden="true"
                             >
-                                {prescriber.active ? "Desativar" : "Reativar"}
-                            </button>
-                        </div>
-                    </li>
-                ))}
-            </ul>
+                                {initialsOf(prescriber.name)}
+                            </span>
+                            <div className={styles.rowText}>
+                                <strong className={styles.name}>{prescriber.name}</strong>
+                                <span className={styles.details}>{prescriber.email}</span>
+                                <span className={styles.details}>
+                                    {prescriber.registryType} {prescriber.registryNumber} · {prescriber.profession}
+                                </span>
+                            </div>
+                            <div className={styles.rowActions}>
+                                <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
+                                    {prescriber.active ? "Ativo" : "Desativado"}
+                                </span>
+                                <button
+                                    type="button"
+                                    className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
+                                    onClick={() => setPrescriberToToggle(prescriber)}
+                                >
+                                    {prescriber.active ? "Desativar" : "Reativar"}
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
             <Modal show={isFormOpen} title="Novo prescritor" onClickClose={closeForm}>
                 <form className={styles.form} onSubmit={handleCreate}>
@@ -230,6 +264,7 @@ export default function AdminPrescribers() {
                         <label htmlFor="registryType">Conselho</label>
                         <select
                             id="registryType"
+                            className={styles.select}
                             value={formData.registryType}
                             onChange={(event) => updateField("registryType", event.target.value)}
                         >
@@ -250,10 +285,10 @@ export default function AdminPrescribers() {
                     </div>
 
                     <div className={styles.formActions}>
-                        <button type="button" className={styles.secondaryButton} onClick={closeForm} disabled={isSaving}>
+                        <button type="button" className="button-secondary" onClick={closeForm} disabled={isSaving}>
                             Cancelar
                         </button>
-                        <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                        <button type="submit" className="button" disabled={isSaving}>
                             {isSaving ? "Criando..." : "Criar conta"}
                         </button>
                     </div>

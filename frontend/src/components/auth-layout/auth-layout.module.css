@@ -7,10 +7,12 @@
 }
 
 /* a arte fica parada enquanto o formulario comprido rola */
+/* o degrade sai dos tres tons do verde escuro da cartela */
 .art {
     align-items: center;
+    background: radial-gradient(circle at 30% 25%, var(--color-primary-light) 0%, var(--color-primary) 45%, var(--color-primary-dark) 100%);
     display: flex;
-    flex: 0.6;
+    flex: 1 1 55%;
     height: 100svh;
     justify-content: center;
     position: sticky;
@@ -19,38 +21,39 @@
 }
 
 .artLogo {
-    max-width: 22rem;
-    width: 45%;
+    max-width: 20rem;
+    width: 42%;
 }
 
 .cornerTopLeft,
 .cornerTopRight,
 .cornerBottomLeft,
 .cornerBottomRight {
+    opacity: 0.55;
     position: absolute;
     width: 3.5rem;
 }
 
 .cornerTopLeft {
-    left: 1rem;
-    top: 1rem;
+    left: var(--space-4);
+    top: var(--space-4);
     transform: scaleY(-1);
 }
 
 .cornerTopRight {
-    right: 1rem;
-    top: 1rem;
+    right: var(--space-4);
+    top: var(--space-4);
     transform: rotate(180deg);
 }
 
 .cornerBottomLeft {
-    bottom: 1rem;
-    left: 1rem;
+    bottom: var(--space-4);
+    left: var(--space-4);
 }
 
 .cornerBottomRight {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: var(--space-4);
+    right: var(--space-4);
     transform: scaleX(-1);
 }
 
@@ -58,38 +61,40 @@
     align-items: center;
     background-color: var(--color-surface);
     display: flex;
-    flex: 0.4;
+    flex: 1 1 45%;
     justify-content: center;
-    padding: 2.5rem 2rem;
+    padding: var(--space-10) var(--space-8);
 }
 
 .card {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: var(--space-6);
     max-width: 26rem;
     width: 100%;
 }
 
 .logo {
     align-self: flex-start;
-    max-width: 12rem;
+    max-width: 11rem;
 }
 
 .title {
-    color: var(--color-text-headings);
-    font-size: 1.75rem;
-    line-height: 1.2;
+    font-size: var(--text-2xl);
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 63.99rem) {
     .art,
     .content {
-        flex: 0.5;
+        flex-basis: 50%;
     }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 47.99rem) {
+    .layout {
+        background-color: var(--color-surface);
+    }
+
     .art {
         display: none;
     }
@@ -97,6 +102,6 @@
     .content {
         align-items: flex-start;
         flex: 1;
-        padding: 2rem 1.25rem;
+        padding: var(--space-8) var(--space-5);
     }
 }

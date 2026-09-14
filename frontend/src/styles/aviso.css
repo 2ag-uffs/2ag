@@ -1,24 +1,25 @@
 /*
- * caixa de aviso do sistema, no lugar do alert.
+ * caixa de aviso do sistema no lugar do alert
  *
- * o alert trava a tela ate clicar em OK e n da pra estilizar. isso aqui
- * aparece dentro da propria tela e some quando o usuario sai dela.
+ * o alert trava a tela ate clicar em ok e n da pra estilizar. isso aqui
+ * aparece dentro da propria tela e some quando o usuario sai dela
  *
- * fica aqui em styles/ porque eh importado uma vez no main.jsx e vale
- * pra todas as telas, senao cada uma repetia a mesma regra
+ * fica em styles pq eh importado uma vez no main e vale pra todas as
+ * telas. o espaco ate o resto vem do gap de cada tela, entao a caixa
+ * n tem margem propria
  */
 
 .aviso {
     background-color: var(--color-primary-soft);
-    border-radius: 6px;
-    color: var(--color-primary);
-    margin-bottom: 1rem;
-    padding: 0.75rem;
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    color: var(--color-text-headings);
+    padding: var(--space-3) var(--space-4);
 }
 
-/* aviso de coisa que deu errado ou que ainda n existe */
+/* aviso de coisa q deu errado ou q ainda n existe */
 .aviso--atencao {
     background-color: var(--color-error-soft);
-    border: 1px solid var(--color-error-border);
+    border-left-color: var(--color-error);
     color: var(--color-error);
 }
