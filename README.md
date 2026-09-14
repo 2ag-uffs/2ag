@@ -6,13 +6,7 @@ sistema livre para acompanhamento terapêutico longitudinal de pacientes em trat
 
 sistema desenvolvido como ação de extensão no componente GCH1993 — Projeto de Integração de Extensão da Universidade Federal da Fronteira Sul (UFFS), campus Chapecó.
 
-o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisitos-v2.md). a revisão técnica de 13/09/2026 (§8 do documento) registra as decisões de arquitetura e a ordem de trabalho.
-
-## situação
-
-o sistema está sendo reconstruído em etapas. a **etapa 0 (fundação)** está pronta: configuração, tratamento de erro, sessão segura, conta administrativa, migração base do banco, integração contínua e o layout do front com rotas protegidas. o módulo de **acesso e identidade** também está pronto: login, convite de paciente, cadastro com termo de consentimento, perfil e recuperação de senha. o de **autorização** também: perfil e vínculo conferidos no servidor em toda rota, fim da exclusão de dado clínico e trilha de auditoria. os módulos clínicos estão sendo reescritos requisito por requisito, na ordem do documento de requisitos.
-
-**não use com dado real de paciente antes do fim dessa reconstrução.**
+o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisitos-v2.md).
 
 ## o que você precisa instalar
 
