@@ -127,7 +127,7 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/agenda-disponibilidade/agenda-disponibilidade.jsx")),
                             },
                             {
-                                path: "/paciente/:pacienteId/selecao-escalas",
+                                path: "/paciente/:patientId/selecao-escalas",
                                 lazy: lazyPage(() => import("../pages/selecao-escalas/selecao-escalas.jsx")),
                             },
                             {

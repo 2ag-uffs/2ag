@@ -180,7 +180,10 @@ class ScaleFormsTest {
         Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA);
         applyMentalStateExam(appointmentId, patient).andExpect(status().isForbidden());
 
-        Long examId = idOf(applyMentalStateExam(appointmentId, prescriber).andExpect(status().isCreated()));
+        // o MEEM nunca aparece como corrigivel pro paciente
+        Long examId = idOf(applyMentalStateExam(appointmentId, prescriber)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.editableByPatient").value(false)));
 
         updateResponse(examId, "{\"escolaridade\":1,\"registro\":0}", patient)
                 .andExpect(status().isBadRequest())

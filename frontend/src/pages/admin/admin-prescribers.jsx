@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import Modal from "../../components/modal/modal.jsx";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./admin-prescribers.module.css";
@@ -260,18 +260,18 @@ export default function AdminPrescribers() {
                 </form>
             </Modal>
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={prescriberToToggle !== null}
-                titulo={isDeactivating ? "Desativar prescritor" : "Reativar prescritor"}
-                mensagem={
+                title={isDeactivating ? "Desativar prescritor" : "Reativar prescritor"}
+                message={
                     isDeactivating
                         ? "A pessoa perde o acesso na hora. Os pacientes e o histórico continuam guardados."
                         : "A pessoa volta a conseguir entrar no sistema."
                 }
-                textoConfirmar={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
-                textoCancelar="Voltar"
-                onConfirmar={confirmToggle}
-                onCancelar={() => setPrescriberToToggle(null)}
+                confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
+                cancelText="Voltar"
+                onConfirm={confirmToggle}
+                onCancel={() => setPrescriberToToggle(null)}
             />
         </section>
     );

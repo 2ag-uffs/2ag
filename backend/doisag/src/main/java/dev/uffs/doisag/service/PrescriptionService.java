@@ -126,12 +126,6 @@ public class PrescriptionService {
         return prescription;
     }
 
-    public List<Prescription> getByAppointmentId(Long appointmentId) {
-        appointmentRepository.findById(appointmentId)
-                .ifPresent(appointment -> auditService.recordChartView(appointment.getPatient().getId()));
-        return prescriptionRepository.findByAppointmentId(appointmentId);
-    }
-
     // a prescricao q estava valendo passa a ser historico
     private void replaceCurrentPrescriptions(Long patientId) {
         List<Prescription> currentPrescriptions = prescriptionRepository

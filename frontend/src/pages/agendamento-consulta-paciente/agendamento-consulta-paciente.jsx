@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {addDays, formatDateTime, formatTime, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
@@ -321,16 +321,16 @@ export default function AgendamentoConsultaPaciente() {
                 )}
             </section>
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={cancelTarget !== null}
-                titulo={cancelTarget !== null && cancelTarget.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
-                mensagem={cancelTarget !== null
+                title={cancelTarget !== null && cancelTarget.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
+                message={cancelTarget !== null
                     ? "O horário de " + formatDateTime(cancelTarget.dateTime) + " volta a ficar livre na agenda. Quer cancelar?"
                     : ""}
-                textoConfirmar="Sim, cancelar"
-                textoCancelar="Voltar"
-                onConfirmar={cancelAppointment}
-                onCancelar={() => setCancelTarget(null)}
+                confirmText="Sim, cancelar"
+                cancelText="Voltar"
+                onConfirm={cancelAppointment}
+                onCancel={() => setCancelTarget(null)}
             />
         </section>
     );

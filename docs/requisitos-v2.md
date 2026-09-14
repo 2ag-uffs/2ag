@@ -813,6 +813,15 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 
 **RNF07 em 14/09/2026:** o backup ganhou script de cópia diária, script de restauração e o procedimento em `docs/backup-e-restauracao.md`, com a tabela onde cada restauração testada fica registrada. O requisito só fecha quando a primeira restauração for feita de verdade no servidor do piloto e anotada ali.
 
+**Revisão geral em 14/09/2026:** com os módulos concluídos, o sistema foi revisto de ponta a ponta: rotas, permissões, telas e configuração.
+
+- **Correção da anamnese:** o paciente corrige a ficha já enviada a partir do próprio histórico, como o RF19 pede. A API já aceitava a correção, mas nenhuma tela chegava a ela.
+- **Correção de escala:** a resposta aberta para leitura leva à correção enquanto o prescritor não analisou. O MEEM deixou de aparecer como corrigível para o paciente, porque quem aplica é o prescritor (RN09).
+- **Período salvo:** abrir um acompanhamento semanal já respondido mantém o fim do período que foi salvo, em vez de trocar pela data do dia.
+- **Telas antigas:** o envio avulso de escalas e o acompanhamento de 90 dias foram reescritos no padrão das outras telas, com busca de escala e aviso da que já espera resposta.
+- **Limpeza:** saiu uma rota de prescrições por consulta que nenhuma tela usava, o `open-in-view` foi desligado e os modais de confirmação passaram ao mesmo padrão de componente do resto do sistema.
+- **Conferido sem mudança:** toda rota da API exige perfil e, quando o dado é de paciente, o vínculo com ele; o cookie da sessão é `HttpOnly` e `SameSite=Strict`; e o login bloqueia depois de tentativas erradas seguidas.
+
 ---
 
 ## Anexo A — Algoritmos das escalas validadas

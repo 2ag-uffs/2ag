@@ -103,6 +103,10 @@ export default function Escala() {
     // dia em branco abre em branco: a tela nunca sugere valor (RN10)
     useEffect(() => {
         setValues(currentResponse ? answersToValues(currentResponse.answers) : {});
+        // o periodo ja respondido abre com o fim q foi salvo e n com hoje
+        if (currentResponse) {
+            setPeriodEnd(currentResponse.periodEnd);
+        }
     }, [currentResponse]);
 
     // o recado de um dia n vale pro outro, mas salvar n pode apagar o

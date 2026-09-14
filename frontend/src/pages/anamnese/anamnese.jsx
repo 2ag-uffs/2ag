@@ -1,9 +1,9 @@
-import {useState} from "react";
-import {useNavigate} from "react-router";
+import {useEffect, useState} from "react";
+import {useNavigate, useSearchParams} from "react-router";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./anamnese.module.css";
 
@@ -60,13 +60,64 @@ function emptyAnswers() {
 }
 
 // ficha de anamnese preenchida pelo proprio paciente (RF19)
+// com id na url a mesma tela corrige uma ficha q ja foi enviada
 export default function Anamnese() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const anamnesisId = searchParams.get("id");
+    const isCorrection = anamnesisId !== null;
+
     const [answers, setAnswers] = useState(emptyAnswers);
+    const [isLoading, setIsLoading] = useState(isCorrection);
+    const [loadError, setLoadError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
     const [isConfirmingExit, setIsConfirmingExit] = useState(false);
+
+    useEffect(() => {
+        if (!isCorrection) {
+            return;
+        }
+        let isCurrentRequest = true;
+
+        apiService.get("/anamnese/" + anamnesisId)
+            .then((savedAnamnesis) => {
+                if (!isCurrentRequest) {
+                    return;
+                }
+                if (savedAnamnesis.annulled) {
+                    setLoadError("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
+                } else {
+                    // resposta q ficou em branco volta vazia e as de escolha voltam no padrao
+                    const defaultAnswers = emptyAnswers();
+                    const savedAnswers = {};
+                    Object.keys(defaultAnswers).forEach((fieldName) => {
+                        const savedValue = savedAnamnesis[fieldName];
+                        savedAnswers[fieldName] = savedValue === null || savedValue === undefined
+                            ? defaultAnswers[fieldName]
+                            : String(savedValue);
+                    });
+                    setAnswers(savedAnswers);
+                }
+                setIsLoading(false);
+            })
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível abrir a ficha. Confira sua internet e tente de novo.");
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [isCorrection, anamnesisId]);
+
+    // quem desiste volta pra tela de onde veio a ficha
+    const exitPath = isCorrection ? "/historico-paciente" : "/dashboard-paciente";
 
     const updateAnswer = (fieldName, value) => {
         setAnswers((currentAnswers) => ({...currentAnswers, [fieldName]: value}));
@@ -86,8 +137,13 @@ export default function Anamnese() {
         });
 
         try {
-            await apiService.post("/anamnese", requestBody);
-            navigate("/dashboard-paciente", {state: {aviso: "Ficha de anamnese enviada. Obrigado por responder."}});
+            if (isCorrection) {
+                await apiService.put("/anamnese/" + anamnesisId, requestBody);
+                navigate(exitPath, {state: {notice: "Correção da anamnese salva. O seu prescritor já vê a ficha nova."}});
+            } else {
+                await apiService.post("/anamnese", requestBody);
+                navigate(exitPath, {state: {notice: "Ficha de anamnese enviada. Obrigado por responder."}});
+            }
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
@@ -102,14 +158,29 @@ export default function Anamnese() {
         }
     };
 
+    if (loadError) {
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+    }
+
+    if (isLoading) {
+        return <p>Carregando a ficha...</p>;
+    }
+
     return (
         <section className={styles.page}>
             <div className={styles.header}>
-                <h1>Anamnese</h1>
-                <p>
-                    Estas perguntas ajudam o seu prescritor a conhecer sua saúde antes de começar o tratamento. Só o
-                    motivo da consulta e a pergunta sobre o acompanhamento são obrigatórios.
-                </p>
+                <h1>{isCorrection ? "Corrigir anamnese" : "Anamnese"}</h1>
+                {isCorrection ? (
+                    <p>
+                        Mude o que precisar e salve. A ficha corrigida substitui a anterior e a mudança fica
+                        registrada no seu prontuário.
+                    </p>
+                ) : (
+                    <p>
+                        Estas perguntas ajudam o seu prescritor a conhecer sua saúde antes de começar o tratamento. Só
+                        o motivo da consulta e a pergunta sobre o acompanhamento são obrigatórios.
+                    </p>
+                )}
             </div>
 
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
@@ -321,19 +392,22 @@ export default function Anamnese() {
                         Cancelar
                     </button>
                     <button type="submit" className={styles.primaryButton} disabled={isSaving}>
-                        {isSaving ? "Enviando..." : "Enviar anamnese"}
+                        {isCorrection && (isSaving ? "Salvando..." : "Salvar correção")}
+                        {!isCorrection && (isSaving ? "Enviando..." : "Enviar anamnese")}
                     </button>
                 </div>
             </form>
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={isConfirmingExit}
-                titulo="Sair sem enviar"
-                mensagem="O que você preencheu ainda não foi enviado e vai se perder. Quer mesmo sair?"
-                textoConfirmar="Sim, sair"
-                textoCancelar="Continuar preenchendo"
-                onConfirmar={() => navigate("/dashboard-paciente")}
-                onCancelar={() => setIsConfirmingExit(false)}
+                title={isCorrection ? "Sair sem salvar" : "Sair sem enviar"}
+                message={isCorrection
+                    ? "O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"
+                    : "O que você preencheu ainda não foi enviado e vai se perder. Quer mesmo sair?"}
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => navigate(exitPath)}
+                onCancel={() => setIsConfirmingExit(false)}
             />
         </section>
     );

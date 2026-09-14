@@ -51,3 +51,13 @@
 .page > div button {
     flex: 0 0 auto;
 }
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.actions button {
+    flex: 0 0 auto;
+}

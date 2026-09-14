@@ -21,7 +21,7 @@ export default function HistoricoClinicoPrescritor() {
     const [history, setHistory] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // quem salvou algo em outra tela chega aqui com esse aviso
-    const [notice, setNotice] = useState(location.state && location.state.aviso);
+    const [notice, setNotice] = useState(location.state && location.state.notice);
     // o registro q o prescritor escolheu anular e q abre o modal
     const [annulmentTarget, setAnnulmentTarget] = useState(null);
     // o painel de exportacao do paciente (RF33)

@@ -26,7 +26,7 @@ public record ScaleResponseDTO(
         Long appointmentId,
         boolean reviewed,
         LocalDateTime reviewedAt,
-        // o paciente so corrige enquanto o prescritor n analisou
+        // o paciente so corrige a escala q ele mesmo responde e enquanto o prescritor n analisou
         boolean editableByPatient,
         LocalDateTime filledAt,
         boolean annulled,
@@ -52,7 +52,7 @@ public record ScaleResponseDTO(
                 response.getAppointment() == null ? null : response.getAppointment().getId(),
                 response.isReviewed(),
                 response.getReviewedAt(),
-                !response.isReviewed() && !response.isAnnulled(),
+                response.getScaleType().isFilledByPatient() && !response.isReviewed() && !response.isAnnulled(),
                 response.getCreatedAt(),
                 response.isAnnulled(),
                 annulledAtOf(response.getAnnulment()),

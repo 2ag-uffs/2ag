@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {
@@ -406,17 +406,17 @@ export default function AgendamentoPrescritor() {
                 />
             )}
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={cancelTarget !== null}
-                titulo="Cancelar consulta"
-                mensagem={cancelTarget !== null
+                title="Cancelar consulta"
+                message={cancelTarget !== null
                     ? "A consulta de " + cancelTarget.patientName + " em " + formatDateTime(cancelTarget.dateTime)
                     + " vai ser cancelada e o paciente recebe um aviso."
                     : ""}
-                textoConfirmar="Cancelar consulta"
-                textoCancelar="Voltar"
-                onConfirmar={cancelAppointment}
-                onCancelar={() => setCancelTarget(null)}
+                confirmText="Cancelar consulta"
+                cancelText="Voltar"
+                onConfirm={cancelAppointment}
+                onCancel={() => setCancelTarget(null)}
             />
         </section>
     );

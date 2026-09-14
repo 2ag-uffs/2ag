@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {formatDate, formatDateTime} from "../../utils/date-format.js";
 import {formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./resposta-escala.module.css";
@@ -12,6 +12,7 @@ import styles from "./resposta-escala.module.css";
 export default function RespostaEscala() {
     const {responseId} = useParams();
     const navigate = useNavigate();
+    const loggedUser = getLoggedUser();
 
     const [response, setResponse] = useState(null);
     const [definition, setDefinition] = useState(null);
@@ -91,10 +92,20 @@ export default function RespostaEscala() {
                 ))}
             </dl>
 
-            <div>
+            <div className={styles.actions}>
                 <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                     Voltar
                 </button>
+                {/* o paciente corrige enquanto o prescritor n analisou e a tela de responder ja abre no dia certo */}
+                {loggedUser.role === "PATIENT" && response.editableByPatient && (
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => navigate("/escalas/" + response.slug + "?data=" + response.periodStart)}
+                    >
+                        Corrigir respostas
+                    </button>
+                )}
             </div>
         </section>
     );

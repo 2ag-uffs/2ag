@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
 import styles from "./lista-paciente.module.css";
@@ -222,18 +222,18 @@ export default function ListaPacientes() {
                 </ul>
             )}
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={patientToArchive !== null}
-                titulo="Arquivar paciente"
-                mensagem={patientToArchive
+                title="Arquivar paciente"
+                message={patientToArchive
                     ? patientToArchive.name + " sai da lista de ativos e o acompanhamento automático é encerrado."
                     + " O prontuário fica guardado, as escalas que você enviar continuam chegando"
                     + " e você pode reativar quando quiser."
                     : ""}
-                textoConfirmar="Arquivar"
-                textoCancelar="Voltar"
-                onConfirmar={archivePatient}
-                onCancelar={() => setPatientToArchive(null)}
+                confirmText="Arquivar"
+                cancelText="Voltar"
+                onConfirm={archivePatient}
+                onCancel={() => setPatientToArchive(null)}
             />
             <InvitePatientModal show={isInviteOpen} onClose={() => setIsInviteOpen(false)}/>
         </section>

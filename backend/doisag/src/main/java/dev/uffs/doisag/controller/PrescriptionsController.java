@@ -18,8 +18,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 // prescricao (RF05)
 // alterar uma prescricao eh emitir outra entao a unica mudanca numa prescricao eh a anulacao
 @RestController
@@ -52,14 +50,5 @@ public class PrescriptionsController {
                                          @RequestBody @Valid AnnulmentDTO annulmentData,
                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
         return new PrescriptionResponseDTO(prescriptionService.annul(id, annulmentData, loggedPrescriber));
-    }
-
-    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
-    @GetMapping("/appointments/{appointmentId}/prescriptions")
-    public List<PrescriptionResponseDTO> getPrescriptionsByAppointment(@PathVariable Long appointmentId) {
-        return prescriptionService.getByAppointmentId(appointmentId)
-                .stream()
-                .map(PrescriptionResponseDTO::new)
-                .toList();
     }
 }

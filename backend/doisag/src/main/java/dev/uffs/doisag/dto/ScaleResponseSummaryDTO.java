@@ -30,7 +30,7 @@ public record ScaleResponseSummaryDTO(
                 result,
                 response.isReviewed(),
                 response.isAnnulled(),
-                !response.isReviewed() && !response.isAnnulled()
+                response.getScaleType().isFilledByPatient() && !response.isReviewed() && !response.isAnnulled()
         );
     }
 }

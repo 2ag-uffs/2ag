@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDate, toIsoDate} from "../../utils/date-format.js";
 import styles from "./acompanhamento-protocolo.module.css";
@@ -257,14 +257,14 @@ export default function AcompanhamentoProtocolo() {
                 </form>
             )}
 
-            <ModalConfirmacao
+            <ConfirmModal
                 show={isEndingOpen}
-                titulo="Encerrar acompanhamento"
-                mensagem="O sistema para de enviar as escalas para este paciente. O acompanhamento fica guardado como encerrado."
-                textoConfirmar="Sim, encerrar"
-                textoCancelar="Manter ativo"
-                onConfirmar={end}
-                onCancelar={() => setIsEndingOpen(false)}
+                title="Encerrar acompanhamento"
+                message="O sistema para de enviar as escalas para este paciente. O acompanhamento fica guardado como encerrado."
+                confirmText="Sim, encerrar"
+                cancelText="Manter ativo"
+                onConfirm={end}
+                onCancel={() => setIsEndingOpen(false)}
             />
         </section>
     );

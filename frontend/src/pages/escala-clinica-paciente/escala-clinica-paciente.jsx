@@ -100,10 +100,14 @@ export default function CentralEscalas() {
                                         <p className={styles.period}>O prescritor já analisou</p>
                                     )}
                                 </div>
+                                {/* o q ainda da pra corrigir abre o formulario e o resto so a leitura */}
+                                {/* o MEEM cai sempre na leitura pq quem aplica eh o prescritor */}
                                 <button
                                     type="button"
                                     className="button-secondary"
-                                    onClick={() => navigate("/escalas/" + response.slug + "?data=" + response.periodStart)}
+                                    onClick={() => navigate(response.editableByPatient
+                                        ? "/escalas/" + response.slug + "?data=" + response.periodStart
+                                        : "/escalas/resposta/" + response.id)}
                                 >
                                     {response.editableByPatient ? "Ver e corrigir" : "Ver respostas"}
                                 </button>

@@ -1,0 +1,19 @@
+/* texto e botoes da pergunta de confirmacao */
+
+.message {
+    margin: 1rem 0 1.5rem;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+/* no celular os dois botoes empilham
+   column e n column-reverse pq o reverse jogava o botao destrutivo pra cima q eh o alvo mais facil */
+@media screen and (max-width: 578px) {
+    .actions {
+        flex-direction: column;
+    }
+}

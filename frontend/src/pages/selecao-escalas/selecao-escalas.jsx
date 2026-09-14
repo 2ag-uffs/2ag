@@ -11,7 +11,7 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 // aparece aqui: quem aplica eh o prescritor na consulta (RN09)
 export default function SelecaoEscalas() {
     const navigate = useNavigate();
-    const {pacienteId} = useParams();
+    const {patientId} = useParams();
 
     const [page, setPage] = useState(null);
     const [loadError, setLoadError] = useState(null);
@@ -24,8 +24,8 @@ export default function SelecaoEscalas() {
         let isCurrentRequest = true;
 
         Promise.all([
-            apiService.get("/paciente/" + pacienteId),
-            apiService.get("/pacientes/" + pacienteId + "/escalas"),
+            apiService.get("/paciente/" + patientId),
+            apiService.get("/pacientes/" + patientId + "/escalas"),
             apiService.get("/escalas/designaveis"),
         ])
             .then(([patient, tasks, assignable]) => {
@@ -51,7 +51,7 @@ export default function SelecaoEscalas() {
         return () => {
             isCurrentRequest = false;
         };
-    }, [pacienteId]);
+    }, [patientId]);
 
     const toggleScale = (type) => {
         setChosen((current) => ({...current, [type]: !current[type]}));
@@ -77,12 +77,12 @@ export default function SelecaoEscalas() {
         try {
             // uma de cada vez pra saber o q chegou ao paciente se alguma falhar
             for (const scale of scalesToSend) {
-                await apiService.post("/pacientes/" + pacienteId + "/escalas", {scaleType: scale.type});
+                await apiService.post("/pacientes/" + patientId + "/escalas", {scaleType: scale.type});
                 sent.push(scale.type);
             }
-            navigate("/paciente/" + pacienteId + "/historico", {
+            navigate("/paciente/" + patientId + "/historico", {
                 state: {
-                    aviso: sent.length + " escala(s) enviada(s) para " + page.patientName
+                    notice: sent.length + " escala(s) enviada(s) para " + page.patientName
                         + ". O paciente recebeu o aviso e a escala já aparece no painel dele.",
                 },
             });

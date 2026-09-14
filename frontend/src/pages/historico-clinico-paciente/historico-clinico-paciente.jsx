@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router";
+import {useLocation, useNavigate} from "react-router";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
 import ExportModal from "../../components/export-modal/export-modal.jsx";
@@ -14,7 +14,10 @@ import styles from "./historico-clinico-paciente.module.css";
 // mostra so o q foi registrado de verdade e o registro anulado aparece com o motivo
 export default function HistoricoClinicoPaciente() {
     const navigate = useNavigate();
+    const location = useLocation();
     const loggedUser = getLoggedUser();
+    // quem acabou de corrigir a anamnese chega aqui com esse aviso
+    const notice = location.state && location.state.notice;
     const [history, setHistory] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // o painel de exportacao dos proprios dados (RF33)
@@ -78,6 +81,8 @@ export default function HistoricoClinicoPaciente() {
                 </button>
             </div>
 
+            {notice && <p className="aviso" role="status">{notice}</p>}
+
             {isExportOpen && (
                 <ExportModal
                     patientId={loggedUser.id}
@@ -135,7 +140,19 @@ export default function HistoricoClinicoPaciente() {
                 ) : (
                     <div className={styles.list}>
                         {anamneses.map((anamnesis) => (
-                            <AnamnesisView key={anamnesis.id} anamnesis={anamnesis}/>
+                            <AnamnesisView
+                                key={anamnesis.id}
+                                anamnesis={anamnesis}
+                                actions={anamnesis.annulled ? null : (
+                                    <button
+                                        type="button"
+                                        className="button-tertiary"
+                                        onClick={() => navigate("/anamnese?id=" + anamnesis.id)}
+                                    >
+                                        Corrigir
+                                    </button>
+                                )}
+                            />
                         ))}
                     </div>
                 )}

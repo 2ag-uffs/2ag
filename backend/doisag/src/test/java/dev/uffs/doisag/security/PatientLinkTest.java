@@ -302,8 +302,7 @@ class PatientLinkTest {
                 "/pacientes/" + patientId + "/consultas",
                 "/pacientes/" + patientId + "/prescricoes",
                 "/escalas/respostas/" + records.scaleId(),
-                "/prescricao/" + records.prescriptionId(),
-                "/appointments/" + records.appointmentId() + "/prescriptions"
+                "/prescricao/" + records.prescriptionId()
         );
     }
 

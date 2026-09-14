@@ -10,8 +10,6 @@ import java.util.List;
 @Repository
 public interface PrescriptionRepository extends JpaRepository<Prescription, Long> {
 
-    List<Prescription> findByAppointmentId(Long appointmentId);
-
     // consulta com prescricao q ainda n foi anulada n pode ser anulada
     boolean existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(Long appointmentId);
 

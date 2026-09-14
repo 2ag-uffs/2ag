@@ -23,7 +23,7 @@ export default function DashboardPaciente() {
     const location = useLocation();
     const loggedUser = getLoggedUser();
     // quem acabou de salvar um formulario chega aqui com esse aviso
-    const notice = location.state && location.state.aviso;
+    const notice = location.state && location.state.notice;
 
     const [panel, setPanel] = useState(null);
     const [loadError, setLoadError] = useState(null);
