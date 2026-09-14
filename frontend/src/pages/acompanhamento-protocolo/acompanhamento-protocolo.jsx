@@ -161,7 +161,9 @@ export default function AcompanhamentoProtocolo() {
                         {protocol.sleepBedTime && (
                             <span className={styles.fact}>
                                 <FiMoon aria-hidden="true"/>
-                                Dormir às {protocol.sleepBedTime} e levantar às {protocol.sleepWakeTime}
+                                {/* a api manda hh:mm:ss e aqui so interessa hh:mm */}
+                                Dormir às {protocol.sleepBedTime.slice(0, 5)} e levantar às {protocol.sleepWakeTime
+                                    ? protocol.sleepWakeTime.slice(0, 5) : "—"}
                             </span>
                         )}
                     </div>

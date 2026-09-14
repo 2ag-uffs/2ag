@@ -161,8 +161,10 @@ export default function Escala() {
             {sleepSchedule && (sleepSchedule.sleepBedTime || sleepSchedule.sleepWakeTime) && (
                 <p className={styles.schedule}>
                     <FiMoon aria-hidden="true"/>
-                    Programação do seu prescritor: dormir às {sleepSchedule.sleepBedTime || "—"} e
-                    levantar às {sleepSchedule.sleepWakeTime || "—"}.
+                    {/* a api manda hh:mm:ss e aqui so interessa hh:mm */}
+                    Programação do seu prescritor: dormir às {sleepSchedule.sleepBedTime
+                        ? sleepSchedule.sleepBedTime.slice(0, 5) : "—"} e
+                    levantar às {sleepSchedule.sleepWakeTime ? sleepSchedule.sleepWakeTime.slice(0, 5) : "—"}.
                 </p>
             )}
 
