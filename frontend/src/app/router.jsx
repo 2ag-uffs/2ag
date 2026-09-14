@@ -1,3 +1,4 @@
+import {useState} from "react";
 import {createBrowserRouter, RouterProvider} from "react-router";
 import AppLayout from "../components/app-layout/app-layout.jsx";
 import PageLoader from "../components/page-loader/page-loader.jsx";
@@ -201,13 +202,10 @@ const routes = [
     },
 ];
 
-let router = null;
-
 // o router so eh criado depois q a sessao carregou
 // senao as regras de acesso rodariam achando q ninguem esta logado
+// o useState guarda o mesmo router enquanto o app fica aberto
 export default function AppRouter() {
-    if (router === null) {
-        router = createBrowserRouter(routes);
-    }
+    const [router] = useState(() => createBrowserRouter(routes));
     return <RouterProvider router={router}/>;
 }

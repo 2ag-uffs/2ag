@@ -32,9 +32,10 @@ export default function Escala() {
     const [responses, setResponses] = useState([]);
     const [sleepSchedule, setSleepSchedule] = useState(null);
     const [loadError, setLoadError] = useState(null);
-    const [values, setValues] = useState({});
+    // o q a paciente mexeu fica guardado por dia ate salvar
+    const [editsByDay, setEditsByDay] = useState({});
     const [selectedDay, setSelectedDay] = useState(chosenDate && chosenDate <= today ? chosenDate : today);
-    const [periodEnd, setPeriodEnd] = useState(today);
+    const [periodEndByDay, setPeriodEndByDay] = useState({});
     const [notice, setNotice] = useState(null);
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -103,27 +104,32 @@ export default function Escala() {
         () => responses.find((response) => response.periodStart === selectedDay) || null,
         [responses, selectedDay]);
 
-    // trocar de dia carrega o q ja foi respondido naquele dia
-    // dia em branco abre em branco: a tela nunca sugere valor (RN10)
-    useEffect(() => {
-        setValues(currentResponse ? answersToValues(currentResponse.answers) : {});
-        // o periodo ja respondido abre com o fim q foi salvo e n com hoje
-        if (currentResponse) {
-            setPeriodEnd(currentResponse.periodEnd);
-        }
-    }, [currentResponse]);
+    // cada dia mostra o q ja foi respondido nele ou o q a paciente esta mexendo
+    // dia em branco abre em branco e a tela nunca sugere valor (RN10)
+    const savedValues = currentResponse ? answersToValues(currentResponse.answers) : {};
+    const values = editsByDay[selectedDay] || savedValues;
+    // o periodo ja respondido abre com o fim q foi salvo e n com hoje
+    const periodEnd = periodEndByDay[selectedDay] || (currentResponse ? currentResponse.periodEnd : today);
 
-    // o recado de um dia n vale pro outro, mas salvar n pode apagar o
-    // recado q acabou de aparecer
-    useEffect(() => {
+    // o recado de um dia n vale pro outro entao trocar de dia limpa os avisos
+    // salvar n passa por aqui e o recado de salvo continua na tela
+    const changeDay = (dayIso) => {
+        setSelectedDay(dayIso);
         setNotice(null);
         setFormError(null);
-    }, [selectedDay]);
+    };
+
+    const changePeriodEnd = (dayIso) => {
+        setPeriodEndByDay((current) => ({...current, [selectedDay]: dayIso}));
+    };
 
     const isReadOnly = currentResponse !== null && !currentResponse.editableByPatient;
 
     const changeAnswer = (key, value) => {
-        setValues((currentValues) => ({...currentValues, [key]: value}));
+        setEditsByDay((current) => ({
+            ...current,
+            [selectedDay]: {...(current[selectedDay] || savedValues), [key]: value},
+        }));
     };
 
     const save = async (event) => {
@@ -138,6 +144,10 @@ export default function Escala() {
                 answers: answersPayload(definition.items, values),
             });
             setNotice(saved.result ? "Respostas salvas. Resultado: " + saved.result : "Respostas salvas.");
+            // a resposta salva entra na lista na hora e o rascunho daquele dia sai
+            setResponses((current) => [saved, ...current.filter((response) => response.periodStart !== saved.periodStart)]);
+            setEditsByDay((current) => ({...current, [selectedDay]: null}));
+            setPeriodEndByDay((current) => ({...current, [selectedDay]: null}));
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
             setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
@@ -180,7 +190,7 @@ export default function Escala() {
                                     type="button"
                                     className={dayIso === selectedDay ? styles.day + " " + styles.dayChosen : styles.day}
                                     aria-pressed={dayIso === selectedDay}
-                                    onClick={() => setSelectedDay(dayIso)}
+                                    onClick={() => changeDay(dayIso)}
                                 >
                                     <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
                                     <span className={isFilled ? styles.dayMark + " " + styles.dayFilled : styles.dayMark}>
@@ -207,7 +217,7 @@ export default function Escala() {
                                 max={today}
                                 value={selectedDay}
                                 disabled={isReadOnly}
-                                onChange={(event) => setSelectedDay(event.target.value)}
+                                onChange={(event) => changeDay(event.target.value)}
                             />
                         </div>
                         {isPeriod && (
@@ -218,7 +228,7 @@ export default function Escala() {
                                     type="date"
                                     value={periodEnd}
                                     disabled={isReadOnly}
-                                    onChange={(event) => setPeriodEnd(event.target.value)}
+                                    onChange={(event) => changePeriodEnd(event.target.value)}
                                 />
                             </div>
                         )}

@@ -43,8 +43,8 @@ export default function AcompanhamentoProtocolo() {
     const [notice, setNotice] = useState(null);
     const [isEndingOpen, setIsEndingOpen] = useState(false);
 
+    // o esqueleto so aparece na primeira carga e depois de salvar a tela so atualiza
     const load = useCallback(() => {
-        setIsLoading(true);
         apiService.get("/scales/assignable")
             .then(setScales)
             .catch(() => setScales([]));

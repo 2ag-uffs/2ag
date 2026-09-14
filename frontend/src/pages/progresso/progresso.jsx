@@ -79,8 +79,10 @@ export default function Progresso() {
     const [appointments, setAppointments] = useState([]);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
     const [comments, setComments] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [loadError, setLoadError] = useState(null);
+    // a serie do grafico lembra de qual paciente atributo e periodo ela eh
+    const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
+    const [seriesError, setSeriesError] = useState(null);
 
     const periods = isPrescriber ? [...PERIODS, ALL_TIME_PERIOD] : PERIODS;
 
@@ -144,33 +146,56 @@ export default function Progresso() {
     const chosenScale = currentAttribute ? currentAttribute.scaleType : "";
     const isFollowUpScale = chosenScale === FOLLOW_UP_SCALE;
 
-    const attributesOfScale = useMemo(
-        () => attributes.filter((attribute) => attribute.scaleType === chosenScale),
-        [attributes, chosenScale]);
+    const attributesOfScale = attributes.filter((attribute) => attribute.scaleType === chosenScale);
+
+    // cada serie eh de um paciente atributo e periodo
+    // enquanto a serie da chave atual n chega a tela mostra o esqueleto
+    const seriesKey = patientId + "|" + chosenAttribute + "|" + period;
+    const isLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
+    const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
 
     useEffect(() => {
         if (!patientId || !chosenAttribute) {
             return;
         }
-        setIsLoading(true);
-        setLoadError(null);
+        const requestKey = patientId + "|" + chosenAttribute + "|" + period;
+        // resposta de um filtro antigo q chega atrasada n pode passar por cima da atual
+        let isCurrentRequest = true;
 
         apiService.get("/patients/" + patientId + "/progress?attribute=" + chosenAttribute + "&period=" + period)
-            .then((series) => setPoints(series))
-            .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar o progresso.");
-                setPoints([]);
+            .then((series) => {
+                if (isCurrentRequest) {
+                    setPoints(series);
+                    setSeriesError(null);
+                }
             })
-            .finally(() => setIsLoading(false));
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setPoints([]);
+                    setSeriesError({
+                        key: requestKey,
+                        message: requestError instanceof ApiError
+                            ? requestError.message
+                            : "Não foi possível carregar o progresso.",
+                    });
+                }
+            })
+            .finally(() => {
+                if (isCurrentRequest) {
+                    setLoadedSeriesKey(requestKey);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [patientId, chosenAttribute, period]);
 
     // a dose do dia entra como segunda linha pra dar pra ler se o
     // sintoma mudou depois de mexer na dose
     useEffect(() => {
+        // gota escondida n precisa buscar e o grafico ja ignora o q ficou guardado
         if (!patientId || !showDose || !isFollowUpScale) {
-            setDosePoints([]);
             return;
         }
         const url = "/patients/" + patientId + "/progress?period=" + period + "&attribute=";
@@ -195,33 +220,28 @@ export default function Progresso() {
             .catch(() => setComments([]));
     }, [patientId, period]);
 
-    const chartRows = useMemo(() => {
-        const doseByDate = new Map(dosePoints.map((point) => [point.date, point.value]));
-        return points.map((point) => ({
-            label: dayAndMonth(point.date),
-            valor: point.value,
-            gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
-        }));
-    }, [points, dosePoints]);
+    // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal
+    const shownDosePoints = showDose && isFollowUpScale ? dosePoints : [];
+    const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point.value]));
+    const chartRows = points.map((point) => ({
+        label: dayAndMonth(point.date),
+        valor: point.value,
+        gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
+    }));
 
     // o eixo x eh categorico entao so da pra marcar consulta em dia q tem
     // ponto no grafico senao o recharts n sabe onde por a linha
-    const appointmentMarks = useMemo(() => {
-        if (!showAppointments) {
-            return [];
-        }
-        const daysWithPoint = new Set(chartRows.map((row) => row.label));
-        const seen = new Set();
-        return appointments
-            .map((appointment) => ({...appointment, label: dayAndMonth(appointment.data)}))
-            .filter((appointment) => {
-                if (!daysWithPoint.has(appointment.label) || seen.has(appointment.label)) {
-                    return false;
-                }
-                seen.add(appointment.label);
-                return true;
-            });
-    }, [appointments, chartRows, showAppointments]);
+    const daysWithPoint = new Set(chartRows.map((row) => row.label));
+    const markedDays = new Set();
+    const appointmentMarks = !showAppointments ? [] : appointments
+        .map((appointment) => ({...appointment, label: dayAndMonth(appointment.data)}))
+        .filter((appointment) => {
+            if (!daysWithPoint.has(appointment.label) || markedDays.has(appointment.label)) {
+                return false;
+            }
+            markedDays.add(appointment.label);
+            return true;
+        });
 
     // a faixa interpretativa vira linha de corte no grafico pq escore
     // sem faixa n quer dizer nada (RN14)
@@ -414,12 +434,12 @@ export default function Progresso() {
                 </div>
             </div>
 
-            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
+            {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
 
             <Card title={currentAttribute ? currentAttribute.displayName : "Gráfico"}>
                 {isLoading && <SkeletonBlock height="320px"/>}
 
-                {!isLoading && chartRows.length === 0 && !loadError && (
+                {!isLoading && chartRows.length === 0 && !pageError && (
                     <EmptyState icon={FiTrendingUp} message="Nenhum registro preenchido neste período." isCompact={true}/>
                 )}
 

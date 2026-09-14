@@ -64,20 +64,21 @@ export default function AdminPrescribers() {
 
     const [prescriberToToggle, setPrescriberToToggle] = useState(null);
 
-    const loadPrescribers = useCallback(async () => {
-        try {
-            const prescriberList = await apiService.get("/admin/prescribers");
-            setPrescribers(prescriberList);
-            setPageError(null);
-        } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setPageError(requestError.message);
-            } else {
-                setPageError("Não foi possível carregar os prescritores.");
-            }
-        } finally {
-            setIsLoading(false);
-        }
+    // devolve a promessa pra quem cria ou desativa prescritor poder esperar a lista nova
+    const loadPrescribers = useCallback(() => {
+        return apiService.get("/admin/prescribers")
+            .then((prescriberList) => {
+                setPrescribers(prescriberList);
+                setPageError(null);
+            })
+            .catch((requestError) => {
+                if (requestError instanceof ApiError) {
+                    setPageError(requestError.message);
+                } else {
+                    setPageError("Não foi possível carregar os prescritores.");
+                }
+            })
+            .finally(() => setIsLoading(false));
     }, []);
 
     useEffect(() => {
