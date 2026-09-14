@@ -819,10 +819,12 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 - **Correção de escala:** a resposta aberta para leitura leva à correção enquanto o prescritor não analisou. O MEEM deixou de aparecer como corrigível para o paciente, porque quem aplica é o prescritor (RN09).
 - **Período salvo:** abrir um acompanhamento semanal já respondido mantém o fim do período que foi salvo, em vez de trocar pela data do dia.
 - **Telas antigas:** o envio avulso de escalas e o acompanhamento de 90 dias foram reescritos no padrão das outras telas, com busca de escala e aviso da que já espera resposta.
-- **Limpeza:** saiu uma rota de prescrições por consulta que nenhuma tela usava, o `open-in-view` foi desligado e os modais de confirmação passaram ao mesmo padrão de componente do resto do sistema.
+- **Limpeza:** saiu uma rota de prescrições por consulta que nenhuma tela usava e os modais de confirmação passaram ao mesmo padrão de componente do resto do sistema.
 - **Conferido sem mudança:** toda rota da API exige perfil e, quando o dado é de paciente, o vínculo com ele; o cookie da sessão é `HttpOnly` e `SameSite=Strict`; e o login bloqueia depois de tentativas erradas seguidas.
 
 **Rotas em 14/09/2026:** as rotas da API passaram a seguir o inglês do código (`/patients`, `/appointments`, `/scales`) e as do site ficaram todas em português (`/entrar`, `/painel-paciente`, `/administracao`). O MEEM deixou de ter correção direta: aplicado com erro, o prescritor anula com motivo e aplica de novo, como já acontece com a consulta e a prescrição.
+
+**Correção em 14/09/2026:** desligar o `open-in-view` na revisão geral quebrou a agenda, o prontuário e a lista de pacientes, porque vários controllers montam a resposta depois do serviço. Os testes não pegaram o erro porque rodam dentro de uma transação, que mantém o banco aberto até o fim. O `open-in-view` voltou a ficar ligado, e um teste novo abre as telas principais dos dois perfis com os dados de demonstração e sem essa transação.
 
 ---
 
