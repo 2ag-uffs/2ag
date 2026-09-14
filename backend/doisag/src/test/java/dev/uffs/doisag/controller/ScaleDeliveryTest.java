@@ -79,8 +79,9 @@ class ScaleDeliveryTest {
         // o aviso leva o paciente direto pra central de escalas
         mockMvc.perform(get("/notifications").header("Authorization", patientToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].link").value("/pacientes/" + patient.getId() + "/escalas"));
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.unread").value(1))
+                .andExpect(jsonPath("$.notifications[0].link").value("/pacientes/" + patient.getId() + "/escalas"));
     }
 
     @Test
@@ -106,9 +107,9 @@ class ScaleDeliveryTest {
 
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].title").value("Escala respondida"))
-                .andExpect(jsonPath("$[0].link").value("/paciente/" + patient.getId() + "/historico"));
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].title").value("Escala respondida"))
+                .andExpect(jsonPath("$.notifications[0].link").value("/paciente/" + patient.getId() + "/historico"));
     }
 
     // mandar de novo uma escala q o paciente ainda n respondeu n cria tarefa repetida
@@ -123,7 +124,7 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.length()").value(1));
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.notifications.length()").value(1));
     }
 
     // a anamnese tem tela propria mas tambem sai da lista de pendentes

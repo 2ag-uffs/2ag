@@ -167,7 +167,7 @@ export default function DashboardPaciente() {
                     <button
                         type="button"
                         className="button-secondary"
-                        onClick={() => navigate("/notificacoes-paciente")}
+                        onClick={() => navigate("/notificacoes")}
                     >
                         Ver avisos
                     </button>

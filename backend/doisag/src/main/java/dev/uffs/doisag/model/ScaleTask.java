@@ -138,4 +138,15 @@ public class ScaleTask {
     public boolean coversDay(LocalDate day) {
         return !day.isBefore(periodStart) && !day.isAfter(periodEnd);
     }
+
+    // quando o lembrete desta tarefa saiu, pra ele n sair duas vezes (RF34)
+    private LocalDateTime reminderSentAt;
+
+    public LocalDateTime getReminderSentAt() {
+        return reminderSentAt;
+    }
+
+    public void setReminderSentAt(LocalDateTime reminderSentAt) {
+        this.reminderSentAt = reminderSentAt;
+    }
 }

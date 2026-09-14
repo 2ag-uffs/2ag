@@ -85,10 +85,6 @@ const routes = [
                                 path: "/progresso",
                                 lazy: lazyPage(() => import("../pages/progresso/progresso.jsx")),
                             },
-                            {
-                                path: "/notificacoes-paciente",
-                                lazy: lazyPage(() => import("../pages/notificacoes-paciente/notificacoes-paciente.jsx")),
-                            },
                         ],
                     },
                     {
@@ -146,10 +142,6 @@ const routes = [
                                 path: "/paciente/:patientId/auditoria",
                                 lazy: lazyPage(() => import("../pages/patient-audit/patient-audit.jsx")),
                             },
-                            {
-                                path: "/notificacoes-prescritor",
-                                lazy: lazyPage(() => import("../pages/notificacoes-prescritor/notificacoes-prescritor.jsx")),
-                            },
                         ],
                     },
                     {
@@ -158,6 +150,10 @@ const routes = [
                             {
                                 path: "/perfil",
                                 lazy: lazyPage(() => import("../pages/profile/profile.jsx")),
+                            },
+                            {
+                                path: "/notificacoes",
+                                lazy: lazyPage(() => import("../pages/notificacoes/notificacoes.jsx")),
                             },
                             {
                                 path: "/escalas/resposta/:responseId",

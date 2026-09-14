@@ -11,14 +11,14 @@ const MENU_BY_ROLE = {
         {path: "/dashboard-paciente", label: "Início", icon: FiHome},
         {path: "/progresso", label: "Progresso", icon: FiTrendingUp},
         {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar},
-        {path: "/notificacoes-paciente", label: "Avisos", icon: FiBell},
+        {path: "/notificacoes", label: "Avisos", icon: FiBell},
         {path: "/perfil", label: "Perfil", icon: FiUser},
     ],
     PRESCRIBER: [
         {path: "/dashboard-prescritor", label: "Início", icon: FiHome},
         {path: "/lista-paciente", label: "Pacientes", icon: FiUsers},
         {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar},
-        {path: "/notificacoes-prescritor", label: "Avisos", icon: FiBell},
+        {path: "/notificacoes", label: "Avisos", icon: FiBell},
         {path: "/perfil", label: "Perfil", icon: FiUser},
     ],
     ADMIN: [

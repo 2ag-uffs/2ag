@@ -187,6 +187,25 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
 
+## avisos e lembretes
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /notifications?page=` | os avisos da conta logada, 20 por página, com o número de não lidos |
+| `POST /notifications/{id}/read` | marca um aviso como lido |
+| `POST /notifications/read-all` | marca todos como lidos |
+| `DELETE /notifications/{id}` | apaga um aviso da própria conta |
+
+o aviso é sempre da conta logada: mexer no aviso de outra pessoa responde 403.
+
+os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 dias:
+
+- **consulta:** quem tem consulta marcada para o dia seguinte recebe o lembrete de manhã
+- **formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete
+- cada um sai uma vez só, porque a consulta e a tarefa guardam em `reminder_sent_at` a data em que o lembrete saiu
+- os dois também vão por e-mail quando a conta mantém os avisos por e-mail ligados no perfil. os outros avisos ficam só no sistema
+- o horário do job vem de `api.acompanhamento.cron`, que por padrão é 8 da manhã
+
 ## painel inicial
 
 | rota | o que faz |
@@ -272,4 +291,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) o de evolução (gráfico com a faixa do instrumento, a dose e o relato do paciente) e o painel inicial de cada perfil já seguem o padrão novo. as notificações ainda são as de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) o de evolução (gráfico com a faixa do instrumento, a dose e o relato do paciente) o painel inicial de cada perfil e os avisos com lembretes automáticos já seguem o padrão novo. só a exportação (RF33) ainda não existe e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

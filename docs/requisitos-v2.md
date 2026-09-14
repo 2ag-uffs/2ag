@@ -792,9 +792,16 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Nada de fachada:** saíram os cartões que nunca tiveram dado por trás — alertas clínicos, fichas com prioridade, pacientes recentes — e os botões que não faziam nada. O painel mostra só o que o resto do sistema grava (RF30).
 - **Resumo, não lista:** cada cartão traz no máximo cinco itens e leva para a tela que tem a lista inteira.
 
-Ficam para os módulos seguintes:
+**Notificações concluídas em 14/09/2026:** RF14, RF15 e RF34.
 
-- **Notificações:** a lista de avisos com marcação de leitura já existe, mas os lembretes automáticos de consulta e de formulário pendente são do módulo (RF14, RF15 e RF34).
+- **Lembrete de consulta:** o job das 8 da manhã avisa quem tem consulta no dia seguinte. Sai uma vez só, e ainda dá tempo de remarcar.
+- **Lembrete de formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete, um por tarefa, sem repetir. Quem já começou a responder não recebe cobrança.
+- **E-mail:** os dois lembretes também saem por e-mail, respeitando a preferência de cada conta (RF18). Os outros avisos ficam só dentro do sistema, como o §8.3 decidiu. Sem `MAIL_HOST` configurado, a mensagem continua indo para o log da API.
+- **Sem aviso repetido:** a consulta e a tarefa guardam a data em que o lembrete saiu, então o job do dia seguinte não manda de novo.
+- **Lista de avisos:** uma tela só para os dois perfis, paginada de 20 em 20 (RNF06), com o número de não lidos, marcar como lido ao abrir, marcar todos e apagar. Os filtros avançados ficaram de fora, como o §8.4 decidiu.
+
+Fica para o último módulo:
+
 - **Exportação:** exportar histórico e séries em PDF e CSV, com o modo anonimizado (RF33).
 
 ---

@@ -28,6 +28,10 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     // as pendencias q passaram do prazo e o job precisa fechar
     List<ScaleTask> findByStatusAndPeriodEndBefore(ScaleTaskStatus status, LocalDate day);
 
+    // as tarefas q vencem logo e ainda n receberam lembrete (RF34)
+    List<ScaleTask> findByStatusAndPeriodEndLessThanEqualAndReminderSentAtIsNull(
+            ScaleTaskStatus status, LocalDate day);
+
     // as escalas vencidas q o prescritor ve no painel (RF03 e RF32)
     // entram as q o job ja fechou e as q venceram antes de ele rodar
     List<ScaleTask> findByPrescriberIdAndStatusInAndPeriodEndBeforeOrderByPeriodEndDesc(

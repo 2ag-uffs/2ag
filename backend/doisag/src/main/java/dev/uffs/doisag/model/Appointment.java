@@ -281,4 +281,15 @@ public class Appointment {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    // quando o lembrete desta consulta saiu, pra ele n sair duas vezes (RF34)
+    private LocalDateTime reminderSentAt;
+
+    public LocalDateTime getReminderSentAt() {
+        return reminderSentAt;
+    }
+
+    public void setReminderSentAt(LocalDateTime reminderSentAt) {
+        this.reminderSentAt = reminderSentAt;
+    }
 }
