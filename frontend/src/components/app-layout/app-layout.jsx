@@ -1,52 +1,85 @@
-import {NavLink, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
-import {FiArrowLeft, FiBell, FiCalendar, FiHome, FiLogOut, FiShield, FiTrendingUp, FiUser, FiUsers} from "react-icons/fi";
+import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
+import {
+    FiActivity,
+    FiArrowLeft,
+    FiBell,
+    FiCalendar,
+    FiClipboard,
+    FiClock,
+    FiFileText,
+    FiHome,
+    FiLogOut,
+    FiShield,
+    FiTrendingUp,
+    FiUser,
+    FiUsers,
+} from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
 import {getLoggedUser, logout} from "../../services/api.js";
 import styles from "./app-layout.module.css";
 
-// itens do menu de cada perfil
-// no celular os mesmos itens aparecem na barra de baixo
-const MENU_BY_ROLE = {
-    PATIENT: [
-        {path: "/painel-paciente", label: "Início", icon: FiHome},
-        {path: "/progresso", label: "Progresso", icon: FiTrendingUp},
-        {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar},
-        {path: "/notificacoes", label: "Avisos", icon: FiBell},
-        {path: "/perfil", label: "Perfil", icon: FiUser},
-    ],
-    PRESCRIBER: [
-        {path: "/painel-prescritor", label: "Início", icon: FiHome},
-        {path: "/lista-paciente", label: "Pacientes", icon: FiUsers},
-        {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar},
-        {path: "/notificacoes", label: "Avisos", icon: FiBell},
-        {path: "/perfil", label: "Perfil", icon: FiUser},
-    ],
-    ADMIN: [
-        {path: "/administracao", label: "Prescritores", icon: FiUsers},
-        {path: "/administracao/auditoria", label: "Auditoria", icon: FiShield},
-    ],
+const ROLE_LABELS = {
+    PATIENT: "Paciente",
+    PRESCRIBER: "Prescritor",
+    ADMIN: "Administração",
 };
 
-// os links usam end pra /administracao n ficar marcado quando a tela aberta eh /administracao/auditoria
-function topLinkClass({isActive}) {
-    return isActive ? styles.menuLink + " " + styles.menuLinkActive : styles.menuLink;
-}
-
-function bottomLinkClass({isActive}) {
-    return isActive ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink;
+// itens do menu de cada perfil
+// o menu lateral mostra todos e a barra de baixo do celular so os com mobile
+// prefixes deixa o item marcado tbm nas telas q ficam dentro dele
+function menuFor(user) {
+    if (!user) {
+        return [];
+    }
+    if (user.role === "PATIENT") {
+        return [
+            {path: "/painel-paciente", label: "Início", icon: FiHome, mobile: true},
+            {path: "/pacientes/" + user.id + "/escalas", label: "Escalas", icon: FiClipboard, prefixes: ["/escalas/"]},
+            {path: "/progresso", label: "Progresso", icon: FiTrendingUp, mobile: true},
+            {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar, mobile: true},
+            {path: "/minhas-prescricoes", label: "Prescrições", icon: FiFileText},
+            {path: "/historico-paciente", label: "Histórico", icon: FiActivity, prefixes: ["/anamnese", "/impressao"]},
+            {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},
+            {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
+        ];
+    }
+    if (user.role === "PRESCRIBER") {
+        return [
+            {path: "/painel-prescritor", label: "Início", icon: FiHome, mobile: true},
+            {path: "/lista-paciente", label: "Pacientes", icon: FiUsers, mobile: true, prefixes: ["/paciente/", "/consulta/"]},
+            {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar, mobile: true},
+            {path: "/agenda/disponibilidade", label: "Horários de atendimento", icon: FiClock},
+            {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},
+            {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
+        ];
+    }
+    return [
+        {path: "/administracao", label: "Prescritores", icon: FiUsers, mobile: true},
+        {path: "/administracao/auditoria", label: "Auditoria", icon: FiShield, mobile: true},
+    ];
 }
 
 // moldura de todas as telas de quem esta logado
-// cabecalho com menu e sair e a tela da rota aparece no meio
+// no computador o menu fica na lateral, no tablet a lateral mostra so os
+// icones e no celular o menu vai pra barra de baixo
 export default function AppLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const navigation = useNavigation();
     const loggedUser = getLoggedUser();
-    const menuItems = loggedUser ? MENU_BY_ROLE[loggedUser.role] || [] : [];
+    const menuItems = menuFor(loggedUser);
+    const mobileItems = menuItems.filter((item) => item.mobile);
     const homePath = homePathFor(loggedUser);
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
+
+    const isActive = (item) => {
+        if (location.pathname === item.path) {
+            return true;
+        }
+        const prefixes = item.prefixes || [];
+        return prefixes.some((prefix) => location.pathname.startsWith(prefix));
+    };
 
     // quem abriu o link direto n tem pra onde voltar entao vai pro inicio
     const handleBack = () => {
@@ -67,39 +100,66 @@ export default function AppLayout() {
             {/* barra fina no topo enquanto a proxima tela carrega */}
             {isChangingPage && <div className={styles.loadingBar} role="progressbar" aria-label="Carregando"/>}
 
-            <header className={styles.header}>
-                <div className={styles.headerStart}>
-                    {!isHomePage && (
-                        <button type="button" className={styles.iconButton} onClick={handleBack}
-                                aria-label="Voltar" title="Voltar">
-                            <FiArrowLeft/>
-                        </button>
-                    )}
-                    <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.logo}/>
-                </div>
+            <aside className={styles.sidebar}>
+                <Link to={homePath} className={styles.brand} aria-label="Ir para o início">
+                    <img src="/images/logotipo-vertical-claro.svg" alt="2AG" className={styles.brandFull}/>
+                    <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon}/>
+                </Link>
 
-                <nav className={styles.topMenu} aria-label="Menu principal">
+                <nav className={styles.sideMenu} aria-label="Menu principal">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
+                        const active = isActive(item);
                         return (
-                            <NavLink key={item.path} to={item.path} end={true} className={topLinkClass}>
-                                <Icon/>
-                                <span className={styles.menuLabel}>{item.label}</span>
-                            </NavLink>
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                title={item.label}
+                                className={active ? styles.sideLink + " " + styles.sideLinkActive : styles.sideLink}
+                                aria-current={active ? "page" : undefined}
+                            >
+                                <Icon className={styles.sideIcon}/>
+                                <span className={styles.sideLabel}>{item.label}</span>
+                            </Link>
                         );
                     })}
                 </nav>
 
-                <div className={styles.headerEnd}>
-                    <span className={styles.userName}>{loggedUser ? loggedUser.name : ""}</span>
+                <div className={styles.account}>
+                    <div className={styles.accountText}>
+                        <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
+                        <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
+                    </div>
                     <button type="button" className={styles.iconButton} onClick={handleLogout}
                             aria-label="Sair" title="Sair">
                         <FiLogOut/>
                     </button>
                 </div>
+            </aside>
+
+            <header className={styles.mobileHeader}>
+                {isHomePage ? (
+                    <span className={styles.headerSpacer}/>
+                ) : (
+                    <button type="button" className={styles.iconButton} onClick={handleBack}
+                            aria-label="Voltar" title="Voltar">
+                        <FiArrowLeft/>
+                    </button>
+                )}
+                <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
+                <button type="button" className={styles.iconButton} onClick={handleLogout}
+                        aria-label="Sair" title="Sair">
+                    <FiLogOut/>
+                </button>
             </header>
 
             <main className={styles.content}>
+                {!isHomePage && (
+                    <button type="button" className={styles.backLink} onClick={handleBack}>
+                        <FiArrowLeft/>
+                        Voltar
+                    </button>
+                )}
                 {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
                 <div key={location.pathname} className={styles.page}>
                     <Outlet/>
@@ -107,13 +167,19 @@ export default function AppLayout() {
             </main>
 
             <nav className={styles.bottomMenu} aria-label="Menu">
-                {menuItems.map((item) => {
+                {mobileItems.map((item) => {
                     const Icon = item.icon;
+                    const active = isActive(item);
                     return (
-                        <NavLink key={item.path} to={item.path} end={true} className={bottomLinkClass}>
-                            <Icon/>
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            className={active ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink}
+                            aria-current={active ? "page" : undefined}
+                        >
+                            <span className={styles.bottomIcon}><Icon/></span>
                             <span>{item.label}</span>
-                        </NavLink>
+                        </Link>
                     );
                 })}
             </nav>

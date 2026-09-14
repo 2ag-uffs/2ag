@@ -1,6 +1,10 @@
 import {useCallback, useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
+import {FiAlertCircle, FiCalendar, FiInbox, FiUsers} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
+import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {formatDate, formatDateTime, formatTime} from "../../utils/date-format.js";
@@ -42,137 +46,176 @@ export default function DashboardPrescritor() {
     }
 
     if (!panel) {
-        return <p>Carregando o painel...</p>;
+        return <p className={styles.loading}>Carregando o painel...</p>;
     }
+
+    // o painel chama a pessoa pelo primeiro nome e pula titulo tipo dra.
+    const firstName = loggedUser.name.split(" ").find((word) => !word.endsWith(".")) || loggedUser.name;
+
+    // os numeros do dia. o q leva pra alguma tela vira botao e o q pede
+    // atencao ganha o destaque
+    const stats = [
+        {label: "Pacientes ativos", value: panel.activePatients, icon: FiUsers, path: "/lista-paciente"},
+        {label: "Consultas hoje", value: panel.todaysAppointments.length, icon: FiCalendar, path: "/agendamento-prescritor"},
+        {
+            label: "Pedidos esperando",
+            value: panel.waitingRequests.length,
+            icon: FiInbox,
+            path: "/agendamento-prescritor",
+            needsAttention: panel.waitingRequests.length > 0,
+        },
+        {
+            label: "Escalas vencidas",
+            value: panel.lateScales.length,
+            icon: FiAlertCircle,
+            needsAttention: panel.lateScales.length > 0,
+        },
+    ];
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Olá, {loggedUser.name}</h1>
-                <p className={styles.subtitle}>O que precisa de você hoje.</p>
-            </header>
+            <PageHeader
+                title={"Olá, " + firstName}
+                subtitle="O que precisa de você hoje."
+                actions={(
+                    <>
+                        <button type="button" className="button-secondary" onClick={() => navigate("/lista-paciente")}>
+                            Nova consulta
+                        </button>
+                        <button type="button" className="button" onClick={() => setIsInviteOpen(true)}>
+                            Convidar paciente
+                        </button>
+                    </>
+                )}
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
 
             <div className={styles.stats}>
-                <button type="button" className={styles.stat} onClick={() => navigate("/lista-paciente")}>
-                    <span className={styles.statNumber}>{panel.activePatients}</span>
-                    <span>Pacientes ativos</span>
-                </button>
-                <div className={styles.stat}>
-                    <span className={styles.statNumber}>{panel.todaysAppointments.length}</span>
-                    <span>Consultas hoje</span>
-                </div>
-                <div className={styles.stat}>
-                    <span className={styles.statNumber}>{panel.waitingRequests.length}</span>
-                    <span>Pedidos esperando</span>
-                </div>
-                <div className={styles.stat}>
-                    <span className={styles.statNumber}>{panel.lateScales.length}</span>
-                    <span>Escalas vencidas</span>
-                </div>
+                {stats.map((stat) => {
+                    const Icon = stat.icon;
+                    const tileClass = stat.needsAttention ? styles.stat + " " + styles.statAttention : styles.stat;
+                    const tileContent = (
+                        <>
+                            <span className={styles.statIcon}><Icon/></span>
+                            <span className={styles.statNumber}>{stat.value}</span>
+                            <span className={styles.statLabel}>{stat.label}</span>
+                        </>
+                    );
+                    if (stat.path) {
+                        return (
+                            <button key={stat.label} type="button" className={tileClass} onClick={() => navigate(stat.path)}>
+                                {tileContent}
+                            </button>
+                        );
+                    }
+                    return <div key={stat.label} className={tileClass}>{tileContent}</div>;
+                })}
             </div>
 
-            <div className={styles.shortcuts}>
-                <button type="button" className="button-secondary" onClick={() => setIsInviteOpen(true)}>
-                    Convidar paciente
-                </button>
-                <button type="button" className="button-secondary" onClick={() => navigate("/lista-paciente")}>
-                    Nova consulta
-                </button>
-                <button type="button" className="button-secondary" onClick={() => navigate("/agendamento-prescritor")}>
-                    Agenda
-                </button>
-                <button type="button" className="button-secondary" onClick={() => navigate("/agenda/disponibilidade")}>
-                    Horários de atendimento
-                </button>
-            </div>
-
-            <div className={styles.cards}>
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Consultas de hoje</h2>
+            <div className={styles.grid}>
+                <Card
+                    title="Consultas de hoje"
+                    count={panel.todaysAppointments.length}
+                    footer={(
+                        <>
+                            <button
+                                type="button"
+                                className="button-secondary button-small"
+                                onClick={() => navigate("/agendamento-prescritor")}
+                            >
+                                Ver a agenda
+                            </button>
+                            <button
+                                type="button"
+                                className="button-tertiary button-small"
+                                onClick={() => navigate("/agenda/disponibilidade")}
+                            >
+                                Horários de atendimento
+                            </button>
+                        </>
+                    )}
+                >
                     {panel.todaysAppointments.length === 0 ? (
                         <p className={styles.empty}>Nenhuma consulta marcada para hoje.</p>
                     ) : (
-                        <ul className={styles.list}>
+                        <ItemList>
                             {panel.todaysAppointments.map((appointment) => (
-                                <li key={appointment.appointmentId} className={styles.item}>
-                                    <div>
-                                        <strong>{formatTime(appointment.dateTime)} · {appointment.patientName}</strong>
-                                        <p className={styles.meta}>{modalityLabelOf(appointment.modality)}</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="button"
-                                        onClick={() => navigate("/consulta/" + appointment.appointmentId + "/registro")}
-                                    >
-                                        Registrar atendimento
-                                    </button>
-                                </li>
+                                <ListItem
+                                    key={appointment.appointmentId}
+                                    title={formatTime(appointment.dateTime) + " · " + appointment.patientName}
+                                    details={modalityLabelOf(appointment.modality)}
+                                    aside={(
+                                        <button
+                                            type="button"
+                                            className="button button-small"
+                                            onClick={() => navigate("/consulta/" + appointment.appointmentId + "/registro")}
+                                        >
+                                            Registrar
+                                        </button>
+                                    )}
+                                />
                             ))}
-                        </ul>
+                        </ItemList>
                     )}
-                    <button type="button" className="button-secondary" onClick={() => navigate("/agendamento-prescritor")}>
-                        Ver a agenda
-                    </button>
-                </section>
+                </Card>
 
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Pedidos esperando resposta ({panel.waitingRequests.length})</h2>
+                <Card title="Pedidos esperando resposta" count={panel.waitingRequests.length}>
                     {panel.waitingRequests.length === 0 ? (
                         <p className={styles.empty}>Nenhum pedido esperando resposta.</p>
                     ) : (
-                        <ul className={styles.list}>
+                        <ItemList>
                             {panel.waitingRequests.map((request) => (
-                                <li key={request.appointmentId} className={styles.item}>
-                                    <div>
-                                        <strong>{request.patientName}</strong>
-                                        <p className={styles.meta}>
+                                <ListItem
+                                    key={request.appointmentId}
+                                    title={request.patientName}
+                                    details={(
+                                        <>
                                             {formatDateTime(request.dateTime)} · {modalityLabelOf(request.modality)}
-                                        </p>
-                                        {request.patientNote && (
-                                            <p className={styles.note}>Motivo: {request.patientNote}</p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="button"
-                                        onClick={() => navigate("/agendamento-prescritor")}
-                                    >
-                                        Responder
-                                    </button>
-                                </li>
+                                            {request.patientNote && (
+                                                <span className={styles.note}>Motivo: {request.patientNote}</span>
+                                            )}
+                                        </>
+                                    )}
+                                    aside={(
+                                        <button
+                                            type="button"
+                                            className="button button-small"
+                                            onClick={() => navigate("/agendamento-prescritor")}
+                                        >
+                                            Responder
+                                        </button>
+                                    )}
+                                />
                             ))}
-                        </ul>
+                        </ItemList>
                     )}
-                </section>
+                </Card>
 
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Escalas vencidas ({panel.lateScales.length})</h2>
+                <Card title="Escalas vencidas" count={panel.lateScales.length}>
                     {panel.lateScales.length === 0 ? (
                         <p className={styles.empty}>Nenhuma escala vencida sem resposta.</p>
                     ) : (
-                        <ul className={styles.list}>
+                        <ItemList>
                             {panel.lateScales.map((scale) => (
-                                <li key={scale.taskId} className={styles.item}>
-                                    <div>
-                                        <strong>{scale.patientName}</strong>
-                                        <p className={styles.meta}>
-                                            {scale.scaleName} · prazo em {formatDate(scale.deadline)}
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="button-secondary"
-                                        onClick={() => navigate("/paciente/" + scale.patientId + "/historico")}
-                                    >
-                                        Ver histórico
-                                    </button>
-                                </li>
+                                <ListItem
+                                    key={scale.taskId}
+                                    title={scale.patientName}
+                                    details={scale.scaleName + " · prazo em " + formatDate(scale.deadline)}
+                                    aside={(
+                                        <button
+                                            type="button"
+                                            className="button-secondary button-small"
+                                            onClick={() => navigate("/paciente/" + scale.patientId + "/historico")}
+                                        >
+                                            Ver histórico
+                                        </button>
+                                    )}
+                                />
                             ))}
-                        </ul>
+                        </ItemList>
                     )}
-                </section>
+                </Card>
             </div>
 
             <InvitePatientModal show={isInviteOpen} onClose={() => setIsInviteOpen(false)}/>

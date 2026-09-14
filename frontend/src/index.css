@@ -1,6 +1,6 @@
 :root {
-    font-family: "Yaldevi Colombo", sans-serif;
-    line-height: 1.5;
+    font-family: "Yaldevi Colombo", system-ui, sans-serif;
+    line-height: var(--leading-normal);
     font-weight: 400;
 
     color: var(--color-text-primary);
@@ -22,4 +22,57 @@
     display: flex;
     flex-direction: column;
     min-height: 100svh;
+}
+
+/* os titulos tem o mesmo tamanho em toda tela, a fonte vem do fonts.css */
+h1,
+h2,
+h3,
+h4 {
+    color: var(--color-text-headings);
+    line-height: var(--leading-tight);
+}
+
+h1 {
+    font-size: var(--text-2xl);
+}
+
+h2 {
+    font-size: var(--text-xl);
+}
+
+h3 {
+    font-size: var(--text-lg);
+}
+
+h4 {
+    font-size: var(--text-md);
+}
+
+a {
+    color: var(--color-primary);
+    text-underline-offset: 0.15em;
+}
+
+:where(a, select, textarea, [tabindex]):focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+}
+
+img {
+    max-width: 100%;
+}
+
+::selection {
+    background-color: var(--color-primary-soft);
+}
+
+/* quem pediu menos movimento no sistema operacional n ve animacao */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }

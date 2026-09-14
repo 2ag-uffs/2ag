@@ -2,6 +2,7 @@ import {StrictMode} from "react";
 import {createRoot} from "react-dom/client";
 import AppRouter from "./app/router.jsx";
 import {loadSession} from "./services/api.js";
+import "./styles/tokens.css";
 import "./index.css";
 import "./styles/aviso.css";
 import "./styles/button.css";

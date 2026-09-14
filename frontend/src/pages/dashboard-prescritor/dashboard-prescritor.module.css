@@ -3,107 +3,123 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    max-width: 64rem;
+    gap: var(--space-6);
+    max-width: var(--width-default);
 }
 
-.subtitle,
-.empty,
-.meta,
-.note {
-    color: var(--color-text-secondary);
-    margin: 0.25rem 0 0;
-}
+/* ---- numeros do dia ---- */
 
 .stats {
     display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-4);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .stat {
     align-items: flex-start;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-text-primary);
     display: flex;
     flex-direction: column;
-    font: inherit;
-    gap: 0.125rem;
-    padding: 0.875rem 1rem;
+    font-weight: 400;
+    gap: var(--space-1);
+    justify-content: flex-start;
+    min-height: 0;
+    padding: var(--space-4) var(--space-5);
     text-align: left;
+    transition: border-color var(--duration-fast) var(--easing-standard),
+        box-shadow var(--duration-fast) var(--easing-standard),
+        transform var(--duration-fast) var(--easing-standard);
 }
 
-button.stat {
-    cursor: pointer;
+button.stat:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* numero q pede atencao ganha o traco pessego na borda */
+.statAttention {
+    box-shadow: inset 4px 0 0 var(--color-peach), var(--shadow-sm);
+}
+
+button.statAttention:hover {
+    box-shadow: inset 4px 0 0 var(--color-peach), var(--shadow-md);
+}
+
+.statIcon {
+    align-items: center;
+    background-color: var(--color-primary-soft);
+    border-radius: var(--radius-pill);
+    color: var(--color-primary);
+    display: flex;
+    font-size: 1.125rem;
+    height: 2.25rem;
+    justify-content: center;
+    margin-bottom: var(--space-2);
+    width: 2.25rem;
 }
 
 .statNumber {
-    font-size: 1.75rem;
-    font-weight: 600;
+    color: var(--color-text-headings);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    line-height: 1;
 }
 
-.shortcuts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+.statLabel {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 500;
 }
 
-.shortcuts button {
-    flex: 0 0 auto;
-}
+/* ---- cartoes ---- */
 
-.cards {
+.grid {
     display: grid;
-    gap: 1rem;
+    gap: var(--space-5);
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
 }
 
-.card {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem 1.25rem;
+.empty,
+.loading {
+    color: var(--color-text-secondary);
 }
 
-.card > button {
-    align-self: flex-start;
-    flex: 0 0 auto;
-    margin-top: auto;
+.note {
+    display: block;
+    font-style: italic;
+    margin-top: var(--space-1);
 }
 
-.cardTitle {
-    font-size: 1.125rem;
-    margin: 0;
+@media (max-width: 63.99rem) {
+    .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
-.list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
+@media (max-width: 47.99rem) {
+    .grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 
-.item {
-    align-items: center;
-    border-top: 1px solid var(--color-border-light);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: space-between;
-    padding-top: 0.75rem;
-}
+    .stats {
+        gap: var(--space-3);
+    }
 
-.item:first-child {
-    border-top: 0;
-    padding-top: 0;
-}
+    .stat {
+        padding: var(--space-3) var(--space-4);
+    }
 
-.item button {
-    flex: 0 0 auto;
+    .statIcon {
+        height: 2rem;
+        width: 2rem;
+    }
+
+    .statNumber {
+        font-size: var(--text-2xl);
+    }
 }

@@ -1,23 +1,19 @@
 import {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
+import Card from "../../components/card/card.jsx";
+import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {formatDate, formatDateTime} from "../../utils/date-format.js";
 import styles from "./dashboard-paciente.module.css";
 
-const SHORTCUTS = [
-    {path: "/agendamento-consulta", label: "Agendar consulta"},
-    {path: "/progresso", label: "Meu progresso"},
-    {path: "/minhas-prescricoes", label: "Minhas prescrições"},
-    {path: "/historico-paciente", label: "Meu histórico"},
-];
-
 // painel do paciente (RF03)
 //
-// mostra so o q o resto do sistema grava: as proximas consultas, as
-// escalas esperando resposta, a prescricao q esta valendo e os avisos
-// q ele ainda n leu
+// mostra so o q o resto do sistema grava: as escalas esperando resposta,
+// as proximas consultas, a prescricao q esta valendo e os avisos q ele
+// ainda n leu. o q pede alguma acao da pessoa vem primeiro
 export default function DashboardPaciente() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -47,93 +43,112 @@ export default function DashboardPaciente() {
     }
 
     if (!panel) {
-        return <p>Carregando o painel...</p>;
+        return <p className={styles.loading}>Carregando o painel...</p>;
     }
+
+    // o painel chama a pessoa pelo primeiro nome e pula titulo tipo dr.
+    const firstName = loggedUser.name.split(" ").find((word) => !word.endsWith(".")) || loggedUser.name;
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Olá, {loggedUser.name}</h1>
-                <p className={styles.subtitle}>
-                    Acompanhe o seu tratamento e o que está esperando resposta.
-                </p>
-            </header>
+            <PageHeader
+                title={"Olá, " + firstName}
+                subtitle="Acompanhe o seu tratamento e o que está esperando resposta."
+                actions={(
+                    <>
+                        <button type="button" className="button-secondary" onClick={() => navigate("/historico-paciente")}>
+                            Meu histórico
+                        </button>
+                        <button type="button" className="button" onClick={() => navigate("/agendamento-consulta")}>
+                            Agendar consulta
+                        </button>
+                    </>
+                )}
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
 
-            <div className={styles.shortcuts}>
-                {SHORTCUTS.map((shortcut) => (
-                    <button
-                        key={shortcut.path}
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => navigate(shortcut.path)}
-                    >
-                        {shortcut.label}
-                    </button>
-                ))}
-            </div>
-
-            <div className={styles.cards}>
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Próximas consultas</h2>
-                    {panel.upcomingAppointments.length === 0 ? (
-                        <p className={styles.empty}>Nenhuma consulta marcada. Você pode pedir um horário.</p>
-                    ) : (
-                        <ul className={styles.list}>
-                            {panel.upcomingAppointments.map((appointment) => (
-                                <li key={appointment.appointmentId} className={styles.item}>
-                                    <div>
-                                        <strong>{formatDateTime(appointment.dateTime)}</strong>
-                                        <p className={styles.meta}>
-                                            {modalityLabelOf(appointment.modality)}
-                                            {appointment.prescriberName ? " com " + appointment.prescriberName : ""}
-                                        </p>
-                                    </div>
-                                    <AppointmentStatusBadge appointment={appointment}/>
-                                </li>
-                            ))}
-                        </ul>
+            <div className={styles.grid}>
+                <Card
+                    title="Esperando resposta"
+                    count={panel.pendingScales.length}
+                    footer={(
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
+                        >
+                            Ver todas as avaliações
+                        </button>
                     )}
-                    <button type="button" className="button" onClick={() => navigate("/agendamento-consulta")}>
-                        Ver minhas consultas
-                    </button>
-                </section>
-
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Esperando resposta ({panel.pendingScales.length})</h2>
+                >
                     {panel.pendingScales.length === 0 ? (
                         <p className={styles.empty}>Nenhuma escala esperando resposta agora.</p>
                     ) : (
-                        <ul className={styles.list}>
+                        <ItemList>
                             {panel.pendingScales.map((scale) => (
-                                <li key={scale.taskId} className={styles.item}>
-                                    <div>
-                                        <strong>{scale.name}</strong>
-                                        <p className={styles.meta}>
+                                <ListItem
+                                    key={scale.taskId}
+                                    title={scale.name}
+                                    details={(
+                                        <span className={scale.late ? styles.late : undefined}>
                                             {scale.late
                                                 ? "O prazo era " + formatDate(scale.deadline)
                                                 : "Responda até " + formatDate(scale.deadline)}
-                                        </p>
-                                    </div>
-                                    <button type="button" className="button" onClick={() => navigate(scale.path)}>
-                                        Preencher
-                                    </button>
-                                </li>
+                                        </span>
+                                    )}
+                                    aside={(
+                                        <button type="button" className="button button-small" onClick={() => navigate(scale.path)}>
+                                            Responder
+                                        </button>
+                                    )}
+                                />
                             ))}
-                        </ul>
+                        </ItemList>
                     )}
-                    <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
-                    >
-                        Ver todas as avaliações
-                    </button>
-                </section>
+                </Card>
 
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Prescrição de agora</h2>
+                <Card
+                    title="Próximas consultas"
+                    footer={(
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/agendamento-consulta")}
+                        >
+                            Ver minhas consultas
+                        </button>
+                    )}
+                >
+                    {panel.upcomingAppointments.length === 0 ? (
+                        <p className={styles.empty}>Nenhuma consulta marcada. Você pode pedir um horário.</p>
+                    ) : (
+                        <ItemList>
+                            {panel.upcomingAppointments.map((appointment) => (
+                                <ListItem
+                                    key={appointment.appointmentId}
+                                    title={formatDateTime(appointment.dateTime)}
+                                    details={modalityLabelOf(appointment.modality)
+                                        + (appointment.prescriberName ? " com " + appointment.prescriberName : "")}
+                                    aside={<AppointmentStatusBadge appointment={appointment}/>}
+                                />
+                            ))}
+                        </ItemList>
+                    )}
+                </Card>
+
+                <Card
+                    title="Prescrição de agora"
+                    footer={(
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/minhas-prescricoes")}
+                        >
+                            Ver prescrições
+                        </button>
+                    )}
+                >
                     {panel.currentPrescription === null ? (
                         <p className={styles.empty}>Nenhuma prescrição vigente.</p>
                     ) : (
@@ -145,33 +160,35 @@ export default function DashboardPaciente() {
                             </p>
                         </div>
                     )}
-                    <button type="button" className="button-secondary" onClick={() => navigate("/minhas-prescricoes")}>
-                        Ver prescrições
-                    </button>
-                </section>
+                </Card>
 
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Avisos não lidos ({panel.latestNotifications.length})</h2>
+                <Card
+                    title="Avisos não lidos"
+                    count={panel.latestNotifications.length}
+                    footer={(
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/notificacoes")}
+                        >
+                            Ver avisos
+                        </button>
+                    )}
+                >
                     {panel.latestNotifications.length === 0 ? (
                         <p className={styles.empty}>Nenhum aviso novo.</p>
                     ) : (
-                        <ul className={styles.list}>
+                        <ItemList>
                             {panel.latestNotifications.map((notification) => (
-                                <li key={notification.id} className={styles.notification}>
-                                    <strong>{notification.title}</strong>
-                                    <p className={styles.meta}>{notification.message}</p>
-                                </li>
+                                <ListItem
+                                    key={notification.id}
+                                    title={notification.title}
+                                    details={notification.message}
+                                />
                             ))}
-                        </ul>
+                        </ItemList>
                     )}
-                    <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => navigate("/notificacoes")}
-                    >
-                        Ver avisos
-                    </button>
-                </section>
+                </Card>
             </div>
         </section>
     );

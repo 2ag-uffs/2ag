@@ -1,57 +1,104 @@
 /*
- * estilo base de todo botao do sistema.
+ * botoes do sistema
  *
- * cuidado com o flex e o min-height daqui: eles valem pra qualquer
- * <button> da tela, inclusive os que tem tamanho proprio. ja quebraram
- * o seletor de nota das escalas e os quadrados do diario de dor, que
- * declaravam 44x44 e renderizavam 61x48.
- * quem tem tamanho proprio precisa escrever flex 0 0 auto e min-height 0
+ * o button cru n estica mais: cada botao tem a largura do proprio texto.
+ * quem precisa ocupar a linha toda usa button-block ou o container decide
+ *
+ * tudo aqui fica dentro de :where, q tem peso zero no css. assim qualquer
+ * classe de modulo de uma tela ganha destas regras sem precisar de truque
+ *
+ * variantes: button (principal), button-secondary (contorno),
+ * button-tertiary (discreto, sem borda) e button-danger (acao q perde
+ * algo). tamanho menor com button-small
  */
-button,
-.button {
+
+:where(button, .button, .button-secondary, .button-tertiary, .button-danger) {
     align-items: center;
     background-color: var(--color-primary);
     border: 1px solid var(--color-primary);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     color: var(--color-text-on-primary);
     cursor: pointer;
-    display: flex;
-    flex: 1;
-    font-size: 1rem;
+    display: inline-flex;
+    font-family: inherit;
+    font-size: var(--text-md);
     font-weight: 600;
-    line-height: 1.2;
-    min-height: 3rem;
+    gap: var(--space-2);
     justify-content: center;
-    /* o texto precisa de folga ate a borda, senao a palavra parece
-       grande demais pro botao */
-    padding: 0.5rem 1.25rem;
+    line-height: var(--leading-tight);
+    min-height: var(--control-height);
+    padding: var(--space-2) var(--space-5);
     text-align: center;
-    transition: background-color 0.2s;
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--easing-standard),
+        border-color var(--duration-fast) var(--easing-standard),
+        box-shadow var(--duration-fast) var(--easing-standard),
+        transform var(--duration-fast) var(--easing-standard);
 }
 
-button:hover,
-.button:hover {
+:where(button, .button):hover:where(:not(:disabled)) {
     background-color: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
 }
 
-.button-secondary {
+/* o clique afunda um pouco pra dar retorno na hora */
+:where(button, .button, .button-secondary, .button-tertiary, .button-danger):active:where(:not(:disabled)) {
+    transform: translateY(1px);
+}
+
+:where(button, .button, .button-secondary, .button-tertiary, .button-danger):focus-visible {
+    box-shadow: var(--focus-ring);
+    outline: none;
+}
+
+:where(button, .button, .button-secondary, .button-tertiary, .button-danger):disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+:where(.button-secondary) {
     background-color: var(--color-surface);
+    border-color: var(--color-border);
     color: var(--color-primary);
 }
 
-.button-secondary:hover {
-    background-color: var(--color-surface-alt);
+:where(.button-secondary):hover:where(:not(:disabled)) {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary);
 }
 
-/* acao discreta ao lado das outras, tipo apagar ou ver detalhe.
-   n concorre com o botao principal da linha */
-.button-tertiary {
+/* acao discreta ao lado das outras, tipo apagar ou ver detalhe */
+:where(.button-tertiary) {
     background-color: transparent;
     border-color: transparent;
     color: var(--color-primary);
-    font-weight: 400;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
 }
 
-.button-tertiary:hover {
-    background-color: var(--color-surface-alt);
+:where(.button-tertiary):hover:where(:not(:disabled)) {
+    background-color: var(--color-primary-soft);
+    border-color: transparent;
+}
+
+/* acao q desfaz ou perde algo, como cancelar consulta */
+:where(.button-danger) {
+    background-color: var(--color-surface);
+    border-color: var(--color-error-border);
+    color: var(--color-error);
+}
+
+:where(.button-danger):hover:where(:not(:disabled)) {
+    background-color: var(--color-error-soft);
+    border-color: var(--color-error);
+}
+
+:where(.button-small) {
+    font-size: var(--text-sm);
+    min-height: var(--control-height-small);
+    padding: var(--space-1) var(--space-3);
+}
+
+:where(.button-block) {
+    width: 100%;
 }

@@ -1,0 +1,52 @@
+/* lista de linhas dentro dos cartoes */
+
+.list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+}
+
+.item {
+    align-items: center;
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    justify-content: space-between;
+    padding: var(--space-3) 0;
+}
+
+.item:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.item:last-child {
+    padding-bottom: 0;
+}
+
+.text {
+    display: flex;
+    flex: 1 1 12rem;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.title {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.details {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+}
+
+.aside {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--space-2);
+}

@@ -1,0 +1,64 @@
+/* cartao padrao das telas */
+
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: var(--space-5);
+}
+
+.cardHeader {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+    justify-content: space-between;
+}
+
+.title {
+    align-items: center;
+    color: var(--color-text-headings);
+    display: flex;
+    font-size: var(--text-lg);
+    gap: var(--space-2);
+    line-height: var(--leading-tight);
+}
+
+.count {
+    background-color: var(--color-primary-soft);
+    border-radius: var(--radius-pill);
+    color: var(--color-primary);
+    font-family: "Yaldevi Colombo", sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1.5;
+    min-width: 1.75rem;
+    padding: 0 var(--space-2);
+    text-align: center;
+}
+
+.body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.footer {
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-top: var(--space-4);
+}
+
+@media (max-width: 47.99rem) {
+    .card {
+        padding: var(--space-4);
+    }
+}
