@@ -66,6 +66,10 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/escala-clinica-paciente/escala-clinica-paciente.jsx")),
                             },
                             {
+                                path: "/impressao",
+                                lazy: lazyPage(() => import("../pages/impressao/impressao.jsx")),
+                            },
+                            {
                                 path: "/historico-paciente",
                                 lazy: lazyPage(() => import("../pages/historico-clinico-paciente/historico-clinico-paciente.jsx")),
                             },
@@ -129,6 +133,10 @@ const routes = [
                             {
                                 path: "/paciente/:patientId/historico",
                                 lazy: lazyPage(() => import("../pages/historico-clinico-prescritor/historico-clinico-prescritor.jsx")),
+                            },
+                            {
+                                path: "/paciente/:patientId/impressao",
+                                lazy: lazyPage(() => import("../pages/impressao/impressao.jsx")),
                             },
                             {
                                 path: "/paciente/:patientId/progresso",

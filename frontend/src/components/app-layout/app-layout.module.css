@@ -206,3 +206,20 @@
         animation: none;
     }
 }
+
+/* na impressao fica so o conteudo: o cabecalho e os menus n vao pro papel */
+@media print {
+    .header,
+    .topMenu,
+    .bottomMenu,
+    .loadingBar {
+        display: none;
+    }
+
+    .content,
+    .page {
+        margin: 0;
+        max-width: none;
+        padding: 0;
+    }
+}

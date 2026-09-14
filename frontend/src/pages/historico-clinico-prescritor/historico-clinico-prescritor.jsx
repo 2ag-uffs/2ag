@@ -3,6 +3,7 @@ import {useLocation, useNavigate, useParams} from "react-router";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import ExportModal from "../../components/export-modal/export-modal.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
@@ -23,6 +24,8 @@ export default function HistoricoClinicoPrescritor() {
     const [notice, setNotice] = useState(location.state && location.state.aviso);
     // o registro q o prescritor escolheu anular e q abre o modal
     const [annulmentTarget, setAnnulmentTarget] = useState(null);
+    // o painel de exportacao do paciente (RF33)
+    const [isExportOpen, setIsExportOpen] = useState(false);
     // somar um aqui busca o historico de novo sem esconder a tela
     const [reloadCount, setReloadCount] = useState(0);
 
@@ -213,6 +216,13 @@ export default function HistoricoClinicoPrescritor() {
                     <button
                         type="button"
                         className={styles.secondaryButton}
+                        onClick={() => setIsExportOpen(true)}
+                    >
+                        Exportar
+                    </button>
+                    <button
+                        type="button"
+                        className={styles.secondaryButton}
                         onClick={() => navigate("/paciente/" + patientId + "/selecao-escalas")}
                     >
                         Enviar escalas
@@ -321,6 +331,15 @@ export default function HistoricoClinicoPrescritor() {
                     })}
                 />
             </section>
+
+            {isExportOpen && (
+                <ExportModal
+                    patientId={patientId}
+                    printPath={"/paciente/" + patientId + "/impressao"}
+                    canAnonymize={true}
+                    onClose={() => setIsExportOpen(false)}
+                />
+            )}
 
             {annulmentTarget && (
                 <AnnulmentModal

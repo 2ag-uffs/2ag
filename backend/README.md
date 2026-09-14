@@ -187,6 +187,22 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
 
+## exportação
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /pacientes/{patientId}/exportacao/consultas.csv` | as consultas do paciente, com a conduta de cada atendimento |
+| `GET /pacientes/{patientId}/exportacao/prescricoes.csv` | as prescrições, com composição, posologia e vigência |
+| `GET /pacientes/{patientId}/exportacao/escalas.csv` | as escalas respondidas, uma linha por item, com o escore e a faixa |
+| `GET /pacientes/{patientId}/exportacao/anamnese.csv` | a anamnese, uma linha por pergunta respondida |
+| `GET /pacientes/{patientId}/exportacao/evolucao.csv?atributo=&periodo=` | a série de um atributo no período |
+
+- todas aceitam `anonimo=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente aparece só por um número. só o prescritor pode pedir esse modo
+- o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
+- o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
+- exportar é leitura de prontuário e entra na trilha de auditoria
+- não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF
+
 ## avisos e lembretes
 
 | rota | o que faz |
@@ -291,4 +307,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) o de evolução (gráfico com a faixa do instrumento, a dose e o relato do paciente) o painel inicial de cada perfil e os avisos com lembretes automáticos já seguem o padrão novo. só a exportação (RF33) ainda não existe e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) o de evolução (gráfico com a faixa do instrumento, a dose e o relato do paciente) o painel inicial de cada perfil, os avisos com lembretes automáticos e a exportação já seguem o padrão novo. a remodelação cobriu todos os módulos da ordem de trabalho do §8.6 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

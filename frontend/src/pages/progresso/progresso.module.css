@@ -112,6 +112,17 @@
     white-space: pre-wrap;
 }
 
-.page > div button {
+.footerActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.footerActions button,
+.footerActions a {
+    align-items: center;
+    display: inline-flex;
     flex: 0 0 auto;
+    justify-content: center;
+    text-decoration: none;
 }

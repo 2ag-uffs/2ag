@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import ExportModal from "../../components/export-modal/export-modal.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
@@ -16,6 +17,8 @@ export default function HistoricoClinicoPaciente() {
     const loggedUser = getLoggedUser();
     const [history, setHistory] = useState(null);
     const [loadError, setLoadError] = useState(null);
+    // o painel de exportacao dos proprios dados (RF33)
+    const [isExportOpen, setIsExportOpen] = useState(false);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -62,12 +65,27 @@ export default function HistoricoClinicoPaciente() {
 
     return (
         <section className={styles.page}>
-            <div>
-                <h1>Meu histórico clínico</h1>
-                <p className={styles.subtitle}>
-                    Tudo o que foi registrado no seu acompanhamento. Registros anulados continuam aqui, com o motivo.
-                </p>
+            <div className={styles.header}>
+                <div>
+                    <h1>Meu histórico clínico</h1>
+                    <p className={styles.subtitle}>
+                        Tudo o que foi registrado no seu acompanhamento. Registros anulados continuam aqui,
+                        com o motivo.
+                    </p>
+                </div>
+                <button type="button" className="button-secondary" onClick={() => setIsExportOpen(true)}>
+                    Exportar
+                </button>
             </div>
+
+            {isExportOpen && (
+                <ExportModal
+                    patientId={loggedUser.id}
+                    printPath="/impressao"
+                    canAnonymize={false}
+                    onClose={() => setIsExportOpen(false)}
+                />
+            )}
 
             <SectionLinks
                 label="Partes do histórico"

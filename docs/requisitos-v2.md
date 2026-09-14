@@ -800,9 +800,16 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Sem aviso repetido:** a consulta e a tarefa guardam a data em que o lembrete saiu, então o job do dia seguinte não manda de novo.
 - **Lista de avisos:** uma tela só para os dois perfis, paginada de 20 em 20 (RNF06), com o número de não lidos, marcar como lido ao abrir, marcar todos e apagar. Os filtros avançados ficaram de fora, como o §8.4 decidiu.
 
-Fica para o último módulo:
+**Exportação concluída em 14/09/2026:** RF33, que consolidou os RF16 e RF17 da v1.0.
 
-- **Exportação:** exportar histórico e séries em PDF e CSV, com o modo anonimizado (RF33).
+- **Um arquivo por tipo:** consultas, prescrições, escalas respondidas e anamnese saem em CSV separados, e a série de evolução sai da própria tela de progresso, com a escala e o período já escolhidos.
+- **Formato:** ponto e vírgula como separador e marca de UTF-8 no começo, para o arquivo abrir com acento certo na planilha. Texto clínico com quebra de linha não estraga as colunas.
+- **Escalas e anamnese:** uma linha por item respondido, com a data, a escala, o escore e a faixa, que é o formato que a planilha filtra e agrupa.
+- **Modo anonimizado:** é do prescritor, para pesquisa. Sai sem nome, CPF, e-mail, telefone e endereço, com o paciente identificado só por um número (RNF04).
+- **PDF pela impressão:** em vez de gerar PDF no servidor, existe uma página de impressão com cabeçalho de paciente, prescritor, período e data de emissão, e o histórico do período. O navegador imprime ou salva em PDF.
+- **Trilha:** exportar é leitura de prontuário e entra na trilha de auditoria como qualquer abertura (RF31).
+
+Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto não é módulo, e sim as perguntas que dependem da clínica, em `docs/extensao/perguntas-para-a-clinica.md`, e o RNF07, o backup automático com restauração testada, que é pré-requisito do piloto.
 
 ---
 

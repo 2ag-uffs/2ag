@@ -392,10 +392,20 @@ export default function Progresso() {
                 )}
             </section>
 
-            <div>
+            <div className={styles.footerActions}>
                 <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                     Voltar
                 </button>
+                {chartRows.length > 0 && (
+                    <a
+                        className="button-secondary"
+                        href={"/api/pacientes/" + patientId + "/exportacao/evolucao.csv?atributo="
+                            + chosenAttribute + "&periodo=" + period}
+                        download={true}
+                    >
+                        Baixar esta série em CSV
+                    </a>
+                )}
             </div>
         </section>
     );

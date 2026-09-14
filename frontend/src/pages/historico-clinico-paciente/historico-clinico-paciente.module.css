@@ -48,3 +48,16 @@
 .secondaryButton:hover {
     background-color: var(--color-surface-alt);
 }
+
+/* titulo de um lado e o botao de exportar do outro */
+.header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.header button {
+    flex: 0 0 auto;
+}
