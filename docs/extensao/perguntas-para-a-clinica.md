@@ -93,6 +93,8 @@ No instrumento original a HAM-A é pontuada por quem entrevista, e o item 14 é 
 
 **Por que importa:** se a aplicação é em entrevista, a HAM-A passa para o lado do prescritor, como o MEEM, e deixa de virar tarefa do paciente.
 
+Por enquanto a HAM-A continua com o paciente. Cada escala já registra quem a aplica, então mudar de lado é trocar uma linha.
+
 ---
 
 ## 7. Como a consulta é marcada
@@ -144,6 +146,21 @@ O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a
 - A clínica já usa um termo de consentimento em papel? Podemos partir dele?
 - Quem responde como encarregado de dados da clínica (LGPD, art. 41) e qual contato deve aparecer no termo?
 - Os dados do sistema poderão ser usados em pesquisa, mesmo sem identificação? Se sim, isso pede um consentimento separado.
+
+---
+
+## 11. Ponto de corte do MEEM
+
+**Status:** aberta · **afeta:** RF26 e RN14
+
+O formulário do MEEM que a clínica aplica (`docs/scales/meem.pdf`) não traz faixa interpretativa nenhuma, e a RN14 manda mostrar o escore sempre com a interpretação. O sistema adotou o corte por escolaridade de Brucki et al. (2003): analfabeto 20 · 1 a 4 anos 25 · 5 a 8 anos 26,5 · 9 a 11 anos 28 · acima de 11 anos 29.
+
+**Perguntar:**
+
+- Você usa esse corte por escolaridade ou outro, como o de Bertolucci (1994)?
+- A escolaridade do paciente é perguntada na consulta? Hoje ela é escolhida na hora do exame, porque é ela que define o corte.
+
+**Por que importa:** o mesmo escore muda de interpretação conforme a tabela escolhida, e é a prescritora quem lê esse resultado.
 
 ---
 
