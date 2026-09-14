@@ -3,120 +3,89 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    max-width: 52rem;
-}
-
-.header {
-    align-items: flex-start;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    justify-content: space-between;
-}
-
-.subtitle,
-.status {
-    color: var(--color-text-secondary);
+    gap: var(--space-6);
+    max-width: var(--width-narrow);
 }
 
 .form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-5);
 }
 
-.durationBox,
-.day {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    padding: 1rem 1.25rem;
+.durationField {
+    max-width: 20rem;
 }
 
-.durationBox {
-    max-width: 24rem;
-}
-
+/* um dia por linha, separados por um fio */
 .days {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
     list-style: none;
-    margin: 0;
-    padding: 0;
 }
 
 .day {
+    border-top: 1px solid var(--color-border-light);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+}
+
+.day:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.day:last-child {
+    padding-bottom: 0;
 }
 
 .dayHeader {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
 }
 
 .dayName {
-    font-size: 1rem;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
+    min-width: 7rem;
+}
+
+.dayStatus {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.addButton {
+    margin-left: auto;
 }
 
 .period {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    gap: var(--space-2) var(--space-4);
 }
 
 .timeField {
     align-items: center;
+    color: var(--color-text-secondary);
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .timeField input {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    min-height: 2.75rem;
-    padding: 0 0.6rem;
-}
-
-.actions {
-    display: flex;
-    justify-content: flex-end;
-}
-
-/* o button css global estica todo botao entao aqui o tamanho eh fixo */
-.primaryButton,
-.secondaryButton,
-.removeButton {
-    flex: 0 0 auto;
-    padding: 0 1rem;
-}
-
-.secondaryButton,
-.removeButton {
-    background-color: var(--color-surface);
-}
-
-.secondaryButton {
-    color: var(--color-primary);
-}
-
-.secondaryButton:hover {
-    background-color: var(--color-surface-alt);
+    padding: 0 var(--space-3);
+    width: 8rem;
 }
 
 .removeButton {
-    border-color: var(--color-error);
     color: var(--color-error);
-    min-height: 2.5rem;
 }
 
 .removeButton:hover {

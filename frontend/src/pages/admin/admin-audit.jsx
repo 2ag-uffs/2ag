@@ -1,4 +1,5 @@
 import AuditTrail from "../../components/audit-trail/audit-trail.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import styles from "./admin-audit.module.css";
 
 // auditoria do administrador (RF31)
@@ -6,13 +7,10 @@ import styles from "./admin-audit.module.css";
 export default function AdminAudit() {
     return (
         <section className={styles.page}>
-            <div>
-                <h1>Auditoria</h1>
-                <p className={styles.subtitle}>
-                    Quem abriu ou alterou prontuários, e quando. O paciente aparece só pelo número, sem nome e sem
-                    conteúdo clínico.
-                </p>
-            </div>
+            <PageHeader
+                title="Auditoria"
+                subtitle="Quem abriu ou alterou prontuários, e quando. O paciente aparece só pelo número, sem nome e sem conteúdo clínico."
+            />
             <AuditTrail endpoint="/admin/audit-events" showPatientNumber={true}/>
         </section>
     );

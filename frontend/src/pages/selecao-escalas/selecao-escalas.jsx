@@ -1,5 +1,11 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiSearch} from "react-icons/fi";
+import ChoiceCard from "../../components/choice-card/choice-card.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {FormActions} from "../../components/form-section/form-section.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./selecao-escalas.module.css";
 
@@ -63,7 +69,7 @@ export default function SelecaoEscalas() {
     }
 
     if (!page) {
-        return <p>Carregando escalas...</p>;
+        return <SkeletonPage cards={3}/>;
     }
 
     const visibleScales = page.scales.filter((scale) =>
@@ -98,72 +104,66 @@ export default function SelecaoEscalas() {
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Enviar escalas para {page.patientName}</h1>
-                <p className={styles.subtitle}>
-                    Marque o que o paciente vai responder. Ele recebe um aviso no sistema e a escala aparece no
-                    painel dele, com prazo.
-                </p>
-            </header>
+            <PageHeader
+                title={"Enviar escalas para " + page.patientName}
+                subtitle="Marque o que o paciente vai responder. Ele recebe um aviso no sistema e a escala aparece no painel dele, com prazo."
+            />
 
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
 
-            <label className={styles.search}>
-                <span>Buscar escala</span>
+            <label className={styles.searchBox}>
+                <FiSearch className={styles.searchIcon} aria-hidden="true"/>
                 <input
-                    type="text"
-                    placeholder="Nome da escala"
+                    type="search"
+                    className={styles.search}
+                    placeholder="Buscar escala pelo nome"
+                    aria-label="Buscar escala pelo nome"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                 />
             </label>
 
-            <ul className={styles.list}>
-                {visibleScales.map((scale) => {
-                    const alreadySent = page.waiting.includes(scale.type);
-                    return (
-                        <li key={scale.type} className={styles.item}>
-                            <label className={styles.choice}>
-                                <input
-                                    type="checkbox"
+            {visibleScales.length === 0 ? (
+                <EmptyState icon={FiSearch} message="Nenhuma escala com esse nome." isCompact={true}/>
+            ) : (
+                <ul className={styles.list}>
+                    {visibleScales.map((scale) => {
+                        const alreadySent = page.waiting.includes(scale.type);
+                        return (
+                            <li key={scale.type}>
+                                <ChoiceCard
+                                    title={scale.name}
+                                    description={alreadySent
+                                        ? "Já enviada. Esperando o paciente responder."
+                                        : scale.description}
                                     checked={alreadySent || Boolean(chosen[scale.type])}
                                     disabled={alreadySent || isSending}
                                     onChange={() => toggleScale(scale.type)}
                                 />
-                                <span>
-                                    <strong>{scale.name}</strong>
-                                    <span className={styles.help}>
-                                        {alreadySent
-                                            ? "Já enviada. Esperando o paciente responder."
-                                            : scale.description}
-                                    </span>
-                                </span>
-                            </label>
-                        </li>
-                    );
-                })}
-            </ul>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
 
-            <footer className={styles.footer}>
-                <p className={styles.subtitle}>
+            <FormActions>
+                <p className={styles.counter}>
                     {scalesToSend.length === 0
                         ? "Nenhuma escala marcada."
                         : scalesToSend.length + " escala(s) para enviar."}
                 </p>
-                <div className={styles.actions}>
-                    <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                        Voltar
-                    </button>
-                    <button
-                        type="button"
-                        className="button"
-                        onClick={send}
-                        disabled={scalesToSend.length === 0 || isSending}
-                    >
-                        {isSending ? "Enviando..." : "Enviar ao paciente"}
-                    </button>
-                </div>
-            </footer>
+                <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                    Voltar
+                </button>
+                <button
+                    type="button"
+                    className="button"
+                    onClick={send}
+                    disabled={scalesToSend.length === 0 || isSending}
+                >
+                    {isSending ? "Enviando..." : "Enviar ao paciente"}
+                </button>
+            </FormActions>
         </section>
     );
 }

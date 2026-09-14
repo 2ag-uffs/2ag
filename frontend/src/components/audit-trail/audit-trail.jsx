@@ -1,5 +1,8 @@
 import {useEffect, useState} from "react";
+import {FiShield} from "react-icons/fi";
+import EmptyState from "../empty-state/empty-state.jsx";
 import TextField from "../form/text-field.jsx";
+import {SkeletonBlock} from "../skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./audit-trail.module.css";
 
@@ -117,15 +120,27 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
                     onChange={(event) => setToDate(event.target.value)}
                     required={true}
                 />
-                <button type="submit" className={styles.filterButton}>Filtrar</button>
+                <button type="submit" className="button-secondary">Filtrar</button>
             </form>
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
 
-            {isLoading && <p className={styles.status}>Carregando...</p>}
+            {isLoading && (
+                <ul className={styles.list} role="status" aria-label="Carregando a trilha">
+                    {[0, 1, 2].map((index) => (
+                        <li key={index} className={styles.item}>
+                            <SkeletonBlock width="6rem" height="0.875rem"/>
+                            <div className={styles.details}>
+                                <SkeletonBlock width="14rem" height="1rem"/>
+                                <SkeletonBlock width="9rem" height="0.875rem"/>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
             {!isLoading && trail && events.length === 0 && (
-                <p className={styles.status}>Nenhum registro nesse período.</p>
+                <EmptyState icon={FiShield} message="Nenhum registro nesse período." isCompact={true}/>
             )}
 
             {!isLoading && events.length > 0 && (
@@ -152,7 +167,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
                 <nav className={styles.pagination} aria-label="Páginas da trilha">
                     <button
                         type="button"
-                        className={styles.pageButton}
+                        className="button-secondary button-small"
                         onClick={() => goToPage(page - 1)}
                         disabled={page === 0}
                     >
@@ -161,7 +176,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
                     <span>Página {page + 1} de {trail.totalPages}</span>
                     <button
                         type="button"
-                        className={styles.pageButton}
+                        className="button-secondary button-small"
                         onClick={() => goToPage(page + 1)}
                         disabled={page + 1 >= trail.totalPages}
                     >

@@ -1,6 +1,10 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
+import {FiPlus, FiTrash2} from "react-icons/fi";
+import FormSection, {FormActions} from "../../components/form-section/form-section.jsx";
 import SelectField from "../../components/form/select-field.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {DURATION_OPTIONS, WEEKDAYS} from "../../utils/appointment-labels.js";
 import styles from "./agenda-disponibilidade.module.css";
@@ -109,112 +113,110 @@ export default function AgendaDisponibilidade() {
     };
 
     if (isLoading) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1>Horários de atendimento</h1>
-                    <p className={styles.subtitle}>
-                        Seus pacientes pedem consulta só nestes períodos. Cada período é dividido pela duração da
-                        consulta.
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={() => navigate("/agendamento-prescritor")}
-                >
-                    Voltar para a agenda
-                </button>
-            </div>
+            <PageHeader
+                title="Horários de atendimento"
+                subtitle="Seus pacientes pedem consulta só nestes períodos. Cada período é dividido pela duração da consulta."
+                actions={(
+                    <button type="button" className="button-secondary" onClick={() => navigate("/agendamento-prescritor")}>
+                        Ver a agenda
+                    </button>
+                )}
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
             <form className={styles.form} onSubmit={handleSubmit}>
-                <div className={styles.durationBox}>
-                    <SelectField
-                        label="Duração de cada consulta"
-                        name="appointmentDurationMinutes"
-                        options={DURATION_OPTIONS}
-                        value={durationMinutes}
-                        onChange={(event) => {
-                            setNotice(null);
-                            setDurationMinutes(event.target.value);
-                        }}
-                        disabled={isSaving}
-                    />
-                </div>
+                <FormSection title="Duração das consultas" disabled={isSaving}>
+                    <div className={styles.durationField}>
+                        <SelectField
+                            label="Duração de cada consulta"
+                            name="appointmentDurationMinutes"
+                            options={DURATION_OPTIONS}
+                            value={durationMinutes}
+                            onChange={(event) => {
+                                setNotice(null);
+                                setDurationMinutes(event.target.value);
+                            }}
+                        />
+                    </div>
+                </FormSection>
 
-                <ul className={styles.days}>
-                    {WEEKDAYS.map((weekday) => {
-                        const dayPeriods = periods.filter((period) => period.dayOfWeek === weekday.value);
-                        return (
-                            <li key={weekday.value} className={styles.day}>
-                                <div className={styles.dayHeader}>
-                                    <h2 className={styles.dayName}>{weekday.label}</h2>
-                                    <button
-                                        type="button"
-                                        className={styles.secondaryButton}
-                                        onClick={() => addPeriod(weekday.value)}
-                                        disabled={isSaving}
-                                    >
-                                        Adicionar período
-                                    </button>
-                                </div>
-                                {dayPeriods.length === 0 && <p className={styles.status}>Sem atendimento.</p>}
-                                {dayPeriods.map((period) => (
-                                    <div key={period.key} className={styles.period}>
-                                        <label className={styles.timeField}>
-                                            <span>Das</span>
-                                            <input
-                                                type="time"
-                                                step="300"
-                                                value={period.startTime}
-                                                aria-label={"Início do período de " + weekday.label}
-                                                onChange={(event) => updatePeriod(period.key, "startTime", event.target.value)}
-                                                disabled={isSaving}
-                                            />
-                                        </label>
-                                        <label className={styles.timeField}>
-                                            <span>às</span>
-                                            <input
-                                                type="time"
-                                                step="300"
-                                                value={period.endTime}
-                                                aria-label={"Fim do período de " + weekday.label}
-                                                onChange={(event) => updatePeriod(period.key, "endTime", event.target.value)}
-                                                disabled={isSaving}
-                                            />
-                                        </label>
+                <FormSection
+                    title="Períodos da semana"
+                    description="Adicione um ou mais períodos em cada dia em que você atende."
+                    disabled={isSaving}
+                >
+                    <ul className={styles.days}>
+                        {WEEKDAYS.map((weekday) => {
+                            const dayPeriods = periods.filter((period) => period.dayOfWeek === weekday.value);
+                            return (
+                                <li key={weekday.value} className={styles.day}>
+                                    <div className={styles.dayHeader}>
+                                        <h3 className={styles.dayName}>{weekday.label}</h3>
+                                        {dayPeriods.length === 0 && <span className={styles.dayStatus}>Sem atendimento</span>}
                                         <button
                                             type="button"
-                                            className={styles.removeButton}
-                                            onClick={() => removePeriod(period.key)}
-                                            disabled={isSaving}
-                                            aria-label={"Remover período de " + weekday.label}
+                                            className={"button-tertiary button-small " + styles.addButton}
+                                            onClick={() => addPeriod(weekday.value)}
                                         >
-                                            Remover
+                                            <FiPlus aria-hidden="true"/>
+                                            Adicionar período
                                         </button>
                                     </div>
-                                ))}
-                            </li>
-                        );
-                    })}
-                </ul>
+                                    {dayPeriods.map((period) => (
+                                        <div key={period.key} className={styles.period}>
+                                            <label className={styles.timeField}>
+                                                <span>Das</span>
+                                                <input
+                                                    type="time"
+                                                    step="300"
+                                                    value={period.startTime}
+                                                    aria-label={"Início do período de " + weekday.label}
+                                                    onChange={(event) => updatePeriod(period.key, "startTime", event.target.value)}
+                                                />
+                                            </label>
+                                            <label className={styles.timeField}>
+                                                <span>às</span>
+                                                <input
+                                                    type="time"
+                                                    step="300"
+                                                    value={period.endTime}
+                                                    aria-label={"Fim do período de " + weekday.label}
+                                                    onChange={(event) => updatePeriod(period.key, "endTime", event.target.value)}
+                                                />
+                                            </label>
+                                            <button
+                                                type="button"
+                                                className={"button-tertiary button-small " + styles.removeButton}
+                                                onClick={() => removePeriod(period.key)}
+                                                aria-label={"Remover período de " + weekday.label}
+                                                title="Remover período"
+                                            >
+                                                <FiTrash2 aria-hidden="true"/>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </FormSection>
 
-                <div className={styles.actions}>
-                    <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                <FormActions>
+                    <button type="submit" className="button" disabled={isSaving}>
                         {isSaving ? "Salvando..." : "Salvar horários"}
                     </button>
-                </div>
+                </FormActions>
             </form>
         </section>
     );

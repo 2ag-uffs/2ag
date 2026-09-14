@@ -1,5 +1,6 @@
 import {useLocation, useParams} from "react-router";
 import AuditTrail from "../../components/audit-trail/audit-trail.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import styles from "./patient-audit.module.css";
 
 // historico de acesso ao prontuario de um paciente do prescritor (RF31)
@@ -11,13 +12,11 @@ export default function PatientAudit() {
 
     return (
         <section className={styles.page}>
-            <div>
-                <h1>Histórico de acesso</h1>
-                <p className={styles.subtitle}>
-                    {patientName ? "Prontuário de " + patientName + ". " : ""}
-                    Quem criou, alterou ou abriu os registros, e quando.
-                </p>
-            </div>
+            <PageHeader
+                title="Histórico de acesso"
+                subtitle={(patientName ? "Prontuário de " + patientName + ". " : "")
+                    + "Quem criou, alterou ou abriu os registros, e quando."}
+            />
             <AuditTrail endpoint={"/patients/" + patientId + "/audit-events"} showPatientNumber={false}/>
         </section>
     );

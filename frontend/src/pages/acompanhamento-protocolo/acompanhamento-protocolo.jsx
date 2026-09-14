@@ -1,6 +1,13 @@
 import {useCallback, useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiCalendar, FiMoon} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
+import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
+import TextField from "../../components/form/text-field.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDate, toIsoDate} from "../../utils/date-format.js";
 import styles from "./acompanhamento-protocolo.module.css";
@@ -114,146 +121,162 @@ export default function AcompanhamentoProtocolo() {
     };
 
     if (isLoading) {
-        return <p>Carregando o acompanhamento...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Acompanhamento automático</h1>
-                <p className={styles.subtitle}>
-                    O sistema envia as escalas na frequência escolhida, sem ninguém precisar lembrar.
-                </p>
-            </header>
+            <PageHeader
+                title="Acompanhamento automático"
+                subtitle="O sistema envia as escalas na frequência escolhida, sem ninguém precisar lembrar."
+            />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
             {protocol ? (
-                <section className={styles.card}>
-                    <h2 className={styles.cardTitle}>Em andamento</h2>
-                    <p>
-                        <strong>{protocol.patientName}</strong>, de {formatDate(protocol.startDate)} até
-                        {" " + formatDate(protocol.endDate)}
-                    </p>
-                    {protocol.sleepBedTime && (
-                        <p className={styles.subtitle}>
-                            Programação do diário do sono: dormir às {protocol.sleepBedTime} e levantar
-                            às {protocol.sleepWakeTime}
-                        </p>
+                <Card
+                    title="Em andamento"
+                    headerAction={<span className={styles.status}>Ativo</span>}
+                    footer={(
+                        <>
+                            <button
+                                type="button"
+                                className="button-danger button-small"
+                                onClick={() => setIsEndingOpen(true)}
+                            >
+                                Encerrar acompanhamento
+                            </button>
+                            <button type="button" className="button-secondary button-small" onClick={() => navigate(-1)}>
+                                Voltar
+                            </button>
+                        </>
                     )}
-
-                    <table className={styles.table}>
-                        <thead>
-                        <tr>
-                            <th>Escala</th>
-                            <th>Frequência</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {protocol.items.map((item) => (
-                            <tr key={item.scaleType}>
-                                <td>{item.scaleName}</td>
-                                <td>
-                                    {(PERIODICITIES.find((option) => option.value === item.periodicity) || {}).label}
-                                </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-
-                    <div className={styles.actions}>
-                        <button type="button" className="button-secondary" onClick={() => setIsEndingOpen(true)}>
-                            Encerrar acompanhamento
-                        </button>
-                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                            Voltar
-                        </button>
+                >
+                    <div className={styles.facts}>
+                        <span className={styles.fact}>
+                            <FiCalendar aria-hidden="true"/>
+                            {protocol.patientName}: {formatDate(protocol.startDate)} até {formatDate(protocol.endDate)}
+                        </span>
+                        {protocol.sleepBedTime && (
+                            <span className={styles.fact}>
+                                <FiMoon aria-hidden="true"/>
+                                Dormir às {protocol.sleepBedTime} e levantar às {protocol.sleepWakeTime}
+                            </span>
+                        )}
                     </div>
-                </section>
+
+                    <div className={styles.tableWrap}>
+                        <table className={styles.table}>
+                            <thead>
+                            <tr>
+                                <th>Escala</th>
+                                <th>Frequência</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {protocol.items.map((item) => (
+                                <tr key={item.scaleType}>
+                                    <td>{item.scaleName}</td>
+                                    <td>
+                                        {(PERIODICITIES.find((option) => option.value === item.periodicity) || {}).label}
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
             ) : (
                 <form className={styles.form} onSubmit={create}>
-                    <div className={styles.fields}>
-                        <label className={styles.field}>
-                            <span>Começa em</span>
-                            <input
+                    <FormSection title="Período" disabled={isSaving}>
+                        <FieldRow>
+                            <TextField
+                                label="Começa em"
+                                name="startDate"
                                 type="date"
                                 value={startDate}
                                 required={true}
                                 onChange={(event) => setStartDate(event.target.value)}
                             />
-                        </label>
-                        <label className={styles.field}>
-                            <span>Duração em dias</span>
-                            <input
+                            <TextField
+                                label="Duração em dias"
+                                name="durationDays"
                                 type="number"
                                 min="1"
                                 value={durationDays}
                                 required={true}
                                 onChange={(event) => setDurationDays(event.target.value)}
                             />
-                        </label>
-                    </div>
+                        </FieldRow>
+                    </FormSection>
 
-                    <ul className={styles.list}>
-                        {scales.map((scale) => (
-                            <li key={scale.type} className={styles.item}>
-                                <label className={styles.choice}>
-                                    <input
-                                        type="checkbox"
+                    <FormSection
+                        title="Escalas e frequência"
+                        description="Marque as escalas e escolha de quanto em quanto tempo cada uma é enviada."
+                        disabled={isSaving}
+                    >
+                        <ul className={styles.list}>
+                            {scales.map((scale) => (
+                                <li key={scale.type}>
+                                    <ChoiceCard
+                                        title={scale.name}
+                                        description={scale.description}
                                         checked={Boolean(chosen[scale.type])}
                                         onChange={() => toggleScale(scale.type)}
-                                    />
-                                    <span>
-                                        <strong>{scale.name}</strong>
-                                        <span className={styles.help}>{scale.description}</span>
-                                    </span>
-                                </label>
-                                {chosen[scale.type] && (
-                                    <select
-                                        aria-label={"Frequência de " + scale.name}
-                                        value={chosen[scale.type]}
-                                        onChange={(event) => changePeriodicity(scale.type, event.target.value)}
                                     >
-                                        {PERIODICITIES.map((option) => (
-                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                        ))}
-                                    </select>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
+                                        {chosen[scale.type] && (
+                                            <select
+                                                className={styles.select}
+                                                aria-label={"Frequência de " + scale.name}
+                                                value={chosen[scale.type]}
+                                                onChange={(event) => changePeriodicity(scale.type, event.target.value)}
+                                            >
+                                                {PERIODICITIES.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                    </ChoiceCard>
+                                </li>
+                            ))}
+                        </ul>
+                    </FormSection>
 
                     {/* a programacao de horarios q aparece no topo do diario do sono (RF22) */}
                     {chosen.REGISTRO_SONO && (
-                        <div className={styles.fields}>
-                            <label className={styles.field}>
-                                <span>Programação: ir dormir às</span>
-                                <input
+                        <FormSection
+                            title="Programação do diário do sono"
+                            description="Aparece no topo do diário, para o paciente lembrar dos horários combinados."
+                            disabled={isSaving}
+                        >
+                            <FieldRow>
+                                <TextField
+                                    label="Ir dormir às"
+                                    name="sleepBedTime"
                                     type="time"
                                     value={sleepBedTime}
                                     onChange={(event) => setSleepBedTime(event.target.value)}
                                 />
-                            </label>
-                            <label className={styles.field}>
-                                <span>Levantar às</span>
-                                <input
+                                <TextField
+                                    label="Levantar às"
+                                    name="sleepWakeTime"
                                     type="time"
                                     value={sleepWakeTime}
                                     onChange={(event) => setSleepWakeTime(event.target.value)}
                                 />
-                            </label>
-                        </div>
+                            </FieldRow>
+                        </FormSection>
                     )}
 
-                    <div className={styles.actions}>
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Iniciando..." : "Iniciar acompanhamento"}
-                        </button>
+                    <FormActions>
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Cancelar
                         </button>
-                    </div>
+                        <button type="submit" className="button" disabled={isSaving}>
+                            {isSaving ? "Iniciando..." : "Iniciar acompanhamento"}
+                        </button>
+                    </FormActions>
                 </form>
             )}
 

@@ -1,6 +1,11 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import {FiCheckCircle} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
+import {FormActions} from "../../components/form-section/form-section.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDateTime} from "../../utils/date-format.js";
 import {answersPayload} from "../../utils/scale-answers.js";
@@ -76,28 +81,27 @@ export default function MiniExame() {
     }
 
     if (!definition || !appointment) {
-        return <p>Carregando o exame...</p>;
+        return <SkeletonPage cards={1}/>;
     }
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>{definition.title}</h1>
-                <p className={styles.subtitle}>
-                    {appointment.patientName} · consulta de {formatDateTime(appointment.dateTime)}
-                </p>
-            </header>
+            <PageHeader
+                title={definition.title}
+                subtitle={appointment.patientName + " · consulta de " + formatDateTime(appointment.dateTime)}
+            />
 
             {savedExam ? (
-                <div className={styles.saved}>
-                    <p className={styles.result}>
-                        {savedExam.score} de {definition.maxScore}
-                        {savedExam.scoreBand ? " · " + savedExam.scoreBand : ""}
-                    </p>
-                    <p className={styles.subtitle}>
-                        O resultado fica no histórico do paciente junto com a consulta.
-                    </p>
-                    <div className={styles.actions}>
+                <Card>
+                    <div className={styles.result}>
+                        <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
+                        <div>
+                            <p className={styles.score}>{savedExam.score} de {definition.maxScore}</p>
+                            {savedExam.scoreBand && <p className={styles.hint}>{savedExam.scoreBand}</p>}
+                        </div>
+                    </div>
+                    <p className={styles.hint}>O resultado fica no histórico do paciente junto com a consulta.</p>
+                    <div className={styles.nextSteps}>
                         <button
                             type="button"
                             className="button"
@@ -106,10 +110,10 @@ export default function MiniExame() {
                             Ver histórico do paciente
                         </button>
                     </div>
-                </div>
+                </Card>
             ) : (
                 <form className={styles.form} onSubmit={save}>
-                    <p className={styles.subtitle}>{definition.instruction}</p>
+                    <p className={styles.hint}>{definition.instruction}</p>
                     {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
                     <ScaleForm
@@ -119,14 +123,14 @@ export default function MiniExame() {
                         disabled={isSaving}
                     />
 
-                    <div className={styles.actions}>
+                    <FormActions>
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Voltar
                         </button>
                         <button type="submit" className="button" disabled={isSaving}>
                             {isSaving ? "Salvando..." : "Salvar exame"}
                         </button>
-                    </div>
+                    </FormActions>
                 </form>
             )}
         </section>
