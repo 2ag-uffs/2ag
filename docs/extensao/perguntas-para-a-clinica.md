@@ -111,20 +111,7 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 ---
 
-## 8. Agenda do Amplimed
-
-**Status:** aberta · **afeta:** escopo da agenda (RF10 e RF11)
-
-**Perguntar:**
-
-- A agenda do Amplimed já está em uso na clínica?
-- Se estiver, faz sentido manter uma segunda agenda no 2ag, ou basta registrar as consultas que já aconteceram?
-
-**Por que importa:** manter duas agendas obriga a lançar cada horário duas vezes, que é justamente o retrabalho que o sistema existe para eliminar.
-
----
-
-## 9. Lembrete de dose
+## 8. Lembrete de dose
 
 **Status:** aberta · **afeta:** RF34
 
@@ -135,7 +122,7 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 ---
 
-## 10. Termo de consentimento do sistema
+## 9. Termo de consentimento do sistema
 
 **Status:** aberta · **trava:** RF36 e o início do piloto
 
@@ -149,7 +136,7 @@ O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a
 
 ---
 
-## 11. Ponto de corte do MEEM
+## 10. Ponto de corte do MEEM
 
 **Status:** aberta · **afeta:** RF26 e RN14
 

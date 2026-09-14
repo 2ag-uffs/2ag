@@ -29,7 +29,7 @@ Sistema web responsivo para gestão clínica de tratamento com fitocanabinoides,
 
 **O que o sistema é:** um prontuário especializado em acompanhamento longitudinal, que automatiza a coleta periódica de dados sintomáticos e entrega evolução visualizável ao prescritor.
 
-**O que o sistema não é:** não é ERP de clínica (sem faturamento, estoque ou financeiro), não comercializa produtos, não substitui o prontuário legal da clínica (Amplimed) — convive com ele via exportação.
+**O que o sistema não é:** não é ERP de clínica (sem faturamento, estoque ou financeiro), não comercializa produtos, não substitui o prontuário legal da clínica — convive com ele via exportação.
 
 ### 2.1 Perfis de usuário
 
@@ -50,7 +50,7 @@ Sistema web responsivo para gestão clínica de tratamento com fitocanabinoides,
 | Item (origem v1.0) | Justificativa |
 |---|---|
 | **Integração com WhatsApp** (RNF10; tabelas de necessidades §1.5) | Exige conta comercial verificada, templates aprovados pela Meta e custo por conversa. Uma integração parcial é pior que nenhuma: gera expectativa de canal oficial sem confiabilidade. **Substituído por** notificação in-app (RF14/RF15) + e-mail (RF34), que atendem a mesma necessidade — comunicação entre consultas |
-| **Integração com Amplimed** (RNF09) | O próprio documento original a classifica como "futura". Não há API pública. **Substituído por** exportação em formatos abertos (RF33) |
+| **Integração com o prontuário da clínica** (RNF09) | O próprio documento original a classifica como "futura". **Substituído por** exportação em formatos abertos (RF33) |
 | **RF16 — Tela de relatórios do paciente** | Sobrepõe RF12 (histórico) e RF27 (progresso). **Consolidado** em RF33, como ação de exportar dentro dessas telas |
 | **RF17 — Tela de relatórios do prescritor** | Mesma justificativa. Consolidado em RF33 |
 
@@ -512,7 +512,7 @@ Incluir nova escala clínica, campo de formulário ou ajuste de fluxo não exige
 *Critério de aceite:* acrescentar uma escala pontuada não exige alteração no serviço de progresso (RF27) nem na central de escalas (RF08). Os metadados da escala — nome de exibição, rota, atributos monitoráveis — vivem em um único lugar.
 
 **RNF09 — Interoperabilidade** · `alterado` · **I**
-Exportação em formatos abertos, PDF e CSV (RF33). *Integração direta com Amplimed fora de escopo (§3.1).*
+Exportação em formatos abertos, PDF e CSV (RF33). *Integração direta com o prontuário da clínica fora de escopo (§3.1).*
 
 **RNF10 — Integração com comunicação** · `descartado` · —
 Ver §3.1. Substituído por notificação in-app e e-mail.
@@ -714,7 +714,7 @@ O RNF07 (backup automático com restauração testada) permanece essencial e é 
 
 O RF03 (tela inicial) sai do módulo de acesso e identidade e passa para depois do módulo de escalas, porque reúne consultas, escalas e formulários que só são reescritos nesses módulos (decisão de 13/09/2026).
 
-As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 10.
+As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 9.
 
 **Acesso e identidade concluído em 13/09/2026:** RF01, RN06, RF02.1, RF36, RF18 e RF35. O vínculo do paciente passou a ser por convite de uso único, o cadastro exige o aceite do termo (ainda em rascunho) e a recuperação de senha grava o link no log da API até o envio de e-mail ser configurado.
 
@@ -767,7 +767,7 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 - **Motor único:** uma tabela de respostas para todas as escalas, um cálculo por instrumento e a definição de cada escala — itens, âncoras, faixas e direção — em um só lugar, servida a um formulário genérico. Escala nova não pede tabela nem tela nova (RNF08). Saíram sete tabelas, sete serviços e seis telas.
 - **Formulários conferidos com o papel:** os itens e as âncoras saem dos formulários de `docs/scales`, inclusive as que mudam de sentido de um item para outro — na dor 10 é ruim e no sono 10 é bom (RF20).
-- **Escalas validadas:** HAM-A com os 14 itens e escore de 0 a 56, PSQI calculado pelos 7 componentes de 0 a 21 e MEEM com as 11 seções, de 0 a 30. A faixa do MEEM usa o ponto de corte por escolaridade de Brucki 2003, registrada junto com a data da avaliação (decisão de 13/09/2026, a confirmar com a clínica na pergunta 11).
+- **Escalas validadas:** HAM-A com os 14 itens e escore de 0 a 56, PSQI calculado pelos 7 componentes de 0 a 21 e MEEM com as 11 seções, de 0 a 30. A faixa do MEEM usa o ponto de corte por escolaridade de Brucki 2003, registrada junto com a data da avaliação (decisão de 13/09/2026, a confirmar com a clínica na pergunta 10).
 - **Tarefa com prazo:** cada envio vale por um período. Sem resposta até o fim do prazo, a tarefa fica como não respondida, vira lacuna no gráfico (RN10) e o período seguinte é enviado, em vez de a mesma pendência arrastar para sempre.
 - **Diários:** a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. A tarefa mostra quantos dias já foram preenchidos e fecha no fim do período; a semana sem nenhum dia conta como não respondida.
 - **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição.
