@@ -70,6 +70,6 @@ com `SEED_DADOS_TESTE=true`, a primeira subida cria três contas, todas com a se
 | prescritor | Ana Lima | `prescritor@email.com` |
 | paciente | Maria Souza | `paciente@email.com` |
 
-junto vêm dados fictícios para demonstração: consultas, prescrições, diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`, todos `@email.com` com a mesma senha).
+junto vêm dados fictícios para demonstração: consultas, prescrições, diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`) e um segundo prescritor (`carlos.pereira`), todos `@email.com` com a mesma senha.
 
 o seed nunca pode ser ligado em produção.

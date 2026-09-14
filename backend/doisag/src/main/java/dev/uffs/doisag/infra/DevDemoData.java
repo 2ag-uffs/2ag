@@ -1,12 +1,14 @@
 package dev.uffs.doisag.infra;
 
 import dev.uffs.doisag.dto.AnamnesisDTO;
+import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.AvailabilityDTO;
 import dev.uffs.doisag.dto.AvailabilityPeriodDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.dto.DoseEscalationStepDTO;
+import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionComponentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
@@ -33,6 +35,7 @@ import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.AvailabilityService;
 import dev.uffs.doisag.service.ConsultationService;
 import dev.uffs.doisag.service.PatientArchiveService;
+import dev.uffs.doisag.service.PrescriberService;
 import dev.uffs.doisag.service.PrescriptionService;
 import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
@@ -94,6 +97,7 @@ public class DevDemoData {
     private final TreatmentProtocolService treatmentProtocolService;
     private final AppointmentService appointmentService;
     private final PatientArchiveService patientArchiveService;
+    private final PrescriberService prescriberService;
 
     public DevDemoData(UsersRepository usersRepository, PatientRepository patientRepository,
                        NotificationRepository notificationRepository, PasswordEncoder passwordEncoder,
@@ -101,7 +105,7 @@ public class DevDemoData {
                        PrescriptionService prescriptionService, AnamnesisService anamnesisService,
                        ScaleResponseService scaleResponseService, ScaleTaskService scaleTaskService,
                        TreatmentProtocolService treatmentProtocolService, AppointmentService appointmentService,
-                       PatientArchiveService patientArchiveService) {
+                       PatientArchiveService patientArchiveService, PrescriberService prescriberService) {
         this.usersRepository = usersRepository;
         this.patientRepository = patientRepository;
         this.notificationRepository = notificationRepository;
@@ -115,6 +119,7 @@ public class DevDemoData {
         this.treatmentProtocolService = treatmentProtocolService;
         this.appointmentService = appointmentService;
         this.patientArchiveService = patientArchiveService;
+        this.prescriberService = prescriberService;
     }
 
     public void create(Prescriber prescriber, Patient maria, String password) {
@@ -156,6 +161,9 @@ public class DevDemoData {
             createRenataRecent(prescriber, renata, today);
             // paciente novo so com a ficha de avaliacao inicial pra responder
             scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, 7);
+            // outro prescritor da clinica pra lista da administracao n ficar com um nome so
+            prescriberService.create(new PrescriberCreateDTO("Carlos Pereira", "carlos.pereira@email.com", password,
+                    validCpf("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico", "CRM", "23456"));
 
             log.info("seed de desenvolvimento criou os dados de demonstracao");
         } catch (RuntimeException exception) {
@@ -220,9 +228,38 @@ public class DevDemoData {
             }
         }
 
+        // tres hamilton caindo de ansiedade moderada pra leve
         ScaleResponseDTO firstHamilton = hamilton(maria, firstDay, 3, 2, 1, 3, 2, 2, 2, 1, 1, 1, 2, 0, 2, 2);
         scaleResponseService.review(firstHamilton.id(), prescriber);
+        ScaleResponseDTO middleHamilton = hamilton(maria, today.minusDays(35), 2, 2, 1, 2, 1, 2, 1, 1, 1, 0, 1, 0, 1, 2);
+        scaleResponseService.review(middleHamilton.id(), prescriber);
         hamilton(maria, today.minusDays(14), 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1);
+
+        // o MEEM eh do prescritor e foi aplicado na primeira consulta
+        Map<String, Object> mentalStateAnswers = new LinkedHashMap<>();
+        mentalStateAnswers.put("escolaridade", 4);
+        mentalStateAnswers.put("orientacaoTemporal", 5);
+        mentalStateAnswers.put("orientacaoEspacial", 5);
+        mentalStateAnswers.put("registro", 3);
+        mentalStateAnswers.put("atencaoECalculo", 4);
+        mentalStateAnswers.put("memoriaEvocacao", 2);
+        mentalStateAnswers.put("nomeacao", 2);
+        mentalStateAnswers.put("repeticao", 1);
+        mentalStateAnswers.put("comando", 3);
+        mentalStateAnswers.put("leitura", 1);
+        mentalStateAnswers.put("escrita", 1);
+        mentalStateAnswers.put("copia", 1);
+        scaleResponseService.applyMentalStateExam(firstConsultation.getId(),
+                new ScaleResponseCreateDTO(null, null, mentalStateAnswers), prescriber);
+
+        // duas semanas de diario do sono com algumas noites sem registro
+        LocalDate firstSleepDay = today.minusDays(14);
+        for (int day = 0; day < 14; day++) {
+            if (day % 4 == 2) {
+                continue;
+            }
+            sleepDiaryNight(maria, firstSleepDay.plusDays(day), day);
+        }
 
         treatmentProtocolService.create(maria.getId(), new TreatmentProtocolCreateDTO(today.minusDays(30), 90,
                 LocalTime.of(23, 0), LocalTime.of(7, 0), List.of(
@@ -246,17 +283,35 @@ public class DevDemoData {
     }
 
     // um dia do diario da maria
-    // a dor cai e o resto melhora aos poucos com um sobe e desce de um ponto
+    // a dor cai e o resto melhora aos poucos com um sobe e desce leve de um dia pro outro
     private ScaleResponseDTO mariaFollowUpDay(Patient maria, LocalDate firstDay, int day) {
-        int wobble = (day * 7) % 3 - 1;
+        int[] dayToDayChange = {0, 1, 0, 0, -1};
         int drops = Math.min(3 + day / 7, 5);
-        int pain = trend(8, 3, day, 55) + wobble;
-        int sleep = trend(3, 7, day, 55) - wobble;
-        int mood = trend(4, 7, day, 55) + day % 2;
-        int calm = trend(4, 7, day, 55) - day % 2;
+        int pain = trend(8, 3, day, 55) + dayToDayChange[day % 5];
+        int sleep = trend(3, 7, day, 55) - dayToDayChange[day % 5];
+        int mood = trend(4, 7, day, 55) - dayToDayChange[(day + 2) % 5];
+        int calm = trend(4, 7, day, 55) - dayToDayChange[(day + 3) % 5];
         int energy = trend(4, 7, day, 55);
         return followUpDay(maria, firstDay.plusDays(day), 0, drops, pain, sleep, mood, calm, energy,
                 MARIA_COMMENTS.get(day));
+    }
+
+    // uma noite do diario do sono da maria
+    // ela demora menos pra dormir e acorda menos vezes conforme os dias passam
+    private void sleepDiaryNight(Patient maria, LocalDate night, int day) {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", day % 3 == 0 ? "23:30" : "23:00");
+        answers.put("horarioLevantar", "06:50");
+        answers.put("tempoAteDormir", trend(40, 15, day, 13));
+        answers.put("vezesQueAcordou", trend(3, 1, day, 13));
+        answers.put("tempoAcordadoNoite", trend(45, 10, day, 13));
+        answers.put("diaComum", true);
+        answers.put("cansaco", trend(4, 2, day, 13));
+        answers.put("estresse", trend(3, 1, day, 13));
+        answers.put("sonolenciaDiurna", trend(3, 1, day, 13));
+        answers.put("xicarasCafe", 2);
+        scaleResponseService.answer(maria.getId(), ScaleType.REGISTRO_SONO,
+                new ScaleResponseCreateDTO(night, night, answers));
     }
 
     // ansiedade q melhorou mas ainda aperta no fim da tarde
@@ -333,6 +388,11 @@ public class DevDemoData {
             if (firstDay.plusDays(day).isBefore(today.minusDays(7))) {
                 scaleResponseService.review(response.id(), prescriber);
             }
+            // registro com erro n eh apagado e fica anulado com o motivo
+            if (day == 4) {
+                scaleResponseService.annul(response.id(), new AnnulmentDTO(
+                        "A paciente anotou neste dia as gotas da semana anterior e fez o registro de novo."), prescriber);
+            }
         }
 
         // enviada ha doze dias com uma semana de prazo entao ja venceu
@@ -368,6 +428,10 @@ public class DevDemoData {
                 "Sono regular depois do ajuste de rotina.", "Insônia inicial",
                 "Alta do acompanhamento com orientação de higiene do sono.", "118/76");
         patientArchiveService.archive(carla.getId(), prescriber);
+        // o arquivo fica com a data da alta e n com o dia em q o seed rodou
+        Patient archivedCarla = patientRepository.findById(carla.getId()).orElseThrow();
+        archivedCarla.setArchivedAt(pastWorkingDay(today.minusDays(88)).atTime(16, 0));
+        patientRepository.save(archivedCarla);
     }
 
     private Patient createPatient(String name, String email, String firstNineCpfDigits, LocalDate birthDate,
