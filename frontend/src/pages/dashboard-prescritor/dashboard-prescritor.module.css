@@ -84,8 +84,7 @@ button.statAttention:hover {
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
 }
 
-.empty,
-.loading {
+.empty {
     color: var(--color-text-secondary);
 }
 

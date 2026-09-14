@@ -3,121 +3,164 @@
 .page {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    max-width: 60rem;
-}
-
-.header {
-    align-items: flex-start;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    justify-content: space-between;
-}
-
-.subtitle,
-.status {
-    color: var(--color-text-secondary);
+    gap: var(--space-6);
+    max-width: var(--width-default);
 }
 
 .toolbar {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: var(--space-3);
     justify-content: space-between;
 }
 
-.filters {
-    display: flex;
-    gap: 0.5rem;
+/* abas de ativos e arquivados, lado a lado dentro de uma capsula */
+.tabs {
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    gap: var(--space-1);
+    padding: var(--space-1);
+}
+
+.tab {
+    background-color: transparent;
+    border: none;
+    border-radius: var(--radius-pill);
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    min-height: var(--control-height-small);
+    padding: var(--space-1) var(--space-4);
+}
+
+.tab:hover {
+    background-color: rgba(255, 255, 255, 0.6);
+    color: var(--color-text-primary);
+}
+
+.tabActive,
+.tabActive:hover {
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-primary);
+}
+
+.searchBox {
+    display: block;
+    flex: 0 1 20rem;
+    min-width: 0;
+    position: relative;
+}
+
+.searchIcon {
+    color: var(--color-text-secondary);
+    left: var(--space-3);
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .search {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    max-width: 100%;
-    min-height: 2.75rem;
-    padding: 0 0.9rem;
-    width: 18rem;
+    padding-left: 2.5rem;
+    width: 100%;
 }
 
 .list {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3);
     list-style: none;
-    margin: 0;
-    padding: 0;
 }
 
-.card {
+.row {
     align-items: center;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem 1rem;
+    gap: var(--space-3) var(--space-4);
     justify-content: space-between;
-    padding: 1rem 1.25rem;
+    padding: var(--space-4) var(--space-5);
+    transition: box-shadow var(--duration-fast) var(--easing-standard);
 }
 
-.patientInfo {
+.row:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.patient {
     align-items: center;
     display: flex;
-    gap: 0.75rem;
+    flex: 1 1 16rem;
+    gap: var(--space-3);
     min-width: 0;
 }
 
 .avatar {
     align-items: center;
     background-color: var(--color-primary-soft);
-    border-radius: 50%;
+    border-radius: var(--radius-pill);
     color: var(--color-primary);
     display: flex;
     flex: 0 0 auto;
+    font-size: var(--text-sm);
     font-weight: 700;
     height: 2.75rem;
     justify-content: center;
+    letter-spacing: 0.02em;
     width: 2.75rem;
 }
 
+.avatarArchived {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}
+
+.patientText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+/* nome da lista na fonte do texto, q le melhor em tamanho pequeno */
 .patientName {
-    font-size: 1.05rem;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: var(--text-md);
+    font-weight: 600;
     overflow-wrap: anywhere;
+}
+
+.details {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
 }
 
 .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
-/* o button css global estica todo botao entao aqui o tamanho eh fixo */
-.primaryButton,
-.secondaryButton,
-.filterButton,
-.filterButtonActive {
-    flex: 0 0 auto;
-    padding: 0 1rem;
-}
+@media (max-width: 47.99rem) {
+    .searchBox {
+        flex-basis: 100%;
+    }
 
-.secondaryButton,
-.filterButton {
-    background-color: var(--color-surface);
-    color: var(--color-primary);
-}
+    .row {
+        padding: var(--space-4);
+    }
 
-.secondaryButton:hover,
-.filterButton:hover {
-    background-color: var(--color-surface-alt);
-}
+    .actions {
+        width: 100%;
+    }
 
-.filterButton,
-.filterButtonActive {
-    border-radius: 999px;
-    min-height: 2.5rem;
+    .actions button {
+        flex: 1 1 auto;
+    }
 }

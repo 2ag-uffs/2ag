@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {formatDate, formatDateTime, formatTime} from "../../utils/date-format.js";
@@ -46,7 +47,7 @@ export default function DashboardPrescritor() {
     }
 
     if (!panel) {
-        return <p className={styles.loading}>Carregando o painel...</p>;
+        return <SkeletonPage cards={3} stats={4}/>;
     }
 
     // o painel chama a pessoa pelo primeiro nome e pula titulo tipo dra.

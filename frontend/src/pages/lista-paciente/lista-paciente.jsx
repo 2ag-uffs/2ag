@@ -1,7 +1,11 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
+import {FiSearch, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
 import styles from "./lista-paciente.module.css";
@@ -15,6 +19,16 @@ function patientDetailsOf(patient) {
         return ageText + " · no arquivo desde " + formatDate(patient.archivedAt);
     }
     return ageText;
+}
+
+// as iniciais do primeiro e do ultimo nome, pro circulo ao lado do nome
+function initialsOf(name) {
+    const words = name.split(" ").filter((word) => word !== "");
+    if (words.length === 0) {
+        return "?";
+    }
+    const lastWord = words.length > 1 ? words[words.length - 1] : "";
+    return (words[0].charAt(0) + lastWord.charAt(0)).toUpperCase();
 }
 
 // carteira de pacientes do prescritor
@@ -112,28 +126,26 @@ export default function ListaPacientes() {
     if (patients.length === 0) {
         emptyMessage = showArchived
             ? "Nenhum paciente no arquivo."
-            : "Você ainda não tem pacientes ativos. Use Convidar paciente para enviar o link de cadastro.";
+            : "Você ainda não tem pacientes ativos. Envie o link de cadastro para o primeiro.";
     }
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1>Meus pacientes</h1>
-                    <p className={styles.subtitle}>
-                        Abra o histórico para ver consultas, prescrições, anamnese e escalas do paciente.
-                    </p>
-                </div>
-                <button type="button" className={styles.primaryButton} onClick={() => setIsInviteOpen(true)}>
-                    Convidar paciente
-                </button>
-            </div>
+            <PageHeader
+                title="Meus pacientes"
+                subtitle="Abra o histórico para ver consultas, prescrições, anamnese e escalas do paciente."
+                actions={(
+                    <button type="button" className="button" onClick={() => setIsInviteOpen(true)}>
+                        Convidar paciente
+                    </button>
+                )}
+            />
 
             <div className={styles.toolbar}>
-                <div className={styles.filters} role="group" aria-label="Quais pacientes mostrar">
+                <div className={styles.tabs} role="group" aria-label="Quais pacientes mostrar">
                     <button
                         type="button"
-                        className={showArchived ? styles.filterButton : styles.filterButtonActive}
+                        className={showArchived ? styles.tab : styles.tab + " " + styles.tabActive}
                         aria-pressed={!showArchived}
                         onClick={() => changeList(false)}
                     >
@@ -141,48 +153,79 @@ export default function ListaPacientes() {
                     </button>
                     <button
                         type="button"
-                        className={showArchived ? styles.filterButtonActive : styles.filterButton}
+                        className={showArchived ? styles.tab + " " + styles.tabActive : styles.tab}
                         aria-pressed={showArchived}
                         onClick={() => changeList(true)}
                     >
                         Arquivados
                     </button>
                 </div>
-                <input
-                    type="search"
-                    className={styles.search}
-                    placeholder="Buscar pelo nome"
-                    aria-label="Buscar paciente pelo nome"
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                />
+                <label className={styles.searchBox}>
+                    <FiSearch className={styles.searchIcon} aria-hidden="true"/>
+                    <input
+                        type="search"
+                        className={styles.search}
+                        placeholder="Buscar pelo nome"
+                        aria-label="Buscar paciente pelo nome"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                    />
+                </label>
             </div>
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
 
-            {isLoading && <p className={styles.status}>Carregando...</p>}
+            {isLoading && (
+                <ul className={styles.list} role="status" aria-label="Carregando pacientes">
+                    {[0, 1, 2, 3].map((index) => (
+                        <li key={index} className={styles.row}>
+                            <div className={styles.patient}>
+                                <SkeletonBlock width="2.75rem" height="2.75rem" isRound={true}/>
+                                <div className={styles.patientText}>
+                                    <SkeletonBlock width="12rem" height="1rem"/>
+                                    <SkeletonBlock width="7rem" height="0.875rem"/>
+                                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
             {!isLoading && loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
             {!isLoading && !loadError && visiblePatients.length === 0 && (
-                <p className={styles.status}>{emptyMessage}</p>
+                <EmptyState
+                    icon={FiUsers}
+                    message={emptyMessage}
+                    action={patients.length === 0 && !showArchived ? (
+                        <button type="button" className="button" onClick={() => setIsInviteOpen(true)}>
+                            Convidar paciente
+                        </button>
+                    ) : null}
+                />
             )}
 
             {!isLoading && !loadError && visiblePatients.length > 0 && (
                 <ul className={styles.list}>
                     {visiblePatients.map((patient) => (
-                        <li key={patient.id} className={styles.card}>
-                            <div className={styles.patientInfo}>
-                                <span className={styles.avatar} aria-hidden="true">{patient.name.charAt(0)}</span>
-                                <div>
+                        <li key={patient.id} className={styles.row}>
+                            <div className={styles.patient}>
+                                <span
+                                    className={patient.archived ? styles.avatar + " " + styles.avatarArchived : styles.avatar}
+                                    aria-hidden="true"
+                                >
+                                    {initialsOf(patient.name)}
+                                </span>
+                                <div className={styles.patientText}>
                                     <h2 className={styles.patientName}>{patient.name}</h2>
-                                    <p className={styles.status}>{patientDetailsOf(patient)}</p>
+                                    <p className={styles.details}>{patientDetailsOf(patient)}</p>
                                 </div>
                             </div>
                             <div className={styles.actions}>
                                 <button
                                     type="button"
-                                    className={styles.primaryButton}
+                                    className="button button-small"
                                     onClick={() => navigate("/paciente/" + patient.id + "/historico")}
                                 >
                                     Abrir histórico
@@ -191,14 +234,14 @@ export default function ListaPacientes() {
                                     <>
                                         <button
                                             type="button"
-                                            className={styles.secondaryButton}
+                                            className="button-secondary button-small"
                                             onClick={() => navigate("/paciente/" + patient.id + "/consulta/nova")}
                                         >
                                             Nova consulta
                                         </button>
                                         <button
                                             type="button"
-                                            className={styles.secondaryButton}
+                                            className="button-tertiary button-small"
                                             onClick={() => setPatientToArchive(patient)}
                                             disabled={busyPatientId === patient.id}
                                         >
@@ -209,7 +252,7 @@ export default function ListaPacientes() {
                                 {patient.archived && (
                                     <button
                                         type="button"
-                                        className={styles.secondaryButton}
+                                        className="button-secondary button-small"
                                         onClick={() => reactivatePatient(patient)}
                                         disabled={busyPatientId === patient.id}
                                     >

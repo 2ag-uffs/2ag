@@ -14,7 +14,6 @@
 }
 
 .empty,
-.loading,
 .meta {
     color: var(--color-text-secondary);
 }

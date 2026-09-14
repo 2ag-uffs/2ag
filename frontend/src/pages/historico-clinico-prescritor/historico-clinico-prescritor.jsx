@@ -1,12 +1,25 @@
 import {useEffect, useState} from "react";
 import {useLocation, useNavigate, useParams} from "react-router";
+import {
+    FiActivity,
+    FiArchive,
+    FiCalendar,
+    FiDownload,
+    FiFileText,
+    FiRepeat,
+    FiShield,
+    FiTrendingUp,
+} from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import ExportModal from "../../components/export-modal/export-modal.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture} from "../../utils/date-format.js";
 import styles from "./historico-clinico-prescritor.module.css";
@@ -22,6 +35,7 @@ export default function HistoricoClinicoPrescritor() {
     const [loadError, setLoadError] = useState(null);
     // quem salvou algo em outra tela chega aqui com esse aviso
     const [notice, setNotice] = useState(location.state && location.state.notice);
+    const [actionError, setActionError] = useState(null);
     // o registro q o prescritor escolheu anular e q abre o modal
     const [annulmentTarget, setAnnulmentTarget] = useState(null);
     // o painel de exportacao do paciente (RF33)
@@ -60,12 +74,13 @@ export default function HistoricoClinicoPrescritor() {
 
     // marcar como analisada trava a correcao do paciente naquela resposta
     const reviewScale = async (response) => {
+        setActionError(null);
         try {
             await apiService.put("/scales/responses/" + response.id + "/review");
             setNotice("Escala marcada como analisada. O paciente não corrige mais essa resposta.");
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
-            setNotice(requestError instanceof ApiError
+            setActionError(requestError instanceof ApiError
                 ? requestError.message
                 : "Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
         }
@@ -78,11 +93,11 @@ export default function HistoricoClinicoPrescritor() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao">{loadError}</p>;
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
     if (history === null) {
-        return <p className={styles.status}>Carregando...</p>;
+        return <SkeletonPage cards={3}/>;
     }
 
     const {patient, appointments, prescriptions, anamneses, scalesPage} = history;
@@ -112,28 +127,28 @@ export default function HistoricoClinicoPrescritor() {
             <>
                 <button
                     type="button"
-                    className={styles.secondaryButton}
+                    className="button-secondary button-small"
                     onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
                 >
                     Editar registro
                 </button>
                 <button
                     type="button"
-                    className={styles.secondaryButton}
+                    className="button-secondary button-small"
                     onClick={() => navigate("/consulta/" + appointment.id + "/prescricao")}
                 >
                     Emitir prescrição
                 </button>
                 <button
                     type="button"
-                    className={styles.secondaryButton}
+                    className="button-secondary button-small"
                     onClick={() => navigate("/consulta/" + appointment.id + "/mini-exame")}
                 >
                     Mini-exame
                 </button>
                 <button
                     type="button"
-                    className={styles.dangerButton}
+                    className="button-danger button-small"
                     onClick={() => setAnnulmentTarget({
                         title: "Anular consulta",
                         recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
@@ -153,7 +168,7 @@ export default function HistoricoClinicoPrescritor() {
         return (
             <button
                 type="button"
-                className={styles.dangerButton}
+                className="button-danger button-small"
                 onClick={() => setAnnulmentTarget({
                     title: "Anular prescrição",
                     recordDescription: prescription.productDescription + ", emitida em "
@@ -173,7 +188,7 @@ export default function HistoricoClinicoPrescritor() {
         return (
             <button
                 type="button"
-                className={styles.dangerButton}
+                className="button-danger button-small"
                 onClick={() => setAnnulmentTarget({
                     title: "Anular anamnese",
                     recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
@@ -187,72 +202,80 @@ export default function HistoricoClinicoPrescritor() {
 
     return (
         <section className={styles.page}>
-            <div className={styles.header}>
-                <div>
-                    <h1>{patient.name}</h1>
-                    <p className={styles.subtitle}>
-                        Histórico clínico{age !== null ? " · " + age + " anos" : ""}
-                    </p>
+            <PageHeader
+                title={patient.name}
+                subtitle={"Histórico clínico" + (age !== null ? " · " + age + " anos" : "")}
+                actions={(
+                    <>
+                        <button
+                            type="button"
+                            className="button-secondary"
+                            onClick={() => navigate("/paciente/" + patientId + "/selecao-escalas")}
+                        >
+                            Enviar escalas
+                        </button>
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => navigate("/paciente/" + patientId + "/consulta/nova")}
+                        >
+                            Nova consulta
+                        </button>
+                    </>
+                )}
+            />
+
+            {(nextAppointment || patient.archived) && (
+                <div className={styles.facts}>
                     {nextAppointment && (
-                        <p className={styles.subtitle}>
+                        <span className={styles.fact}>
+                            <FiCalendar aria-hidden="true"/>
                             Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
-                        </p>
+                        </span>
                     )}
                     {patient.archived && (
-                        <p className={styles.subtitle}>
-                            No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi
-                            encerrado.
-                        </p>
+                        <span className={styles.fact + " " + styles.factWarning}>
+                            <FiArchive aria-hidden="true"/>
+                            No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi encerrado.
+                        </span>
                     )}
                 </div>
-                <div className={styles.headerActions}>
-                    <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => navigate("/paciente/" + patientId + "/consulta/nova")}
-                    >
-                        Nova consulta
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => setIsExportOpen(true)}
-                    >
-                        Exportar
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/paciente/" + patientId + "/selecao-escalas")}
-                    >
-                        Enviar escalas
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/paciente/" + patientId + "/acompanhamento")}
-                    >
-                        Acompanhamento
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/paciente/" + patientId + "/progresso")}
-                    >
-                        Progresso
-                    </button>
-                    <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => navigate("/paciente/" + patientId + "/auditoria",
-                            {state: {patientName: patient.name}})}
-                    >
-                        Histórico de acesso
-                    </button>
-                </div>
+            )}
+
+            {/* as outras telas do paciente ficam juntas numa faixa discreta */}
+            <div className={styles.tools}>
+                <button
+                    type="button"
+                    className="button-tertiary button-small"
+                    onClick={() => navigate("/paciente/" + patientId + "/progresso")}
+                >
+                    <FiTrendingUp aria-hidden="true"/>
+                    Progresso
+                </button>
+                <button
+                    type="button"
+                    className="button-tertiary button-small"
+                    onClick={() => navigate("/paciente/" + patientId + "/acompanhamento")}
+                >
+                    <FiRepeat aria-hidden="true"/>
+                    Acompanhamento automático
+                </button>
+                <button type="button" className="button-tertiary button-small" onClick={() => setIsExportOpen(true)}>
+                    <FiDownload aria-hidden="true"/>
+                    Exportar
+                </button>
+                <button
+                    type="button"
+                    className="button-tertiary button-small"
+                    onClick={() => navigate("/paciente/" + patientId + "/auditoria", {state: {patientName: patient.name}})}
+                >
+                    <FiShield aria-hidden="true"/>
+                    Histórico de acesso
+                </button>
             </div>
 
             {notice && <p className="aviso" role="status">{notice}</p>}
+            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
 
             <SectionLinks
                 label="Partes do histórico"
@@ -267,7 +290,7 @@ export default function HistoricoClinicoPrescritor() {
             <section id="consultas" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Consultas</h2>
                 {pastAppointments.length === 0 ? (
-                    <p className={styles.status}>Nenhuma consulta realizada ainda.</p>
+                    <EmptyState icon={FiCalendar} message="Nenhuma consulta realizada ainda." isCompact={true}/>
                 ) : (
                     <div className={styles.list}>
                         {pastAppointments.map((appointment) => (
@@ -284,7 +307,7 @@ export default function HistoricoClinicoPrescritor() {
             <section id="prescricoes" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Prescrições</h2>
                 {orderedPrescriptions.length === 0 ? (
-                    <p className={styles.status}>Nenhuma prescrição emitida ainda.</p>
+                    <EmptyState icon={FiFileText} message="Nenhuma prescrição emitida ainda." isCompact={true}/>
                 ) : (
                     <div className={styles.list}>
                         {orderedPrescriptions.map((prescription) => (
@@ -301,9 +324,11 @@ export default function HistoricoClinicoPrescritor() {
             <section id="anamnese" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Anamnese</h2>
                 {anamneses.length === 0 ? (
-                    <p className={styles.status}>
-                        O paciente ainda não preencheu a anamnese. Ela pode ser enviada em Enviar escalas.
-                    </p>
+                    <EmptyState
+                        icon={FiActivity}
+                        message="O paciente ainda não preencheu a anamnese. Ela pode ser enviada em Enviar escalas."
+                        isCompact={true}
+                    />
                 ) : (
                     <div className={styles.list}>
                         {anamneses.map((anamnesis) => (
