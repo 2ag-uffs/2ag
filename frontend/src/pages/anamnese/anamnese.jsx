@@ -4,6 +4,7 @@ import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./anamnese.module.css";
 
@@ -163,7 +164,7 @@ export default function Anamnese() {
     }
 
     if (isLoading) {
-        return <p>Carregando a ficha...</p>;
+        return <SkeletonPage cards={2}/>;
     }
 
     return (

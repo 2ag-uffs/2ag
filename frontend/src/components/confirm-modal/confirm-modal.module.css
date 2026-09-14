@@ -12,7 +12,7 @@
 
 /* no celular os dois botoes empilham
    column e n column-reverse pq o reverse jogava o botao destrutivo pra cima q eh o alvo mais facil */
-@media screen and (max-width: 578px) {
+@media (max-width: 47.99rem) {
     .actions {
         flex-direction: column;
     }
