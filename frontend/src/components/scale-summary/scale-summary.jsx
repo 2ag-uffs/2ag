@@ -41,14 +41,17 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                     <ul className={styles.scaleList}>
                         {history.map((response) => (
                             <li key={response.id} className={styles.response}>
-                                <div>
+                                <div className={styles.responseText}>
                                     <span>{response.scaleName}</span>
-                                    <span className={styles.date}>{periodTextOf(response)}</span>
-                                    <span className={styles.result}>{response.result}</span>
-                                    {response.annulled && <span className={styles.annulled}>anulada</span>}
-                                    {response.reviewed && !response.annulled && (
-                                        <span className={styles.date}>analisada</span>
-                                    )}
+                                    {/* data resultado e situacao numa linha so embaixo do nome */}
+                                    <span className={styles.responseMeta}>
+                                        <span className={styles.date}>{periodTextOf(response)}</span>
+                                        <span className={styles.result}>{response.result}</span>
+                                        {response.annulled && <span className={styles.annulled}>anulada</span>}
+                                        {response.reviewed && !response.annulled && (
+                                            <span className={styles.date}>analisada</span>
+                                        )}
+                                    </span>
                                 </div>
                                 <div className={styles.actions}>
                                     {onOpenResponse && (

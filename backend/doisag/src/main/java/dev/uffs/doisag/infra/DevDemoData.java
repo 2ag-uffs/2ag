@@ -396,7 +396,7 @@ public class DevDemoData {
                            List<PrescriptionComponentDTO> components, String posology,
                            List<DoseEscalationStepDTO> steps, int durationDays, LocalDate nextConsultation) {
         PrescriptionCreateDTO prescription = new PrescriptionCreateDTO(product, "Associação Flor do Oeste",
-                "L2026-" + consultation.getId(), spectrum, components, "30 ml", posology, "Sublingual", steps,
+                "L2026-" + consultation.getId(), spectrum, components, "30", posology, "Sublingual", steps,
                 "Agitar o frasco antes de usar. Pingar embaixo da língua e esperar um minuto antes de engolir.",
                 "Evitar dirigir nas primeiras semanas se sentir sonolência.",
                 "Melhora gradual dos sintomas ao longo das semanas.", null, durationDays, nextConsultation);

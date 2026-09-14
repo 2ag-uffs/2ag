@@ -55,8 +55,21 @@
     font-weight: 600;
 }
 
+/* nome em cima e data resultado e situacao numa linha embaixo */
+.responseText {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.responseMeta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-3);
+}
+
 .annulled {
-    align-self: flex-start;
     background-color: var(--color-error-soft);
     border-radius: var(--radius-pill);
     color: var(--color-error);
