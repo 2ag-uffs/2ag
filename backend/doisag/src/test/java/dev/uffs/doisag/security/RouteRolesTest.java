@@ -178,8 +178,9 @@ class RouteRolesTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(post("/mini-exame/consulta/" + appointment.getId()).header("Authorization", patientToken)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"recall\":3}"))
+        mockMvc.perform(post("/escalas/mini-exame/consulta/" + appointment.getId())
+                        .header("Authorization", patientToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"answers\":{\"registro\":3}}"))
                 .andExpect(status().isForbidden());
 
         // designar escala e montar o acompanhamento de 90 dias

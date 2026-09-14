@@ -1,40 +1,75 @@
 import {formatDate} from "../../utils/date-format.js";
 import styles from "./scale-summary.module.css";
 
-// resumo das escalas de um paciente com as pendentes e as ja respondidas (RF12 e RF13)
-// quem usa escolhe o titulo das pendentes e pode colocar um botao embaixo delas
-export default function ScaleSummary({scalesPage, pendingTitle, pendingAction}) {
-    const pendingScales = scalesPage.pendingScales;
-    // a respondida mais recente fica em cima
-    const completedScales = [...scalesPage.completedScales].sort((firstScale, secondScale) =>
-        String(secondScale.completionDate).localeCompare(String(firstScale.completionDate)));
+// resumo das escalas de um paciente com o q espera resposta e o q ja
+// foi respondido (RF12 e RF13)
+//
+// quem usa escolhe o titulo das pendentes e passa as acoes q aquele
+// perfil pode fazer com a resposta
+export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, onOpenResponse, onReview, onAnnul}) {
+    const pending = scalesPage.pending;
+    const history = scalesPage.history;
 
     return (
         <div className={styles.boxes}>
             <div className={styles.box}>
                 <h3>{pendingTitle}</h3>
-                {pendingScales.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma escala pendente.</p>
+                {pending.length === 0 ? (
+                    <p className={styles.empty}>Nenhuma escala esperando resposta.</p>
                 ) : (
                     <ul className={styles.scaleList}>
-                        {pendingScales.map((scale) => (
-                            <li key={scale.id}>{scale.scaleName}</li>
+                        {pending.map((task) => (
+                            <li key={task.id}>
+                                <span>{task.scaleName}</span>
+                                <span className={styles.date}>
+                                    {task.late ? "prazo em " + formatDate(task.periodEnd) + ", atrasada"
+                                        : "até " + formatDate(task.periodEnd)}
+                                    {task.totalDays > 1 ? " · " + task.answeredDays + " de " + task.totalDays + " dias" : ""}
+                                </span>
+                            </li>
                         ))}
                     </ul>
                 )}
-                {pendingScales.length > 0 && pendingAction}
+                {pending.length > 0 && pendingAction}
             </div>
 
             <div className={styles.box}>
                 <h3>Respondidas</h3>
-                {completedScales.length === 0 ? (
+                {history.length === 0 ? (
                     <p className={styles.empty}>Nenhuma escala respondida ainda.</p>
                 ) : (
                     <ul className={styles.scaleList}>
-                        {completedScales.map((scale) => (
-                            <li key={scale.id}>
-                                <span>{scale.scaleName}</span>
-                                <span className={styles.date}>{formatDate(scale.completionDate)}</span>
+                        {history.map((response) => (
+                            <li key={response.id} className={styles.response}>
+                                <div>
+                                    <span>{response.scaleName}</span>
+                                    <span className={styles.date}>{periodTextOf(response)}</span>
+                                    <span className={styles.result}>{response.result}</span>
+                                    {response.annulled && <span className={styles.annulled}>anulada</span>}
+                                    {response.reviewed && !response.annulled && (
+                                        <span className={styles.date}>analisada</span>
+                                    )}
+                                </div>
+                                <div className={styles.actions}>
+                                    {onOpenResponse && (
+                                        <button type="button" className="button-tertiary"
+                                                onClick={() => onOpenResponse(response)}>
+                                            Ver respostas
+                                        </button>
+                                    )}
+                                    {onReview && !response.reviewed && !response.annulled && (
+                                        <button type="button" className="button-tertiary"
+                                                onClick={() => onReview(response)}>
+                                            Marcar como analisada
+                                        </button>
+                                    )}
+                                    {onAnnul && !response.annulled && (
+                                        <button type="button" className="button-tertiary"
+                                                onClick={() => onAnnul(response)}>
+                                            Anular
+                                        </button>
+                                    )}
+                                </div>
                             </li>
                         ))}
                     </ul>
@@ -42,4 +77,11 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction}) 
             </div>
         </div>
     );
+}
+
+// o diario fala de um dia e os acompanhamentos de um periodo
+function periodTextOf(response) {
+    return response.periodStart === response.periodEnd
+        ? formatDate(response.periodStart)
+        : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
 }

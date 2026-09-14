@@ -763,12 +763,22 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Avisos:** pedir, marcar, confirmar, recusar, remarcar e cancelar geram notificação no sistema para a outra parte. O lembrete antes da consulta (RF34) fica para o módulo de notificações.
 - **Registro clínico:** só a consulta confirmada na agenda recebe registro clínico e prescrição.
 
-Ficam para os módulos seguintes, onde cada entidade é reescrita:
+**Escalas concluídas em 13/09/2026:** RF08, RF09, RF32, RF06/RF20 e RF21 a RF26.
 
-- **Escalas:**
-  - a regra de que o paciente corrige o próprio diário só enquanto o prescritor ainda não analisou;
-  - os resultados do MEEM no histórico do prescritor, que ainda não têm listagem por paciente;
-  - o MEEM ligado a uma consulta, que ainda aceita consulta não confirmada na agenda.
+- **Motor único:** uma tabela de respostas para todas as escalas, um cálculo por instrumento e a definição de cada escala — itens, âncoras, faixas e direção — em um só lugar, servida a um formulário genérico. Escala nova não pede tabela nem tela nova (RNF08). Saíram sete tabelas, sete serviços e seis telas.
+- **Formulários conferidos com o papel:** os itens e as âncoras saem dos formulários de `docs/scales`, inclusive as que mudam de sentido de um item para outro — na dor 10 é ruim e no sono 10 é bom (RF20).
+- **Escalas validadas:** HAM-A com os 14 itens e escore de 0 a 56, PSQI calculado pelos 7 componentes de 0 a 21 e MEEM com as 11 seções, de 0 a 30. A faixa do MEEM usa o ponto de corte por escolaridade de Brucki 2003, registrada junto com a data da avaliação (decisão de 13/09/2026, a confirmar com a clínica na pergunta 11).
+- **Tarefa com prazo:** cada envio vale por um período. Sem resposta até o fim do prazo, a tarefa fica como não respondida, vira lacuna no gráfico (RN10) e o período seguinte é enviado, em vez de a mesma pendência arrastar para sempre.
+- **Diários:** a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. A tarefa mostra quantos dias já foram preenchidos e fecha no fim do período; a semana sem nenhum dia conta como não respondida.
+- **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição.
+- **Resultado:** a central do paciente mostra o escore com a faixa interpretativa (RN14). Formulário da clínica sem faixa publicada mostra o item principal e nenhuma interpretação inventada (RN13).
+- **MEEM:** aplicado pelo prescritor dentro de consulta confirmada, nunca designado ao paciente (RN09), e aparece nos dois históricos.
+- **Avisos:** a escala enviada avisa o paciente e a resposta avisa o prescritor (RF15). As pendências vencidas aparecem no painel do prescritor.
+
+Ficam para os módulos seguintes:
+
+- **Evolução:** as telas de progresso (RF27 e RF28) continuam as de 2025. Elas já leem as respostas do motor novo, mas a reescrita fica para o módulo.
+- **Painel inicial:** o painel do paciente ainda mostra a lista de consultas futuras vazia (RF03).
 
 ---
 

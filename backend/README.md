@@ -160,6 +160,33 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - cada mudança gera uma notificação para a outra parte
 - só consulta confirmada recebe registro clínico (`PUT /consulta/{id}/registro-clinico`) e prescrição (`POST /consulta/{id}/prescricao`)
 
+## escalas
+
+as respostas de todas as escalas caem numa tabela só. o formulário de cada uma — itens, âncoras, faixas e direção — fica descrito no código, em `scale/ScaleCatalog`, e o cálculo de cada instrumento em `scale/ScaleScorer`.
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /escalas/definicoes` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos |
+| `GET /escalas/definicoes/{slug}` | o formulário de uma escala |
+| `GET /escalas/designaveis` | as escalas que o prescritor pode enviar ao paciente |
+| `POST /escalas/{slug}/respostas` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
+| `GET /escalas/{slug}/respostas` | as respostas do paciente logado naquela escala, que a grade da semana usa |
+| `GET /escalas/respostas/{id}` | uma resposta com o escore, a faixa e o valor de cada item |
+| `PUT /escalas/respostas/{id}` | corrige a resposta |
+| `PUT /escalas/respostas/{id}/analise` | o prescritor marca que já conferiu, e o paciente para de editar |
+| `PUT /escalas/respostas/{id}/anulacao` | anula a resposta com motivo |
+| `POST /escalas/mini-exame/consulta/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta |
+| `POST /pacientes/{patientId}/escalas` | envia uma escala avulsa ao paciente |
+| `GET /pacientes/{patientId}/escalas` | as tarefas de escala do paciente |
+| `GET /pacientes/{patientId}/escalas/central` | o que espera resposta e o que já foi respondido |
+| `GET /pacientes/{patientId}/escalas/respostas` | as escalas respondidas, para o histórico |
+
+- cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10)
+- a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
+- item em branco não é gravado, e escala validada sem todos os itens não tem escore
+- o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
+- o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
+
 ## guarda do prontuário
 
 o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /pacientes/{patientId}/acompanhamento/encerrar` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
@@ -222,4 +249,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente) e o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) já seguem o padrão novo. escalas, acompanhamento, painel inicial e notificações ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) e o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) já seguem o padrão novo. as telas de evolução, o painel inicial e as notificações ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.

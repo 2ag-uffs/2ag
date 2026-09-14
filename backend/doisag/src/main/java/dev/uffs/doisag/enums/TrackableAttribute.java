@@ -3,87 +3,76 @@ package dev.uffs.doisag.enums;
 import java.util.Arrays;
 import java.util.List;
 
-// o que da pra acompanhar num grafico ao longo do tempo.
+// o que da pra acompanhar num grafico ao longo do tempo (RF27 e RF28)
 //
-// cada atributo sabe de qual escala ele vem e qual eh a faixa dele, pq
-// o front precisa saber onde plotar: 0 a 10 e 0 a 56 n podem usar o
-// mesmo eixo. o nome de exibicao tbm fica aqui, entao a tela n precisa
-// ter uma lista propria pra traduzir
+// cada atributo aponta pra um item de uma escala, ou pro escore dela
+// quando o itemKey eh nulo. o nome de exibicao e a faixa saem do
+// catalogo, entao mudar o formulario n deixa esta lista desatualizada
 public enum TrackableAttribute {
 
-    // ficha de acompanhamento semanal, tudo de 0 a 10
-    DOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "Dor", 0, 10),
-    SONO(ScaleType.ACOMPANHAMENTO_SEMANAL, "Sono", 0, 10),
-    HUMOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "Humor", 0, 10),
-    TREMOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "Tremor", 0, 10),
-    ANSIEDADE(ScaleType.ACOMPANHAMENTO_SEMANAL, "Ansiedade", 0, 10),
-    DISPOSICAO_ENERGIA(ScaleType.ACOMPANHAMENTO_SEMANAL, "Disposição e energia", 0, 10),
-    FUNCAO_INTESTINAL(ScaleType.ACOMPANHAMENTO_SEMANAL, "Função intestinal", 0, 10),
-    APETITE(ScaleType.ACOMPANHAMENTO_SEMANAL, "Apetite", 0, 10),
-    CONCENTRACAO(ScaleType.ACOMPANHAMENTO_SEMANAL, "Concentração", 0, 10),
-    INTERACAO_SOCIAL(ScaleType.ACOMPANHAMENTO_SEMANAL, "Interação social", 0, 10),
-    RIGIDEZ_ESPASTICIDADE(ScaleType.ACOMPANHAMENTO_SEMANAL, "Rigidez e espasticidade", 0, 10),
-    REDUCAO_SUBSTANCIA(ScaleType.ACOMPANHAMENTO_SEMANAL, "Redução de outra substância", 0, 10),
-    NAUSEA_VOMITO(ScaleType.ACOMPANHAMENTO_SEMANAL, "Náusea e vômito", 0, 10),
-    DESEMPENHO_ESPORTIVO(ScaleType.ACOMPANHAMENTO_SEMANAL, "Desempenho esportivo", 0, 10),
-    DERMATOLOGICO(ScaleType.ACOMPANHAMENTO_SEMANAL, "Condição dermatológica", 0, 10),
-    GOTAS_MANHA(ScaleType.ACOMPANHAMENTO_SEMANAL, "Gotas pela manhã", 0, null),
-    GOTAS_TARDE(ScaleType.ACOMPANHAMENTO_SEMANAL, "Gotas à tarde", 0, null),
+    // ficha de acompanhamento semanal
+    DOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "dor"),
+    SONO(ScaleType.ACOMPANHAMENTO_SEMANAL, "sono"),
+    HUMOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "humor"),
+    TREMOR(ScaleType.ACOMPANHAMENTO_SEMANAL, "tremor"),
+    ANSIEDADE(ScaleType.ACOMPANHAMENTO_SEMANAL, "ansiedade"),
+    DISPOSICAO_ENERGIA(ScaleType.ACOMPANHAMENTO_SEMANAL, "disposicao"),
+    FUNCAO_INTESTINAL(ScaleType.ACOMPANHAMENTO_SEMANAL, "funcaoIntestinal"),
+    APETITE(ScaleType.ACOMPANHAMENTO_SEMANAL, "apetite"),
+    CONCENTRACAO(ScaleType.ACOMPANHAMENTO_SEMANAL, "concentracao"),
+    INTERACAO_SOCIAL(ScaleType.ACOMPANHAMENTO_SEMANAL, "interacaoSocial"),
+    RIGIDEZ_ESPASTICIDADE(ScaleType.ACOMPANHAMENTO_SEMANAL, "rigidezEspasticidade"),
+    REDUCAO_SUBSTANCIA(ScaleType.ACOMPANHAMENTO_SEMANAL, "reducaoSubstancia"),
+    NAUSEA_VOMITO(ScaleType.ACOMPANHAMENTO_SEMANAL, "nauseaVomito"),
+    DESEMPENHO_ESPORTIVO(ScaleType.ACOMPANHAMENTO_SEMANAL, "desempenhoEsporte"),
+    DERMATOLOGICO(ScaleType.ACOMPANHAMENTO_SEMANAL, "doencaDermatologicaIntensidade"),
+    GOTAS_MANHA(ScaleType.ACOMPANHAMENTO_SEMANAL, "gotasManha"),
+    GOTAS_TARDE(ScaleType.ACOMPANHAMENTO_SEMANAL, "gotasTarde"),
 
-    // hamilton: 14 itens de 0 a 4
-    ESCORE_HAMILTON(ScaleType.ESCALA_HAMILTON, "Escore de ansiedade", 0, 56),
+    // escalas validadas entram pelo escore
+    ESCORE_HAMILTON(ScaleType.ESCALA_HAMILTON, null),
+    ESCORE_PITTSBURGH(ScaleType.ESCALA_PITTSBURGH, null),
 
-    // pittsburgh: 7 componentes de 0 a 3
-    ESCORE_PITTSBURGH(ScaleType.ESCALA_PITTSBURGH, "Índice de qualidade do sono", 0, 21),
+    // acompanhamento semanal de dor
+    INTENSIDADE_DOR(ScaleType.REGISTRO_DOR, "intensidadeDor"),
 
-    // registro de dor
-    INTENSIDADE_DOR(ScaleType.REGISTRO_DOR, "Intensidade da dor", 0, 10),
+    // acompanhamento semanal de TEA
+    QUALIDADE_DE_VIDA(ScaleType.REGISTRO_TEA, "qualidadeDeVida"),
 
-    // registro de TEA
-    QUALIDADE_DE_VIDA(ScaleType.REGISTRO_TEA, "Qualidade de vida", 0, 10),
-    ESCORE_TEA(ScaleType.REGISTRO_TEA, "Escore de comportamentos", 0, 18),
-
-    // diario de sono
-    CANSACO(ScaleType.REGISTRO_SONO, "Cansaço", 0, 5),
-    ESTRESSE(ScaleType.REGISTRO_SONO, "Estresse", 0, 5),
-    SONOLENCIA_DIURNA(ScaleType.REGISTRO_SONO, "Sonolência diurna", 0, 5),
-    IRRITABILIDADE(ScaleType.REGISTRO_SONO, "Irritabilidade", 0, 5),
-    DESPERTARES(ScaleType.REGISTRO_SONO, "Vezes que acordou", 0, null),
-    TEMPO_ATE_DORMIR(ScaleType.REGISTRO_SONO, "Minutos até adormecer", 0, null);
+    // diario do sono
+    CANSACO(ScaleType.REGISTRO_SONO, "cansaco"),
+    ESTRESSE(ScaleType.REGISTRO_SONO, "estresse"),
+    SONOLENCIA_DIURNA(ScaleType.REGISTRO_SONO, "sonolenciaDiurna"),
+    DESATENCAO(ScaleType.REGISTRO_SONO, "desatencao"),
+    IRRITABILIDADE(ScaleType.REGISTRO_SONO, "irritabilidade"),
+    DESPERTARES(ScaleType.REGISTRO_SONO, "vezesQueAcordou"),
+    TEMPO_ATE_DORMIR(ScaleType.REGISTRO_SONO, "tempoAteDormir"),
+    TEMPO_TOTAL_SONO(ScaleType.REGISTRO_SONO, "tempoTotalSono");
 
     private final ScaleType scaleType;
-    private final String displayName;
-    private final Integer minValue;
-    private final Integer maxValue;
+    private final String itemKey;
 
-    TrackableAttribute(ScaleType scaleType, String displayName, Integer minValue, Integer maxValue) {
+    TrackableAttribute(ScaleType scaleType, String itemKey) {
         this.scaleType = scaleType;
-        this.displayName = displayName;
-        this.minValue = minValue;
-        this.maxValue = maxValue;
+        this.itemKey = itemKey;
     }
 
     public ScaleType getScaleType() {
         return scaleType;
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public String getItemKey() {
+        return itemKey;
     }
 
-    public Integer getMinValue() {
-        return minValue;
+    // sem item significa q o grafico segue o escore da escala inteira
+    public boolean isScore() {
+        return itemKey == null;
     }
 
-    public Integer getMaxValue() {
-        return maxValue;
-    }
-
-    // o que da pra acompanhar numa escala. o front usa isso pra montar
-    // o seletor de atributo depois que a pessoa escolhe a escala
     public static List<TrackableAttribute> doTipo(ScaleType scaleType) {
         return Arrays.stream(values())
-                .filter(atributo -> atributo.scaleType == scaleType)
+                .filter(attribute -> attribute.scaleType == scaleType)
                 .toList();
     }
 }

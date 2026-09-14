@@ -6,6 +6,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,11 @@ public class TreatmentProtocol {
     // protocolo encerrado n designa mais nada
     @Column(nullable = false)
     private boolean active = true;
+
+    // a programacao de horarios q aparece no topo do diario do sono (RF22)
+    private LocalTime sleepBedTime;
+
+    private LocalTime sleepWakeTime;
 
     @OneToMany(mappedBy = "protocol", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProtocolItem> items = new ArrayList<>();
@@ -96,6 +102,22 @@ public class TreatmentProtocol {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public LocalTime getSleepBedTime() {
+        return sleepBedTime;
+    }
+
+    public void setSleepBedTime(LocalTime sleepBedTime) {
+        this.sleepBedTime = sleepBedTime;
+    }
+
+    public LocalTime getSleepWakeTime() {
+        return sleepWakeTime;
+    }
+
+    public void setSleepWakeTime(LocalTime sleepWakeTime) {
+        this.sleepWakeTime = sleepWakeTime;
     }
 
     public List<ProtocolItem> getItems() {

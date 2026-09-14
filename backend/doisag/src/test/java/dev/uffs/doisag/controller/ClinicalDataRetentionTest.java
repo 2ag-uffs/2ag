@@ -99,7 +99,7 @@ class ClinicalDataRetentionTest {
         ProtocolItemDTO weeklyHamilton = new ProtocolItemDTO(
                 ScaleType.ESCALA_HAMILTON, ScaleType.ESCALA_HAMILTON.getDisplayName(), Periodicity.SEMANAL);
         treatmentProtocolService.create(patient.getId(),
-                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, List.of(weeklyHamilton)), prescriber);
+                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null, List.of(weeklyHamilton)), prescriber);
 
         mockMvc.perform(put("/pacientes/" + patient.getId() + "/acompanhamento/encerrar")
                         .header("Authorization", prescriberToken))

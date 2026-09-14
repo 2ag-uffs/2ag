@@ -3,56 +3,14 @@ import {useNavigate, useParams} from 'react-router';
 import './selecao-escalas.css';
 import {apiService, ApiError} from "../../services/api.js";
 
-// escalas q o paciente responde sozinho e podem ser enviadas pra ele (RN09)
-// o mini-exame fica de fora pq quem aplica eh o prescritor durante a consulta
-const ESCALAS_MAPEAMENTO = {
-    'ESCALA_HAMILTON': {
-        id: 'escala_hamilton',
-        nome: 'Escala de Hamilton para Ansiedade (HAM-A)',
-        descricao: 'Avalia a intensidade dos sintomas de ansiedade.'
-    },
-    'ESCALA_PITTSBURGH': {
-        id: 'escala_pittsburgh',
-        nome: 'Índice de Qualidade do Sono de Pittsburgh',
-        descricao: 'Avalia a qualidade do sono e distúrbios do sono.'
-    },
-    'REGISTRO_DOR': {
-        id: 'registro_dor',
-        nome: 'Registro de Dor',
-        descricao: 'Registra e monitora a intensidade da dor do paciente.'
-    },
-    'REGISTRO_SONO': {
-        id: 'registro_sono',
-        nome: 'Registro de Sono',
-        descricao: 'Registra padrões e qualidade do sono do paciente.'
-    },
-    'REGISTRO_TEA': {
-        id: 'registro_tea',
-        nome: 'Registro TEA',
-        descricao: 'Registro específico para Transtorno do Espectro Autista.'
-    },
-    'ACOMPANHAMENTO_SEMANAL': {
-        id: 'acompanhamento_semanal',
-        nome: 'Acompanhamento Semanal',
-        descricao: 'Acompanhamento semanal do progresso do paciente.'
-    },
-    'ANAMNESE': {
-        id: 'anamnese',
-        nome: 'Anamnese',
-        descricao: 'Ficha de triagem com histórico de saúde, hábitos e expectativas com o tratamento.'
-    }
-};
-
-const ESCALAS_DISPONIVEIS = Object.entries(ESCALAS_MAPEAMENTO).map(([backendType, dadosDaTela]) => ({
-    ...dadosDaTela,
-    backendType
-}));
-
 export default function SelecaoEscalas() {
     const navigate = useNavigate();
     const {pacienteId} = useParams();
 
     const [nomePaciente, setNomePaciente] = useState('');
+    // as escalas q da pra enviar vem do servidor (RN09), entao o mini-exame
+    // nem aparece aqui: quem aplica eh o prescritor durante a consulta
+    const [escalasDisponiveis, setEscalasDisponiveis] = useState([]);
     // tipos de escala q o paciente ja recebeu e ainda n respondeu
     const [escalasPendentes, setEscalasPendentes] = useState([]);
     const [escalasSelecionadas, setEscalasSelecionadas] = useState({});
@@ -66,10 +24,17 @@ export default function SelecaoEscalas() {
     useEffect(() => {
         Promise.all([
             apiService.get(`/paciente/${pacienteId}`),
-            apiService.get(`/pacientes/${pacienteId}/escalas`)
+            apiService.get(`/pacientes/${pacienteId}/escalas`),
+            apiService.get('/escalas/designaveis')
         ])
-            .then(([dadosPaciente, escalasEnviadas]) => {
+            .then(([dadosPaciente, escalasEnviadas, designaveis]) => {
                 setNomePaciente(dadosPaciente.name || 'Nome não informado');
+                setEscalasDisponiveis(designaveis.map((escala) => ({
+                    id: escala.type,
+                    nome: escala.name,
+                    descricao: escala.description,
+                    backendType: escala.type
+                })));
                 setEscalasPendentes(escalasEnviadas
                     .filter(escala => escala.status === 'PENDENTE')
                     .map(escala => escala.scaleType));
@@ -90,7 +55,7 @@ export default function SelecaoEscalas() {
     };
 
     // so vai o q foi marcado agora e ainda n esta esperando resposta do paciente
-    const escalasParaEnviar = ESCALAS_DISPONIVEIS.filter(escala =>
+    const escalasParaEnviar = escalasDisponiveis.filter(escala =>
         escalasSelecionadas[escala.id] && !escalasPendentes.includes(escala.backendType)
     );
 
@@ -125,7 +90,7 @@ export default function SelecaoEscalas() {
         }
     };
 
-    const escalasFiltradas = ESCALAS_DISPONIVEIS.filter(escala =>
+    const escalasFiltradas = escalasDisponiveis.filter(escala =>
         escala.nome.toLowerCase().includes(termoBusca.toLowerCase())
     );
 

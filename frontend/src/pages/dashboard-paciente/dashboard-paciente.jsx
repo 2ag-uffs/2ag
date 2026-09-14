@@ -36,7 +36,7 @@ export default function DashboardPaciente() {
             .finally(() => setIsLoading(false));
     }, [navigate]);
 
-    const handleWeeklyMonitoring = () => navigate("/acompanhamento-paciente");
+    const handleWeeklyMonitoring = () => navigate("/escalas/acompanhamento-semanal");
     const handleAgendarConsulta = () => navigate("/agendamento-consulta");
     const handleAnamnese = () => navigate("/anamnese");
     const handleProgresso = () => navigate("/progresso");

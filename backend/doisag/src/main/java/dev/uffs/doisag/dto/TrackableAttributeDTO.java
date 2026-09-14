@@ -1,7 +1,6 @@
 package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.ScaleType;
-import dev.uffs.doisag.enums.TrackableAttribute;
 
 // catalogo do que da pra acompanhar. o front usa isso pra montar os
 // seletores de escala e de atributo, em vez de ter a lista repetida
@@ -14,14 +13,4 @@ public record TrackableAttributeDTO(
         Integer minValue,
         Integer maxValue
 ) {
-    public TrackableAttributeDTO(TrackableAttribute attribute) {
-        this(
-                attribute.name(),
-                attribute.getDisplayName(),
-                attribute.getScaleType(),
-                attribute.getScaleType().getDisplayName(),
-                attribute.getMinValue(),
-                attribute.getMaxValue()
-        );
-    }
 }

@@ -4,18 +4,6 @@ import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import "./acompanhamento-protocolo.css";
 
-// as escalas que o paciente responde sozinho. o mini-exame fica de fora
-// porque quem aplica eh a prescritora, durante a consulta (RN09)
-const ESCALAS = [
-    {valor: "ACOMPANHAMENTO_SEMANAL", texto: "Acompanhamento semanal"},
-    {valor: "ESCALA_HAMILTON", texto: "Escala de ansiedade de Hamilton"},
-    {valor: "ESCALA_PITTSBURGH", texto: "Índice de qualidade do sono de Pittsburgh"},
-    {valor: "REGISTRO_SONO", texto: "Diário de sono"},
-    {valor: "REGISTRO_DOR", texto: "Registro de dor"},
-    {valor: "REGISTRO_TEA", texto: "Registro de sintomas (TEA)"},
-    {valor: "ANAMNESE", texto: "Anamnese"},
-];
-
 const PERIODICIDADES = [
     {valor: "SEMANAL", texto: "Toda semana"},
     {valor: "QUINZENAL", texto: "A cada 15 dias"},
@@ -32,6 +20,11 @@ export default function AcompanhamentoProtocolo() {
     const {patientId} = useParams();
 
     const [protocoloAtivo, setProtocoloAtivo] = useState(null);
+    // a lista de escalas vem do servidor, num lugar so (RN09)
+    const [escalas, setEscalas] = useState([]);
+    // a programacao de horarios q aparece no topo do diario do sono (RF22)
+    const [horaDormir, setHoraDormir] = useState("");
+    const [horaLevantar, setHoraLevantar] = useState("");
     const [escolhidas, setEscolhidas] = useState({});
     const [inicio, setInicio] = useState(new Date().toISOString().split("T")[0]);
     const [duracao, setDuracao] = useState(90);
@@ -44,6 +37,13 @@ export default function AcompanhamentoProtocolo() {
 
     const carregar = () => {
         setCarregando(true);
+        apiService
+            .get("/escalas/designaveis")
+            .then((designaveis) => setEscalas(designaveis.map((escala) => ({
+                valor: escala.type,
+                texto: escala.name,
+            }))))
+            .catch(() => setEscalas([]));
         apiService
             .get(`/pacientes/${patientId}/acompanhamento`)
             .then((protocolo) => setProtocoloAtivo(protocolo))
@@ -95,6 +95,8 @@ export default function AcompanhamentoProtocolo() {
             await apiService.post(`/pacientes/${patientId}/acompanhamento`, {
                 startDate: inicio,
                 durationDays: Number(duracao),
+                sleepBedTime: horaDormir === "" ? null : horaDormir,
+                sleepWakeTime: horaLevantar === "" ? null : horaLevantar,
                 items: itens,
             });
             setAviso("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
@@ -142,6 +144,12 @@ export default function AcompanhamentoProtocolo() {
                         <p>
                             De {protocoloAtivo.startDate} até {protocoloAtivo.endDate}
                         </p>
+                        {protocoloAtivo.sleepBedTime && (
+                            <p>
+                                Programação do diário do sono: dormir às {protocoloAtivo.sleepBedTime} e
+                                levantar às {protocoloAtivo.sleepWakeTime}
+                            </p>
+                        )}
 
                         <table className="protocolo__tabela">
                             <thead>
@@ -212,7 +220,7 @@ export default function AcompanhamentoProtocolo() {
                         </div>
 
                         <section className="protocolo__lista">
-                            {ESCALAS.map((escala) => (
+                            {escalas.map((escala) => (
                                 <div className="protocolo__linha" key={escala.valor}>
                                     <label className="protocolo__escala">
                                         <input
@@ -236,6 +244,29 @@ export default function AcompanhamentoProtocolo() {
                                 </div>
                             ))}
                         </section>
+
+                        {escolhidas.REGISTRO_SONO && (
+                            <div className="protocolo__campos">
+                                <div className="protocolo__campo">
+                                    <label htmlFor="horaDormir">Programação: ir dormir às</label>
+                                    <input
+                                        id="horaDormir"
+                                        type="time"
+                                        value={horaDormir}
+                                        onChange={(e) => setHoraDormir(e.target.value)}
+                                    />
+                                </div>
+                                <div className="protocolo__campo">
+                                    <label htmlFor="horaLevantar">Levantar às</label>
+                                    <input
+                                        id="horaLevantar"
+                                        type="time"
+                                        value={horaLevantar}
+                                        onChange={(e) => setHoraLevantar(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="protocolo__acoes">
                             <button type="submit" disabled={salvando}>

@@ -55,6 +55,19 @@ export default function HistoricoClinicoPrescritor() {
         };
     }, [patientId, reloadCount]);
 
+    // marcar como analisada trava a correcao do paciente naquela resposta
+    const reviewScale = async (response) => {
+        try {
+            await apiService.put("/escalas/respostas/" + response.id + "/analise");
+            setNotice("Escala marcada como analisada. O paciente não corrige mais essa resposta.");
+            setReloadCount((currentCount) => currentCount + 1);
+        } catch (requestError) {
+            setNotice(requestError instanceof ApiError
+                ? requestError.message
+                : "Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+        }
+    };
+
     const handleAnnulled = () => {
         setAnnulmentTarget(null);
         setNotice("Registro anulado. Ele continua no histórico com o motivo da anulação.");
@@ -296,7 +309,17 @@ export default function HistoricoClinicoPrescritor() {
 
             <section id="escalas" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Escalas</h2>
-                <ScaleSummary scalesPage={scalesPage} pendingTitle="Aguardando o paciente"/>
+                <ScaleSummary
+                    scalesPage={scalesPage}
+                    pendingTitle="Aguardando o paciente"
+                    onOpenResponse={(response) => navigate("/escalas/resposta/" + response.id)}
+                    onReview={reviewScale}
+                    onAnnul={(response) => setAnnulmentTarget({
+                        title: "Anular escala respondida",
+                        recordDescription: response.scaleName + " de " + formatDate(response.periodStart),
+                        endpoint: "/escalas/respostas/" + response.id + "/anulacao",
+                    })}
+                />
             </section>
 
             {annulmentTarget && (
