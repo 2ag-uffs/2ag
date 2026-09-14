@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
-import {useNavigate, useParams} from "react-router";
+import {useParams} from "react-router";
+import {FiDownload, FiTrendingUp} from "react-icons/fi";
 import {
     CartesianGrid,
     Legend,
@@ -11,6 +12,10 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
+import Card from "../../components/card/card.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import styles from "./progresso.module.css";
@@ -25,6 +30,7 @@ const CHART_COLORS = {
     grid: colorOf("--color-chart-grid", "#dbe1dd"),
     appointment: colorOf("--color-error", "#a44819"),
     dose: colorOf("--color-secondary", "#77954f"),
+    text: colorOf("--color-text-secondary", "#575e59"),
 };
 
 // aaaa-mm-dd vira dd/mm, que eh como o eixo do grafico mostra
@@ -49,7 +55,6 @@ const FOLLOW_UP_SCALE = "ACOMPANHAMENTO_SEMANAL";
 // eh de onde vem o id do paciente, e o prescritor ainda ganha o periodo
 // todo o tempo
 export default function Progresso() {
-    const navigate = useNavigate();
     const {patientId: patientIdFromUrl} = useParams();
     const loggedUser = getLoggedUser();
     const patientId = patientIdFromUrl || (loggedUser && loggedUser.id);
@@ -197,18 +202,31 @@ export default function Progresso() {
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1>Evolução do tratamento</h1>
-                <p className={styles.subtitle}>
-                    Cada ponto é um preenchimento. Dia sem resposta não aparece no gráfico, em vez de aparecer
-                    como zero.
-                </p>
-            </header>
+            <PageHeader
+                title="Evolução do tratamento"
+                subtitle="Cada ponto é um preenchimento. Dia sem resposta não aparece no gráfico, em vez de aparecer como zero."
+                actions={chartRows.length > 0 ? (
+                    <a
+                        className="button-secondary"
+                        href={"/api/patients/" + patientId + "/export/progress.csv?attribute="
+                            + chosenAttribute + "&period=" + period}
+                        download={true}
+                    >
+                        <FiDownload aria-hidden="true"/>
+                        Baixar esta série em CSV
+                    </a>
+                ) : null}
+            />
 
-            <section className={styles.filters}>
+            <div className={styles.filters}>
                 <div className={styles.filter}>
                     <label htmlFor="periodo">Período</label>
-                    <select id="periodo" value={period} onChange={(event) => setPeriod(event.target.value)}>
+                    <select
+                        id="periodo"
+                        className={styles.select}
+                        value={period}
+                        onChange={(event) => setPeriod(event.target.value)}
+                    >
                         {periods.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
@@ -217,7 +235,12 @@ export default function Progresso() {
 
                 <div className={styles.filter}>
                     <label htmlFor="escala">Escala</label>
-                    <select id="escala" value={chosenScale} onChange={(event) => changeScale(event.target.value)}>
+                    <select
+                        id="escala"
+                        className={styles.select}
+                        value={chosenScale}
+                        onChange={(event) => changeScale(event.target.value)}
+                    >
                         {scales.map((scale) => (
                             <option key={scale.value} value={scale.value}>{scale.label}</option>
                         ))}
@@ -228,6 +251,7 @@ export default function Progresso() {
                     <label htmlFor="atributo">O que acompanhar</label>
                     <select
                         id="atributo"
+                        className={styles.select}
                         value={chosenAttribute}
                         onChange={(event) => setChosenAttribute(event.target.value)}
                     >
@@ -238,7 +262,7 @@ export default function Progresso() {
                 </div>
 
                 <div className={styles.checks}>
-                    <label>
+                    <label className={styles.check}>
                         <input
                             type="checkbox"
                             checked={showAppointments}
@@ -247,7 +271,7 @@ export default function Progresso() {
                         Marcar as consultas
                     </label>
                     {isFollowUpScale && (
-                        <label>
+                        <label className={styles.check}>
                             <input
                                 type="checkbox"
                                 checked={showDose}
@@ -257,27 +281,24 @@ export default function Progresso() {
                         </label>
                     )}
                 </div>
-            </section>
+            </div>
 
             {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
 
-            <section className={styles.chartBox}>
-                {isLoading && <p>Carregando...</p>}
+            <Card title={currentAttribute ? currentAttribute.displayName : "Gráfico"}>
+                {isLoading && <SkeletonBlock height="320px"/>}
 
                 {!isLoading && chartRows.length === 0 && !loadError && (
-                    <p className={styles.empty}>Nenhum registro preenchido neste período.</p>
+                    <EmptyState icon={FiTrendingUp} message="Nenhum registro preenchido neste período." isCompact={true}/>
                 )}
 
                 {!isLoading && chartRows.length > 0 && (
-                    <>
-                        <h2 className={styles.chartTitle}>
-                            {currentAttribute ? currentAttribute.displayName : ""}
-                        </h2>
+                    <div className={styles.chart}>
                         <ResponsiveContainer width="100%" height={320}>
                             <LineChart data={chartRows} margin={{top: 16, right: 24, bottom: 8, left: 0}}>
                                 {/* as cores saem da paleta da marca, n do padrao do recharts */}
                                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid}/>
-                                <XAxis dataKey="label"/>
+                                <XAxis dataKey="label" tick={{fontSize: 12, fill: CHART_COLORS.text}}/>
                                 {/* a faixa vem do backend: 0 a 10 e 0 a 56 n podem
                                     dividir o mesmo eixo */}
                                 <YAxis
@@ -288,6 +309,7 @@ export default function Progresso() {
                                             ? currentAttribute.maxValue : "auto",
                                     ]}
                                     allowDecimals={false}
+                                    tick={{fontSize: 12, fill: CHART_COLORS.text}}
                                 />
                                 <Tooltip/>
                                 <Legend/>
@@ -345,37 +367,34 @@ export default function Progresso() {
                                 )}
                             </LineChart>
                         </ResponsiveContainer>
-
-                        {showAppointments && appointments.length > 0 && (
-                            <section className={styles.appointments}>
-                                <h3 className={styles.blockTitle}>Consultas no período</h3>
-                                <ul className={styles.list}>
-                                    {appointments.map((appointment) => (
-                                        <li key={appointment.id}>
-                                            <strong>{formatDate(appointment.data)}</strong>
-                                            {appointment.diagnosis ? " — " + appointment.diagnosis : ""}
-                                            {appointment.geraPrescricao && (
-                                                <span className={styles.mark}>receita emitida</span>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                                {/* so vira linha no grafico a consulta que caiu num dia
-                                    com preenchimento, entao a lista avisa */}
-                                {appointmentMarks.length < appointments.length && (
-                                    <p className={styles.note}>
-                                        Consulta em dia sem preenchimento aparece aqui, mas não no gráfico:
-                                        não há ponto onde marcar.
-                                    </p>
-                                )}
-                            </section>
-                        )}
-                    </>
+                    </div>
                 )}
-            </section>
+            </Card>
 
-            <section>
-                <h2 className={styles.blockTitle}>O que o paciente escreveu</h2>
+            {showAppointments && appointments.length > 0 && (
+                <Card title="Consultas no período" count={appointments.length}>
+                    <ul className={styles.list}>
+                        {appointments.map((appointment) => (
+                            <li key={appointment.id}>
+                                <strong>{formatDate(appointment.data)}</strong>
+                                {appointment.diagnosis ? " — " + appointment.diagnosis : ""}
+                                {appointment.geraPrescricao && (
+                                    <span className={styles.mark}>receita emitida</span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    {/* so vira linha no grafico a consulta que caiu num dia
+                        com preenchimento, entao a lista avisa */}
+                    {chartRows.length > 0 && appointmentMarks.length < appointments.length && (
+                        <p className={styles.note}>
+                            Consulta em dia sem preenchimento aparece aqui, mas não no gráfico: não há ponto onde marcar.
+                        </p>
+                    )}
+                </Card>
+            )}
+
+            <Card title="O que o paciente escreveu" count={comments.length}>
                 {comments.length === 0 ? (
                     <p className={styles.empty}>Nenhum comentário nas escalas deste período.</p>
                 ) : (
@@ -390,23 +409,7 @@ export default function Progresso() {
                         ))}
                     </ul>
                 )}
-            </section>
-
-            <div className={styles.footerActions}>
-                <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                    Voltar
-                </button>
-                {chartRows.length > 0 && (
-                    <a
-                        className="button-secondary"
-                        href={"/api/patients/" + patientId + "/export/progress.csv?attribute="
-                            + chosenAttribute + "&period=" + period}
-                        download={true}
-                    >
-                        Baixar esta série em CSV
-                    </a>
-                )}
-            </div>
+            </Card>
         </section>
     );
 }

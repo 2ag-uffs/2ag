@@ -1,10 +1,13 @@
 import {useEffect, useState} from "react";
 import {FiBell, FiLock, FiMail, FiUser} from "react-icons/fi";
+import Card from "../../components/card/card.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
@@ -51,16 +54,13 @@ function CardMessage({message}) {
     return <p className={"aviso " + styles.cardMessage} role="status">{message.text}</p>;
 }
 
-function Card({icon, title, children}) {
-    const Icon = icon;
+// titulo do cartao com o icone do lado
+function cardTitle(Icon, text) {
     return (
-        <section className={styles.card}>
-            <h2 className={styles.cardTitle}>
-                <Icon aria-hidden="true"/>
-                {title}
-            </h2>
-            {children}
-        </section>
+        <>
+            <Icon className={styles.cardIcon} aria-hidden="true"/>
+            {text}
+        </>
     );
 }
 
@@ -109,7 +109,7 @@ function PersonalDataCard({profile, onSaved}) {
     };
 
     return (
-        <Card icon={FiUser} title="Dados pessoais">
+        <Card title={cardTitle(FiUser, "Dados pessoais")}>
             <dl className={styles.readOnlyInfo}>
                 <dt>CPF</dt>
                 <dd>{profile.cpf ? formatCpf(profile.cpf) : "Não informado"}</dd>
@@ -207,7 +207,7 @@ function PersonalDataCard({profile, onSaved}) {
                     />
                 </div>
                 <div className={styles.actions}>
-                    <button type="submit" className={styles.submitButton} disabled={isSaving}>
+                    <button type="submit" className="button" disabled={isSaving}>
                         {isSaving ? "Salvando..." : "Salvar dados"}
                     </button>
                 </div>
@@ -251,7 +251,7 @@ function EmailCard({profile, onSaved}) {
     };
 
     return (
-        <Card icon={FiMail} title="E-mail de acesso">
+        <Card title={cardTitle(FiMail, "E-mail de acesso")}>
             <p className={styles.cardText}>Hoje você entra com <strong>{profile.email}</strong>.</p>
 
             <CardMessage message={message}/>
@@ -278,7 +278,7 @@ function EmailCard({profile, onSaved}) {
                     required={true}
                 />
                 <div className={styles.actions}>
-                    <button type="submit" className={styles.submitButton} disabled={isSaving}>
+                    <button type="submit" className="button" disabled={isSaving}>
                         {isSaving ? "Trocando..." : "Trocar e-mail"}
                     </button>
                 </div>
@@ -337,7 +337,7 @@ function PasswordCard() {
     };
 
     return (
-        <Card icon={FiLock} title="Senha">
+        <Card title={cardTitle(FiLock, "Senha")}>
             <CardMessage message={message}/>
 
             <form className={styles.form} onSubmit={handleSubmit}>
@@ -370,7 +370,7 @@ function PasswordCard() {
                     required={true}
                 />
                 <div className={styles.actions}>
-                    <button type="submit" className={styles.submitButton} disabled={isSaving}>
+                    <button type="submit" className="button" disabled={isSaving}>
                         {isSaving ? "Trocando..." : "Trocar senha"}
                     </button>
                 </div>
@@ -407,7 +407,7 @@ function EmailPreferenceCard({profile, onSaved}) {
     };
 
     return (
-        <Card icon={FiBell} title="Avisos por e-mail">
+        <Card title={cardTitle(FiBell, "Avisos por e-mail")}>
             <label className={styles.preference}>
                 <input
                     type="checkbox"
@@ -460,27 +460,19 @@ export default function Profile() {
     if (loadError) {
         return (
             <section className={styles.page}>
-                <h1 className={styles.title}>Meu perfil</h1>
-                <p className="aviso aviso--atencao">{loadError}</p>
+                <PageHeader title="Meu perfil"/>
+                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
             </section>
         );
     }
 
     if (!profile) {
-        return (
-            <section className={styles.page}>
-                <h1 className={styles.title}>Meu perfil</h1>
-                <p className={styles.cardText}>Carregando...</p>
-            </section>
-        );
+        return <SkeletonPage cards={2}/>;
     }
 
     return (
         <section className={styles.page}>
-            <header>
-                <h1 className={styles.title}>Meu perfil</h1>
-                <p className={styles.subtitle}>Seus dados, o e-mail de acesso, a senha e os avisos.</p>
-            </header>
+            <PageHeader title="Meu perfil" subtitle="Seus dados, o e-mail de acesso, a senha e os avisos."/>
 
             <div className={styles.grid}>
                 <PersonalDataCard profile={profile} onSaved={handleSaved}/>

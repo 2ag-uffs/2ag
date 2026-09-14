@@ -1,5 +1,8 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
+import Card from "../../components/card/card.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {formatDate, formatDateTime} from "../../utils/date-format.js";
 import {formatAnswer} from "../../utils/scale-answers.js";
@@ -53,24 +56,39 @@ export default function RespostaEscala() {
     }
 
     if (!response || !definition) {
-        return <p>Carregando a resposta...</p>;
+        return <SkeletonPage cards={1}/>;
     }
 
     const periodText = response.periodStart === response.periodEnd
         ? formatDate(response.periodStart)
         : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
 
+    // o paciente corrige enquanto o prescritor n analisou e a tela de responder ja abre no dia certo
+    const canCorrect = loggedUser.role === "PATIENT" && response.editableByPatient;
+
     return (
         <section className={styles.page}>
-            <header>
-                <h1>{response.scaleName}</h1>
-                <p className={styles.meta}>
-                    {response.patientName} · {periodText}
-                    {response.prescriberName ? " · aplicada por " + response.prescriberName : ""}
-                </p>
-            </header>
+            <PageHeader
+                title={response.scaleName}
+                subtitle={response.patientName + " · " + periodText
+                    + (response.prescriberName ? " · aplicada por " + response.prescriberName : "")}
+                actions={canCorrect ? (
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => navigate("/escalas/" + response.slug + "?data=" + response.periodStart)}
+                    >
+                        Corrigir respostas
+                    </button>
+                ) : null}
+            />
 
-            {response.result && <p className={styles.result}>{response.result}</p>}
+            {response.result && (
+                <div className={styles.result}>
+                    <span className={styles.resultLabel}>Resultado</span>
+                    <strong>{response.result}</strong>
+                </div>
+            )}
 
             {response.annulled && (
                 <p className="aviso aviso--atencao">
@@ -83,30 +101,16 @@ export default function RespostaEscala() {
                 <p className={styles.meta}>Analisada pelo prescritor em {formatDateTime(response.reviewedAt)}.</p>
             )}
 
-            <dl className={styles.answers}>
-                {definition.items.map((item) => (
-                    <div key={item.key} className={styles.answer}>
-                        <dt>{item.label}</dt>
-                        <dd>{formatAnswer(item, response.answers[item.key])}</dd>
-                    </div>
-                ))}
-            </dl>
-
-            <div className={styles.actions}>
-                <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                    Voltar
-                </button>
-                {/* o paciente corrige enquanto o prescritor n analisou e a tela de responder ja abre no dia certo */}
-                {loggedUser.role === "PATIENT" && response.editableByPatient && (
-                    <button
-                        type="button"
-                        className="button"
-                        onClick={() => navigate("/escalas/" + response.slug + "?data=" + response.periodStart)}
-                    >
-                        Corrigir respostas
-                    </button>
-                )}
-            </div>
+            <Card title="Respostas">
+                <dl className={styles.answers}>
+                    {definition.items.map((item) => (
+                        <div key={item.key} className={styles.answer}>
+                            <dt>{item.label}</dt>
+                            <dd>{formatAnswer(item, response.answers[item.key])}</dd>
+                        </div>
+                    ))}
+                </dl>
+            </Card>
         </section>
     );
 }

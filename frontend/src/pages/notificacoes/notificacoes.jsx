@@ -1,16 +1,26 @@
 import {useCallback, useEffect, useState} from "react";
 import {useNavigate} from "react-router";
+import {FiAlertCircle, FiBell, FiCalendar, FiClipboard} from "react-icons/fi";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
+import PageHeader from "../../components/page-header/page-header.jsx";
+import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDateTime} from "../../utils/date-format.js";
 import styles from "./notificacoes.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
-// o tipo vem do backend e vira uma etiqueta curta na lista
+// o tipo vem do backend e vira uma etiqueta curta e um icone na lista
 const TYPE_LABELS = {
     APPOINTMENT: "Consulta",
     FORM: "Formulário",
     ALERT: "Aviso",
+};
+
+const TYPE_ICONS = {
+    APPOINTMENT: FiCalendar,
+    FORM: FiClipboard,
+    ALERT: FiAlertCircle,
 };
 
 // avisos da propria conta (RF14 e RF15)
@@ -86,69 +96,72 @@ export default function Notificacoes() {
     }
 
     if (!page) {
-        return <p>Carregando avisos...</p>;
+        return <SkeletonPage cards={1}/>;
+    }
+
+    let unreadText = page.unread + " avisos não lidos.";
+    if (page.unread === 0) {
+        unreadText = "Você está em dia, nenhum aviso novo.";
+    } else if (page.unread === 1) {
+        unreadText = "1 aviso não lido.";
     }
 
     return (
         <section className={styles.page}>
-            <header className={styles.header}>
-                <div>
-                    <h1>Avisos</h1>
-                    <p className={styles.subtitle}>
-                        {page.unread === 0
-                            ? "Você está em dia, nenhum aviso novo."
-                            : page.unread === 1
-                                ? "1 aviso não lido."
-                                : page.unread + " avisos não lidos."}
-                    </p>
-                </div>
-                {page.unread > 0 && (
+            <PageHeader
+                title="Avisos"
+                subtitle={unreadText}
+                actions={page.unread > 0 ? (
                     <button type="button" className="button-secondary" onClick={markAllAsRead}>
                         Marcar todos como lidos
                     </button>
-                )}
-            </header>
+                ) : null}
+            />
 
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
 
             {page.notifications.length === 0 ? (
-                <p className={styles.empty}>Nenhum aviso por aqui.</p>
+                <EmptyState icon={FiBell} message="Nenhum aviso por aqui."/>
             ) : (
                 <ul className={styles.list}>
-                    {page.notifications.map((notification) => (
-                        <li
-                            key={notification.id}
-                            className={notification.isRead ? styles.item : styles.itemUnread}
-                        >
-                            <div className={styles.content}>
-                                <p className={styles.meta}>
-                                    <span className={styles.tag}>
-                                        {TYPE_LABELS[notification.type] || "Aviso"}
-                                    </span>
-                                    {formatDateTime(notification.createdAt)}
-                                    {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
-                                </p>
-                                <h2 className={styles.title}>{notification.title}</h2>
-                                <p className={styles.message}>{notification.message}</p>
-                            </div>
-                            <div className={styles.actions}>
-                                <button
-                                    type="button"
-                                    className="button-secondary"
-                                    onClick={() => openNotification(notification)}
-                                >
-                                    {notification.link ? "Abrir" : "Marcar como lido"}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="button-tertiary"
-                                    onClick={() => removeNotification(notification.id)}
-                                >
-                                    Apagar
-                                </button>
-                            </div>
-                        </li>
-                    ))}
+                    {page.notifications.map((notification) => {
+                        const Icon = TYPE_ICONS[notification.type] || FiBell;
+                        return (
+                            <li
+                                key={notification.id}
+                                className={notification.isRead ? styles.item : styles.item + " " + styles.itemUnread}
+                            >
+                                <span className={styles.icon} aria-hidden="true"><Icon/></span>
+                                <div className={styles.content}>
+                                    <p className={styles.meta}>
+                                        <span className={styles.tag}>
+                                            {TYPE_LABELS[notification.type] || "Aviso"}
+                                        </span>
+                                        {formatDateTime(notification.createdAt)}
+                                        {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
+                                    </p>
+                                    <h2 className={styles.title}>{notification.title}</h2>
+                                    <p className={styles.message}>{notification.message}</p>
+                                </div>
+                                <div className={styles.actions}>
+                                    <button
+                                        type="button"
+                                        className="button-secondary button-small"
+                                        onClick={() => openNotification(notification)}
+                                    >
+                                        {notification.link ? "Abrir" : "Marcar como lido"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="button-tertiary button-small"
+                                        onClick={() => removeNotification(notification.id)}
+                                    >
+                                        Apagar
+                                    </button>
+                                </div>
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
 
@@ -156,7 +169,7 @@ export default function Notificacoes() {
                 <div className={styles.pagination}>
                     <button
                         type="button"
-                        className="button-secondary"
+                        className="button-secondary button-small"
                         disabled={pageNumber === 0}
                         onClick={() => setPageNumber((current) => current - 1)}
                     >
@@ -165,7 +178,7 @@ export default function Notificacoes() {
                     <span>Página {page.page + 1} de {page.totalPages}</span>
                     <button
                         type="button"
-                        className="button-secondary"
+                        className="button-secondary button-small"
                         disabled={page.page + 1 >= page.totalPages}
                         onClick={() => setPageNumber((current) => current + 1)}
                     >
