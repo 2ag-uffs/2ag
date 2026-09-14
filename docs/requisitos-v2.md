@@ -809,7 +809,9 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **PDF pela impressão:** em vez de gerar PDF no servidor, existe uma página de impressão com cabeçalho de paciente, prescritor, período e data de emissão, e o histórico do período. O navegador imprime ou salva em PDF.
 - **Trilha:** exportar é leitura de prontuário e entra na trilha de auditoria como qualquer abertura (RF31).
 
-Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto não é módulo, e sim as perguntas que dependem da clínica, em `docs/extensao/perguntas-para-a-clinica.md`, e o RNF07, o backup automático com restauração testada, que é pré-requisito do piloto.
+Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto não é módulo, e sim as perguntas que dependem da clínica, em `docs/extensao/perguntas-para-a-clinica.md`.
+
+**RNF07 em 14/09/2026:** o backup ganhou script de cópia diária, script de restauração e o procedimento em `docs/backup-e-restauracao.md`, com a tabela onde cada restauração testada fica registrada. O requisito só fecha quando a primeira restauração for feita de verdade no servidor do piloto e anotada ali.
 
 ---
 

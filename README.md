@@ -136,6 +136,19 @@ o ci do github roda os três a cada push e também confere se as imagens do dock
 
 ---
 
+## backup
+
+o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./docs/backup-e-restauracao.md).
+
+```bash
+export DATABASE_PASSWORD='a_senha_do_banco'
+./scripts/backup-banco.sh /var/backups/2ag
+```
+
+o backup do dia não substitui o do dia anterior, porque o prontuário tem guarda mínima de 20 anos. e backup que ninguém restaurou não vale: o documento tem a tabela onde cada teste de restauração fica registrado.
+
+---
+
 ## onde fica cada coisa
 
 ```
