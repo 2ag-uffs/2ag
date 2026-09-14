@@ -775,10 +775,20 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **MEEM:** aplicado pelo prescritor dentro de consulta confirmada, nunca designado ao paciente (RN09), e aparece nos dois históricos.
 - **Avisos:** a escala enviada avisa o paciente e a resposta avisa o prescritor (RF15). As pendências vencidas aparecem no painel do prescritor.
 
+**Evolução concluída em 14/09/2026:** RF27, RF28 e RF07.
+
+- **Uma página para os dois perfis:** o paciente vê a própria evolução e o prescritor a de cada paciente vinculado, com o período adicional "todo o tempo" (RF28). O RF07 ficou dentro dela, como decidido em §8.3.
+- **Gráfico:** período, escala e atributo no topo, e a curva do atributo escolhido ao longo das datas de preenchimento. Dia sem resposta é lacuna, nunca zero (RN10).
+- **Faixa no gráfico:** nas escalas validadas, cada faixa do instrumento vira uma linha de corte com o nome, então o escore nunca aparece como número solto (RN14). Formulário sem faixa publicada não ganha linha nenhuma (RN13).
+- **Dose junto do sintoma:** nos atributos da ficha de acompanhamento, uma caixa liga a linha das gotas do dia. É o que responde se mexer na dose mudou o sintoma.
+- **Consultas no gráfico:** a consulta do período vira uma linha vertical no dia em que aconteceu, com marca própria quando saiu receita. A que caiu em dia sem preenchimento aparece na lista embaixo, porque não há ponto onde marcar.
+- **Relato do paciente (RF07):** os comentários escritos dentro das escalas aparecem em uma linha do tempo abaixo do gráfico, com a data e a escala de onde vieram.
+- **Extensibilidade:** acrescentar uma escala não exige tocar no serviço de progresso nem na tela: os atributos, as faixas e os limites do eixo vêm do catálogo (RNF08).
+
 Ficam para os módulos seguintes:
 
-- **Evolução:** as telas de progresso (RF27 e RF28) continuam as de 2025. Elas já leem as respostas do motor novo, mas a reescrita fica para o módulo.
 - **Painel inicial:** o painel do paciente ainda mostra a lista de consultas futuras vazia (RF03).
+- **Exportação:** o botão de exportar histórico e séries em PDF e CSV (RF33).
 
 ---
 
