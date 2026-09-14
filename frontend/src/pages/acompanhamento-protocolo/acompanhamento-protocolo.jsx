@@ -1,294 +1,271 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import ModalConfirmacao from "../../components/modal/modal-confirmacao.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import "./acompanhamento-protocolo.css";
+import {formatDate, toIsoDate} from "../../utils/date-format.js";
+import styles from "./acompanhamento-protocolo.module.css";
 
-const PERIODICIDADES = [
-    {valor: "SEMANAL", texto: "Toda semana"},
-    {valor: "QUINZENAL", texto: "A cada 15 dias"},
-    {valor: "MENSAL", texto: "Uma vez por mês"},
+const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
+
+const PERIODICITIES = [
+    {value: "SEMANAL", label: "Toda semana"},
+    {value: "QUINZENAL", label: "A cada 15 dias"},
+    {value: "MENSAL", label: "Uma vez por mês"},
 ];
 
-// monta o acompanhamento automatico de 90 dias (RF32).
+// o acompanhamento automatico de 90 dias (RF32)
 //
 // a prescritora escolhe uma vez quais escalas e de quanto em quanto
-// tempo, e o sistema manda sozinho dali em diante. antes ela tinha que
-// designar formulario por formulario, paciente por paciente
+// tempo, e o sistema envia sozinho dali em diante. antes ela designava
+// formulario por formulario, paciente por paciente
 export default function AcompanhamentoProtocolo() {
     const navigate = useNavigate();
     const {patientId} = useParams();
 
-    const [protocoloAtivo, setProtocoloAtivo] = useState(null);
-    // a lista de escalas vem do servidor, num lugar so (RN09)
-    const [escalas, setEscalas] = useState([]);
-    // a programacao de horarios q aparece no topo do diario do sono (RF22)
-    const [horaDormir, setHoraDormir] = useState("");
-    const [horaLevantar, setHoraLevantar] = useState("");
-    const [escolhidas, setEscolhidas] = useState({});
-    const [inicio, setInicio] = useState(new Date().toISOString().split("T")[0]);
-    const [duracao, setDuracao] = useState(90);
+    const [protocol, setProtocol] = useState(null);
+    const [scales, setScales] = useState([]);
+    const [chosen, setChosen] = useState({});
+    const [startDate, setStartDate] = useState(toIsoDate(new Date()));
+    const [durationDays, setDurationDays] = useState(90);
+    const [sleepBedTime, setSleepBedTime] = useState("");
+    const [sleepWakeTime, setSleepWakeTime] = useState("");
 
-    const [carregando, setCarregando] = useState(true);
-    const [salvando, setSalvando] = useState(false);
-    const [erro, setErro] = useState(null);
-    const [aviso, setAviso] = useState(null);
-    const [confirmandoEncerrar, setConfirmandoEncerrar] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formError, setFormError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [isEndingOpen, setIsEndingOpen] = useState(false);
 
-    const carregar = () => {
-        setCarregando(true);
-        apiService
-            .get("/escalas/designaveis")
-            .then((designaveis) => setEscalas(designaveis.map((escala) => ({
-                valor: escala.type,
-                texto: escala.name,
-            }))))
-            .catch(() => setEscalas([]));
-        apiService
-            .get(`/pacientes/${patientId}/acompanhamento`)
-            .then((protocolo) => setProtocoloAtivo(protocolo))
-            .catch((err) => {
+    const load = useCallback(() => {
+        setIsLoading(true);
+        apiService.get("/escalas/designaveis")
+            .then(setScales)
+            .catch(() => setScales([]));
+
+        apiService.get("/pacientes/" + patientId + "/acompanhamento")
+            .then(setProtocol)
+            .catch((requestError) => {
                 // 404 aqui so quer dizer que ainda n existe acompanhamento
-                if (err instanceof ApiError && err.status === 404) {
-                    setProtocoloAtivo(null);
+                if (requestError instanceof ApiError && requestError.status === 404) {
+                    setProtocol(null);
                 } else {
-                    setErro(err instanceof ApiError ? err.message : "Não foi possível carregar.");
+                    setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
                 }
             })
-            .finally(() => setCarregando(false));
-    };
+            .finally(() => setIsLoading(false));
+    }, [patientId]);
 
-    useEffect(carregar, [patientId]);
+    useEffect(load, [load]);
 
-    const alternarEscala = (valor) => {
-        setEscolhidas((antes) => {
-            const copia = {...antes};
-            if (copia[valor]) {
-                delete copia[valor];
+    const toggleScale = (type) => {
+        setChosen((current) => {
+            const copy = {...current};
+            if (copy[type]) {
+                delete copy[type];
             } else {
-                copia[valor] = "SEMANAL";
+                copy[type] = "SEMANAL";
             }
-            return copia;
+            return copy;
         });
     };
 
-    const mudarPeriodicidade = (valor, periodicidade) => {
-        setEscolhidas((antes) => ({...antes, [valor]: periodicidade}));
+    const changePeriodicity = (type, periodicity) => {
+        setChosen((current) => ({...current, [type]: periodicity}));
     };
 
-    const criar = async (e) => {
-        e.preventDefault();
-        setErro(null);
+    const create = async (event) => {
+        event.preventDefault();
+        setFormError(null);
 
-        const itens = Object.entries(escolhidas).map(([scaleType, periodicity]) => ({
-            scaleType,
-            periodicity,
-        }));
-
-        if (itens.length === 0) {
-            setErro("Escolha ao menos uma escala.");
+        const items = Object.entries(chosen).map(([scaleType, periodicity]) => ({scaleType, periodicity}));
+        if (items.length === 0) {
+            setFormError("Escolha ao menos uma escala.");
             return;
         }
 
-        setSalvando(true);
+        setIsSaving(true);
         try {
-            await apiService.post(`/pacientes/${patientId}/acompanhamento`, {
-                startDate: inicio,
-                durationDays: Number(duracao),
-                sleepBedTime: horaDormir === "" ? null : horaDormir,
-                sleepWakeTime: horaLevantar === "" ? null : horaLevantar,
-                items: itens,
+            await apiService.post("/pacientes/" + patientId + "/acompanhamento", {
+                startDate,
+                durationDays: Number(durationDays),
+                sleepBedTime: sleepBedTime === "" ? null : sleepBedTime,
+                sleepWakeTime: sleepWakeTime === "" ? null : sleepWakeTime,
+                items,
             });
-            setAviso("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
-            carregar();
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível iniciar o acompanhamento.");
+            setNotice("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
+            load();
+        } catch (requestError) {
+            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
         } finally {
-            setSalvando(false);
+            setIsSaving(false);
         }
     };
 
-    // o confirm do navegador virou modal, quem pergunta eh o botao
-    const encerrar = async () => {
-        setConfirmandoEncerrar(false);
+    const end = async () => {
+        setIsEndingOpen(false);
+        setFormError(null);
         try {
-            await apiService.put(`/pacientes/${patientId}/acompanhamento/encerrar`);
-            carregar();
-        } catch (err) {
-            setErro(err instanceof ApiError ? err.message : "Não foi possível encerrar.");
+            await apiService.put("/pacientes/" + patientId + "/acompanhamento/encerrar");
+            setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente.");
+            load();
+        } catch (requestError) {
+            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
         }
     };
 
-    if (carregando) {
-        return (
-            <div className="protocolo">
-                <main className="protocolo__conteudo"><p>Carregando...</p></main>
-            </div>
-        );
+    if (isLoading) {
+        return <p>Carregando o acompanhamento...</p>;
     }
 
     return (
-        <div className="protocolo">
-            <main className="protocolo__conteudo">
+        <section className={styles.page}>
+            <header>
                 <h1>Acompanhamento automático</h1>
+                <p className={styles.subtitle}>
+                    O sistema envia as escalas na frequência escolhida, sem ninguém precisar lembrar.
+                </p>
+            </header>
 
-                {erro && <p className="protocolo__erro">{erro}</p>}
-                {aviso && <p className="aviso">{aviso}</p>}
+            {notice && <p className="aviso" role="status">{notice}</p>}
+            {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
-                {protocoloAtivo ? (
-                    <section className="protocolo__ativo">
-                        <h2>Em andamento</h2>
-                        <p>
-                            Paciente: <strong>{protocoloAtivo.patientName}</strong>
+            {protocol ? (
+                <section className={styles.card}>
+                    <h2 className={styles.cardTitle}>Em andamento</h2>
+                    <p>
+                        <strong>{protocol.patientName}</strong>, de {formatDate(protocol.startDate)} até
+                        {" " + formatDate(protocol.endDate)}
+                    </p>
+                    {protocol.sleepBedTime && (
+                        <p className={styles.subtitle}>
+                            Programação do diário do sono: dormir às {protocol.sleepBedTime} e levantar
+                            às {protocol.sleepWakeTime}
                         </p>
-                        <p>
-                            De {protocoloAtivo.startDate} até {protocoloAtivo.endDate}
-                        </p>
-                        {protocoloAtivo.sleepBedTime && (
-                            <p>
-                                Programação do diário do sono: dormir às {protocoloAtivo.sleepBedTime} e
-                                levantar às {protocoloAtivo.sleepWakeTime}
-                            </p>
-                        )}
+                    )}
 
-                        <table className="protocolo__tabela">
-                            <thead>
-                            <tr>
-                                <th>Escala</th>
-                                <th>Frequência</th>
+                    <table className={styles.table}>
+                        <thead>
+                        <tr>
+                            <th>Escala</th>
+                            <th>Frequência</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {protocol.items.map((item) => (
+                            <tr key={item.scaleType}>
+                                <td>{item.scaleName}</td>
+                                <td>
+                                    {(PERIODICITIES.find((option) => option.value === item.periodicity) || {}).label}
+                                </td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            {protocoloAtivo.items.map((item) => (
-                                <tr key={item.scaleType}>
-                                    <td>{item.scaleName}</td>
-                                    <td>
-                                        {PERIODICIDADES.find((p) => p.valor === item.periodicity)?.texto}
-                                    </td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
+                        ))}
+                        </tbody>
+                    </table>
 
-                        <p className="protocolo__nota">
-                            O sistema envia essas escalas sozinho, na frequência escolhida, até a
-                            data final. Não é preciso mandar uma por uma.
-                        </p>
+                    <div className={styles.actions}>
+                        <button type="button" className="button-secondary" onClick={() => setIsEndingOpen(true)}>
+                            Encerrar acompanhamento
+                        </button>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Voltar
+                        </button>
+                    </div>
+                </section>
+            ) : (
+                <form className={styles.form} onSubmit={create}>
+                    <div className={styles.fields}>
+                        <label className={styles.field}>
+                            <span>Começa em</span>
+                            <input
+                                type="date"
+                                value={startDate}
+                                required={true}
+                                onChange={(event) => setStartDate(event.target.value)}
+                            />
+                        </label>
+                        <label className={styles.field}>
+                            <span>Duração em dias</span>
+                            <input
+                                type="number"
+                                min="1"
+                                value={durationDays}
+                                required={true}
+                                onChange={(event) => setDurationDays(event.target.value)}
+                            />
+                        </label>
+                    </div>
 
-                        <div className="protocolo__acoes">
-                            <button
-                                type="button"
-                                className="button-secondary"
-                                onClick={() => setConfirmandoEncerrar(true)}
-                            >
-                                Encerrar acompanhamento
-                            </button>
-                            <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                                Voltar
-                            </button>
-                        </div>
-                    </section>
-                ) : (
-                    <form onSubmit={criar}>
-                        <p className="protocolo__ajuda">
-                            Escolha as escalas e de quanto em quanto tempo o paciente deve
-                            respondê-las. O sistema envia sozinho durante todo o período.
-                        </p>
-
-                        <div className="protocolo__campos">
-                            <div className="protocolo__campo">
-                                <label htmlFor="inicio">Começa em</label>
-                                <input
-                                    id="inicio"
-                                    type="date"
-                                    value={inicio}
-                                    onChange={(e) => setInicio(e.target.value)}
-                                    required={true}
-                                />
-                            </div>
-                            <div className="protocolo__campo">
-                                <label htmlFor="duracao">Duração (dias)</label>
-                                <input
-                                    id="duracao"
-                                    type="number"
-                                    min="1"
-                                    value={duracao}
-                                    onChange={(e) => setDuracao(e.target.value)}
-                                    required={true}
-                                />
-                            </div>
-                        </div>
-
-                        <section className="protocolo__lista">
-                            {escalas.map((escala) => (
-                                <div className="protocolo__linha" key={escala.valor}>
-                                    <label className="protocolo__escala">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(escolhidas[escala.valor])}
-                                            onChange={() => alternarEscala(escala.valor)}
-                                        />
-                                        <span>{escala.texto}</span>
-                                    </label>
-
-                                    {escolhidas[escala.valor] && (
-                                        <select
-                                            value={escolhidas[escala.valor]}
-                                            onChange={(e) => mudarPeriodicidade(escala.valor, e.target.value)}
-                                        >
-                                            {PERIODICIDADES.map((p) => (
-                                                <option key={p.valor} value={p.valor}>{p.texto}</option>
-                                            ))}
-                                        </select>
-                                    )}
-                                </div>
-                            ))}
-                        </section>
-
-                        {escolhidas.REGISTRO_SONO && (
-                            <div className="protocolo__campos">
-                                <div className="protocolo__campo">
-                                    <label htmlFor="horaDormir">Programação: ir dormir às</label>
+                    <ul className={styles.list}>
+                        {scales.map((scale) => (
+                            <li key={scale.type} className={styles.item}>
+                                <label className={styles.choice}>
                                     <input
-                                        id="horaDormir"
-                                        type="time"
-                                        value={horaDormir}
-                                        onChange={(e) => setHoraDormir(e.target.value)}
+                                        type="checkbox"
+                                        checked={Boolean(chosen[scale.type])}
+                                        onChange={() => toggleScale(scale.type)}
                                     />
-                                </div>
-                                <div className="protocolo__campo">
-                                    <label htmlFor="horaLevantar">Levantar às</label>
-                                    <input
-                                        id="horaLevantar"
-                                        type="time"
-                                        value={horaLevantar}
-                                        onChange={(e) => setHoraLevantar(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                                    <span>
+                                        <strong>{scale.name}</strong>
+                                        <span className={styles.help}>{scale.description}</span>
+                                    </span>
+                                </label>
+                                {chosen[scale.type] && (
+                                    <select
+                                        aria-label={"Frequência de " + scale.name}
+                                        value={chosen[scale.type]}
+                                        onChange={(event) => changePeriodicity(scale.type, event.target.value)}
+                                    >
+                                        {PERIODICITIES.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
 
-                        <div className="protocolo__acoes">
-                            <button type="submit" disabled={salvando}>
-                                {salvando ? "Iniciando..." : "Iniciar acompanhamento"}
-                            </button>
-                            <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
-                                Cancelar
-                            </button>
+                    {/* a programacao de horarios q aparece no topo do diario do sono (RF22) */}
+                    {chosen.REGISTRO_SONO && (
+                        <div className={styles.fields}>
+                            <label className={styles.field}>
+                                <span>Programação: ir dormir às</span>
+                                <input
+                                    type="time"
+                                    value={sleepBedTime}
+                                    onChange={(event) => setSleepBedTime(event.target.value)}
+                                />
+                            </label>
+                            <label className={styles.field}>
+                                <span>Levantar às</span>
+                                <input
+                                    type="time"
+                                    value={sleepWakeTime}
+                                    onChange={(event) => setSleepWakeTime(event.target.value)}
+                                />
+                            </label>
                         </div>
-                    </form>
-                )}
-            </main>
+                    )}
+
+                    <div className={styles.actions}>
+                        <button type="submit" className="button" disabled={isSaving}>
+                            {isSaving ? "Iniciando..." : "Iniciar acompanhamento"}
+                        </button>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            )}
 
             <ModalConfirmacao
-                show={confirmandoEncerrar}
+                show={isEndingOpen}
                 titulo="Encerrar acompanhamento"
-                mensagem="O sistema para de enviar as escalas para este paciente. Quer encerrar?"
+                mensagem="O sistema para de enviar as escalas para este paciente. O acompanhamento fica guardado como encerrado."
                 textoConfirmar="Sim, encerrar"
                 textoCancelar="Manter ativo"
-                onConfirmar={encerrar}
-                onCancelar={() => setConfirmandoEncerrar(false)}
+                onConfirmar={end}
+                onCancelar={() => setIsEndingOpen(false)}
             />
-        </div>
+        </section>
     );
 }

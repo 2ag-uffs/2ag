@@ -1,191 +1,169 @@
-import {useEffect, useState} from 'react';
-import {useNavigate, useParams} from 'react-router';
-import './selecao-escalas.css';
+import {useEffect, useState} from "react";
+import {useNavigate, useParams} from "react-router";
 import {apiService, ApiError} from "../../services/api.js";
+import styles from "./selecao-escalas.module.css";
 
+const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
+
+// envio avulso de escalas pro paciente (RF09)
+//
+// a lista do q da pra enviar vem do servidor, entao o mini-exame nem
+// aparece aqui: quem aplica eh o prescritor na consulta (RN09)
 export default function SelecaoEscalas() {
     const navigate = useNavigate();
     const {pacienteId} = useParams();
 
-    const [nomePaciente, setNomePaciente] = useState('');
-    // as escalas q da pra enviar vem do servidor (RN09), entao o mini-exame
-    // nem aparece aqui: quem aplica eh o prescritor durante a consulta
-    const [escalasDisponiveis, setEscalasDisponiveis] = useState([]);
-    // tipos de escala q o paciente ja recebeu e ainda n respondeu
-    const [escalasPendentes, setEscalasPendentes] = useState([]);
-    const [escalasSelecionadas, setEscalasSelecionadas] = useState({});
-    const [termoBusca, setTermoBusca] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [loadingEnvio, setLoadingEnvio] = useState(false);
-    const [error, setError] = useState(null);
-    // o error acima derruba a tela toda entao o recado do envio fica aqui
-    const [avisoEnvio, setAvisoEnvio] = useState(null);
+    const [page, setPage] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [chosen, setChosen] = useState({});
+    const [search, setSearch] = useState("");
+    const [actionError, setActionError] = useState(null);
+    const [isSending, setIsSending] = useState(false);
 
     useEffect(() => {
+        let isCurrentRequest = true;
+
         Promise.all([
-            apiService.get(`/paciente/${pacienteId}`),
-            apiService.get(`/pacientes/${pacienteId}/escalas`),
-            apiService.get('/escalas/designaveis')
+            apiService.get("/paciente/" + pacienteId),
+            apiService.get("/pacientes/" + pacienteId + "/escalas"),
+            apiService.get("/escalas/designaveis"),
         ])
-            .then(([dadosPaciente, escalasEnviadas, designaveis]) => {
-                setNomePaciente(dadosPaciente.name || 'Nome não informado');
-                setEscalasDisponiveis(designaveis.map((escala) => ({
-                    id: escala.type,
-                    nome: escala.name,
-                    descricao: escala.description,
-                    backendType: escala.type
-                })));
-                setEscalasPendentes(escalasEnviadas
-                    .filter(escala => escala.status === 'PENDENTE')
-                    .map(escala => escala.scaleType));
+            .then(([patient, tasks, assignable]) => {
+                if (isCurrentRequest) {
+                    setPage({
+                        patientName: patient.name,
+                        // as q ainda esperam resposta n entram de novo
+                        waiting: tasks.filter((task) => task.status === "PENDENTE")
+                            .map((task) => task.scaleType),
+                        scales: assignable,
+                    });
+                    setLoadError(null);
+                }
             })
-            .catch((erro) => {
-                setError(erro instanceof ApiError
-                    ? erro.message
-                    : 'Erro ao carregar dados. Verifique sua conexão e tente novamente.');
-            })
-            .finally(() => setLoading(false));
+            .catch((requestError) => {
+                if (isCurrentRequest) {
+                    setLoadError(requestError instanceof ApiError
+                        ? requestError.message
+                        : "Não foi possível carregar as escalas. Confira sua internet e tente de novo.");
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [pacienteId]);
 
-    const handleSelecaoChange = (escalaId) => {
-        setEscalasSelecionadas(prev => ({
-            ...prev,
-            [escalaId]: !prev[escalaId]
-        }));
+    const toggleScale = (type) => {
+        setChosen((current) => ({...current, [type]: !current[type]}));
+        setActionError(null);
     };
 
-    // so vai o q foi marcado agora e ainda n esta esperando resposta do paciente
-    const escalasParaEnviar = escalasDisponiveis.filter(escala =>
-        escalasSelecionadas[escala.id] && !escalasPendentes.includes(escala.backendType)
-    );
+    if (loadError) {
+        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+    }
 
-    const handleEnviar = async () => {
-        if (escalasParaEnviar.length === 0) {
-            setAvisoEnvio('Marque pelo menos uma escala para enviar.');
-            return;
-        }
+    if (!page) {
+        return <p>Carregando escalas...</p>;
+    }
 
-        setAvisoEnvio(null);
-        setLoadingEnvio(true);
-        const enviadas = [];
+    const visibleScales = page.scales.filter((scale) =>
+        scale.name.toLowerCase().includes(search.trim().toLowerCase()));
+    const scalesToSend = page.scales.filter((scale) => chosen[scale.type] && !page.waiting.includes(scale.type));
+
+    const send = async () => {
+        setActionError(null);
+        setIsSending(true);
+        const sent = [];
         try {
             // uma de cada vez pra saber o q chegou ao paciente se alguma falhar
-            for (const escala of escalasParaEnviar) {
-                await apiService.post(`/pacientes/${pacienteId}/escalas`, {scaleType: escala.backendType});
-                enviadas.push(escala.backendType);
+            for (const scale of scalesToSend) {
+                await apiService.post("/pacientes/" + pacienteId + "/escalas", {scaleType: scale.type});
+                sent.push(scale.type);
             }
-            navigate('/dashboard-prescritor', {
+            navigate("/paciente/" + pacienteId + "/historico", {
                 state: {
-                    aviso: `${enviadas.length} escala(s) enviada(s) para ${nomePaciente}. `
-                        + 'O paciente recebe um aviso no sistema e a escala aparece no painel dele.'
+                    aviso: sent.length + " escala(s) enviada(s) para " + page.patientName
+                        + ". O paciente recebeu o aviso e a escala já aparece no painel dele.",
                 },
             });
-        } catch (erro) {
-            const detalhe = erro instanceof ApiError ? erro.message : 'Não foi possível falar com o servidor.';
-            setEscalasPendentes(atuais => [...atuais, ...enviadas]);
-            setAvisoEnvio(enviadas.length > 0
-                ? `Só parte das escalas foi enviada. ${detalhe}`
-                : `Nenhuma escala foi enviada. ${detalhe}`);
-            setLoadingEnvio(false);
+        } catch (requestError) {
+            const detail = requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
+            setPage((current) => ({...current, waiting: [...current.waiting, ...sent]}));
+            setActionError(sent.length > 0
+                ? "Só parte das escalas foi enviada. " + detail
+                : "Nenhuma escala foi enviada. " + detail);
+            setIsSending(false);
         }
     };
 
-    const escalasFiltradas = escalasDisponiveis.filter(escala =>
-        escala.nome.toLowerCase().includes(termoBusca.toLowerCase())
-    );
-
-    if (loading) {
-        return (
-            <div className="selecao-escalas">
-                <main className="selecao-main">
-                    <div className="selecao-title">
-                        <h1>Carregando...</h1>
-                        <p>Buscando dados do paciente e escalas enviadas.</p>
-                    </div>
-                </main>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="selecao-escalas">
-                <main className="selecao-main">
-                    <div className="selecao-title">
-                        <h1>Erro</h1>
-                        <p className="error-message">{error}</p>
-                        <button onClick={() => window.location.reload()} className="retry-button">
-                            Tentar Novamente
-                        </button>
-                    </div>
-                </main>
-            </div>
-        );
-    }
-
     return (
-        <div className="selecao-escalas">
+        <section className={styles.page}>
+            <header>
+                <h1>Enviar escalas para {page.patientName}</h1>
+                <p className={styles.subtitle}>
+                    Marque o que o paciente vai responder. Ele recebe um aviso no sistema e a escala aparece no
+                    painel dele, com prazo.
+                </p>
+            </header>
 
-            <main className="selecao-main">
-                <div className="selecao-title">
-                    <h1>Enviar escalas para {nomePaciente}</h1>
-                    <p>
-                        Marque as escalas que o paciente vai preencher. Ele recebe um aviso no sistema e a
-                        escala aparece no painel dele.
-                    </p>
+            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+
+            <label className={styles.search}>
+                <span>Buscar escala</span>
+                <input
+                    type="text"
+                    placeholder="Nome da escala"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                />
+            </label>
+
+            <ul className={styles.list}>
+                {visibleScales.map((scale) => {
+                    const alreadySent = page.waiting.includes(scale.type);
+                    return (
+                        <li key={scale.type} className={styles.item}>
+                            <label className={styles.choice}>
+                                <input
+                                    type="checkbox"
+                                    checked={alreadySent || Boolean(chosen[scale.type])}
+                                    disabled={alreadySent || isSending}
+                                    onChange={() => toggleScale(scale.type)}
+                                />
+                                <span>
+                                    <strong>{scale.name}</strong>
+                                    <span className={styles.help}>
+                                        {alreadySent
+                                            ? "Já enviada. Esperando o paciente responder."
+                                            : scale.description}
+                                    </span>
+                                </span>
+                            </label>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <footer className={styles.footer}>
+                <p className={styles.subtitle}>
+                    {scalesToSend.length === 0
+                        ? "Nenhuma escala marcada."
+                        : scalesToSend.length + " escala(s) para enviar."}
+                </p>
+                <div className={styles.actions}>
+                    <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                        Voltar
+                    </button>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={send}
+                        disabled={scalesToSend.length === 0 || isSending}
+                    >
+                        {isSending ? "Enviando..." : "Enviar ao paciente"}
+                    </button>
                 </div>
-
-                {avisoEnvio && <p className="aviso aviso--atencao">{avisoEnvio}</p>}
-
-                <div className="selecao-container">
-                    <div className="selecao-filtros">
-                        <input
-                            type="text"
-                            placeholder="Buscar escala pelo nome..."
-                            value={termoBusca}
-                            onChange={(e) => setTermoBusca(e.target.value)}
-                            className="busca-input"
-                        />
-                    </div>
-
-                    <div className="lista-escalas-container">
-                        {escalasFiltradas.map(escala => {
-                            const jaEnviada = escalasPendentes.includes(escala.backendType);
-                            return (
-                                <div key={escala.id} className="escala-item">
-                                    <div className="escala-info">
-                                        <h3>{escala.nome}</h3>
-                                        <p>{jaEnviada ? 'Já enviada. Aguardando o paciente responder.' : escala.descricao}</p>
-                                    </div>
-                                    <div className="escala-selecao">
-                                        <input
-                                            type="checkbox"
-                                            id={`checkbox-${escala.id}`}
-                                            className="custom-checkbox"
-                                            checked={jaEnviada || !!escalasSelecionadas[escala.id]}
-                                            disabled={jaEnviada}
-                                            onChange={() => handleSelecaoChange(escala.id)}
-                                            aria-label={jaEnviada ? escala.nome + ' já enviada' : 'Enviar ' + escala.nome}
-                                        />
-                                        <label htmlFor={`checkbox-${escala.id}`}></label>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <footer className="selecao-footer">
-                        <p>{escalasParaEnviar.length} escala(s) para enviar</p>
-                        <button
-                            className="button-primary"
-                            onClick={handleEnviar}
-                            disabled={escalasParaEnviar.length === 0 || loadingEnvio}
-                        >
-                            {loadingEnvio ? 'Enviando...' : 'Enviar ao paciente'}
-                        </button>
-                    </footer>
-                </div>
-            </main>
-        </div>
+            </footer>
+        </section>
     );
 }

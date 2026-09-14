@@ -1,0 +1,83 @@
+/* envio avulso de escalas pro paciente */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 46rem;
+}
+
+.subtitle,
+.help {
+    color: var(--color-text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+.help {
+    display: block;
+    font-size: 0.875rem;
+}
+
+.search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 22rem;
+}
+
+.search input {
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    font: inherit;
+    padding: 0.5rem 0.625rem;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.item {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+}
+
+.choice {
+    align-items: flex-start;
+    cursor: pointer;
+    display: flex;
+    gap: 0.625rem;
+}
+
+.choice input {
+    accent-color: var(--color-primary);
+    flex: 0 0 auto;
+    height: 1.25rem;
+    margin-top: 0.15rem;
+    min-height: 0;
+    width: 1.25rem;
+}
+
+.footer {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.actions button {
+    flex: 0 0 auto;
+}
