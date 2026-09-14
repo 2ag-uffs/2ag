@@ -785,10 +785,17 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Relato do paciente (RF07):** os comentários escritos dentro das escalas aparecem em uma linha do tempo abaixo do gráfico, com a data e a escala de onde vieram.
 - **Extensibilidade:** acrescentar uma escala não exige tocar no serviço de progresso nem na tela: os atributos, as faixas e os limites do eixo vêm do catálogo (RNF08).
 
+**Painel inicial concluído em 14/09/2026:** RF03.
+
+- **Paciente:** próximas consultas de verdade, lidas do banco, incluindo o pedido que ainda espera resposta; escalas esperando resposta com o prazo e o botão de preencher; a prescrição que está valendo, com a posologia; e os avisos que ele ainda não leu.
+- **Prescritor:** pacientes ativos, consultas de hoje com link direto para o registro do atendimento, pedidos de consulta esperando resposta e escalas que venceram sem resposta, cada uma com o paciente.
+- **Nada de fachada:** saíram os cartões que nunca tiveram dado por trás — alertas clínicos, fichas com prioridade, pacientes recentes — e os botões que não faziam nada. O painel mostra só o que o resto do sistema grava (RF30).
+- **Resumo, não lista:** cada cartão traz no máximo cinco itens e leva para a tela que tem a lista inteira.
+
 Ficam para os módulos seguintes:
 
-- **Painel inicial:** o painel do paciente ainda mostra a lista de consultas futuras vazia (RF03).
-- **Exportação:** o botão de exportar histórico e séries em PDF e CSV (RF33).
+- **Notificações:** a lista de avisos com marcação de leitura já existe, mas os lembretes automáticos de consulta e de formulário pendente são do módulo (RF14, RF15 e RF34).
+- **Exportação:** exportar histórico e séries em PDF e CSV, com o modo anonimizado (RF33).
 
 ---
 
