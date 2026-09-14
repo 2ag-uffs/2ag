@@ -124,10 +124,10 @@ class PasswordResetTest {
     private String bearerTokenIssuedMinutesAgo(int minutes) {
         Instant issuedAt = Instant.now().minus(Duration.ofMinutes(minutes));
         String token = Jwts.builder()
-                .setSubject(String.valueOf(patient.getId()))
+                .subject(String.valueOf(patient.getId()))
                 .claim("role", "PATIENT")
-                .setIssuedAt(Date.from(issuedAt))
-                .setExpiration(Date.from(issuedAt.plus(Duration.ofHours(2))))
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(issuedAt.plus(Duration.ofHours(2))))
                 .signWith(Keys.hmacShaKeyFor(tokenSecret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
         return "Bearer " + token;

@@ -68,8 +68,8 @@ class ProtectedRoutesTest {
     void tokenComAssinaturaErradaDevolve401() throws Exception {
         String outraChave = "chave-diferente-da-que-a-aplicacao-usa-pra-assinar-0123456789";
         String token = Jwts.builder()
-                .setSubject("qualquer@email.com")
-                .setExpiration(new Date(System.currentTimeMillis() + 60000))
+                .subject("qualquer@email.com")
+                .expiration(new Date(System.currentTimeMillis() + 60000))
                 .signWith(Keys.hmacShaKeyFor(outraChave.getBytes(StandardCharsets.UTF_8)))
                 .compact();
 
@@ -80,9 +80,9 @@ class ProtectedRoutesTest {
     @Test
     void tokenExpiradoDevolve401() throws Exception {
         String token = Jwts.builder()
-                .setSubject("qualquer@email.com")
-                .setIssuedAt(new Date(System.currentTimeMillis() - 7200000))
-                .setExpiration(new Date(System.currentTimeMillis() - 3600000))
+                .subject("qualquer@email.com")
+                .issuedAt(new Date(System.currentTimeMillis() - 7200000))
+                .expiration(new Date(System.currentTimeMillis() - 3600000))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
 

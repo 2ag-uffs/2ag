@@ -94,10 +94,10 @@ class ProfileTest {
     private String bearerTokenIssuedMinutesAgo(Users user, int minutes) {
         Instant issuedAt = Instant.now().minus(Duration.ofMinutes(minutes));
         String token = Jwts.builder()
-                .setSubject(String.valueOf(user.getId()))
+                .subject(String.valueOf(user.getId()))
                 .claim("role", user.getRole().name())
-                .setIssuedAt(Date.from(issuedAt))
-                .setExpiration(Date.from(issuedAt.plus(Duration.ofHours(2))))
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(issuedAt.plus(Duration.ofHours(2))))
                 .signWith(Keys.hmacShaKeyFor(tokenSecret.getBytes(StandardCharsets.UTF_8)))
                 .compact();
         return "Bearer " + token;

@@ -31,22 +31,22 @@ public class TokenService {
     public String generateToken(Users user) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .setIssuer("2ag")
-                .setSubject(String.valueOf(user.getId()))
+                .issuer("2ag")
+                .subject(String.valueOf(user.getId()))
                 .claim("role", user.getRole().name())
-                .setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(now.plus(sessionDuration)))
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(sessionDuration)))
                 .signWith(signingKey)
                 .compact();
     }
 
     // le o token e lanca excecao se ele estiver vencido adulterado ou incompleto
     public SessionToken readToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(signingKey)
+        Claims claims = Jwts.parser()
+                .verifyWith(signingKey)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
 
         if (claims.getSubject() == null || claims.getIssuedAt() == null) {
             throw new IllegalArgumentException("token sem conta ou sem data de emissao");
