@@ -1,5 +1,7 @@
 import {useState} from "react";
-import {createBrowserRouter, RouterProvider} from "react-router";
+import {createBrowserRouter} from "react-router";
+// no navegador o RouterProvider vem do react-router/dom como pede a versao 8
+import {RouterProvider} from "react-router/dom";
 import AppLayout from "../components/app-layout/app-layout.jsx";
 import PageLoader from "../components/page-loader/page-loader.jsx";
 import StatusPage from "../components/status-page/status-page.jsx";
