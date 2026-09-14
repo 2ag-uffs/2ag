@@ -64,10 +64,12 @@ a api fica em `http://localhost:8080/api`. só o **jdk 17** é obrigatório: o `
 
 com `SEED_DADOS_TESTE=true`, a primeira subida cria três contas, todas com a senha `Senha@123`:
 
-| perfil | e-mail |
-| :--- | :--- |
-| administrador | `admin@email.com` |
-| prescritor | `prescritor@email.com` |
-| paciente | `paciente@email.com` |
+| perfil | nome | e-mail |
+| :--- | :--- | :--- |
+| administrador | Administrador de Teste | `admin@email.com` |
+| prescritor | Ana Lima | `prescritor@email.com` |
+| paciente | Maria Souza | `paciente@email.com` |
+
+junto vêm dados fictícios para demonstração: consultas, prescrições, diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`, todos `@email.com` com a mesma senha).
 
 o seed nunca pode ser ligado em produção.

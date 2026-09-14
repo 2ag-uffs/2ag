@@ -105,11 +105,13 @@ cd backend/doisag
 
 com `SEED_DADOS_TESTE=true` a api cria três contas, todas com a senha `Senha@123`:
 
-| perfil | e-mail |
-| :--- | :--- |
-| administrador | admin@email.com |
-| prescritor | prescritor@email.com |
-| paciente | paciente@email.com |
+| perfil | nome | e-mail |
+| :--- | :--- | :--- |
+| administrador | Administrador de Teste | admin@email.com |
+| prescritor | Ana Lima | prescritor@email.com |
+| paciente | Maria Souza | paciente@email.com |
+
+na primeira subida o seed também cria dados fictícios para demonstração: horários de atendimento, consultas, prescrições, dois meses de diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`, todos `@email.com` com a mesma senha). nomes, cpfs e históricos são inventados.
 
 o seed nunca pode ser ligado em produção.
 
