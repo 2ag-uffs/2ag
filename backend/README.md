@@ -46,7 +46,8 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
 | `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail | `http://localhost:5173` |
-| `MAIL_HOST` | servidor smtp. sem ele os e-mails aparecem só no log da api | vazio |
+| `MAIL_HOST` | servidor smtp. sem ele o e-mail não sai e o log mostra só o destinatário e o assunto | vazio |
+| `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova. só para desenvolvimento | `false` |
 | `MAIL_PORT` | porta do servidor smtp | `587` |
 | `MAIL_USERNAME` e `MAIL_PASSWORD` | conta que autentica no servidor smtp | vazio |
 | `MAIL_FROM` | remetente dos e-mails | o `MAIL_USERNAME` |
@@ -105,7 +106,7 @@ as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perf
 | `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma |
 | `POST /auth/password-reset/confirm` | grava a senha nova. o link vale uma vez, por 30 minutos, e as sessões abertas caem |
 
-cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. o e-mail sai pelo servidor configurado em `MAIL_HOST`. sem ele, a mensagem com o link aparece só no log da api.
+cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. o e-mail sai pelo servidor configurado em `MAIL_HOST`. sem ele, o e-mail não sai: o log mostra só o destinatário e o assunto, e o texto com o link só aparece com `EMAIL_LOG_TEXT=true`, que a api local com banco em memória já liga.
 
 ## convite de paciente
 

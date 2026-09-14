@@ -67,3 +67,6 @@ api:
   email:
     # endereco q aparece como remetente e quando fica vazio vale o MAIL_USERNAME
     from: ${MAIL_FROM:}
+    # sem MAIL_HOST o e-mail vai pro log e o texto so aparece c/ isso ligado
+    # o texto tem o link de senha nova entao em producao fica desligado
+    log-text: ${EMAIL_LOG_TEXT:false}

@@ -17,9 +17,10 @@ public class EmailConfig {
     public EmailSender emailSender(ObjectProvider<JavaMailSender> javaMailSender,
                                    @Value("${spring.mail.host:}") String mailHost,
                                    @Value("${spring.mail.username:}") String mailUsername,
-                                   @Value("${api.email.from:}") String senderAddress) {
+                                   @Value("${api.email.from:}") String senderAddress,
+                                   @Value("${api.email.log-text:false}") boolean logText) {
         if (mailHost.isBlank()) {
-            return new LogEmailSender();
+            return new LogEmailSender(logText);
         }
         // sem remetente proprio o e-mail sai em nome da conta q autentica no servidor
         String from = senderAddress.isBlank() ? mailUsername : senderAddress;

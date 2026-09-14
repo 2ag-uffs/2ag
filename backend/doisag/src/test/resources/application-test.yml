@@ -27,6 +27,9 @@ api:
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false
+  email:
+    # no teste e na api local c/ banco em memoria o link de senha nova aparece no log
+    log-text: true
   acompanhamento:
     # "-" desliga o agendamento. no teste quem dispara a logica somos nos,
     # passando a data na mao, senao n da pra testar o que acontece daqui

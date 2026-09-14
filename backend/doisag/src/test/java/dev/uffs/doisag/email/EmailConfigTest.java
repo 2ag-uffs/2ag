@@ -19,7 +19,7 @@ class EmailConfigTest {
 
     @Test
     void withoutMailHostTheEmailOnlyGoesToTheLog() {
-        EmailSender emailSender = emailConfig.emailSender(providerOf(javaMailSender), "  ", "conta@clinica.com", "");
+        EmailSender emailSender = emailConfig.emailSender(providerOf(javaMailSender), "  ", "conta@clinica.com", "", false);
 
         assertThat(emailSender).isInstanceOf(LogEmailSender.class);
     }
@@ -27,7 +27,7 @@ class EmailConfigTest {
     @Test
     void withMailHostTheEmailGoesThroughTheSmtpServer() {
         EmailSender emailSender = emailConfig.emailSender(providerOf(javaMailSender), "smtp.clinica.com",
-                "conta@clinica.com", "nao-responda@clinica.com");
+                "conta@clinica.com", "nao-responda@clinica.com", false);
 
         assertThat(emailSender).isInstanceOf(SmtpEmailSender.class);
     }
@@ -35,7 +35,7 @@ class EmailConfigTest {
     @Test
     void withoutOwnSenderTheEmailUsesTheAccountThatLogsIntoTheServer() {
         EmailSender emailSender = emailConfig.emailSender(providerOf(javaMailSender), "smtp.clinica.com",
-                "conta@clinica.com", "");
+                "conta@clinica.com", "", false);
 
         emailSender.send(new EmailMessage("paciente@email.com", "Assunto", "Texto"));
 
