@@ -238,7 +238,8 @@ function EmailCard({profile, onSaved}) {
             onSaved(savedProfile);
             setNewEmail("");
             setCurrentPassword("");
-            setMessage({isError: false, text: "Pronto. Agora você entra com " + savedProfile.email + "."});
+            // sem ponto depois do e-mail pra ele n parecer parte do endereco
+            setMessage({isError: false, text: "Pronto. Agora você entra com " + savedProfile.email});
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
             setFieldErrors(errorInfo.fieldErrors);
@@ -252,7 +253,8 @@ function EmailCard({profile, onSaved}) {
 
     return (
         <Card title={cardTitle(FiMail, "E-mail de acesso")}>
-            <p className={styles.cardText}>Hoje você entra com <strong>{profile.email}</strong>.</p>
+            {/* sem ponto depois do e-mail pra ele n parecer parte do endereco */}
+            <p className={styles.cardText}>Hoje você entra com <strong>{profile.email}</strong></p>
 
             <CardMessage message={message}/>
 
