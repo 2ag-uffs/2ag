@@ -18,6 +18,10 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     List<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(
             Long patientId, ScaleType scaleType, LocalDate from, LocalDate to);
 
+    // as respostas de qualquer escala no periodo, pros comentarios (RF07)
+    List<ScaleResponse> findByPatientIdAndPeriodStartBetweenOrderByPeriodStartAsc(
+            Long patientId, LocalDate from, LocalDate to);
+
     // o dia q ja foi preenchido no diario, pq o mesmo dia n vira dois registros
     Optional<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStart(
             Long patientId, ScaleType scaleType, LocalDate periodStart);

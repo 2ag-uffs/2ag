@@ -187,6 +187,20 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
 
+## evolução
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /progresso/atributos` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo e as faixas do instrumento |
+| `GET /pacientes/{patientId}/progresso?atributo=&periodo=` | a série do atributo no período, uma data e um valor por preenchimento |
+| `GET /pacientes/{patientId}/progresso/consultas?periodo=` | as consultas do período, para marcar no gráfico em que dia houve atendimento |
+| `GET /pacientes/{patientId}/progresso/comentarios?periodo=` | o que o paciente escreveu nas escalas do período, por data |
+
+- `periodo` é `DIAS_15`, `DIAS_30`, `DIAS_60`, `DIAS_90` ou `TUDO`. o `TUDO` é o "todo o tempo" da tela do prescritor
+- dia sem resposta não vira ponto no zero: ele simplesmente não entra na série (RN10)
+- resposta anulada sai do gráfico e dos comentários, mas continua no histórico
+- acrescentar uma escala não pede mudança aqui: os atributos saem do catálogo das escalas (RNF08)
+
 ## guarda do prontuário
 
 o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /pacientes/{patientId}/acompanhamento/encerrar` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
@@ -249,4 +263,4 @@ vale para todo código novo ou reescrito:
 
 ## situação dos módulos
 
-a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) e o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) já seguem o padrão novo. as telas de evolução, o painel inicial e as notificações ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
+a fundação (configuração, erros, sessão, administração e migração base), o módulo de acesso e identidade (login, convite, cadastro, termo de consentimento, perfil e recuperação de senha), o de autorização (perfil e vínculo em toda rota, fim da exclusão de dado clínico e trilha de auditoria), o de atendimento (consulta, prescrição, anamnese, histórico e arquivamento de paciente), o de agenda (horários de atendimento, pedido do paciente e agenda do prescritor) o de escalas (motor único, tarefas com prazo e acompanhamento automático de 90 dias) e o de evolução (gráfico com a faixa do instrumento, a dose e o relato do paciente) já seguem o padrão novo. o painel inicial e as notificações ainda são os de 2025 e estão sendo reescritos na ordem do §8.6 do documento de requisitos. até o último deles ser reescrito, o `open-in-view` continua ligado.
