@@ -1,0 +1,76 @@
+name: Relato de bug
+description: Algo no 2ag não funcionou como deveria
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por testar. Use só dados fictícios: nunca coloque nome, CPF, print ou informação de paciente real aqui.
+        Os fluxos e as contas de teste estão em `docs/qa/plano-de-testes.md`.
+  - type: input
+    id: caso
+    attributes:
+      label: Caso de teste
+      description: O código do plano de testes, quando o problema apareceu num deles
+      placeholder: CT-23
+  - type: dropdown
+    id: perfil
+    attributes:
+      label: Perfil
+      options:
+        - Paciente
+        - Prescritor
+        - Administração
+        - Sem login
+    validations:
+      required: true
+  - type: input
+    id: tela
+    attributes:
+      label: Tela ou endereço
+      placeholder: /paciente/3/historico
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      description: A partir do login, um passo por linha
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que deveria acontecer
+    validations:
+      required: true
+  - type: textarea
+    id: aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Mensagem de erro, print ou vídeo curto ajudam muito
+    validations:
+      required: true
+  - type: dropdown
+    id: gravidade
+    attributes:
+      label: Gravidade
+      options:
+        - Bloqueia (não dá para continuar)
+        - Grave (dado clínico errado, perdido ou visto por quem não deveria)
+        - Média (funciona com um contorno)
+        - Leve (visual ou texto)
+    validations:
+      required: true
+  - type: input
+    id: ambiente
+    attributes:
+      label: Navegador e largura da tela
+      placeholder: Chrome no celular (375 px)
+    validations:
+      required: true
