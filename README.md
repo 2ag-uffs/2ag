@@ -131,10 +131,11 @@ não precisa de postgres: os testes usam banco em memória.
 ```bash
 cd frontend
 npm run lint
+npm test
 npm run build
 ```
 
-o ci do github roda os três a cada push e também confere se as imagens do docker continuam montando.
+os testes do front usam vitest e testing library e ficam ao lado do arquivo testado, como `initials.test.js` junto de `initials.js`. o ci do github roda tudo isso a cada push e também confere se as imagens do docker continuam montando.
 
 ---
 

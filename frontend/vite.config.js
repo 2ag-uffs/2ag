@@ -10,6 +10,11 @@ export default defineConfig(({mode}) => {
 
     return {
         plugins: [react()],
+        // os testes rodam num navegador de mentira e o setup limpa a tela entre um e outro
+        test: {
+            environment: "jsdom",
+            setupFiles: ["./src/test/setup.js"],
+        },
         server: {
             proxy: {
                 "/api": apiUrl,
