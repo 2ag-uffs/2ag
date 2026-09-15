@@ -1,0 +1,17 @@
+/* indicador leve enquanto o app abre pela primeira vez */
+/* fica num arquivo e n dentro do index.html pq a politica de seguranca do nginx bloqueia estilo inline */
+.boot-loader {
+    animation: boot-spin 0.8s linear infinite;
+    border: 3px solid #dbe1dd;
+    border-radius: 50%;
+    border-top-color: #006633;
+    height: 36px;
+    margin: 40vh auto 0;
+    width: 36px;
+}
+
+@keyframes boot-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

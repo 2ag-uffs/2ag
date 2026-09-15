@@ -7,24 +7,7 @@
     <meta name="theme-color" content="#006633" />
     <meta name="description" content="2AG acompanhamento terapêutico" />
     <title>2AG</title>
-    <style>
-      /* indicador leve enquanto o app abre pela primeira vez */
-      .boot-loader {
-        animation: boot-spin 0.8s linear infinite;
-        border: 3px solid #dbe1dd;
-        border-radius: 50%;
-        border-top-color: #006633;
-        height: 36px;
-        margin: 40vh auto 0;
-        width: 36px;
-      }
-
-      @keyframes boot-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="/boot.css" />
   </head>
   <body>
     <div id="root"><div class="boot-loader" role="status" aria-label="Carregando"></div></div>
