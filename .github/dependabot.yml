@@ -20,3 +20,17 @@ updates:
     directory: /
     schedule:
       interval: monthly
+
+  # imagens base dos dockerfiles: node e nginx no front, maven e temurin na api
+  - package-ecosystem: docker
+    directories:
+      - /frontend
+      - /backend/doisag
+    schedule:
+      interval: monthly
+
+  # a imagem do postgres fica no docker-compose.yml da raiz
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
