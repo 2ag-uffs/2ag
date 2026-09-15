@@ -2,7 +2,7 @@
 # assim a imagem final n carrega o maven nem o codigo fonte
 
 # ---- etapa 1: compila o jar ----
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /app
 
 # copia so o pom primeiro pra cachear o download das dependencias.
