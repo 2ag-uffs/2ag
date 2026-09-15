@@ -15,7 +15,7 @@ COPY src ./src
 RUN mvn -B clean package -DskipTests
 
 # ---- etapa 2: imagem final, so com o runtime ----
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 # roda como usuario sem privilegio, n como root
