@@ -44,9 +44,13 @@ public class AuthenticationController {
         return new SessionUserDTO(user);
     }
 
-    // apaga o cookie e a sessao acaba
+    // encerra as sessoes abertas de quem esta saindo e apaga o cookie
+    // sem sessao valida so apaga o cookie
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal Users loggedUser, HttpServletResponse response) {
+        if (loggedUser != null) {
+            authService.endSessions(loggedUser.getId());
+        }
         sessionCookieService.clearSession(response);
         return ResponseEntity.noContent().build();
     }

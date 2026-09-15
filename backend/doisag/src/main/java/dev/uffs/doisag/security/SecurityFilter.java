@@ -15,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 
 // descobre quem esta fazendo a requisicao
@@ -63,8 +64,14 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // a sessao emitida antes da ultima troca de senha deixa de valer
-            if (wasIssuedBeforePasswordChange(sessionToken, user)) {
+            // a sessao emitida antes da ultima troca de senha ou antes de sair da conta deixa de valer
+            if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())
+                    || wasIssuedBefore(sessionToken, user.getSessionsEndedAt())) {
+                return;
+            }
+
+            // mesmo renovada a cada uso a sessao acaba no prazo maximo contado do login
+            if (sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now())) {
                 return;
             }
 
@@ -74,7 +81,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
             boolean tokenIsOld = sessionToken.issuedAt().plus(RENEW_AFTER).isBefore(Instant.now());
             if (cameFromCookie && tokenIsOld) {
-                sessionCookieService.writeSession(response, user);
+                sessionCookieService.renewSession(response, user, sessionToken.loginAt());
             }
         } catch (JwtException | IllegalArgumentException exception) {
             // token vencido adulterado ou q nem eh jwt
@@ -83,14 +90,13 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
     }
 
-    // o token guarda a hora de emissao em segundos inteiros
-    // por isso a troca de senha tbm eh gravada em segundos inteiros
-    private boolean wasIssuedBeforePasswordChange(SessionToken sessionToken, Users user) {
-        if (user.getPasswordChangedAt() == null) {
+    // o momento vem do banco sem fuso e o token guarda um instante
+    private boolean wasIssuedBefore(SessionToken sessionToken, LocalDateTime moment) {
+        if (moment == null) {
             return false;
         }
-        Instant passwordChangedAt = user.getPasswordChangedAt().atZone(ZoneId.systemDefault()).toInstant();
-        return sessionToken.issuedAt().isBefore(passwordChangedAt);
+        Instant momentInstant = moment.atZone(ZoneId.systemDefault()).toInstant();
+        return sessionToken.issuedAt().isBefore(momentInstant);
     }
 
     private String readBearerToken(HttpServletRequest request) {

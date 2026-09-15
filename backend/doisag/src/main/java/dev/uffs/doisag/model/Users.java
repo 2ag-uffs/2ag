@@ -47,6 +47,9 @@ public abstract class Users implements UserDetails { // implementa a interface d
     // sessao emitida antes da ultima troca de senha deixa de valer
     private LocalDateTime passwordChangedAt;
 
+    // sair da conta encerra as sessoes emitidas antes desse momento
+    private LocalDateTime sessionsEndedAt;
+
 
     public Users() {
     }
@@ -163,6 +166,15 @@ public abstract class Users implements UserDetails { // implementa a interface d
 
     public void setPasswordChangedAt(LocalDateTime passwordChangedAt) {
         this.passwordChangedAt = passwordChangedAt;
+    }
+
+    @JsonIgnore
+    public LocalDateTime getSessionsEndedAt() {
+        return sessionsEndedAt;
+    }
+
+    public void setSessionsEndedAt(LocalDateTime sessionsEndedAt) {
+        this.sessionsEndedAt = sessionsEndedAt;
     }
 
     // cada tipo de conta diz o proprio papel

@@ -51,6 +51,8 @@ api:
   session:
     # minutos q a sessao dura sem uso
     duration-minutes: ${SESSION_DURATION_MINUTES:120}
+    # horas q uma sessao dura no maximo desde o login mesmo sendo renovada a cada uso
+    max-hours: ${SESSION_MAX_HOURS:12}
     # o cookie so trafega em https e no computador local sem https fica false
     secure-cookie: ${SESSION_SECURE_COOKIE:true}
   admin:

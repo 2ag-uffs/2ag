@@ -47,6 +47,7 @@ class SessionTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private TokenService tokenService;
 
     @Value("${api.security.token.secret}")
     private String tokenSecret;
@@ -203,6 +204,62 @@ class SessionTest {
                 .andReturn();
 
         assertThat(result.getResponse().getHeader("Set-Cookie")).isNull();
+    }
+
+    // sair da conta derruba a sessao mesmo q alguem guarde o cookie antigo (issue 47)
+    @Test
+    void logoutEndsTheSessionEvenIfTheOldCookieIsSentAgain() throws Exception {
+        Cookie sessionCookie = loginAndGetSessionCookie();
+
+        mockMvc.perform(post("/auth/logout").cookie(sessionCookie)).andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/auth/me").cookie(sessionCookie)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginAgainAfterLogoutWorks() throws Exception {
+        Cookie oldCookie = loginAndGetSessionCookie();
+        mockMvc.perform(post("/auth/logout").cookie(oldCookie)).andExpect(status().isNoContent());
+
+        Cookie newCookie = loginAndGetSessionCookie();
+
+        mockMvc.perform(get("/auth/me").cookie(newCookie)).andExpect(status().isOk());
+    }
+
+    @Test
+    void sessionEndsAtTheMaximumTimeEvenWhenRenewed() throws Exception {
+        mockMvc.perform(get("/auth/me").cookie(cookieWithToken(1, 13 * 60)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void renewedCookieKeepsTheLoginTime() throws Exception {
+        Cookie oldCookie = cookieWithToken(30, 60);
+
+        MvcResult result = mockMvc.perform(get("/auth/me").cookie(oldCookie))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie renewedCookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(renewedCookie).isNotNull();
+        assertThat(tokenService.readToken(renewedCookie.getValue()).loginAt())
+                .isEqualTo(tokenService.readToken(oldCookie.getValue()).loginAt());
+    }
+
+    // monta na mao um token emitido e c/ login no passado
+    private Cookie cookieWithToken(int issuedMinutesAgo, int loginMinutesAgo) {
+        Instant issuedAt = Instant.now().minus(Duration.ofMinutes(issuedMinutesAgo));
+        Instant loginAt = Instant.now().minus(Duration.ofMinutes(loginMinutesAgo));
+        String token = Jwts.builder()
+                .subject(String.valueOf(patient.getId()))
+                .claim("role", "PATIENT")
+                .claim("issuedAtMillis", issuedAt.toEpochMilli())
+                .claim("loginAtMillis", loginAt.toEpochMilli())
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(issuedAt.plus(Duration.ofHours(2))))
+                .signWith(Keys.hmacShaKeyFor(tokenSecret.getBytes(StandardCharsets.UTF_8)))
+                .compact();
+        return new Cookie(SessionCookieService.COOKIE_NAME, token);
     }
 
     // monta na mao um token emitido no passado pra testar a renovacao

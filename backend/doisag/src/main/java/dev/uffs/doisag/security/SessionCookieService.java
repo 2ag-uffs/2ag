@@ -10,6 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
 
 // escreve le e apaga o cookie da sessao
 // httponly impede o javascript de ler o token
@@ -30,6 +31,12 @@ public class SessionCookieService {
 
     public void writeSession(HttpServletResponse response, Users user) {
         String token = tokenService.generateToken(user);
+        addCookie(response, token, tokenService.getSessionDuration());
+    }
+
+    // troca o token de uma sessao em uso mantendo a hora do login
+    public void renewSession(HttpServletResponse response, Users user, Instant loginAt) {
+        String token = tokenService.generateToken(user, loginAt);
         addCookie(response, token, tokenService.getSessionDuration());
     }
 

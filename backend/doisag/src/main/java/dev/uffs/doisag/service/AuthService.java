@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 // confere e-mail e senha no login
 // depois de muitas senhas erradas seguidas a conta fica bloqueada por um tempo
@@ -62,6 +63,15 @@ public class AuthService {
             user = usersRepository.save(user);
         }
         return user;
+    }
+
+    // sair da conta derruba todas as sessoes abertas daquela pessoa em qualquer aparelho
+    // o token guarda a emissao em milissegundos entao o fim tbm fica em milissegundos
+    public void endSessions(Long userId) {
+        usersRepository.findById(userId).ifPresent(user -> {
+            user.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+            usersRepository.save(user);
+        });
     }
 
     private void registerFailedAttempt(Users user, LocalDateTime now) {

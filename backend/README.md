@@ -40,6 +40,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `DATABASE_PASSWORD` | senha do banco | **obrigatória** |
 | `JWT_SECRET` | chave que assina a sessão, com pelo menos 32 caracteres | **obrigatória** |
 | `SESSION_DURATION_MINUTES` | minutos que a sessão dura sem uso | `120` |
+| `SESSION_MAX_HOURS` | horas que uma sessão dura no máximo desde o login, mesmo sendo renovada | `12` |
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
@@ -60,12 +61,13 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | rota | o que faz |
 | :--- | :--- |
 | `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role}` |
-| `POST /auth/logout` | apaga o cookie |
+| `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
 | `GET /auth/me` | quem está logado |
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
-- a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário
+- a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário, mas ela termina 12 horas depois do login
+- sair da conta encerra as sessões abertas daquela pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie
 - depois de 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos
 - conta desativada perde o acesso na requisição seguinte
 - testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`
