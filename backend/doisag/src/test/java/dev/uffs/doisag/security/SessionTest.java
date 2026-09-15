@@ -42,6 +42,8 @@ class SessionTest {
     private static final String PATIENT_EMAIL = "sessao-paciente@email.com";
     private static final String PATIENT_PASSWORD = "Senha@123";
     private static final String WRONG_PASSWORD = "SenhaErrada@1";
+    // requisicao q muda dado c/ o cookie da sessao precisa vir do endereco do sistema (issue 46)
+    private static final String SYSTEM_ORIGIN = "http://localhost:5173";
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PatientRepository patientRepository;
@@ -248,7 +250,8 @@ class SessionTest {
     void logoutEndsTheSessionEvenIfTheOldCookieIsSentAgain() throws Exception {
         Cookie sessionCookie = loginAndGetSessionCookie();
 
-        mockMvc.perform(post("/auth/logout").cookie(sessionCookie)).andExpect(status().isNoContent());
+        mockMvc.perform(post("/auth/logout").cookie(sessionCookie).header("Origin", SYSTEM_ORIGIN))
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/auth/me").cookie(sessionCookie)).andExpect(status().isUnauthorized());
     }
@@ -256,7 +259,8 @@ class SessionTest {
     @Test
     void loginAgainAfterLogoutWorks() throws Exception {
         Cookie oldCookie = loginAndGetSessionCookie();
-        mockMvc.perform(post("/auth/logout").cookie(oldCookie)).andExpect(status().isNoContent());
+        mockMvc.perform(post("/auth/logout").cookie(oldCookie).header("Origin", SYSTEM_ORIGIN))
+                .andExpect(status().isNoContent());
 
         Cookie newCookie = loginAndGetSessionCookie();
 

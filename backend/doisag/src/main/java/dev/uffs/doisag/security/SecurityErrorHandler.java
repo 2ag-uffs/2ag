@@ -46,6 +46,12 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
         escreveErro(request, response, HttpStatus.FORBIDDEN, "Acesso negado!");
     }
 
+    // requisicao barrada por um filtro nosso antes da autorizacao como a vinda de outro endereco
+    public void writeForbidden(HttpServletRequest request, HttpServletResponse response, String message)
+            throws IOException {
+        escreveErro(request, response, HttpStatus.FORBIDDEN, message);
+    }
+
     private void escreveErro(HttpServletRequest request,
                              HttpServletResponse response,
                              HttpStatus status,

@@ -49,7 +49,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
-| `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail | `http://localhost:5173` |
+| `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail e como único endereço aceito nas requisições com cookie que mudam dado | `http://localhost:5173` |
 | `MAIL_HOST` | servidor smtp. sem ele o e-mail não sai e o log mostra só o destinatário e o assunto | vazio |
 | `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova. só para desenvolvimento | `false` |
 | `MAIL_PORT` | porta do servidor smtp | `587` |
@@ -69,13 +69,14 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
+- além disso, requisição que muda dado (`POST`, `PUT`, `PATCH` e `DELETE`) com o cookie da sessão só passa se o cabeçalho `Origin`, ou o `Referer` quando ele não vem, for o endereço do `PUBLIC_URL`. vinda de outro endereço recebe `403`. isso cobre navegador antigo e subdomínio vizinho, que o `SameSite` não pega, e por isso o sistema precisa ser aberto pelo mesmo endereço do `PUBLIC_URL`: em desenvolvimento, `localhost` e não `127.0.0.1`
 - a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário, mas ela termina 12 horas depois do login
 - sair da conta encerra as sessões abertas daquela pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie
 - depois de 5 senhas erradas do mesmo e-mail a partir do mesmo endereço, as tentativas desse e-mail vindas dali ficam bloqueadas por 15 minutos, mesmo com a senha certa. 20 erros de um endereço, somando e-mails diferentes, bloqueiam o endereço inteiro
 - o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
 - a contagem fica na memória da api, que roda numa instância só, e zera quando ela reinicia. atrás do nginx o endereço de quem acessa vem do cabeçalho `X-Forwarded-For`, então um proxy a mais na frente precisa repassar esse cabeçalho, senão todo mundo aparece com o mesmo endereço
 - conta desativada perde o acesso na requisição seguinte
-- testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`
+- testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`, que não passa pela conferência de origem porque o navegador não manda esse cabeçalho sozinho
 
 os perfis são `PATIENT`, `PRESCRIBER` e `ADMIN`. a autorização tem duas camadas:
 
@@ -278,7 +279,7 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | :--- | :--- |
 | `400` | dado inválido, parâmetro faltando ou regra de negócio violada |
 | `401` | sem sessão, sessão vencida ou senha errada |
-| `403` | logado, mas sem permissão para aquele dado, ou conta desativada tentando entrar |
+| `403` | logado, mas sem permissão para aquele dado, conta desativada tentando entrar ou requisição com o cookie da sessão vinda de outro endereço |
 | `404` | registro ou rota que não existe |
 | `405` | método http que a rota não aceita |
 | `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors` |

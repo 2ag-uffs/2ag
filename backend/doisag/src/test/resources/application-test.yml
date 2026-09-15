@@ -28,6 +28,8 @@ api:
       # todos os testes rodam do mesmo endereco entao o limite por endereco fica alto
       # a regra do endereco eh conferida no LoginAttemptLimiterTest
       max-failures-per-address: 1000
+  # endereco do sistema nos testes e o unico aceito nas requisicoes c/ cookie q mudam dado
+  public-url: http://localhost:5173
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false

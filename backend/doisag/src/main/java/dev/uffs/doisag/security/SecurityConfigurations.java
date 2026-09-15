@@ -22,10 +22,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfigurations {
 
     private final SecurityFilter securityFilter;
+    private final OriginCheckFilter originCheckFilter;
     private final SecurityErrorHandler securityErrorHandler;
 
-    public SecurityConfigurations(SecurityFilter securityFilter, SecurityErrorHandler securityErrorHandler) {
+    public SecurityConfigurations(SecurityFilter securityFilter, OriginCheckFilter originCheckFilter,
+                                  SecurityErrorHandler securityErrorHandler) {
         this.securityFilter = securityFilter;
+        this.originCheckFilter = originCheckFilter;
         this.securityErrorHandler = securityErrorHandler;
     }
 
@@ -33,7 +36,8 @@ public class SecurityConfigurations {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 // o front e a api ficam na mesma origem entao n tem cors
-                // o cookie da sessao eh samesite strict entao outro site n consegue usar a sessao
+                // o csrf do spring fica desligado pq o cookie da sessao eh samesite strict
+                // e o OriginCheckFilter barra requisicao q muda dado vinda de outro endereco
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(routes -> {
@@ -61,6 +65,8 @@ public class SecurityConfigurations {
                         .authenticationEntryPoint(securityErrorHandler)
                         .accessDeniedHandler(securityErrorHandler))
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                // a origem eh conferida antes de descobrir quem esta logado
+                .addFilterBefore(originCheckFilter, SecurityFilter.class)
                 .build();
     }
 
