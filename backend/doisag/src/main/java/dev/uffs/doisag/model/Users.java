@@ -37,10 +37,6 @@ public abstract class Users implements UserDetails { // implementa a interface d
     // conta desativada n entra no sistema
     private boolean active = true;
 
-    // tentativas erradas seguidas no login e ate quando a conta fica bloqueada
-    private int failedLoginAttempts = 0;
-    private LocalDateTime lockedUntil;
-
     // a pessoa escolhe se quer receber lembretes e avisos por e-mail (RF18)
     private boolean emailNotificationsEnabled = true;
 
@@ -131,24 +127,6 @@ public abstract class Users implements UserDetails { // implementa a interface d
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    @JsonIgnore
-    public int getFailedLoginAttempts() {
-        return failedLoginAttempts;
-    }
-
-    public void setFailedLoginAttempts(int failedLoginAttempts) {
-        this.failedLoginAttempts = failedLoginAttempts;
-    }
-
-    @JsonIgnore
-    public LocalDateTime getLockedUntil() {
-        return lockedUntil;
-    }
-
-    public void setLockedUntil(LocalDateTime lockedUntil) {
-        this.lockedUntil = lockedUntil;
     }
 
     public boolean isEmailNotificationsEnabled() {

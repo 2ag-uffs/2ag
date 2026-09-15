@@ -43,12 +43,9 @@ public class PasswordService {
     }
 
     // grava a senha nova e derruba as sessoes abertas antes da troca
-    // tbm libera a conta se ela estava bloqueada por senha errada
     public void applyNewPassword(Users user, String newPassword) {
         user.setPassword(passwordEncoder.encode(newPassword));
         // o token guarda a emissao em segundos inteiros entao a troca tbm fica em segundos
         user.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-        user.setFailedLoginAttempts(0);
-        user.setLockedUntil(null);
     }
 }

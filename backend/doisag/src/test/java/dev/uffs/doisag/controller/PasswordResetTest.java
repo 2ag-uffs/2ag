@@ -8,6 +8,7 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.service.PasswordResetService;
 import io.jsonwebtoken.Jwts;
@@ -64,6 +65,7 @@ class PasswordResetTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PasswordResetRepository passwordResetRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private LoginAttemptLimiter loginAttemptLimiter;
 
     // no teste o e-mail n sai de verdade e o teste le o link direto da mensagem
     @MockitoBean
@@ -76,6 +78,9 @@ class PasswordResetTest {
 
     @BeforeEach
     void createPatient() {
+        // a contagem de senhas erradas fica em memoria e passaria de um teste pro outro
+        loginAttemptLimiter.clear();
+
         Prescriber prescriber = new Prescriber();
         prescriber.setName("Prescritora da Recuperacao");
         prescriber.setEmail("recuperacao-prescritora@email.com");
@@ -218,10 +223,12 @@ class PasswordResetTest {
     }
 
     @Test
-    void resetEndsOpenSessionsAndUnlocksTheAccount() throws Exception {
+    void resetEndsOpenSessionsAndReleasesTheBlockedLogin() throws Exception {
         String olderSession = bearerTokenIssuedMinutesAgo(5);
-        patient.setLockedUntil(LocalDateTime.now().plusMinutes(10));
-        patientRepository.save(patient);
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            login("Senha-Errada#1").andExpect(status().isUnauthorized());
+        }
+        login(OLD_PASSWORD).andExpect(status().isTooManyRequests());
 
         requestReset(PATIENT_EMAIL);
         confirmReset(tokenFromLastEmail(), NEW_PASSWORD).andExpect(status().isNoContent());

@@ -4,6 +4,9 @@
 
 server:
   port: ${SERVER_PORT:8080}
+  # atras do nginx o endereco de quem acessa vem no cabecalho x-forwarded-for
+  # sem isso todo mundo pareceria o proprio nginx e o limite de login por endereco pegaria todos
+  forward-headers-strategy: native
   servlet:
     # toda rota fica embaixo de api pro front e a api dividirem a mesma origem
     context-path: /api
@@ -48,6 +51,12 @@ api:
       # chave q assina a sessao e tbm n tem padrao
       # pra gerar uma use openssl rand -base64 48
       secret: ${JWT_SECRET}
+    login:
+      # senhas erradas do mesmo e-mail no mesmo endereco antes de bloquear
+      max-failures: ${LOGIN_MAX_FAILURES:5}
+      # senhas erradas de um endereco somando todos os e-mails antes de bloquear o endereco
+      max-failures-per-address: ${LOGIN_MAX_FAILURES_PER_ADDRESS:20}
+      block-minutes: ${LOGIN_BLOCK_MINUTES:15}
   session:
     # minutos q a sessao dura sem uso
     duration-minutes: ${SESSION_DURATION_MINUTES:120}

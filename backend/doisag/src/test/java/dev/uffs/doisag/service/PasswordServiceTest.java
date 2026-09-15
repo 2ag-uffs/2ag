@@ -14,7 +14,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,17 +70,13 @@ class PasswordServiceTest {
     }
 
     @Test
-    void recordsWhenThePasswordChangedAndUnlocksTheAccount() {
+    void recordsWhenThePasswordChanged() {
         repositoryFindsTheUser();
-        user.setFailedLoginAttempts(3);
-        user.setLockedUntil(LocalDateTime.now().plusMinutes(10));
 
         passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD));
 
         assertThat(user.getPasswordChangedAt()).isNotNull();
         assertThat(user.getPasswordChangedAt().getNano()).isZero();
-        assertThat(user.getFailedLoginAttempts()).isZero();
-        assertThat(user.getLockedUntil()).isNull();
     }
 
     @Test

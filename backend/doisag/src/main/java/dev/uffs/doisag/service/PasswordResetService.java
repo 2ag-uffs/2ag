@@ -9,6 +9,7 @@ import dev.uffs.doisag.model.PasswordReset;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SecureTokens;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,15 +32,18 @@ public class PasswordResetService {
     private final PasswordResetRepository passwordResetRepository;
     private final PasswordService passwordService;
     private final EmailSender emailSender;
+    private final LoginAttemptLimiter loginAttemptLimiter;
     private final String publicUrl;
 
     public PasswordResetService(UsersRepository usersRepository, PasswordResetRepository passwordResetRepository,
                                 PasswordService passwordService, EmailSender emailSender,
+                                LoginAttemptLimiter loginAttemptLimiter,
                                 @Value("${api.public-url}") String publicUrl) {
         this.usersRepository = usersRepository;
         this.passwordResetRepository = passwordResetRepository;
         this.passwordService = passwordService;
         this.emailSender = emailSender;
+        this.loginAttemptLimiter = loginAttemptLimiter;
         // tira a barra do fim pra o link n sair com barra dupla
         if (publicUrl.endsWith("/")) {
             publicUrl = publicUrl.substring(0, publicUrl.length() - 1);
@@ -94,6 +98,8 @@ public class PasswordResetService {
 
         passwordService.applyNewPassword(passwordReset.getUser(), resetData.newPassword());
         passwordReset.setUsedAt(now);
+        // quem trocou a senha pelo e-mail pode entrar logo sem esperar o bloqueio de senha errada
+        loginAttemptLimiter.forgetEmail(passwordReset.getUser().getEmail());
     }
 
     private String buildEmailText(String name, String resetLink) {

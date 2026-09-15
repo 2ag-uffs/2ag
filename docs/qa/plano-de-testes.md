@@ -57,7 +57,7 @@ requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
 | CT-01 | entrar com cada uma das contas | cada perfil cai no próprio painel: paciente, prescritor ou administração |
-| CT-02 | errar a senha várias vezes seguidas | mensagem clara a cada erro e bloqueio temporário depois das tentativas seguidas |
+| CT-02 | errar a senha 5 vezes seguidas e tentar de novo com a senha certa. repetir com um e-mail sem cadastro | mensagem clara a cada erro e, na tentativa seguinte, aviso de bloqueio por 15 minutos, mesmo com a senha certa. o e-mail sem cadastro recebe exatamente as mesmas mensagens |
 | CT-03 | sair da conta e usar o botão voltar do navegador | volta para a tela de entrada, sem reabrir tela protegida |
 | CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova | entra com a senha nova. o mesmo link não serve uma segunda vez |
 | CT-05 | como prescritora, gerar convite de paciente e abrir o link na janela anônima | cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve |

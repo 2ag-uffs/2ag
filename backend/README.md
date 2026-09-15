@@ -41,6 +41,9 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `JWT_SECRET` | chave que assina a sessão, com pelo menos 32 caracteres | **obrigatória** |
 | `SESSION_DURATION_MINUTES` | minutos que a sessão dura sem uso | `120` |
 | `SESSION_MAX_HOURS` | horas que uma sessão dura no máximo desde o login, mesmo sendo renovada | `12` |
+| `LOGIN_MAX_FAILURES` | senhas erradas do mesmo e-mail a partir do mesmo endereço antes do bloqueio | `5` |
+| `LOGIN_MAX_FAILURES_PER_ADDRESS` | senhas erradas de um endereço, somando todos os e-mails, antes do bloqueio | `20` |
+| `LOGIN_BLOCK_MINUTES` | minutos que o bloqueio do login dura | `15` |
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
@@ -68,7 +71,9 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
 - a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário, mas ela termina 12 horas depois do login
 - sair da conta encerra as sessões abertas daquela pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie
-- depois de 5 senhas erradas seguidas, o login fica bloqueado por 15 minutos
+- depois de 5 senhas erradas do mesmo e-mail a partir do mesmo endereço, as tentativas desse e-mail vindas dali ficam bloqueadas por 15 minutos, mesmo com a senha certa. 20 erros de um endereço, somando e-mails diferentes, bloqueiam o endereço inteiro
+- o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
+- a contagem fica na memória da api, que roda numa instância só, e zera quando ela reinicia. atrás do nginx o endereço de quem acessa vem do cabeçalho `X-Forwarded-For`, então um proxy a mais na frente precisa repassar esse cabeçalho, senão todo mundo aparece com o mesmo endereço
 - conta desativada perde o acesso na requisição seguinte
 - testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`
 

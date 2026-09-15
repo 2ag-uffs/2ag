@@ -826,6 +826,11 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 
 **Correção em 14/09/2026:** desligar o `open-in-view` na revisão geral quebrou a agenda, o prontuário e a lista de pacientes, porque vários controllers montam a resposta depois do serviço. Os testes não pegaram o erro porque rodam dentro de uma transação, que mantém o banco aberto até o fim. O `open-in-view` voltou a ficar ligado, e um teste novo abre as telas principais dos dois perfis com os dados de demonstração e sem essa transação.
 
+**Sessão e login em 15/09/2026:** dois pontos levantados na busca por falhas de segurança.
+
+- **Sair da conta:** encerra as sessões abertas da pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie, e toda sessão termina 12 horas depois do login, mesmo sendo renovada durante o uso.
+- **Bloqueio de login:** saiu da conta. Antes, cinco senhas erradas travavam a conta por 15 minutos, e quem soubesse o e-mail de alguém conseguia impedir essa pessoa de entrar. Agora a contagem é por e-mail e endereço de origem, com um limite também por endereço, e e-mail sem cadastro é bloqueado do mesmo jeito, para a resposta não revelar quem tem conta.
+
 ---
 
 ## Anexo A — Algoritmos das escalas validadas

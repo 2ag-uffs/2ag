@@ -48,6 +48,7 @@ class SessionTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
+    @Autowired private LoginAttemptLimiter loginAttemptLimiter;
 
     @Value("${api.security.token.secret}")
     private String tokenSecret;
@@ -56,6 +57,9 @@ class SessionTest {
 
     @BeforeEach
     void createPatientWithPassword() {
+        // a contagem de senhas erradas fica em memoria e passaria de um teste pro outro
+        loginAttemptLimiter.clear();
+
         Prescriber prescriber = new Prescriber();
         prescriber.setName("Prescritor da sessao");
         prescriber.setEmail("sessao-prescritor@email.com");
@@ -73,6 +77,18 @@ class SessionTest {
     private ResultActions login(String email, String password) throws Exception {
         String body = "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
         return mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    // mesmo login mas vindo de outro endereco como outro aparelho ou outra rede
+    private ResultActions loginFrom(String address, String email, String password) throws Exception {
+        String body = "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+        return mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .with(request -> {
+                    request.setRemoteAddr(address);
+                    return request;
+                }));
     }
 
     private Cookie loginAndGetSessionCookie() throws Exception {
@@ -141,6 +157,27 @@ class SessionTest {
         }
 
         login(PATIENT_EMAIL, PATIENT_PASSWORD).andExpect(status().isTooManyRequests());
+    }
+
+    // o bloqueio vale igual pra e-mail sem conta entao ele n revela quem tem cadastro (issue 48)
+    @Test
+    void unknownEmailIsBlockedJustLikeARealAccount() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            login("ninguem@email.com", WRONG_PASSWORD).andExpect(status().isUnauthorized());
+        }
+
+        login("ninguem@email.com", WRONG_PASSWORD).andExpect(status().isTooManyRequests());
+    }
+
+    // errar a senha de outra pessoa a partir de outro lugar n trava o login dela
+    @Test
+    void wrongPasswordsFromAnotherAddressDoNotBlockTheOwner() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            loginFrom("177.9.9.9", PATIENT_EMAIL, WRONG_PASSWORD).andExpect(status().isUnauthorized());
+        }
+
+        loginFrom("177.9.9.9", PATIENT_EMAIL, PATIENT_PASSWORD).andExpect(status().isTooManyRequests());
+        login(PATIENT_EMAIL, PATIENT_PASSWORD).andExpect(status().isOk());
     }
 
     @Test

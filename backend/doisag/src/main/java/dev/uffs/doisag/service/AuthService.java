@@ -4,6 +4,7 @@ import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,42 +14,46 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 // confere e-mail e senha no login
-// depois de muitas senhas erradas seguidas a conta fica bloqueada por um tempo
+// muitas senhas erradas do mesmo lugar bloqueiam por um tempo quem esta tentando
+// a contagem fica no LoginAttemptLimiter e n na conta
 @Service
 public class AuthService {
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int BLOCK_MINUTES = 15;
-
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     // hash de uma senha q n pertence a ninguem
     // eh conferido quando o e-mail n tem conta pra resposta demorar o mesmo tempo
     // senao da pra descobrir quais e-mails estao cadastrados medindo o tempo
     private final String unusedPasswordHash;
 
-    public AuthService(UsersRepository usersRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
+                       LoginAttemptLimiter loginAttemptLimiter) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
+        this.loginAttemptLimiter = loginAttemptLimiter;
         this.unusedPasswordHash = passwordEncoder.encode("senha-que-nao-pertence-a-ninguem");
     }
 
-    public Users login(String email, String password) {
-        Users user = usersRepository.findByEmail(InputCleaner.normalizeEmail(email)).orElse(null);
+    public Users login(String email, String password, String clientAddress) {
+        String normalizedEmail = InputCleaner.normalizeEmail(email);
+
+        // o bloqueio vem antes de olhar se o e-mail existe pra resposta ser igual nos dois casos
+        if (loginAttemptLimiter.isBlocked(normalizedEmail, clientAddress)) {
+            throw new LoginBlockedException(
+                    "Muitas tentativas erradas. Tente de novo em " + loginAttemptLimiter.getBlockMinutes() + " minutos");
+        }
+
+        Users user = usersRepository.findByEmail(normalizedEmail).orElse(null);
         if (user == null) {
             passwordEncoder.matches(password, unusedPasswordHash);
+            loginAttemptLimiter.registerFailure(normalizedEmail, clientAddress);
             throw new BadCredentialsException("e-mail sem conta");
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(now)) {
-            throw new LoginBlockedException(
-                    "Muitas tentativas erradas. Tente de novo em " + BLOCK_MINUTES + " minutos");
-        }
-
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            registerFailedAttempt(user, now);
+            loginAttemptLimiter.registerFailure(normalizedEmail, clientAddress);
             throw new BadCredentialsException("senha errada");
         }
 
@@ -57,11 +62,7 @@ public class AuthService {
             throw new DisabledException("conta desativada");
         }
 
-        if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
-            user.setFailedLoginAttempts(0);
-            user.setLockedUntil(null);
-            user = usersRepository.save(user);
-        }
+        loginAttemptLimiter.registerSuccess(normalizedEmail, clientAddress);
         return user;
     }
 
@@ -72,17 +73,5 @@ public class AuthService {
             user.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
             usersRepository.save(user);
         });
-    }
-
-    private void registerFailedAttempt(Users user, LocalDateTime now) {
-        int failedAttempts = user.getFailedLoginAttempts() + 1;
-        if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
-            // bloqueia e zera a contagem pra quando o bloqueio acabar
-            user.setLockedUntil(now.plusMinutes(BLOCK_MINUTES));
-            user.setFailedLoginAttempts(0);
-        } else {
-            user.setFailedLoginAttempts(failedAttempts);
-        }
-        usersRepository.save(user);
     }
 }

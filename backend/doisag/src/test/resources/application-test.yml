@@ -24,6 +24,10 @@ api:
     token:
       # chave fixa so de teste. n tem valor nenhum fora daqui
       secret: chave-de-teste-do-doisag-nao-usar-em-producao-0123456789-abcdefgh
+    login:
+      # todos os testes rodam do mesmo endereco entao o limite por endereco fica alto
+      # a regra do endereco eh conferida no LoginAttemptLimiterTest
+      max-failures-per-address: 1000
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false

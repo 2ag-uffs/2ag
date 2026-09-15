@@ -8,6 +8,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.service.AuthService;
 import dev.uffs.doisag.service.PatientService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -37,9 +38,11 @@ public class AuthenticationController {
     }
 
     // confere a senha e devolve o cookie da sessao junto com os dados de quem entrou
+    // o endereco de quem tenta entra na contagem de senhas erradas
     @PostMapping("/login")
-    public SessionUserDTO login(@RequestBody @Valid LoginDTO loginData, HttpServletResponse response) {
-        Users user = authService.login(loginData.email(), loginData.password());
+    public SessionUserDTO login(@RequestBody @Valid LoginDTO loginData, HttpServletRequest request,
+                                HttpServletResponse response) {
+        Users user = authService.login(loginData.email(), loginData.password(), request.getRemoteAddr());
         sessionCookieService.writeSession(response, user);
         return new SessionUserDTO(user);
     }
