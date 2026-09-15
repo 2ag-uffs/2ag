@@ -22,6 +22,44 @@ jobs:
       # os testes usam h2 em memoria entao n precisa de banco nenhum aqui
       - run: ./mvnw -B verify
 
+  # os mesmos testes do backend num postgres de verdade igual ao do compose (issue 38)
+  # o h2 aceita coisa q o postgres recusa entao migracao ou query q so roda no h2 quebra aqui
+  backend-postgres:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/doisag
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: doisag_teste
+          POSTGRES_USER: doisag
+          # senha so desse banco descartavel do ci
+          POSTGRES_PASSWORD: doisag-ci
+          TZ: America/Sao_Paulo
+          PGTZ: America/Sao_Paulo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U doisag -d doisag_teste"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # variavel de ambiente vale mais q o application-test.yml entao os testes usam esse banco
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/doisag_teste
+      SPRING_DATASOURCE_USERNAME: doisag
+      SPRING_DATASOURCE_PASSWORD: doisag-ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: ./mvnw -B test
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

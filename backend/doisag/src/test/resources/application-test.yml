@@ -3,8 +3,8 @@
 spring:
   datasource:
     # MODE=PostgreSQL faz o h2 aceitar tipo TEXT e sintaxe do postgres
+    # o driver sai da propria url entao o job do ci troca so a url e roda tudo num postgres de verdade
     url: jdbc:h2:mem:doisag-teste;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
     username: sa
     password: ""
   flyway:
