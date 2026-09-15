@@ -1,0 +1,43 @@
+/* erro de uma tela mostrado dentro do layout com o menu */
+
+.box {
+    align-items: flex-start;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: var(--width-narrow);
+    padding: var(--space-6);
+}
+
+.icon {
+    color: var(--color-terracotta-dark);
+    height: 2rem;
+    width: 2rem;
+}
+
+.title {
+    color: var(--color-text-headings);
+    font-size: var(--text-xl);
+    text-wrap: balance;
+}
+
+.message {
+    color: var(--color-text-secondary);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+@media (max-width: 47.99rem) {
+    .box {
+        padding: var(--space-4);
+    }
+}

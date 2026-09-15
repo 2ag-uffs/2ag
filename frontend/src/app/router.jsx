@@ -4,6 +4,7 @@ import {createBrowserRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import AppLayout from "../components/app-layout/app-layout.jsx";
 import PageLoader from "../components/page-loader/page-loader.jsx";
+import RouteError from "../components/route-error/route-error.jsx";
 import StatusPage from "../components/status-page/status-page.jsx";
 import {redirectHome, redirectLoggedUserHome, requireRole} from "./route-guards.js";
 
@@ -55,6 +56,8 @@ const routes = [
                 children: [
                     {
                         loader: requireRole("PATIENT"),
+                        // erro numa tela fica dentro do layout e o menu continua
+                        errorElement: <RouteError/>,
                         children: [
                             {
                                 path: "/painel-paciente",
@@ -96,6 +99,7 @@ const routes = [
                     },
                     {
                         loader: requireRole("PRESCRIBER"),
+                        errorElement: <RouteError/>,
                         children: [
                             {
                                 path: "/painel-prescritor",
@@ -161,6 +165,7 @@ const routes = [
                     },
                     {
                         loader: requireRole("PATIENT", "PRESCRIBER"),
+                        errorElement: <RouteError/>,
                         children: [
                             {
                                 path: "/perfil",
@@ -178,6 +183,7 @@ const routes = [
                     },
                     {
                         loader: requireRole("ADMIN"),
+                        errorElement: <RouteError/>,
                         children: [
                             {
                                 path: "/administracao",
