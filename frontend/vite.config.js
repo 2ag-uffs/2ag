@@ -15,6 +15,19 @@ export default defineConfig(({mode}) => {
             environment: "jsdom",
             setupFiles: ["./src/test/setup.js"],
         },
+        // react e react-router quase n mudam entao vao num arquivo proprio
+        // o navegador guarda esse arquivo e numa versao nova do sistema so baixa o codigo q mudou
+        build: {
+            rolldownOptions: {
+                output: {
+                    codeSplitting: {
+                        groups: [
+                            {name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/},
+                        ],
+                    },
+                },
+            },
+        },
         server: {
             proxy: {
                 "/api": apiUrl,
