@@ -7,7 +7,7 @@
 
 services:
   banco:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: 2ag-banco
     restart: unless-stopped
     environment:
