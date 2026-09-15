@@ -64,9 +64,16 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // a sessao emitida antes da ultima troca de senha ou antes de sair da conta deixa de valer
-            if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())
-                    || wasIssuedBefore(sessionToken, user.getSessionsEndedAt())) {
+            // a sessao emitida antes da ultima troca de senha deixa de valer
+            // a troca grava um cookie novo logo em seguida e esse precisa continuar valendo
+            if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())) {
+                return;
+            }
+
+            // sair da conta derruba toda sessao emitida ate aquele momento
+            // o mesmo milissegundo tbm cai pq o relogio anda de poucos em poucos ms
+            // e um login seguido de saida podia marcar a mesma hora e a sessao continuava valendo
+            if (wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())) {
                 return;
             }
 
@@ -90,13 +97,23 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
     }
 
-    // o momento vem do banco sem fuso e o token guarda um instante
     private boolean wasIssuedBefore(SessionToken sessionToken, LocalDateTime moment) {
         if (moment == null) {
             return false;
         }
-        Instant momentInstant = moment.atZone(ZoneId.systemDefault()).toInstant();
-        return sessionToken.issuedAt().isBefore(momentInstant);
+        return sessionToken.issuedAt().isBefore(toInstant(moment));
+    }
+
+    private boolean wasIssuedAtOrBefore(SessionToken sessionToken, LocalDateTime moment) {
+        if (moment == null) {
+            return false;
+        }
+        return !sessionToken.issuedAt().isAfter(toInstant(moment));
+    }
+
+    // o momento vem do banco sem fuso e o token guarda um instante
+    private Instant toInstant(LocalDateTime moment) {
+        return moment.atZone(ZoneId.systemDefault()).toInstant();
     }
 
     private String readBearerToken(HttpServletRequest request) {
