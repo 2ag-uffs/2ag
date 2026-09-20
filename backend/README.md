@@ -49,7 +49,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
-| `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail e como único endereço aceito nas requisições com cookie que mudam dado | `http://localhost:5173` |
+| `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail e como único endereço aceito nas requisições com cookie que mudam dado | **obrigatória** |
 | `MAIL_HOST` | servidor smtp. sem ele o e-mail não sai e o log mostra só o destinatário e o assunto | vazio |
 | `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova. só para desenvolvimento | `false` |
 | `MAIL_PORT` | porta do servidor smtp | `587` |

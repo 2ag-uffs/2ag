@@ -325,6 +325,19 @@ class AgendaTest {
         assertThat(notificationTitlesOf(patient)).contains("Consulta remarcada");
     }
 
+    // o lembrete da consulta antiga n pode impedir o lembrete do horario novo
+    @Test
+    void rescheduleClearsTheReminderMark() throws Exception {
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        Appointment appointment = appointmentRepository.findById(appointmentId).orElseThrow();
+        appointment.setReminderSentAt(LocalDateTime.now());
+        appointmentRepository.save(appointment);
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(14, 0), "PRESENCIAL").andExpect(status().isOk());
+
+        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getReminderSentAt()).isNull();
+    }
+
     @Test
     void rescheduleOverAnotherAppointmentOrOfACanceledOneIsRejected() throws Exception {
         Long firstId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));

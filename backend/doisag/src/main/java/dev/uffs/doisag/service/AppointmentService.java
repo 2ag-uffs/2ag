@@ -208,6 +208,8 @@ public class AppointmentService {
         appointment.setModality(rescheduleData.modality());
         appointment.setDurationMinutes(durationMinutes);
         appointment.setStatus(AppointmentStatus.AGENDADA);
+        // o horario mudou entao o lembrete precisa sair de novo pro horario novo
+        appointment.setReminderSentAt(null);
         Appointment savedAppointment = saveChange(appointment);
         notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada",
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "

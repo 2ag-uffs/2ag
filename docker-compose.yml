@@ -41,10 +41,17 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       SEED_DADOS_TESTE: ${SEED_DADOS_TESTE:-false}
+      # sem padrao de proposito: endereco errado aqui derruba com 403 tudo q grava
+      PUBLIC_URL: ${PUBLIC_URL}
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      SESSION_DURATION_MINUTES: ${SESSION_DURATION_MINUTES:-120}
+      SESSION_MAX_HOURS: ${SESSION_MAX_HOURS:-12}
+      # bloqueio do login por e-mail e por endereco
+      LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+      LOGIN_MAX_FAILURES_PER_ADDRESS: ${LOGIN_MAX_FAILURES_PER_ADDRESS:-20}
+      LOGIN_BLOCK_MINUTES: ${LOGIN_BLOCK_MINUTES:-15}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:5173}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -52,6 +59,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
       MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      # sem MAIL_HOST o e-mail vai pro log e o texto so aparece com isso ligado
+      EMAIL_LOG_TEXT: ${EMAIL_LOG_TEXT:-false}
       TZ: America/Sao_Paulo
     # a api tbm n expoe porta e quem conversa com ela eh o nginx do front
     healthcheck:

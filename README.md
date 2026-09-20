@@ -38,7 +38,7 @@ cp .env.example .env
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
 
-`POSTGRES_PASSWORD` e `JWT_SECRET` não têm valor padrão de propósito: sem elas a aplicação não sobe.
+`POSTGRES_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão de propósito: sem elas a aplicação não sobe. o `PUBLIC_URL` precisa ser exatamente o endereço pelo qual as pessoas abrem o sistema — com ele errado, o login funciona e todo o resto responde `403`.
 
 **3.** suba tudo:
 
@@ -71,6 +71,7 @@ há um passo a passo mais detalhado em [`database/README.md`](./database/README.
 cd backend/doisag
 export DATABASE_PASSWORD='a_senha_que_voce_criou'
 export JWT_SECRET="$(openssl rand -base64 48)"
+export PUBLIC_URL=http://localhost:5173
 export SESSION_SECURE_COOKIE=false
 export SEED_DADOS_TESTE=true
 ./mvnw spring-boot:run
