@@ -16,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -36,9 +37,16 @@ public class ErrorHandler {
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
     // registro q n existe
+    // a mensagem tecnica traz id interno, entao ela fica no log e a tela recebe
+    // uma generica. so a q foi escrita pra pessoa ler vai direto pra resposta
     @ExceptionHandler({NotFoundException.class, EntityNotFoundException.class})
     public ResponseEntity<ErrorResponseDTO> handleNotFound(RuntimeException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+        boolean messageForUser = exception instanceof NotFoundException notFound && notFound.hasMessageForUser();
+        if (!messageForUser) {
+            log.info("registro n encontrado em {}: {}", request.getRequestURI(), exception.getMessage());
+        }
+        String message = messageForUser ? exception.getMessage() : "Registro não encontrado";
+        return buildResponse(HttpStatus.NOT_FOUND, message, request);
     }
 
     // rota q n existe na api
@@ -103,6 +111,14 @@ public class ErrorHandler {
     public ResponseEntity<ValidationResponseDTO> handleDuplicateValue(DuplicateValueException exception,
                                                                       HttpServletRequest request) {
         return buildFieldResponse(HttpStatus.CONFLICT, exception.getField(), exception.getMessage(), request);
+    }
+
+    // corpo mandado num formato q a rota n aceita
+    // sem isso a excecao caia no handler generico e virava 500
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception,
+                                                                       HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Envie o corpo da requisição em JSON", request);
     }
 
     // metodo http q a rota n aceita

@@ -282,8 +282,9 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `400` | dado inválido, parâmetro faltando ou regra de negócio violada |
 | `401` | sem sessão, sessão vencida ou senha errada |
 | `403` | logado, mas sem permissão para aquele dado, conta desativada tentando entrar ou requisição com o cookie da sessão vinda de outro endereço |
-| `404` | registro ou rota que não existe |
+| `404` | registro ou rota que não existe. a mensagem é genérica: o detalhe com o id vai para o log, não para a tela |
 | `405` | método http que a rota não aceita |
+| `415` | corpo enviado num formato que a rota não aceita. a api só recebe json |
 | `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors` |
 | `429` | login bloqueado por tentativas erradas |
 | `500` | erro inesperado, registrado no log |

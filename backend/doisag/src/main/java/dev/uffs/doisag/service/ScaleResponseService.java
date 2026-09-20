@@ -96,7 +96,7 @@ public class ScaleResponseService {
     // no diario, responder de novo o mesmo dia corrige aquele dia em vez
     // de criar um segundo registro da mesma data
     @Transactional
-    public ScaleResponseDTO answer(Long patientId, ScaleType scaleType, ScaleResponseCreateDTO answerData) {
+    public AnswerResult answer(Long patientId, ScaleType scaleType, ScaleResponseCreateDTO answerData) {
         if (!scaleType.isFilledByPatient()) {
             throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
         }
@@ -128,8 +128,12 @@ public class ScaleResponseService {
         } else {
             auditService.recordChange(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         }
-        return dtoOf(savedResponse);
+        return new AnswerResult(dtoOf(savedResponse), isNew);
     }
+
+    // a correcao do dia reaproveita o registro, entao a rota precisa saber
+    // se criou ou alterou pra responder 201 ou 200
+    public record AnswerResult(ScaleResponseDTO response, boolean created) {}
 
     // o MEEM eh aplicado pelo prescritor durante a consulta (RF26)
     @Transactional

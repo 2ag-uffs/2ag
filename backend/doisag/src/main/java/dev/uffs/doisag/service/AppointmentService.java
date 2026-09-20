@@ -54,6 +54,7 @@ public class AppointmentService {
     public static final String LATE_CANCELLATION_MESSAGE =
             "Faltam menos de 24 horas para a consulta. Para cancelar, fale com o seu prescritor";
     public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
+    public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
     // pedido em aberto segura o horario, entao poucos por vez pra agenda n travar
@@ -328,8 +329,12 @@ public class AppointmentService {
     // agenda do prescritor entre duas datas e sem as datas vem inteira
     @Transactional(readOnly = true)
     public List<Appointment> getAgenda(Long prescriberId, LocalDate from, LocalDate to) {
-        if (from == null || to == null) {
+        if (from == null && to == null) {
             return appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriberId);
+        }
+        // so um lado do periodo ficava sem filtro nenhum e devolvia a agenda inteira
+        if (from == null || to == null) {
+            throw new BusinessException(INCOMPLETE_RANGE_MESSAGE);
         }
         if (from.isAfter(to)) {
             throw new BusinessException(INVALID_RANGE_MESSAGE);

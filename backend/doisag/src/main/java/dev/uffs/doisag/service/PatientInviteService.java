@@ -54,7 +54,7 @@ public class PatientInviteService {
     public InviteInfoDTO getInviteInfo(String token) {
         PatientInvite invite = findUsableInvite(token);
         if (invite == null) {
-            throw new NotFoundException(INVALID_INVITE_MESSAGE);
+            throw NotFoundException.forUser(INVALID_INVITE_MESSAGE);
         }
 
         Prescriber prescriber = invite.getPrescriber();

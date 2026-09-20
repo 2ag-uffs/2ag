@@ -14,7 +14,9 @@ public record AvailabilityDTO(
         @Max(value = 240, message = "A consulta pode ter até 240 minutos")
         Integer appointmentDurationMinutes,
 
+        // o @NotNull de fora vale pra lista e o de dentro pra cada item:
+        // sem ele um item nulo no meio da lista derruba o servico
         @NotNull(message = "Envie os períodos de atendimento")
-        List<@Valid AvailabilityPeriodDTO> periods
+        List<@NotNull(message = "Período inválido") @Valid AvailabilityPeriodDTO> periods
 ) {
 }

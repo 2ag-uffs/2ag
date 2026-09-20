@@ -6,12 +6,15 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.NotificationService;
+import dev.uffs.doisag.service.PatientInviteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,54 @@ class ErrorHandlingTest {
 
         patientId = patient.getId();
         patientToken = "Bearer " + tokenService.generateToken(patient);
+    }
+
+    // corpo em texto puro caia no handler generico e virava 500
+    @Test
+    void corpoFuraDeFormatoVira415() throws Exception {
+        mockMvc.perform(post("/anamneses")
+                        .header("Authorization", patientToken)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("reasonForVisit=dor"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.message").value("Envie o corpo da requisição em JSON"));
+    }
+
+    // a mensagem tecnica do 404 mostrava id interno na tela de quem usa
+    @Test
+    void oNaoEncontradoNaoMostraDetalheInterno() throws Exception {
+        mockMvc.perform(get("/scales/definitions/escala-que-nao-existe").header("Authorization", patientToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Registro não encontrado"));
+    }
+
+    // o q foi escrito pra pessoa ler continua chegando inteiro
+    @Test
+    void aMensagemEscritaProUsuarioPassaDireto() throws Exception {
+        mockMvc.perform(get("/invites/convite-que-nao-existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(PatientInviteService.INVALID_INVITE_MESSAGE));
+    }
+
+    // item de protocolo vazio derrubava a api com 500
+    @Test
+    void itemDeProtocoloVazioVira400ComOCampo() throws Exception {
+        mockMvc.perform(post("/patients/" + patientId + "/treatment-protocol")
+                        .header("Authorization", "Bearer " + tokenService.generateToken(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field == 'items[0].scaleType')]").exists());
+    }
+
+    // so um lado do periodo ignorava o filtro e devolvia a agenda inteira
+    @Test
+    void periodoPelaMetadeNaAgendaVira400() throws Exception {
+        mockMvc.perform(get("/appointments")
+                        .param("from", "2026-09-01")
+                        .header("Authorization", "Bearer " + tokenService.generateToken(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.INCOMPLETE_RANGE_MESSAGE));
     }
 
     @Test

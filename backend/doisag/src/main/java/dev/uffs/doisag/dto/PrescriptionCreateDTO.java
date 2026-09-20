@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,7 +16,11 @@ public record PrescriptionCreateDTO(
         @NotBlank(message = "Informe o produto")
         String productDescription,
 
+        // texto maior q a coluna estourava no banco e voltava como 409 de duplicado
+        @Size(max = 255, message = "A marca pode ter até 255 caracteres")
         String brand,
+
+        @Size(max = 255, message = "O lote pode ter até 255 caracteres")
         String batch,
 
         @NotNull(message = "Escolha o espectro do óleo")
@@ -25,11 +30,13 @@ public record PrescriptionCreateDTO(
         @Valid
         List<PrescriptionComponentDTO> components,
 
+        @Size(max = 255, message = "O volume pode ter até 255 caracteres")
         String volume,
 
         @NotBlank(message = "A posologia é obrigatória")
         String posology,
 
+        @Size(max = 255, message = "A via de administração pode ter até 255 caracteres")
         String administrationRoute,
 
         // o plano de subida de dose semana a semana

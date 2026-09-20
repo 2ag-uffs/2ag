@@ -50,7 +50,7 @@ public class ScaleCatalog {
     public ScaleDefinition definitionOf(ScaleType type) {
         ScaleDefinition definition = definitions.get(type);
         if (definition == null) {
-            throw new NotFoundException("Escala sem formulário no sistema: " + type.getDisplayName());
+            throw NotFoundException.forUser("Escala sem formulário no sistema: " + type.getDisplayName());
         }
         return definition;
     }

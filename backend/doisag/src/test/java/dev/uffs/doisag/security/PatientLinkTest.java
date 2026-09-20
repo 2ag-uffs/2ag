@@ -259,7 +259,8 @@ class PatientLinkTest {
                         .header("Authorization", bearerTokenOf(recordsOfA.patient()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyPointingToB))
-                .andExpect(status().isCreated())
+                // 200 pq o paciente A ja tem resposta de hamilton hoje, entao isso corrige ela
+                .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
         Long createdScaleId = new ObjectMapper().readTree(response).get("id").asLong();

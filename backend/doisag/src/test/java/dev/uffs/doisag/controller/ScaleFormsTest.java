@@ -103,8 +103,9 @@ class ScaleFormsTest {
     void oMesmoDiaDoDiarioNaoViraDoisRegistros() throws Exception {
         Long firstId = idOf(answerScale("acompanhamento-semanal",
                 "{\"dor\":8,\"sono\":4}").andExpect(status().isCreated()));
+        // 200 e n 201: o segundo envio corrigiu o dia, n criou registro novo
         Long secondId = idOf(answerScale("acompanhamento-semanal",
-                "{\"dor\":5,\"sono\":6}").andExpect(status().isCreated()));
+                "{\"dor\":5,\"sono\":6}").andExpect(status().isOk()));
 
         org.assertj.core.api.Assertions.assertThat(secondId).isEqualTo(firstId);
         mockMvc.perform(get("/scales/acompanhamento-semanal/responses")

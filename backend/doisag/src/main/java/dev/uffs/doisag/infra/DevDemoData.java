@@ -487,7 +487,7 @@ public class DevDemoData {
             answers.put("comentario", comment);
         }
         return scaleResponseService.answer(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
-                new ScaleResponseCreateDTO(day, day, answers));
+                new ScaleResponseCreateDTO(day, day, answers)).response();
     }
 
     // os 14 itens da escala de hamilton na ordem do formulario
@@ -497,7 +497,7 @@ public class DevDemoData {
             answers.put(HAMILTON_ITEMS[index], values[index]);
         }
         return scaleResponseService.answer(patient.getId(), ScaleType.ESCALA_HAMILTON,
-                new ScaleResponseCreateDTO(day, day, answers));
+                new ScaleResponseCreateDTO(day, day, answers)).response();
     }
 
     // os avisos criados desde o inicio da demonstracao pra essas contas

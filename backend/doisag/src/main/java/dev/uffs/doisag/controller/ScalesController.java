@@ -73,8 +73,10 @@ public class ScalesController {
     public ResponseEntity<ScaleResponseDTO> answer(@PathVariable String slug,
                                                    @RequestBody @Valid ScaleResponseCreateDTO answerData,
                                                    @AuthenticationPrincipal Patient loggedPatient) {
-        ScaleResponseDTO response = responseService.answer(loggedPatient.getId(), ScaleType.fromSlug(slug), answerData);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        ScaleResponseService.AnswerResult result =
+                responseService.answer(loggedPatient.getId(), ScaleType.fromSlug(slug), answerData);
+        // 201 so quando o dia ainda n tinha resposta, senao foi correcao
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.response());
     }
 
     // as respostas do paciente logado numa escala, q a grade da semana usa

@@ -104,7 +104,11 @@ export default function AgendaDisponibilidade() {
                     endTime: period.endTime,
                 })),
             });
-            setNotice("Horários salvos. Seus pacientes já podem pedir consulta nesses períodos.");
+            // salvar sem periodo nenhum eh permitido de proposito, mas a pessoa
+            // precisa saber q isso fecha a agenda dela pros pacientes
+            setNotice(periods.length === 0
+                ? "Horários salvos. Sem nenhum período, seus pacientes não conseguem pedir consulta."
+                : "Horários salvos. Seus pacientes já podem pedir consulta nesses períodos.");
         } catch (requestError) {
             setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
         } finally {
