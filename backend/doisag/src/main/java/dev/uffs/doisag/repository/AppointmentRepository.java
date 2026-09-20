@@ -32,6 +32,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // proximos pedidos e consultas do paciente
     List<Appointment> findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(Long patientId, LocalDateTime moment);
 
+    // pedidos q passaram da data e ninguem respondeu, q o job do dia fecha (RF11)
+    List<Appointment> findByStatusAndDateTimeBefore(AppointmentStatus status, LocalDateTime moment);
+
+    // quantos pedidos o paciente ja deixou em aberto, pq cada um segura um horario
+    long countByPatientIdAndStatusAndDateTimeAfter(Long patientId, AppointmentStatus status, LocalDateTime moment);
+
     // consultas de um paciente num intervalo pro grafico de evolucao
     List<Appointment> findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(Long patientId, LocalDateTime start,
                                                                            LocalDateTime end);

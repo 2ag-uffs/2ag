@@ -52,6 +52,12 @@ public class AppointmentService {
     public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
+    // pedido em aberto segura o horario, entao poucos por vez pra agenda n travar
+    private static final int MAX_OPEN_REQUESTS = 3;
+    public static final String TOO_MANY_REQUESTS_MESSAGE =
+            "Você já tem " + MAX_OPEN_REQUESTS + " pedidos esperando resposta. "
+                    + "Espere a resposta ou cancele um deles antes de pedir outro horário";
+
     // antecedencia minima pro paciente cancelar sozinho a consulta marcada
     public static final int PATIENT_CANCELLATION_HOURS = 24;
 
@@ -123,6 +129,13 @@ public class AppointmentService {
             throw new BusinessException(NO_PRESCRIBER_MESSAGE);
         }
 
+        // cada pedido em aberto segura um horario q some da agenda dos outros pacientes
+        long openRequests = appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
+                patientId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
+        if (openRequests >= MAX_OPEN_REQUESTS) {
+            throw new BusinessException(TOO_MANY_REQUESTS_MESSAGE);
+        }
+
         // so vale um dos horarios livres entao fora do atendimento ocupado ou passado n entra
         boolean isFreeSlot = getFreeSlots(prescriber.getId(), requestData.dateTime().toLocalDate())
                 .stream()
@@ -164,6 +177,27 @@ public class AppointmentService {
                         + formatDateTime(savedAppointment) + " foi confirmada.",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
         return savedAppointment;
+    }
+
+    // pedido q passou da data sem resposta n pode ficar em aberto pra sempre:
+    // ele some das telas, o paciente fica esperando e o registro nunca fecha (RF11)
+    @Transactional
+    public int declineExpiredRequests(LocalDateTime moment) {
+        List<Appointment> expired = appointmentRepository
+                .findByStatusAndDateTimeBefore(AppointmentStatus.SOLICITADA, moment)
+                .stream()
+                .filter(appointment -> !appointment.isAnnulled())
+                .toList();
+
+        for (Appointment appointment : expired) {
+            appointment.setStatus(AppointmentStatus.RECUSADA);
+            Appointment savedAppointment = saveChange(appointment);
+            notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta sem resposta",
+                    "Seu pedido de consulta para " + formatDateTime(savedAppointment)
+                            + " passou da data sem resposta. Escolha outro horário na agenda.",
+                    "ALERT", PATIENT_AGENDA_LINK);
+        }
+        return expired.size();
     }
 
     // o pedido recusado devolve o horario pra agenda

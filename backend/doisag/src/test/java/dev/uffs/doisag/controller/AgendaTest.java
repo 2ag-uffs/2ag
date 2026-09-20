@@ -62,6 +62,7 @@ class AgendaTest {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private AppointmentService appointmentService;
 
     private Prescriber prescriber;
     private Prescriber otherPrescriber;
@@ -310,6 +311,32 @@ class AgendaTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(body)))
                 .andExpect(status().isBadRequest());
+    }
+
+    // cada pedido em aberto segura um horario, entao o paciente n pode acumular um monte
+    @Test
+    void thePatientCannotPileUpOpenRequests() throws Exception {
+        request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated());
+        request(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated());
+        request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
+
+        request(patient, AGENDA_DAY.atTime(11, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_MANY_REQUESTS_MESSAGE));
+    }
+
+    // pedido q passou da data sem resposta vira recusado no job do dia, senao o
+    // paciente fica esperando pra sempre e o registro some das telas
+    @Test
+    void theDailyJobDeclinesRequestsThatExpired() throws Exception {
+        Appointment expired = saveAppointment(patient, LocalDateTime.now().minusHours(2),
+                AppointmentStatus.SOLICITADA);
+
+        assertThat(appointmentService.declineExpiredRequests(LocalDateTime.now())).isEqualTo(1);
+
+        assertThat(appointmentRepository.findById(expired.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.RECUSADA);
+        assertThat(notificationTitlesOf(patient)).contains("Pedido de consulta sem resposta");
     }
 
     // ---------- remarcar ----------

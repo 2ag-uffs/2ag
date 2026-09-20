@@ -164,6 +164,8 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - `inicio` e `fim` são datas no formato `aaaa-mm-dd`, as duas inclusive
 - os horários livres saem da divisão dos períodos de atendimento pela duração padrão, sem os que já passaram e sem os que se sobrepõem a um pedido ou consulta
 - o pedido do paciente segura o horário até a resposta. a recusa e o cancelamento liberam o horário
+- o paciente tem no máximo 3 pedidos esperando resposta ao mesmo tempo, porque cada um segura um horário que some da agenda dos outros pacientes
+- pedido que passou da data sem resposta é recusado pelo job diário, com aviso para o paciente, em vez de ficar aberto para sempre
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
