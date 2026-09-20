@@ -14,7 +14,8 @@
 }
 
 .icon {
-    color: var(--color-terracotta-dark);
+    /* pelo papel e n pela familia: no tema escuro a terracota precisa clarear */
+    color: var(--color-error);
     height: 2rem;
     width: 2rem;
 }

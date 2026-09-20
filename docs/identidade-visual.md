@@ -163,3 +163,27 @@ A leitura aplicada foi: a **primária domina a identidade** (cabeçalho, barra d
 Ou seja: nenhuma cor da marca serve de fundo de tela. A primária porque escureceria demais, e a palha porque já tentamos e ficou pesada.
 
 **Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface-alt`.
+
+---
+
+## tema escuro
+
+Aplicado em 20/09/2026. Segue a preferência do aparelho e tem um botão no menu — a escolha da pessoa vence a do sistema e fica gravada no navegador.
+
+**A cartela do manual não mudou.** Os quinze tons das cinco famílias continuam com os mesmos valores. O que o tema escuro troca é o **papel** que cada tom ocupa:
+
+| No claro | No escuro | Por quê |
+| :--- | :--- | :--- |
+| Primária `#006633` é fundo de botão, com texto branco | A ação passa a `#3fa96a`, com texto escuro | No escuro a primária não carrega texto branco com contraste suficiente |
+| Fundo da página é um neutro quase branco | `#0f1411`, verde quase sem saturação | Mesma receita dos neutros claros; preto puro não pertence à paleta |
+| Palha é fundo do selo, com texto escuro | Fundo palha escurecido, texto palha claro | Palha, pêssego e terracota continuam nos 10% de destaque, invertidos |
+| Menu e arte do login são verde escuro | Continuam escuros, `#16281d` | Com a primária clareada, a navegação viraria um bloco brilhante |
+
+Três papéis novos nasceram daí, porque a família sozinha não diz o que a cor faz:
+
+- `--color-brand-surface` e `--color-on-brand-surface`: o verde como **moldura** (menu lateral, cabeçalho do celular, arte das telas de entrada), que precisa escurecer no tema escuro enquanto a primária clareia
+- `--color-highlight-surface`, `--color-highlight-border` e `--color-highlight-text`: o bloco de destaque em palha, que inverte
+
+A impressão sai **sempre clara**, independentemente do tema: é peça de prontuário.
+
+**O que vale confirmar com quem fez o manual:** o verde `#3fa96a` como cor de ação é a única cor que não está na cartela. É a mesma matiz da primária, dois tons acima, e existe porque o contraste exige.

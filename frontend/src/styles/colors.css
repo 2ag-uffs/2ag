@@ -22,6 +22,9 @@
  */
 
 :root {
+    /* o navegador desenha campo, barra de rolagem e menu na cor certa */
+    color-scheme: light;
+
     /* ---- palha, "calma e estabilidade" ---- */
     --color-straw: #ffeeda;             /* tom 1, a cor do manual */
     --color-straw-mid: #ffe6c9;         /* tom 2 */
@@ -88,8 +91,194 @@
     --color-btn-light-bg: #77954f;
     --color-btn-light-bg-transparent: #77954f6e;
 
+    /* ---- moldura da marca ----
+     * o menu lateral, o cabecalho do celular e a arte das telas de entrada
+     * usam o verde como fundo grande. virou papel proprio pq no tema escuro
+     * esse fundo continua escuro: com a primaria clareada a navegacao viraria
+     * um bloco brilhante no meio da tela escura */
+    --color-brand-surface: #006633;
+    --color-brand-surface-light: #006625;
+    --color-brand-surface-dark: #193e21;
+    --color-on-brand-surface: #ffffff;
+
+    /* ---- destaque em palha ----
+     * o bloco de aviso fraco usa a palha como fundo. virou papel proprio
+     * pq no tema escuro o fundo escurece e o texto eh q fica palha */
+    --color-highlight-surface: #ffeeda;
+    --color-highlight-border: #f8bf7d;
+    --color-highlight-text: #193e21;
+
     /* ---- cores do grafico de evolucao ----
      * saem da paleta em vez do padrao da biblioteca */
     --color-chart-line: #006633;
     --color-chart-grid: #dbe1dd;
+}
+
+/*
+ * tema escuro
+ *
+ * a cartela do manual continua intacta la em cima: o q muda aqui eh o papel
+ * de cada tom. no claro a primaria eh fundo de botao com texto branco; no
+ * escuro ela eh escura demais pra carregar texto, entao a acao passa pra um
+ * tom mais claro da mesma familia e o texto do botao fica escuro
+ *
+ * o fundo n eh preto: segue a mesma receita dos neutros claros, verde quase
+ * sem saturacao. palha, pessego e terracota continuam nos 10% de destaque do
+ * manual, so q invertidos, o tom claro vira texto e o escuro vira fundo
+ *
+ * o bloco aparece duas vez pq media query e seletor de atributo n podem virar
+ * uma lista de seletor so. a primeira vale pra quem deixou no automatico e a
+ * segunda pra quem escolheu escuro no botao
+ */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+
+        --color-background: #0f1411;
+        --color-surface: #171d18;
+        --color-surface-alt: #1f2620;
+
+        --color-text-primary: #e9ede9;
+        --color-text-headings: #a8d5b5;
+        --color-text-secondary: #a7b2a9;
+        --color-text-on-primary: #0f1411;
+        --color-text-on-secondary: #0f1411;
+
+        --color-primary-light: #57bd80;
+        --color-primary: #3fa96a;
+        --color-primary-dark: #2d8a54;
+        --color-secondary-light: #aecb84;
+        --color-secondary: #9cbd6e;
+        --color-secondary-dark: #86a75c;
+
+        --color-border: #2b342d;
+        --color-border-light: #232b25;
+        --color-primary-soft: #16281d;
+        --color-neutral: #6f7c73;
+
+        --color-error: #e0906b;
+        --color-error-soft: #2e1d16;
+        --color-error-border: #5c3a2a;
+        --color-success: #3fa96a;
+        --color-warning: #d99a5e;
+
+        --color-brand-surface: #16281d;
+        --color-brand-surface-light: #1d3627;
+        --color-brand-surface-dark: #0f1a13;
+        --color-on-brand-surface: #e9ede9;
+
+        --color-highlight-surface: #33291c;
+        --color-highlight-border: #5c4326;
+        --color-highlight-text: #f8d9ae;
+
+        --color-text-muted: #a7b2a9;
+        --color-accent-agree: #9cbd6e;
+        --color-accent-disagree: #e0906b;
+        --color-btn-light-bg: #9cbd6e;
+
+        --color-chart-line: #4fb87a;
+        --color-chart-grid: #2b342d;
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-background: #0f1411;
+    --color-surface: #171d18;
+    --color-surface-alt: #1f2620;
+
+    --color-text-primary: #e9ede9;
+    --color-text-headings: #a8d5b5;
+    --color-text-secondary: #a7b2a9;
+    --color-text-on-primary: #0f1411;
+    --color-text-on-secondary: #0f1411;
+
+    --color-primary-light: #57bd80;
+    --color-primary: #3fa96a;
+    --color-primary-dark: #2d8a54;
+    --color-secondary-light: #aecb84;
+    --color-secondary: #9cbd6e;
+    --color-secondary-dark: #86a75c;
+
+    --color-border: #2b342d;
+    --color-border-light: #232b25;
+    --color-primary-soft: #16281d;
+    --color-neutral: #6f7c73;
+
+    --color-error: #e0906b;
+    --color-error-soft: #2e1d16;
+    --color-error-border: #5c3a2a;
+    --color-success: #3fa96a;
+    --color-warning: #d99a5e;
+
+    --color-brand-surface: #16281d;
+    --color-brand-surface-light: #1d3627;
+    --color-brand-surface-dark: #0f1a13;
+    --color-on-brand-surface: #e9ede9;
+
+    --color-highlight-surface: #33291c;
+    --color-highlight-border: #5c4326;
+    --color-highlight-text: #f8d9ae;
+
+    --color-text-muted: #a7b2a9;
+    --color-accent-agree: #9cbd6e;
+    --color-accent-disagree: #e0906b;
+    --color-btn-light-bg: #9cbd6e;
+
+    --color-chart-line: #4fb87a;
+    --color-chart-grid: #2b342d;
+}
+
+/* a impressao vira peca de prontuario, entao sai sempre clara */
+@media print {
+    :root,
+    :root[data-theme="dark"] {
+        color-scheme: light;
+
+        --color-background: #ffffff;
+        --color-surface: #ffffff;
+        --color-surface-alt: #e9edea;
+
+        --color-text-primary: #1d1b1b;
+        --color-text-headings: #193e21;
+        --color-text-secondary: #575e59;
+        --color-text-on-primary: #ffffff;
+        --color-text-on-secondary: #1d1b1b;
+
+        --color-primary-light: #006625;
+        --color-primary: #006633;
+        --color-primary-dark: #193e21;
+        --color-secondary-light: #819d5b;
+        --color-secondary: #77954f;
+        --color-secondary-dark: #637d40;
+
+        --color-border: #dbe1dd;
+        --color-border-light: #e9edea;
+        --color-primary-soft: #e0ede6;
+        --color-neutral: #9aa69f;
+
+        --color-error: #a44819;
+        --color-error-soft: #f1e4dd;
+        --color-error-border: #dfbfae;
+        --color-success: #006633;
+        --color-warning: #bf563f;
+
+        --color-brand-surface: #006633;
+        --color-brand-surface-light: #006625;
+        --color-brand-surface-dark: #193e21;
+        --color-on-brand-surface: #ffffff;
+
+        --color-highlight-surface: #ffeeda;
+        --color-highlight-border: #f8bf7d;
+        --color-highlight-text: #193e21;
+
+        --color-text-muted: #575e59;
+        --color-accent-agree: #77954f;
+        --color-accent-disagree: #bf663f;
+        --color-btn-light-bg: #77954f;
+
+        --color-chart-line: #006633;
+        --color-chart-grid: #dbe1dd;
+    }
 }

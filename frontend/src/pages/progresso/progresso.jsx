@@ -18,6 +18,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
+import {onThemeChange} from "../../utils/theme.js";
 import styles from "./progresso.module.css";
 
 // o recharts precisa das cores como valor e n como var do css
@@ -25,13 +26,15 @@ import styles from "./progresso.module.css";
 const colorOf = (name, fallback) =>
     getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
-const CHART_COLORS = {
+// lidas na hora de desenhar e de novo qnd o tema muda, senao o grafico fica
+// com a paleta clara depois de a pessoa trocar pro tema escuro
+const chartColorsNow = () => ({
     line: colorOf("--color-chart-line", "#006633"),
     grid: colorOf("--color-chart-grid", "#dbe1dd"),
     appointment: colorOf("--color-error", "#a44819"),
     dose: colorOf("--color-secondary", "#77954f"),
     text: colorOf("--color-text-secondary", "#575e59"),
-};
+});
 
 // aaaa-mm-dd vira dd/mm q eh como o eixo do grafico mostra
 const dayAndMonth = (isoDate) => isoDate.slice(8, 10) + "/" + isoDate.slice(5, 7);
@@ -83,6 +86,11 @@ export default function Progresso() {
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
     const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
     const [seriesError, setSeriesError] = useState(null);
+
+    // o grafico desenha com a cor em javascript, entao ele precisa ser avisado
+    // qnd o tema muda pra n continuar com a paleta antiga
+    const [chartColors, setChartColors] = useState(chartColorsNow);
+    useEffect(() => onThemeChange(() => setChartColors(chartColorsNow())), []);
 
     const periods = isPrescriber ? [...PERIODS, ALL_TIME_PERIOD] : PERIODS;
 
@@ -448,8 +456,8 @@ export default function Progresso() {
                         <ResponsiveContainer width="100%" height={320}>
                             <LineChart data={chartRows} margin={{top: 16, right: 24, bottom: 8, left: 0}}>
                                 {/* as cores saem da paleta da marca e n do padrao do recharts */}
-                                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid}/>
-                                <XAxis dataKey="label" tick={{fontSize: 12, fill: CHART_COLORS.text}}/>
+                                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid}/>
+                                <XAxis dataKey="label" tick={{fontSize: 12, fill: chartColors.text}}/>
                                 {/* a faixa vem do backend pq 0 a 10 e 0 a 56 n podem
                                     dividir o mesmo eixo */}
                                 <YAxis
@@ -460,7 +468,7 @@ export default function Progresso() {
                                             ? currentAttribute.maxValue : "auto",
                                     ]}
                                     allowDecimals={false}
-                                    tick={{fontSize: 12, fill: CHART_COLORS.text}}
+                                    tick={{fontSize: 12, fill: chartColors.text}}
                                 />
                                 <Tooltip/>
                                 <Legend/>
@@ -470,7 +478,7 @@ export default function Progresso() {
                                     <ReferenceLine
                                         key={band.label}
                                         y={band.minScore}
-                                        stroke={CHART_COLORS.grid}
+                                        stroke={chartColors.grid}
                                         strokeDasharray="6 3"
                                         label={{value: band.label, position: "insideTopRight", fontSize: 11}}
                                     />
@@ -483,13 +491,13 @@ export default function Progresso() {
                                     <ReferenceLine
                                         key={appointment.id}
                                         x={appointment.label}
-                                        stroke={CHART_COLORS.appointment}
+                                        stroke={chartColors.appointment}
                                         strokeDasharray="4 4"
                                         label={{
                                             value: appointment.geraPrescricao ? "consulta + receita" : "consulta",
                                             position: "top",
                                             fontSize: 11,
-                                            fill: CHART_COLORS.appointment,
+                                            fill: chartColors.appointment,
                                         }}
                                     />
                                 ))}
@@ -498,9 +506,9 @@ export default function Progresso() {
                                     type="monotone"
                                     dataKey="valor"
                                     name={currentAttribute ? currentAttribute.displayName : "valor"}
-                                    stroke={CHART_COLORS.line}
+                                    stroke={chartColors.line}
                                     strokeWidth={2}
-                                    dot={{r: 4, fill: CHART_COLORS.line}}
+                                    dot={{r: 4, fill: chartColors.line}}
                                     activeDot={{r: 6}}
                                 />
 
@@ -509,10 +517,10 @@ export default function Progresso() {
                                         type="monotone"
                                         dataKey="gotas"
                                         name="Gotas no dia"
-                                        stroke={CHART_COLORS.dose}
+                                        stroke={chartColors.dose}
                                         strokeWidth={2}
                                         strokeDasharray="5 3"
-                                        dot={{r: 3, fill: CHART_COLORS.dose}}
+                                        dot={{r: 3, fill: chartColors.dose}}
                                         connectNulls={true}
                                     />
                                 )}

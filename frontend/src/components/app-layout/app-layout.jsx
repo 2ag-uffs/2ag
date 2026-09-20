@@ -1,3 +1,4 @@
+import {useState} from "react";
 import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
 import {
     FiActivity,
@@ -9,13 +10,16 @@ import {
     FiFileText,
     FiHome,
     FiLogOut,
+    FiMoon,
     FiShield,
+    FiSun,
     FiTrendingUp,
     FiUser,
     FiUsers,
 } from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
 import {getLoggedUser, logout} from "../../services/api.js";
+import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
 
 const ROLE_LABELS = {
@@ -107,6 +111,16 @@ export default function AppLayout() {
         navigate("/entrar", {replace: true});
     };
 
+    // sem escolha o sistema segue o aparelho. o botao grava a escolha e ela passa a valer
+    const [theme, setTheme] = useState(() => currentTheme());
+    const themeLabel = theme === "dark" ? "Usar tema claro" : "Usar tema escuro";
+
+    const toggleTheme = () => {
+        const nextTheme = theme === "dark" ? "light" : "dark";
+        applyTheme(nextTheme);
+        setTheme(nextTheme);
+    };
+
     return (
         <div className={styles.layout}>
             {/* barra fina no topo enquanto a proxima tela carrega */}
@@ -142,6 +156,10 @@ export default function AppLayout() {
                         <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
                         <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
                     </div>
+                    <button type="button" className={styles.iconButton} onClick={toggleTheme}
+                            aria-label={themeLabel} title={themeLabel}>
+                        {theme === "dark" ? <FiSun/> : <FiMoon/>}
+                    </button>
                     <button type="button" className={styles.iconButton} onClick={handleLogout}
                             aria-label="Sair" title="Sair">
                         <FiLogOut/>
@@ -159,10 +177,16 @@ export default function AppLayout() {
                     </button>
                 )}
                 <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
-                <button type="button" className={styles.iconButton} onClick={handleLogout}
-                        aria-label="Sair" title="Sair">
-                    <FiLogOut/>
-                </button>
+                <div className={styles.headerActions}>
+                    <button type="button" className={styles.iconButton} onClick={toggleTheme}
+                            aria-label={themeLabel} title={themeLabel}>
+                        {theme === "dark" ? <FiSun/> : <FiMoon/>}
+                    </button>
+                    <button type="button" className={styles.iconButton} onClick={handleLogout}
+                            aria-label="Sair" title="Sair">
+                        <FiLogOut/>
+                    </button>
+                </div>
             </header>
 
             <main className={styles.content}>

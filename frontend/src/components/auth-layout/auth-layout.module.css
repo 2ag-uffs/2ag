@@ -1,7 +1,7 @@
 /* moldura das telas de entrada como login e cadastro */
 
 .layout {
-    background-color: var(--color-primary);
+    background-color: var(--color-brand-surface);
     display: flex;
     min-height: 100svh;
 }
@@ -10,7 +10,7 @@
 /* o degrade sai dos tres tons do verde escuro da cartela */
 .art {
     align-items: center;
-    background: radial-gradient(circle at 30% 25%, var(--color-primary-light) 0%, var(--color-primary) 45%, var(--color-primary-dark) 100%);
+    background: radial-gradient(circle at 30% 25%, var(--color-brand-surface-light) 0%, var(--color-brand-surface) 45%, var(--color-brand-surface-dark) 100%);
     display: flex;
     flex: 1 1 55%;
     height: 100svh;

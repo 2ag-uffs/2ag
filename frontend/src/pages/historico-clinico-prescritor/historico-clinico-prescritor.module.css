@@ -28,9 +28,9 @@
 }
 
 .factWarning {
-    background-color: var(--color-straw);
-    border-color: var(--color-peach);
-    color: var(--color-text-headings);
+    background-color: var(--color-highlight-surface);
+    border-color: var(--color-highlight-border);
+    color: var(--color-highlight-text);
 }
 
 .tools {
