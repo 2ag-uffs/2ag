@@ -45,8 +45,9 @@ export default function AcompanhamentoProtocolo() {
 
     // o esqueleto so aparece na primeira carga e depois de salvar a tela so atualiza
     const load = useCallback(() => {
+        // a avaliacao inicial fica de fora: ela eh da triagem e n repete a cada periodo
         apiService.get("/scales/assignable")
-            .then(setScales)
+            .then((allScales) => setScales(allScales.filter((scale) => scale.assignablePeriodically)))
             .catch(() => setScales([]));
 
         apiService.get("/patients/" + patientId + "/treatment-protocol")

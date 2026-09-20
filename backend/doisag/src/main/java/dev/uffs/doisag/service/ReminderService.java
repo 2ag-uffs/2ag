@@ -90,7 +90,7 @@ public class ReminderService {
                         ScaleTaskStatus.PENDENTE, today.plusDays(SCALE_REMINDER_DAYS))
                 .stream()
                 // quem ja comecou a responder n precisa de cobranca
-                .filter(task -> responseRepository.countByTaskId(task.getId()) == 0)
+                .filter(task -> responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(task.getId()) == 0)
                 .toList();
 
         for (ScaleTask task : tasks) {

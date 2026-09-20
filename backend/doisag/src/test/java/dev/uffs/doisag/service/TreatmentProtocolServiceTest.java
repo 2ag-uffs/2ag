@@ -79,6 +79,14 @@ class TreatmentProtocolServiceTest {
                 .count();
     }
 
+    // a avaliacao inicial eh da triagem: no acompanhamento ela voltaria a cada ciclo (RF19)
+    @Test
+    void anamneseNaoEntraNoAcompanhamento() {
+        assertThatThrownBy(() -> criaProtocolo(List.of(item(ScaleType.ANAMNESE, Periodicity.SEMANAL))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(TreatmentProtocolService.SINGLE_SCALE_MESSAGE);
+    }
+
     @Test
     void designaAsEscalasLogoNoPrimeiroDia() {
         criaProtocolo(List.of(

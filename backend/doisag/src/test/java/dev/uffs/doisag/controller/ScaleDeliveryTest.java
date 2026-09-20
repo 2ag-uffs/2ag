@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -110,6 +112,46 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.notifications.length()").value(1))
                 .andExpect(jsonPath("$.notifications[0].title").value("Escala respondida"))
                 .andExpect(jsonPath("$.notifications[0].link").value("/paciente/" + patient.getId() + "/historico"));
+    }
+
+    // a escala de periodo abre a grade em hoje-6, entao a data informada cai antes do
+    // comeco da tarefa: o vinculo tem q ser pela data do envio
+    @Test
+    void answeringAPeriodScaleInTheMiddleOfTheWindowClosesTheTask() throws Exception {
+        sendScale("REGISTRO_DOR").andExpect(status().isCreated());
+
+        String patientToken = bearerTokenOf(patient);
+        mockMvc.perform(post("/scales/registro-dor/responses")
+                        .header("Authorization", patientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"periodStart\":\"" + LocalDate.now().minusDays(6) + "\","
+                                + "\"answers\":{\"intensidadeDor\":7}}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pending.length()").value(0));
+    }
+
+    // anular a resposta devolve a tarefa pra pendente e o paciente responde de novo
+    @Test
+    void annullingTheResponseMakesTheTaskPendingAgain() throws Exception {
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        String answerBody = answerHamilton(patientToken).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Number responseId = JsonPath.read(answerBody, "$.id");
+
+        mockMvc.perform(put("/scales/responses/" + responseId.longValue() + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Respondida no paciente errado\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pending.length()").value(1));
+        answerHamilton(patientToken).andExpect(status().isCreated());
     }
 
     // mandar de novo uma escala q o paciente ainda n respondeu n cria tarefa repetida

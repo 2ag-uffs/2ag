@@ -56,6 +56,12 @@ public enum ScaleType {
         return filledByPatient;
     }
 
+    // a avaliacao inicial eh preenchida uma vez na triagem, entao ela pode ser
+    // enviada avulsa mas n entra no acompanhamento q repete a cada periodo (RF19 e RF32)
+    public boolean isAssignablePeriodically() {
+        return filledByPatient && this != ANAMNESE;
+    }
+
     // a rota da tela q preenche a escala
     public String getPath() {
         return this == ANAMNESE ? "/anamnese" : "/escalas/" + slug;

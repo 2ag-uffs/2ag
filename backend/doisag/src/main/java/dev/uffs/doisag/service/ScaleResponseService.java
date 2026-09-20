@@ -104,7 +104,8 @@ public class ScaleResponseService {
         LocalDate periodEnd = periodEndOf(definition, answerData, periodStart);
 
         ScaleResponse response = responseRepository
-                .findByPatientIdAndScaleTypeAndPeriodStart(patientId, scaleType, periodStart)
+                .findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(patientId, scaleType,
+                        periodStart)
                 .orElseGet(ScaleResponse::new);
         boolean isNew = response.getId() == null;
         if (!isNew) {
@@ -202,6 +203,9 @@ public class ScaleResponseService {
         }
         response.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
         responseRepository.save(response);
+        // sem resposta valida a tarefa volta a ser cobrada, senao aquele periodo
+        // fica sem ninguem preencher e vira buraco no grafico sem aviso nenhum
+        taskService.reopenIfWithoutAnswers(response.getTask());
         auditService.recordChange(response.getScaleType().getAuditRecordType(), response.getId(),
                 response.getPatient().getId());
         return dtoOf(response);

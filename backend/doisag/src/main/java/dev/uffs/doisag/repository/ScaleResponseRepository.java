@@ -23,12 +23,14 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
             Long patientId, LocalDate from, LocalDate to);
 
     // o dia q ja foi preenchido no diario, pq o mesmo dia n vira dois registros
-    Optional<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStart(
+    // a anulada fica de fora: ela vira historico e o dia pode ser respondido de novo
+    Optional<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
             Long patientId, ScaleType scaleType, LocalDate periodStart);
 
     List<ScaleResponse> findByTaskIdOrderByPeriodStartAsc(Long taskId);
 
     List<ScaleResponse> findByAppointmentIdOrderByPeriodStartAsc(Long appointmentId);
 
-    long countByTaskId(Long taskId);
+    // resposta anulada n conta como respondida em lugar nenhum
+    long countByTaskIdAndAnnulmentAnnulledAtIsNull(Long taskId);
 }

@@ -92,7 +92,7 @@ public class DashboardService {
                         List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA),
                         today)
                 .stream()
-                .filter(task -> responseRepository.countByTaskId(task.getId()) == 0)
+                .filter(task -> responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(task.getId()) == 0)
                 .limit(PANEL_LIMIT)
                 .map(this::lateScaleOf)
                 .toList();

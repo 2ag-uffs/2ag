@@ -8,9 +8,12 @@ public record AssignableScaleDTO(
         ScaleType type,
         String name,
         String description,
-        String path
+        String path,
+        // a tela do acompanhamento so mostra as q podem repetir a cada periodo
+        boolean assignablePeriodically
 ) {
     public AssignableScaleDTO(ScaleType scaleType) {
-        this(scaleType, scaleType.getDisplayName(), scaleType.getDescription(), scaleType.getPath());
+        this(scaleType, scaleType.getDisplayName(), scaleType.getDescription(), scaleType.getPath(),
+                scaleType.isAssignablePeriodically());
     }
 }

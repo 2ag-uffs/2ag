@@ -36,6 +36,9 @@ public class TreatmentProtocolService {
 
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Paciente arquivado não recebe acompanhamento automático. Reative o paciente antes";
+    public static final String SINGLE_SCALE_MESSAGE =
+            "A avaliação inicial é respondida uma vez, então ela não entra no acompanhamento automático. "
+                    + "Envie ela em Enviar escalas";
 
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
@@ -87,6 +90,11 @@ public class TreatmentProtocolService {
             // acompanhamento automatico do paciente (RN09)
             if (!itemDto.scaleType().isFilledByPatient()) {
                 throw new BusinessException(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
+            }
+            // a avaliacao inicial eh da triagem: no acompanhamento ela voltaria
+            // a cada periodicidade e o paciente refaria a ficha inteira (RF19)
+            if (!itemDto.scaleType().isAssignablePeriodically()) {
+                throw new BusinessException(SINGLE_SCALE_MESSAGE);
             }
             ProtocolItem item = new ProtocolItem();
             item.setScaleType(itemDto.scaleType());

@@ -118,14 +118,35 @@ public class ScaleTaskService {
     @Transactional
     public void linkResponse(ScaleResponse response) {
         Optional<ScaleTask> openTask = openTaskOf(response.getPatient().getId(), response.getScaleType());
-        if (openTask.isEmpty() || !openTask.get().coversDay(response.getPeriodStart())) {
+        // amarra pela data do envio e n pela janela informada: na escala de periodo
+        // o formulario abre em hoje-6, q cai antes do inicio da tarefa, e o diario
+        // aceita preencher dia passado. a tarefa aberta hoje eh a dona da resposta
+        LocalDate today = LocalDate.now();
+        if (openTask.isEmpty() || !openTask.get().coversDay(today)) {
             return;
         }
         ScaleTask task = openTask.get();
         response.setTask(task);
         if (catalog.definitionOf(response.getScaleType()).fillMode() != ScaleDefinition.FillMode.DIARIO) {
-            closeAsAnswered(task, response.getPeriodStart());
+            closeAsAnswered(task, today);
         }
+    }
+
+    // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
+    @Transactional
+    public void reopenIfWithoutAnswers(ScaleTask task) {
+        if (task == null || validAnswersOf(task) > 0) {
+            return;
+        }
+        task.setStatus(ScaleTaskStatus.PENDENTE);
+        task.setAnsweredAt(null);
+        task.setReminderSentAt(null);
+        taskRepository.save(task);
+    }
+
+    // resposta anulada n conta, entao a tarefa dela continua precisando de resposta
+    private long validAnswersOf(ScaleTask task) {
+        return responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(task.getId());
     }
 
     // a anamnese tem tela propria mas tbm eh uma tarefa (RF19)
@@ -141,7 +162,7 @@ public class ScaleTaskService {
     public int closeOverdue(LocalDate today) {
         List<ScaleTask> overdue = taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today);
         for (ScaleTask task : overdue) {
-            long answers = responseRepository.countByTaskId(task.getId());
+            long answers = validAnswersOf(task);
             task.setStatus(answers > 0 ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
             if (answers > 0 && task.getAnsweredAt() == null) {
                 task.setAnsweredAt(task.getPeriodEnd());
@@ -161,7 +182,7 @@ public class ScaleTaskService {
         List<ScaleTaskDTO> pending = taskRepository
                 .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, responseRepository.countByTaskId(task.getId()), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
                 .toList();
 
         List<ScaleResponseSummaryDTO> history = responseRepository
@@ -179,7 +200,7 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         return taskRepository.findByPrescriberIdAndStatusOrderByPeriodEndAsc(prescriberId, ScaleTaskStatus.PENDENTE)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, responseRepository.countByTaskId(task.getId()), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
                 .toList();
     }
 
@@ -188,7 +209,7 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         return taskRepository.findByPatientIdOrderByPeriodStartDesc(patientId)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, responseRepository.countByTaskId(task.getId()), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
                 .toList();
     }
 
