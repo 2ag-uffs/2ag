@@ -84,6 +84,8 @@ class ProgressMarkersTest {
         saveConsultation(1, AppointmentStatus.CANCELADA);
         saveConsultation(2, AppointmentStatus.RECUSADA);
         saveConsultation(3, AppointmentStatus.SOLICITADA);
+        // consulta q o paciente faltou fica AGENDADA pra sempre e tbm n aconteceu
+        saveConsultation(4, AppointmentStatus.AGENDADA);
 
         assertThat(json.readTree(markersOf(bearerTokenOf(patient), "DIAS_30"))).isEmpty();
     }

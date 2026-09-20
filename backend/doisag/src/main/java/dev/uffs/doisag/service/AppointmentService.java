@@ -375,7 +375,9 @@ public class AppointmentService {
                 .findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(
                         patientId, start.atStartOfDay(), today.atTime(LocalTime.MAX))
                 .stream()
-                .filter(appointment -> appointment.getStatus().isConfirmed())
+                // marcada n eh o mesmo q aconteceu: consulta q o paciente faltou fica
+                // AGENDADA pra sempre e viraria marcador de atendimento no grafico
+                .filter(appointment -> appointment.getStatus() == AppointmentStatus.CONCLUIDA)
                 .filter(appointment -> !appointment.isAnnulled())
                 .map(AppointmentMarkerDTO::new)
                 .toList();

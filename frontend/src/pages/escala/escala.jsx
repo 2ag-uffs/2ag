@@ -31,6 +31,7 @@ export default function Escala() {
     const [definition, setDefinition] = useState(null);
     const [responses, setResponses] = useState([]);
     const [sleepSchedule, setSleepSchedule] = useState(null);
+    const [openTask, setOpenTask] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // o q a paciente mexeu fica guardado por dia ate salvar
     const [editsByDay, setEditsByDay] = useState({});
@@ -87,18 +88,38 @@ export default function Escala() {
     const isDiary = definition ? definition.fillMode === "DIARIO" : false;
     const isPeriod = definition ? definition.fillMode === "PERIODO" : false;
 
+    // a tarefa aberta dessa escala, pq a grade do diario precisa seguir a janela dela
+    useEffect(() => {
+        if (!isDiary) {
+            return;
+        }
+        apiService.get("/patients/" + loggedUser.id + "/scales/overview")
+            .then((page) => setOpenTask(page.pending.find((task) => task.path === "/escalas/" + slug) || null))
+            .catch(() => setOpenTask(null));
+    }, [isDiary, slug, loggedUser.id]);
+
     // a semana do dia escolhido, como a grade do formulario em papel
+    //
+    // qnd a tarefa aberta comecou no meio da semana, a grade comeca nela: dia
+    // preenchido antes do inicio da tarefa n conta pra ela, e o contador ficava
+    // em "0 de 7" mesmo com o paciente tendo preenchido
     const weekDays = useMemo(() => {
-        const monday = mondayOf(new Date(selectedDay + "T00:00:00"));
+        const monday = toIsoDate(mondayOf(new Date(selectedDay + "T00:00:00")));
+        const insideOpenTask = openTask
+            && selectedDay >= openTask.periodStart
+            && selectedDay <= openTask.periodEnd;
+        const firstDay = insideOpenTask && openTask.periodStart > monday ? openTask.periodStart : monday;
+        const lastDay = insideOpenTask && openTask.periodEnd < today ? openTask.periodEnd : today;
+
         const days = [];
         for (let dayNumber = 0; dayNumber < 7; dayNumber = dayNumber + 1) {
-            const dayIso = toIsoDate(addDays(monday, dayNumber));
-            if (dayIso <= today) {
+            const dayIso = toIsoDate(addDays(new Date(firstDay + "T00:00:00"), dayNumber));
+            if (dayIso <= lastDay) {
                 days.push(dayIso);
             }
         }
         return days;
-    }, [selectedDay, today]);
+    }, [selectedDay, today, openTask]);
 
     const currentResponse = useMemo(
         () => responses.find((response) => response.periodStart === selectedDay) || null,
