@@ -11,6 +11,8 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ConsultationService;
+import dev.uffs.doisag.service.ScaleResponseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -195,6 +197,49 @@ class ScaleFormsTest {
     void pacienteNaoRespondeEscalaDeHeteroaplicacao() throws Exception {
         answerScale("mini-exame", "{\"registro\":3}")
                 .andExpect(status().isBadRequest());
+    }
+
+    // dois exame valido no mesmo atendimento e ninguem sabe qual vale (RF26)
+    @Test
+    void oMiniExameNaoEhAplicadoDuasVezesNaMesmaConsulta() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
+        applyMentalStateExam(appointmentId, prescriber).andExpect(status().isCreated());
+
+        applyMentalStateExam(appointmentId, prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.EXAM_ALREADY_APPLIED_MESSAGE));
+    }
+
+    // a tela precisa saber q ja tem exame pra abrir no resultado
+    @Test
+    void aConsultaDevolveOMiniExameJaAplicado() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
+        mentalStateExamOf(appointmentId).andExpect(status().isNoContent());
+
+        applyMentalStateExam(appointmentId, prescriber).andExpect(status().isCreated());
+
+        mentalStateExamOf(appointmentId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("mini-exame"));
+    }
+
+    // o exame tem motivo proprio de anulacao, entao a consulta n anula ele em cascata
+    @Test
+    void aConsultaComMiniExameNaoEhAnuladaDireto() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
+        applyMentalStateExam(appointmentId, prescriber).andExpect(status().isCreated());
+
+        mockMvc.perform(put("/appointments/" + appointmentId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Consulta lançada no paciente errado\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.HAS_EXAM_MESSAGE));
+    }
+
+    private ResultActions mentalStateExamOf(Long appointmentId) throws Exception {
+        return mockMvc.perform(get("/scales/mental-state-exam/appointments/" + appointmentId)
+                .header("Authorization", bearerTokenOf(prescriber)));
     }
 
     private ResultActions answerScale(String slug, String answers) throws Exception {

@@ -35,11 +35,16 @@ export default function MiniExame() {
         Promise.all([
             apiService.get("/scales/definitions/mini-exame"),
             apiService.get("/appointments/" + appointmentId),
+            // exame ja aplicado nessa consulta, q vem vazio qnd ainda n tem nenhum
+            apiService.get("/scales/mental-state-exam/appointments/" + appointmentId),
         ])
-            .then(([loadedDefinition, loadedAppointment]) => {
+            .then(([loadedDefinition, loadedAppointment, appliedExam]) => {
                 if (isCurrentRequest) {
                     setDefinition(loadedDefinition);
                     setAppointment(loadedAppointment);
+                    // com exame aplicado a tela abre no resultado, senao o prescritor
+                    // preenche tudo de novo pra so dai descobrir q n pode salvar
+                    setSavedExam(appliedExam || null);
                     setLoadError(null);
                 }
             })

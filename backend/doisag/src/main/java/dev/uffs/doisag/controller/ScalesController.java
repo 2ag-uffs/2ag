@@ -115,6 +115,15 @@ public class ScalesController {
         return responseService.annul(id, annulmentData, loggedUser);
     }
 
+    // o exame ja aplicado nessa consulta, pra tela abrir no resultado em vez
+    // de um formulario em branco q o servidor vai recusar no salvar
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
+    @GetMapping("/mental-state-exam/appointments/{appointmentId}")
+    public ResponseEntity<ScaleResponseDTO> getMentalStateExam(@PathVariable Long appointmentId) {
+        ScaleResponseDTO exam = responseService.getMentalStateExamOf(appointmentId);
+        return exam == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(exam);
+    }
+
     // o MEEM eh aplicado pelo prescritor dentro da consulta (RF26 e RN09)
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @PostMapping("/mental-state-exam/appointments/{appointmentId}")

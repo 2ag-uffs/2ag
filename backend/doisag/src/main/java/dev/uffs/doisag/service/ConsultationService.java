@@ -14,6 +14,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,8 @@ public class ConsultationService {
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta consulta já foi anulada";
     public static final String HAS_PRESCRIPTION_MESSAGE =
             "Esta consulta tem prescrição. Anule a prescrição antes de anular a consulta";
+    public static final String HAS_EXAM_MESSAGE =
+            "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de anular a consulta";
 
     // folga pro relogio do computador de quem registra estar um pouco adiantado
     private static final int CLOCK_TOLERANCE_MINUTES = 5;
@@ -40,13 +43,16 @@ public class ConsultationService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final ScaleResponseRepository responseRepository;
     private final AuditService auditService;
 
     public ConsultationService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
-                               PrescriptionRepository prescriptionRepository, AuditService auditService) {
+                               PrescriptionRepository prescriptionRepository,
+                               ScaleResponseRepository responseRepository, AuditService auditService) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriptionRepository = prescriptionRepository;
+        this.responseRepository = responseRepository;
         this.auditService = auditService;
     }
 
@@ -111,6 +117,11 @@ public class ConsultationService {
         }
         if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
             throw new BusinessException(HAS_PRESCRIPTION_MESSAGE);
+        }
+        // mesmo tratamento da prescricao: o exame tem motivo proprio de anulacao
+        // e a trilha precisa registrar cada um, entao n da pra anular em cascata
+        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
+            throw new BusinessException(HAS_EXAM_MESSAGE);
         }
 
         appointment.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));

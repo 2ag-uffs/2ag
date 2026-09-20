@@ -31,6 +31,9 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
 
     List<ScaleResponse> findByAppointmentIdOrderByPeriodStartAsc(Long appointmentId);
 
+    // o mini exame valido daquela consulta: barra o segundo exame e a anulacao da consulta
+    boolean existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(Long appointmentId);
+
     // resposta anulada n conta como respondida em lugar nenhum
     long countByTaskIdAndAnnulmentAnnulledAtIsNull(Long taskId);
 }

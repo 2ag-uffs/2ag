@@ -53,6 +53,8 @@ public class ScaleResponseService {
             "O prescritor já analisou esta resposta. Fale com ele para corrigir";
     public static final String ANNULLED_MESSAGE = "Resposta anulada não muda mais";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta resposta já está anulada";
+    public static final String EXAM_ALREADY_APPLIED_MESSAGE =
+            "Esta consulta já tem um Mini-Exame aplicado. Para aplicar de novo, anule o anterior com o motivo";
     public static final String NOT_CONFIRMED_APPOINTMENT_MESSAGE =
             "Só consulta confirmada na agenda recebe o Mini-Exame";
 
@@ -138,6 +140,11 @@ public class ScaleResponseService {
         if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
             throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);
         }
+        // dois exame valido no mesmo atendimento ninguem sabe qual vale, e o meem
+        // n tem correcao: pra refazer, o anterior precisa ser anulado com motivo
+        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
+            throw new BusinessException(EXAM_ALREADY_APPLIED_MESSAGE);
+        }
         ScaleType scaleType = ScaleType.MINI_EXAME_ESTADO_MENTAL;
         ScaleDefinition definition = catalog.definitionOf(scaleType);
         LocalDate examDay = appointment.getDateTime().toLocalDate();
@@ -155,6 +162,18 @@ public class ScaleResponseService {
         auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(),
                 appointment.getPatient().getId());
         return dtoOf(savedResponse);
+    }
+
+    // o exame ja aplicado naquela consulta, pra tela abrir no resultado
+    // em vez de um formulario em branco q n vai poder ser salvo
+    @Transactional(readOnly = true)
+    public ScaleResponseDTO getMentalStateExamOf(Long appointmentId) {
+        return responseRepository.findByAppointmentIdOrderByPeriodStartAsc(appointmentId)
+                .stream()
+                .filter(exam -> !exam.isAnnulled())
+                .findFirst()
+                .map(this::dtoOf)
+                .orElse(null);
     }
 
     // correcao da resposta
