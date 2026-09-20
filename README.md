@@ -40,6 +40,8 @@ cp .env.example .env
 
 `POSTGRES_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão de propósito: sem elas a aplicação não sobe. o `PUBLIC_URL` precisa ser exatamente o endereço pelo qual as pessoas abrem o sistema — com ele errado, o login funciona e todo o resto responde `403`.
 
+sem `ADMIN_EMAIL` e `ADMIN_PASSWORD` o sistema sobe normalmente, mas nenhuma conta é criada e ninguém consegue entrar: o autocadastro do paciente exige convite, o convite exige prescritor e o prescritor exige administrador. o log da api avisa quando isso acontece; preencha as duas e suba de novo.
+
 **3.** suba tudo:
 
 ```bash

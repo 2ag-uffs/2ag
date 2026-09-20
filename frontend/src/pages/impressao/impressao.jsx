@@ -6,7 +6,7 @@ import ConsultationCard from "../../components/consultation-card/consultation-ca
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import {ageFrom, formatDate, formatDateTime} from "../../utils/date-format.js";
+import {addDays, ageFrom, formatDate, formatNow, toIsoDate} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
 
 const PERIODS = [
@@ -60,9 +60,8 @@ export default function Impressao() {
         if (periodDays === 0) {
             return null;
         }
-        const start = new Date();
-        start.setDate(start.getDate() - periodDays);
-        return start.toISOString().slice(0, 10);
+        // pelo toISOString a data voltaria um dia no fuso de brasilia
+        return toIsoDate(addDays(new Date(), -periodDays));
     }, [periodDays]);
 
     const insidePeriod = (isoDate) => !startDate || String(isoDate).slice(0, 10) >= startDate;
@@ -129,7 +128,7 @@ export default function Impressao() {
                     </div>
                     <div>
                         <dt>Emitido em</dt>
-                        <dd>{formatDateTime(new Date().toISOString().slice(0, 19))}</dd>
+                        <dd>{formatNow()}</dd>
                     </div>
                 </dl>
             </header>

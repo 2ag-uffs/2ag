@@ -56,9 +56,13 @@ function textOf(value) {
 }
 
 // a consulta q veio da api vira o estado do formulario
+// a consulta de hoje pode estar marcada pra mais tarde, e o campo n aceita hora futura
+// entao ela entra limitada ao momento atual, q eh o q a api tbm aceita
 function recordFromAppointment(appointment) {
+    const now = toInputDateTime(new Date());
+    const scheduled = appointment.dateTime ? appointment.dateTime.slice(0, 16) : "";
     return {
-        dateTime: appointment.dateTime ? appointment.dateTime.slice(0, 16) : "",
+        dateTime: scheduled > now ? now : scheduled,
         modality: appointment.modality || "PRESENCIAL",
         clinicalObservation: textOf(appointment.clinicalObservation),
         physicalExam: textOf(appointment.physicalExam),

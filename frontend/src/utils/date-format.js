@@ -44,6 +44,14 @@ export function formatWeekdayAndDate(isoText) {
     return weekday.charAt(0).toUpperCase() + weekday.slice(1) + " " + dayAndMonth;
 }
 
+// a data e a hora de agora no mesmo formato das datas q vem da api
+// passar pelo toISOString adiantaria 3 horas e viraria o dia a partir das 21h
+export function formatNow() {
+    const now = new Date();
+    const time = now.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+    return now.toLocaleDateString("pt-BR") + " às " + time;
+}
+
 // true quando a data e hora ainda n chegou
 export function isInTheFuture(isoText) {
     return toLocalDate(isoText) > new Date();

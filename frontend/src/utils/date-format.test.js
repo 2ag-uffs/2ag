@@ -1,5 +1,5 @@
-import {describe, expect, it} from "vitest";
-import {addDays, formatDate, mondayOf, toIsoDate} from "./date-format.js";
+import {describe, expect, it, vi} from "vitest";
+import {addDays, formatDate, formatNow, mondayOf, toIsoDate} from "./date-format.js";
 
 describe("datas", () => {
     it("data sem hora da api sai no formato brasileiro sem voltar um dia", () => {
@@ -15,6 +15,16 @@ describe("datas", () => {
         const original = new Date(2026, 8, 30);
         expect(toIsoDate(addDays(original, 2))).toBe("2026-10-02");
         expect(toIsoDate(original)).toBe("2026-09-30");
+    });
+
+    // pelo toISOString a impressao da noite saia com a data do dia seguinte
+    it("formatNow usa o relogio local e n o utc", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 8, 5, 22, 30));
+
+        expect(formatNow()).toBe("05/09/2026 às 22:30");
+
+        vi.useRealTimers();
     });
 
     it("mondayOf de um domingo volta pra segunda anterior", () => {

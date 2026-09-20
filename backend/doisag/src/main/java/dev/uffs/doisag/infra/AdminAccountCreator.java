@@ -36,6 +36,12 @@ public class AdminAccountCreator implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         if (adminEmail.isBlank() || adminPassword.isBlank()) {
+            // banco vazio e sem as duas variaveis n existe conta nenhuma pra entrar
+            // e o resto do sistema depende do administrador pra criar prescritor
+            if (usersRepository.count() == 0) {
+                log.warn("sem ADMIN_EMAIL e ADMIN_PASSWORD nenhuma conta foi criada e ninguem consegue entrar."
+                        + " preencha as duas no .env e suba a api de novo");
+            }
             return;
         }
         if (usersRepository.findByEmail(adminEmail).isPresent()) {

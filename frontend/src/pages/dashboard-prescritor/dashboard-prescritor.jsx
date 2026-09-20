@@ -8,7 +8,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
-import {formatDate, formatDateTime, formatTime} from "../../utils/date-format.js";
+import {formatDate, formatDateTime, formatTime, isInTheFuture} from "../../utils/date-format.js";
 import styles from "./dashboard-prescritor.module.css";
 
 // painel do prescritor (RF03)
@@ -146,7 +146,7 @@ export default function DashboardPrescritor() {
                                     key={appointment.appointmentId}
                                     title={formatTime(appointment.dateTime) + " · " + appointment.patientName}
                                     details={modalityLabelOf(appointment.modality)}
-                                    aside={(
+                                    aside={isInTheFuture(appointment.dateTime) ? null : (
                                         <button
                                             type="button"
                                             className="button button-small"
