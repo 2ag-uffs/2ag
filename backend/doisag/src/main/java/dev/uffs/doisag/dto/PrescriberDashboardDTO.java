@@ -12,6 +12,9 @@ import java.util.List;
 // hoje, os pedidos q esperam resposta e as escalas q venceram
 public record PrescriberDashboardDTO(
         long activePatients,
+        // o prescritor n tem contador de aviso em outro lugar e evento tipo
+        // consulta cancelada pelo paciente so aparece na tela de avisos
+        long unreadNotifications,
         List<TodayAppointmentDTO> todaysAppointments,
         List<WaitingRequestDTO> waitingRequests,
         List<LateScaleDTO> lateScales

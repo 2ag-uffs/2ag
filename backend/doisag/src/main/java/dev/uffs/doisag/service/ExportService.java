@@ -20,6 +20,7 @@ import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleItem;
+import dev.uffs.doisag.scale.ScaleOption;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -159,7 +160,7 @@ public class ExportService {
     public String scaleResponsesCsv(Long patientId, boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Escala", "Início do período", "Fim do período",
-                "Escore", "Faixa", "Item", "Resposta", "Anulada");
+                "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada");
 
         for (ScaleResponse response : responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)) {
             if (!catalog.hasDefinition(response.getScaleType())) {
@@ -177,11 +178,59 @@ public class ExportService {
                         response.getScore(),
                         response.getScoreBand(),
                         item.label(),
+                        answerText(item, answer),
                         answer,
                         response.isAnnulled() ? "sim" : "não");
             }
         }
         return csv.build();
+    }
+
+    // o mesmo texto q a tela mostra, pq codigo cru so da pra ler com um livro de
+    // codigo q n existe. a nota continua como numero, q eh o q a planilha tabula
+    private String answerText(ScaleItem item, Object answer) {
+        return switch (item.type()) {
+            case SIM_NAO -> Boolean.parseBoolean(String.valueOf(answer)) ? "Sim" : "Não";
+            case ESCOLHA -> optionLabel(item, answer);
+            case MINUTOS, CALCULADO -> minutesText(answer);
+            default -> String.valueOf(answer);
+        };
+    }
+
+    private String optionLabel(ScaleItem item, Object answer) {
+        Integer value = wholeNumberOf(answer);
+        if (value == null) {
+            return String.valueOf(answer);
+        }
+        return item.options().stream()
+                .filter(option -> option.value() == value)
+                .map(ScaleOption::label)
+                .findFirst()
+                .orElse(String.valueOf(answer));
+    }
+
+    // minutos em horas e minutos, do mesmo jeito q a tela mostra
+    private String minutesText(Object answer) {
+        Integer minutes = wholeNumberOf(answer);
+        if (minutes == null) {
+            return String.valueOf(answer);
+        }
+        if (minutes < 60) {
+            return minutes + " min";
+        }
+        return minutes / 60 + "h" + String.format("%02d", minutes % 60);
+    }
+
+    // o json do banco devolve o numero as vezes inteiro e as vezes decimal
+    private Integer wholeNumberOf(Object answer) {
+        if (answer instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return (int) Double.parseDouble(String.valueOf(answer));
+        } catch (NumberFormatException error) {
+            return null;
+        }
     }
 
     @Transactional(readOnly = true)

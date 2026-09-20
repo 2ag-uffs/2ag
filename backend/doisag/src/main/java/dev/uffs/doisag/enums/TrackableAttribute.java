@@ -32,6 +32,7 @@ public enum TrackableAttribute {
     // escalas validadas entram pelo escore
     ESCORE_HAMILTON(ScaleType.ESCALA_HAMILTON, null),
     ESCORE_PITTSBURGH(ScaleType.ESCALA_PITTSBURGH, null),
+    ESCORE_MEEM(ScaleType.MINI_EXAME_ESTADO_MENTAL, null),
 
     // acompanhamento semanal de dor
     INTENSIDADE_DOR(ScaleType.REGISTRO_DOR, "intensidadeDor"),

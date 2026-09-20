@@ -59,6 +59,7 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public PrescriberDashboardDTO getPrescriberDashboard(Long prescriberId) {
         long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNull(prescriberId);
+        long unreadNotifications = notificationRepository.countUnread(prescriberId);
         LocalDate today = LocalDate.now();
 
         List<PrescriberDashboardDTO.TodayAppointmentDTO> todaysAppointments = appointmentRepository
@@ -96,7 +97,8 @@ public class DashboardService {
                 .map(this::lateScaleOf)
                 .toList();
 
-        return new PrescriberDashboardDTO(activePatients, todaysAppointments, waitingRequests, lateScales);
+        return new PrescriberDashboardDTO(activePatients, unreadNotifications, todaysAppointments, waitingRequests,
+                lateScales);
     }
 
     @Transactional(readOnly = true)

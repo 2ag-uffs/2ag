@@ -162,6 +162,34 @@ class ExportTest {
         assertThat(csv).contains("Semana difícil");
     }
 
+    // o csv precisa sair com o texto q a clinica le na tela, e o codigo fica na coluna do lado
+    @Test
+    void asEscalasSaemComOTextoDaRespostaEOCodigoAoLado() throws Exception {
+        ScaleResponse diary = new ScaleResponse();
+        diary.setPatient(patient);
+        diary.setScaleType(ScaleType.REGISTRO_SONO);
+        diary.setPeriodStart(TODAY.minusDays(1));
+        diary.setPeriodEnd(TODAY.minusDays(1));
+        diary.setAnswers(new LinkedHashMap<>(Map.of("tempoTotalSono", 450, "diaComum", true)));
+        responseRepository.save(diary);
+
+        ScaleResponse pittsburgh = new ScaleResponse();
+        pittsburgh.setPatient(patient);
+        pittsburgh.setScaleType(ScaleType.ESCALA_PITTSBURGH);
+        pittsburgh.setPeriodStart(TODAY.minusDays(2));
+        pittsburgh.setPeriodEnd(TODAY.minusDays(2));
+        pittsburgh.setAnswers(new LinkedHashMap<>(Map.of("qualidadeGeral", 2)));
+        responseRepository.save(pittsburgh);
+
+        String csv = download("scales.csv", "", patient);
+
+        assertThat(csv).contains("\"Item\";\"Resposta\";\"Código\"");
+        // minuto vira hora e minuto, sim e nao viram palavra e a escolha vira o rotulo dela
+        assertThat(csv).contains("\"7h30\";\"450\"");
+        assertThat(csv).contains("\"Sim\";\"true\"");
+        assertThat(csv).contains("\"Ruim\";\"2\"");
+    }
+
     @Test
     void aAnamneseSaiComPerguntaEResposta() throws Exception {
         String csv = download("anamneses.csv", "", patient);

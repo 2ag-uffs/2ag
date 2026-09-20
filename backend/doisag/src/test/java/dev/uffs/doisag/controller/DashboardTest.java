@@ -111,9 +111,13 @@ class DashboardTest {
         request.setPatientNote("Dor lombar piorou");
         appointmentRepository.save(request);
         saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2));
+        // evento q so aparece na tela de avisos, tipo consulta cancelada pelo paciente
+        notificationService.createNotification(prescriber, "Consulta cancelada",
+                "A paciente cancelou a consulta de amanhã.", "APPOINTMENT", "/agendamento-prescritor");
 
         prescriberPanel()
                 .andExpect(jsonPath("$.activePatients").value(1))
+                .andExpect(jsonPath("$.unreadNotifications").value(1))
                 .andExpect(jsonPath("$.todaysAppointments.length()").value(1))
                 .andExpect(jsonPath("$.todaysAppointments[0].patientName").value("Paciente do painel"))
                 .andExpect(jsonPath("$.waitingRequests.length()").value(1))

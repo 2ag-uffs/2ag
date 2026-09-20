@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
-import {FiAlertCircle, FiCalendar, FiInbox, FiUsers} from "react-icons/fi";
+import {FiAlertCircle, FiBell, FiCalendar, FiInbox, FiUsers} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
@@ -70,6 +70,13 @@ export default function DashboardPrescritor() {
             value: panel.lateScales.length,
             icon: FiAlertCircle,
             needsAttention: panel.lateScales.length > 0,
+        },
+        {
+            label: "Avisos não lidos",
+            value: panel.unreadNotifications,
+            icon: FiBell,
+            path: "/notificacoes",
+            needsAttention: panel.unreadNotifications > 0,
         },
     ];
 
