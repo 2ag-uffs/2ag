@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import dev.uffs.doisag.service.AnamnesisService;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -168,6 +169,20 @@ class PatientArchiveTest {
                 .andExpect(jsonPath("$.events[*].operation", hasItems("ARQUIVAMENTO", "REATIVACAO")))
                 .andExpect(jsonPath("$.events[?(@.operation == 'ARQUIVAMENTO')].actorName",
                         contains("Prescritora do arquivo")));
+    }
+
+    // prontuario de arquivado n recebe registro novo, mesmo o paciente ainda entrando
+    @Test
+    void theArchivedPatientDoesNotSendANewAnamnesis() throws Exception {
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        mockMvc.perform(post("/anamneses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assessmentDate\":\"" + LocalDate.now()
+                                + "\",\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AnamnesisService.ARCHIVED_PATIENT_MESSAGE));
     }
 
     private ResultActions archive(Patient archivedPatient, Users user) throws Exception {

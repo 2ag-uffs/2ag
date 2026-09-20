@@ -44,6 +44,10 @@ public class AppointmentService {
     public static final String SLOT_TAKEN_MESSAGE = "Já existe consulta marcada nesse horário";
     public static final String SLOT_NOT_FREE_MESSAGE = "Esse horário não está livre na agenda. Escolha outro";
     public static final String NO_PRESCRIBER_MESSAGE = "Você ainda não tem um prescritor vinculado";
+    public static final String ARCHIVED_PATIENT_MESSAGE =
+            "Seu acompanhamento está encerrado. Fale com a clínica para voltar a marcar consulta";
+    public static final String INACTIVE_PRESCRIBER_MESSAGE =
+            "Seu prescritor não está mais atendendo pelo sistema. Fale com a clínica";
     public static final String ALREADY_ANSWERED_MESSAGE = "Este pedido de consulta já foi respondido";
     public static final String CLOSED_APPOINTMENT_MESSAGE = "Esta consulta não pode mais ser alterada";
     public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
@@ -124,9 +128,17 @@ public class AppointmentService {
     @Transactional
     public Appointment request(Long patientId, AppointmentRequestDTO requestData) {
         Patient patient = findPatient(patientId);
+        // arquivado saiu do acompanhamento: o pedido dele seguraria horario de quem esta em tratamento
+        if (patient.isArchived()) {
+            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
+        }
         Prescriber prescriber = patient.getPrescriber();
         if (prescriber == null) {
             throw new BusinessException(NO_PRESCRIBER_MESSAGE);
+        }
+        // prescritor desativado n consegue mais entrar, entao ninguem responderia esse pedido
+        if (!prescriber.isActive()) {
+            throw new BusinessException(INACTIVE_PRESCRIBER_MESSAGE);
         }
 
         // cada pedido em aberto segura um horario q some da agenda dos outros pacientes
@@ -298,8 +310,11 @@ public class AppointmentService {
             throw new BusinessException(RANGE_TOO_LONG_MESSAGE);
         }
 
-        Prescriber prescriber = findPatient(patientId).getPrescriber();
-        if (prescriber == null) {
+        // agenda vazia pra paciente arquivado e pra prescritor desativado: oferecer
+        // horario q ninguem vai atender so gera pedido parado na fila
+        Patient patient = findPatient(patientId);
+        Prescriber prescriber = patient.getPrescriber();
+        if (patient.isArchived() || prescriber == null || !prescriber.isActive()) {
             return List.of();
         }
 

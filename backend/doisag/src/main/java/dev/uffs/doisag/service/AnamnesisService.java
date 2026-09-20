@@ -23,6 +23,8 @@ import java.util.List;
 public class AnamnesisService {
 
     public static final String ANNULLED_MESSAGE = "Anamnese anulada não pode ser alterada";
+    public static final String ARCHIVED_PATIENT_MESSAGE =
+            "Seu acompanhamento está encerrado. Fale com a clínica antes de enviar uma anamnese nova";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta anamnese já foi anulada";
 
     private final AnamnesisRepository anamnesisRepository;
@@ -38,6 +40,10 @@ public class AnamnesisService {
 
     @Transactional
     public Anamnesis create(AnamnesisDTO anamnesisData, Patient patient) {
+        // prontuario de quem foi arquivado n recebe registro novo, o acompanhamento acabou
+        if (patient.isArchived()) {
+            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
+        }
         Anamnesis anamnesis = new Anamnesis();
         anamnesis.setPatient(patient);
         anamnesis.setAssessmentDate(anamnesisData.assessmentDate() == null ? LocalDate.now() : anamnesisData.assessmentDate());

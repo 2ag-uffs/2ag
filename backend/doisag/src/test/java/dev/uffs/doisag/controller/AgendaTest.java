@@ -339,6 +339,30 @@ class AgendaTest {
         assertThat(notificationTitlesOf(patient)).contains("Pedido de consulta sem resposta");
     }
 
+    // paciente arquivado saiu do acompanhamento: a agenda dele fica vazia e o pedido n passa
+    @Test
+    void theArchivedPatientDoesNotSeeSlotsNorRequestThem() throws Exception {
+        patient.setArchivedAt(LocalDateTime.now());
+        patientRepository.save(patient);
+
+        freeSlotsOf(patient).andExpect(jsonPath("$.length()").value(0));
+        request(patient, AGENDA_DAY.atTime(9, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.ARCHIVED_PATIENT_MESSAGE));
+    }
+
+    // prescritor desativado n entra mais no sistema, entao ninguem responderia o pedido
+    @Test
+    void theInactivePrescriberDoesNotOfferSlots() throws Exception {
+        prescriber.setActive(false);
+        prescriberRepository.save(prescriber);
+
+        freeSlotsOf(patient).andExpect(jsonPath("$.length()").value(0));
+        request(patient, AGENDA_DAY.atTime(9, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.INACTIVE_PRESCRIBER_MESSAGE));
+    }
+
     // ---------- remarcar ----------
 
     @Test
