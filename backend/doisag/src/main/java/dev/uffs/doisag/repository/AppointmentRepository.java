@@ -2,6 +2,7 @@ package dev.uffs.doisag.repository;
 
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -28,6 +29,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(Long prescriberId,
                                                                                     AppointmentStatus status,
                                                                                     LocalDateTime moment);
+
+    // a mesma lista cortada pelo Pageable, q eh o q o painel precisa
+    List<Appointment> findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(Long prescriberId,
+                                                                                    AppointmentStatus status,
+                                                                                    LocalDateTime moment,
+                                                                                    Pageable pageable);
 
     // proximos pedidos e consultas do paciente
     List<Appointment> findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(Long patientId, LocalDateTime moment);

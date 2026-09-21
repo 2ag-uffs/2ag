@@ -19,6 +19,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // a mesma lista paginada, q eh como a tela mostra (RNF06)
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    // os avisos n lidos mais novos, q eh o q o painel mostra
+    // o corte vem do Pageable pq antes o painel trazia a caixa inteira pra ficar com cinco
+    List<Notification> findByUserIdAndIsReadFalseOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
     // o numero de avisos q a pessoa ainda n abriu
     @Query("select count(notification) from Notification notification "
             + "where notification.user.id = :userId and notification.isRead = false")

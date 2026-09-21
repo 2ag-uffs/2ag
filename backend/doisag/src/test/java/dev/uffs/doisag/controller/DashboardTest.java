@@ -4,16 +4,19 @@ import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.NotificationService;
@@ -51,6 +54,7 @@ class DashboardTest {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PrescriptionRepository prescriptionRepository;
     @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private NotificationService notificationService;
     @Autowired private TokenService tokenService;
 
@@ -127,6 +131,27 @@ class DashboardTest {
                 .andExpect(jsonPath("$.lateScales[0].patientName").value("Paciente do painel"));
     }
 
+    // a escala vencida q o paciente respondeu ja saiu da fila do prescritor,
+    // mas se a resposta for anulada ela volta como atraso (RF32)
+    @Test
+    void aEscalaVencidaComRespostaSaiDoPainelEVoltaSeAnularem() throws Exception {
+        ScaleTask task = saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2));
+        ScaleResponse response = new ScaleResponse();
+        response.setPatient(patient);
+        response.setTask(task);
+        response.setScaleType(ScaleType.ESCALA_HAMILTON);
+        response.setPeriodStart(task.getPeriodStart());
+        response.setPeriodEnd(task.getPeriodEnd());
+        responseRepository.save(response);
+
+        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(0));
+
+        response.setAnnulment(new Annulment(prescriber, "respondeu a semana errada"));
+        responseRepository.save(response);
+
+        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(1));
+    }
+
     // a escala ainda dentro do prazo n eh atraso
     @Test
     void aEscalaDentroDoPrazoNaoEntraComoVencida() throws Exception {
@@ -189,7 +214,7 @@ class DashboardTest {
         return appointmentRepository.save(appointment);
     }
 
-    private void saveLateTask(ScaleType scaleType, LocalDate deadline) {
+    private ScaleTask saveLateTask(ScaleType scaleType, LocalDate deadline) {
         ScaleTask task = new ScaleTask();
         task.setPatient(patient);
         task.setPrescriber(prescriber);
@@ -197,7 +222,7 @@ class DashboardTest {
         task.setPeriodStart(deadline.minusDays(6));
         task.setPeriodEnd(deadline);
         task.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
-        taskRepository.save(task);
+        return taskRepository.save(task);
     }
 
     private Prescriber savePrescriber(String email) {

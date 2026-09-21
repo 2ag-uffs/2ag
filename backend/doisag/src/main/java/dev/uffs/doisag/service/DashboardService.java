@@ -12,8 +12,8 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
-import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +35,6 @@ public class DashboardService {
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
     private final ScaleTaskRepository taskRepository;
-    private final ScaleResponseRepository responseRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
@@ -43,14 +42,12 @@ public class DashboardService {
     public DashboardService(PatientRepository patientRepository,
                             AppointmentRepository appointmentRepository,
                             ScaleTaskRepository taskRepository,
-                            ScaleResponseRepository responseRepository,
                             PrescriptionRepository prescriptionRepository,
                             NotificationRepository notificationRepository,
                             AuditService auditService) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
         this.taskRepository = taskRepository;
-        this.responseRepository = responseRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.notificationRepository = notificationRepository;
         this.auditService = auditService;
@@ -79,21 +76,20 @@ public class DashboardService {
         // os pedidos q vieram da agenda e ainda esperam resposta (RF11)
         List<PrescriberDashboardDTO.WaitingRequestDTO> waitingRequests = appointmentRepository
                 .findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
-                        prescriberId, dev.uffs.doisag.enums.AppointmentStatus.SOLICITADA, LocalDateTime.now())
+                        prescriberId, dev.uffs.doisag.enums.AppointmentStatus.SOLICITADA, LocalDateTime.now(),
+                        PageRequest.of(0, PANEL_LIMIT))
                 .stream()
-                .limit(PANEL_LIMIT)
                 .map(this::waitingRequestOf)
                 .toList();
 
-        // as escalas q passaram do prazo, respondidas ou n (RF32)
+        // as escalas q passaram do prazo e ninguem respondeu (RF32)
         List<PrescriberDashboardDTO.LateScaleDTO> lateScales = taskRepository
-                .findByPrescriberIdAndStatusInAndPeriodEndBeforeOrderByPeriodEndDesc(
+                .findLateWithoutAnswers(
                         prescriberId,
                         List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA),
-                        today)
+                        today,
+                        PageRequest.of(0, PANEL_LIMIT))
                 .stream()
-                .filter(task -> responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(task.getId()) == 0)
-                .limit(PANEL_LIMIT)
                 .map(this::lateScaleOf)
                 .toList();
 
@@ -108,6 +104,9 @@ public class DashboardService {
 
         // o pedido esperando resposta tambem eh proxima consulta: o horario
         // ja esta segurado pro paciente (RF10)
+        //
+        // esse corte fica na memoria mesmo pq quem entra depende de regra do enum,
+        // e a lista eh so o futuro de um paciente
         List<PatientDashboardDTO.UpcomingAppointmentDTO> upcomingAppointments = appointmentRepository
                 .findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(patientId, LocalDateTime.now())
                 .stream()
@@ -122,9 +121,9 @@ public class DashboardService {
                 .toList();
 
         List<PatientDashboardDTO.PendingScaleDTO> pendingScales = taskRepository
-                .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE)
+                .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE,
+                        PageRequest.of(0, PANEL_LIMIT))
                 .stream()
-                .limit(PANEL_LIMIT)
                 .map(task -> new PatientDashboardDTO.PendingScaleDTO(
                         task.getId(),
                         task.getScaleType().getDisplayName(),
@@ -141,10 +140,8 @@ public class DashboardService {
                 .orElse(null);
 
         List<NotificationDTO> latestNotifications = notificationRepository
-                .findByUserIdOrderByCreatedAtDesc(patientId)
+                .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(patientId, PageRequest.of(0, PANEL_LIMIT))
                 .stream()
-                .filter(notification -> !notification.isRead())
-                .limit(PANEL_LIMIT)
                 .map(NotificationDTO::new)
                 .toList();
 

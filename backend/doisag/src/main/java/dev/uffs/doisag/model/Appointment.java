@@ -139,37 +139,16 @@ public class Appointment {
     @JoinColumn(name = "prescriber_id", nullable = false) // fk pro prescritor
     private Prescriber prescriber;
 
-    // uma consulta pode ter várias prescrições
+    // uma consulta pode ter varias prescricoes
+    //
+    // sem cascade de remocao de proposito: prescricao eh dado clinico e so sai
+    // por anulacao, com motivo e autor. apagar junto com a consulta, ou por tirar
+    // da lista, contraria a guarda de prontuario da lei 13.787/2018
     @OneToMany(
             mappedBy = "appointment", // o lado Prescription gerencia a relação
-            cascade = CascadeType.ALL, // se salvar/deletar a consulta, faz o mesmo com as prescrições
-            orphanRemoval = true // remove prescrições que não estão mais na lista
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
     )
     private List<Prescription> prescriptions = new ArrayList<>();
-
-    public Appointment(String clinicalObservation, LocalDateTime dateTime, String diagnosis, String evolution, Long id, AppointmentModality modality, Patient patient, Prescriber prescriber, List<Prescription> prescriptions, AppointmentStatus status, String therapeuticPlan) {
-        this.clinicalObservation = clinicalObservation;
-        this.dateTime = dateTime;
-        this.diagnosis = diagnosis;
-        this.evolution = evolution;
-        this.id = id;
-        this.modality = modality;
-        this.patient = patient;
-        this.prescriber = prescriber;
-        this.prescriptions = prescriptions;
-        this.status = status;
-        this.therapeuticPlan = therapeuticPlan;
-    }
-
-    // para o agendamento, torna os outros atributos opcionais;
-    public Appointment(Patient patient, Prescriber prescriber, AppointmentModality modality, AppointmentStatus status, Long id, LocalDateTime dateTime) {
-        this.patient = patient;
-        this.prescriber = prescriber;
-        this.modality = modality;
-        this.status = status;
-        this.id = id;
-        this.dateTime = dateTime;
-    }
 
     public Appointment() {
     }
@@ -258,10 +237,6 @@ public class Appointment {
     @JsonIgnore
     public List<Prescription> getPrescriptions() {
         return prescriptions;
-    }
-
-    public void setPrescriptions(List<Prescription> prescriptions) {
-        this.prescriptions = prescriptions;
     }
 
     // quando o registro nasceu e quando foi mexido pela ultima vez.
