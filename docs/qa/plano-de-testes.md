@@ -84,7 +84,7 @@ requisitos RF10 e RF11.
 | CT-12 | em *Horários de atendimento*, mudar a duração e adicionar e remover períodos | a agenda e os horários livres da paciente passam a seguir os períodos novos |
 | CT-13 | como paciente, pedir um horário livre com motivo | o pedido fica aguardando e o horário deixa de aparecer como livre |
 | CT-14 | como prescritora, confirmar um pedido e recusar outro | quem foi confirmado recebe aviso. o horário recusado volta a ficar livre |
-| CT-15 | remarcar e cancelar uma consulta como prescritora. como paciente, cancelar uma consulta com mais e com menos de 24 horas | a prescritora remarca e cancela. a paciente só cancela até 24 horas antes |
+| CT-15 | remarcar e cancelar uma consulta como prescritora. como paciente, cancelar uma consulta com mais e com menos de 24 horas. como prescritora, marcar falta numa consulta cujo horário já terminou | a prescritora remarca e cancela. a paciente só cancela até 24 horas antes. o botão de falta só aparece depois que o horário termina, a paciente recebe aviso e o horário volta para a agenda. registrar o atendimento depois desfaz a falta |
 | CT-16 | marcar consulta direto em *Nova consulta* | aparece na agenda como agendada e a paciente recebe aviso |
 
 ## 4. atendimento

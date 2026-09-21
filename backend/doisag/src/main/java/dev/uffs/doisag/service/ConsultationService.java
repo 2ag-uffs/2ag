@@ -90,7 +90,8 @@ public class ConsultationService {
             throw new BusinessException(CANCELED_MESSAGE);
         }
         // pedido sem resposta ou recusado n virou consulta
-        if (!appointment.getStatus().isConfirmed()) {
+        // falta marcada por engano aceita, e o registro do atendimento desfaz ela
+        if (!appointment.getStatus().acceptsClinicalRecord()) {
             throw new BusinessException(NOT_CONFIRMED_MESSAGE);
         }
 

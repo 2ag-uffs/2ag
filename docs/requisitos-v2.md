@@ -204,7 +204,7 @@ Registro de observações clínicas, diagnósticos, condutas e plano terapêutic
 
 *Critérios de aceite:*
 - **Modalidade** é um conjunto fechado de valores: `PRESENCIAL`, `REMOTA`
-- **Status** é um conjunto fechado: `AGENDADA`, `EM_ANDAMENTO`, `CONCLUIDA`, `CANCELADA`
+- **Status** é um conjunto fechado: `SOLICITADA`, `AGENDADA`, `EM_ANDAMENTO`, `CONCLUIDA`, `CANCELADA`, `RECUSADA`, `NAO_COMPARECEU`
 - Campos de texto clínico aceitam **no mínimo 10.000 caracteres** sem truncamento (ver RN11)
 - Toda alteração gera registro de auditoria (RF31)
 

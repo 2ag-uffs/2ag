@@ -157,6 +157,7 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 | `PUT /appointments/{id}/confirm` | o prescritor confirma o pedido |
 | `PUT /appointments/{id}/decline` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
 | `PUT /appointments/{id}/cancel` | o paciente ou o prescritor cancela o pedido ou a consulta |
+| `PUT /appointments/{id}/no-show` | o prescritor marca que o paciente não compareceu, depois que o horário passou |
 | `GET /appointments/free-slots?from=&to=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias |
 | `POST /appointments/requests` | o paciente pede um horário livre, com modalidade e motivo opcional |
 | `GET /appointments/mine` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
@@ -170,6 +171,7 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
 - só consulta confirmada recebe registro clínico (`PUT /appointments/{id}/clinical-record`) e prescrição (`POST /appointments/{id}/prescriptions`)
+- a falta só vale para consulta que estava `AGENDADA` e cujo horário já terminou. ela libera o horário e avisa o paciente. registrar o atendimento depois desfaz a falta e conclui a consulta, para o erro de clique não trancar o prontuário
 
 ## escalas
 

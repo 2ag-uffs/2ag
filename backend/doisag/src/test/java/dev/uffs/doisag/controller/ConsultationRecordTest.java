@@ -147,6 +147,16 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.therapeuticPlan").value("Iniciar oleo de CBD com 2 gotas a noite"));
     }
 
+    // falta marcada por engano n tranca a consulta
+    @Test
+    void registeringTheAttendanceUndoesTheAbsence() throws Exception {
+        Appointment absence = saveAppointment(AppointmentStatus.NAO_COMPARECEU, LocalDateTime.now().minusDays(1));
+
+        updateRecord(absence.getId(), clinicalRecord())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
+    }
+
     @Test
     void canceledAppointmentDoesNotReceiveARecord() throws Exception {
         Appointment canceled = saveAppointment(AppointmentStatus.CANCELADA, LocalDateTime.now().minusDays(1));

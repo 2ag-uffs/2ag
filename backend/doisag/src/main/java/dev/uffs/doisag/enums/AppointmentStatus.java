@@ -9,15 +9,24 @@ public enum AppointmentStatus {
     CONCLUIDA,
     CANCELADA,
     // o prescritor n aceitou o pedido do paciente
-    RECUSADA;
+    RECUSADA,
+    // a hora passou e o paciente n apareceu, quem marca eh o prescritor
+    NAO_COMPARECEU;
 
     // pedido esperando resposta e consulta marcada seguram o horario na agenda
     public boolean holdsTimeSlot() {
-        return this != CANCELADA && this != RECUSADA;
+        return this != CANCELADA && this != RECUSADA && this != NAO_COMPARECEU;
     }
 
     // consulta q o prescritor marcou ou confirmou e q vale como atendimento
     public boolean isConfirmed() {
         return this == AGENDADA || this == EM_ANDAMENTO || this == CONCLUIDA;
+    }
+
+    // consulta q aceita o registro clinico do atendimento
+    // a falta entra pq registrar o atendimento eh como o prescritor desfaz
+    // uma falta marcada por engano
+    public boolean acceptsClinicalRecord() {
+        return isConfirmed() || this == NAO_COMPARECEU;
     }
 }

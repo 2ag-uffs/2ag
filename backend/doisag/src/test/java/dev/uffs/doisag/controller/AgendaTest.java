@@ -454,6 +454,54 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.ALREADY_CANCELED_MESSAGE));
     }
 
+    // ---------- falta ----------
+
+    // sem isso a consulta em q ninguem apareceu ficava AGENDADA pra sempre
+    @Test
+    void prescriberMarksTheAbsenceAfterTheTimeHasPassed() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NAO_COMPARECEU"));
+        assertThat(notificationTitlesOf(patient)).contains("Falta registrada");
+    }
+
+    @Test
+    void absenceWaitsForTheAppointmentTimeToEnd() throws Exception {
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+
+        noShow(appointmentId, prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.APPOINTMENT_NOT_OVER_MESSAGE));
+    }
+
+    // pedido sem resposta, recusado ou cancelado n eh falta
+    @Test
+    void absenceIsOnlyForAnAppointmentThatWasScheduled() throws Exception {
+        Appointment canceled = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.CANCELADA);
+
+        noShow(canceled.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.NOT_SCHEDULED_MESSAGE));
+    }
+
+    @Test
+    void thePatientDoesNotMarkTheirOwnAbsence() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+
+        noShow(yesterday.getId(), patient).andExpect(status().isForbidden());
+    }
+
+    // o horario da falta n fica preso na agenda
+    @Test
+    void theTimeOfAnAbsenceGoesBackToTheAgenda() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        noShow(yesterday.getId(), prescriber).andExpect(status().isOk());
+
+        assertThat(appointmentService.getById(yesterday.getId()).getStatus().holdsTimeSlot()).isFalse();
+    }
+
     // ---------- listas ----------
 
     @Test
@@ -615,6 +663,11 @@ class AgendaTest {
 
     private ResultActions cancel(Long appointmentId, Users user) throws Exception {
         return mockMvc.perform(put("/appointments/" + appointmentId + "/cancel")
+                .header("Authorization", bearerTokenOf(user)));
+    }
+
+    private ResultActions noShow(Long appointmentId, Users user) throws Exception {
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/no-show")
                 .header("Authorization", bearerTokenOf(user)));
     }
 

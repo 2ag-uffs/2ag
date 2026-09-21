@@ -124,6 +124,13 @@ public class AppointmentsController {
         return new AgendaAppointmentDTO(appointmentService.decline(id, declineData));
     }
 
+    // o prescritor anota q o paciente n apareceu, depois q a hora da consulta passou
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
+    @PutMapping("/{id}/no-show")
+    public AgendaAppointmentDTO markNoShow(@PathVariable Long id) {
+        return new AgendaAppointmentDTO(appointmentService.markNoShow(id));
+    }
+
     // o paciente e o prescritor cancelam e a regra das 24 horas vale so pro paciente
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/cancel")

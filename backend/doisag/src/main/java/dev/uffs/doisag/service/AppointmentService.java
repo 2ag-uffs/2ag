@@ -53,6 +53,9 @@ public class AppointmentService {
     public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
     public static final String LATE_CANCELLATION_MESSAGE =
             "Faltam menos de 24 horas para a consulta. Para cancelar, fale com o seu prescritor";
+    public static final String NOT_SCHEDULED_MESSAGE = "Só dá para marcar falta em consulta que estava agendada";
+    public static final String APPOINTMENT_NOT_OVER_MESSAGE =
+            "Espere o horário da consulta terminar para marcar falta";
     public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
     public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
@@ -297,6 +300,32 @@ public class AppointmentService {
                             + formatDateTime(savedAppointment) + " foi cancelada.",
                     "ALERT", PATIENT_AGENDA_LINK);
         }
+        return savedAppointment;
+    }
+
+    // o paciente n apareceu na consulta marcada (RF10)
+    //
+    // sem isso a consulta ficava AGENDADA pra sempre, pq o unico jeito de fechar
+    // era digitar o registro clinico de um atendimento q n aconteceu
+    @Transactional
+    public Appointment markNoShow(Long appointmentId) {
+        Appointment appointment = findAppointment(appointmentId);
+        if (appointment.isAnnulled()) {
+            throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
+        }
+        if (appointment.getStatus() != AppointmentStatus.AGENDADA) {
+            throw new BusinessException(NOT_SCHEDULED_MESSAGE);
+        }
+        if (endOf(appointment).isAfter(LocalDateTime.now())) {
+            throw new BusinessException(APPOINTMENT_NOT_OVER_MESSAGE);
+        }
+
+        appointment.setStatus(AppointmentStatus.NAO_COMPARECEU);
+        Appointment savedAppointment = saveChange(appointment);
+        notificationService.createNotification(savedAppointment.getPatient(), "Falta registrada",
+                "A consulta de " + formatDateTime(savedAppointment)
+                        + " foi marcada como falta. Fale com a clínica para remarcar.",
+                "ALERT", PATIENT_AGENDA_LINK);
         return savedAppointment;
     }
 

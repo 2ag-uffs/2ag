@@ -29,6 +29,7 @@ const STATUS_LABELS = {
     CONCLUIDA: "Concluída",
     CANCELADA: "Cancelada",
     RECUSADA: "Recusada",
+    NAO_COMPARECEU: "Falta",
 };
 
 export function modalityLabelOf(modality) {

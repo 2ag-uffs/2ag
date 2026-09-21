@@ -57,6 +57,13 @@ export function isInTheFuture(isoText) {
     return toLocalDate(isoText) > new Date();
 }
 
+// true quando a hora da consulta ja acabou, contando a duracao dela
+export function hasEnded(isoText, durationMinutes) {
+    const end = toLocalDate(isoText);
+    end.setMinutes(end.getMinutes() + (durationMinutes || 0));
+    return end <= new Date();
+}
+
 // data local no formato ano mes dia q a api usa sem passar por utc
 export function toIsoDate(date) {
     const month = String(date.getMonth() + 1).padStart(2, "0");

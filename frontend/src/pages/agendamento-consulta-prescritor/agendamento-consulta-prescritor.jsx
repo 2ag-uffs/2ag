@@ -14,6 +14,7 @@ import {
     formatDateTime,
     formatTime,
     formatWeekdayAndDate,
+    hasEnded,
     isInTheFuture,
     mondayOf,
     toIsoDate,
@@ -53,6 +54,7 @@ export default function AgendamentoPrescritor() {
     const [rescheduleTarget, setRescheduleTarget] = useState(null);
     const [declineTarget, setDeclineTarget] = useState(null);
     const [cancelTarget, setCancelTarget] = useState(null);
+    const [noShowTarget, setNoShowTarget] = useState(null);
     // consulta com pedido em andamento pra n mandar duas vezes
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
 
@@ -122,6 +124,22 @@ export default function AgendamentoPrescritor() {
         try {
             await apiService.put("/appointments/" + appointment.id + "/cancel");
             finishAction("Consulta de " + appointment.patientName + " cancelada. O paciente recebeu o aviso.");
+        } catch (requestError) {
+            showActionError(requestError);
+        } finally {
+            setBusyAppointmentId(null);
+        }
+    };
+
+    const markNoShow = async () => {
+        const appointment = noShowTarget;
+        setNoShowTarget(null);
+        setNotice(null);
+        setActionError(null);
+        setBusyAppointmentId(appointment.id);
+        try {
+            await apiService.put("/appointments/" + appointment.id + "/no-show");
+            finishAction("Falta de " + appointment.patientName + " registrada. O paciente recebeu o aviso.");
         } catch (requestError) {
             showActionError(requestError);
         } finally {
@@ -208,6 +226,9 @@ export default function AgendamentoPrescritor() {
         }
         if (appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO") {
             const hasStarted = !isInTheFuture(appointment.dateTime);
+            // a falta so depois q a hora marcada terminou, igual a api pede
+            const isOverAndScheduled = appointment.status === "AGENDADA"
+                && hasEnded(appointment.dateTime, appointment.durationMinutes);
             return (
                 <>
                     {hasStarted ? (
@@ -226,6 +247,16 @@ export default function AgendamentoPrescritor() {
                             disabled={isBusy}
                         >
                             Remarcar
+                        </button>
+                    )}
+                    {isOverAndScheduled && (
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => openForm(setNoShowTarget, appointment)}
+                            disabled={isBusy}
+                        >
+                            Marcar falta
                         </button>
                     )}
                     <button
@@ -437,6 +468,20 @@ export default function AgendamentoPrescritor() {
                 cancelText="Voltar"
                 onConfirm={cancelAppointment}
                 onCancel={() => setCancelTarget(null)}
+            />
+
+            <ConfirmModal
+                show={noShowTarget !== null}
+                title="Marcar falta"
+                message={noShowTarget !== null
+                    ? "A consulta de " + noShowTarget.patientName + " em " + formatDateTime(noShowTarget.dateTime)
+                    + " vai ficar como falta e o paciente recebe um aviso. Se ele foi atendido, registre o"
+                    + " atendimento em vez disso."
+                    : ""}
+                confirmText="Marcar falta"
+                cancelText="Voltar"
+                onConfirm={markNoShow}
+                onCancel={() => setNoShowTarget(null)}
             />
         </section>
     );

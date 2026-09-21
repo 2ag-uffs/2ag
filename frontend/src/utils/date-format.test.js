@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {addDays, formatDate, formatNow, mondayOf, toIsoDate} from "./date-format.js";
+import {addDays, formatDate, formatNow, hasEnded, mondayOf, toIsoDate} from "./date-format.js";
 
 describe("datas", () => {
     it("data sem hora da api sai no formato brasileiro sem voltar um dia", () => {
@@ -23,6 +23,18 @@ describe("datas", () => {
         vi.setSystemTime(new Date(2026, 8, 5, 22, 30));
 
         expect(formatNow()).toBe("05/09/2026 às 22:30");
+
+        vi.useRealTimers();
+    });
+
+    // o botao de falta so aparece dps q a hora marcada acabou
+    it("hasEnded conta a duracao da consulta", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 8, 14, 10, 30));
+
+        expect(hasEnded("2026-09-14T09:00:00", 60)).toBe(true);
+        expect(hasEnded("2026-09-14T10:00:00", 60)).toBe(false);
+        expect(hasEnded("2026-09-14T11:00:00", 60)).toBe(false);
 
         vi.useRealTimers();
     });
