@@ -14,7 +14,9 @@ public enum AuditRecordType {
     REGISTRO_SONO("Diário de sono"),
     REGISTRO_TEA("Registro de sintomas (TEA)"),
     DESIGNACAO_DE_ESCALA("Escala enviada ao paciente"),
-    ACOMPANHAMENTO_AUTOMATICO("Acompanhamento de 90 dias");
+    ACOMPANHAMENTO_AUTOMATICO("Acompanhamento de 90 dias"),
+    // conta de trabalho e n prontuario, entao o evento vem sem paciente
+    CONTA_DE_PRESCRITOR("Conta de prescritor");
 
     private final String label;
 

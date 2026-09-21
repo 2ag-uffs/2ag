@@ -76,6 +76,15 @@ public class AuditService {
                 AuditRecordType.PRONTUARIO, null, patientId));
     }
 
+    // o administrador gerando senha nova pra um prescritor
+    // eh evento de conta e n de prontuario, entao vai pra trilha sem paciente
+    // e aparece so na lista da administracao
+    @Transactional
+    public void recordPasswordReset(Long prescriberId) {
+        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.REDEFINICAO_DE_SENHA,
+                AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null));
+    }
+
     // o prescritor abrindo dado clinico de um paciente
     // o paciente olhando os proprios dados n entra na trilha
     @Transactional

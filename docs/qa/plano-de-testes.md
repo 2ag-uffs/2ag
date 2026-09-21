@@ -59,7 +59,7 @@ requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
 | CT-01 | entrar com cada uma das contas | cada perfil cai no próprio painel: paciente, prescritor ou administração |
 | CT-02 | errar a senha 5 vezes seguidas e tentar de novo com a senha certa. repetir com um e-mail sem cadastro | mensagem clara a cada erro e, na tentativa seguinte, aviso de bloqueio por 15 minutos, mesmo com a senha certa. o e-mail sem cadastro recebe exatamente as mesmas mensagens |
 | CT-03 | sair da conta e usar o botão voltar do navegador | volta para a tela de entrada, sem reabrir tela protegida |
-| CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova | entra com a senha nova. o mesmo link não serve uma segunda vez |
+| CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova. depois, como administração, usar *Senha nova* na conta de uma prescritora, errando e acertando a senha do administrador | entra com a senha nova e o mesmo link não serve uma segunda vez. na administração, a senha errada não gera link, a certa mostra o endereço para copiar e a ação aparece em *Auditoria* |
 | CT-05 | como prescritora, gerar convite de paciente e abrir o link na janela anônima | cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve |
 | CT-06 | em *Perfil*, mudar dados pessoais, depois e-mail e depois senha | dados salvos. troca de e-mail e de senha pedem a senha atual e a senha nova segue a regra de senha forte |
 

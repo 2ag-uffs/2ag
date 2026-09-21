@@ -51,7 +51,7 @@ public class AuditEvent {
 
     private Long recordId;
 
-    @Column(nullable = false)
+    // nulo no evento de conta, q n fala de prontuario nenhum
     private Long patientId;
 
     // o jpa precisa de um construtor vazio

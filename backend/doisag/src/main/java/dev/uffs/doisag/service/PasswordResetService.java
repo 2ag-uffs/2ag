@@ -25,7 +25,8 @@ public class PasswordResetService {
     public static final String INVALID_LINK_MESSAGE =
             "Este link não vale mais. Ele pode ter vencido ou já ter sido usado. Peça um novo.";
 
-    private static final int VALID_MINUTES = 30;
+    public static final int VALID_MINUTES = 30;
+
     private static final int MAX_REQUESTS_PER_HOUR = 3;
 
     private final UsersRepository usersRepository;
@@ -67,7 +68,19 @@ public class PasswordResetService {
             return;
         }
 
-        // um link novo cancela os anteriores
+        sendNewLink(user, now);
+    }
+
+    // o link de senha nova de uma conta, sem passar pelo limite por hora
+    // quem chama aqui ja eh alguem de confianca, tipo o administrador destravando
+    // a conta de um prescritor, entao o link volta pra quem pediu
+    @Transactional
+    public String createLinkFor(Users user) {
+        return sendNewLink(user, LocalDateTime.now());
+    }
+
+    // um link novo cancela os anteriores, manda o e-mail e devolve o endereco
+    private String sendNewLink(Users user, LocalDateTime now) {
         for (PasswordReset pendingReset : passwordResetRepository.findAllByUserIdAndUsedAtIsNull(user.getId())) {
             pendingReset.setUsedAt(now);
         }
@@ -83,6 +96,7 @@ public class PasswordResetService {
         String resetLink = publicUrl + "/redefinir-senha?token=" + token;
         emailSender.send(new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
                 buildEmailText(user.getName(), resetLink)));
+        return resetLink;
     }
 
     // grava a senha nova pelo link e derruba as sessoes abertas

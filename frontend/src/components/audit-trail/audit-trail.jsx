@@ -155,7 +155,9 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
                                 <span>
                                     {auditEvent.actorName}
                                     {auditEvent.actorRole && " (" + ROLE_LABELS[auditEvent.actorRole] + ")"}
-                                    {showPatientNumber && " · paciente nº " + auditEvent.patientId}
+                                    {/* evento de conta n tem paciente, entao n sai numero nenhum */}
+                                    {showPatientNumber && auditEvent.patientId
+                                        && " · paciente nº " + auditEvent.patientId}
                                 </span>
                             </div>
                         </li>

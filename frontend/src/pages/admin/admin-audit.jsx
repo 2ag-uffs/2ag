@@ -9,7 +9,7 @@ export default function AdminAudit() {
         <section className={styles.page}>
             <PageHeader
                 title="Auditoria"
-                subtitle="Quem abriu ou alterou prontuários, e quando. O paciente aparece só pelo número, sem nome e sem conteúdo clínico."
+                subtitle="Quem abriu ou alterou prontuários, quem mexeu em conta de prescritor, e quando. O paciente aparece só pelo número, sem nome e sem conteúdo clínico."
             />
             <AuditTrail endpoint="/admin/audit-events" showPatientNumber={true}/>
         </section>

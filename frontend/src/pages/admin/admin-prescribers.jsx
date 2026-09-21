@@ -64,6 +64,14 @@ export default function AdminPrescribers() {
 
     const [prescriberToToggle, setPrescriberToToggle] = useState(null);
 
+    // senha nova de um prescritor: pede a senha do admin e devolve um link pra entregar
+    const [resetTarget, setResetTarget] = useState(null);
+    const [adminPassword, setAdminPassword] = useState("");
+    const [resetError, setResetError] = useState(null);
+    const [isResetting, setIsResetting] = useState(false);
+    const [newLink, setNewLink] = useState(null);
+    const [isLinkCopied, setIsLinkCopied] = useState(false);
+
     // devolve a promessa pra quem cria ou desativa prescritor poder esperar a lista nova
     const loadPrescribers = useCallback(() => {
         return apiService.get("/admin/prescribers")
@@ -165,6 +173,51 @@ export default function AdminPrescribers() {
         }
     };
 
+    const openReset = (prescriber) => {
+        setResetTarget(prescriber);
+        setAdminPassword("");
+        setResetError(null);
+        setNewLink(null);
+        setIsLinkCopied(false);
+    };
+
+    const closeReset = () => {
+        if (!isResetting) {
+            setResetTarget(null);
+        }
+    };
+
+    const handleReset = async (event) => {
+        event.preventDefault();
+        setIsResetting(true);
+        setResetError(null);
+        try {
+            const link = await apiService.post("/admin/prescribers/" + resetTarget.id + "/password-reset", {
+                adminPassword,
+            });
+            setNewLink(link);
+            setAdminPassword("");
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                setResetError(requestError.fieldErrors().adminPassword || requestError.message);
+            } else {
+                setResetError("Não foi possível falar com o servidor.");
+            }
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    // navegador sem area de transferencia n quebra a tela, o link fica ali pra copiar na mao
+    const copyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(newLink.resetLink);
+            setIsLinkCopied(true);
+        } catch {
+            setIsLinkCopied(false);
+        }
+    };
+
     const isDeactivating = prescriberToToggle !== null && prescriberToToggle.active;
 
     return (
@@ -230,6 +283,15 @@ export default function AdminPrescribers() {
                                 <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
                                     {prescriber.active ? "Ativo" : "Desativado"}
                                 </span>
+                                {prescriber.active && (
+                                    <button
+                                        type="button"
+                                        className="button-secondary button-small"
+                                        onClick={() => openReset(prescriber)}
+                                    >
+                                        Senha nova
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
@@ -294,6 +356,59 @@ export default function AdminPrescribers() {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            <Modal
+                show={resetTarget !== null}
+                title={resetTarget === null ? "" : "Senha nova de " + resetTarget.name}
+                onClickClose={closeReset}
+            >
+                {newLink === null ? (
+                    <form className={styles.form} onSubmit={handleReset}>
+                        <p className={styles.fieldWide}>
+                            Isso cria um link de senha nova e derruba os links anteriores dessa pessoa.
+                            A senha atual dela continua valendo até ela abrir o link.
+                        </p>
+                        {resetError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{resetError}</p>}
+
+                        <FormField
+                            label="Sua senha de administrador"
+                            fieldName="adminPassword"
+                            type="password"
+                            value={adminPassword}
+                            onChange={(fieldName, value) => setAdminPassword(value)}
+                            autoComplete="current-password"
+                            isWide={true}
+                        />
+
+                        <div className={styles.formActions}>
+                            <button type="button" className="button-secondary" onClick={closeReset}
+                                    disabled={isResetting}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="button" disabled={isResetting}>
+                                {isResetting ? "Gerando..." : "Gerar link"}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className={styles.form}>
+                        <p className={styles.fieldWide}>
+                            Entregue este link para {newLink.prescriberName}. Ele vale {newLink.validMinutes} minutos
+                            e serve uma vez só. Se a clínica já tiver e-mail configurado, ele também foi enviado.
+                        </p>
+                        <input className={styles.linkBox} value={newLink.resetLink} readOnly={true}
+                               aria-label="Link de senha nova"/>
+                        <div className={styles.formActions}>
+                            <button type="button" className="button-secondary" onClick={copyLink}>
+                                {isLinkCopied ? "Link copiado" : "Copiar link"}
+                            </button>
+                            <button type="button" className="button" onClick={() => setResetTarget(null)}>
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                )}
             </Modal>
 
             <ConfirmModal

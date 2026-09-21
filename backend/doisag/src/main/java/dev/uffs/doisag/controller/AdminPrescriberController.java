@@ -1,14 +1,18 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.AdminPasswordResetDTO;
 import dev.uffs.doisag.dto.AdminPrescriberDTO;
 import dev.uffs.doisag.dto.ChangeActiveDTO;
+import dev.uffs.doisag.dto.PasswordResetLinkDTO;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PrescriberService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,6 +48,15 @@ public class AdminPrescriberController {
     public ResponseEntity<AdminPrescriberDTO> createPrescriber(@RequestBody @Valid PrescriberCreateDTO prescriberData) {
         Prescriber prescriber = prescriberService.create(prescriberData);
         return ResponseEntity.status(HttpStatus.CREATED).body(new AdminPrescriberDTO(prescriber));
+    }
+
+    // link de senha nova pra um prescritor q perdeu o acesso (RF35)
+    // o administrador confirma a propria senha e a acao vai pra trilha de auditoria
+    @PostMapping("/{prescriberId}/password-reset")
+    public PasswordResetLinkDTO startPasswordReset(@PathVariable Long prescriberId,
+                                                   @RequestBody @Valid AdminPasswordResetDTO resetData,
+                                                   @AuthenticationPrincipal Users loggedAdmin) {
+        return prescriberService.startPasswordReset(prescriberId, resetData.adminPassword(), loggedAdmin);
     }
 
     // desativar tira o acesso na hora e n apaga nada do historico

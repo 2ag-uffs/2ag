@@ -7,7 +7,8 @@ public enum AuditOperation {
     VISUALIZACAO("Acesso"),
     ANULACAO("Anulação"),
     ARQUIVAMENTO("Arquivamento"),
-    REATIVACAO("Reativação");
+    REATIVACAO("Reativação"),
+    REDEFINICAO_DE_SENHA("Redefinição de senha");
 
     private final String label;
 
