@@ -173,7 +173,8 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
-- só consulta confirmada recebe registro clínico (`PUT /appointments/{id}/clinical-record`) e prescrição (`POST /appointments/{id}/prescriptions`)
+- só consulta confirmada e que já aconteceu recebe registro clínico (`PUT /appointments/{id}/clinical-record`), prescrição (`POST /appointments/{id}/prescriptions`) e Mini-Exame. os três usam a mesma folga de 5 minutos para o relógio
+- a prescrição nova só vira a vigente quando a consulta dela não é mais antiga que a da vigente atual. receita lançada numa consulta anterior é gravada já como `SUBSTITUIDA`, só para o histórico, e a resposta vem com `current: false`
 - a falta só vale para consulta que estava `AGENDADA` e cujo horário já terminou. ela libera o horário e avisa o paciente. registrar o atendimento depois desfaz a falta e conclui a consulta, para o erro de clique não trancar o prontuário
 
 ## escalas
@@ -191,7 +192,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou. o MEEM não se corrige: o prescritor anula e aplica de novo |
 | `PUT /scales/responses/{id}/review` | o prescritor marca que já conferiu, e o paciente para de editar |
 | `PUT /scales/responses/{id}/annul` | anula a resposta com motivo |
-| `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta. o exame só é gravado com as 11 seções e a escolaridade |
+| `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta, depois que ela aconteceu. o exame só é gravado com as 11 seções e a escolaridade |
 | `POST /patients/{patientId}/scales` | envia uma escala avulsa ao paciente |
 | `GET /patients/{patientId}/scales` | as tarefas de escala do paciente |
 | `GET /patients/{patientId}/scales/overview` | o que espera resposta e o que já foi respondido |

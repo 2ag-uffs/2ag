@@ -57,6 +57,10 @@ export function isInTheFuture(isoText) {
     return toLocalDate(isoText) > new Date();
 }
 
+export function isSameOrAfter(isoText, otherIsoText) {
+    return toLocalDate(isoText) >= toLocalDate(otherIsoText);
+}
+
 // true quando a hora da consulta ja acabou, contando a duracao dela
 export function hasEnded(isoText, durationMinutes) {
     const end = toLocalDate(isoText);

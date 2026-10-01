@@ -7,7 +7,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import {formatDateTime} from "../../utils/date-format.js";
+import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
 
@@ -141,6 +141,17 @@ export default function MiniExame() {
                             onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
                         >
                             Ver histórico do paciente
+                        </button>
+                    </div>
+                </Card>
+            ) : isInTheFuture(appointment.dateTime) ? (
+                <Card>
+                    <p className="aviso aviso--atencao">
+                        Esta consulta ainda não aconteceu. O Mini-Exame é aplicado durante o atendimento.
+                    </p>
+                    <div className={styles.nextSteps}>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Voltar
                         </button>
                     </div>
                 </Card>

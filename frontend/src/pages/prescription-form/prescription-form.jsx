@@ -9,6 +9,7 @@ import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {
     ADMINISTRATION_ROUTE_OPTIONS,
     CANNABINOID_OPTIONS,
@@ -50,10 +51,6 @@ function numberOrNull(text) {
     return text === "" ? null : Number(text);
 }
 
-function formatDate(isoDateTime) {
-    return new Date(isoDateTime).toLocaleDateString("pt-BR");
-}
-
 // o erro de um canabinoide chega com o nome tipo components[0].concentration
 function compositionErrorOf(fieldErrors) {
     const errorField = Object.keys(fieldErrors).find((field) => field.startsWith("components"));
@@ -61,7 +58,7 @@ function compositionErrorOf(fieldErrors) {
 }
 
 // emissao de prescricao dentro de uma consulta (RF05)
-// a prescricao nova substitui a vigente do paciente e a anterior fica no historico
+// a nova so substitui a vigente qnd a consulta dela n eh mais antiga q a da vigente
 export default function PrescriptionForm() {
     const navigate = useNavigate();
     const {appointmentId} = useParams();
@@ -73,7 +70,7 @@ export default function PrescriptionForm() {
     const [escalationSteps, setEscalationSteps] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [wasIssued, setWasIssued] = useState(false);
+    const [issuedPrescription, setIssuedPrescription] = useState(null);
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -166,8 +163,8 @@ export default function PrescriptionForm() {
         };
 
         try {
-            await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
-            setWasIssued(true);
+            const savedPrescription = await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
+            setIssuedPrescription(savedPrescription);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
@@ -193,7 +190,7 @@ export default function PrescriptionForm() {
         return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
-    if (wasIssued) {
+    if (issuedPrescription) {
         return (
             <section className={styles.page}>
                 <PageHeader title="Prescrição emitida" subtitle={appointment.patientName}/>
@@ -201,8 +198,10 @@ export default function PrescriptionForm() {
                     <div className={styles.success}>
                         <FiCheckCircle className={styles.successIcon} aria-hidden="true"/>
                         <p>
-                            A prescrição agora é a vigente do paciente.
-                            {currentPrescription ? " A anterior passou para o histórico." : ""}
+                            {issuedPrescription.current
+                                ? "A prescrição agora é a vigente do paciente."
+                                    + (currentPrescription ? " A anterior passou para o histórico." : "")
+                                : "A receita foi lançada no histórico. A prescrição vigente do paciente continua a mesma."}
                         </p>
                     </div>
                     <div className={styles.nextSteps}>
@@ -227,9 +226,14 @@ export default function PrescriptionForm() {
         blockedMessage = "Esta consulta foi anulada e não gera prescrição.";
     } else if (appointment.status === "CANCELADA") {
         blockedMessage = "Esta consulta foi cancelada e não gera prescrição.";
-    } else if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA") {
+    } else if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA"
+        || appointment.status === "NAO_COMPARECEU") {
         blockedMessage = "Só consulta confirmada na agenda gera prescrição.";
+    } else if (isInTheFuture(appointment.dateTime)) {
+        blockedMessage = "Esta consulta ainda não aconteceu. A prescrição é emitida depois do atendimento.";
     }
+    const becomesCurrent = currentPrescription === null
+        || isSameOrAfter(appointment.dateTime, currentPrescription.appointmentDateTime);
     const compositionError = compositionErrorOf(fieldErrors);
 
     return (
@@ -240,11 +244,18 @@ export default function PrescriptionForm() {
             />
 
             {blockedMessage && <p className="aviso aviso--atencao">{blockedMessage}</p>}
-            {!blockedMessage && currentPrescription && (
+            {!blockedMessage && currentPrescription && becomesCurrent && (
                 <p className="aviso">
                     A prescrição vigente é {currentPrescription.productDescription} (
                     {compositionSummary(currentPrescription.components)}). A nova vai substituir essa, que continua
                     no histórico.
+                </p>
+            )}
+            {!blockedMessage && currentPrescription && !becomesCurrent && (
+                <p className="aviso aviso--atencao">
+                    Esta consulta é anterior à da prescrição vigente ({currentPrescription.productDescription}, de{" "}
+                    {formatDate(currentPrescription.appointmentDateTime)}). Esta receita fica só no histórico e a
+                    vigente continua valendo.
                 </p>
             )}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
@@ -462,7 +473,7 @@ export default function PrescriptionForm() {
                             Voltar
                         </button>
                         <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Emitindo..." : "Emitir prescrição"}
+                            {isSaving ? "Emitindo..." : (becomesCurrent ? "Emitir prescrição" : "Lançar no histórico")}
                         </button>
                     </FormActions>
                 </form>

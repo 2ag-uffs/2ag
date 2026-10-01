@@ -21,7 +21,7 @@ import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import {ageFrom, formatDate, formatDateTime, isInTheFuture} from "../../utils/date-format.js";
+import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import styles from "./historico-clinico-prescritor.module.css";
 
 // historico clinico de um paciente do prescritor (RF13)
@@ -115,6 +115,7 @@ export default function HistoricoClinicoPrescritor() {
     // a vigente aparece primeiro e as outras seguem da mais nova pra mais antiga
     const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
         .concat(prescriptions.filter((prescription) => !prescription.current));
+    const currentPrescription = prescriptions.find((prescription) => prescription.current) || null;
 
     // so a consulta confirmada e n anulada recebe registro prescricao e anulacao
     const consultationActions = (appointment) => {
@@ -123,6 +124,9 @@ export default function HistoricoClinicoPrescritor() {
         if (appointment.annulled || !isConfirmed) {
             return null;
         }
+        // receita em consulta mais antiga q a da vigente entra so no historico
+        const becomesCurrent = currentPrescription === null
+            || isSameOrAfter(appointment.dateTime, currentPrescription.appointmentDateTime);
         return (
             <>
                 <button
@@ -137,7 +141,7 @@ export default function HistoricoClinicoPrescritor() {
                     className="button-secondary button-small"
                     onClick={() => navigate("/consulta/" + appointment.id + "/prescricao")}
                 >
-                    Emitir prescrição
+                    {becomesCurrent ? "Emitir prescrição" : "Lançar receita no histórico"}
                 </button>
                 <button
                     type="button"

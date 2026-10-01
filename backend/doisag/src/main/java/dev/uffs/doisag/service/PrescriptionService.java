@@ -8,6 +8,7 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
@@ -23,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 // prescricao (RF05)
-// emitir uma nova substitui a vigente e a anterior fica no historico
+// a nova substitui a vigente se a consulta dela n for mais antiga, senao entra so no historico
 // prescricao errada eh anulada com motivo e nunca apagada nem editada
 @Service
 public class PrescriptionService {
@@ -31,6 +32,7 @@ public class PrescriptionService {
     public static final String ANNULLED_CONSULTATION_MESSAGE = "Consulta anulada não gera prescrição";
     public static final String CANCELED_CONSULTATION_MESSAGE = "Consulta cancelada não gera prescrição";
     public static final String NOT_CONFIRMED_CONSULTATION_MESSAGE = "Só consulta confirmada na agenda gera prescrição";
+    public static final String FUTURE_CONSULTATION_MESSAGE = "Consulta que ainda não aconteceu não gera prescrição";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
 
     private final PrescriptionRepository prescriptionRepository;
@@ -58,12 +60,16 @@ public class PrescriptionService {
         if (!appointment.getStatus().isConfirmed()) {
             throw new BusinessException(NOT_CONFIRMED_CONSULTATION_MESSAGE);
         }
+        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_CONSULTATION_MESSAGE);
 
         Long patientId = appointment.getPatient().getId();
-        replaceCurrentPrescriptions(patientId);
+        boolean becomesCurrent = replaceCurrentPrescriptionsOlderThan(appointment);
 
         Prescription prescription = new Prescription();
         prescription.setAppointment(appointment);
+        if (!becomesCurrent) {
+            prescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
+        }
         prescription.setProductDescription(prescriptionData.productDescription());
         prescription.setBrand(prescriptionData.brand());
         prescription.setBatch(prescriptionData.batch());
@@ -126,15 +132,22 @@ public class PrescriptionService {
         return prescription;
     }
 
-    // a prescricao q estava valendo passa a ser historico
-    private void replaceCurrentPrescriptions(Long patientId) {
+    // receita lancada numa consulta mais antiga q a da vigente n derruba a q o paciente usa hoje
+    private boolean replaceCurrentPrescriptionsOlderThan(Appointment appointment) {
+        Long patientId = appointment.getPatient().getId();
         List<Prescription> currentPrescriptions = prescriptionRepository
                 .findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patientId, PrescriptionStatus.VIGENTE);
+        for (Prescription currentPrescription : currentPrescriptions) {
+            if (appointment.getDateTime().isBefore(currentPrescription.getAppointment().getDateTime())) {
+                return false;
+            }
+        }
         for (Prescription currentPrescription : currentPrescriptions) {
             currentPrescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
             prescriptionRepository.save(currentPrescription);
             auditService.recordChange(AuditRecordType.PRESCRICAO, currentPrescription.getId(), patientId);
         }
+        return true;
     }
 
     private Prescription findPrescription(Long id) {

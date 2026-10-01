@@ -219,6 +219,8 @@ Prescrição digital com descrição do produto, marca, concentração, posologi
 - **Alterar uma prescrição cria nova versão e preserva a anterior**, com data e autor da mudança
 - O paciente visualiza a prescrição vigente e o histórico de versões
 - Vinculada à consulta que a originou
+- Só consulta que já aconteceu gera prescrição; em consulta futura a emissão é recusada
+- A nova prescrição passa a ser a vigente quando a consulta dela não é mais antiga que a da vigente atual. Receita lançada numa consulta anterior entra só no histórico, como substituída, e a vigente continua valendo. Sem vigente, a nova passa a valer
 
 *Ampliação:* a tabela de necessidades da v1.0 exigia "histórico de alterações" do produto prescrito e "controle de ajuste de dose: histórico de ajustes, datas, justificativas, inclusive casos de desmame". O RF05 original não mencionava versionamento e a implementação sobrescreve a prescrição.
 
@@ -395,7 +397,7 @@ Aplicado pelo prescritor durante a consulta. Registra nome do paciente, data da 
 - Faixa interpretativa ajustada por escolaridade
 - Exame com seção ou escolaridade em branco não é gravado: a tela aponta o que falta e a API recusa o envio. É a exceção à RN10: como o MEEM não tem correção, um exame incompleto ficaria sem escore ou sem faixa (RN14)
 - A implementação atual contempla 8 seções, com máximo de **27 pontos** — faltam leitura, escrita e cópia, todas descritas no RF26 da v1.0. Um teto de 27 desloca todas as faixas de interpretação
-- Vinculado à consulta que o originou
+- Vinculado à consulta que o originou, e só depois que ela aconteceu: em consulta futura o envio é recusado
 - Não é designável como tarefa ao paciente (RN09)
 
 ---
@@ -671,7 +673,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 |---|---|
 | RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores |
 | RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
-| RF05 | Nova prescrição substitui a vigente (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |
+| RF05 | Nova prescrição substitui a vigente quando a consulta dela não é mais antiga que a da vigente; lançada em consulta anterior, entra só no histórico (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |
 | RF06/RF20 e RF22 | Um registro por dia, apresentado como a grade semanal do formulário em papel. O diário de sono inclui a programação de horários definida pelo prescritor |
 | RF20 | *Critério acrescentado:* as âncoras de cada item são idênticas às do formulário da clínica |
 | RF24/RF25 | O período avaliado é registrado com início e fim, como no formulário |

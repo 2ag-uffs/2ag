@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.ScaleResponseDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
@@ -58,6 +59,7 @@ public class ScaleResponseService {
     public static final String NOT_CONFIRMED_APPOINTMENT_MESSAGE =
             "Só consulta confirmada na agenda recebe o Mini-Exame";
     public static final String INCOMPLETE_EXAM_MESSAGE = "Falta preencher no Mini-Exame";
+    public static final String FUTURE_APPOINTMENT_MESSAGE = "Consulta que ainda não aconteceu não recebe o Mini-Exame";
 
     private static final int MAX_TEXT_LENGTH = 2000;
     // os acompanhamentos de dor e de TEA falam da ultima semana
@@ -145,6 +147,7 @@ public class ScaleResponseService {
         if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
             throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);
         }
+        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_APPOINTMENT_MESSAGE);
         // dois exame valido no mesmo atendimento ninguem sabe qual vale, e o meem
         // n tem correcao: pra refazer, o anterior precisa ser anulado com motivo
         if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {

@@ -348,7 +348,7 @@ class PatientLinkTest {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
-        appointment.setDateTime(NEXT_MONTH.atTime(9, 0));
+        appointment.setDateTime(LocalDate.now().minusDays(1).atTime(9, 0));
         appointment.setModality(AppointmentModality.PRESENCIAL);
         appointment.setStatus(AppointmentStatus.AGENDADA);
         appointment.setDurationMinutes(60);

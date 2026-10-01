@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // prescricao emitida dentro de uma consulta (RF05)
-// a nova substitui a vigente e a anterior continua no historico como substituida
+// a anterior continua no historico como substituida e nunca eh apagada
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 public class Prescription {

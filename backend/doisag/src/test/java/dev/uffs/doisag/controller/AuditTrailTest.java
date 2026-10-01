@@ -294,7 +294,7 @@ class AuditTrailTest {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
-        appointment.setDateTime(TODAY.plusMonths(1).atTime(10, 0));
+        appointment.setDateTime(TODAY.minusDays(1).atTime(10, 0));
         appointment.setModality(AppointmentModality.PRESENCIAL);
         appointment.setStatus(AppointmentStatus.AGENDADA);
         appointment.setDurationMinutes(60);

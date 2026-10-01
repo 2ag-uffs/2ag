@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -212,6 +213,16 @@ class ScaleFormsTest {
     }
 
     @Test
+    void miniExameNaoEntraEmConsultaQueAindaNaoAconteceu() throws Exception {
+        Long futureAppointment = saveAppointment(AppointmentStatus.AGENDADA, TODAY.plusDays(7).atTime(9, 0));
+
+        applyMentalStateExam(futureAppointment, prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.FUTURE_APPOINTMENT_MESSAGE));
+        mentalStateExamOf(futureAppointment).andExpect(status().isNoContent());
+    }
+
+    @Test
     void miniExameIncompletoNaoEhGravadoEDizOQueFalta() throws Exception {
         Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
 
@@ -299,10 +310,14 @@ class ScaleFormsTest {
     }
 
     private Long saveAppointment(AppointmentStatus status) {
+        return saveAppointment(status, TODAY.atStartOfDay());
+    }
+
+    private Long saveAppointment(AppointmentStatus status, LocalDateTime dateTime) {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
-        appointment.setDateTime(TODAY.atTime(9, 0));
+        appointment.setDateTime(dateTime);
         appointment.setModality(AppointmentModality.PRESENCIAL);
         appointment.setStatus(status);
         appointment.setDurationMinutes(60);

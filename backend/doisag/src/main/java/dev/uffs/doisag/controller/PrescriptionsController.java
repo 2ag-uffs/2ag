@@ -29,7 +29,7 @@ public class PrescriptionsController {
         this.prescriptionService = prescriptionService;
     }
 
-    // a prescricao sempre nasce dentro de uma consulta e substitui a vigente
+    // a prescricao sempre nasce dentro de uma consulta q ja aconteceu
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @PostMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<PrescriptionResponseDTO> create(@PathVariable Long appointmentId,

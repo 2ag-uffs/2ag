@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // prescricao (RF05)
-// a prescricao nova substitui a vigente e o paciente ve a vigente e o historico
+// a nova substitui a vigente se a consulta dela n for mais antiga, e o paciente ve a vigente e o historico
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -149,18 +149,37 @@ class PrescriptionFlowTest {
     // pedido de consulta sem resposta ou recusado n gera prescricao
     @Test
     void unconfirmedAppointmentDoesNotIssueAPrescription() throws Exception {
-        Appointment request = new Appointment();
-        request.setPatient(patient);
-        request.setPrescriber(prescriber);
-        request.setDateTime(LocalDateTime.now().plusDays(3));
-        request.setModality(AppointmentModality.PRESENCIAL);
-        request.setStatus(AppointmentStatus.SOLICITADA);
-        request.setDurationMinutes(60);
-        Long requestId = appointmentRepository.save(request).getId();
+        Long requestId = saveAppointment(AppointmentStatus.SOLICITADA, LocalDateTime.now().plusDays(3));
 
         issuePrescription(requestId, prescriptionWith("Oleo"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PrescriptionService.NOT_CONFIRMED_CONSULTATION_MESSAGE));
+    }
+
+    @Test
+    void futureAppointmentDoesNotIssueAPrescription() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, LocalDateTime.now().plusDays(30));
+
+        issuePrescription(appointmentId, prescriptionWith("Oleo"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriptionService.FUTURE_CONSULTATION_MESSAGE));
+    }
+
+    // receita q faltou numa consulta antiga entra so no historico e a vigente continua
+    @Test
+    void prescriptionOnAnOlderAppointmentDoesNotReplaceTheCurrentOne() throws Exception {
+        Long currentPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Oleo de agora");
+        Long oldAppointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, LocalDateTime.now().minusMonths(3));
+
+        issuePrescription(oldAppointmentId, prescriptionWith("Oleo esquecido"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SUBSTITUIDA"))
+                .andExpect(jsonPath("$.current").value(false));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + currentPrescriptionId + ")].status", contains("VIGENTE")))
+                .andExpect(jsonPath("$[?(@.current == true)]", hasSize(1)));
     }
 
     @Test
@@ -244,6 +263,17 @@ class PrescriptionFlowTest {
         component.put("concentration", concentration);
         component.put("unit", unit);
         return component;
+    }
+
+    private Long saveAppointment(AppointmentStatus status, LocalDateTime dateTime) {
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPrescriber(prescriber);
+        appointment.setDateTime(dateTime);
+        appointment.setModality(AppointmentModality.PRESENCIAL);
+        appointment.setStatus(status);
+        appointment.setDurationMinutes(60);
+        return appointmentRepository.save(appointment).getId();
     }
 
     private Long registeredConsultationId() throws Exception {

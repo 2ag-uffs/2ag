@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {addDays, formatDate, formatNow, hasEnded, mondayOf, toIsoDate} from "./date-format.js";
+import {addDays, formatDate, formatNow, hasEnded, isSameOrAfter, mondayOf, toIsoDate} from "./date-format.js";
 
 describe("datas", () => {
     it("data sem hora da api sai no formato brasileiro sem voltar um dia", () => {
@@ -37,6 +37,12 @@ describe("datas", () => {
         expect(hasEnded("2026-09-14T11:00:00", 60)).toBe(false);
 
         vi.useRealTimers();
+    });
+
+    it("isSameOrAfter aceita a mesma data e hora", () => {
+        expect(isSameOrAfter("2026-09-14T09:00:00", "2026-09-14T09:00:00")).toBe(true);
+        expect(isSameOrAfter("2026-09-14T09:00:00.123456", "2026-09-14T09:00:00")).toBe(true);
+        expect(isSameOrAfter("2026-09-13T09:00:00", "2026-09-14T09:00:00")).toBe(false);
     });
 
     it("mondayOf de um domingo volta pra segunda anterior", () => {

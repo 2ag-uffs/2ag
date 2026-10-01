@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
@@ -37,9 +38,6 @@ public class ConsultationService {
     public static final String HAS_EXAM_MESSAGE =
             "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de anular a consulta";
 
-    // folga pro relogio do computador de quem registra estar um pouco adiantado
-    private static final int CLOCK_TOLERANCE_MINUTES = 5;
-
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final PrescriptionRepository prescriptionRepository;
@@ -63,7 +61,7 @@ public class ConsultationService {
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 
         LocalDateTime dateTime = recordData.dateTime() == null ? LocalDateTime.now() : recordData.dateTime();
-        checkDateAlreadyHappened(dateTime);
+        DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
         checkRecordHasClinicalContent(recordData);
 
         Appointment appointment = new Appointment();
@@ -96,7 +94,7 @@ public class ConsultationService {
         }
 
         LocalDateTime dateTime = recordData.dateTime() == null ? appointment.getDateTime() : recordData.dateTime();
-        checkDateAlreadyHappened(dateTime);
+        DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
         checkRecordHasClinicalContent(recordData);
 
         appointment.setDateTime(dateTime);
@@ -135,12 +133,6 @@ public class ConsultationService {
     private Appointment findAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
-    }
-
-    private void checkDateAlreadyHappened(LocalDateTime dateTime) {
-        if (dateTime.isAfter(LocalDateTime.now().plusMinutes(CLOCK_TOLERANCE_MINUTES))) {
-            throw new BusinessException(FUTURE_DATE_MESSAGE);
-        }
     }
 
     private void checkRecordHasClinicalContent(ConsultationRecordDTO recordData) {

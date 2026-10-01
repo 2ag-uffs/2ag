@@ -94,7 +94,7 @@ requisitos RF04, RF05, RF12, RF13 e RF19.
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
 | CT-17 | registrar a consulta de hoje de um paciente | registro aparece no histórico da prescritora e da paciente |
-| CT-18 | emitir prescrição com dois canabinoides, concentração e escalonamento | a nova fica vigente e a anterior aparece como substituída |
+| CT-18 | emitir prescrição com dois canabinoides, concentração e escalonamento. depois, no histórico, lançar uma receita numa consulta mais antiga que a da vigente | a nova fica vigente e a anterior aparece como substituída. na consulta antiga o botão diz *Lançar receita no histórico*, a tela avisa que a vigente continua e, depois de salvar, a vigente do paciente é a mesma |
 | CT-19 | anular uma consulta e uma prescrição | o motivo é obrigatório e o registro continua visível, marcado como anulado |
 | CT-20 | como Paulo, preencher e enviar a anamnese, depois corrigir. como prescritora, abrir o histórico dele | a prescritora vê a versão corrigida |
 | CT-21 | arquivar um paciente e depois reativar | some da lista de ativos e aparece em arquivados com o histórico inteiro. o acompanhamento automático é encerrado |
