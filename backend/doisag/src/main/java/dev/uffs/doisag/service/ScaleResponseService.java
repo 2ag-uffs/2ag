@@ -57,6 +57,7 @@ public class ScaleResponseService {
             "Esta consulta já tem um Mini-Exame aplicado. Para aplicar de novo, anule o anterior com o motivo";
     public static final String NOT_CONFIRMED_APPOINTMENT_MESSAGE =
             "Só consulta confirmada na agenda recebe o Mini-Exame";
+    public static final String INCOMPLETE_EXAM_MESSAGE = "Falta preencher no Mini-Exame";
 
     private static final int MAX_TEXT_LENGTH = 2000;
     // os acompanhamentos de dor e de TEA falam da ultima semana
@@ -161,11 +162,23 @@ public class ScaleResponseService {
         response.setPeriodStart(examDay);
         response.setPeriodEnd(examDay);
         fillAnswersAndScore(response, definition, answerData.answers());
+        checkCompleteExam(definition, response.getAnswers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
         auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(),
                 appointment.getPatient().getId());
         return dtoOf(savedResponse);
+    }
+
+    // excecao a RN10 pq o meem n tem correcao e incompleto fica sem escore ou sem faixa (RN14)
+    private void checkCompleteExam(ScaleDefinition definition, Map<String, Object> answers) {
+        List<String> missingItems = definition.items().stream()
+                .filter(item -> !answers.containsKey(item.key()))
+                .map(ScaleItem::label)
+                .toList();
+        if (!missingItems.isEmpty()) {
+            throw new BusinessException(INCOMPLETE_EXAM_MESSAGE + ": " + String.join(", ", missingItems));
+        }
     }
 
     // o exame ja aplicado naquela consulta, pra tela abrir no resultado

@@ -110,7 +110,7 @@ requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RN09 e RN10.
 | CT-24 | corrigir uma resposta ainda não analisada. depois a prescritora marca como analisada e a paciente tenta corrigir de novo | antes da análise corrige. depois, a tela avisa que precisa falar com a prescritora |
 | CT-25 | responder Hamilton e Pittsburgh com valores conhecidos | escore e interpretação batem com a conta feita na ficha em papel de [`docs/scales`](../scales) |
 | CT-26 | preencher o diário do sono | tempos calculados certos, também quando dormir passa da meia-noite. a programação da prescritora aparece no topo |
-| CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes | o corte muda com a escolaridade e o MEEM nunca aparece como tarefa da paciente |
+| CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes. tentar salvar com uma seção e a escolaridade em branco | o corte muda com a escolaridade e o MEEM nunca aparece como tarefa da paciente. com item em branco o exame não é salvo, a tela lista o que falta e marca os itens |
 | CT-28 | criar e depois encerrar um acompanhamento automático | as escalas escolhidas e as frequências aparecem certas. encerrar para os envios |
 | CT-29 | anular uma resposta de escala | motivo obrigatório. a resposta fica marcada como anulada, com o motivo |
 | CT-30 | olhar o painel da prescritora | a escala vencida da Renata aparece em *Escalas vencidas* |

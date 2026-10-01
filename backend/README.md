@@ -191,7 +191,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou. o MEEM não se corrige: o prescritor anula e aplica de novo |
 | `PUT /scales/responses/{id}/review` | o prescritor marca que já conferiu, e o paciente para de editar |
 | `PUT /scales/responses/{id}/annul` | anula a resposta com motivo |
-| `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta |
+| `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta. o exame só é gravado com as 11 seções e a escolaridade |
 | `POST /patients/{patientId}/scales` | envia uma escala avulsa ao paciente |
 | `GET /patients/{patientId}/scales` | as tarefas de escala do paciente |
 | `GET /patients/{patientId}/scales/overview` | o que espera resposta e o que já foi respondido |
@@ -202,6 +202,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - item em branco não é gravado, e escala validada sem todos os itens não tem escore
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
+- o MEEM é a exceção à regra do item em branco: como não tem correção, exame com seção ou escolaridade em branco é recusado com a lista do que falta, em vez de ser gravado sem escore ou sem faixa (RN14)
 
 ## exportação
 

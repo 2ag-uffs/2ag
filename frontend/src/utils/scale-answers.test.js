@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {answersPayload, answersToValues} from "./scale-answers.js";
+import {answersPayload, answersToValues, missingItemsOf} from "./scale-answers.js";
 
 const ITEMS = [
     {key: "dor", type: "NOTA"},
@@ -30,6 +30,14 @@ describe("answersPayload", () => {
 
     it("item calculado nunca vai pra api", () => {
         expect(answersPayload(ITEMS, {tempoNaCama: "480"})).toEqual({});
+    });
+});
+
+describe("missingItemsOf", () => {
+    it("zero conta como respondido e o calculado nunca falta", () => {
+        const missing = missingItemsOf(ITEMS, {dor: "0", comentario: "   ", diaComum: null, gotasManha: ""});
+
+        expect(missing.map((item) => item.key)).toEqual(["comentario", "horarioDormir", "diaComum", "gotasManha"]);
     });
 });
 

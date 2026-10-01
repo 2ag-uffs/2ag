@@ -5,11 +5,14 @@ import styles from "./scale-form.module.css";
 //
 // a tela n sabe o nome de escala nenhuma: o tipo do item diz q campo
 // usar, e as ancoras e as opcoes vem prontas do servidor (RNF08)
-export default function ScaleForm({items, values, onChange, disabled}) {
+export default function ScaleForm({items, values, onChange, disabled, missingKeys = []}) {
     return (
         <ol className={styles.items}>
             {items.map((item) => (
-                <li key={item.key} className={styles.item}>
+                <li
+                    key={item.key}
+                    className={missingKeys.includes(item.key) ? styles.item + " " + styles.itemMissing : styles.item}
+                >
                     <ScaleField item={item} values={values} onChange={onChange} disabled={disabled}/>
                 </li>
             ))}

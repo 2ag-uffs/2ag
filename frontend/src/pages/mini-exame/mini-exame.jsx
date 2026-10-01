@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import {FiCheckCircle} from "react-icons/fi";
+import {FiAlertCircle, FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -8,7 +8,7 @@ import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatDateTime} from "../../utils/date-format.js";
-import {answersPayload} from "../../utils/scale-answers.js";
+import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -27,6 +27,7 @@ export default function MiniExame() {
     const [values, setValues] = useState({});
     const [savedExam, setSavedExam] = useState(null);
     const [formError, setFormError] = useState(null);
+    const [missingKeys, setMissingKeys] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -63,11 +64,19 @@ export default function MiniExame() {
 
     const changeAnswer = (key, value) => {
         setValues((currentValues) => ({...currentValues, [key]: value}));
+        setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
     };
 
     const save = async (event) => {
         event.preventDefault();
         setFormError(null);
+
+        const missingItems = missingItemsOf(definition.items, values);
+        if (missingItems.length > 0) {
+            setMissingKeys(missingItems.map((item) => item.key));
+            return;
+        }
+
         setIsSaving(true);
         try {
             const exam = await apiService.post("/scales/mental-state-exam/appointments/" + appointmentId, {
@@ -89,6 +98,10 @@ export default function MiniExame() {
         return <SkeletonPage cards={1}/>;
     }
 
+    const missingLabels = definition.items
+        .filter((item) => missingKeys.includes(item.key))
+        .map((item) => item.label);
+
     return (
         <section className={styles.page}>
             <PageHeader
@@ -98,13 +111,28 @@ export default function MiniExame() {
 
             {savedExam ? (
                 <Card>
-                    <div className={styles.result}>
-                        <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
-                        <div>
-                            <p className={styles.score}>{savedExam.score} de {definition.maxScore}</p>
-                            {savedExam.scoreBand && <p className={styles.hint}>{savedExam.scoreBand}</p>}
+                    {/* exame salvo antes da trava, q ficou sem escore ou sem faixa */}
+                    {savedExam.score === null || savedExam.score === undefined ? (
+                        <div className={styles.result}>
+                            <FiAlertCircle className={styles.resultIconWarning} aria-hidden="true"/>
+                            <div>
+                                <p className={styles.score}>Exame incompleto: sem escore</p>
+                                <p className={styles.hint}>
+                                    Para refazer, anule este exame no histórico do paciente e aplique de novo.
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className={styles.result}>
+                            <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
+                            <div>
+                                <p className={styles.score}>{savedExam.score} de {definition.maxScore}</p>
+                                <p className={styles.hint}>
+                                    {savedExam.scoreBand || "Sem faixa: a escolaridade não foi registrada."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     <p className={styles.hint}>O resultado fica no histórico do paciente junto com a consulta.</p>
                     <div className={styles.nextSteps}>
                         <button
@@ -119,14 +147,22 @@ export default function MiniExame() {
             ) : (
                 <form className={styles.form} onSubmit={save}>
                     <p className={styles.hint}>{definition.instruction}</p>
-                    {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
                     <ScaleForm
                         items={definition.items}
                         values={values}
                         onChange={changeAnswer}
                         disabled={isSaving}
+                        missingKeys={missingKeys}
                     />
+
+                    {/* perto do botao pq no topo o aviso some num form comprido */}
+                    {missingLabels.length > 0 && (
+                        <p className="aviso aviso--atencao" role="alert">
+                            Falta preencher: {missingLabels.join(", ")}.
+                        </p>
+                    )}
+                    {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
                     <FormActions>
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>

@@ -393,6 +393,7 @@ Aplicado pelo prescritor durante a consulta. Registra nome do paciente, data da 
 *Critérios de aceite:*
 - **Pontuação máxima de 30 pontos**, com todas as seções do instrumento (Anexo A.3): orientação temporal (5), orientação espacial (5), registro (3), atenção e cálculo (5), memória de evocação (3), nomeação (2), repetição (1), comando de três etapas (3), **leitura (1)**, **escrita (1)** e **cópia dos pentágonos (1)**
 - Faixa interpretativa ajustada por escolaridade
+- Exame com seção ou escolaridade em branco não é gravado: a tela aponta o que falta e a API recusa o envio. É a exceção à RN10: como o MEEM não tem correção, um exame incompleto ficaria sem escore ou sem faixa (RN14)
 - A implementação atual contempla 8 seções, com máximo de **27 pontos** — faltam leitura, escrita e cópia, todas descritas no RF26 da v1.0. Um teto de 27 desloca todas as faixas de interpretação
 - Vinculado à consulta que o originou
 - Não é designável como tarefa ao paciente (RN09)

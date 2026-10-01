@@ -31,6 +31,12 @@
     font-size: 2rem;
 }
 
+.resultIconWarning {
+    color: var(--color-warning);
+    flex: 0 0 auto;
+    font-size: 2rem;
+}
+
 .score {
     color: var(--color-text-headings);
     font-size: var(--text-2xl);

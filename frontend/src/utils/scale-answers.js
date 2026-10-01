@@ -32,6 +32,17 @@ export function answersPayload(items, values) {
     return payload;
 }
 
+// quem chama decide se a escala exige tudo, pq a maioria aceita item em branco (RN10)
+export function missingItemsOf(items, values) {
+    return items.filter((item) => {
+        const value = values[item.key];
+        if (item.type === "CALCULADO") {
+            return false;
+        }
+        return value === undefined || value === null || String(value).trim() === "";
+    });
+}
+
 // a resposta salva volta pros campos da tela
 export function answersToValues(answers) {
     const values = {};

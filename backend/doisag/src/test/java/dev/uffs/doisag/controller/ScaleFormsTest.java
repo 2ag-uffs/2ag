@@ -211,6 +211,32 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.message").value(ScaleResponseService.EXAM_ALREADY_APPLIED_MESSAGE));
     }
 
+    @Test
+    void miniExameIncompletoNaoEhGravadoEDizOQueFalta() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
+
+        applyMentalStateExam(appointmentId, prescriber, "{\"orientacaoTemporal\":5,\"orientacaoEspacial\":5,"
+                + "\"registro\":3,\"atencaoECalculo\":5,\"memoriaEvocacao\":3,\"nomeacao\":2,"
+                + "\"repeticao\":1,\"comando\":3,\"escrita\":1,\"copia\":null}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.INCOMPLETE_EXAM_MESSAGE
+                        + ": Escolaridade, Leitura, Cópia do diagrama"));
+
+        mentalStateExamOf(appointmentId).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void miniExameSemEscolaridadeTambemEhRecusado() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA);
+
+        applyMentalStateExam(appointmentId, prescriber, "{\"orientacaoTemporal\":5,\"orientacaoEspacial\":5,"
+                + "\"registro\":3,\"atencaoECalculo\":5,\"memoriaEvocacao\":3,\"nomeacao\":2,"
+                + "\"repeticao\":1,\"comando\":3,\"leitura\":1,\"escrita\":1,\"copia\":1}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.INCOMPLETE_EXAM_MESSAGE
+                        + ": Escolaridade"));
+    }
+
     // a tela precisa saber q ja tem exame pra abrir no resultado
     @Test
     void aConsultaDevolveOMiniExameJaAplicado() throws Exception {
@@ -259,12 +285,17 @@ class ScaleFormsTest {
 
     // o exame inteiro, q da os 30 pontos
     private ResultActions applyMentalStateExam(Long appointmentId, Users loggedUser) throws Exception {
+        return applyMentalStateExam(appointmentId, loggedUser, "{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,\"memoriaEvocacao\":3,"
+                + "\"nomeacao\":2,\"repeticao\":1,\"comando\":3,\"leitura\":1,\"escrita\":1,\"copia\":1}");
+    }
+
+    private ResultActions applyMentalStateExam(Long appointmentId, Users loggedUser, String answers)
+            throws Exception {
         return mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointmentId)
                 .header("Authorization", bearerTokenOf(loggedUser))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,\"orientacaoEspacial\":5,"
-                        + "\"registro\":3,\"atencaoECalculo\":5,\"memoriaEvocacao\":3,\"nomeacao\":2,"
-                        + "\"repeticao\":1,\"comando\":3,\"leitura\":1,\"escrita\":1,\"copia\":1}}"));
+                .content("{\"answers\":" + answers + "}"));
     }
 
     private Long saveAppointment(AppointmentStatus status) {
