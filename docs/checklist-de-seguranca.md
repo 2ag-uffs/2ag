@@ -13,26 +13,26 @@ Conferência dos 20 itens do checklist de segurança sobre o 2AG, feita em 01/10
 
 | nº | Item | Situação | Gravidade | Card |
 | ---: | :--- | :--- | :--- | :--- |
-| 1 | Esconder API Keys | parcial | baixa | #18, #103 · proposta |
-| 2 | Limpar secrets do git | parcial | baixa | #18 · proposta |
+| 1 | Esconder API Keys | parcial | baixa | #18, #103 · #114 |
+| 2 | Limpar secrets do git | parcial | baixa | #18 · #115 |
 | 3 | Banco acessível de fora / credencial exposta | ok | baixa | #17, #18 |
-| 4 | Escopo por dono na API (o "RLS" daqui) | ok | baixa | #29, #27 · proposta |
-| 5 | Criptografia de dados | parcial | alta | #57, #17, #18, #19 · proposta |
+| 4 | Escopo por dono na API (o "RLS" daqui) | ok | baixa | #29, #27 · #124 |
+| 5 | Criptografia de dados | parcial | alta | #57, #17, #18, #19 · #117 |
 | 6 | Auth server side | ok | baixa | #57, #109 |
 | 7 | Restringir acessos | parcial | média | #61, #62, #83, #84 |
-| 8 | Bloquear mass assignment | ok | nenhuma | — · proposta (teste) |
-| 9 | Proteger cookies | parcial | alta | #57, #103, #109 · proposta |
+| 8 | Bloquear mass assignment | ok | nenhuma | #124 |
+| 9 | Proteger cookies | parcial | alta | #57, #103, #109 · #118 |
 | 10 | Hash nas senhas | ok | baixa | #61, #84 |
-| 11 | Rate limit | parcial | média | #82, #94, #111 · proposta |
-| 12 | Bot protection | parcial | baixa | #82, #102 · proposta |
+| 11 | Rate limit | parcial | média | #82, #94, #111 · #119, #120 |
+| 12 | Bot protection | parcial | baixa | #82, #102 · #119 |
 | 13 | Queries parametrizadas | ok | nenhuma | — |
-| 14 | Validação dos inputs | parcial | baixa | #111, #82 · proposta |
-| 15 | Vazar conteúdo | parcial | média | #82, #97, #109, #111 · proposta |
+| 14 | Validação dos inputs | parcial | baixa | #111, #82 · #120, #121 |
+| 15 | Vazar conteúdo | parcial | média | #82, #97, #109, #111 · #120, #123 |
 | 16 | Restringir uploads | não se aplica | nenhuma | #111 |
-| 17 | Trim respostas de API | parcial | média | #109, #61, #37 · proposta |
+| 17 | Trim respostas de API | parcial | média | #109, #61, #37 · #122, #124 |
 | 18 | Security headers | parcial | baixa | #57, #102, #111 |
 | 19 | Forçar HTTPS | falta | alta | #57, #103, #18, #102 |
-| 20 | Scan de dependências | parcial | média | proposta |
+| 20 | Scan de dependências | parcial | média | #115, #116 |
 
 ---
 
@@ -69,7 +69,7 @@ public void run(ApplicationArguments args) {
 3. `frontend/.dockerignore`: trocar `.env` por `.env*` e acrescentar `*.local`.
 4. No guia de deploy (#18) deixar escrito que `SEED_DADOS_TESTE` fica fora do `.env` do servidor e que o backup lê a senha do `.env` em vez de repeti-la no cron.
 
-**Card.** #18 (guia de deploy, o corpo já diz que o seed nunca liga) e #103 (mesmo mecanismo de `.env.example` vencendo o padrão do compose). Nenhum card cobre a trava do seed nem os `.dockerignore`: proposta.
+**Card.** #18 (guia de deploy, o corpo já diz que o seed nunca liga) e #103 (mesmo mecanismo de `.env.example` vencendo o padrão do compose). Nenhum card cobre a trava do seed nem os `.dockerignore`: #114.
 
 ---
 
@@ -87,7 +87,7 @@ public void run(ApplicationArguments args) {
 2. Ligar em Settings > Code security: Secret scanning e Push protection (grátis em repositório público; ou `gh api -X PATCH repos/2ag-uffs/2ag` com `security_and_analysis`). Assim um `.env` colado por engano é barrado no push.
 3. Apagar `database/physical-model/script-insert.sql` ou trocar os hashes por `'<hash>'`, já que nada usa o arquivo.
 
-**Card.** #18 e #103 (ambos ganham a frase sobre não reaproveitar). As configurações do GitHub não têm card: proposta (junto com o item 20).
+**Card.** #18 e #103 (ambos ganham a frase sobre não reaproveitar). As configurações do GitHub estão no #115 (junto com o item 20).
 
 ---
 
@@ -126,7 +126,7 @@ As precondições que sustentam isso também conferem: `@EnableMethodSecurity` l
 
 **Correção concreta.** O conserto mais barato é estrutural, no mesmo `RouteRolesTest`: para cada rota cujo caminho tenha `{patientId}`, `{appointmentId}` ou `{id}` e não comece com `/admin/` nem `/notifications/` (pulando `/invites/{token}`, `/scales/definitions/{slug}` e `/scales/{slug}/responses`, que não são id de registro), assertar que a regra contém `"Access."`. Isso fecha o buraco no momento em que a rota nasce. Depois, acrescentar as rotas listadas acima ao `PatientLinkTest` (o record `ClinicalRecords` já tem quase tudo, só falta guardar o id da anamnese) e mover o id do MEEM de `prescriberOnlyReadRoutes` (`:310-314`) para `sharedReadRoutes`, já que `GET /scales/responses/{id}` aceita PATIENT via `scaleAccess` (`ScalesController:90`).
 
-**Card.** #29 (qa: permissões e isolamento, CT-07 a CT-11) e #27 (decisão sobre transferência). Os testes automatizados de tranca não têm card: proposta.
+**Card.** #29 (qa: permissões e isolamento, CT-07 a CT-11) e #27 (decisão sobre transferência). Os testes automatizados de tranca estão no #124.
 
 ---
 
@@ -157,7 +157,7 @@ age -d -i "$BACKUP_AGE_KEY" "$ARQUIVO" | pg_restore --dbname "$BANCO" ...
 4. No guia #18: disco ou volume do servidor cifrado (LUKS ou a cifra do provedor) e a chave privada do backup guardada fora do servidor.
 5. Registrar a decisão de não cifrar por campo e revê-la só se o banco for para host compartilhado ou nuvem de terceiro.
 
-**Card.** #57, #17, #18, #19 e #103 (o `SESSION_SECURE_COOKIE` anda junto com o TLS). STARTTLS obrigatório e backup cifrado não têm card: proposta.
+**Card.** #57, #17, #18, #19 e #103 (o `SESSION_SECURE_COOKIE` anda junto com o TLS). STARTTLS obrigatório e backup cifrado estão no #117.
 
 ---
 
@@ -207,7 +207,7 @@ O que fura: (a) #61 — o admin escolhe a senha inicial do prescritor (`Prescrib
 
 **Correção concreta.** Nada obrigatório. Para trancar o futuro, um teste pequeno (em `PatientSignUpTest` e `ProfileTest`) que manda `{"role":"ADMIN","active":false,"prescriberId":1,"id":999}` junto com um corpo válido em `/auth/register` e `/profile` e confere que role, active e prescritor não mudaram.
 
-**Card.** Nenhum. O teste de tranca entra na proposta de testes (item 4).
+**Card.** Nenhum. O teste de tranca entra no #124 (item 4).
 
 ---
 
@@ -240,7 +240,7 @@ usado no `addCookie` e no `readToken`.
 4. `passwordChangedAt` em milissegundo (#109).
 5. Opcional: só aceitar `Bearer` com `api.session.accept-bearer=true` no perfil de teste.
 
-**Card.** #57, #103, #109. `__Host-` e a conferência na subida não têm card: proposta.
+**Card.** #57, #103, #109. `__Host-` e a conferência na subida estão no #118.
 
 ---
 
@@ -259,7 +259,7 @@ Furos pequenos: (a) `AdminAccountCreator.java:50-52` só avisa no log se `ADMIN_
 1. `@Size(max = 64, message = "A senha pode ter até 64 caracteres")` em `LoginDTO.password`.
 2. `PasswordRules.fitsInBcrypt(String password)` conferindo `password.getBytes(UTF_8).length <= 72`, chamado antes do `encode` em `PasswordService.applyNewPassword`, `PatientService.registerPatient` e `PrescriberService.create` (item 14 tem o esboço).
 3. `AdminAccountCreator`: aplicar o mesmo `PasswordRules.PATTERN` e `fitsInBcrypt`, não criar a conta quando falhar, com `log.warn` dizendo o motivo.
-4. nginx: `log_format` sem query string (`$uri` em vez de `$request`) — proposta do nginx, item 15.
+4. nginx: `log_format` sem query string (`$uri` em vez de `$request`) — #120, item 15.
 5. Opcional: `new BCryptPasswordEncoder(12)` (login uns 250 ms, invisível para 300 pessoas; os hashes antigos continuam valendo porque o custo vai dentro do hash).
 
 **Card.** #61, #84.
@@ -308,7 +308,7 @@ e trocar a linha 19 por `proxy_set_header X-Forwarded-For $remote_addr;` — uma
 
 4. #82 para o cadastro.
 
-**Card.** #82 (cadastro), #94 (e-mail fora da transação), #111 (nginx — o corpo fala de log, cache e rota órfã, não de `limit_req`, então é estender). A força bruta da senha atual e o `limit_req` não têm card: proposta (duas).
+**Card.** #82 (cadastro), #94 (e-mail fora da transação), #111 (nginx — o corpo fala de log, cache e rota órfã, não de `limit_req`, então é estender). A força bruta da senha atual e o `limit_req` não têm card: #119 (limitador) e #120 (nginx) (duas).
 
 ---
 
@@ -328,7 +328,7 @@ e trocar a linha 19 por `proxy_set_header X-Forwarded-For $remote_addr;` — uma
 4. No smoke test do #102: 20 logins errados pela porta pública exigindo 429, o que prova que o IP real chega ao limitador.
 5. De graça: `location = /api/health { return 404; }` no nginx, já que nada precisa dele exposto.
 
-**Card.** #82, #102, #57. Honeypot e `email-total` entram na proposta de rate limit.
+**Card.** #82, #102, #57. Honeypot e `email-total` entram no #119.
 
 ---
 
@@ -382,7 +382,7 @@ chamado antes do `encode` nos três serviços, lançando `InvalidFieldException(
 - (e) Um teste por DTO mandando `"a".repeat(256)` e esperando 400 com o nome do campo, no estilo de `itemDeProtocoloVazioVira400ComOCampo` (`ErrorHandlingTest.java:94`).
 - (f) Se quiser teto de sanidade sem ferir a RN11, `@Size(max = 100000)` nos textos clínicos ainda é "sem limite prático".
 
-**Card.** #111 (corpo máximo no nginx), #82 (encosta no 409 de CPF/e-mail). O resto não tem card: proposta.
+**Card.** #111 (corpo máximo no nginx), #82 (encosta no 409 de CPF/e-mail). O resto está no #120 e no #121.
 
 ---
 
@@ -419,7 +419,7 @@ chamado antes do `encode` nos três serviços, lançando `InvalidFieldException(
 - #97: em `appointmentsCsv` usar `anonymous ? "prescritor " + id : nome`, com assert no `ExportTest`. Na tela de exportação anônima, avisar que texto livre não é anonimizado.
 - #109: os três itens como descritos. #111: bloco `logging` (`json-file`, `max-size 10m`, `max-file 3`) nos três serviços.
 
-**Card.** #82, #97, #109, #111, #57, #61 (nota sobre o link no corpo). `changeEmail`, tempo do reset, `handleBusinessRule` e o log do nginx não têm card: proposta.
+**Card.** #82, #97, #109, #111, #57, #61 (nota sobre o link no corpo). `changeEmail`, tempo do reset, `handleBusinessRule` e o log do nginx estão no #123 e no #120.
 
 ---
 
@@ -464,7 +464,7 @@ chamado antes do `encode` nos três serviços, lançando `InvalidFieldException(
 - `PasswordResetLinkDTO`: quando `MAIL_HOST` estiver preenchido (o `EmailConfig` já sabe), devolver só `prescriberName` e `validMinutes` e deixar o link ir pelo e-mail; manter o link na resposta apenas sem SMTP, como o comentário do DTO já explica.
 - #109 AUTZ-06 e #37 conforme os cards (no #37 manter `jackson-annotations`).
 
-**Card.** #109, #61, #37, #57, #97 (também é trim de resposta). Enxugar o `PatientResponseDTO` não tem card: proposta.
+**Card.** #109, #61, #37, #57, #97 (também é trim de resposta). Enxugar o `PatientResponseDTO` é o #122.
 
 ---
 
@@ -560,27 +560,27 @@ com `permissions: contents: write` no job. A partir daí o Dependabot alerta sob
 4. Triar a fila: mergear #55, #54, #53, #112, #113; fechar #50-#52 e, nos blocos docker do `dependabot.yml`, `ignore: - dependency-name: "*" update-types: ["version-update:semver-major"]`.
 5. Opcional: `org.owasp:dependency-check-maven` num profile `security` com `<failBuildOnCVSS>7</failBuildOnCVSS>` semanal no CI (precisa de `NVD_API_KEY` nos secrets).
 
-**Card.** Nenhum aberto cobre: proposta.
+**Card.** #115 e #116.
 
 ---
 
 ## O que fazer primeiro
 
 1. **HTTPS, no mesmo commit do `Secure` do cookie** (itens 19, 9, 5 — #57, #103, #18): Caddy na frente do `web`, `SESSION_SECURE_COOKIE=true`, `PUBLIC_URL` com https, `X-Forwarded-Proto` repassado, `includeSubDomains` no HSTS. É o único item que sozinho carrega três gravidades altas, e tudo que vem depois só vale com ele.
-2. **Limitador nos três oráculos de senha e `limit_req` no nginx** (item 11 — proposta): `PUT /profile/password`, `PUT /profile/email` e o reset do admin passando pelo `LoginAttemptLimiter`, `X-Forwarded-For` com `$remote_addr`, zona `auth` em `/api/auth/`. Fecha a tomada definitiva de conta a partir de sessão esquecida e dá o freio que falta a cadastro, senha nova e export.
+2. **Limitador nos três oráculos de senha e `limit_req` no nginx** (item 11 — #119, #120): `PUT /profile/password`, `PUT /profile/email` e o reset do admin passando pelo `LoginAttemptLimiter`, `X-Forwarded-For` com `$remote_addr`, zona `auth` em `/api/auth/`. Fecha a tomada definitiva de conta a partir de sessão esquecida e dá o freio que falta a cadastro, senha nova e export.
 3. **Admin não conhece a senha do prescritor e consegue travar conta de paciente** (item 7 — #61, #62): senha aleatória + link de definição no `create`, link de reset só sem SMTP, `PUT /admin/patients/{id}/active`. É o que sustenta a regra central "admin não vê prontuário".
-4. **Enxugar o `PatientResponseDTO` e fechar a enumeração** (itens 17, 15 — proposta, #82): tirar CPF, e-mail, telefone e endereço da lista com o teste de tranca, cadastro com uma mensagem só, `changeEmail` limitado, 204 do reset antes do envio. Minimização com custo zero e três oráculos a menos.
-5. **Dar visibilidade ao backend e ligar o que o GitHub oferece de graça** (itens 20, 2 — proposta): `maven-dependency-submission-action` no CI, `npm audit` de produção, Dependabot security updates, CodeQL, Secret scanning + Push protection, e triar a fila de PRs. Hoje o backend que guarda o prontuário não tem canal de alerta nenhum.
+4. **Enxugar o `PatientResponseDTO` e fechar a enumeração** (itens 17, 15 — #122, #123, #82): tirar CPF, e-mail, telefone e endereço da lista com o teste de tranca, cadastro com uma mensagem só, `changeEmail` limitado, 204 do reset antes do envio. Minimização com custo zero e três oráculos a menos.
+5. **Dar visibilidade ao backend e ligar o que o GitHub oferece de graça** (itens 20, 2 — #115, #116): `maven-dependency-submission-action` no CI, `npm audit` de produção, Dependabot security updates, CodeQL, Secret scanning + Push protection, e triar a fila de PRs. Hoje o backend que guarda o prontuário não tem canal de alerta nenhum.
 
 Logo em seguida, com o TLS no ar: backup cifrado com `age` e STARTTLS obrigatório (item 5), `__Host-` e a conferência de https × `secure-cookie` na subida (item 9), e os testes de tranca de isolamento (item 4).
 
 ---
 
-## Cards propostos
+## Cards criados
 
-Nenhum destes foi criado. São propostas para o usuário aprovar antes de virarem issue, no estilo dos cards existentes.
+Criados em 01/10/2026 como #114 a #124, na ordem abaixo, depois do aval do dono do projeto.
 
-**1. seed de teste n pode subir em producao e o dockerignore deixa passar application-local**
+**#114 · seed de teste n pode subir em producao e o dockerignore deixa passar application-local**
 - DevDataSeed so olha api.seed.enabled, n tem trava nenhuma contra servidor de verdade
 - se alguem deixar SEED_DADOS_TESTE=true no .env do servidor nasce um admin c/ a senha q ta no README
 - trava: se PUBLIC_URL comeca c/ https o seed loga aviso e n faz nada
@@ -588,7 +588,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - frontend/.dockerignore so exclui .env, trocar por .env* e *.local
 - anotar no guia #18 q SEED_DADOS_TESTE fica fora do .env do servidor
 
-**2. github: ligar secret scanning, push protection, dependabot security updates e codeql**
+**#115 · github: ligar secret scanning, push protection, dependabot security updates e codeql**
 - repo eh publico e tudo isso eh de graca, hoje ta tudo desligado (gh api mostra disabled)
 - push protection barra .env colado por engano antes de subir
 - security updates faz advisory virar PR sozinha em vez de so e-mail
@@ -596,7 +596,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - um clique em settings > code security ou gh api -X PATCH c/ security_and_analysis
 - apagar database/physical-model/script-insert.sql q so tem hash de usuario do prototipo e ninguem usa
 
-**3. ci: scan de dependencia do back e do front e triagem da fila do dependabot**
+**#116 · ci: scan de dependencia do back e do front e triagem da fila do dependabot**
 - o grafo do github so ve 19 dependencia direta do pom, 16 sem versao e zero transitiva
 - tomcat, spring-security, hibernate, jackson e logback n existem pro dependabot, nunca teve alerta maven na historia do repo
 - maven-dependency-submission-action no job do back dps do verify, c/ contents: write
@@ -604,7 +604,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - 8 PR do dependabot parada desde 15/09 c/ ci verde, mergear #53 #54 #55 #112 #113 e fechar as de major de imagem base
 - nos blocos docker do dependabot.yml ignorar semver-major
 
-**4. backup cifrado c/ age e starttls obrigatorio no smtp**
+**#117 · backup cifrado c/ age e starttls obrigatorio no smtp**
 - backup-banco.sh gera pg_dump sem cifra e o doc manda a copia sair do servidor pra bucket ou pendrive
 - age -r c/ chave publica no servidor e privada fora, quem leva o servidor n le os backup antigo
 - restaurar-banco.sh faz age -d | pg_restore
@@ -613,7 +613,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - MAIL_SMTP_STARTTLS=true por padrao, false so pra servidor local de teste
 - registrar q n vamos cifrar por campo e pq
 
-**5. back: cookie c/ prefixo __Host- e conferencia de https x secure-cookie na subida**
+**#118 · back: cookie c/ prefixo __Host- e conferencia de https x secure-cookie na subida**
 - dps do #57, qnd secure-cookie for true o nome vira __Host-session
 - navegador recusa __Host- sem Secure, c/ Domain ou fora de Path=/, entao config errada aparece na hora
 - na subida, PUBLIC_URL https c/ secure-cookie false recusa subir (ou ao menos avisa), e http c/ true tbm pq o login falha em silencio
@@ -621,7 +621,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - passwordChangedAt em milissegundo igual ao sessionsEndedAt (#109 AUTZ-08)
 - opcional: so aceitar Authorization: Bearer c/ api.session.accept-bearer=true no perfil de teste
 
-**6. back: trocar senha, trocar e-mail e reset do admin aceitam chute da senha atual sem limite**
+**#119 · back: trocar senha, trocar e-mail e reset do admin aceitam chute da senha atual sem limite**
 - PUT /profile/password, PUT /profile/email e POST /admin/prescribers/{id}/password-reset conferem bcrypt e n passam pelo LoginAttemptLimiter
 - quem pega uma sessao aberta no pc da recepcao testa a senha atual ate acertar e toma a conta de vez
 - o de e-mail eh pior pq troca pra onde vai o link de senha nova
@@ -630,7 +630,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - teste espelhando SessionTest: 5 senha atual errada -> 429 ate c/ a certa, no ProfileTest e no AdminPrescribersTest
 - terceira chave email-total: c/ teto alto (100 em 15 min) pra frear botnet, e honeypot nos forms de cadastro e esqueci-senha
 
-**7. nginx: limit_req, corpo maximo, log sem token e cabecalhos q faltam**
+**#120 · nginx: limit_req, corpo maximo, log sem token e cabecalhos q faltam**
 - limit_req_zone auth 10r/m em /api/auth/ e api 20r/s em /api/, limit_req_status 429
 - proxy_set_header X-Forwarded-For $remote_addr em vez de $proxy_add_x_forwarded_for, cliente de ip privado hoje falsifica o endereco do limitador
 - client_max_body_size 2m em /api/ e spring.servlet.multipart.enabled=false na api
@@ -639,7 +639,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - Cross-Origin-Opener-Policy e Cross-Origin-Resource-Policy same-origin, includeSubDomains no hsts junto c/ o #57
 - bloco logging c/ max-size nos tres servico do compose (#111 OPS-09)
 
-**8. back: senha c/ acento estoura o bcrypt e campo livre sem @Size vira 409**
+**#121 · back: senha c/ acento estoura o bcrypt e campo livre sem @Size vira 409**
 - PasswordRules conta 64 caracteres mas o bcrypt do spring recusa acima de 72 bytes, 37 letra c/ acento ja estoura
 - cai no handleBusinessRule e devolve 400 c/ "password cannot be more than 72 bytes" em ingles, no login vira 400 em vez de 401
 - PasswordRules.fitsInBcrypt antes do encode nos tres servico, mensagem em pt-BR, no login vira senha errada
@@ -648,7 +648,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - @Size(max) nas lista: components 20, escalationSteps 104, items 10, periods 50
 - handleBusinessRule so repassa mensagem de BusinessException, IllegalArgumentException vai pro log
 
-**9. back: lista de paciente manda cpf, telefone e endereco q nenhuma tela usa**
+**#122 · back: lista de paciente manda cpf, telefone e endereco q nenhuma tela usa**
 - PatientResponseDTO leva cpf, email, phone e address em GET /patients, /patients/{id}, archive e reactivate
 - o front so le name, birthDate, archivedAt e prescriberName; a lista inteira eh baixada em 3 tela e em 2 so monta dropdown de nome
 - deixar id, name, birthDate, prescriberId, prescriberName, archived, archivedAt
@@ -656,7 +656,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - PasswordExposureTest ja tem paciente c/ cpf 00000000191, acrescentar doesNotContain do cpf e do e-mail
 - PasswordResetLinkDTO so devolve o link qnd n tem MAIL_HOST, c/ smtp vai pelo e-mail
 
-**10. back: pedido de senha nova responde em tempo diferente e trocar e-mail conta quem tem conta**
+**#123 · back: pedido de senha nova responde em tempo diferente e trocar e-mail conta quem tem conta**
 - requestReset volta na hora pra e-mail sem conta e demora o envio smtp sincrono pra conta real, da pra medir de fora
 - responder 204 antes de mandar o e-mail, envio fora da requisicao (@Async ou job)
 - PUT /profile/email devolve 409 "ja tem conta" sem limite, paciente logado testa qualquer e-mail da clinica
@@ -664,7 +664,7 @@ Nenhum destes foi criado. São propostas para o usuário aprovar antes de virare
 - SmtpEmailSender loga a MailException inteira e a causa traz o endereco, logar so a classe e msg curta
 - na tela de export anonimo avisar q texto livre n eh anonimizado
 
-**11. back: testes de tranca pra isolamento, mass assignment e resposta sem pii**
+**#124 · back: testes de tranca pra isolamento, mass assignment e resposta sem pii**
 - RouteRolesTest so exige hasRole, rota nova c/ {patientId} sem @patientAccess passa e vaza entre prescritor
 - assertar q toda rota c/ {patientId}/{appointmentId}/{id} fora de /admin e /notifications cita "Access."
 - PatientLinkTest ganha export csv, audit-events, progress/comments, archive/reactivate, no-show, review/annul, anamneses e meem por consulta
