@@ -666,7 +666,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | Sessão | Token em cookie `httpOnly`, renovado durante o uso, com bloqueio temporário após tentativas de login incorretas |
 | Padrão de backend | DTO em toda entrada e saída, serviços transacionais, tratamento de erro completo e fuso `America/Sao_Paulo` |
 | Padrão de frontend | Layout por perfil, rotas protegidas em um único lugar, carregamento de cada tela sob demanda e CSS com escopo por componente |
-| Integração contínua | Testes do backend, lint e build do frontend a cada envio ao repositório |
+| Integração contínua | Testes do backend (H2 e Postgres), lint, testes e build do frontend, build das imagens e a pilha do compose subindo de ponta a ponta com login e um POST autenticado, a cada envio ao repositório |
 
 ### 8.3 Requisitos alterados
 
