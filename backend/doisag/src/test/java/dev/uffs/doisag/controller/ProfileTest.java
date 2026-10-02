@@ -144,6 +144,37 @@ class ProfileTest {
     }
 
     @Test
+    void extraFieldsInTheProfileBodyDoNotChangeRoleActiveNorPrescriber() throws Exception {
+        Prescriber otherPrescriber = new Prescriber();
+        otherPrescriber.setName("Outra Prescritora");
+        otherPrescriber.setEmail("outra-prescritora@email.com");
+        otherPrescriber.setPassword("hash");
+        otherPrescriber = prescriberRepository.save(otherPrescriber);
+
+        String body = """
+                {"name":"Paciente Com Nome Novo","birthDate":"1990-04-12","phone":"49988887777",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"},
+                 "role":"ADMIN","active":false,"prescriberId":%d,"id":987654321,
+                 "email":"invadido@email.com","cpf":"16899535009","password":"Outra#Senha1"}
+                """.formatted(otherPrescriber.getId());
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("PATIENT"))
+                .andExpect(jsonPath("$.name").value("Paciente Com Nome Novo"));
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.isActive()).isTrue();
+        assertThat(savedPatient.getPrescriber().getId()).isEqualTo(prescriber.getId());
+        assertThat(savedPatient.getEmail()).isEqualTo("perfil-paciente@email.com");
+        assertThat(savedPatient.getCpf()).isEqualTo("52998224725");
+        assertThat(passwordEncoder.matches(PASSWORD, savedPatient.getPassword())).isTrue();
+    }
+
+    @Test
     void patientCannotRemoveThePhone() throws Exception {
         String body = """
                 {"name":"Paciente do Perfil","birthDate":"1990-04-12","phone":null,

@@ -110,6 +110,9 @@ class SessionTest {
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andReturn();
 
+        // resposta da api nunca fica guardada no navegador de quem usou o pc antes
+        assertThat(result.getResponse().getHeader("Cache-Control")).contains("no-store");
+
         String setCookieHeader = result.getResponse().getHeader("Set-Cookie");
         assertThat(setCookieHeader)
                 .contains("session=")

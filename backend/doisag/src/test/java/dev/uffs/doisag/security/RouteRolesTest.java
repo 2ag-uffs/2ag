@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -66,6 +68,14 @@ class RouteRolesTest {
             "GET /invites/{token}",
             "GET /consent-term",
             "GET /health"
+    );
+
+    // a variavel do caminho n eh id de registro: token de convite e nome da escala
+    private static final Set<String> ROUTES_WITHOUT_RECORD_ID = Set.of(
+            "GET /invites/{token}",
+            "GET /scales/definitions/{slug}",
+            "POST /scales/{slug}/responses",
+            "GET /scales/{slug}/responses"
     );
 
     // consulta n pode ser marcada no passado entao a data anda junto com o calendario
@@ -117,6 +127,37 @@ class RouteRolesTest {
         assertThat(routesWithoutRoles).isEmpty();
         // se uma rota publica mudar de caminho a lista la de cima precisa mudar junto
         assertThat(routes.keySet()).containsAll(PUBLIC_ROUTES);
+    }
+
+    // rota nova com id no caminho e sem conferir o vinculo vazaria paciente entre prescritores (RF30)
+    @Test
+    void everyRouteWithARecordIdChecksTheLinkWithThePatient() {
+        Map<String, HandlerMethod> routes = appRoutes();
+        List<String> routesWithoutLinkCheck = new ArrayList<>();
+
+        for (Map.Entry<String, HandlerMethod> route : routes.entrySet()) {
+            String path = route.getKey().substring(route.getKey().indexOf(' ') + 1);
+            // admin n abre prontuario e o aviso confere o dono no servico
+            if (!path.contains("{") || path.startsWith("/admin/") || path.startsWith("/notifications/")
+                    || ROUTES_WITHOUT_RECORD_ID.contains(route.getKey())) {
+                continue;
+            }
+            String rule = roleRuleOf(route.getValue());
+            if (rule == null || !rule.contains(" and @") || !rule.contains("Access.") || rule.contains(" or ")) {
+                routesWithoutLinkCheck.add(route.getKey());
+                continue;
+            }
+            // a regra precisa conferir o proprio id do caminho e n outro campo
+            Matcher pathVariable = Pattern.compile("\\{([^}]+)}").matcher(path);
+            while (pathVariable.find()) {
+                if (!rule.contains("#" + pathVariable.group(1))) {
+                    routesWithoutLinkCheck.add(route.getKey());
+                }
+            }
+        }
+
+        assertThat(routesWithoutLinkCheck).isEmpty();
+        assertThat(routes.keySet()).containsAll(ROUTES_WITHOUT_RECORD_ID);
     }
 
     @Test
@@ -231,7 +272,7 @@ class RouteRolesTest {
         mockMvc.perform(get("/patients").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].email").value("perfil-paciente@email.com"));
+                .andExpect(jsonPath("$[0].id").value(patient.getId()));
     }
 
     // o paciente escolhe o horario mas diagnostico e conduta sao do prescritor

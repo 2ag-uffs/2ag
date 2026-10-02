@@ -68,19 +68,20 @@ public class PasswordResetService {
             return;
         }
 
-        sendNewLink(user, now);
+        sendLink(user, createLink(user, now));
     }
 
-    // o link de senha nova de uma conta, sem passar pelo limite por hora
-    // quem chama aqui ja eh alguem de confianca, tipo o administrador destravando
-    // a conta de um prescritor, entao o link volta pra quem pediu
+    // link de senha nova pedido pelo administrador, sem o limite por hora
+    // volta nulo qnd o e-mail saiu de verdade, senao o admin ficaria com a conta de outra pessoa na mao
     @Transactional
     public String createLinkFor(Users user) {
-        return sendNewLink(user, LocalDateTime.now());
+        String resetLink = createLink(user, LocalDateTime.now());
+        boolean wasEmailed = sendLink(user, resetLink);
+        return wasEmailed ? null : resetLink;
     }
 
-    // um link novo cancela os anteriores, manda o e-mail e devolve o endereco
-    private String sendNewLink(Users user, LocalDateTime now) {
+    // um link novo cancela os anteriores
+    private String createLink(Users user, LocalDateTime now) {
         for (PasswordReset pendingReset : passwordResetRepository.findAllByUserIdAndUsedAtIsNull(user.getId())) {
             pendingReset.setUsedAt(now);
         }
@@ -93,10 +94,12 @@ public class PasswordResetService {
         passwordReset.setExpiresAt(now.plusMinutes(VALID_MINUTES));
         passwordResetRepository.save(passwordReset);
 
-        String resetLink = publicUrl + "/redefinir-senha?token=" + token;
-        emailSender.send(new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
+        return publicUrl + "/redefinir-senha?token=" + token;
+    }
+
+    private boolean sendLink(Users user, String resetLink) {
+        return emailSender.send(new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
                 buildEmailText(user.getName(), resetLink)));
-        return resetLink;
     }
 
     // grava a senha nova pelo link e derruba as sessoes abertas

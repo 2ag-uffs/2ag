@@ -118,6 +118,32 @@ class PatientSignUpTest {
     }
 
     @Test
+    void extraFieldsInTheSignUpBodyDoNotChangeRoleActiveNorPrescriber() throws Exception {
+        Prescriber otherPrescriber = new Prescriber();
+        otherPrescriber.setName("Outro Prescritor");
+        otherPrescriber.setEmail("outro-prescritor@email.com");
+        otherPrescriber.setPassword("hash");
+        otherPrescriber = prescriberRepository.save(otherPrescriber);
+
+        String body = """
+                {"inviteToken":"%s","name":"Maria da Silva","cpf":"%s","birthDate":"1990-04-12",
+                 "phone":"49999887766","email":"campo-extra@email.com","password":"%s","consentTermVersion":"%s",
+                 "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"sc"},
+                 "role":"ADMIN","active":false,"prescriberId":%d,"id":987654321}
+                """.formatted(newInviteToken(), VALID_CPF, VALID_PASSWORD, ConsentTermService.CURRENT_VERSION,
+                otherPrescriber.getId());
+
+        signUp(body)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("PATIENT"));
+
+        Patient patient = (Patient) usersRepository.findByEmail("campo-extra@email.com").orElseThrow();
+        assertThat(patient.isActive()).isTrue();
+        assertThat(patient.getPrescriber().getId()).isEqualTo(prescriber.getId());
+        assertThat(patient.getId()).isNotEqualTo(987654321L);
+    }
+
+    @Test
     void theSameInviteCannotBeUsedTwice() throws Exception {
         String inviteToken = newInviteToken();
         signUp(signUpBody(inviteToken, "primeira@email.com", VALID_CPF, VALID_PASSWORD))

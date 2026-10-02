@@ -4,5 +4,6 @@ package dev.uffs.doisag.email;
 // o EmailConfig escolhe entre o envio pelo servidor smtp e o q so escreve no log
 public interface EmailSender {
 
-    void send(EmailMessage message);
+    // falso qnd o e-mail n saiu: sem smtp ele so vai pro log, e com smtp o servidor pode falhar
+    boolean send(EmailMessage message);
 }

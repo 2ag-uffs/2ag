@@ -17,8 +17,10 @@ class LogEmailSenderTest {
 
     @Test
     void productionLogShowsTheSubjectButNotTheLink(CapturedOutput output) {
-        new LogEmailSender(false).send(RESET_EMAIL);
+        boolean wasSent = new LogEmailSender(false).send(RESET_EMAIL);
 
+        // ninguem recebeu, entao quem chamou precisa saber q o e-mail n saiu
+        assertThat(wasSent).isFalse();
         assertThat(output).contains("Criar uma senha nova no 2AG");
         assertThat(output).doesNotContain("codigo-secreto");
     }

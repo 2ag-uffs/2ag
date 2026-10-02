@@ -89,9 +89,7 @@ public class PrescriberService {
     }
 
     // o administrador gera um link de senha nova pra um prescritor q ficou sem acesso (RF35)
-    //
-    // sem smtp no piloto o link n sai por e-mail, entao ele volta na resposta e quem
-    // entrega pra pessoa eh o proprio administrador
+    // o link so volta na resposta qnd o e-mail n saiu
     @Transactional
     public PasswordResetLinkDTO startPasswordReset(Long prescriberId, String adminPassword, Users admin) {
         // a sessao aberta n basta pq isso toma a conta de outra pessoa

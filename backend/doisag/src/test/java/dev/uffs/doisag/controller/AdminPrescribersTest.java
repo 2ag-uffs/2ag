@@ -1,5 +1,7 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.email.EmailMessage;
+import dev.uffs.doisag.email.EmailSender;
 import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -10,11 +12,13 @@ import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PrescriberService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,9 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -52,6 +59,8 @@ class AdminPrescribersTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private TokenService tokenService;
+
+    @MockitoBean private EmailSender emailSender;
 
     private String adminToken() {
         Users admin = usersRepository.findByEmail("admin-teste@email.com").orElseThrow();
@@ -179,6 +188,23 @@ class AdminPrescribersTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"token\":\"" + token + "\",\"newPassword\":\"OutraSenha@2026\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void whenTheEmailGoesOutTheLinkIsNotInTheResponse() throws Exception {
+        when(emailSender.send(any(EmailMessage.class))).thenReturn(true);
+        Prescriber prescriber = savePrescriber("admin-senha-smtp@email.com", "ADM11");
+
+        String response = passwordReset(prescriber.getId(), ADMIN_PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resetLink").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("token=");
+
+        ArgumentCaptor<EmailMessage> sentMessage = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(sentMessage.capture());
+        assertThat(sentMessage.getValue().to()).isEqualTo("admin-senha-smtp@email.com");
+        assertThat(sentMessage.getValue().text()).contains("token=");
     }
 
     // a conta de outra pessoa ta em jogo entao a sessao aberta n basta

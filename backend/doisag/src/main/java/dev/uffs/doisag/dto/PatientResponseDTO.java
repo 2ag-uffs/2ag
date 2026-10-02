@@ -7,15 +7,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 // o que a api devolve quando o assunto eh paciente
-// n tem senha aqui e nem os campos do UserDetails q vazavam antes
+// so o q as telas usam: cpf e contato ficam no perfil da propria pessoa
 public record PatientResponseDTO(
         Long id,
         String name,
-        String cpf,
-        String email,
         LocalDate birthDate,
-        String phone,
-        AddressDTO address,
         Long prescriberId,
         String prescriberName,
         boolean archived,
@@ -25,11 +21,7 @@ public record PatientResponseDTO(
         this(
                 patient.getId(),
                 patient.getName(),
-                patient.getCpf(),
-                patient.getEmail(),
                 patient.getBirthDate(),
-                patient.getPhone(),
-                patient.getAddress() == null ? null : new AddressDTO(patient.getAddress()),
                 prescriberIdOf(patient),
                 prescriberNameOf(patient),
                 patient.isArchived(),

@@ -22,8 +22,10 @@ class SmtpEmailSenderTest {
 
     @Test
     void messageGoesWithSenderRecipientSubjectAndText() {
-        smtpEmailSender.send(new EmailMessage("paciente@email.com", "Criar uma senha nova no 2AG", "Use o link"));
+        boolean wasSent = smtpEmailSender.send(
+                new EmailMessage("paciente@email.com", "Criar uma senha nova no 2AG", "Use o link"));
 
+        assertThat(wasSent).isTrue();
         ArgumentCaptor<SimpleMailMessage> sentMessage = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(javaMailSender).send(sentMessage.capture());
         assertThat(sentMessage.getValue().getFrom()).isEqualTo("nao-responda@clinica.com");
@@ -40,5 +42,6 @@ class SmtpEmailSenderTest {
 
         assertThatCode(() -> smtpEmailSender.send(new EmailMessage("paciente@email.com", "Assunto", "Texto")))
                 .doesNotThrowAnyException();
+        assertThat(smtpEmailSender.send(new EmailMessage("paciente@email.com", "Assunto", "Texto"))).isFalse();
     }
 }

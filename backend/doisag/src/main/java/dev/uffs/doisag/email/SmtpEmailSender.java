@@ -20,7 +20,7 @@ public class SmtpEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(EmailMessage message) {
+    public boolean send(EmailMessage message) {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setFrom(senderAddress);
         mailMessage.setTo(message.to());
@@ -29,10 +29,12 @@ public class SmtpEmailSender implements EmailSender {
 
         try {
             javaMailSender.send(mailMessage);
+            return true;
         } catch (MailException exception) {
             // quem pede o link de senha nova recebe sempre a mesma resposta
             // entao a falha do servidor fica so no log e sem o endereco nem o link
             log.error("falha ao enviar o e-mail com assunto {}", message.subject(), exception);
+            return false;
         }
     }
 }

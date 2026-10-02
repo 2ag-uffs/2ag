@@ -92,11 +92,11 @@ o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declar
 | `GET /admin/prescribers` | lista os prescritores |
 | `POST /admin/prescribers` | cria conta de prescritor |
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
-| `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor e devolve o link na resposta |
+| `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu |
 
 o administrador não acessa nenhum dado clínico.
 
-o link de senha nova é a saída para o prescritor que esqueceu a senha antes de a clínica ter `MAIL_HOST` configurado: o administrador entrega o endereço para a pessoa pelo canal que ele confia. como a rota toma a conta de outra pessoa, ela pede a senha do próprio administrador no corpo (`adminPassword`), só funciona em conta ativa, reaproveita o link de uso único de 30 minutos e grava um evento `REDEFINICAO_DE_SENHA` na trilha de auditoria. com `MAIL_HOST` configurado, o mesmo link também sai por e-mail.
+o link de senha nova é a saída para o prescritor que esqueceu a senha antes de a clínica ter `MAIL_HOST` configurado: o administrador entrega o endereço para a pessoa pelo canal que ele confia. como a rota toma a conta de outra pessoa, ela pede a senha do próprio administrador no corpo (`adminPassword`), só funciona em conta ativa, reaproveita o link de uso único de 30 minutos e grava um evento `REDEFINICAO_DE_SENHA` na trilha de auditoria. quando o e-mail sai de verdade, o link vai só para o prescritor e a resposta vem com `resetLink` nulo, para o administrador não ficar com a conta de outra pessoa na mão. se o servidor de e-mail falhar, o link volta na resposta do mesmo jeito que sem `MAIL_HOST`, senão o prescritor ficaria trancado até alguém consertar o SMTP.
 
 ## perfil
 

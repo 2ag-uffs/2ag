@@ -19,11 +19,12 @@ public class LogEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(EmailMessage message) {
+    public boolean send(EmailMessage message) {
         if (showText) {
             log.info("e-mail para {} com assunto {}\n{}", message.to(), message.subject(), message.text());
         } else {
             log.info("e-mail para {} com assunto {} nao enviado: configure MAIL_HOST", message.to(), message.subject());
         }
+        return false;
     }
 }

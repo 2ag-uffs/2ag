@@ -1,6 +1,7 @@
 package dev.uffs.doisag.security;
 
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.Address;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -60,6 +61,8 @@ class PasswordExposureTest {
         patient.setName("Paciente de Teste");
         patient.setEmail("teste-vazamento@email.com");
         patient.setCpf("00000000191");
+        patient.setPhone("49911112222");
+        patient.setAddress(new Address("Rua do Vazamento", "1", "Chapeco", "SC", "Brasil"));
         patient.setBirthDate(LocalDate.of(1990, 1, 1));
         patient.setPassword(KNOWN_HASH);
         patient.setPrescriber(prescriber);
@@ -83,6 +86,11 @@ class PasswordExposureTest {
         assertThat(body).contains("Paciente de Teste"); // veio conteudo mesmo
         assertThat(body).doesNotContain(KNOWN_HASH);
         assertThat(body).doesNotContain("password");
+        // a lista so leva o q a tela usa: cpf e contato n saem daqui
+        assertThat(body).doesNotContain("00000000191");
+        assertThat(body).doesNotContain("teste-vazamento@email.com");
+        assertThat(body).doesNotContain("49911112222");
+        assertThat(body).doesNotContain("Rua do Vazamento");
     }
 
     @Test
@@ -92,6 +100,10 @@ class PasswordExposureTest {
         assertThat(body).contains("Paciente de Teste");
         assertThat(body).doesNotContain(KNOWN_HASH);
         assertThat(body).doesNotContain("password");
+        assertThat(body).doesNotContain("00000000191");
+        assertThat(body).doesNotContain("teste-vazamento@email.com");
+        assertThat(body).doesNotContain("49911112222");
+        assertThat(body).doesNotContain("Rua do Vazamento");
     }
 
     @Test

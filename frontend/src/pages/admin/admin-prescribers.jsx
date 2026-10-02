@@ -64,7 +64,7 @@ export default function AdminPrescribers() {
 
     const [prescriberToToggle, setPrescriberToToggle] = useState(null);
 
-    // senha nova de um prescritor: pede a senha do admin e devolve um link pra entregar
+    // senha nova de um prescritor: pede a senha do admin e o link vem na resposta ou vai por e-mail
     const [resetTarget, setResetTarget] = useState(null);
     const [adminPassword, setAdminPassword] = useState("");
     const [resetError, setResetError] = useState(null);
@@ -181,9 +181,11 @@ export default function AdminPrescribers() {
         setIsLinkCopied(false);
     };
 
+    // o resultado sai junto, senao o modal fechado tentaria ler o prescritor q ja foi limpo
     const closeReset = () => {
         if (!isResetting) {
             setResetTarget(null);
+            setNewLink(null);
         }
     };
 
@@ -391,11 +393,24 @@ export default function AdminPrescribers() {
                             </button>
                         </div>
                     </form>
+                ) : !newLink.resetLink ? (
+                    <div className={styles.form}>
+                        <p className={styles.fieldWide}>
+                            O link de senha nova foi enviado para {resetTarget.email}. Ele vale{" "}
+                            {newLink.validMinutes} minutos e serve uma vez só. Se não chegar, peça para a pessoa
+                            conferir a caixa de spam.
+                        </p>
+                        <div className={styles.formActions}>
+                            <button type="button" className="button" onClick={closeReset}>
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
                 ) : (
                     <div className={styles.form}>
                         <p className={styles.fieldWide}>
                             Entregue este link para {newLink.prescriberName}. Ele vale {newLink.validMinutes} minutos
-                            e serve uma vez só. Se a clínica já tiver e-mail configurado, ele também foi enviado.
+                            e serve uma vez só.
                         </p>
                         <input className={styles.linkBox} value={newLink.resetLink} readOnly={true}
                                aria-label="Link de senha nova"/>
@@ -403,7 +418,7 @@ export default function AdminPrescribers() {
                             <button type="button" className="button-secondary" onClick={copyLink}>
                                 {isLinkCopied ? "Link copiado" : "Copiar link"}
                             </button>
-                            <button type="button" className="button" onClick={() => setResetTarget(null)}>
+                            <button type="button" className="button" onClick={closeReset}>
                                 Fechar
                             </button>
                         </div>

@@ -8,12 +8,14 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Admin;
+import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -63,6 +65,7 @@ class PatientLinkTest {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PrescriptionRepository prescriptionRepository;
     @Autowired private ScaleResponseRepository scaleResponseRepository;
+    @Autowired private AnamnesisRepository anamnesisRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private TokenService tokenService;
 
@@ -73,7 +76,7 @@ class PatientLinkTest {
 
     // o paciente e um registro de cada tipo q pertence a ele
     private record ClinicalRecords(Patient patient, Long appointmentId, Long prescriptionId, Long examId,
-                                   Long scaleId) {
+                                   Long scaleId, Long anamnesisId) {
     }
 
     @BeforeEach
@@ -146,6 +149,20 @@ class PatientLinkTest {
                 prescriberA, "anular consulta");
         assertForbidden(put("/patients/" + patientOfB + "/treatment-protocol/end"),
                 prescriberA, "encerrar acompanhamento");
+        assertForbidden(put("/patients/" + patientOfB + "/archive"), prescriberA, "arquivar paciente");
+        assertForbidden(put("/patients/" + patientOfB + "/reactivate"), prescriberA, "reativar paciente");
+        assertForbidden(put("/appointments/" + recordsOfB.appointmentId() + "/no-show"),
+                prescriberA, "marcar falta");
+        assertForbidden(put("/scales/responses/" + recordsOfB.scaleId() + "/review"),
+                prescriberA, "marcar escala como analisada");
+        assertForbidden(put("/scales/responses/" + recordsOfB.scaleId() + "/annul")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"escala de outro prescritor\"}"),
+                prescriberA, "anular escala");
+        assertForbidden(put("/anamneses/" + recordsOfB.anamnesisId() + "/annul")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"anamnese de outro prescritor\"}"),
+                prescriberA, "anular anamnese");
     }
 
     @Test
@@ -161,6 +178,11 @@ class PatientLinkTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"answers\":{\"humorAnsioso\":0}}"),
                 recordsOfA.patient(), "alterar escala de outro paciente");
+        // corpo valido, senao o 400 da validacao chegaria antes do 403
+        assertForbidden(put("/anamneses/" + recordsOfB.anamnesisId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonForVisit\":\"dor\",\"treatmentAwareness\":\"Sim\"}"),
+                recordsOfA.patient(), "alterar anamnese de outro paciente");
     }
 
     @Test
@@ -301,16 +323,27 @@ class PatientLinkTest {
                 "/patients/" + patientId + "/anamneses",
                 "/patients/" + patientId + "/appointments",
                 "/patients/" + patientId + "/prescriptions",
+                "/patients/" + patientId + "/progress/comments?period=DIAS_30",
+                "/patients/" + patientId + "/export/appointments.csv",
+                "/patients/" + patientId + "/export/prescriptions.csv",
+                "/patients/" + patientId + "/export/scales.csv",
+                "/patients/" + patientId + "/export/anamneses.csv",
+                "/patients/" + patientId + "/export/progress.csv?attribute=ESCORE_HAMILTON&period=DIAS_30",
                 "/scales/responses/" + records.scaleId(),
+                "/scales/responses/" + records.examId(),
+                "/anamneses/" + records.anamnesisId(),
                 "/prescriptions/" + records.prescriptionId()
         );
     }
 
     // leituras q so o prescritor faz
     private List<String> prescriberOnlyReadRoutes(ClinicalRecords records) {
+        Long patientId = records.patient().getId();
         return List.of(
                 "/appointments/" + records.appointmentId(),
-                "/scales/responses/" + records.examId()
+                "/scales/mental-state-exam/appointments/" + records.appointmentId(),
+                "/patients/" + patientId + "/audit-events?from=" + LocalDate.now().minusDays(30)
+                        + "&to=" + LocalDate.now()
         );
     }
 
@@ -383,6 +416,13 @@ class PatientLinkTest {
         treatmentProtocolService.create(patient.getId(),
                 new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null, List.of(weeklyHamilton)), prescriber);
 
-        return new ClinicalRecords(patient, appointment.getId(), prescription.getId(), exam.getId(), scale.getId());
+        Anamnesis anamnesis = new Anamnesis();
+        anamnesis.setPatient(patient);
+        anamnesis.setAssessmentDate(LocalDate.now());
+        anamnesis.setReasonForVisit("anamnese do teste de vinculo");
+        anamnesis = anamnesisRepository.save(anamnesis);
+
+        return new ClinicalRecords(patient, appointment.getId(), prescription.getId(), exam.getId(), scale.getId(),
+                anamnesis.getId());
     }
 }
