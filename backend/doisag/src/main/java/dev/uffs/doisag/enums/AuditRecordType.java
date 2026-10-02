@@ -16,7 +16,8 @@ public enum AuditRecordType {
     DESIGNACAO_DE_ESCALA("Escala enviada ao paciente"),
     ACOMPANHAMENTO_AUTOMATICO("Acompanhamento de 90 dias"),
     // conta de trabalho e n prontuario, entao o evento vem sem paciente
-    CONTA_DE_PRESCRITOR("Conta de prescritor");
+    CONTA_DE_PRESCRITOR("Conta de prescritor"),
+    CONTA_DE_PACIENTE("Conta de paciente");
 
     private final String label;
 

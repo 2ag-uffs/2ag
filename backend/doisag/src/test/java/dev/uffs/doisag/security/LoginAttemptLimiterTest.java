@@ -115,6 +115,29 @@ class LoginAttemptLimiterTest {
         assertThat(limiter.isEmailChangeBlocked(2L)).isFalse();
     }
 
+    @Test
+    void fiveSignUpAttemptsBlockThatInviteFromEveryAddress() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            limiter.registerSignUpAttempt("convite-a");
+        }
+
+        assertThat(limiter.isSignUpBlocked("convite-a", MARIA_ADDRESS)).isTrue();
+        assertThat(limiter.isSignUpBlocked("convite-b", OTHER_ADDRESS)).isFalse();
+
+        clock.moveMinutes(16);
+        assertThat(limiter.isSignUpBlocked("convite-a", MARIA_ADDRESS)).isFalse();
+    }
+
+    @Test
+    void twentyRefusedSignUpsBlockTheAddressForEveryInvite() {
+        for (int refusal = 0; refusal < 20; refusal++) {
+            limiter.registerSignUpRefusal(OTHER_ADDRESS);
+        }
+
+        assertThat(limiter.isSignUpBlocked("convite-novo", OTHER_ADDRESS)).isTrue();
+        assertThat(limiter.isSignUpBlocked("convite-novo", MARIA_ADDRESS)).isFalse();
+    }
+
     private void failTimes(String email, String address, int times) {
         for (int attempt = 0; attempt < times; attempt++) {
             limiter.registerFailure(email, address);

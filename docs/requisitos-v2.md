@@ -37,7 +37,7 @@ Sistema web responsivo para gestão clínica de tratamento com fitocanabinoides,
 |---|---|---|
 | Paciente | `ROLE_PATIENT` | Preenche anamnese, escalas e fichas de acompanhamento; consulta seu histórico, progresso e prescrições; agenda consultas |
 | Prescritor | `ROLE_PRESCRIBER` | Conduz consultas, emite prescrições, designa escalas, acompanha evolução dos **seus** pacientes |
-| Administrador | `ROLE_ADMIN` | Provisiona contas de prescritor. Perfil operacional, sem acesso a dado clínico |
+| Administrador | `ROLE_ADMIN` | Provisiona contas de prescritor e desativa ou reativa contas de prescritor e de paciente. Perfil operacional, sem acesso a dado clínico |
 
 > **Mudança em relação à v1.0:** a v1.0 usava `ROLE_ADMIN` como sinônimo de prescritor. Isso criou uma confusão que, na implementação, virou falha de segurança: um perfil chamado "admin" naturalmente recebeu acesso irrestrito. Os papéis agora são três e `ROLE_ADMIN` **não vê prontuário**.
 
@@ -119,6 +119,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, data de nascimento, telefone, e
 - A combinação tipo + número de registro é única
 - O sistema gera um **código de vínculo** único por prescritor (ver RN06)
 - Requisição anônima a qualquer rota de criação de prescritor retorna **401/403**
+- O administrador **não escolhe nem conhece** a senha do prescritor: a conta nasce com um link de primeiro acesso de uso único (48 h), enviado por e-mail ou, sem SMTP, mostrado ao administrador para entregar. Quem cria a senha é o próprio prescritor
 - O seed de desenvolvimento roda **somente** no profile `dev` e nunca em produção
 
 ---
@@ -671,7 +672,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 
 | Requisito | Alteração |
 |---|---|
-| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores |
+| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores. *Acrescentado em 02/10/2026:* o prescritor cria a própria senha por link de primeiro acesso, e o administrador desativa e reativa conta de paciente achando-a pelo e-mail, sem lista geral e sem ver prontuário |
 | RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
 | RF04 | *Critério acrescentado:* pressão, peso e altura são opcionais. A clínica não mede sinais vitais, porque a maioria das consultas é remota (01/10/2026) |
 | RF05 | Nova prescrição substitui a vigente quando a consulta dela não é mais antiga que a da vigente; lançada em consulta anterior, entra só no histórico (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |

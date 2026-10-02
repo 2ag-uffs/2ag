@@ -45,10 +45,12 @@ public class AdminPrescriberController {
                 .toList();
     }
 
+    // a resposta traz o link de primeiro acesso so qnd o e-mail n saiu
     @PostMapping
-    public ResponseEntity<AdminPrescriberDTO> createPrescriber(@RequestBody @Valid PrescriberCreateDTO prescriberData) {
-        Prescriber prescriber = prescriberService.create(prescriberData);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AdminPrescriberDTO(prescriber));
+    public ResponseEntity<PasswordResetLinkDTO> createPrescriber(
+            @RequestBody @Valid PrescriberCreateDTO prescriberData) {
+        PasswordResetLinkDTO firstAccess = prescriberService.createByAdmin(prescriberData);
+        return ResponseEntity.status(HttpStatus.CREATED).body(firstAccess);
     }
 
     // link de senha nova pra um prescritor q perdeu o acesso (RF35)

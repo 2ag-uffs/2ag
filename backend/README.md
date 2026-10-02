@@ -78,6 +78,8 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 - o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. a exceção é o ataque distribuído: 100 erros no mesmo e-mail, somando todos os endereços, bloqueiam aquele e-mail por 15 minutos em qualquer lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
 - a mesma contagem vale para toda rota que confere senha: trocar a senha, trocar o e-mail e o link de senha nova gerado pelo administrador. sessão esquecida aberta não vira chute livre da senha atual
 - trocar o e-mail para um que já tem conta responde `409`, e 5 dessas respostas bloqueiam a troca por 15 minutos, senão um paciente logado descobriria quem é da clínica
+- o cadastro com e-mail ou CPF que já tem conta responde `400` com uma mensagem só, sem dizer qual dos dois, e o convite continua valendo para os dados certos. 5 tentativas no mesmo convite, ou 20 recusas do mesmo endereço, bloqueiam o cadastro por 15 minutos. a mensagem genérica sozinha não esconde tudo: uma tentativa com o CPF de alguém ainda diz se ele tem conta, e o que segura é o convite ser pessoal e a contagem
+- a conta administrativa não troca de e-mail pelo perfil, porque o e-mail dela é o `ADMIN_EMAIL` do servidor: trocando por fora, a subida seguinte criaria outra conta com a senha inicial
 - a senha vai de 8 a 64 caracteres e precisa caber em 72 bytes, que é o limite do bcrypt. letra com acento e emoji ocupam mais de um byte, e a senha que não cabe é recusada com mensagem no próprio campo
 - a contagem fica na memória da api, que roda numa instância só, e zera quando ela reinicia. atrás do nginx o endereço de quem acessa vem do cabeçalho `X-Forwarded-For`, então um proxy a mais na frente precisa repassar esse cabeçalho, senão todo mundo aparece com o mesmo endereço
 - conta desativada perde o acesso na requisição seguinte
@@ -95,11 +97,18 @@ o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declar
 | rota | o que faz |
 | :--- | :--- |
 | `GET /admin/prescribers` | lista os prescritores |
-| `POST /admin/prescribers` | cria conta de prescritor |
+| `POST /admin/prescribers` | cria conta de prescritor, sem senha. o link de primeiro acesso só volta na resposta quando o e-mail não saiu |
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
 | `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu |
+| `POST /admin/patients/lookup` | acha a conta de um paciente pelo e-mail inteiro, que vai no corpo. devolve só `{id, name, email, active}` |
+| `GET /admin/patients/deactivated` | as contas de paciente desativadas, para dar para reativar depois |
+| `PUT /admin/patients/{id}/active` | ativa ou desativa a conta de um paciente |
 
 o administrador não acessa nenhum dado clínico.
+
+o administrador não escolhe nem conhece a senha de ninguém. a conta de prescritor nasce com uma senha aleatória que ninguém vê, e quem cria a senha de verdade é o próprio prescritor, pelo link de primeiro acesso: uso único, 48 horas, o mesmo mecanismo do link de senha nova. com `MAIL_HOST` o link vai só para o e-mail da pessoa; sem ele, aparece na tela para o administrador entregar. se vencer, o **Senha nova** gera outro. a criação da conta fica na trilha como `CRIACAO` de `CONTA_DE_PRESCRITOR`.
+
+desativar uma conta, de prescritor ou de paciente, tira o acesso na requisição seguinte e encerra as sessões abertas, então reativar depois não ressuscita a sessão antiga. as duas ações vão para a trilha (`DESATIVACAO` e `REATIVACAO`), e a de paciente aparece também na trilha do prontuário dele, para o prescritor ver. a administração não tem lista de pacientes: ela acha a conta pelo e-mail e só enxerga a lista das que desativou. desativar não é arquivar: arquivar é ato clínico do prescritor e não tira o acesso. a conta desativada para de receber e-mail de lembrete; os avisos dentro do sistema e as tarefas do acompanhamento continuam sendo criados, para o caso de ela ser reativada.
 
 o link de senha nova é a saída para o prescritor que esqueceu a senha antes de a clínica ter `MAIL_HOST` configurado: o administrador entrega o endereço para a pessoa pelo canal que ele confia. como a rota toma a conta de outra pessoa, ela pede a senha do próprio administrador no corpo (`adminPassword`), só funciona em conta ativa, reaproveita o link de uso único de 30 minutos e grava um evento `REDEFINICAO_DE_SENHA` na trilha de auditoria. quando o e-mail sai de verdade, o link vai só para o prescritor e a resposta vem com `resetLink` nulo, para o administrador não ficar com a conta de outra pessoa na mão. se o servidor de e-mail falhar, o link volta na resposta do mesmo jeito que sem `MAIL_HOST`, senão o prescritor ficaria trancado até alguém consertar o SMTP.
 
@@ -220,7 +229,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
 | `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
 
-- todas aceitam `anonimo=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente aparece só por um número. só o prescritor pode pedir esse modo
+- todas aceitam `anonymous=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo. texto livre, como queixa e observação, sai como foi escrito
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria
@@ -297,8 +306,8 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `404` | registro ou rota que não existe. a mensagem é genérica: o detalhe com o id vai para o log, não para a tela |
 | `405` | método http que a rota não aceita |
 | `415` | corpo enviado num formato que a rota não aceita. a api só recebe json |
-| `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors` |
-| `429` | senha errada demais no login, na troca de senha ou de e-mail, ou pedidos demais de link de senha nova |
+| `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors`. o cadastro do paciente não usa: responde `400` sem dizer o campo |
+| `429` | senha errada demais no login, na troca de senha ou de e-mail, pedidos demais de link de senha nova ou cadastro recusado vezes demais |
 | `500` | erro inesperado, registrado no log |
 
 `GET /health` responde se a api e o banco estão de pé. é o que o docker usa.

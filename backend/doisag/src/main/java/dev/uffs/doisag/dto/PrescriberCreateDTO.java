@@ -11,6 +11,7 @@ import org.hibernate.validator.constraints.br.CPF;
 import java.time.LocalDate;
 
 // dados q o administrador preenche pra criar a conta de um prescritor (RF02.2)
+// sem senha de proposito: quem escolhe a senha eh o proprio prescritor
 public record PrescriberCreateDTO(
         @NotBlank(message = "O nome completo é obrigatório")
         @Size(max = 255, message = "O nome pode ter até 255 caracteres")
@@ -20,10 +21,6 @@ public record PrescriberCreateDTO(
         @Email(message = "O formato do e-mail é inválido")
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,
-
-        @NotBlank(message = "A senha é obrigatória")
-        @Pattern(regexp = PasswordRules.PATTERN, message = PasswordRules.MESSAGE)
-        String password,
 
         @NotBlank(message = "O CPF é obrigatório")
         @CPF(message = "O CPF informado é inválido")

@@ -93,7 +93,6 @@ public class DevDataSeed implements ApplicationRunner {
         PrescriberCreateDTO prescriberData = new PrescriberCreateDTO(
                 "Ana Lima",
                 email,
-                DEV_PASSWORD,
                 "11144477735",
                 LocalDate.of(1985, 3, 20),
                 "49999000111",
@@ -102,7 +101,7 @@ public class DevDataSeed implements ApplicationRunner {
                 "CRBM",
                 "12345"
         );
-        Prescriber prescriber = prescriberService.create(prescriberData);
+        Prescriber prescriber = prescriberService.create(prescriberData, DEV_PASSWORD);
         log.info("seed de desenvolvimento criou o prescritor {}", email);
         return prescriber;
     }

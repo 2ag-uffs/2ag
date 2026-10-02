@@ -1,0 +1,29 @@
+/* contas de paciente do administrador. as linhas usam o css da tela de prescritores */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: var(--width-default);
+}
+
+.search {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.searchField {
+    flex: 1 1 16rem;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.sectionTitle {
+    font-size: var(--text-lg);
+}

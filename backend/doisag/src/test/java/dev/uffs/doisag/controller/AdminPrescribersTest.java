@@ -9,7 +9,6 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PrescriberService;
@@ -52,7 +51,7 @@ class AdminPrescribersTest {
     static final String ADMIN_PASSWORD = "SenhaDoAdmin@2026";
 
     private static final String NEW_PRESCRIBER_JSON = """
-            {"name":"Prescritor Novo","email":"novo-prescritor@email.com","password":"Senha@123",
+            {"name":"Prescritor Novo","email":"novo-prescritor@email.com",
              "cpf":"16899535009","birthDate":"1980-01-01","phone":"49999990000",
              "profession":"Biomédico","registryType":"CRBM","registryNumber":"77777"}
             """;
@@ -117,19 +116,84 @@ class AdminPrescribersTest {
         assertThat(admin.getRole()).isEqualTo(UserRole.ADMIN);
     }
 
+    private ResultActions createPrescriber(String body) throws Exception {
+        return mockMvc.perform(post("/admin/prescribers")
+                .header("Authorization", adminToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    private ResultActions login(String email, String password) throws Exception {
+        return mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"));
+    }
+
     @Test
     void adminCreatesAndListsPrescribers() throws Exception {
-        mockMvc.perform(post("/admin/prescribers")
-                        .header("Authorization", adminToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(NEW_PRESCRIBER_JSON))
+        createPrescriber(NEW_PRESCRIBER_JSON)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.prescriberName").value("Prescritor Novo"))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         mockMvc.perform(get("/admin/prescribers").header("Authorization", adminToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.email == 'novo-prescritor@email.com')]").exists());
+    }
+
+    // o administrador n escolhe nem fica sabendo a senha de ninguem
+    @Test
+    void theNewPrescriberCreatesTheOwnPasswordByTheFirstAccessLink() throws Exception {
+        String response = createPrescriber(NEW_PRESCRIBER_JSON)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.validMinutes").value(48 * 60))
+                .andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + tokenOfLink(response) + "\",\"newPassword\":\"SenhaDela@2026\"}"))
+                .andExpect(status().isNoContent());
+
+        login("novo-prescritor@email.com", "SenhaDela@2026")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("PRESCRIBER"));
+    }
+
+    @Test
+    void aPasswordSentByTheAdminIsIgnored() throws Exception {
+        String body = NEW_PRESCRIBER_JSON.replace("\"cpf\"", "\"password\":\"Senha@123\",\"cpf\"");
+        createPrescriber(body).andExpect(status().isCreated());
+
+        login("novo-prescritor@email.com", "Senha@123").andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void whenTheEmailGoesOutTheFirstAccessLinkIsNotInTheResponse() throws Exception {
+        when(emailSender.send(any(EmailMessage.class))).thenReturn(true);
+
+        String response = createPrescriber(NEW_PRESCRIBER_JSON)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.resetLink").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("token=");
+
+        ArgumentCaptor<EmailMessage> sentMessage = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(sentMessage.capture());
+        assertThat(sentMessage.getValue().to()).isEqualTo("novo-prescritor@email.com");
+        assertThat(sentMessage.getValue().text()).contains("token=").contains("48 horas");
+    }
+
+    @Test
+    void theCreatedAccountShowsUpInTheAuditTrail() throws Exception {
+        createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.operation == 'CRIACAO' "
+                        + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(1)));
     }
 
     @Test
@@ -175,6 +239,45 @@ class AdminPrescribersTest {
 
         mockMvc.perform(get("/profile").header("Authorization", prescriberToken))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private ResultActions changeActive(Long prescriberId, boolean active) throws Exception {
+        return mockMvc.perform(put("/admin/prescribers/" + prescriberId + "/active")
+                .header("Authorization", adminToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"active\":" + active + "}"));
+    }
+
+    // a sessao de antes de desativar n pode voltar a valer qnd a conta eh reativada
+    @Test
+    void theSessionFromBeforeTheDeactivationStaysDeadAfterReactivating() throws Exception {
+        Prescriber prescriber = savePrescriber("admin-reativa@email.com", "ADM13");
+        String oldToken = "Bearer " + tokenService.generateToken(prescriber);
+
+        changeActive(prescriber.getId(), false).andExpect(status().isOk());
+        changeActive(prescriber.getId(), true)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+
+        mockMvc.perform(get("/profile").header("Authorization", oldToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deactivatingAndReactivatingShowUpInTheAuditTrail() throws Exception {
+        Prescriber prescriber = savePrescriber("admin-desativa-trilha@email.com", "ADM14");
+        changeActive(prescriber.getId(), false).andExpect(status().isOk());
+        changeActive(prescriber.getId(), true).andExpect(status().isOk());
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.operation == 'DESATIVACAO' "
+                        + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(1)))
+                .andExpect(jsonPath("$.events[?(@.operation == 'REATIVACAO' "
+                        + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(1)));
     }
 
     // sem isso o prescritor q esquecia a senha ficava de fora do sistema pra sempre
@@ -238,28 +341,12 @@ class AdminPrescribersTest {
         passwordReset(prescriber.getId(), ADMIN_PASSWORD).andExpect(status().isTooManyRequests());
     }
 
-    @Test
-    void initialPasswordThatDoesNotFitInBcryptIsRefusedInPortuguese() throws Exception {
-        String body = NEW_PRESCRIBER_JSON.replace("Senha@123", "ã".repeat(40) + "Senha1!");
-
-        mockMvc.perform(post("/admin/prescribers")
-                        .header("Authorization", adminToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("password"))
-                .andExpect(jsonPath("$.errors[0].message").value(PasswordRules.TOO_LONG_MESSAGE));
-    }
-
     // antes estourava a coluna e voltava 409 dizendo q o registro ja existia
     @Test
     void nameLongerThanTheColumnIsRefusedOnTheNameField() throws Exception {
         String body = NEW_PRESCRIBER_JSON.replace("Prescritor Novo", "a".repeat(256));
 
-        mockMvc.perform(post("/admin/prescribers")
-                        .header("Authorization", adminToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        createPrescriber(body)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'name')]").exists());
     }

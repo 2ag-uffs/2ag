@@ -81,6 +81,7 @@ export default function Progresso() {
     const [showDose, setShowDose] = useState(Boolean(keptFilters.showDose));
     const [appointments, setAppointments] = useState([]);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
+    const [isAnonymous, setIsAnonymous] = useState(Boolean(keptFilters.isAnonymous));
     const [comments, setComments] = useState([]);
     const [loadError, setLoadError] = useState(null);
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
@@ -274,6 +275,7 @@ export default function Progresso() {
                 attribute: chosenAttribute,
                 showDose: showDose,
                 showAppointments: showAppointments,
+                isAnonymous: isAnonymous,
             },
         });
     };
@@ -353,11 +355,13 @@ export default function Progresso() {
         </Link>
     ) : null;
 
+    // so o prescritor pode pedir o arquivo anonimo, pro paciente a api responde erro
+    const anonymousParam = isPrescriber && isAnonymous ? "&anonymous=true" : "";
     const csvLink = chartRows.length > 0 ? (
         <a
             className="button-secondary"
             href={"/api/patients/" + patientId + "/export/progress.csv?attribute="
-                + chosenAttribute + "&period=" + period}
+                + chosenAttribute + "&period=" + period + anonymousParam}
             download={true}
         >
             <FiDownload aria-hidden="true"/>
@@ -437,6 +441,16 @@ export default function Progresso() {
                                 onChange={(event) => setShowDose(event.target.checked)}
                             />
                             Mostrar as gotas do dia
+                        </label>
+                    )}
+                    {isPrescriber && chartRows.length > 0 && (
+                        <label className={styles.check}>
+                            <input
+                                type="checkbox"
+                                checked={isAnonymous}
+                                onChange={(event) => setIsAnonymous(event.target.checked)}
+                            />
+                            Baixar o CSV sem o nome do paciente
                         </label>
                     )}
                 </div>

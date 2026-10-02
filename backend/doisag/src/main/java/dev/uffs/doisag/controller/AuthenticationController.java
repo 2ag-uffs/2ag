@@ -68,8 +68,8 @@ public class AuthenticationController {
     // o paciente cria a conta pelo link de convite e ja sai logado
     @PostMapping("/register")
     public ResponseEntity<SessionUserDTO> register(@RequestBody @Valid RegisterDTO registerData,
-                                                   HttpServletResponse response) {
-        Patient patient = patientService.registerPatient(registerData);
+                                                   HttpServletRequest request, HttpServletResponse response) {
+        Patient patient = patientService.registerPatient(registerData, request.getRemoteAddr());
         sessionCookieService.writeSession(response, patient);
         return ResponseEntity.status(HttpStatus.CREATED).body(new SessionUserDTO(patient));
     }

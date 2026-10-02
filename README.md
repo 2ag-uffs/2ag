@@ -38,7 +38,7 @@ cp .env.example .env
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
 
-sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. para a senha do administrador não existe essa saída — aí só com `MAIL_HOST`.
+sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. o link de primeiro acesso de uma conta nova de prescritor funciona igual: sem e-mail, aparece na tela. para a senha do administrador não existe essa saída — ele troca em *Perfil* enquanto lembra a atual, e se esquecer só com `MAIL_HOST`.
 
 `POSTGRES_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão de propósito: sem elas a aplicação não sobe. o `PUBLIC_URL` precisa ser exatamente o endereço pelo qual as pessoas abrem o sistema — com ele errado, o login funciona e todo o resto responde `403`.
 
@@ -171,7 +171,8 @@ docs/        requisitos, escalas clínicas, identidade visual e documentos da ex
 ## umas coisas boas de saber
 
 - o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
-- o administrador cuida só das contas: ele não vê prontuário.
+- cada pessoa cria a própria senha. o administrador não escolhe a senha do prescritor: a conta nova recebe um link de primeiro acesso.
+- o administrador cuida só das contas: cria prescritor, desativa e reativa conta de prescritor e de paciente, e não vê prontuário. desativar tira o acesso na hora e não apaga nada.
 - nenhum dado clínico é apagado, e toda criação, alteração e abertura de prontuário fica na trilha de auditoria. o prescritor consulta a trilha de cada paciente pela lista de pacientes, e o administrador consulta em Auditoria, sem ver nome de paciente.
 - o paciente pede consulta só nos horários de atendimento que o prescritor cadastra, e o horário fica reservado até o prescritor responder.
 - paciente e prescritor exportam o histórico em CSV, e a página de impressão salva em PDF pelo próprio navegador. a exportação do prescritor tem modo anônimo para pesquisa.

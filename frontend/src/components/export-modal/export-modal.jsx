@@ -40,7 +40,7 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
                         <span>
                             Modo anônimo, para pesquisa
                             <span className={styles.help}>
-                                Sai sem nome, CPF, e-mail, telefone e endereço. O paciente aparece só por um número.
+                                Sai sem nome, CPF, e-mail, telefone e endereço. O paciente e o prescritor aparecem só por um número.
                                 Texto livre, como queixa e observação, sai como foi escrito e pode citar nomes.
                             </span>
                         </span>
@@ -63,6 +63,7 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
 
                 <p className={styles.help}>
                     A série de evolução sai na tela de progresso, junto com a escala e o período escolhidos.
+                    {canAnonymize ? " O modo anônimo dela é marcado lá." : ""}
                 </p>
 
                 <div className={styles.actions}>

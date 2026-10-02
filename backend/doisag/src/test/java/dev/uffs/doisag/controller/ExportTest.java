@@ -144,6 +144,16 @@ class ExportTest {
         assertThat(csv).contains("Dor lombar crônica");
     }
 
+    // com um prescritor so na clinica o nome dele ja diz de onde o arquivo veio
+    @Test
+    void oModoAnonimoTiraONomeDoPrescritor() throws Exception {
+        String csv = download("appointments.csv", "?anonymous=true", prescriber);
+
+        assertThat(csv).contains("prescritor " + prescriber.getId());
+        assertThat(csv).doesNotContain("Dra. Exportação");
+        assertThat(csv).doesNotContain("export-prescritora@email.com");
+    }
+
     @Test
     void oModoAnonimoEhSoDoPrescritor() throws Exception {
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
@@ -204,6 +214,16 @@ class ExportTest {
 
         assertThat(csv).contains("\"Atributo\";\"Data\";\"Valor\"");
         assertThat(csv).contains("\"DOR\"");
+        assertThat(csv).contains("\"7\"");
+    }
+
+    @Test
+    void aEvolucaoAnonimaSaiSemONome() throws Exception {
+        String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30&anonymous=true", prescriber);
+
+        assertThat(csv).contains("\"Identificador\";\"Escala\";\"Atributo\"");
+        assertThat(csv).contains("paciente " + patient.getId());
+        assertThat(csv).doesNotContain("Paciente da exportação");
         assertThat(csv).contains("\"7\"");
     }
 

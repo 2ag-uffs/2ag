@@ -2,7 +2,6 @@ import {useCallback, useEffect, useState} from "react";
 import {FiUserPlus, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
-import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
@@ -22,8 +21,45 @@ const EMPTY_FORM = {
     profession: "",
     registryType: "CRBM",
     registryNumber: "",
-    password: "",
 };
+
+// 30 vira 30 minutos e 2880 vira 48 horas
+function validityText(minutes) {
+    if (minutes >= 120 && minutes % 60 === 0) {
+        return minutes / 60 + " horas";
+    }
+    return minutes + " minutos";
+}
+
+// o link de senha foi por e-mail ou aparece aqui pro administrador entregar
+function LinkResult({link, sentText, handText, isCopied, onCopy, onClose}) {
+    if (!link) {
+        return (
+            <div className={styles.form}>
+                <p className={styles.fieldWide}>{sentText}</p>
+                <div className={styles.formActions}>
+                    <button type="button" className="button" onClick={onClose}>
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className={styles.form}>
+            <p className={styles.fieldWide}>{handText}</p>
+            <input className={styles.linkBox} value={link} readOnly={true} aria-label="Link de senha"/>
+            <div className={styles.formActions}>
+                <button type="button" className="button-secondary" onClick={() => onCopy(link)}>
+                    {isCopied ? "Link copiado" : "Copiar link"}
+                </button>
+                <button type="button" className="button" onClick={onClose}>
+                    Fechar
+                </button>
+            </div>
+        </div>
+    );
+}
 
 // um campo do formulario com rotulo e mensagem de erro
 function FormField({
@@ -50,6 +86,7 @@ function FormField({
 
 // tela do administrador
 // lista os prescritores cria conta nova e ativa ou desativa o acesso
+// a senha de cada um quem cria eh a propria pessoa, pelo link de primeiro acesso
 export default function AdminPrescribers() {
     const [prescribers, setPrescribers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +98,9 @@ export default function AdminPrescribers() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+
+    // conta recem criada com o link de primeiro acesso, ou sem ele qnd foi por e-mail
+    const [firstAccess, setFirstAccess] = useState(null);
 
     const [prescriberToToggle, setPrescriberToToggle] = useState(null);
 
@@ -121,7 +161,6 @@ export default function AdminPrescribers() {
         const requestBody = {
             name: formData.name,
             email: formData.email,
-            password: formData.password,
             cpf: formData.cpf.replace(/\D/g, ""),
             birthDate: formData.birthDate || null,
             phone: formData.phone.replace(/\D/g, "") || null,
@@ -131,11 +170,11 @@ export default function AdminPrescribers() {
         };
 
         try {
-            const createdPrescriber = await apiService.post("/admin/prescribers", requestBody);
+            const createdAccount = await apiService.post("/admin/prescribers", requestBody);
             setIsFormOpen(false);
-            setNotice(
-                "Conta de " + createdPrescriber.name + " criada. Passe o e-mail e a senha inicial para a pessoa entrar.",
-            );
+            setNotice(null);
+            setIsLinkCopied(false);
+            setFirstAccess({...createdAccount, email: formData.email.trim()});
             await loadPrescribers();
         } catch (requestError) {
             if (requestError instanceof ApiError) {
@@ -211,9 +250,9 @@ export default function AdminPrescribers() {
     };
 
     // navegador sem area de transferencia n quebra a tela, o link fica ali pra copiar na mao
-    const copyLink = async () => {
+    const copyLink = async (link) => {
         try {
-            await navigator.clipboard.writeText(newLink.resetLink);
+            await navigator.clipboard.writeText(link);
             setIsLinkCopied(true);
         } catch {
             setIsLinkCopied(false);
@@ -341,13 +380,10 @@ export default function AdminPrescribers() {
 
                     <FormField label="Número do registro" fieldName="registryNumber" value={formData.registryNumber}
                                error={fieldErrors.registryNumber} onChange={updateField}/>
-                    <FormField label="Senha inicial" fieldName="password" type="password" value={formData.password}
-                               error={fieldErrors.password} onChange={updateField} autoComplete="new-password"
-                               isWide={true}/>
 
-                    <div className={styles.fieldWide}>
-                        <PasswordChecklist password={formData.password}/>
-                    </div>
+                    <p className={styles.details + " " + styles.fieldWide}>
+                        Você não escolhe a senha. A pessoa recebe um link e cria a própria senha no primeiro acesso.
+                    </p>
 
                     <div className={styles.formActions}>
                         <button type="button" className="button-secondary" onClick={closeForm} disabled={isSaving}>
@@ -393,36 +429,37 @@ export default function AdminPrescribers() {
                             </button>
                         </div>
                     </form>
-                ) : !newLink.resetLink ? (
-                    <div className={styles.form}>
-                        <p className={styles.fieldWide}>
-                            O link de senha nova foi enviado para {resetTarget.email}. Ele vale{" "}
-                            {newLink.validMinutes} minutos e serve uma vez só. Se não chegar, peça para a pessoa
-                            conferir a caixa de spam.
-                        </p>
-                        <div className={styles.formActions}>
-                            <button type="button" className="button" onClick={closeReset}>
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
                 ) : (
-                    <div className={styles.form}>
-                        <p className={styles.fieldWide}>
-                            Entregue este link para {newLink.prescriberName}. Ele vale {newLink.validMinutes} minutos
-                            e serve uma vez só.
-                        </p>
-                        <input className={styles.linkBox} value={newLink.resetLink} readOnly={true}
-                               aria-label="Link de senha nova"/>
-                        <div className={styles.formActions}>
-                            <button type="button" className="button-secondary" onClick={copyLink}>
-                                {isLinkCopied ? "Link copiado" : "Copiar link"}
-                            </button>
-                            <button type="button" className="button" onClick={closeReset}>
-                                Fechar
-                            </button>
-                        </div>
-                    </div>
+                    <LinkResult
+                        link={newLink.resetLink}
+                        sentText={"O link de senha nova foi enviado para " + resetTarget.email + ". Ele vale "
+                            + validityText(newLink.validMinutes) + " e serve uma vez só. Se não chegar, peça para"
+                            + " a pessoa conferir a caixa de spam."}
+                        handText={"Entregue este link para " + newLink.prescriberName + ". Ele vale "
+                            + validityText(newLink.validMinutes) + " e serve uma vez só."}
+                        isCopied={isLinkCopied}
+                        onCopy={copyLink}
+                        onClose={closeReset}
+                    />
+                )}
+            </Modal>
+
+            <Modal show={firstAccess !== null} title="Conta criada" onClickClose={() => setFirstAccess(null)}>
+                {firstAccess !== null && (
+                    <LinkResult
+                        link={firstAccess.resetLink}
+                        sentText={"A conta de " + firstAccess.prescriberName + " foi criada e o link para criar a"
+                            + " senha foi enviado para " + firstAccess.email + ". Ele vale "
+                            + validityText(firstAccess.validMinutes) + " e serve uma vez só. Se não chegar ou"
+                            + " vencer, gere outro em Senha nova."}
+                        handText={"A conta de " + firstAccess.prescriberName + " foi criada. Entregue este link"
+                            + " para a pessoa criar a própria senha. Ele vale "
+                            + validityText(firstAccess.validMinutes) + " e serve uma vez só. Se vencer, gere"
+                            + " outro em Senha nova."}
+                        isCopied={isLinkCopied}
+                        onCopy={copyLink}
+                        onClose={() => setFirstAccess(null)}
+                    />
                 )}
             </Modal>
 

@@ -4,11 +4,13 @@ import dev.uffs.doisag.dto.EmailChangeDTO;
 import dev.uffs.doisag.dto.EmailPreferenceDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -21,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 // quem chama passa o id da sessao entao ninguem mexe no perfil de outra pessoa
 @Service
 public class ProfileService {
+
+    public static final String ADMIN_EMAIL_MESSAGE =
+            "O e-mail da conta administrativa é definido no servidor, na variável ADMIN_EMAIL";
 
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
@@ -59,6 +64,10 @@ public class ProfileService {
     @Transactional
     public ProfileDTO changeEmail(Long userId, EmailChangeDTO emailData, String clientAddress) {
         Users user = findUser(userId);
+        // se o admin trocasse aqui, a proxima subida criava outra conta com o ADMIN_EMAIL e a senha inicial
+        if (user instanceof Admin) {
+            throw new BusinessException(ADMIN_EMAIL_MESSAGE);
+        }
         // o e-mail novo eh pra onde vai o link de senha nova, entao o chute da senha atual tem limite
         if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)
                 || loginAttemptLimiter.isEmailChangeBlocked(userId)) {

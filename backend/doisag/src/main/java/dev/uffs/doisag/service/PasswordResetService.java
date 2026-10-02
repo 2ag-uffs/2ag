@@ -29,6 +29,9 @@ public class PasswordResetService {
 
     public static final int VALID_MINUTES = 30;
 
+    // a conta nova pode demorar pra abrir o e-mail, entao o primeiro link dura mais
+    public static final int FIRST_ACCESS_VALID_MINUTES = 48 * 60;
+
     private static final int MAX_REQUESTS_PER_HOUR = 3;
 
     private final UsersRepository usersRepository;
@@ -81,20 +84,31 @@ public class PasswordResetService {
         }
 
         // o smtp fica fora da resposta, senao a demora dele contaria q a conta existe
-        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now)));
+        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now, VALID_MINUTES)));
     }
 
     // link de senha nova pedido pelo administrador, sem o limite por hora
     // volta nulo qnd o e-mail saiu de verdade, senao o admin ficaria com a conta de outra pessoa na mao
     @Transactional
     public String createLinkFor(Users user) {
-        String resetLink = createLink(user, LocalDateTime.now());
+        String resetLink = createLink(user, LocalDateTime.now(), VALID_MINUTES);
         boolean wasEmailed = emailSender.send(linkMessage(user, resetLink));
         return wasEmailed ? null : resetLink;
     }
 
+    // link pra conta q o administrador acabou de criar escolher a primeira senha
+    // volta nulo qnd o e-mail saiu, igual o de cima
+    @Transactional
+    public String createFirstAccessLinkFor(Users user) {
+        String firstAccessLink = createLink(user, LocalDateTime.now(), FIRST_ACCESS_VALID_MINUTES);
+        EmailMessage message = new EmailMessage(user.getEmail(), "Sua conta no 2AG foi criada",
+                buildFirstAccessText(user.getName(), firstAccessLink));
+        boolean wasEmailed = emailSender.send(message);
+        return wasEmailed ? null : firstAccessLink;
+    }
+
     // um link novo cancela os anteriores
-    private String createLink(Users user, LocalDateTime now) {
+    private String createLink(Users user, LocalDateTime now, int validMinutes) {
         for (PasswordReset pendingReset : passwordResetRepository.findAllByUserIdAndUsedAtIsNull(user.getId())) {
             pendingReset.setUsedAt(now);
         }
@@ -104,7 +118,7 @@ public class PasswordResetService {
         passwordReset.setUser(user);
         passwordReset.setTokenHash(SecureTokens.hashToken(token));
         passwordReset.setCreatedAt(now);
-        passwordReset.setExpiresAt(now.plusMinutes(VALID_MINUTES));
+        passwordReset.setExpiresAt(now.plusMinutes(validMinutes));
         passwordResetRepository.save(passwordReset);
 
         return publicUrl + "/redefinir-senha?token=" + token;
@@ -138,5 +152,13 @@ public class PasswordResetService {
                 + "Abra o link abaixo em até " + VALID_MINUTES + " minutos:\n\n"
                 + resetLink + "\n\n"
                 + "Se não foi você que pediu, ignore este e-mail. A sua senha continua a mesma.";
+    }
+
+    private String buildFirstAccessText(String name, String firstAccessLink) {
+        return "Olá, " + name + ".\n\n"
+                + "A sua conta no 2AG foi criada. Abra o link abaixo em até "
+                + FIRST_ACCESS_VALID_MINUTES / 60 + " horas para criar a sua senha:\n\n"
+                + firstAccessLink + "\n\n"
+                + "Se o link vencer, use \"Esqueci minha senha\" na tela de entrada ou peça outro à administração.";
     }
 }

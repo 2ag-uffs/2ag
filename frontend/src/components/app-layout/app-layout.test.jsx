@@ -49,4 +49,23 @@ describe("AppLayout", () => {
         await screen.findByText("conteudo da tela");
         expect(sideMenu().getByRole("link", {name: "Escalas"})).toHaveAttribute("aria-current", "page");
     });
+
+    it("administrador tem o Perfil no menu lateral e na barra do celular", async () => {
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        openLayoutAt("/perfil");
+
+        await screen.findByText("conteudo da tela");
+        expect(sideMenu().getByRole("link", {name: "Perfil"})).toHaveAttribute("aria-current", "page");
+        expect(bottomMenu().getByRole("link", {name: "Perfil"})).toHaveAttribute("aria-current", "page");
+        expect(sideMenu().getByRole("link", {name: "Prescritores"})).not.toHaveAttribute("aria-current");
+    });
+
+    it("na tela de contas de paciente o menu do administrador marca Pacientes e n Prescritores", async () => {
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        openLayoutAt("/administracao/pacientes");
+
+        await screen.findByText("conteudo da tela");
+        expect(sideMenu().getByRole("link", {name: "Pacientes"})).toHaveAttribute("aria-current", "page");
+        expect(sideMenu().getByRole("link", {name: "Prescritores"})).not.toHaveAttribute("aria-current");
+    });
 });

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, Long> {
@@ -20,4 +21,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // checa o vinculo numa consulta so sem carregar o paciente inteiro
     // nem depender de lazy loading e eh usado pelo PatientAccessService
     boolean existsByIdAndPrescriberId(Long id, Long prescriberId);
+
+    // a administracao acha a conta pelo e-mail e ve as q ela desativou
+    Optional<Patient> findByEmail(String email);
+
+    List<Patient> findAllByActiveFalseOrderByNameAsc();
 }

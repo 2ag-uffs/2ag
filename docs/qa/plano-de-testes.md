@@ -60,7 +60,7 @@ requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
 | CT-02 | errar a senha 5 vezes seguidas e tentar de novo com a senha certa. repetir com um e-mail sem cadastro | mensagem clara a cada erro e, na tentativa seguinte, aviso de bloqueio por 15 minutos, mesmo com a senha certa. o e-mail sem cadastro recebe exatamente as mesmas mensagens |
 | CT-03 | sair da conta e usar o botão voltar do navegador | volta para a tela de entrada, sem reabrir tela protegida |
 | CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova. depois, como administração, usar *Senha nova* na conta de uma prescritora, errando e acertando a senha do administrador | entra com a senha nova e o mesmo link não serve uma segunda vez. na administração, a senha errada não gera link, a certa mostra o endereço para copiar e a ação aparece em *Auditoria* |
-| CT-05 | como prescritora, gerar convite de paciente e abrir o link na janela anônima | cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve |
+| CT-05 | como prescritora, gerar convite de paciente e abrir o link na janela anônima. tentar antes com o e-mail ou o CPF de uma conta que já existe | cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve. com e-mail ou CPF repetido a tela mostra uma mensagem só, sem dizer qual dos dois, e o mesmo link continua servindo para os dados certos |
 | CT-06 | em *Perfil*, mudar dados pessoais, depois e-mail e depois senha. errar a senha atual 5 vezes na troca de senha e tentar de novo com a certa | dados salvos. troca de e-mail e de senha pedem a senha atual e a senha nova segue a regra de senha forte. depois de 5 erros aparece o aviso de bloqueio por 15 minutos, mesmo com a senha certa, e o login daquela conta naquele aparelho também fica bloqueado |
 
 ## 2. permissões e isolamento
@@ -132,7 +132,7 @@ requisitos RF14, RF15, RF33 e RF34.
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
 | CT-34 | abrir *Avisos*, abrir um aviso, marcar todos como lidos e apagar um | cada aviso leva à tela certa e a contagem de não lidos atualiza |
-| CT-35 | exportar cada CSV do histórico e abrir no Excel ou LibreOffice | colunas certas, acentos legíveis e datas no formato brasileiro. no modo anônimo não aparece nome nem CPF |
+| CT-35 | exportar cada CSV do histórico e abrir no Excel ou LibreOffice. em *Progresso*, marcar a opção de baixar sem o nome | colunas certas, acentos legíveis e datas no formato brasileiro. no modo anônimo não aparece nome nem CPF, nem do paciente nem da prescritora |
 | CT-36 | abrir a impressão do histórico e salvar em PDF | o PDF sai sem menu, botões ou cortes no meio dos cartões |
 
 > os lembretes automáticos (RF34) rodam uma vez por dia e ficam desligados no ambiente de teste local. eles entram no teste do servidor.
@@ -141,7 +141,9 @@ requisitos RF14, RF15, RF33 e RF34.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
-| CT-37 | cadastrar prescritor com CPF inválido, depois com dados certos, e desativar e reativar | CPF inválido é recusado com mensagem. prescritor desativado não consegue entrar |
+| CT-37 | cadastrar prescritor com CPF inválido, depois com dados certos, abrir o link de primeiro acesso numa janela anônima e criar a senha. depois desativar e reativar | CPF inválido é recusado com mensagem. o formulário não pede senha, o link aparece na tela para copiar e a pessoa entra com a senha que ela mesma criou. prescritor desativado não consegue entrar |
+| CT-41 | como administração, abrir *Pacientes*, buscar a conta de um paciente pelo e-mail, desativar com ele logado em outra janela e depois reativar | a busca mostra só nome, e-mail e situação. o paciente é derrubado na hora e não consegue entrar. a linha da conta passa a mostrar *Desativada* e o botão *Reativar*, e abrindo a tela de novo, sem buscar, ela aparece em *Contas desativadas*. reativada, volta a entrar com a mesma senha. as duas ações aparecem em *Auditoria* e no *Histórico de acesso* do paciente |
+| CT-42 | como administração, abrir *Perfil*, trocar o nome e a senha | a tela mostra só nome, e-mail e senha. sai e entra de novo com a senha nova |
 
 ## 9. telas, celular e acessibilidade
 

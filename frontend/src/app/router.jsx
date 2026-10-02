@@ -164,13 +164,20 @@ const routes = [
                         ],
                     },
                     {
-                        loader: requireRole("PATIENT", "PRESCRIBER"),
+                        // a propria conta abre pra todo perfil e eh por ela q o admin troca a senha inicial
+                        loader: requireRole("PATIENT", "PRESCRIBER", "ADMIN"),
                         errorElement: <RouteError/>,
                         children: [
                             {
                                 path: "/perfil",
                                 lazy: lazyPage(() => import("../pages/profile/profile.jsx")),
                             },
+                        ],
+                    },
+                    {
+                        loader: requireRole("PATIENT", "PRESCRIBER"),
+                        errorElement: <RouteError/>,
+                        children: [
                             {
                                 path: "/notificacoes",
                                 lazy: lazyPage(() => import("../pages/notificacoes/notificacoes.jsx")),
@@ -188,6 +195,10 @@ const routes = [
                             {
                                 path: "/administracao",
                                 lazy: lazyPage(() => import("../pages/admin/admin-prescribers.jsx")),
+                            },
+                            {
+                                path: "/administracao/pacientes",
+                                lazy: lazyPage(() => import("../pages/admin/admin-patients.jsx")),
                             },
                             {
                                 path: "/administracao/auditoria",

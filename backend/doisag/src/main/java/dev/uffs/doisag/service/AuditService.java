@@ -85,6 +85,15 @@ public class AuditService {
                 AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null));
     }
 
+    // conta ligada ou desligada pela administracao
+    // a de paciente leva o paciente junto pra aparecer tbm na trilha do prontuario dele
+    @Transactional
+    public void recordAccountActiveChange(AuditRecordType accountType, Long accountId, Long patientId,
+                                          boolean active) {
+        AuditOperation operation = active ? AuditOperation.REATIVACAO : AuditOperation.DESATIVACAO;
+        auditEventRepository.save(new AuditEvent(findLoggedUser(), operation, accountType, accountId, patientId));
+    }
+
     // o prescritor abrindo dado clinico de um paciente
     // o paciente olhando os proprios dados n entra na trilha
     @Transactional

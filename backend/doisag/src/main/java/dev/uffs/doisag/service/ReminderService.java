@@ -108,9 +108,9 @@ public class ReminderService {
         return tasks.size();
     }
 
-    // o e-mail so sai pra quem deixou ligado no perfil (RF18)
+    // o e-mail so sai pra conta ativa q deixou ligado no perfil (RF18)
     private void sendEmail(Patient patient, String subject, String message, String path) {
-        if (!patient.isEmailNotificationsEnabled() || patient.getEmail() == null) {
+        if (!patient.isActive() || !patient.isEmailNotificationsEnabled() || patient.getEmail() == null) {
             return;
         }
         String text = "Olá, " + patient.getName() + ".\n\n" + message

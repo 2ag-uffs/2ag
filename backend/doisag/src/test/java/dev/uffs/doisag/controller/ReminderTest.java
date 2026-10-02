@@ -173,6 +173,18 @@ class ReminderTest {
         verify(emailSender, never()).send(any());
     }
 
+    // conta desativada n consegue entrar pra desligar o e-mail no perfil
+    @Test
+    void contaDesativadaNaoRecebeEmailDeLembrete() {
+        patient.setActive(false);
+        patientRepository.save(patient);
+        saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+
+        reminderService.sendAppointmentReminders(TODAY);
+
+        verify(emailSender, never()).send(any());
+    }
+
     private List<dev.uffs.doisag.model.Notification> notificationsOf(Patient owner) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(owner.getId());
     }

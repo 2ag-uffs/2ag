@@ -1,11 +1,14 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.model.Address;
+import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.service.ProfileService;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SessionCookieService;
@@ -56,6 +59,7 @@ class ProfileTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
+    @Autowired private UsersRepository usersRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
@@ -355,6 +359,54 @@ class ProfileTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"perfil-paciente@email.com\",\"password\":\"Senha@123\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private Admin saveAdmin() {
+        Admin admin = new Admin();
+        admin.setName("Administrador");
+        admin.setEmail("perfil-admin@email.com");
+        admin.setPassword(passwordEncoder.encode(PASSWORD));
+        return usersRepository.save(admin);
+    }
+
+    // a conta administrativa nasce com a senha do .env e eh por aqui q ela troca
+    @Test
+    void adminChangesTheOwnNameAndPassword() throws Exception {
+        Admin admin = saveAdmin();
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Administração da Clínica\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.name").value("Administração da Clínica"));
+
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenOf(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"Senha-Nova#2026\"}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"perfil-admin@email.com\",\"password\":\"Senha-Nova#2026\"}"))
+                .andExpect(status().isOk());
+    }
+
+    // se trocasse, a proxima subida da api criava outro admin com o ADMIN_EMAIL e a senha inicial
+    @Test
+    void adminDoesNotChangeTheEmailByTheProfile() throws Exception {
+        Admin admin = saveAdmin();
+
+        mockMvc.perform(put("/profile/email")
+                        .header("Authorization", bearerTokenOf(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"outro-admin@email.com\",\"currentPassword\":\"Senha@123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ProfileService.ADMIN_EMAIL_MESSAGE));
+
+        assertThat(usersRepository.existsByEmail("outro-admin@email.com")).isFalse();
     }
 
     @Test

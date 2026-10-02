@@ -162,8 +162,9 @@ public class DevDemoData {
             // paciente novo so com a ficha de avaliacao inicial pra responder
             scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, 7);
             // outro prescritor da clinica pra lista da administracao n ficar com um nome so
-            prescriberService.create(new PrescriberCreateDTO("Carlos Pereira", "carlos.pereira@email.com", password,
-                    validCpf("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico", "CRM", "23456"));
+            prescriberService.create(new PrescriberCreateDTO("Carlos Pereira", "carlos.pereira@email.com",
+                    validCpf("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico", "CRM", "23456"),
+                    password);
 
             log.info("seed de desenvolvimento criou os dados de demonstracao");
         } catch (RuntimeException exception) {

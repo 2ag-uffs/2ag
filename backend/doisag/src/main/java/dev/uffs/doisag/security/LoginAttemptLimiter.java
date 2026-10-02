@@ -100,6 +100,27 @@ public class LoginAttemptLimiter {
         addFailure(emailChangeKey(userId), maxFailures, now);
     }
 
+    // o cadastro conta por convite e por endereco
+    // senao um convite vivo serviria pra testar cpf atras de cpf
+    public synchronized boolean isSignUpBlocked(String inviteHash, String address) {
+        Instant now = clock.instant();
+        return isBlocked(signUpInviteKey(inviteHash), now) || isBlocked(signUpAddressKey(address), now);
+    }
+
+    // toda tentativa com convite valido conta, ate a q falha dps da conferencia de e-mail e cpf
+    public synchronized void registerSignUpAttempt(String inviteHash) {
+        Instant now = clock.instant();
+        removeFinished(now);
+        addFailure(signUpInviteKey(inviteHash), maxFailures, now);
+    }
+
+    // a recusa por e-mail ou cpf q ja tem conta conta tbm pro endereco
+    public synchronized void registerSignUpRefusal(String address) {
+        Instant now = clock.instant();
+        removeFinished(now);
+        addFailure(signUpAddressKey(address), maxFailuresPerAddress, now);
+    }
+
     public String blockedMessage() {
         return "Muitas tentativas erradas. Tente de novo em " + getBlockMinutes() + " minutos";
     }
@@ -153,6 +174,14 @@ public class LoginAttemptLimiter {
 
     private String emailChangeKey(Long userId) {
         return "email-change:" + userId;
+    }
+
+    private String signUpInviteKey(String inviteHash) {
+        return "sign-up-invite:" + inviteHash;
+    }
+
+    private String signUpAddressKey(String address) {
+        return "sign-up:" + address;
     }
 
     // erros de uma chave desde o primeiro erro e ate quando ela fica bloqueada

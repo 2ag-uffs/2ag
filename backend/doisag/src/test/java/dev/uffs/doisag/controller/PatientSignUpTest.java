@@ -10,6 +10,7 @@ import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientInviteRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.PatientInviteService;
@@ -45,6 +46,7 @@ class PatientSignUpTest {
     private static final String VALID_PASSWORD = "Minha#Senha1";
     private static final String VALID_CPF = "52998224725";
     private static final String OTHER_VALID_CPF = "16899535009";
+    private static final String THIRD_VALID_CPF = "11144477735";
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PrescriberRepository prescriberRepository;
@@ -54,11 +56,14 @@ class PatientSignUpTest {
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private LoginAttemptLimiter loginAttemptLimiter;
 
     private Prescriber prescriber;
 
     @BeforeEach
     void createPrescriber() {
+        // a contagem de cadastro recusado fica em memoria e passaria de um teste pro outro
+        loginAttemptLimiter.clear();
         prescriber = new Prescriber();
         prescriber.setName("Prescritor do Cadastro");
         prescriber.setEmail("cadastro-prescritor@email.com");
@@ -191,24 +196,58 @@ class PatientSignUpTest {
                 .andExpect(status().isBadRequest());
     }
 
+    // a resposta n pode dizer qual dos dois ja tem conta, senao o convite vira consulta de cpf
     @Test
-    void emailThatAlreadyHasAnAccountReturns409OnTheEmailField() throws Exception {
+    void emailThatAlreadyHasAnAccountIsRefusedWithoutNamingTheField() throws Exception {
         signUp(signUpBody(newInviteToken(), "repetido@email.com", VALID_CPF, VALID_PASSWORD))
                 .andExpect(status().isCreated());
 
         signUp(signUpBody(newInviteToken(), "REPETIDO@email.com", OTHER_VALID_CPF, VALID_PASSWORD))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errors[0].field").value("email"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientService.SIGN_UP_REFUSED_MESSAGE))
+                .andExpect(jsonPath("$.errors").doesNotExist());
     }
 
     @Test
-    void cpfThatAlreadyHasAnAccountReturns409OnTheCpfField() throws Exception {
+    void cpfThatAlreadyHasAnAccountGetsTheSameRefusal() throws Exception {
         signUp(signUpBody(newInviteToken(), "cpf-um@email.com", VALID_CPF, VALID_PASSWORD))
                 .andExpect(status().isCreated());
 
         signUp(signUpBody(newInviteToken(), "cpf-dois@email.com", "529.982.247-25", VALID_PASSWORD))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errors[0].field").value("cpf"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientService.SIGN_UP_REFUSED_MESSAGE))
+                .andExpect(jsonPath("$.errors").doesNotExist());
+    }
+
+    @Test
+    void refusedSignUpKeepsTheInviteForTheRightData() throws Exception {
+        signUp(signUpBody(newInviteToken(), "ja-tem-conta@email.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
+        String inviteToken = newInviteToken();
+
+        signUp(signUpBody(inviteToken, "digitou-errado@email.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isBadRequest());
+
+        signUp(signUpBody(inviteToken, "digitou-errado@email.com", OTHER_VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void fiveRefusedSignUpsBlockThatInviteEvenWithFreeData() throws Exception {
+        signUp(signUpBody(newInviteToken(), "alvo-do-chute@email.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
+        String inviteToken = newInviteToken();
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            signUp(signUpBody(inviteToken, "chute-" + attempt + "@email.com", VALID_CPF, VALID_PASSWORD))
+                    .andExpect(status().isBadRequest());
+        }
+
+        signUp(signUpBody(inviteToken, "dado-livre@email.com", OTHER_VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isTooManyRequests());
+
+        // outro convite do mesmo endereco continua valendo
+        signUp(signUpBody(newInviteToken(), "outro-convite@email.com", THIRD_VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
     }
 
     @Test

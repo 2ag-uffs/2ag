@@ -1,8 +1,8 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PasswordResetLinkDTO;
-import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
@@ -14,11 +14,14 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
+import dev.uffs.doisag.security.SecureTokens;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,11 +51,19 @@ public class PrescriberService {
     }
 
     // o administrador cria a conta de um prescritor (RF02.2)
+    // a senha nasce aleatoria e ninguem conhece, a pessoa cria a dela pelo link de primeiro acesso
     @Transactional
-    public Prescriber create(PrescriberCreateDTO dados) {
-        if (!PasswordRules.fitsInBcrypt(dados.password())) {
-            throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
-        }
+    public PasswordResetLinkDTO createByAdmin(PrescriberCreateDTO dados) {
+        Prescriber prescriber = create(dados, SecureTokens.createRandomToken());
+        auditService.recordCreation(AuditRecordType.CONTA_DE_PRESCRITOR, prescriber.getId(), null);
+        String firstAccessLink = passwordResetService.createFirstAccessLinkFor(prescriber);
+        return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), firstAccessLink,
+                PasswordResetService.FIRST_ACCESS_VALID_MINUTES);
+    }
+
+    // com a senha escolhida so o seed de desenvolvimento chama
+    @Transactional
+    public Prescriber create(PrescriberCreateDTO dados, String password) {
         // conselho e numero de registro identificam o profissional
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(dados.registryType(), dados.registryNumber())) {
             throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
@@ -78,7 +89,7 @@ public class PrescriberService {
         prescriber.setProfession(dados.profession());
         prescriber.setRegistryType(dados.registryType());
         prescriber.setRegistryNumber(dados.registryNumber());
-        prescriber.setPassword(passwordEncoder.encode(dados.password()));
+        prescriber.setPassword(passwordEncoder.encode(password));
         return prescriberRepository.save(prescriber);
     }
 
@@ -92,7 +103,15 @@ public class PrescriberService {
     @Transactional
     public Prescriber changeActive(Long prescriberId, boolean active) {
         Prescriber prescriber = getById(prescriberId);
+        if (prescriber.isActive() == active) {
+            return prescriber;
+        }
         prescriber.setActive(active);
+        if (!active) {
+            // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
+            prescriber.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        }
+        auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null, active);
         return prescriberRepository.save(prescriber);
     }
 

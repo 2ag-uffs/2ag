@@ -15,6 +15,7 @@ import {
     FiSun,
     FiTrendingUp,
     FiUser,
+    FiUserX,
     FiUsers,
 } from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
@@ -61,7 +62,9 @@ function menuFor(user) {
     }
     return [
         {path: "/administracao", label: "Prescritores", icon: FiUsers, mobile: true},
+        {path: "/administracao/pacientes", label: "Pacientes", icon: FiUserX, mobile: true},
         {path: "/administracao/auditoria", label: "Auditoria", icon: FiShield, mobile: true},
+        {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
     ];
 }
 

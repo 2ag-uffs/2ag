@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 //
 // um arquivo por tipo, pra abrir direto na planilha. o modo anonimo eh
 // pra pesquisa e sai sem nome, cpf, e-mail, telefone e endereco, com o
-// paciente identificado so por um numero (RNF04)
+// paciente e o prescritor identificados so por um numero (RNF04)
 @Service
 public class ExportService {
 
@@ -109,7 +109,7 @@ public class ExportService {
                     time(appointment.getDateTime()),
                     appointment.getModality(),
                     appointment.getStatus(),
-                    appointment.getPrescriber() == null ? null : appointment.getPrescriber().getName(),
+                    prescriberCell(appointment.getPrescriber(), anonymous),
                     appointment.getClinicalObservation(),
                     appointment.getPhysicalExam(),
                     appointment.getEvolution(),
@@ -292,6 +292,14 @@ public class ExportService {
     // no modo anonimo o paciente vira um numero e nenhum dado pessoal sai
     private String patientCell(Patient patient, boolean anonymous) {
         return anonymous ? "paciente " + patient.getId() : patient.getName();
+    }
+
+    // o prescritor tbm vira numero, senao o nome dele entrega a clinica e o grupo de paciente
+    private String prescriberCell(Prescriber prescriber, boolean anonymous) {
+        if (prescriber == null) {
+            return null;
+        }
+        return anonymous ? "prescritor " + prescriber.getId() : prescriber.getName();
     }
 
     private String composition(Prescription prescription) {

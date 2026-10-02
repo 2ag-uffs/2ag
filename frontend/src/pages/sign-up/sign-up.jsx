@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
@@ -77,6 +77,21 @@ export default function SignUp() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const messageRef = useRef(null);
+
+    // erro q volta da api: leva a pessoa ate o campo marcado ou ate o aviso la em cima
+    // eh um efeito pq o erro so esta na tela depois q ela desenha de novo
+    useEffect(() => {
+        if (!errorMessage) {
+            return;
+        }
+        const firstInvalidField = document.querySelector("[aria-invalid='true']");
+        if (firstInvalidField) {
+            firstInvalidField.focus();
+        } else if (messageRef.current) {
+            messageRef.current.scrollIntoView({block: "center"});
+        }
+    }, [errorMessage]);
 
     // tira o codigo da barra de endereco e do historico do navegador
     useEffect(() => {
@@ -177,7 +192,6 @@ export default function SignUp() {
                 setFieldErrors(errorsByField);
                 if (Object.keys(errorsByField).length > 0) {
                     setErrorMessage("Confira os campos destacados.");
-                    focusFirstInvalidField();
                 } else {
                     setErrorMessage(requestError.message);
                 }
@@ -226,7 +240,9 @@ export default function SignUp() {
             </p>
 
             {errorMessage && (
-                <p className={"aviso aviso--atencao " + styles.message} role="alert">{errorMessage}</p>
+                <p className={"aviso aviso--atencao " + styles.message} role="alert" ref={messageRef}>
+                    {errorMessage}
+                </p>
             )}
 
             <form className={styles.form} onSubmit={handleSubmit}>

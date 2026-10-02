@@ -65,12 +65,14 @@ function cardTitle(Icon, text) {
 }
 
 // dados pessoais e endereco
+// a conta administrativa so tem nome e o e-mail dela vem do servidor
 function PersonalDataCard({profile, onSaved}) {
     const [formData, setFormData] = useState(() => personalDataFrom(profile));
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const isPatient = profile.role === "PATIENT";
+    const isAdmin = profile.role === "ADMIN";
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -109,17 +111,27 @@ function PersonalDataCard({profile, onSaved}) {
     };
 
     return (
-        <Card title={cardTitle(FiUser, "Dados pessoais")}>
+        <Card title={cardTitle(FiUser, isAdmin ? "Dados da conta" : "Dados pessoais")}>
             <dl className={styles.readOnlyInfo}>
-                <dt>CPF</dt>
-                <dd>{profile.cpf ? formatCpf(profile.cpf) : "Não informado"}</dd>
+                {isAdmin && (
+                    <>
+                        <dt>E-mail de acesso</dt>
+                        <dd>{profile.email}</dd>
+                    </>
+                )}
+                {!isAdmin && (
+                    <>
+                        <dt>CPF</dt>
+                        <dd>{profile.cpf ? formatCpf(profile.cpf) : "Não informado"}</dd>
+                    </>
+                )}
                 {isPatient && (
                     <>
                         <dt>Quem acompanha você</dt>
                         <dd>{profile.prescriberName || "Nenhum prescritor vinculado"}</dd>
                     </>
                 )}
-                {!isPatient && profile.registryType && (
+                {!isPatient && !isAdmin && profile.registryType && (
                     <>
                         <dt>Registro profissional</dt>
                         <dd>
@@ -129,7 +141,11 @@ function PersonalDataCard({profile, onSaved}) {
                     </>
                 )}
             </dl>
-            <p className={styles.hint}>Para corrigir esses dados, fale com a clínica.</p>
+            <p className={styles.hint}>
+                {isAdmin
+                    ? "O e-mail da conta administrativa é definido no servidor."
+                    : "Para corrigir esses dados, fale com a clínica."}
+            </p>
 
             <CardMessage message={message}/>
 
@@ -143,6 +159,8 @@ function PersonalDataCard({profile, onSaved}) {
                     error={fieldErrors.name}
                     required={true}
                 />
+                {!isAdmin && (
+                <>
                 <div className={styles.row}>
                     <TextField
                         label="Data de nascimento"
@@ -206,6 +224,8 @@ function PersonalDataCard({profile, onSaved}) {
                         required={isPatient}
                     />
                 </div>
+                </>
+                )}
                 <div className={styles.actions}>
                     <button type="submit" className="button" disabled={isSaving}>
                         {isSaving ? "Salvando..." : "Salvar dados"}
@@ -472,16 +492,24 @@ export default function Profile() {
         return <SkeletonPage cards={2}/>;
     }
 
+    // a conta administrativa n troca de e-mail por aqui e n recebe lembrete
+    const isAdmin = profile.role === "ADMIN";
+
     return (
         <section className={styles.page}>
-            <PageHeader title="Meu perfil" subtitle="Seus dados, o e-mail de acesso, a senha e os avisos."/>
+            <PageHeader
+                title="Meu perfil"
+                subtitle={isAdmin
+                    ? "O nome e a senha da conta administrativa."
+                    : "Seus dados, o e-mail de acesso, a senha e os avisos."}
+            />
 
             <div className={styles.grid}>
                 <PersonalDataCard profile={profile} onSaved={handleSaved}/>
                 <div className={styles.column}>
-                    <EmailCard profile={profile} onSaved={handleSaved}/>
+                    {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
                     <PasswordCard/>
-                    <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>
+                    {!isAdmin && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
                 </div>
             </div>
         </section>
