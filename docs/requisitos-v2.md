@@ -673,6 +673,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 |---|---|
 | RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores |
 | RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
+| RF04 | *Critério acrescentado:* pressão, peso e altura são opcionais. A clínica não mede sinais vitais, porque a maioria das consultas é remota (01/10/2026) |
 | RF05 | Nova prescrição substitui a vigente quando a consulta dela não é mais antiga que a da vigente; lançada em consulta anterior, entra só no histórico (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |
 | RF06/RF20 e RF22 | Um registro por dia, apresentado como a grade semanal do formulário em papel. O diário de sono inclui a programação de horários definida pelo prescritor |
 | RF20 | *Critério acrescentado:* as âncoras de cada item são idênticas às do formulário da clínica |
@@ -683,7 +684,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF26 | *Critério acrescentado:* a escolaridade usada no ponto de corte e a data da avaliação são registradas |
 | RF31 | Tabela de auditoria somente de inserção, gravada pelos serviços |
 | RF33 | Exportação em CSV, com opção anonimizada, e página de impressão |
-| RF34 | E-mail e notificação no sistema para formulário pendente e consulta. O lembrete de dose fica para fase posterior |
+| RF34 | E-mail e notificação no sistema para formulário pendente e consulta. O lembrete de dose fica para fase posterior: a clínica ajusta a dose pelo WhatsApp, a partir das respostas do formulário, e a pergunta sobre lembrete segue aberta (01/10/2026) |
 | RF14/RF15 | Lista de notificações com marcação de leitura, sem filtros avançados |
 | RNF06 | Paginação apenas nas listagens que crescem sem limite: notificações e auditoria |
 | RN10 | *Critério acrescentado:* o frontend nunca pré-preenche item de escala com valor |
@@ -704,6 +705,8 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 |---|---|---|
 | RF35 | Recuperação de senha por e-mail, com link de uso único e validade curta | E |
 | RF36 | Termo de consentimento (LGPD, art. 11) aceito no cadastro, com versão e data registradas | E |
+| RF37 | Consentimento para pesquisa separado do termo do cadastro, opcional e revogável, com versão e data registradas. A exportação para pesquisa só inclui quem aceitou (clínica, 01/10/2026) | I |
+| RF38 | Responsável ou cuidador do paciente: nome, parentesco e telefone, opcionais, fora da exportação anonimizada (clínica, 01/10/2026) | I |
 | RNF16 | Operação: fuso horário único `America/Sao_Paulo`, verificação de saúde da API e integração contínua | E |
 
 O RNF07 (backup automático com restauração testada) permanece essencial e é pré-requisito do piloto.
@@ -717,7 +720,7 @@ O RNF07 (backup automático com restauração testada) permanece essencial e é 
 
 O RF03 (tela inicial) sai do módulo de acesso e identidade e passa para depois do módulo de escalas, porque reúne consultas, escalas e formulários que só são reescritos nesses módulos (decisão de 13/09/2026).
 
-As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`, itens 6 a 9.
+As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-clinica.md`. O que já foi respondido fica na tabela do fim do arquivo.
 
 **Acesso e identidade concluído em 13/09/2026:** RF01, RN06, RF02.1, RF36, RF18 e RF35. O vínculo do paciente passou a ser por convite de uso único, o cadastro exige o aceite do termo (ainda em rascunho) e a recuperação de senha grava o link no log da API até o envio de e-mail ser configurado.
 
