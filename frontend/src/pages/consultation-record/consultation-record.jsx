@@ -234,6 +234,9 @@ export default function ConsultationRecord() {
 
     const age = ageFrom(patient.birthDate);
     const isReadOnly = blockedMessage !== null;
+    // a clinica n mede sinais vitais em consulta remota, mas registro q ja tem algum n pode sumir da tela
+    const hasVitalSigns = record.bloodPressure !== "" || record.weight !== "" || record.height !== "";
+    const showsVitalSigns = record.modality !== "REMOTA" || hasVitalSigns;
 
     return (
         <section className={styles.page}>
@@ -283,35 +286,37 @@ export default function ConsultationRecord() {
                         onChange={(event) => updateField("physicalExam", event.target.value)}
                         error={fieldErrors.physicalExam}
                     />
-                    <FieldRow>
-                        <TextField
-                            label="Pressão arterial"
-                            name="bloodPressure"
-                            placeholder="120/80"
-                            value={record.bloodPressure}
-                            onChange={(event) => updateField("bloodPressure", event.target.value)}
-                            error={fieldErrors.bloodPressure}
-                        />
-                        <TextField
-                            label="Peso (kg)"
-                            name="weight"
-                            type="number"
-                            inputMode="decimal"
-                            step="0.1"
-                            value={record.weight}
-                            onChange={(event) => updateField("weight", event.target.value)}
-                            error={fieldErrors.weight}
-                        />
-                        <TextField
-                            label="Altura (cm)"
-                            name="height"
-                            type="number"
-                            inputMode="numeric"
-                            value={record.height}
-                            onChange={(event) => updateField("height", event.target.value)}
-                            error={fieldErrors.height}
-                        />
-                    </FieldRow>
+                    {showsVitalSigns && (
+                        <FieldRow>
+                            <TextField
+                                label="Pressão arterial (opcional)"
+                                name="bloodPressure"
+                                placeholder="120/80"
+                                value={record.bloodPressure}
+                                onChange={(event) => updateField("bloodPressure", event.target.value)}
+                                error={fieldErrors.bloodPressure}
+                            />
+                            <TextField
+                                label="Peso em kg (opcional)"
+                                name="weight"
+                                type="number"
+                                inputMode="decimal"
+                                step="0.1"
+                                value={record.weight}
+                                onChange={(event) => updateField("weight", event.target.value)}
+                                error={fieldErrors.weight}
+                            />
+                            <TextField
+                                label="Altura em cm (opcional)"
+                                name="height"
+                                type="number"
+                                inputMode="numeric"
+                                value={record.height}
+                                onChange={(event) => updateField("height", event.target.value)}
+                                error={fieldErrors.height}
+                            />
+                        </FieldRow>
+                    )}
                 </FormSection>
 
                 <FormSection title="Avaliação" disabled={isReadOnly || isSaving}>

@@ -18,8 +18,8 @@ export const CANNABINOID_OPTIONS = [
 ];
 
 export const UNIT_OPTIONS = [
-    {value: "PERCENTUAL", label: "%"},
     {value: "MG_POR_ML", label: "mg/mL"},
+    {value: "PERCENTUAL", label: "%"},
 ];
 
 export const ADMINISTRATION_ROUTE_OPTIONS = [

@@ -34,8 +34,9 @@ const EMPTY_FORM = {
     nextConsultationDate: "",
 };
 
+// a clinica cadastra a concentracao em mg/mL, e o % continua na lista
 function newComponent() {
-    return {cannabinoid: "CBD", concentration: "", unit: "PERCENTUAL"};
+    return {cannabinoid: "CBD", concentration: "", unit: "MG_POR_ML"};
 }
 
 function newEscalationStep() {

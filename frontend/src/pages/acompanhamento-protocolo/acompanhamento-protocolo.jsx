@@ -16,7 +16,7 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 
 const PERIODICITIES = [
     {value: "SEMANAL", label: "Toda semana"},
-    {value: "QUINZENAL", label: "A cada 15 dias"},
+    {value: "QUINZENAL", label: "A cada 14 dias"},
     {value: "MENSAL", label: "Uma vez por mês"},
 ];
 
