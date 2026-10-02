@@ -65,14 +65,13 @@ class RouteRolesTest {
             "POST /auth/register",
             "POST /auth/password-reset/request",
             "POST /auth/password-reset/confirm",
-            "GET /invites/{token}",
+            "POST /invites/lookup",
             "GET /consent-term",
             "GET /health"
     );
 
-    // a variavel do caminho n eh id de registro: token de convite e nome da escala
+    // a variavel do caminho n eh id de registro, eh o nome da escala
     private static final Set<String> ROUTES_WITHOUT_RECORD_ID = Set.of(
-            "GET /invites/{token}",
             "GET /scales/definitions/{slug}",
             "POST /scales/{slug}/responses",
             "GET /scales/{slug}/responses"

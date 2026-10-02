@@ -5,11 +5,19 @@
 #
 # depois abra o navegador em localhost na porta 5173
 
+# log de cada container com tamanho maximo, senao ele enche o disco do servidor
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   banco:
     image: postgres:17-alpine
     container_name: 2ag-banco
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -31,6 +39,7 @@ services:
       context: ./backend/doisag
     container_name: 2ag-api
     restart: unless-stopped
+    logging: *logging
     depends_on:
       banco:
         condition: service_healthy
@@ -77,6 +86,9 @@ services:
       context: ./frontend
     container_name: 2ag-web
     restart: unless-stopped
+    logging: *logging
+    environment:
+      TZ: America/Sao_Paulo
     depends_on:
       api:
         condition: service_healthy

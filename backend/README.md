@@ -129,7 +129,7 @@ cada conta recebe no máximo 3 links por hora e um link novo cancela os anterior
 | rota | o que faz |
 | :--- | :--- |
 | `POST /invites` | o prescritor gera um link de convite de uso único, válido por 7 dias |
-| `GET /invites/{token}` | rota pública que a tela de cadastro usa para conferir o convite |
+| `POST /invites/lookup` | rota pública que a tela de cadastro usa para conferir o convite. o código vai no corpo (`token`), e não no endereço, para não ficar em log de servidor |
 
 o banco guarda só o hash do código que vai no link.
 

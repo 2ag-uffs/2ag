@@ -84,7 +84,9 @@ class ErrorHandlingTest {
     // o q foi escrito pra pessoa ler continua chegando inteiro
     @Test
     void aMensagemEscritaProUsuarioPassaDireto() throws Exception {
-        mockMvc.perform(get("/invites/convite-que-nao-existe"))
+        mockMvc.perform(post("/invites/lookup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"convite-que-nao-existe\"}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(PatientInviteService.INVALID_INVITE_MESSAGE));
     }

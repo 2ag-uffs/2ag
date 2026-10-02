@@ -2,4 +2,5 @@
 # elas sao instaladas de novo la dentro com npm ci
 node_modules
 dist
-.env
+.env*
+*.local

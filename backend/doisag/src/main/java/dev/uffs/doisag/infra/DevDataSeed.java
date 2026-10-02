@@ -11,6 +11,7 @@ import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.service.PrescriberService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.Locale;
 
 // cria contas de teste pra quem esta desenvolvendo
 // so roda com SEED_DADOS_TESTE ligado e nunca pode rodar em producao
@@ -36,20 +38,28 @@ public class DevDataSeed implements ApplicationRunner {
     private final PrescriberService prescriberService;
     private final PasswordEncoder passwordEncoder;
     private final DevDemoData demoData;
+    private final String publicUrl;
 
     public DevDataSeed(UsersRepository usersRepository, PrescriberRepository prescriberRepository,
                        PatientRepository patientRepository, PrescriberService prescriberService,
-                       PasswordEncoder passwordEncoder, DevDemoData demoData) {
+                       PasswordEncoder passwordEncoder, DevDemoData demoData,
+                       @Value("${api.public-url}") String publicUrl) {
         this.usersRepository = usersRepository;
         this.prescriberRepository = prescriberRepository;
         this.patientRepository = patientRepository;
         this.prescriberService = prescriberService;
         this.passwordEncoder = passwordEncoder;
         this.demoData = demoData;
+        this.publicUrl = publicUrl;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        // endereco https eh servidor de verdade, e la n pode nascer conta com senha q esta no README
+        if (publicUrl.trim().toLowerCase(Locale.ROOT).startsWith("https://")) {
+            log.warn("SEED_DADOS_TESTE esta ligado num endereco https e o seed foi ignorado");
+            return;
+        }
         createAdminIfMissing();
         Prescriber prescriber = createPrescriberIfMissing();
         Patient patient = createPatientIfMissing(prescriber);

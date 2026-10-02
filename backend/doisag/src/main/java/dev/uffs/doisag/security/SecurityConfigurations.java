@@ -48,7 +48,7 @@ public class SecurityConfigurations {
                     routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/request").permitAll();
                     routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/confirm").permitAll();
                     // a tela de cadastro confere o convite antes de a pessoa ter conta
-                    routes.requestMatchers(HttpMethod.GET, "/invites/*").permitAll();
+                    routes.requestMatchers(HttpMethod.POST, "/invites/lookup").permitAll();
                     // o termo de consentimento eh lido antes de a pessoa ter conta
                     routes.requestMatchers(HttpMethod.GET, "/consent-term").permitAll();
                     // verificacao de saude usada pelo docker

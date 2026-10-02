@@ -2,15 +2,16 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.InviteCreatedDTO;
 import dev.uffs.doisag.dto.InviteInfoDTO;
+import dev.uffs.doisag.dto.InviteLookupDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PatientInviteService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,8 +35,8 @@ public class PatientInviteController {
     }
 
     // rota publica q a tela de cadastro usa pra conferir o link antes de mostrar o formulario
-    @GetMapping("/{token}")
-    public InviteInfoDTO getInvite(@PathVariable String token) {
-        return patientInviteService.getInviteInfo(token);
+    @PostMapping("/lookup")
+    public InviteInfoDTO getInvite(@RequestBody @Valid InviteLookupDTO lookupData) {
+        return patientInviteService.getInviteInfo(lookupData.token());
     }
 }

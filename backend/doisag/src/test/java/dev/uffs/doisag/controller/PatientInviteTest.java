@@ -16,14 +16,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -130,7 +131,7 @@ class PatientInviteTest {
     void signUpScreenSeesWhoSentTheInviteWithoutLogin() throws Exception {
         String token = createInviteAndGetToken();
 
-        mockMvc.perform(get("/invites/" + token))
+        lookUp(token)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prescriberName").value("Prescritora do Convite"))
                 .andExpect(jsonPath("$.prescriberProfession").value("Médica"))
@@ -139,7 +140,7 @@ class PatientInviteTest {
 
     @Test
     void unknownInviteReturns404() throws Exception {
-        mockMvc.perform(get("/invites/" + SecureTokens.createRandomToken()))
+        lookUp(SecureTokens.createRandomToken())
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value(PatientInviteService.INVALID_INVITE_MESSAGE));
     }
@@ -148,7 +149,7 @@ class PatientInviteTest {
     void expiredInviteReturns404() throws Exception {
         String token = saveInvite(LocalDateTime.now().minusMinutes(1), null);
 
-        mockMvc.perform(get("/invites/" + token))
+        lookUp(token)
                 .andExpect(status().isNotFound());
     }
 
@@ -156,7 +157,7 @@ class PatientInviteTest {
     void usedInviteReturns404() throws Exception {
         String token = saveInvite(LocalDateTime.now().plusDays(3), LocalDateTime.now().minusHours(1));
 
-        mockMvc.perform(get("/invites/" + token))
+        lookUp(token)
                 .andExpect(status().isNotFound());
     }
 
@@ -167,7 +168,13 @@ class PatientInviteTest {
         prescriber.setActive(false);
         prescriberRepository.save(prescriber);
 
-        mockMvc.perform(get("/invites/" + token))
+        lookUp(token)
                 .andExpect(status().isNotFound());
+    }
+
+    private ResultActions lookUp(String token) throws Exception {
+        return mockMvc.perform(post("/invites/lookup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"" + token + "\"}"));
     }
 }

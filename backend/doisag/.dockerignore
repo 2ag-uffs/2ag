@@ -2,3 +2,8 @@
 target
 .idea
 *.iml
+
+# configuracao local com senha de verdade n pode ir pra dentro do jar
+src/main/resources/application-local*.yml
+src/main/resources/application-local*.yaml
+src/main/resources/application-secrets.yml

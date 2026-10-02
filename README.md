@@ -118,7 +118,7 @@ com `SEED_DADOS_TESTE=true` a api cria três contas, todas com a senha `Senha@12
 
 na primeira subida o seed também cria dados fictícios para demonstração: horários de atendimento, consultas, prescrições, dois meses de diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`) e um segundo prescritor (`carlos.pereira`), todos `@email.com` com a mesma senha. nomes, cpfs e históricos são inventados.
 
-o seed nunca pode ser ligado em produção.
+o seed nunca pode ser ligado em produção: no `.env` do servidor a variável `SEED_DADOS_TESTE` nem deve existir. como segunda trava, a api ignora o seed quando o `PUBLIC_URL` começa com `https://`.
 
 > **banco local antigo:** as migrações foram consolidadas numa base única em 13/09/2026. quem já tinha um banco de antes dessa data precisa recriá-lo: `docker compose down -v` com docker, ou `drop database doisag;` seguido de `create database doisag owner admindoisag;` sem docker.
 

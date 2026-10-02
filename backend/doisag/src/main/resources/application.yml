@@ -12,6 +12,10 @@ server:
     context-path: /api
 
 spring:
+  servlet:
+    multipart:
+      # nenhuma rota recebe arquivo
+      enabled: false
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/doisag}
     username: ${DATABASE_USER:admindoisag}

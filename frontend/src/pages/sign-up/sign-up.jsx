@@ -63,7 +63,9 @@ function focusFirstInvalidField() {
 export default function SignUp() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const inviteToken = searchParams.get("convite");
+    const tokenInUrl = searchParams.get("convite");
+    // o codigo do convite fica guardado na tela depois de sair da barra de endereco
+    const [inviteToken] = useState(tokenInUrl);
 
     const [inviteStatus, setInviteStatus] = useState(inviteToken ? "checking" : "missing");
     const [inviteInfo, setInviteInfo] = useState(null);
@@ -76,6 +78,13 @@ export default function SignUp() {
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // tira o codigo da barra de endereco e do historico do navegador
+    useEffect(() => {
+        if (tokenInUrl) {
+            navigate("/cadastro", {replace: true});
+        }
+    }, [tokenInUrl, navigate]);
+
     // confere o convite e busca o termo antes de mostrar o formulario
     useEffect(() => {
         if (!inviteToken) {
@@ -84,7 +93,7 @@ export default function SignUp() {
 
         let isCurrentPage = true;
         Promise.all([
-            apiService.get("/invites/" + encodeURIComponent(inviteToken)),
+            apiService.post("/invites/lookup", {token: inviteToken}),
             apiService.get("/consent-term"),
         ])
             .then(([invite, term]) => {
