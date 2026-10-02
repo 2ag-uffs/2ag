@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -22,6 +23,7 @@ public record TreatmentProtocolCreateDTO(
         LocalTime sleepBedTime,
         LocalTime sleepWakeTime,
         @NotEmpty(message = "Escolha ao menos uma escala para o acompanhamento")
+        @Size(max = 10, message = "O acompanhamento pode ter até 10 escalas")
         @Valid
         List<ProtocolItemDTO> items
 ) {}

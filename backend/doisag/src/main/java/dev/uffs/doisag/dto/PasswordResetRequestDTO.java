@@ -7,7 +7,10 @@ import jakarta.validation.constraints.NotBlank;
 public record PasswordResetRequestDTO(
         @NotBlank(message = "Informe o e-mail")
         @Email(message = "E-mail inválido")
-        String email
+        String email,
+
+        // campo escondido na tela, pessoa n ve e robo preenche
+        String site
 ) {
     // e-mail digitado no celular costuma vir com espaco no fim
     public PasswordResetRequestDTO {

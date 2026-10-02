@@ -1,5 +1,6 @@
 package dev.uffs.doisag.infra;
 
+import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.repository.UsersRepository;
 import org.slf4j.Logger;
@@ -45,6 +46,11 @@ public class AdminAccountCreator implements ApplicationRunner {
             return;
         }
         if (usersRepository.findByEmail(adminEmail).isPresent()) {
+            return;
+        }
+        // sem isso o bcrypt estoura e a api nem sobe
+        if (!PasswordRules.fitsInBcrypt(adminPassword)) {
+            log.warn("a senha do administrador passa de 72 bytes e a conta n foi criada. use uma senha mais curta");
             return;
         }
         if (adminPassword.length() < RECOMMENDED_PASSWORD_LENGTH) {

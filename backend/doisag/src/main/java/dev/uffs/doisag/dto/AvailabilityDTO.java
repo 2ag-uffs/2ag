@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -17,6 +18,7 @@ public record AvailabilityDTO(
         // o @NotNull de fora vale pra lista e o de dentro pra cada item:
         // sem ele um item nulo no meio da lista derruba o servico
         @NotNull(message = "Envie os períodos de atendimento")
+        @Size(max = 50, message = "A agenda pode ter até 50 períodos")
         List<@NotNull(message = "Período inválido") @Valid AvailabilityPeriodDTO> periods
 ) {
 }

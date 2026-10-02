@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
@@ -229,6 +230,28 @@ class PatientSignUpTest {
         signUp(signUpBody(newInviteToken(), "cpf-invalido@email.com", "12345678900", VALID_PASSWORD))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'cpf')]").exists());
+    }
+
+    @Test
+    void passwordThatDoesNotFitInBcryptIsRejectedOnThePasswordField() throws Exception {
+        signUp(signUpBody(newInviteToken(), "senha-longa@email.com", VALID_CPF, "ã".repeat(40) + "Senha1!"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("password"))
+                .andExpect(jsonPath("$.errors[0].message").value(PasswordRules.TOO_LONG_MESSAGE));
+    }
+
+    // campo escondido na tela q so robo preenche
+    @Test
+    void signUpWithTheHiddenFieldFilledIsRefusedWithoutUsingTheInvite() throws Exception {
+        String inviteToken = newInviteToken();
+        String body = signUpBody(inviteToken, "robo@email.com", VALID_CPF, VALID_PASSWORD);
+        String bodyFromBot = body.substring(0, body.lastIndexOf('}')) + ",\"site\":\"http://spam.example\"}";
+
+        signUp(bodyFromBot)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientInviteService.INVALID_INVITE_MESSAGE));
+
+        signUp(body).andExpect(status().isCreated());
     }
 
     @Test

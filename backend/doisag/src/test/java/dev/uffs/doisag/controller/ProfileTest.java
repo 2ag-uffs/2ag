@@ -6,6 +6,8 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.security.TokenService;
 import io.jsonwebtoken.Jwts;
@@ -56,6 +58,7 @@ class ProfileTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
+    @Autowired private LoginAttemptLimiter loginAttemptLimiter;
 
     @Value("${api.security.token.secret}")
     private String tokenSecret;
@@ -65,6 +68,9 @@ class ProfileTest {
 
     @BeforeEach
     void createAccounts() {
+        // a contagem de senhas erradas fica em memoria e passaria de um teste pro outro
+        loginAttemptLimiter.clear();
+
         prescriber = new Prescriber();
         prescriber.setName("Prescritora do Perfil");
         prescriber.setEmail("perfil-prescritora@email.com");
@@ -244,6 +250,72 @@ class ProfileTest {
                         .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"fraca\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'newPassword')]").exists());
+    }
+
+    // 47 caracteres passam na regra, mas letra com acento ocupa dois bytes e o bcrypt so aceita 72
+    @Test
+    void newPasswordThatDoesNotFitInBcryptIsRefusedInPortuguese() throws Exception {
+        String tooLongPassword = "ã".repeat(40) + "Senha1!";
+
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"" + tooLongPassword + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"))
+                .andExpect(jsonPath("$.errors[0].message").value(PasswordRules.TOO_LONG_MESSAGE));
+    }
+
+    @Test
+    void fiveWrongCurrentPasswordsBlockThePasswordChangeEvenWithTheRightOne() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            mockMvc.perform(put("/profile/password")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"currentPassword\":\"Errada@123\",\"newPassword\":\"Senha-Nova#2026\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"Senha-Nova#2026\"}"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void fiveWrongCurrentPasswordsBlockTheEmailChangeEvenWithTheRightOne() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            mockMvc.perform(put("/profile/email")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"newEmail\":\"novo@email.com\",\"currentPassword\":\"Errada@123\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        mockMvc.perform(put("/profile/email")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"novo@email.com\",\"currentPassword\":\"Senha@123\"}"))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    // o 409 conta quem tem conta, entao quem fica testando e-mail tbm eh barrado
+    @Test
+    void fiveTakenEmailsBlockTheEmailChange() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            mockMvc.perform(put("/profile/email")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"newEmail\":\"perfil-prescritora@email.com\",\"currentPassword\":\"Senha@123\"}"))
+                    .andExpect(status().isConflict());
+        }
+
+        mockMvc.perform(put("/profile/email")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newEmail\":\"livre@email.com\",\"currentPassword\":\"Senha@123\"}"))
+                .andExpect(status().isTooManyRequests());
     }
 
     @Test

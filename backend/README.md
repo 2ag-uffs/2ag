@@ -43,7 +43,9 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SESSION_MAX_HOURS` | horas que uma sessão dura no máximo desde o login, mesmo sendo renovada | `12` |
 | `LOGIN_MAX_FAILURES` | senhas erradas do mesmo e-mail a partir do mesmo endereço antes do bloqueio | `5` |
 | `LOGIN_MAX_FAILURES_PER_ADDRESS` | senhas erradas de um endereço, somando todos os e-mails, antes do bloqueio | `20` |
+| `LOGIN_MAX_FAILURES_PER_EMAIL` | senhas erradas de um e-mail, somando todos os endereços, antes do bloqueio. teto alto, só para frear ataque distribuído | `100` |
 | `LOGIN_BLOCK_MINUTES` | minutos que o bloqueio do login dura | `15` |
+| `PASSWORD_RESET_MAX_REQUESTS_PER_ADDRESS` | pedidos de link de senha nova do mesmo endereço antes do bloqueio, que dura o mesmo tempo do login | `10` |
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
@@ -73,7 +75,10 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 - a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário, mas ela termina 12 horas depois do login
 - sair da conta encerra as sessões abertas daquela pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie
 - depois de 5 senhas erradas do mesmo e-mail a partir do mesmo endereço, as tentativas desse e-mail vindas dali ficam bloqueadas por 15 minutos, mesmo com a senha certa. 20 erros de um endereço, somando e-mails diferentes, bloqueiam o endereço inteiro
-- o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
+- o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. a exceção é o ataque distribuído: 100 erros no mesmo e-mail, somando todos os endereços, bloqueiam aquele e-mail por 15 minutos em qualquer lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
+- a mesma contagem vale para toda rota que confere senha: trocar a senha, trocar o e-mail e o link de senha nova gerado pelo administrador. sessão esquecida aberta não vira chute livre da senha atual
+- trocar o e-mail para um que já tem conta responde `409`, e 5 dessas respostas bloqueiam a troca por 15 minutos, senão um paciente logado descobriria quem é da clínica
+- a senha vai de 8 a 64 caracteres e precisa caber em 72 bytes, que é o limite do bcrypt. letra com acento e emoji ocupam mais de um byte, e a senha que não cabe é recusada com mensagem no próprio campo
 - a contagem fica na memória da api, que roda numa instância só, e zera quando ela reinicia. atrás do nginx o endereço de quem acessa vem do cabeçalho `X-Forwarded-For`, então um proxy a mais na frente precisa repassar esse cabeçalho, senão todo mundo aparece com o mesmo endereço
 - conta desativada perde o acesso na requisição seguinte
 - testes e ferramentas podem mandar o mesmo token no cabeçalho `Authorization: Bearer`, que não passa pela conferência de origem porque o navegador não manda esse cabeçalho sozinho
@@ -117,7 +122,7 @@ as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perf
 | `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma |
 | `POST /auth/password-reset/confirm` | grava a senha nova. o link vale uma vez, por 30 minutos, e as sessões abertas caem |
 
-cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. o e-mail sai pelo servidor configurado em `MAIL_HOST`. sem ele, o e-mail não sai: o log mostra só o destinatário e o assunto, e o texto com o link só aparece com `EMAIL_LOG_TEXT=true`, que a api local com banco em memória já liga.
+cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. o pedido também conta por endereço, exista ou não a conta: depois de 10 pedidos em 15 minutos o endereço recebe `429`. o e-mail sai depois da resposta, em segundo plano, para a espera pelo servidor de e-mail não denunciar que a conta existe. sobra uma diferença de poucos milissegundos de banco entre os dois caminhos, que o limite por endereço torna difícil de medir. o e-mail sai pelo servidor configurado em `MAIL_HOST`. sem ele, o e-mail não sai: o log mostra só o destinatário e o assunto, e o texto com o link só aparece com `EMAIL_LOG_TEXT=true`, que a api local com banco em memória já liga.
 
 ## convite de paciente
 
@@ -293,7 +298,7 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `405` | método http que a rota não aceita |
 | `415` | corpo enviado num formato que a rota não aceita. a api só recebe json |
 | `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors` |
-| `429` | login bloqueado por tentativas erradas |
+| `429` | senha errada demais no login, na troca de senha ou de e-mail, ou pedidos demais de link de senha nova |
 | `500` | erro inesperado, registrado no log |
 
 `GET /health` responde se a api e o banco estão de pé. é o que o docker usa.

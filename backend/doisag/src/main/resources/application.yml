@@ -56,7 +56,12 @@ api:
       max-failures: ${LOGIN_MAX_FAILURES:5}
       # senhas erradas de um endereco somando todos os e-mails antes de bloquear o endereco
       max-failures-per-address: ${LOGIN_MAX_FAILURES_PER_ADDRESS:20}
+      # senhas erradas de um e-mail somando todos os enderecos, teto alto so pra frear ataque distribuido
+      max-failures-per-email: ${LOGIN_MAX_FAILURES_PER_EMAIL:100}
       block-minutes: ${LOGIN_BLOCK_MINUTES:15}
+    password-reset:
+      # pedidos de link de senha nova do mesmo endereco antes de bloquear pelo mesmo tempo do login
+      max-requests-per-address: ${PASSWORD_RESET_MAX_REQUESTS_PER_ADDRESS:10}
   session:
     # minutos q a sessao dura sem uso
     duration-minutes: ${SESSION_DURATION_MINUTES:120}

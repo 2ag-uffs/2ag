@@ -3,24 +3,29 @@ package dev.uffs.doisag.dto;
 import dev.uffs.doisag.model.Address;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.util.Locale;
 
 // endereco do jeito q vai e volta pela api
 public record AddressDTO(
         @NotBlank(message = "Informe a rua")
+        @Size(max = 255, message = "A rua pode ter até 255 caracteres")
         String street,
 
         @NotBlank(message = "Informe o número ou s/n")
+        @Size(max = 255, message = "O número pode ter até 255 caracteres")
         String number,
 
         @NotBlank(message = "Informe a cidade")
+        @Size(max = 255, message = "A cidade pode ter até 255 caracteres")
         String city,
 
         @NotBlank(message = "Informe o estado")
         @Pattern(regexp = "^[A-Za-z]{2}$", message = "Use a sigla do estado, como SC")
         String state,
 
+        @Size(max = 255, message = "O país pode ter até 255 caracteres")
         String country
 ) {
     // a clinica atende no brasil entao pais vazio vira brasil

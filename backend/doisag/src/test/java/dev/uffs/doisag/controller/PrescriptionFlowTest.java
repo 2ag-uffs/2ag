@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +121,16 @@ class PrescriptionFlowTest {
     void prescriptionNeedsAtLeastOneCannabinoid() throws Exception {
         Map<String, Object> prescription = prescriptionWith("Oleo sem composicao");
         prescription.put("components", List.of());
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components"));
+    }
+
+    @Test
+    void prescriptionWithMoreThanTwentyCannabinoidsIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo com lista sem fim");
+        prescription.put("components", Collections.nCopies(21, component("CBD", 3, "PERCENTUAL")));
 
         issuePrescription(registeredConsultationId(), prescription)
                 .andExpect(status().isBadRequest())

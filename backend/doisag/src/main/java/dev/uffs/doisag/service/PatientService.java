@@ -1,9 +1,11 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
@@ -68,6 +70,13 @@ public class PatientService {
     // o prescritor sai do convite e o convite so vale uma vez
     @Transactional
     public Patient registerPatient(RegisterDTO registerData) {
+        // robo recebe a mesma resposta de convite invalido, sem gastar o convite
+        if (registerData.site() != null && !registerData.site().isBlank()) {
+            throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
+        }
+        if (!PasswordRules.fitsInBcrypt(registerData.password())) {
+            throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
+        }
         // o termo aceito precisa ser o q esta valendo agora (RF36)
         if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
             throw new BusinessException(OUTDATED_TERM_MESSAGE);

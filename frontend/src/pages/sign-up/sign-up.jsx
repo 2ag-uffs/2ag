@@ -5,6 +5,7 @@ import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
+import TrapField from "../../components/form/trap-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
 import Modal from "../../components/modal/modal.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
@@ -70,6 +71,7 @@ export default function SignUp() {
     const [hasAcceptedConsent, setHasAcceptedConsent] = useState(false);
     const [isTermOpen, setIsTermOpen] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
+    const [site, setSite] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,6 +155,7 @@ export default function SignUp() {
             email: formData.email,
             password: formData.password,
             consentTermVersion: consentTerm.version,
+            site: site,
         };
 
         try {
@@ -218,6 +221,7 @@ export default function SignUp() {
             )}
 
             <form className={styles.form} onSubmit={handleSubmit}>
+                <TrapField value={site} onChange={setSite}/>
                 <fieldset className={styles.section}>
                     <legend className={styles.sectionTitle}>Seus dados</legend>
                     <TextField

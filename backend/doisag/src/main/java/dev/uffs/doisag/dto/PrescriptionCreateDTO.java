@@ -27,6 +27,7 @@ public record PrescriptionCreateDTO(
         Spectrum spectrum,
 
         @NotEmpty(message = "Informe pelo menos um canabinoide com a concentração")
+        @Size(max = 20, message = "A prescrição pode ter até 20 canabinoides")
         @Valid
         List<PrescriptionComponentDTO> components,
 
@@ -40,6 +41,7 @@ public record PrescriptionCreateDTO(
         String administrationRoute,
 
         // o plano de subida de dose semana a semana
+        @Size(max = 104, message = "O plano de dose pode ter até 104 degraus")
         @Valid
         List<DoseEscalationStepDTO> escalationSteps,
 

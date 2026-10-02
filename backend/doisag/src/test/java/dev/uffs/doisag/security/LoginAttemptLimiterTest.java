@@ -17,7 +17,8 @@ class LoginAttemptLimiterTest {
     private static final String OTHER_ADDRESS = "177.9.9.9";
 
     private final MovableClock clock = new MovableClock();
-    private final LoginAttemptLimiter limiter = new LoginAttemptLimiter(5, 20, Duration.ofMinutes(15), clock);
+    private final LoginAttemptLimiter limiter =
+            new LoginAttemptLimiter(5, 20, 100, 10, Duration.ofMinutes(15), clock);
 
     @Test
     void fiveFailuresBlockThatEmailOnlyFromThatAddress() {
@@ -76,6 +77,42 @@ class LoginAttemptLimiterTest {
 
         assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isFalse();
         assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
+    }
+
+    // quem troca de endereco a cada chute escapa da conta por endereco, mas n do teto do e-mail
+    @Test
+    void manyAddressesAgainstOneEmailBlockThatEmailEverywhere() {
+        for (int index = 0; index < 100; index++) {
+            limiter.registerFailure(EMAIL, "10.0.0." + index);
+        }
+
+        assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isTrue();
+
+        limiter.forgetEmail(EMAIL);
+        assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isFalse();
+    }
+
+    @Test
+    void tenResetRequestsBlockOnlyThatAddressUntilTheBlockTimeEnds() {
+        for (int request = 0; request < 10; request++) {
+            limiter.registerResetRequest(OTHER_ADDRESS);
+        }
+
+        assertThat(limiter.isResetBlocked(OTHER_ADDRESS)).isTrue();
+        assertThat(limiter.isResetBlocked(MARIA_ADDRESS)).isFalse();
+
+        clock.moveMinutes(16);
+        assertThat(limiter.isResetBlocked(OTHER_ADDRESS)).isFalse();
+    }
+
+    @Test
+    void fiveTakenEmailsBlockTheEmailChangeOfThatAccountOnly() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            limiter.registerEmailChangeFailure(1L);
+        }
+
+        assertThat(limiter.isEmailChangeBlocked(1L)).isTrue();
+        assertThat(limiter.isEmailChangeBlocked(2L)).isFalse();
     }
 
     private void failTimes(String email, String address, int times) {

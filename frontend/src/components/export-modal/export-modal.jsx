@@ -41,6 +41,7 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
                             Modo anônimo, para pesquisa
                             <span className={styles.help}>
                                 Sai sem nome, CPF, e-mail, telefone e endereço. O paciente aparece só por um número.
+                                Texto livre, como queixa e observação, sai como foi escrito e pode citar nomes.
                             </span>
                         </span>
                     </label>

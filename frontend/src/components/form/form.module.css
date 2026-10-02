@@ -129,3 +129,12 @@
     white-space: nowrap;
     width: 1px;
 }
+
+/* campo q so robo preenche: fica fora da tela sem display none, pq robo pula campo escondido assim */
+.trap {
+    height: 1px;
+    left: -9999px;
+    overflow: hidden;
+    position: absolute;
+    width: 1px;
+}

@@ -246,4 +246,37 @@ class PasswordResetTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'newPassword')]").exists());
     }
+
+    @Test
+    void passwordThatDoesNotFitInBcryptIsRefusedAndTheLinkStillWorks() throws Exception {
+        requestReset(PATIENT_EMAIL);
+        String token = tokenFromLastEmail();
+
+        confirmReset(token, "ã".repeat(40) + "Senha1!")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"));
+        confirmReset(token, NEW_PASSWORD).andExpect(status().isNoContent());
+    }
+
+    // o pedido conta por endereco exista ou n a conta, entao o bloqueio n revela nada
+    @Test
+    void tenRequestsFromTheSameAddressBlockTheEleventh() throws Exception {
+        for (int attempt = 1; attempt <= 10; attempt++) {
+            requestReset("ninguem@email.com").andExpect(status().isNoContent());
+        }
+
+        requestReset(PATIENT_EMAIL).andExpect(status().isTooManyRequests());
+        verify(emailSender, never()).send(any());
+    }
+
+    // campo escondido na tela q so robo preenche
+    @Test
+    void requestWithTheHiddenFieldFilledGetsTheSameAnswerAndNoEmail() throws Exception {
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + PATIENT_EMAIL + "\",\"site\":\"http://spam.example\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(emailSender, never()).send(any());
+    }
 }

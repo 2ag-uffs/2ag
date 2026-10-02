@@ -2,12 +2,14 @@ import {useState} from "react";
 import {Link} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import TextField from "../../components/form/text-field.jsx";
+import TrapField from "../../components/form/trap-field.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import styles from "./forgot-password.module.css";
 
 // pedido do link pra criar uma senha nova (RF35)
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
+    const [site, setSite] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,7 +22,7 @@ export default function ForgotPassword() {
         setErrorMessage(null);
 
         try {
-            await apiService.post("/auth/password-reset/request", {email: email});
+            await apiService.post("/auth/password-reset/request", {email: email, site: site});
             setWasSent(true);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
@@ -75,6 +77,7 @@ export default function ForgotPassword() {
                     error={fieldErrors.email}
                     required={true}
                 />
+                <TrapField value={site} onChange={setSite}/>
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                     {isSubmitting ? "Enviando..." : "Enviar link"}
                 </button>

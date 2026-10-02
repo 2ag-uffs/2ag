@@ -8,6 +8,7 @@ import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PrescriberService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,8 +56,10 @@ public class AdminPrescriberController {
     @PostMapping("/{prescriberId}/password-reset")
     public PasswordResetLinkDTO startPasswordReset(@PathVariable Long prescriberId,
                                                    @RequestBody @Valid AdminPasswordResetDTO resetData,
-                                                   @AuthenticationPrincipal Users loggedAdmin) {
-        return prescriberService.startPasswordReset(prescriberId, resetData.adminPassword(), loggedAdmin);
+                                                   @AuthenticationPrincipal Users loggedAdmin,
+                                                   HttpServletRequest request) {
+        return prescriberService.startPasswordReset(prescriberId, resetData.adminPassword(), loggedAdmin,
+                request.getRemoteAddr());
     }
 
     // desativar tira o acesso na hora e n apaga nada do historico

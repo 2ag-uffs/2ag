@@ -155,6 +155,12 @@ class SessionTest {
         mockMvc.perform(get("/auth/me")).andExpect(status().isUnauthorized());
     }
 
+    // acima de 72 bytes o bcrypt so compara e da falso, entao continua sendo senha errada e n erro 400
+    @Test
+    void passwordThatDoesNotFitInBcryptIsJustAWrongPassword() throws Exception {
+        login(PATIENT_EMAIL, "ã".repeat(40) + "Senha1!").andExpect(status().isUnauthorized());
+    }
+
     @Test
     void fiveWrongPasswordsBlockTheLoginEvenWithTheRightPassword() throws Exception {
         for (int attempt = 1; attempt <= 5; attempt++) {

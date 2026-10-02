@@ -41,8 +41,7 @@ public class AuthService {
 
         // o bloqueio vem antes de olhar se o e-mail existe pra resposta ser igual nos dois casos
         if (loginAttemptLimiter.isBlocked(normalizedEmail, clientAddress)) {
-            throw new LoginBlockedException(
-                    "Muitas tentativas erradas. Tente de novo em " + loginAttemptLimiter.getBlockMinutes() + " minutos");
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
         }
 
         Users user = usersRepository.findByEmail(normalizedEmail).orElse(null);

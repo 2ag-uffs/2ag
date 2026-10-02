@@ -1,10 +1,16 @@
 // as mesmas regras de senha da api
 // a tela marca cada uma conforme a pessoa digita
+
+// a api guarda a senha com bcrypt, q so aceita 72 bytes, e letra com acento ou emoji ocupa mais de um
+export function fitsInBcrypt(password) {
+    return new TextEncoder().encode(password).length <= 72;
+}
+
 export const PASSWORD_RULES = [
     {
         id: "length",
-        label: "De 8 a 64 caracteres",
-        isMet: (password) => password.length >= 8 && password.length <= 64,
+        label: "De 8 a 64 caracteres (acento e emoji contam mais)",
+        isMet: (password) => password.length >= 8 && password.length <= 64 && fitsInBcrypt(password),
     },
     {
         id: "uppercase",

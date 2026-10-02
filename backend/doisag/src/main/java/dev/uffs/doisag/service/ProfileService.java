@@ -7,10 +7,12 @@ import dev.uffs.doisag.dto.ProfileUpdateDTO;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
+import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +24,13 @@ public class ProfileService {
 
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
-    public ProfileService(UsersRepository usersRepository, PasswordEncoder passwordEncoder) {
+    public ProfileService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
+                          LoginAttemptLimiter loginAttemptLimiter) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
+        this.loginAttemptLimiter = loginAttemptLimiter;
     }
 
     @Transactional(readOnly = true)
@@ -52,17 +57,25 @@ public class ProfileService {
     }
 
     @Transactional
-    public ProfileDTO changeEmail(Long userId, EmailChangeDTO emailData) {
+    public ProfileDTO changeEmail(Long userId, EmailChangeDTO emailData, String clientAddress) {
         Users user = findUser(userId);
+        // o e-mail novo eh pra onde vai o link de senha nova, entao o chute da senha atual tem limite
+        if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)
+                || loginAttemptLimiter.isEmailChangeBlocked(userId)) {
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
+        }
         if (!passwordEncoder.matches(emailData.currentPassword(), user.getPassword())) {
+            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
             throw new InvalidFieldException("currentPassword", "A senha atual está incorreta");
         }
+        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
 
         String newEmail = InputCleaner.normalizeEmail(emailData.newEmail());
         if (newEmail.equals(user.getEmail())) {
             return ProfileDTO.from(user);
         }
         if (usersRepository.existsByEmail(newEmail)) {
+            loginAttemptLimiter.registerEmailChangeFailure(userId);
             throw new DuplicateValueException("newEmail", "Este e-mail já tem conta no sistema");
         }
 

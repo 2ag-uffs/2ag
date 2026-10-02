@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.PasswordResetDTO;
 import dev.uffs.doisag.dto.PasswordResetRequestDTO;
 import dev.uffs.doisag.service.PasswordResetService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,8 +24,12 @@ public class PasswordResetController {
 
     // responde igual exista ou n uma conta com esse e-mail
     @PostMapping("/request")
-    public ResponseEntity<Void> requestReset(@RequestBody @Valid PasswordResetRequestDTO requestData) {
-        passwordResetService.requestReset(requestData.email());
+    public ResponseEntity<Void> requestReset(@RequestBody @Valid PasswordResetRequestDTO requestData,
+                                             HttpServletRequest request) {
+        // campo escondido q so robo preenche: recebe a mesma resposta e nada acontece
+        if (requestData.site() == null || requestData.site().isBlank()) {
+            passwordResetService.requestReset(requestData.email(), request.getRemoteAddr());
+        }
         return ResponseEntity.noContent().build();
     }
 

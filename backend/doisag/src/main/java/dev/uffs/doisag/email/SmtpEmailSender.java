@@ -3,6 +3,7 @@ package dev.uffs.doisag.email;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
@@ -31,10 +32,22 @@ public class SmtpEmailSender implements EmailSender {
             javaMailSender.send(mailMessage);
             return true;
         } catch (MailException exception) {
-            // quem pede o link de senha nova recebe sempre a mesma resposta
-            // entao a falha do servidor fica so no log e sem o endereco nem o link
-            log.error("falha ao enviar o e-mail com assunto {}", message.subject(), exception);
+            // a mensagem da excecao pode trazer o endereco de quem ia receber, entao so a classe vai pro log
+            log.error("falha ao enviar o e-mail com assunto {}: {}", message.subject(), failureName(exception));
+            log.debug("detalhe da falha no envio", exception);
             return false;
         }
+    }
+
+    private String failureName(MailException exception) {
+        String name = exception.getClass().getSimpleName();
+        if (exception instanceof MailSendException sendException
+                && sendException.getMessageExceptions().length > 0) {
+            return name + " (" + sendException.getMessageExceptions()[0].getClass().getSimpleName() + ")";
+        }
+        if (exception.getCause() != null) {
+            return name + " (" + exception.getCause().getClass().getSimpleName() + ")";
+        }
+        return name;
     }
 }

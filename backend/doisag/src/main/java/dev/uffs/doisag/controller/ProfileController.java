@@ -9,6 +9,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.service.PasswordService;
 import dev.uffs.doisag.service.ProfileService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -51,8 +52,9 @@ public class ProfileController {
 
     @PutMapping("/email")
     public ProfileDTO changeEmail(@AuthenticationPrincipal Users loggedUser,
-                                  @RequestBody @Valid EmailChangeDTO emailData) {
-        return profileService.changeEmail(loggedUser.getId(), emailData);
+                                  @RequestBody @Valid EmailChangeDTO emailData,
+                                  HttpServletRequest request) {
+        return profileService.changeEmail(loggedUser.getId(), emailData, request.getRemoteAddr());
     }
 
     @PutMapping("/email-preference")
@@ -66,8 +68,10 @@ public class ProfileController {
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(@AuthenticationPrincipal Users loggedUser,
                                                @RequestBody @Valid ChangePasswordDTO passwordData,
+                                               HttpServletRequest request,
                                                HttpServletResponse response) {
-        Users updatedUser = passwordService.changePassword(loggedUser.getId(), passwordData);
+        Users updatedUser = passwordService.changePassword(loggedUser.getId(), passwordData,
+                request.getRemoteAddr());
         sessionCookieService.writeSession(response, updatedUser);
         return ResponseEntity.noContent().build();
     }

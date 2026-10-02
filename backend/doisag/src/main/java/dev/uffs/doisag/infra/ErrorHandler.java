@@ -62,10 +62,17 @@ public class ErrorHandler {
     }
 
     // regra de negocio violada
-    // os modulos antigos ainda usam ValidationException e IllegalArgumentException pra isso
-    @ExceptionHandler({BusinessException.class, ValidationException.class, IllegalArgumentException.class})
-    public ResponseEntity<ErrorResponseDTO> handleBusinessRule(RuntimeException exception, HttpServletRequest request) {
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponseDTO> handleBusinessRule(BusinessException exception, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    // excecao do java ou do framework traz mensagem tecnica e em ingles, entao ela fica so no log
+    @ExceptionHandler({ValidationException.class, IllegalArgumentException.class})
+    public ResponseEntity<ErrorResponseDTO> handleInvalidArgument(RuntimeException exception,
+                                                                 HttpServletRequest request) {
+        log.warn("argumento invalido em {}", request.getRequestURI(), exception);
+        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida. Confira os dados enviados", request);
     }
 
     // requisicao mal montada como json quebrado tipo errado ou parametro faltando

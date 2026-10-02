@@ -1,16 +1,19 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PasswordResetLinkDTO;
+import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
+import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,20 +34,25 @@ public class PrescriberService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-                             AuditService auditService) {
+                             AuditService auditService, LoginAttemptLimiter loginAttemptLimiter) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
+        this.loginAttemptLimiter = loginAttemptLimiter;
     }
 
     // o administrador cria a conta de um prescritor (RF02.2)
     @Transactional
     public Prescriber create(PrescriberCreateDTO dados) {
+        if (!PasswordRules.fitsInBcrypt(dados.password())) {
+            throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
+        }
         // conselho e numero de registro identificam o profissional
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(dados.registryType(), dados.registryNumber())) {
             throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
@@ -91,11 +99,17 @@ public class PrescriberService {
     // o administrador gera um link de senha nova pra um prescritor q ficou sem acesso (RF35)
     // o link so volta na resposta qnd o e-mail n saiu
     @Transactional
-    public PasswordResetLinkDTO startPasswordReset(Long prescriberId, String adminPassword, Users admin) {
+    public PasswordResetLinkDTO startPasswordReset(Long prescriberId, String adminPassword, Users admin,
+                                                   String clientAddress) {
         // a sessao aberta n basta pq isso toma a conta de outra pessoa
+        if (loginAttemptLimiter.isBlocked(admin.getEmail(), clientAddress)) {
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
+        }
         if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
+            loginAttemptLimiter.registerFailure(admin.getEmail(), clientAddress);
             throw new InvalidFieldException("adminPassword", "A sua senha está incorreta");
         }
+        loginAttemptLimiter.registerSuccess(admin.getEmail(), clientAddress);
 
         Prescriber prescriber = getById(prescriberId);
         if (!prescriber.isActive()) {

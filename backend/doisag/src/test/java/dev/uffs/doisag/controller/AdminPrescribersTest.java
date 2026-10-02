@@ -9,8 +9,11 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PrescriberService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +63,15 @@ class AdminPrescribersTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private TokenService tokenService;
 
+    @Autowired private LoginAttemptLimiter loginAttemptLimiter;
+
     @MockitoBean private EmailSender emailSender;
+
+    // a contagem de senhas erradas fica em memoria e passaria de um teste pro outro
+    @BeforeEach
+    void clearAttempts() {
+        loginAttemptLimiter.clear();
+    }
 
     private String adminToken() {
         Users admin = usersRepository.findByEmail("admin-teste@email.com").orElseThrow();
@@ -215,6 +226,42 @@ class AdminPrescribersTest {
         passwordReset(prescriber.getId(), "SenhaQueNaoEhDoAdmin@2026")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("adminPassword"));
+    }
+
+    @Test
+    void fiveWrongAdminPasswordsBlockTheResetEvenWithTheRightOne() throws Exception {
+        Prescriber prescriber = savePrescriber("admin-senha-chute@email.com", "ADM12");
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            passwordReset(prescriber.getId(), "SenhaQueNaoEhDoAdmin@2026").andExpect(status().isBadRequest());
+        }
+
+        passwordReset(prescriber.getId(), ADMIN_PASSWORD).andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void initialPasswordThatDoesNotFitInBcryptIsRefusedInPortuguese() throws Exception {
+        String body = NEW_PRESCRIBER_JSON.replace("Senha@123", "ã".repeat(40) + "Senha1!");
+
+        mockMvc.perform(post("/admin/prescribers")
+                        .header("Authorization", adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("password"))
+                .andExpect(jsonPath("$.errors[0].message").value(PasswordRules.TOO_LONG_MESSAGE));
+    }
+
+    // antes estourava a coluna e voltava 409 dizendo q o registro ja existia
+    @Test
+    void nameLongerThanTheColumnIsRefusedOnTheNameField() throws Exception {
+        String body = NEW_PRESCRIBER_JSON.replace("Prescritor Novo", "a".repeat(256));
+
+        mockMvc.perform(post("/admin/prescribers")
+                        .header("Authorization", adminToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field == 'name')]").exists());
     }
 
     @Test

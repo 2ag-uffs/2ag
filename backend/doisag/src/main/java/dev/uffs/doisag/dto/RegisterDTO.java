@@ -48,7 +48,10 @@ public record RegisterDTO(
 
         // versao do termo de consentimento q a pessoa leu e aceitou (RF36)
         @NotBlank(message = "Para criar a conta, leia e aceite o termo de consentimento")
-        String consentTermVersion
+        String consentTermVersion,
+
+        // campo escondido na tela, pessoa n ve e robo preenche
+        String site
 ) {
     // e-mail digitado no celular costuma vir com espaco no fim
     // o espaco sai antes da validacao pra n recusar um e-mail certo

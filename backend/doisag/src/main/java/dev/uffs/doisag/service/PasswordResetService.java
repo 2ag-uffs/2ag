@@ -1,10 +1,12 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PasswordResetDTO;
+import dev.uffs.doisag.email.BackgroundEmailSender;
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.email.EmailSender;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InputCleaner;
+import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.model.PasswordReset;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PasswordResetRepository;
@@ -33,17 +35,20 @@ public class PasswordResetService {
     private final PasswordResetRepository passwordResetRepository;
     private final PasswordService passwordService;
     private final EmailSender emailSender;
+    private final BackgroundEmailSender backgroundEmailSender;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final String publicUrl;
 
     public PasswordResetService(UsersRepository usersRepository, PasswordResetRepository passwordResetRepository,
                                 PasswordService passwordService, EmailSender emailSender,
+                                BackgroundEmailSender backgroundEmailSender,
                                 LoginAttemptLimiter loginAttemptLimiter,
                                 @Value("${api.public-url}") String publicUrl) {
         this.usersRepository = usersRepository;
         this.passwordResetRepository = passwordResetRepository;
         this.passwordService = passwordService;
         this.emailSender = emailSender;
+        this.backgroundEmailSender = backgroundEmailSender;
         this.loginAttemptLimiter = loginAttemptLimiter;
         // tira a barra do fim pra o link n sair com barra dupla
         if (publicUrl.endsWith("/")) {
@@ -55,7 +60,14 @@ public class PasswordResetService {
     // manda o link se o e-mail for de uma conta ativa
     // quem pede recebe sempre a mesma resposta pra ninguem descobrir quais e-mails estao cadastrados
     @Transactional
-    public void requestReset(String email) {
+    public void requestReset(String email, String clientAddress) {
+        // conta por endereco antes de olhar a conta, pra custar igual exista ou n o e-mail
+        if (loginAttemptLimiter.isResetBlocked(clientAddress)) {
+            throw new LoginBlockedException(
+                    "Muitos pedidos seguidos. Tente de novo em " + loginAttemptLimiter.getBlockMinutes() + " minutos");
+        }
+        loginAttemptLimiter.registerResetRequest(clientAddress);
+
         Users user = usersRepository.findByEmail(InputCleaner.normalizeEmail(email)).orElse(null);
         if (user == null || !user.isActive()) {
             return;
@@ -68,7 +80,8 @@ public class PasswordResetService {
             return;
         }
 
-        sendLink(user, createLink(user, now));
+        // o smtp fica fora da resposta, senao a demora dele contaria q a conta existe
+        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now)));
     }
 
     // link de senha nova pedido pelo administrador, sem o limite por hora
@@ -76,7 +89,7 @@ public class PasswordResetService {
     @Transactional
     public String createLinkFor(Users user) {
         String resetLink = createLink(user, LocalDateTime.now());
-        boolean wasEmailed = sendLink(user, resetLink);
+        boolean wasEmailed = emailSender.send(linkMessage(user, resetLink));
         return wasEmailed ? null : resetLink;
     }
 
@@ -97,9 +110,9 @@ public class PasswordResetService {
         return publicUrl + "/redefinir-senha?token=" + token;
     }
 
-    private boolean sendLink(Users user, String resetLink) {
-        return emailSender.send(new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
-                buildEmailText(user.getName(), resetLink)));
+    private EmailMessage linkMessage(Users user, String resetLink) {
+        return new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
+                buildEmailText(user.getName(), resetLink));
     }
 
     // grava a senha nova pelo link e derruba as sessoes abertas
