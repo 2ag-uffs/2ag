@@ -116,6 +116,7 @@ public class ScaleResponseService {
         if (!isNew) {
             checkCanBeChanged(response);
         }
+        boolean wasComplete = !isNew && !definition.isIncomplete(response.getScore());
 
         response.setPatient(patient);
         response.setScaleType(scaleType);
@@ -124,12 +125,21 @@ public class ScaleResponseService {
         fillAnswersAndScore(response, definition, answerData.answers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
+        boolean isComplete = !definition.isIncomplete(savedResponse.getScore());
         if (isNew) {
             taskService.linkResponse(savedResponse);
             auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
-            notifyPrescriber(savedResponse);
         } else {
+            // a escala pela metade q foi completada na correcao passa a valer pra tarefa
+            if (isComplete && !wasComplete) {
+                taskService.linkCompletedResponse(savedResponse);
+            }
             auditService.recordChange(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
+        }
+        // o aviso sai qnd a escala fica completa, e o diario avisa uma vez so no fim do periodo
+        boolean becameComplete = isComplete && (isNew || !wasComplete);
+        if (becameComplete && definition.fillMode() != ScaleDefinition.FillMode.DIARIO) {
+            notifyPrescriber(savedResponse);
         }
         return new AnswerResult(dtoOf(savedResponse), isNew);
     }
@@ -209,11 +219,16 @@ public class ScaleResponseService {
         checkCanBeChanged(response);
 
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
+        boolean wasComplete = !definition.isIncomplete(response.getScore());
         fillAnswersAndScore(response, definition, answerData.answers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
         auditService.recordChange(response.getScaleType().getAuditRecordType(), savedResponse.getId(),
                 savedResponse.getPatient().getId());
+        if (!wasComplete && !definition.isIncomplete(savedResponse.getScore())) {
+            taskService.linkCompletedResponse(savedResponse);
+            notifyPrescriber(savedResponse);
+        }
         return dtoOf(savedResponse);
     }
 
@@ -422,6 +437,7 @@ public class ScaleResponseService {
     }
 
     // RF15 a conclusao de uma escala avisa o prescritor
+    // o diario avisa no fechamento do periodo, no ScaleTaskService.closeOverdue
     private void notifyPrescriber(ScaleResponse response) {
         Prescriber prescriber = response.getPatient().getPrescriber();
         if (prescriber == null) {

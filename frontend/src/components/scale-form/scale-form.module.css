@@ -198,6 +198,11 @@ fieldset:disabled .option span:hover {
     box-shadow: var(--focus-ring);
 }
 
+/* limpar fica no canto e discreto pra n competir com as opcoes */
+.clear {
+    align-self: flex-start;
+}
+
 @media (max-width: 47.99rem) {
     .item {
         padding: var(--space-4);

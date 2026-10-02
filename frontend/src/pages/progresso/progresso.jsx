@@ -65,7 +65,7 @@ export default function Progresso() {
     const isPrescriber = Boolean(loggedUser && loggedUser.role === "PRESCRIBER");
     const patientId = isPrescriber ? patientIdFromUrl : (loggedUser && loggedUser.id);
 
-    // quem troca de paciente continua com os mesmos filtros
+    // quem troca de paciente ou vem da central de escalas chega com o filtro pronto
     const keptFilters = location.state || {};
 
     const [patients, setPatients] = useState(null);

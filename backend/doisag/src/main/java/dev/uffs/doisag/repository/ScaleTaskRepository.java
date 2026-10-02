@@ -29,8 +29,9 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     Optional<ScaleTask> findFirstByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
             Long patientId, ScaleType scaleType, ScaleTaskStatus status);
 
-    // a ultima vez q essa escala foi enviada, respondida ou n
-    Optional<ScaleTask> findFirstByPatientIdAndScaleTypeOrderByPeriodStartDesc(Long patientId, ScaleType scaleType);
+    // a ultima vez q o acompanhamento enviou essa escala, respondida ou n
+    Optional<ScaleTask> findFirstByPatientIdAndScaleTypeAndFromProtocolTrueOrderByPeriodStartDesc(
+            Long patientId, ScaleType scaleType);
 
     // as pendencias q passaram do prazo e o job precisa fechar
     List<ScaleTask> findByStatusAndPeriodEndBefore(ScaleTaskStatus status, LocalDate day);

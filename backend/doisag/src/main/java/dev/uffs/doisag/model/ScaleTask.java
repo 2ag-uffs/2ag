@@ -58,6 +58,10 @@ public class ScaleTask {
 
     private LocalDate answeredAt;
 
+    // veio do acompanhamento automatico e n de um envio avulso
+    @Column(nullable = false)
+    private boolean fromProtocol = false;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -141,6 +145,14 @@ public class ScaleTask {
 
     // quando o aviso de lembrete desta tarefa foi criado, pra ele n sair duas vezes (RF34)
     private LocalDateTime reminderSentAt;
+
+    public boolean isFromProtocol() {
+        return fromProtocol;
+    }
+
+    public void setFromProtocol(boolean fromProtocol) {
+        this.fromProtocol = fromProtocol;
+    }
 
     public LocalDateTime getReminderSentAt() {
         return reminderSentAt;

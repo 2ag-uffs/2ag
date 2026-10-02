@@ -43,6 +43,14 @@ export function missingItemsOf(items, values) {
     });
 }
 
+// escala pontuada sem um item fica sem escore (RN10), entao ali so o texto livre pode ficar em branco
+export function requiredItemsOf(definition) {
+    if (definition.maxScore === null || definition.maxScore === undefined) {
+        return [];
+    }
+    return definition.items.filter((item) => item.type !== "TEXTO");
+}
+
 // a resposta salva volta pros campos da tela
 export function answersToValues(answers) {
     const values = {};

@@ -214,7 +214,9 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 - cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10)
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
-- item em branco não é gravado, e escala validada sem todos os itens não tem escore
+- item em branco não é gravado, e escala validada sem todos os itens não tem escore. essa resposta pela metade é guardada com o resultado "Incompleta: sem escore", mas não vale pela tarefa: ela continua pendente, o lembrete continua cobrando e no prazo vira não respondida. completar depois, pela correção, fecha a tarefa e avisa o prescritor
+- a resposta avisa o prescritor quando a escala fica completa. nas escalas de preenchimento diário o aviso é um só, quando o período fecha, dizendo quantos dias foram preenchidos
+- a tarefa guarda se veio do acompanhamento automático. só essa marca o ciclo dos 90 dias: a escala enviada à mão não adianta a próxima rodada, mas a mesma escala nunca fica pendente duas vezes. se a rodada chega enquanto uma enviada à mão ainda está aberta, ela vira a rodada e ganha o prazo da periodicidade
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
 - o MEEM é a exceção à regra do item em branco: como não tem correção, exame com seção ou escolaridade em branco é recusado com a lista do que falta, em vez de ser gravado sem escore ou sem faixa (RN14)

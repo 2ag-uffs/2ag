@@ -17,6 +17,8 @@ import java.util.Map;
 @Component
 public class ScaleCatalog {
 
+    public static final String INCOMPLETE_RESULT = "Incompleta: sem escore";
+
     // frequencia dos acompanhamentos semanais de dor e de TEA
     private static final List<ScaleOption> DIAS_DA_SEMANA = List.of(
             new ScaleOption(0, "Nenhum dia"),
@@ -73,6 +75,10 @@ public class ScaleCatalog {
         if (definition.hasScore() && score != null) {
             String result = score + " de " + definition.maxScore();
             return band == null ? result : result + " · " + band;
+        }
+        // o texto fixo escondia q a escala ficou pela metade
+        if (definition.hasScore()) {
+            return INCOMPLETE_RESULT;
         }
         String summaryKey = definition.summaryItemKey();
         ScaleItem item = summaryKey == null ? null : definition.itemOf(summaryKey).orElse(null);

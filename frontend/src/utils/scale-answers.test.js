@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {answersPayload, answersToValues, missingItemsOf} from "./scale-answers.js";
+import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "./scale-answers.js";
 
 const ITEMS = [
     {key: "dor", type: "NOTA"},
@@ -38,6 +38,19 @@ describe("missingItemsOf", () => {
         const missing = missingItemsOf(ITEMS, {dor: "0", comentario: "   ", diaComum: null, gotasManha: ""});
 
         expect(missing.map((item) => item.key)).toEqual(["comentario", "horarioDormir", "diaComum", "gotasManha"]);
+    });
+});
+
+describe("requiredItemsOf", () => {
+    it("escala pontuada exige tudo menos o texto livre", () => {
+        const required = requiredItemsOf({maxScore: 21, items: ITEMS});
+
+        expect(required.map((item) => item.key))
+            .toEqual(["dor", "horarioDormir", "diaComum", "tempoNaCama", "gotasManha"]);
+    });
+
+    it("escala sem escore aceita item em branco (RN10)", () => {
+        expect(requiredItemsOf({maxScore: null, items: ITEMS})).toEqual([]);
     });
 });
 

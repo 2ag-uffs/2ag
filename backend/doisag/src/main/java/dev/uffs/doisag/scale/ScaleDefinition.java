@@ -44,4 +44,9 @@ public record ScaleDefinition(
     public boolean hasScore() {
         return maxScore != null;
     }
+
+    // escala pontuada sem escore ficou pela metade e n conta como respondida (RN10)
+    public boolean isIncomplete(Integer score) {
+        return hasScore() && score == null;
+    }
 }

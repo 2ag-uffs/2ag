@@ -9,6 +9,7 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
@@ -216,6 +217,101 @@ class TreatmentProtocolServiceTest {
         assertThatThrownBy(() -> criaProtocolo(List.of(
                 item(ScaleType.MINI_EXAME_ESTADO_MENTAL, Periodicity.MENSAL))))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    private ScaleTask enviaAvulsa(ScaleType escala, LocalDate dia) {
+        return scaleTaskService.assign(paciente.getId(), escala, dia, 7, false);
+    }
+
+    private void marcaRespondida(ScaleTask tarefa) {
+        tarefa.setStatus(ScaleTaskStatus.RESPONDIDA);
+        taskRepository.save(tarefa);
+    }
+
+    private ScaleTask tarefaDoDia(LocalDate dia) {
+        return taskRepository.findByPatientIdOrderByPeriodStartDesc(paciente.getId()).stream()
+                .filter(task -> task.getPeriodStart().equals(dia))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    // RF32 a escala avulsa n pode adiantar a rodada do acompanhamento
+    @Test
+    void escalaAvulsaNaoAdiantaARodadaMensal() {
+        criaProtocolo(List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        marcaRespondida(tarefaDoDia(INICIO));
+        marcaRespondida(enviaAvulsa(ScaleType.ESCALA_PITTSBURGH, INICIO.plusDays(5)));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(12))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(30))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(3);
+    }
+
+    @Test
+    void avulsaVencidaSemRespostaNaoAdiantaARodada() {
+        criaProtocolo(List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        marcaRespondida(tarefaDoDia(INICIO));
+        enviaAvulsa(ScaleType.ESCALA_PITTSBURGH, INICIO.plusDays(5));
+        scaleTaskService.closeOverdue(INICIO.plusDays(12));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(12))).isZero();
+    }
+
+    @Test
+    void marcaAOrigemDaTarefa() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+
+        assertThat(tarefaDoDia(INICIO).isFromProtocol()).isTrue();
+        assertThat(scaleTaskService.assign(paciente.getId(), ScaleType.REGISTRO_DOR).isFromProtocol()).isFalse();
+    }
+
+    // a mesma escala nunca fica pendente duas vezes, venha de onde vier
+    @Test
+    void avulsaReaproveitaATarefaDoProtocoloEmAberto() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+
+        ScaleTask avulsa = enviaAvulsa(ScaleType.ACOMPANHAMENTO_SEMANAL, INICIO.plusDays(2));
+
+        assertThat(avulsa.isFromProtocol()).isTrue();
+        assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isEqualTo(1);
+    }
+
+    // a avulsa aberta na hora da rodada vira a rodada, com o prazo da periodicidade
+    @Test
+    void protocoloAssumeAAvulsaAindaAberta() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        marcaRespondida(tarefaDoDia(INICIO));
+        ScaleTask avulsa = enviaAvulsa(ScaleType.ACOMPANHAMENTO_SEMANAL, INICIO.plusDays(5));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(7))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isEqualTo(2);
+        assertThat(avulsa.isFromProtocol()).isTrue();
+        assertThat(avulsa.getPeriodEnd()).isEqualTo(INICIO.plusDays(13));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(12))).isZero();
+        scaleTaskService.closeOverdue(INICIO.plusDays(14));
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(14))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isEqualTo(3);
+    }
+
+    // o pittsburgh mandado na consulta n pode voltar dois dias dps pelo acompanhamento
+    @Test
+    void avulsaRespondidaNaPrimeiraRodadaNaoFazOProtocoloMandarDeNovo() {
+        criaProtocolo(List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        ScaleTask avulsa = enviaAvulsa(ScaleType.ESCALA_PITTSBURGH, INICIO);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO)).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(1);
+        marcaRespondida(avulsa);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(2))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(30))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(2);
     }
 
     // sem o prescritor ninguem le o q o paciente responde

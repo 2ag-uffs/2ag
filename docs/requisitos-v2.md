@@ -781,7 +781,9 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição.
 - **Resultado:** a central do paciente mostra o escore com a faixa interpretativa (RN14). Formulário da clínica sem faixa publicada mostra o item principal e nenhuma interpretação inventada (RN13).
 - **MEEM:** aplicado pelo prescritor dentro de consulta confirmada, nunca designado ao paciente (RN09), e aparece nos dois históricos.
-- **Avisos:** a escala enviada avisa o paciente e a resposta avisa o prescritor (RF15). As pendências vencidas aparecem no painel do prescritor.
+- **Avisos:** a escala enviada avisa o paciente e a resposta completa avisa o prescritor (RF15). Nos diários o prescritor recebe um aviso só, quando o período fecha, com a quantidade de dias preenchidos (02/10/2026). As pendências vencidas aparecem no painel do prescritor.
+- **Escala pontuada pela metade:** fica guardada como "Incompleta: sem escore", mas a tarefa continua pendente e no prazo vira não respondida; a tela só deixa salvar com todos os itens respondidos (02/10/2026).
+- **Escala avulsa e ciclo:** a tarefa guarda a origem, e só a do acompanhamento marca a próxima rodada (RF32, 02/10/2026).
 
 **Evolução concluída em 14/09/2026:** RF27, RF28 e RF07.
 

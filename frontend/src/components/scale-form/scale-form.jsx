@@ -37,6 +37,13 @@ function ScaleField({item, values, onChange, disabled}) {
     }
 
     if (item.type === "NOTA" || item.type === "ESCOLHA" || item.type === "SIM_NAO") {
+        // toque errado no celular n pode virar dado clinico (RN10)
+        // o botao some dps de limpar, entao o foco volta pra primeira opcao
+        const clearAnswer = (event) => {
+            event.currentTarget.closest("fieldset").querySelector("input").focus();
+            change("");
+        };
+
         return (
             <fieldset className={styles.field} disabled={disabled}>
                 <legend className={styles.legend}>
@@ -45,6 +52,16 @@ function ScaleField({item, values, onChange, disabled}) {
                 {item.type === "NOTA"
                     ? <ScoreChoices item={item} value={value} onChange={change}/>
                     : <OptionChoices item={item} value={value} onChange={change}/>}
+                {value !== "" && !disabled && (
+                    <button
+                        type="button"
+                        className={"button-tertiary button-small " + styles.clear}
+                        aria-label={"Limpar resposta de " + item.label}
+                        onClick={clearAnswer}
+                    >
+                        Limpar resposta
+                    </button>
+                )}
             </fieldset>
         );
     }

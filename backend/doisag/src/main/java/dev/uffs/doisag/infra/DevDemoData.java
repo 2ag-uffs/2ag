@@ -160,7 +160,7 @@ public class DevDemoData {
             createJoaoRecent(prescriber, joao, today);
             createRenataRecent(prescriber, renata, today);
             // paciente novo so com a ficha de avaliacao inicial pra responder
-            scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, 7);
+            scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, 7, false);
             // outro prescritor da clinica pra lista da administracao n ficar com um nome so
             prescriberService.create(new PrescriberCreateDTO("Carlos Pereira", "carlos.pereira@email.com",
                     validCpf("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico", "CRM", "23456"),
@@ -270,13 +270,13 @@ public class DevDemoData {
 
     private void createMariaRecent(Prescriber prescriber, Patient maria, LocalDate today) {
         // a semana atual do diario comecou anteontem e ja tem dois dias preenchidos
-        scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(2), 7);
+        scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(2), 7, true);
         LocalDate firstDay = today.minusDays(56);
         mariaFollowUpDay(maria, firstDay, 54);
         mariaFollowUpDay(maria, firstDay, 55);
 
-        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, 7);
-        scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, 7);
+        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, 7, false);
+        scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, 7, false);
 
         appointmentService.schedule(new AppointmentScheduleDTO(maria.getId(),
                 nextWorkingDay(today.plusDays(7)).atTime(9, 0), AppointmentModality.PRESENCIAL, null),
@@ -397,7 +397,7 @@ public class DevDemoData {
         }
 
         // enviada ha doze dias com uma semana de prazo entao ja venceu
-        scaleTaskService.assign(renata.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(12), 7);
+        scaleTaskService.assign(renata.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(12), 7, false);
     }
 
     private void createRenataRecent(Prescriber prescriber, Patient renata, LocalDate today) {

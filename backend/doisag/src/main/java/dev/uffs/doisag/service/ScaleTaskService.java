@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,13 +71,15 @@ public class ScaleTaskService {
     // envio avulso feito pelo prescritor (RF09)
     @Transactional
     public ScaleTask assign(Long patientId, ScaleType scaleType) {
-        return assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS);
+        return assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS, false);
     }
 
     // a versao com data e prazo serve pro acompanhamento automatico: o
     // job manda o dia q ele esta processando e o prazo da periodicidade
+    // so a tarefa do acompanhamento marca o ciclo, entao a avulsa n mexe na proxima rodada (RF32)
     @Transactional
-    public ScaleTask assign(Long patientId, ScaleType scaleType, LocalDate today, int taskDays) {
+    public ScaleTask assign(Long patientId, ScaleType scaleType, LocalDate today, int taskDays,
+                            boolean fromProtocol) {
         // RN09 escala de heteroaplicacao n vira tarefa do paciente
         if (!scaleType.isFilledByPatient()) {
             throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
@@ -100,6 +103,7 @@ public class ScaleTaskService {
         task.setPeriodStart(today);
         task.setPeriodEnd(today.plusDays(taskDays - 1L));
         task.setStatus(ScaleTaskStatus.PENDENTE);
+        task.setFromProtocol(fromProtocol);
 
         ScaleTask savedTask = taskRepository.save(task);
         auditService.recordCreation(AuditRecordType.DESIGNACAO_DE_ESCALA, savedTask.getId(), patientId);
@@ -125,11 +129,28 @@ public class ScaleTaskService {
         if (openTask.isEmpty() || !openTask.get().coversDay(today)) {
             return;
         }
+        // escala pontuada pela metade n fica com a tarefa: ela segue pendente, o lembrete cobra
+        // e no prazo vira nao respondida (RN10)
+        if (catalog.definitionOf(response.getScaleType()).isIncomplete(response.getScore())) {
+            return;
+        }
         ScaleTask task = openTask.get();
         response.setTask(task);
-        if (catalog.definitionOf(response.getScaleType()).fillMode() != ScaleDefinition.FillMode.DIARIO) {
+        if (!isDaily(response.getScaleType())) {
             closeAsAnswered(task, today);
         }
+    }
+
+    // a correcao q completa a escala fecha a tarefa aberta no dia em q a resposta pela metade
+    // foi enviada, e n uma tarefa nova q ja comecou
+    @Transactional
+    public void linkCompletedResponse(ScaleResponse response) {
+        Optional<ScaleTask> openTask = openTaskOf(response.getPatient().getId(), response.getScaleType());
+        LocalDate sentDay = response.getCreatedAt().toLocalDate();
+        if (response.getTask() != null || openTask.isEmpty() || !openTask.get().coversDay(sentDay)) {
+            return;
+        }
+        linkResponse(response);
     }
 
     // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
@@ -163,6 +184,10 @@ public class ScaleTaskService {
         List<ScaleTask> overdue = taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today);
         for (ScaleTask task : overdue) {
             closeByAnswers(task, task.getPeriodEnd());
+            // no diario o prescritor recebe um aviso por periodo e n um por dia (RF15)
+            if (isDaily(task.getScaleType())) {
+                notifyDailyPeriodClosed(task);
+            }
         }
         return overdue.size();
     }
@@ -190,6 +215,32 @@ public class ScaleTaskService {
             task.setAnsweredAt(answeredDay);
         }
         taskRepository.save(task);
+    }
+
+    // a anamnese n tem definicao no catalogo
+    private boolean isDaily(ScaleType scaleType) {
+        return catalog.hasDefinition(scaleType)
+                && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.DIARIO;
+    }
+
+    // conta os dias do periodo, pq dia atrasado de outra semana tbm fica ligado na tarefa
+    private void notifyDailyPeriodClosed(ScaleTask task) {
+        Patient patient = task.getPatient();
+        long filledDays = responseRepository
+                .findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(patient.getId(),
+                        task.getScaleType(), task.getPeriodStart(), task.getPeriodEnd())
+                .stream()
+                .filter(response -> !response.isAnnulled())
+                .count();
+        if (filledDays == 0) {
+            return;
+        }
+        long totalDays = ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1;
+        notificationService.createNotification(task.getPrescriber(), "Escala diária concluída",
+                task.getScaleType().getDisplayName() + " de " + formatDate(task.getPeriodStart()) + " a "
+                        + formatDate(task.getPeriodEnd()) + ": " + patient.getName() + " preencheu "
+                        + filledDays + " de " + totalDays + " dias.",
+                "FORM", "/paciente/" + patient.getId() + "/historico");
     }
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
@@ -233,8 +284,20 @@ public class ScaleTaskService {
                 .toList();
     }
 
-    public Optional<ScaleTask> lastTaskOf(Long patientId, ScaleType scaleType) {
-        return taskRepository.findFirstByPatientIdAndScaleTypeOrderByPeriodStartDesc(patientId, scaleType);
+    // a avulsa q estava aberta na hora da rodada passa a ser a rodada, com o prazo da periodicidade
+    @Transactional
+    public void adoptAsProtocolRound(ScaleTask task, LocalDate roundEnd) {
+        task.setFromProtocol(true);
+        if (task.getPeriodEnd().isBefore(roundEnd)) {
+            task.setPeriodEnd(roundEnd);
+        }
+        taskRepository.save(task);
+    }
+
+    // a ultima rodada do acompanhamento automatico, sem contar o envio avulso
+    public Optional<ScaleTask> lastProtocolTaskOf(Long patientId, ScaleType scaleType) {
+        return taskRepository.findFirstByPatientIdAndScaleTypeAndFromProtocolTrueOrderByPeriodStartDesc(
+                patientId, scaleType);
     }
 
     private ScaleResponseSummaryDTO summaryOf(ScaleResponse response) {

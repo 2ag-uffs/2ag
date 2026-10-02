@@ -170,8 +170,13 @@ public class TreatmentProtocolService {
             }
             for (ProtocolItem item : protocol.getItems()) {
                 if (estaNaHora(protocol, item, hoje)) {
-                    scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
-                            item.getPeriodicity().getDays());
+                    ScaleTask task = scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
+                            item.getPeriodicity().getDays(), true);
+                    // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
+                    // e recebe a mesma escala de novo no dia seguinte
+                    if (!task.isFromProtocol()) {
+                        scaleTaskService.adoptAsProtocolRound(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
+                    }
                     designadas++;
                 }
             }
@@ -184,7 +189,8 @@ public class TreatmentProtocolService {
     // ar por uns dias, o acompanhamento continua de onde parou em vez de
     // pular a rodada
     private boolean estaNaHora(TreatmentProtocol protocol, ProtocolItem item, LocalDate hoje) {
-        Optional<ScaleTask> ultima = scaleTaskService.lastTaskOf(protocol.getPatient().getId(), item.getScaleType());
+        Optional<ScaleTask> ultima = scaleTaskService.lastProtocolTaskOf(protocol.getPatient().getId(),
+                item.getScaleType());
         if (ultima.isEmpty()) {
             // primeira vez: envia assim que o acompanhamento comeca
             return true;

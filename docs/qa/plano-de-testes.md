@@ -105,10 +105,10 @@ requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RN09 e RN10.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
-| CT-22 | como prescritora, enviar uma escala avulsa | aparece em *Escalas* da paciente com o prazo, e ela recebe aviso |
-| CT-23 | no acompanhamento semanal, preencher um dia, trocar de dia e voltar sem salvar, depois salvar | o que foi digitado continua ao voltar. item deixado em branco não vira zero |
+| CT-22 | como prescritora, enviar uma escala avulsa a uma paciente com acompanhamento automático da mesma escala | aparece em *Escalas* da paciente com o prazo, e ela recebe aviso. a próxima rodada do acompanhamento continua na data de sempre |
+| CT-23 | no acompanhamento semanal, preencher um dia, trocar de dia e voltar sem salvar, depois salvar | o que foi digitado continua ao voltar. item deixado em branco não vira zero. a prescritora não recebe aviso a cada dia, só quando a semana fecha |
 | CT-24 | corrigir uma resposta ainda não analisada. depois a prescritora marca como analisada e a paciente tenta corrigir de novo | antes da análise corrige. depois, a tela avisa que precisa falar com a prescritora |
-| CT-25 | responder Hamilton e Pittsburgh com valores conhecidos | escore e interpretação batem com a conta feita na ficha em papel de [`docs/scales`](../scales) |
+| CT-25 | responder Hamilton e Pittsburgh com valores conhecidos. antes, tentar salvar o Hamilton com um item em branco e desmarcar um item com *Limpar resposta*. depois, na central de escalas, usar *Ver progresso* na escala respondida | escore e interpretação batem com a conta feita na ficha em papel de [`docs/scales`](../scales). com item em branco a tela não salva e marca o que falta. o item desmarcado sai da resposta. o progresso abre já na escala certa, com 90 dias |
 | CT-26 | preencher o diário do sono | tempos calculados certos, também quando dormir passa da meia-noite. a programação da prescritora aparece no topo |
 | CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes. tentar salvar com uma seção e a escolaridade em branco | o corte muda com a escolaridade e o MEEM nunca aparece como tarefa da paciente. com item em branco o exame não é salvo, a tela lista o que falta e marca os itens |
 | CT-28 | criar e depois encerrar um acompanhamento automático | as escalas escolhidas e as frequências aparecem certas. encerrar para os envios |

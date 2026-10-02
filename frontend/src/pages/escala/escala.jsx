@@ -7,7 +7,7 @@ import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
-import {answersPayload, answersToValues} from "../../utils/scale-answers.js";
+import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "../../utils/scale-answers.js";
 import styles from "./escala.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -40,6 +40,8 @@ export default function Escala() {
     const [notice, setNotice] = useState(null);
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    // itens da escala pontuada q ficaram em branco no ultimo envio
+    const [missingKeys, setMissingKeys] = useState([]);
     const [reloadCount, setReloadCount] = useState(0);
 
     useEffect(() => {
@@ -138,6 +140,7 @@ export default function Escala() {
         setSelectedDay(dayIso);
         setNotice(null);
         setFormError(null);
+        setMissingKeys([]);
     };
 
     const changePeriodEnd = (dayIso) => {
@@ -151,12 +154,20 @@ export default function Escala() {
             ...current,
             [selectedDay]: {...(current[selectedDay] || savedValues), [key]: value},
         }));
+        setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
     };
 
     const save = async (event) => {
         event.preventDefault();
         setFormError(null);
         setNotice(null);
+
+        const missingItems = missingItemsOf(requiredItemsOf(definition), values);
+        if (missingItems.length > 0) {
+            setMissingKeys(missingItems.map((item) => item.key));
+            return;
+        }
+
         setIsSaving(true);
         try {
             const saved = await apiService.post("/scales/" + slug + "/responses", {
@@ -184,6 +195,11 @@ export default function Escala() {
     if (!definition) {
         return <SkeletonPage cards={2}/>;
     }
+
+    const hasRequiredItems = requiredItemsOf(definition).length > 0;
+    const missingLabels = definition.items
+        .filter((item) => missingKeys.includes(item.key))
+        .map((item) => item.label);
 
     return (
         <section className={styles.page}>
@@ -274,16 +290,30 @@ export default function Escala() {
                 {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
                 {notice && <p className="aviso" role="status">{notice}</p>}
 
+                {hasRequiredItems && !isReadOnly && (
+                    <p className="aviso">
+                        Responda todos os itens antes de salvar. Sem eles a escala pode ficar sem escore e continuar pendente.
+                    </p>
+                )}
+
                 <ScaleForm
                     items={definition.items}
                     values={values}
                     onChange={changeAnswer}
                     disabled={isReadOnly || isSaving}
+                    missingKeys={missingKeys}
                 />
 
                 {isPeriod && currentResponse && (
                     <p className={styles.periodNote}>
                         Período respondido: {formatDate(currentResponse.periodStart)} a {formatDate(currentResponse.periodEnd)}.
+                    </p>
+                )}
+
+                {/* perto do botao pq no topo o aviso some num form comprido */}
+                {missingLabels.length > 0 && (
+                    <p className="aviso aviso--atencao" role="alert">
+                        Falta preencher: {missingLabels.join(", ")}.
                     </p>
                 )}
 

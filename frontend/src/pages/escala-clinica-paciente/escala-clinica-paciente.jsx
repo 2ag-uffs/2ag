@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router";
-import {FiCheckCircle} from "react-icons/fi";
+import {FiCheckCircle, FiTrendingUp} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -19,6 +19,8 @@ export default function CentralEscalas() {
 
     const [page, setPage] = useState(null);
     const [loadError, setLoadError] = useState(null);
+    // o q da pra acompanhar no grafico. sem ele a linha so perde o botao de progresso
+    const [attributes, setAttributes] = useState([]);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -42,6 +44,15 @@ export default function CentralEscalas() {
             isCurrentRequest = false;
         };
     }, [patientId]);
+
+    useEffect(() => {
+        apiService.get("/progress/attributes")
+            .then(setAttributes)
+            .catch(() => setAttributes([]));
+    }, []);
+
+    // o progresso abre no primeiro atributo da escala, igual qnd troca de escala la
+    const firstAttributeOf = (scaleType) => attributes.find((attribute) => attribute.scaleType === scaleType);
 
     if (loadError) {
         return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
@@ -115,30 +126,48 @@ export default function CentralEscalas() {
                     <p className={styles.period}>Você ainda não respondeu nenhuma avaliação.</p>
                 ) : (
                     <ul className={styles.list}>
-                        {page.history.map((response) => (
-                            <li key={response.id} className={styles.row}>
-                                <div className={styles.rowText}>
-                                    <h3 className={styles.cardTitle}>{response.scaleName}</h3>
-                                    <p className={styles.period}>{periodTextOf(response)}</p>
-                                    <p className={styles.result}>{response.result}</p>
-                                    {response.annulled && <span className={styles.tagAnnulled}>Anulada pelo prescritor</span>}
-                                    {response.reviewed && !response.annulled && (
-                                        <span className={styles.tagReviewed}>O prescritor já analisou</span>
-                                    )}
-                                </div>
-                                {/* o q ainda da pra corrigir abre o formulario e o resto so a leitura */}
-                                {/* o MEEM cai sempre na leitura pq quem aplica eh o prescritor */}
-                                <button
-                                    type="button"
-                                    className="button-secondary button-small"
-                                    onClick={() => navigate(response.editableByPatient
-                                        ? "/escalas/" + response.slug + "?data=" + response.periodStart
-                                        : "/escalas/resposta/" + response.id)}
-                                >
-                                    {response.editableByPatient ? "Ver e corrigir" : "Ver respostas"}
-                                </button>
-                            </li>
-                        ))}
+                        {page.history.map((response) => {
+                            const progressAttribute = firstAttributeOf(response.scaleType);
+                            return (
+                                <li key={response.id} className={styles.row}>
+                                    <div className={styles.rowText}>
+                                        <h3 className={styles.cardTitle}>{response.scaleName}</h3>
+                                        <p className={styles.period}>{periodTextOf(response)}</p>
+                                        <p className={styles.result}>{response.result}</p>
+                                        {response.annulled && <span className={styles.tagAnnulled}>Anulada pelo prescritor</span>}
+                                        {response.reviewed && !response.annulled && (
+                                            <span className={styles.tagReviewed}>O prescritor já analisou</span>
+                                        )}
+                                    </div>
+                                    <div className={styles.rowActions}>
+                                        {/* o q ainda da pra corrigir abre o formulario e o resto so a leitura */}
+                                        {/* o MEEM cai sempre na leitura pq quem aplica eh o prescritor */}
+                                        <button
+                                            type="button"
+                                            className="button-secondary button-small"
+                                            onClick={() => navigate(response.editableByPatient
+                                                ? "/escalas/" + response.slug + "?data=" + response.periodStart
+                                                : "/escalas/resposta/" + response.id)}
+                                        >
+                                            {response.editableByPatient ? "Ver e corrigir" : "Ver respostas"}
+                                        </button>
+                                        {/* 90 dias pra resposta de mais de um mes ainda aparecer no grafico */}
+                                        {progressAttribute && (
+                                            <button
+                                                type="button"
+                                                className="button-secondary button-small"
+                                                onClick={() => navigate("/progresso", {
+                                                    state: {attribute: progressAttribute.name, period: "DIAS_90"},
+                                                })}
+                                            >
+                                                <FiTrendingUp aria-hidden="true"/>
+                                                Ver progresso
+                                            </button>
+                                        )}
+                                    </div>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </Card>

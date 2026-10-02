@@ -18,6 +18,8 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.service.ReminderService;
+import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
+import dev.uffs.doisag.service.ScaleResponseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -51,6 +53,7 @@ class ReminderTest {
     private static final LocalDate TODAY = LocalDate.now();
 
     @Autowired private ReminderService reminderService;
+    @Autowired private ScaleResponseService scaleResponseService;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -184,6 +187,16 @@ class ReminderTest {
 
         assertThat(notificationsOf(patient)).hasSize(1);
         verify(emailSender, times(1)).send(any());
+    }
+
+    // RN10 a escala pontuada pela metade continua sendo cobrada
+    @Test
+    void escalaPontuadaPelaMetadeContinuaSendoCobrada() {
+        saveTask(ScaleType.ESCALA_HAMILTON, TODAY.plusDays(2));
+        scaleResponseService.answer(patient.getId(), ScaleType.ESCALA_HAMILTON,
+                new ScaleResponseCreateDTO(null, null, Map.of("humorAnsioso", 2)));
+
+        assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
     }
 
     // conta desativada n consegue entrar pra desligar o e-mail no perfil
