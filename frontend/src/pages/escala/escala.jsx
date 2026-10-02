@@ -196,6 +196,16 @@ export default function Escala() {
         return <SkeletonPage cards={2}/>;
     }
 
+    // o meem eh aplicado pelo prescritor na consulta, entao o paciente n ganha o formulario (RN09)
+    if (!definition.filledByPatient) {
+        return (
+            <section className={styles.page}>
+                <PageHeader title={definition.title}/>
+                <p className="aviso">Esta escala é aplicada pelo prescritor durante a consulta.</p>
+            </section>
+        );
+    }
+
     const hasRequiredItems = requiredItemsOf(definition).length > 0;
     const missingLabels = definition.items
         .filter((item) => missingKeys.includes(item.key))

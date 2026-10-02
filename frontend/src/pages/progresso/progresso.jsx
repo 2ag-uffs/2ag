@@ -16,7 +16,7 @@ import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, download, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import {onThemeChange} from "../../utils/theme.js";
 import styles from "./progresso.module.css";
@@ -82,6 +82,8 @@ export default function Progresso() {
     const [appointments, setAppointments] = useState([]);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
     const [isAnonymous, setIsAnonymous] = useState(Boolean(keptFilters.isAnonymous));
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState(null);
     const [comments, setComments] = useState([]);
     const [loadError, setLoadError] = useState(null);
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
@@ -176,6 +178,7 @@ export default function Progresso() {
                 if (isCurrentRequest) {
                     setPoints(series);
                     setSeriesError(null);
+                    setDownloadError(null);
                 }
             })
             .catch((requestError) => {
@@ -357,16 +360,26 @@ export default function Progresso() {
 
     // so o prescritor pode pedir o arquivo anonimo, pro paciente a api responde erro
     const anonymousParam = isPrescriber && isAnonymous ? "&anonymous=true" : "";
+    // pela api, senao sessao vencida salvava um csv com o json do erro dentro
+    const downloadCsv = async () => {
+        setDownloadError(null);
+        setIsDownloading(true);
+        try {
+            await download("/patients/" + patientId + "/export/progress.csv?attribute="
+                + chosenAttribute + "&period=" + period + anonymousParam, "progresso.csv");
+        } catch (requestError) {
+            setDownloadError(requestError instanceof ApiError
+                ? requestError.message
+                : "Não foi possível baixar o arquivo. Confira sua internet e tente de novo.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
     const csvLink = chartRows.length > 0 ? (
-        <a
-            className="button-secondary"
-            href={"/api/patients/" + patientId + "/export/progress.csv?attribute="
-                + chosenAttribute + "&period=" + period + anonymousParam}
-            download={true}
-        >
+        <button type="button" className="button-secondary" onClick={downloadCsv} disabled={isDownloading}>
             <FiDownload aria-hidden="true"/>
-            Baixar esta série em CSV
-        </a>
+            {isDownloading ? "Baixando..." : "Baixar esta série em CSV"}
+        </button>
     ) : null;
 
     return (
@@ -457,6 +470,7 @@ export default function Progresso() {
             </div>
 
             {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
+            {downloadError && <p className="aviso aviso--atencao" role="alert">{downloadError}</p>}
 
             <Card title={currentAttribute ? currentAttribute.displayName : "Gráfico"}>
                 {isLoading && <SkeletonBlock height="320px"/>}

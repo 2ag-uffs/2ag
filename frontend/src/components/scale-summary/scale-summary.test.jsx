@@ -5,7 +5,9 @@ import ScaleSummary from "./scale-summary.jsx";
 
 const SCALES_PAGE = {
     pending: [
-        {id: 9, scaleName: "Diário do sono", periodEnd: "2026-09-20", late: false, totalDays: 7, answeredDays: 2},
+        {id: 9, scaleName: "Diário do sono", periodEnd: "2026-09-20", late: false, daily: true, totalDays: 7, answeredDays: 2},
+        // escala avulsa de resposta unica tbm nasce com 7 dias de prazo, mas n tem grade de dias
+        {id: 10, scaleName: "Escala de ansiedade de Hamilton", periodEnd: "2026-09-21", late: false, daily: false, totalDays: 7, answeredDays: 0},
     ],
     history: [
         {
@@ -41,6 +43,9 @@ describe("ScaleSummary", () => {
 
         expect(screen.getByText("Diário do sono")).toBeInTheDocument();
         expect(screen.getByText("até 20/09/2026 · 2 de 7 dias")).toBeInTheDocument();
+        // a escala de resposta unica n ganha contagem de dias
+        expect(screen.getByText("até 21/09/2026")).toBeInTheDocument();
+        expect(screen.queryByText(/0 de 7 dias/)).not.toBeInTheDocument();
     });
 
     it("nome data e resultado ficam em pedacos separados", () => {

@@ -343,6 +343,24 @@ class ProfileTest {
                 .andExpect(status().isOk());
     }
 
+    // a sessao emitida no mesmo segundo da troca tbm cai, e so a q a troca devolve continua
+    @Test
+    void sessionIssuedJustBeforeThePasswordChangeAlsoEnds() throws Exception {
+        String sessionJustBefore = bearerTokenOf(patient);
+
+        MvcResult result = mockMvc.perform(put("/profile/password")
+                        .header("Authorization", sessionJustBefore)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"Senha-Nova#2026\"}"))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        mockMvc.perform(get("/auth/me").header("Authorization", sessionJustBefore))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/auth/me").cookie(result.getResponse().getCookie(SessionCookieService.COOKIE_NAME)))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void newPasswordWorksOnTheNextLogin() throws Exception {
         mockMvc.perform(put("/profile/password")

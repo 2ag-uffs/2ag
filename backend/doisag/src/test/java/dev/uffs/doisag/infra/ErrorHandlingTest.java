@@ -143,14 +143,15 @@ class ErrorHandlingTest {
                 .andExpect(status().isMethodNotAllowed());
     }
 
+    // responde como se n existisse, senao dava pra descobrir quais id existem
     @Test
-    void markingSomeoneElsesNotificationReturns403() throws Exception {
+    void markingSomeoneElsesNotificationReturns404() throws Exception {
         Notification prescriberNotification =
                 notificationService.createNotification(prescriber, "Aviso", "So do prescritor", "ALERT", "/lista-paciente");
 
         mockMvc.perform(post("/notifications/" + prescriberNotification.getId() + "/read")
                         .header("Authorization", patientToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

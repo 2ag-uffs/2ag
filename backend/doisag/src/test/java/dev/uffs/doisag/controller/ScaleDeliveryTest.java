@@ -349,6 +349,22 @@ class ScaleDeliveryTest {
     @Test
     void mentalStateExamIsNotSentToThePatient() throws Exception {
         sendScale("MINI_EXAME_ESTADO_MENTAL").andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/scales/definitions").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$[?(@.type == 'MINI_EXAME_ESTADO_MENTAL')]").doesNotExist());
+        mockMvc.perform(get("/scales/definitions").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[?(@.type == 'MINI_EXAME_ESTADO_MENTAL')]").exists());
+    }
+
+    // a barra de dias eh do diario: a escala de resposta unica n mostra 0 de 7 dias
+    @Test
+    void onlyTheDailyScaleTaskIsMarkedAsDaily() throws Exception {
+        sendScale("ESCALA_HAMILTON")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.daily").value(false));
+        sendScale("ACOMPANHAMENTO_SEMANAL")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.daily").value(true));
     }
 
     private ResultActions sendScale(String scaleType) throws Exception {

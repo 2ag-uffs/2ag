@@ -138,7 +138,11 @@ class ReminderTest {
 
         assertThat(enviados).isEqualTo(1);
         assertThat(notificationsOf(patient).get(0).getTitle()).isEqualTo("Formulário para responder");
-        verify(emailSender).send(any());
+        assertThat(notificationsOf(patient).get(0).getMessage()).contains("Hamilton");
+        // o nome da escala eh dado clinico e n vai no e-mail
+        ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(email.capture());
+        assertThat(email.getValue().text()).doesNotContain("Hamilton").contains("Entre no sistema para ver qual");
     }
 
     @Test

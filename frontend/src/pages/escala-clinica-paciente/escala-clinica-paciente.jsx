@@ -84,7 +84,7 @@ export default function CentralEscalas() {
                     <ul className={styles.cards}>
                         {page.pending.map((task) => {
                             // quanto do periodo ja foi preenchido, nos diarios de varios dias
-                            const filledPercent = task.totalDays > 1
+                            const filledPercent = task.daily
                                 ? Math.round((task.answeredDays / task.totalDays) * 100)
                                 : 0;
                             return (
@@ -95,7 +95,7 @@ export default function CentralEscalas() {
                                             ? "O prazo era " + formatDate(task.periodEnd)
                                             : "Responda até " + formatDate(task.periodEnd)}
                                     </p>
-                                    {task.totalDays > 1 && (
+                                    {task.daily && (
                                         <div className={styles.progress}>
                                             <div
                                                 className={styles.progressBar}

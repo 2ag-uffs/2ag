@@ -143,9 +143,9 @@ class PatientArchiveTest {
 
         archive(patient, prescriber).andExpect(status().isOk());
         reactivate(patient, prescriber).andExpect(status().isOk());
+        // o acompanhamento q comeca hoje ja manda a primeira rodada na criacao
         startFollowUp(prescriberToken).andExpect(status().isCreated());
 
-        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isEqualTo(1);
         mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
                 .andExpect(jsonPath("$.pendingScales.length()").value(1));
     }

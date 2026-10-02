@@ -784,6 +784,8 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Avisos:** a escala enviada avisa o paciente e a resposta completa avisa o prescritor (RF15). Nos diários o prescritor recebe um aviso só, quando o período fecha, com a quantidade de dias preenchidos (02/10/2026). As pendências vencidas aparecem no painel do prescritor.
 - **Escala pontuada pela metade:** fica guardada como "Incompleta: sem escore", mas a tarefa continua pendente e no prazo vira não respondida; a tela só deixa salvar com todos os itens respondidos (02/10/2026).
 - **Escala avulsa e ciclo:** a tarefa guarda a origem, e só a do acompanhamento marca a próxima rodada (RF32, 02/10/2026).
+- **Convite:** o prescritor vê os convites em aberto e cancela o que foi para a pessoa errada; convite já usado não cancela (RN06, 02/10/2026).
+- **Duração:** o acompanhamento de 90 dias termina no dia 90, e o que começa hoje envia a primeira rodada na criação (02/10/2026).
 
 **Evolução concluída em 14/09/2026:** RF27, RF28 e RF07.
 

@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
@@ -9,6 +10,7 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.PatientInviteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +27,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -170,6 +174,73 @@ class PatientInviteTest {
 
         lookUp(token)
                 .andExpect(status().isNotFound());
+    }
+
+    // o link q foi pro numero errado deixa de valer, e o prescritor ve o q ainda esta na rua
+    @Test
+    void prescriberSeesTheOpenInvitesAndCancelsOne() throws Exception {
+        String prescriberToken = bearerTokenOf(prescriber);
+        String token = createInviteAndGetToken();
+        saveInvite(LocalDateTime.now().minusDays(1), null);
+        saveInvite(LocalDateTime.now().plusDays(5), LocalDateTime.now().minusHours(1));
+
+        String body = mockMvc.perform(get("/invites").header("Authorization", prescriberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].token").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        Integer inviteId = JsonPath.read(body, "$[0].id");
+
+        mockMvc.perform(put("/invites/" + inviteId + "/cancel").header("Authorization", prescriberToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/invites").header("Authorization", prescriberToken))
+                .andExpect(jsonPath("$.length()").value(0));
+        lookUp(token).andExpect(status().isNotFound());
+        signUpWith(token).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void anotherPrescriberCannotSeeNorCancelTheInvite() throws Exception {
+        createInviteAndGetToken();
+        Integer inviteId = JsonPath.read(mockMvc.perform(get("/invites")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andReturn().getResponse().getContentAsString(), "$[0].id");
+        Prescriber other = new Prescriber();
+        other.setName("Outra Prescritora");
+        other.setEmail("convite-outra@email.com");
+        other.setPassword("hash");
+        other = prescriberRepository.save(other);
+
+        mockMvc.perform(get("/invites").header("Authorization", bearerTokenOf(other)))
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(put("/invites/" + inviteId + "/cancel").header("Authorization", bearerTokenOf(other)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/invites").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    // convite usado ja virou conta, entao cancelar n desfaz nada
+    @Test
+    void usedInviteCannotBeCancelled() throws Exception {
+        saveInvite(LocalDateTime.now().plusDays(5), LocalDateTime.now().minusHours(1));
+        PatientInvite usedInvite = patientInviteRepository.findAll().get(0);
+
+        mockMvc.perform(put("/invites/" + usedInvite.getId() + "/cancel")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientInviteService.INVITE_ALREADY_USED_MESSAGE));
+    }
+
+    private ResultActions signUpWith(String token) throws Exception {
+        return mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"inviteToken":"%s","name":"Maria da Silva","cpf":"52998224725","birthDate":"1990-04-12",
+                         "phone":"49999887766","email":"convite-cancelado@email.com","password":"Minha#Senha1",
+                         "consentTermVersion":"%s",
+                         "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"SC"}}
+                        """.formatted(token, ConsentTermService.CURRENT_VERSION)));
     }
 
     private ResultActions lookUp(String token) throws Exception {

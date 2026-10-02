@@ -218,7 +218,7 @@ public class ScaleTaskService {
     }
 
     // a anamnese n tem definicao no catalogo
-    private boolean isDaily(ScaleType scaleType) {
+    public boolean isDaily(ScaleType scaleType) {
         return catalog.hasDefinition(scaleType)
                 && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.DIARIO;
     }
@@ -253,7 +253,7 @@ public class ScaleTaskService {
         List<ScaleTaskDTO> pending = taskRepository
                 .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
                 .toList();
 
         List<ScaleResponseSummaryDTO> history = responseRepository
@@ -271,7 +271,7 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         return taskRepository.findByPrescriberIdAndStatusOrderByPeriodEndAsc(prescriberId, ScaleTaskStatus.PENDENTE)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
                 .toList();
     }
 
@@ -280,7 +280,7 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         return taskRepository.findByPatientIdOrderByPeriodStartDesc(patientId)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today))
+                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
                 .toList();
     }
 

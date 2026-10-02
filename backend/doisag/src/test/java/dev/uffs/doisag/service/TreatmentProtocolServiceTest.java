@@ -350,6 +350,20 @@ class TreatmentProtocolServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
+    // o acompanhamento q comeca hoje n espera o job de amanha
+    @Test
+    void acompanhamentoQueComecaHojeMandaAPrimeiraRodadaNaCriacao() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isEqualTo(1);
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje)).isZero();
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId()).getEndDate())
+                .isEqualTo(hoje.plusDays(89));
+    }
+
     @Test
     void depoisDeEncerradoNaoDesignaMais() {
         criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));

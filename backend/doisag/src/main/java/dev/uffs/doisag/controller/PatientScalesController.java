@@ -41,7 +41,7 @@ public class PatientScalesController {
                                                @RequestBody @Valid AssignScaleDTO assignData) {
         ScaleTask task = taskService.assign(patientId, assignData.scaleType());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ScaleTaskDTO(task, 0, LocalDate.now()));
+                .body(new ScaleTaskDTO(task, 0, LocalDate.now(), taskService.isDaily(task.getScaleType())));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")

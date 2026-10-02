@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.InviteCreatedDTO;
 import dev.uffs.doisag.dto.InviteInfoDTO;
 import dev.uffs.doisag.dto.InviteLookupDTO;
+import dev.uffs.doisag.dto.OpenInviteDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.PatientInviteService;
 import jakarta.validation.Valid;
@@ -10,10 +11,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 // convite pro paciente se cadastrar ja vinculado ao prescritor (RN06)
 @RestController
@@ -32,6 +38,20 @@ public class PatientInviteController {
     public ResponseEntity<InviteCreatedDTO> createInvite(@AuthenticationPrincipal Users loggedUser) {
         InviteCreatedDTO createdInvite = patientInviteService.createInvite(loggedUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(createdInvite);
+    }
+
+    @PreAuthorize("hasRole('PRESCRIBER')")
+    @GetMapping
+    public List<OpenInviteDTO> listOpenInvites(@AuthenticationPrincipal Users loggedUser) {
+        return patientInviteService.listOpenInvites(loggedUser.getId());
+    }
+
+    // cancelar eh mudar o estado do convite e n apagar, por isso n eh delete
+    @PreAuthorize("hasRole('PRESCRIBER')")
+    @PutMapping("/{inviteId}/cancel")
+    public ResponseEntity<Void> cancelInvite(@PathVariable Long inviteId, @AuthenticationPrincipal Users loggedUser) {
+        patientInviteService.cancelInvite(inviteId, loggedUser.getId());
+        return ResponseEntity.noContent().build();
     }
 
     // rota publica q a tela de cadastro usa pra conferir o link antes de mostrar o formulario

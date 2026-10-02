@@ -118,12 +118,13 @@ class NotificationTest {
                 .createNotification(patient, "Aviso do paciente", "mensagem", "FORM", "/")
                 .getId();
 
+        // responde como se n existisse, senao dava pra descobrir quais id existem
         mockMvc.perform(post("/notifications/" + notificationId + "/read")
                         .header("Authorization", bearerTokenOf(prescriber)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
         mockMvc.perform(delete("/notifications/" + notificationId)
                         .header("Authorization", bearerTokenOf(prescriber)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(jsonPath("$.notifications.length()").value(0));

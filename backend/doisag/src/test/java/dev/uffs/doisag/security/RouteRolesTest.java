@@ -136,8 +136,9 @@ class RouteRolesTest {
 
         for (Map.Entry<String, HandlerMethod> route : routes.entrySet()) {
             String path = route.getKey().substring(route.getKey().indexOf(' ') + 1);
-            // admin n abre prontuario e o aviso confere o dono no servico
+            // admin n abre prontuario, e o aviso e o convite conferem o dono no servico
             if (!path.contains("{") || path.startsWith("/admin/") || path.startsWith("/notifications/")
+                    || path.startsWith("/invites/")
                     || ROUTES_WITHOUT_RECORD_ID.contains(route.getKey())) {
                 continue;
             }

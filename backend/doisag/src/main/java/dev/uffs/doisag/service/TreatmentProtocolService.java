@@ -79,7 +79,8 @@ public class TreatmentProtocolService {
         protocol.setPatient(patient);
         protocol.setPrescriber(prescriber);
         protocol.setStartDate(inicio);
-        protocol.setEndDate(inicio.plusDays(duracao));
+        // o primeiro dia conta, entao 90 dias terminam no dia 90 e n no 91
+        protocol.setEndDate(inicio.plusDays(duracao - 1L));
         protocol.setActive(true);
         // a programacao de horarios q aparece no topo do diario do sono (RF22)
         protocol.setSleepBedTime(dados.sleepBedTime());
@@ -104,6 +105,11 @@ public class TreatmentProtocolService {
 
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);
         auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
+        // acompanhamento q comeca hoje manda a primeira rodada agora, sem esperar o job de amanha
+        // conta desativada n recebe, igual no job
+        if (inicio.equals(LocalDate.now()) && patient.isActive()) {
+            designarRodada(savedProtocol, inicio);
+        }
         return savedProtocol;
     }
 
@@ -168,17 +174,24 @@ public class TreatmentProtocolService {
             if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
                 continue;
             }
-            for (ProtocolItem item : protocol.getItems()) {
-                if (estaNaHora(protocol, item, hoje)) {
-                    ScaleTask task = scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
-                            item.getPeriodicity().getDays(), true);
-                    // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
-                    // e recebe a mesma escala de novo no dia seguinte
-                    if (!task.isFromProtocol()) {
-                        scaleTaskService.adoptAsProtocolRound(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
-                    }
-                    designadas++;
+            designadas += designarRodada(protocol, hoje);
+        }
+        return designadas;
+    }
+
+    // manda as escalas do protocolo q estao na hora e devolve quantas foram
+    private int designarRodada(TreatmentProtocol protocol, LocalDate hoje) {
+        int designadas = 0;
+        for (ProtocolItem item : protocol.getItems()) {
+            if (estaNaHora(protocol, item, hoje)) {
+                ScaleTask task = scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
+                        item.getPeriodicity().getDays(), true);
+                // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
+                // e recebe a mesma escala de novo no dia seguinte
+                if (!task.isFromProtocol()) {
+                    scaleTaskService.adoptAsProtocolRound(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
                 }
+                designadas++;
             }
         }
         return designadas;

@@ -90,6 +90,38 @@ export async function loadSession() {
     return loggedUser;
 }
 
+// o nome do arquivo vem do cabecalho q a api manda
+function fileNameOf(response, fallback) {
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    return match ? match[1] : fallback;
+}
+
+// baixa um arquivo pela api em vez de deixar o navegador navegar ate ele
+// assim sessao vencida e erro viram mensagem na tela, e n um arquivo com o json do erro dentro
+export async function download(path, fallbackName) {
+    const response = await fetch(BASE_URL + path);
+    if (!response.ok) {
+        const body = await readBody(response);
+        if (response.status === 401) {
+            loggedUser = null;
+            window.location.href = "/entrar?sessao=expirada&voltar="
+                + encodeURIComponent(window.location.pathname + window.location.search);
+            throw new ApiError(401, "Sua sessão expirou. Faça login novamente.");
+        }
+        throw new ApiError(response.status, body && body.message, body && body.errors);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileNameOf(response, fallbackName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 export async function logout() {
     try {
         await request("/auth/logout", {method: "POST"});

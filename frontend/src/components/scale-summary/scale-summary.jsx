@@ -24,7 +24,7 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                                 <span className={styles.date}>
                                     {task.late ? "prazo em " + formatDate(task.periodEnd) + ", atrasada"
                                         : "até " + formatDate(task.periodEnd)}
-                                    {task.totalDays > 1 ? " · " + task.answeredDays + " de " + task.totalDays + " dias" : ""}
+                                    {task.daily ? " · " + task.answeredDays + " de " + task.totalDays + " dias" : ""}
                                 </span>
                             </li>
                         ))}

@@ -42,9 +42,12 @@ public class PatientInvite {
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
-    // o convite so serve se ninguem usou ainda e se n venceu
+    // o prescritor cancelou antes de alguem usar
+    private LocalDateTime cancelledAt;
+
+    // o convite so serve se ninguem usou ainda, se n venceu e se n foi cancelado
     public boolean isUsableAt(LocalDateTime moment) {
-        return usedAt == null && expiresAt.isAfter(moment);
+        return usedAt == null && cancelledAt == null && expiresAt.isAfter(moment);
     }
 
     public Long getId() {
@@ -89,6 +92,14 @@ public class PatientInvite {
 
     public void setUsedAt(LocalDateTime usedAt) {
         this.usedAt = usedAt;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
     }
 
     public Patient getPatient() {

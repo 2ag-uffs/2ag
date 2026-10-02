@@ -103,7 +103,10 @@ public class ReminderService {
             String link = "/pacientes/" + patient.getId() + "/escalas";
 
             notificationService.createNotification(patient, "Formulário para responder", message, "FORM", link);
-            sendEmail(patient, "Você tem formulário para responder no 2AG", message, link);
+            // o nome da escala eh dado clinico e fica so dentro do sistema
+            sendEmail(patient, "Você tem formulário para responder no 2AG",
+                    "Você tem um formulário esperando resposta até " + formatDate(task.getPeriodEnd())
+                            + ". Entre no sistema para ver qual.", link);
 
             task.setReminderSentAt(LocalDateTime.now());
             taskRepository.save(task);

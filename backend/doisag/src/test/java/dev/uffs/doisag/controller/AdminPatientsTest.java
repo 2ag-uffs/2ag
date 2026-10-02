@@ -182,11 +182,12 @@ class AdminPatientsTest {
         treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null,
                 null, List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
 
+        // a primeira rodada sai na criacao, entao a prova fica na rodada seguinte
         changeActive(false, adminToken()).andExpect(status().isOk());
-        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(7))).isZero();
 
         changeActive(true, adminToken()).andExpect(status().isOk());
-        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isEqualTo(1);
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(7))).isEqualTo(1);
     }
 
     @Test

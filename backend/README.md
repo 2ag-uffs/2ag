@@ -138,9 +138,11 @@ cada conta recebe no máximo 3 links por hora e um link novo cancela os anterior
 | rota | o que faz |
 | :--- | :--- |
 | `POST /invites` | o prescritor gera um link de convite de uso único, válido por 7 dias |
+| `GET /invites` | os convites do prescritor que ainda podem ser usados, sem o código |
+| `PUT /invites/{id}/cancel` | cancela um convite que foi para a pessoa errada. convite já usado não cancela, porque a conta já existe |
 | `POST /invites/lookup` | rota pública que a tela de cadastro usa para conferir o convite. o código vai no corpo (`token`), e não no endereço, para não ficar em log de servidor |
 
-o banco guarda só o hash do código que vai no link.
+o banco guarda só o hash do código que vai no link, então a lista não mostra o link de novo. cancelar grava `cancelled_at` e não é `DELETE`: o convite continua no banco como registro do que foi enviado.
 
 ## termo de consentimento
 
@@ -197,7 +199,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /scales/definitions` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos |
+| `GET /scales/definitions` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos. para o paciente a lista vem sem o MEEM, que ele não preenche |
 | `GET /scales/definitions/{slug}` | o formulário de uma escala |
 | `GET /scales/assignable` | as escalas que o prescritor pode enviar ao paciente |
 | `POST /scales/{slug}/responses` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
@@ -216,6 +218,8 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
 - item em branco não é gravado, e escala validada sem todos os itens não tem escore. essa resposta pela metade é guardada com o resultado "Incompleta: sem escore", mas não vale pela tarefa: ela continua pendente, o lembrete continua cobrando e no prazo vira não respondida. completar depois, pela correção, fecha a tarefa e avisa o prescritor
 - a resposta avisa o prescritor quando a escala fica completa. nas escalas de preenchimento diário o aviso é um só, quando o período fecha, dizendo quantos dias foram preenchidos
+- o acompanhamento de 90 dias vai do primeiro ao nonagésimo dia, e o que começa hoje manda a primeira rodada na hora, sem esperar o job de amanhã. começo no passado ou no futuro fica com o job
+- a tarefa do diário diz que é diária (`daily`), e só ela mostra a barra de dias preenchidos na tela
 - a tarefa guarda se veio do acompanhamento automático. só essa marca o ciclo dos 90 dias: a escala enviada à mão não adianta a próxima rodada, mas a mesma escala nunca fica pendente duas vezes. se a rodada chega enquanto uma enviada à mão ainda está aberta, ela vira a rodada e ganha o prazo da periodicidade
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
@@ -246,12 +250,12 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `POST /notifications/read-all` | marca todos como lidos |
 | `DELETE /notifications/{id}` | apaga um aviso da própria conta |
 
-o aviso é sempre da conta logada: mexer no aviso de outra pessoa responde 403.
+o aviso é sempre da conta logada: o aviso de outra pessoa responde `404`, como se não existisse, para ninguém descobrir quais ids existem.
 
 os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 dias:
 
 - **consulta:** quem tem consulta marcada para o dia seguinte recebe o lembrete de manhã
-- **formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete
+- **formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete. o aviso dentro do sistema diz qual escala é; o e-mail diz só que há um formulário esperando até tal dia, porque o nome da escala é dado clínico
 - cada um sai uma vez só, porque a consulta e a tarefa guardam em `reminder_sent_at` a data em que o aviso foi criado
 - os dois também vão por e-mail quando a conta está ativa e mantém os avisos por e-mail ligados no perfil. os outros avisos ficam só no sistema
 - o e-mail só sai depois que o banco confirmou o aviso. se o envio falhar, o aviso do sistema continua valendo, o e-mail não é tentado de novo e o log diz de qual conta era, pelo número e sem o endereço
@@ -264,7 +268,7 @@ os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /dashboard/patient/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos |
+| `GET /dashboard/patient/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos. os avisos só vêm para o próprio paciente: o prescritor vê o painel sem a caixa pessoal dele |
 | `GET /dashboard/prescriber/{id}` | pacientes ativos, consultas de hoje, pedidos de consulta esperando resposta e escalas vencidas sem resposta |
 
 cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cartão leva para a tela que tem a lista inteira. nada aparece aqui sem origem no resto do sistema.

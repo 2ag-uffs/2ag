@@ -13,6 +13,8 @@ import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.Users;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,7 +100,7 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public PatientDashboardDTO getPatientDashboard(Long patientId) {
+    public PatientDashboardDTO getPatientDashboard(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();
 
@@ -139,11 +141,15 @@ public class DashboardService {
                 .map(this::currentPrescriptionOf)
                 .orElse(null);
 
-        List<NotificationDTO> latestNotifications = notificationRepository
-                .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(patientId, PageRequest.of(0, PANEL_LIMIT))
-                .stream()
-                .map(NotificationDTO::new)
-                .toList();
+        // os avisos sao da caixa pessoal do paciente e o prescritor n le a caixa dele
+        List<NotificationDTO> latestNotifications = List.of();
+        if (loggedUser instanceof Patient) {
+            latestNotifications = notificationRepository
+                    .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(patientId, PageRequest.of(0, PANEL_LIMIT))
+                    .stream()
+                    .map(NotificationDTO::new)
+                    .toList();
+        }
 
         return new PatientDashboardDTO(upcomingAppointments, pendingScales, currentPrescription, latestNotifications);
     }

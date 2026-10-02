@@ -135,6 +135,11 @@ class ProgressReportTest {
         JsonNode pain = attributeNamed(attributes, "DOR");
         assertThat(pain.get("maxValue").asInt()).isEqualTo(10);
         assertThat(pain.get("bands")).isEmpty();
+
+        // a intensidade da dor eh o escore do registro de dor, entao ela vem com as faixas (RN14)
+        JsonNode painScore = attributeNamed(attributes, "INTENSIDADE_DOR");
+        assertThat(painScore.get("maxValue").asInt()).isEqualTo(10);
+        assertThat(painScore.get("bands").get(0).get("label").asText()).isEqualTo("Dor leve");
     }
 
     // RF07 o q o paciente escreveu aparece junto da curva, por data

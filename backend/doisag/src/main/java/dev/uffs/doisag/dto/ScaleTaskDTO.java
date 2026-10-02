@@ -19,10 +19,12 @@ public record ScaleTaskDTO(
         ScaleTaskStatus status,
         int answeredDays,
         int totalDays,
+        // so o diario tem grade de dias pra preencher
+        boolean daily,
         boolean late,
         String patientName
 ) {
-    public ScaleTaskDTO(ScaleTask task, long answeredDays, LocalDate today) {
+    public ScaleTaskDTO(ScaleTask task, long answeredDays, LocalDate today, boolean daily) {
         this(
                 task.getId(),
                 task.getScaleType(),
@@ -33,6 +35,7 @@ public record ScaleTaskDTO(
                 task.getStatus(),
                 (int) answeredDays,
                 (int) ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1,
+                daily,
                 task.getStatus().isOpen() && task.getPeriodEnd().isBefore(today),
                 task.getPatient().getName()
         );

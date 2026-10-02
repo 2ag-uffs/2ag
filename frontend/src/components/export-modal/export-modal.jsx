@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import Modal from "../modal/modal.jsx";
+import {ApiError, download} from "../../services/api.js";
 import styles from "./export-modal.module.css";
 
 // o q da pra levar, um arquivo por tipo
@@ -18,9 +19,23 @@ const FILES = [
 export default function ExportModal({patientId, printPath, canAnonymize, onClose}) {
     const navigate = useNavigate();
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [downloadError, setDownloadError] = useState(null);
+    const [downloadingFile, setDownloadingFile] = useState(null);
 
-    const downloadUrl = (file) =>
-        "/api/patients/" + patientId + "/export/" + file + (isAnonymous ? "?anonymous=true" : "");
+    // pela api, senao sessao vencida salvava um csv com o json do erro dentro
+    const downloadFile = async (file) => {
+        setDownloadError(null);
+        setDownloadingFile(file);
+        try {
+            await download("/patients/" + patientId + "/export/" + file + (isAnonymous ? "?anonymous=true" : ""), file);
+        } catch (requestError) {
+            setDownloadError(requestError instanceof ApiError
+                ? requestError.message
+                : "Não foi possível baixar o arquivo. Confira sua internet e tente de novo.");
+        } finally {
+            setDownloadingFile(null);
+        }
+    };
 
     return (
         <Modal show={true} title="Exportar dados" onClickClose={onClose}>
@@ -54,12 +69,21 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
                                 <strong>{item.label}</strong>
                                 <p className={styles.help}>{item.help}</p>
                             </div>
-                            <a className="button-secondary" href={downloadUrl(item.file)} download={true}>
-                                Baixar CSV
-                            </a>
+                            <button
+                                type="button"
+                                className="button-secondary"
+                                onClick={() => downloadFile(item.file)}
+                                disabled={downloadingFile !== null}
+                            >
+                                {downloadingFile === item.file ? "Baixando..." : "Baixar CSV"}
+                            </button>
                         </li>
                     ))}
                 </ul>
+
+                {downloadError && (
+                    <p className="aviso aviso--atencao" role="alert">{downloadError}</p>
+                )}
 
                 <p className={styles.help}>
                     A série de evolução sai na tela de progresso, junto com a escala e o período escolhidos.

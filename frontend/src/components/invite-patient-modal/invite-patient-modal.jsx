@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {FiCopy, FiMessageCircle, FiRefreshCw} from "react-icons/fi";
 import Modal from "../modal/modal.jsx";
 import {apiService, ApiError} from "../../services/api.js";
@@ -13,12 +13,52 @@ function formatDate(dateTimeText) {
     return new Date(dateTimeText).toLocaleDateString("pt-BR");
 }
 
+function formatDateTime(dateTimeText) {
+    return new Date(dateTimeText).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"});
+}
+
 // janela do prescritor pra gerar o link de convite de um paciente novo (RN06)
 export default function InvitePatientModal({show, onClose}) {
     const [invite, setInvite] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
     const [isCopied, setIsCopied] = useState(false);
+    // os convites q ainda estao na rua, pra cancelar o q foi pro numero errado
+    const [openInvites, setOpenInvites] = useState([]);
+    const [cancelError, setCancelError] = useState(null);
+
+    const loadOpenInvites = () => {
+        apiService.get("/invites")
+            .then(setOpenInvites)
+            .catch(() => {
+                // sem a lista nova a tela fica com a q tinha
+            });
+    };
+
+    useEffect(() => {
+        if (show) {
+            loadOpenInvites();
+        }
+    }, [show]);
+
+    const cancelInvite = async (inviteId) => {
+        setCancelError(null);
+        try {
+            await apiService.put("/invites/" + inviteId + "/cancel");
+            setOpenInvites((current) => current.filter((openInvite) => openInvite.id !== inviteId));
+            // o link q acabou de ser gerado n pode continuar na tela depois de cancelado
+            if (invite && invite.id === inviteId) {
+                setInvite(null);
+            }
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                setCancelError(requestError.message);
+            } else {
+                setCancelError("Não foi possível cancelar o convite. Confira sua internet e tente de novo.");
+            }
+            loadOpenInvites();
+        }
+    };
 
     const createInvite = async () => {
         setIsCreating(true);
@@ -27,6 +67,7 @@ export default function InvitePatientModal({show, onClose}) {
         try {
             const createdInvite = await apiService.post("/invites");
             setInvite(createdInvite);
+            loadOpenInvites();
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 setErrorMessage(requestError.message);
@@ -42,6 +83,7 @@ export default function InvitePatientModal({show, onClose}) {
     const handleClose = () => {
         setInvite(null);
         setErrorMessage(null);
+        setCancelError(null);
         setIsCopied(false);
         onClose();
     };
@@ -71,6 +113,9 @@ export default function InvitePatientModal({show, onClose}) {
 
                 {errorMessage && (
                     <p className={"aviso aviso--atencao " + styles.message} role="alert">{errorMessage}</p>
+                )}
+                {cancelError && (
+                    <p className={"aviso aviso--atencao " + styles.message} role="alert">{cancelError}</p>
                 )}
 
                 {!invite && (
@@ -109,6 +154,34 @@ export default function InvitePatientModal({show, onClose}) {
                             <FiRefreshCw/> Gerar outro link para outro paciente
                         </button>
                     </>
+                )}
+
+                {openInvites.length > 0 && (
+                    <div className={styles.openInvites}>
+                        <h3 className={styles.openTitle}>Convites em aberto</h3>
+                        <p className={styles.hint}>
+                            Link que foi para a pessoa errada? Cancele antes que alguém use. O link que já virou conta
+                            não aparece aqui.
+                        </p>
+                        <ul className={styles.openList}>
+                            {openInvites.map((openInvite) => (
+                                <li key={openInvite.id} className={styles.openRow}>
+                                    <span>
+                                        Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
+                                        {formatDate(openInvite.expiresAt)}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="button-danger button-small"
+                                        aria-label={"Cancelar convite gerado em " + formatDateTime(openInvite.createdAt)}
+                                        onClick={() => cancelInvite(openInvite.id)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 )}
             </div>
         </Modal>

@@ -3,6 +3,8 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.PatientDashboardDTO;
 import dev.uffs.doisag.dto.PrescriberDashboardDTO;
 import dev.uffs.doisag.service.DashboardService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import dev.uffs.doisag.model.Users;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -31,8 +33,9 @@ public class DashboardController {
     // endpoint pro dashboard do paciente, mesma lógica, mas pro paciente logado
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @GetMapping("/patient/{id}")
-    public ResponseEntity<PatientDashboardDTO> getPatientDashboard(@PathVariable Long id) {
-        PatientDashboardDTO dashboardData = dashboardService.getPatientDashboard(id);
+    public ResponseEntity<PatientDashboardDTO> getPatientDashboard(@PathVariable Long id,
+                                                                   @AuthenticationPrincipal Users loggedUser) {
+        PatientDashboardDTO dashboardData = dashboardService.getPatientDashboard(id, loggedUser);
         return ResponseEntity.ok(dashboardData);
     }
 }

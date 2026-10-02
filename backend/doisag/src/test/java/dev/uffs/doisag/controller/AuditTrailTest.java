@@ -232,10 +232,12 @@ class AuditTrailTest {
 
     @Test
     void automaticFollowUpIsRecordedAsTheSystem() throws Exception {
+        // comecando ontem a primeira rodada fica pro job, q eh o q o teste quer ver
         mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"))
+                        .content("{\"startDate\":\"" + TODAY.minusDays(1)
+                                + "\",\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"))
                 .andExpect(status().isCreated());
 
         // o job diario roda sem ninguem logado

@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.time.LocalDateTime;
 
 // teste de unidade da troca de senha
 // o encoder eh o bcrypt de verdade pra provar q a senha foi conferida e guardada com hash
@@ -84,7 +85,10 @@ class PasswordServiceTest {
         passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD), ADDRESS);
 
         assertThat(user.getPasswordChangedAt()).isNotNull();
-        assertThat(user.getPasswordChangedAt().getNano()).isZero();
+        // em milissegundo, igual a emissao do token, sem micro nem nanossegundo sobrando
+        assertThat(user.getPasswordChangedAt().getNano() % 1_000_000).isZero();
+        // e n em segundo cheio, senao a sessao do mesmo segundo da troca continuava valendo
+        assertThat(user.getPasswordChangedAt()).isAfter(LocalDateTime.now().minusSeconds(2));
     }
 
     @Test

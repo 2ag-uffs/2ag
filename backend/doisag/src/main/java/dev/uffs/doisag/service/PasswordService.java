@@ -61,7 +61,8 @@ public class PasswordService {
             throw new InvalidFieldException("newPassword", PasswordRules.TOO_LONG_MESSAGE);
         }
         user.setPassword(passwordEncoder.encode(newPassword));
-        // o token guarda a emissao em segundos inteiros entao a troca tbm fica em segundos
-        user.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        // o token guarda a emissao em milissegundos, entao a troca tbm fica em milissegundos
+        // senao a sessao emitida no mesmo segundo da troca continuava valendo
+        user.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
     }
 }

@@ -106,6 +106,12 @@ class DashboardTest {
                 .andExpect(jsonPath("$.currentPrescription.posology").value("2 gotas pela manhã"))
                 .andExpect(jsonPath("$.latestNotifications.length()").value(1))
                 .andExpect(jsonPath("$.latestNotifications[0].title").value("Escala respondida"));
+
+        // a caixa de aviso eh pessoal: o prescritor ve o painel, mas n os avisos do paciente
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPrescription.productDescription").value("Óleo de CBD 10%"))
+                .andExpect(jsonPath("$.latestNotifications.length()").value(0));
     }
 
     @Test

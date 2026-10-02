@@ -2,6 +2,8 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.InviteCreatedDTO;
 import dev.uffs.doisag.dto.InviteInfoDTO;
+import dev.uffs.doisag.dto.OpenInviteDTO;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // convite de cadastro de paciente (RN06)
 // o prescritor gera um link aleatorio q vale pra um cadastro e por poucos dias
@@ -21,6 +24,9 @@ public class PatientInviteService {
 
     public static final String INVALID_INVITE_MESSAGE =
             "Convite inválido ou vencido. Peça um novo link ao seu prescritor.";
+    public static final String INVITE_NOT_FOUND_MESSAGE = "Convite não encontrado";
+    public static final String INVITE_ALREADY_USED_MESSAGE =
+            "Este convite já foi usado: o paciente criou a conta. Se não era a pessoa certa, arquive ou peça para a administração desativar a conta";
 
     private static final int VALID_DAYS = 7;
 
@@ -46,7 +52,33 @@ public class PatientInviteService {
         invite.setExpiresAt(now.plusDays(VALID_DAYS));
         patientInviteRepository.save(invite);
 
-        return new InviteCreatedDTO(token, invite.getExpiresAt());
+        return new InviteCreatedDTO(invite.getId(), token, invite.getExpiresAt());
+    }
+
+    // os convites q ainda podem ser usados, pro prescritor saber o q esta na rua
+    @Transactional(readOnly = true)
+    public List<OpenInviteDTO> listOpenInvites(Long prescriberId) {
+        return patientInviteRepository
+                .findByPrescriberIdAndUsedAtIsNullAndCancelledAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+                        prescriberId, LocalDateTime.now())
+                .stream()
+                .map(OpenInviteDTO::new)
+                .toList();
+    }
+
+    // o link q foi pro numero errado deixa de valer antes de alguem usar
+    // convite de outro prescritor responde como se n existisse
+    @Transactional
+    public void cancelInvite(Long inviteId, Long prescriberId) {
+        PatientInvite invite = patientInviteRepository.findByIdForUpdate(inviteId)
+                .filter(found -> found.getPrescriber().getId().equals(prescriberId))
+                .orElseThrow(() -> NotFoundException.forUser(INVITE_NOT_FOUND_MESSAGE));
+        if (invite.getUsedAt() != null) {
+            throw new BusinessException(INVITE_ALREADY_USED_MESSAGE);
+        }
+        if (invite.getCancelledAt() == null) {
+            invite.setCancelledAt(LocalDateTime.now());
+        }
     }
 
     // o q a tela de cadastro mostra antes do formulario

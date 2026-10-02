@@ -1,7 +1,6 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.NotificationPageDTO;
-import dev.uffs.doisag.infra.ForbiddenException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Users;
@@ -65,14 +64,12 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
-    // o aviso eh sempre da propria conta, entao mexer no de outra pessoa da 403
+    // o aviso eh sempre da propria conta. o de outra pessoa responde como se n existisse,
+    // senao dava pra descobrir quais id existem
     private Notification findOwnNotification(Long notificationId, Long userId) {
-        Notification notification = notificationRepository.findById(notificationId)
+        return notificationRepository.findById(notificationId)
+                .filter(notification -> notification.getUser().getId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("Aviso não encontrado com o id: " + notificationId));
-        if (!notification.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("Acesso negado ao aviso");
-        }
-        return notification;
     }
 
     private PageRequest pageRequest(int page) {

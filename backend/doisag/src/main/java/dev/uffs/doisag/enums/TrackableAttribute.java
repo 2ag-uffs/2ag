@@ -34,8 +34,8 @@ public enum TrackableAttribute {
     ESCORE_PITTSBURGH(ScaleType.ESCALA_PITTSBURGH, null),
     ESCORE_MEEM(ScaleType.MINI_EXAME_ESTADO_MENTAL, null),
 
-    // acompanhamento semanal de dor
-    INTENSIDADE_DOR(ScaleType.REGISTRO_DOR, "intensidadeDor"),
+    // acompanhamento semanal de dor: o escore eh a propria intensidade, e assim o grafico ganha as faixas (RN14)
+    INTENSIDADE_DOR(ScaleType.REGISTRO_DOR, null),
 
     // acompanhamento semanal de TEA
     QUALIDADE_DE_VIDA(ScaleType.REGISTRO_TEA, "qualidadeDeVida"),
