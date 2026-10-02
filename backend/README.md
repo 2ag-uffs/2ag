@@ -56,7 +56,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova. só para desenvolvimento | `false` |
 | `MAIL_PORT` | porta do servidor smtp | `587` |
 | `MAIL_USERNAME` e `MAIL_PASSWORD` | conta que autentica no servidor smtp | vazio |
-| `MAIL_FROM` | remetente dos e-mails | o `MAIL_USERNAME` |
+| `MAIL_FROM` | remetente dos e-mails. com `MAIL_HOST` preenchido e os dois vazios a api não sobe | o `MAIL_USERNAME` |
 | `MAIL_SMTP_AUTH` e `MAIL_SMTP_STARTTLS` | autenticação e tls do smtp. um servidor local de teste costuma pedir `false` nos dois | `true` |
 
 a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde roda.
@@ -108,7 +108,7 @@ o administrador não acessa nenhum dado clínico.
 
 o administrador não escolhe nem conhece a senha de ninguém. a conta de prescritor nasce com uma senha aleatória que ninguém vê, e quem cria a senha de verdade é o próprio prescritor, pelo link de primeiro acesso: uso único, 48 horas, o mesmo mecanismo do link de senha nova. com `MAIL_HOST` o link vai só para o e-mail da pessoa; sem ele, aparece na tela para o administrador entregar. se vencer, o **Senha nova** gera outro. a criação da conta fica na trilha como `CRIACAO` de `CONTA_DE_PRESCRITOR`.
 
-desativar uma conta, de prescritor ou de paciente, tira o acesso na requisição seguinte e encerra as sessões abertas, então reativar depois não ressuscita a sessão antiga. as duas ações vão para a trilha (`DESATIVACAO` e `REATIVACAO`), e a de paciente aparece também na trilha do prontuário dele, para o prescritor ver. a administração não tem lista de pacientes: ela acha a conta pelo e-mail e só enxerga a lista das que desativou. desativar não é arquivar: arquivar é ato clínico do prescritor e não tira o acesso. a conta desativada para de receber e-mail de lembrete; os avisos dentro do sistema e as tarefas do acompanhamento continuam sendo criados, para o caso de ela ser reativada.
+desativar uma conta, de prescritor ou de paciente, tira o acesso na requisição seguinte e encerra as sessões abertas, então reativar depois não ressuscita a sessão antiga. as duas ações vão para a trilha (`DESATIVACAO` e `REATIVACAO`), e a de paciente aparece também na trilha do prontuário dele, para o prescritor ver. a administração não tem lista de pacientes: ela acha a conta pelo e-mail e só enxerga a lista das que desativou. desativar não é arquivar: arquivar é ato clínico do prescritor e não tira o acesso. a conta desativada para de receber e-mail de lembrete e escala nova do acompanhamento; os avisos dentro do sistema continuam sendo criados. a do paciente volta a receber as escalas quando for reativada, e desativar o prescritor encerra o acompanhamento dos pacientes dele.
 
 o link de senha nova é a saída para o prescritor que esqueceu a senha antes de a clínica ter `MAIL_HOST` configurado: o administrador entrega o endereço para a pessoa pelo canal que ele confia. como a rota toma a conta de outra pessoa, ela pede a senha do próprio administrador no corpo (`adminPassword`), só funciona em conta ativa, reaproveita o link de uso único de 30 minutos e grava um evento `REDEFINICAO_DE_SENHA` na trilha de auditoria. quando o e-mail sai de verdade, o link vai só para o prescritor e a resposta vem com `resetLink` nulo, para o administrador não ficar com a conta de outra pessoa na mão. se o servidor de e-mail falhar, o link volta na resposta do mesmo jeito que sem `MAIL_HOST`, senão o prescritor ficaria trancado até alguém consertar o SMTP.
 
@@ -250,9 +250,13 @@ os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 
 
 - **consulta:** quem tem consulta marcada para o dia seguinte recebe o lembrete de manhã
 - **formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete
-- cada um sai uma vez só, porque a consulta e a tarefa guardam em `reminder_sent_at` a data em que o lembrete saiu
-- os dois também vão por e-mail quando a conta mantém os avisos por e-mail ligados no perfil. os outros avisos ficam só no sistema
+- cada um sai uma vez só, porque a consulta e a tarefa guardam em `reminder_sent_at` a data em que o aviso foi criado
+- os dois também vão por e-mail quando a conta está ativa e mantém os avisos por e-mail ligados no perfil. os outros avisos ficam só no sistema
+- o e-mail só sai depois que o banco confirmou o aviso. se o envio falhar, o aviso do sistema continua valendo, o e-mail não é tentado de novo e o log diz de qual conta era, pelo número e sem o endereço
 - o horário do job vem de `api.acompanhamento.cron`, que por padrão é 8 da manhã
+- cada etapa do job roda sozinha: se uma falhar, o log diz qual foi e as outras seguem
+- a api que estava fora do ar na hora do job roda as tarefas do dia quando volta, desde que já tenha passado do horário. o último dia concluído fica na tabela `daily_cycle`, e um dia com etapa que falhou não conta como concluído
+- conta desativada não recebe escala nova do acompanhamento: a do paciente pausa o envio até ser reativada, e desativar o prescritor encerra o acompanhamento dos pacientes dele
 
 ## painel inicial
 

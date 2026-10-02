@@ -257,7 +257,7 @@ public class Appointment {
         return updatedAt;
     }
 
-    // quando o lembrete desta consulta saiu, pra ele n sair duas vezes (RF34)
+    // quando o aviso de lembrete desta consulta foi criado, pra ele n sair duas vezes (RF34)
     private LocalDateTime reminderSentAt;
 
     public LocalDateTime getReminderSentAt() {

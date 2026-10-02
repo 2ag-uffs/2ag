@@ -1,12 +1,16 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PatientArchiveService;
+import dev.uffs.doisag.service.ReminderService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,6 +51,8 @@ class PatientArchiveTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
+    @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private ReminderService reminderService;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -103,6 +110,76 @@ class PatientArchiveTest {
                 .andExpect(status().isCreated());
         mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(jsonPath("$.pendingScales.length()").value(1));
+    }
+
+    private void sendScale(String prescriberToken) throws Exception {
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scaleType\":\"ESCALA_HAMILTON\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    // quem foi arquivado para de ser cobrado do q estava em aberto
+    @Test
+    void archivingClosesThePendingScalesAndStopsTheReminder() throws Exception {
+        sendScale(bearerTokenOf(prescriber));
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.pendingScales.length()").value(0));
+        assertThat(reminderService.sendScaleReminders(task.getPeriodEnd())).isZero();
+    }
+
+    // a escala fechada no arquivamento n pode segurar o envio do acompanhamento novo
+    @Test
+    void afterReactivatingTheNewFollowUpSendsTheScaleRightAway() throws Exception {
+        String prescriberToken = bearerTokenOf(prescriber);
+        startFollowUp(prescriberToken).andExpect(status().isCreated());
+        treatmentProtocolService.designarEscalasVencidas(LocalDate.now());
+
+        archive(patient, prescriber).andExpect(status().isOk());
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        startFollowUp(prescriberToken).andExpect(status().isCreated());
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isEqualTo(1);
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.pendingScales.length()").value(1));
+    }
+
+    // o diario pela metade fecha como respondido e o periodo dele acaba no arquivamento
+    @Test
+    void halfFilledDiaryDoesNotHoldTheNewFollowUp() throws Exception {
+        String prescriberToken = bearerTokenOf(prescriber);
+        String diaryBody = "{\"items\":[{\"scaleType\":\"ACOMPANHAMENTO_SEMANAL\",\"periodicity\":\"SEMANAL\"}]}";
+        mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(diaryBody))
+                .andExpect(status().isCreated());
+        treatmentProtocolService.designarEscalasVencidas(LocalDate.now());
+        mockMvc.perform(post("/scales/acompanhamento-semanal/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"dor\":3}}"))
+                .andExpect(status().isCreated());
+
+        archive(patient, prescriber).andExpect(status().isOk());
+        ScaleTask diary = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(diary.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(diary.getPeriodEnd()).isEqualTo(LocalDate.now());
+
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(diaryBody))
+                .andExpect(status().isCreated());
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(1))).isEqualTo(1);
     }
 
     @Test

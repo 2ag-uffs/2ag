@@ -468,8 +468,10 @@ export default function AdminPrescribers() {
                 title={isDeactivating ? "Desativar prescritor" : "Reativar prescritor"}
                 message={
                     isDeactivating
-                        ? "A pessoa perde o acesso na hora. Os pacientes e o histórico continuam guardados."
-                        : "A pessoa volta a conseguir entrar no sistema."
+                        ? "A pessoa perde o acesso na hora e o acompanhamento automático dos pacientes dela é"
+                            + " encerrado. Os pacientes e o histórico continuam guardados."
+                        : "A pessoa volta a conseguir entrar no sistema. O acompanhamento automático dos pacientes"
+                            + " não volta sozinho."
                 }
                 confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
                 cancelText="Voltar"

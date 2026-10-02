@@ -1,5 +1,9 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.ProtocolItemDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.enums.Periodicity;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -10,6 +14,7 @@ import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PatientAccountService;
+import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -49,6 +55,7 @@ class AdminPatientsTest {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
 
     private Admin admin;
     private Prescriber prescriber;
@@ -167,6 +174,19 @@ class AdminPatientsTest {
         Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
         assertThat(savedPatient.isActive()).isFalse();
         assertThat(savedPatient.getArchivedAt()).isNull();
+    }
+
+    // a conta desativada n recebe escala nova, e reativada o acompanhamento continua
+    @Test
+    void deactivatedPatientGetsNoNewScaleUntilReactivated() throws Exception {
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null,
+                null, List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
+
+        changeActive(false, adminToken()).andExpect(status().isOk());
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isZero();
+
+        changeActive(true, adminToken()).andExpect(status().isOk());
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now())).isEqualTo(1);
     }
 
     @Test

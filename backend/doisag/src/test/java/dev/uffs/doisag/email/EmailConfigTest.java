@@ -7,6 +7,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,15 @@ class EmailConfigTest {
         ArgumentCaptor<SimpleMailMessage> sentMessage = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(javaMailSender).send(sentMessage.capture());
         assertThat(sentMessage.getValue().getFrom()).isEqualTo("conta@clinica.com");
+    }
+
+    // sem remetente todo envio falharia calado, entao eh melhor a api nem subir
+    @Test
+    void apiDoesNotStartWithMailHostAndNoSender() {
+        assertThatThrownBy(() -> emailConfig.emailSender(providerOf(javaMailSender), "smtp.clinica.com", "  ", "",
+                false))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MAIL_FROM");
     }
 
     @SuppressWarnings("unchecked")

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 
 // arquivamento de paciente
 // o paciente arquivado sai da lista de ativos e o acompanhamento automatico dele acaba
+// as escalas q estavam em aberto fecham na hora, pra ele n ser cobrado delas
 // o prontuario continua inteiro e o paciente segue vendo o proprio historico
 // as escalas q o prescritor enviar na mao continuam chegando pra ele
 @Service
@@ -22,12 +23,14 @@ public class PatientArchiveService {
 
     private final PatientRepository patientRepository;
     private final TreatmentProtocolService treatmentProtocolService;
+    private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
 
     public PatientArchiveService(PatientRepository patientRepository, TreatmentProtocolService treatmentProtocolService,
-                                 AuditService auditService) {
+                                 ScaleTaskService scaleTaskService, AuditService auditService) {
         this.patientRepository = patientRepository;
         this.treatmentProtocolService = treatmentProtocolService;
+        this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
     }
 
@@ -42,6 +45,7 @@ public class PatientArchiveService {
         patient.setArchivedBy(loggedUser);
         Patient savedPatient = patientRepository.save(patient);
         treatmentProtocolService.endActiveProtocolIfAny(patientId);
+        scaleTaskService.closePendingOf(patientId);
         auditService.recordArchiving(patientId);
         return savedPatient;
     }

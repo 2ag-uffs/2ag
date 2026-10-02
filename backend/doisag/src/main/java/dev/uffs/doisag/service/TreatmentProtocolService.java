@@ -130,6 +130,14 @@ public class TreatmentProtocolService {
         protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(this::endProtocol);
     }
 
+    // desativar o prescritor encerra o acompanhamento automatico dos pacientes dele
+    @Transactional
+    public void endActiveProtocolsOfPrescriber(Long prescriberId) {
+        for (Patient patient : patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId)) {
+            endActiveProtocolIfAny(patient.getId());
+        }
+    }
+
     // encerrar n apaga nada e o protocolo fica guardado como inativo
     private TreatmentProtocol endProtocol(TreatmentProtocol protocol) {
         protocol.setActive(false);
@@ -154,6 +162,12 @@ public class TreatmentProtocolService {
                 endProtocol(protocol);
                 continue;
             }
+            // conta desativada n recebe escala nova. se a do paciente for reativada o envio continua
+            Patient patient = protocol.getPatient();
+            Prescriber prescriber = patient.getPrescriber();
+            if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
+                continue;
+            }
             for (ProtocolItem item : protocol.getItems()) {
                 if (estaNaHora(protocol, item, hoje)) {
                     scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
@@ -173,6 +187,10 @@ public class TreatmentProtocolService {
         Optional<ScaleTask> ultima = scaleTaskService.lastTaskOf(protocol.getPatient().getId(), item.getScaleType());
         if (ultima.isEmpty()) {
             // primeira vez: envia assim que o acompanhamento comeca
+            return true;
+        }
+        // tarefa fechada antes do prazo pelo arquivamento n segura a proxima rodada
+        if (ultima.get().getStatus() == ScaleTaskStatus.NAO_RESPONDIDA) {
             return true;
         }
         // a tarefa anterior so eh substituida quando o periodo dela acaba,

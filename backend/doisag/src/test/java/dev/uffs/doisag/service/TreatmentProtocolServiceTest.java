@@ -6,6 +6,7 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
@@ -215,6 +216,42 @@ class TreatmentProtocolServiceTest {
         assertThatThrownBy(() -> criaProtocolo(List.of(
                 item(ScaleType.MINI_EXAME_ESTADO_MENTAL, Periodicity.MENSAL))))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    // sem o prescritor ninguem le o q o paciente responde
+    @Test
+    void naoDesignaParaPacienteDePrescritorDesativado() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        prescritora.setActive(false);
+        prescriberRepository.save(prescritora);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO)).isZero();
+    }
+
+    @Test
+    void contaDePacienteDesativadaPausaOEnvioEReativadaContinua() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        paciente.setActive(false);
+        patientRepository.save(paciente);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO)).isZero();
+
+        paciente.setActive(true);
+        patientRepository.save(paciente);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(3))).isEqualTo(1);
+    }
+
+    @Test
+    void protocoloVencidoEncerraMesmoComAContaDesativada() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        paciente.setActive(false);
+        patientRepository.save(paciente);
+
+        treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(91));
+
+        assertThatThrownBy(() -> treatmentProtocolService.getActiveByPatient(paciente.getId()))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test

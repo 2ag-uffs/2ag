@@ -24,6 +24,11 @@ public class EmailConfig {
         }
         // sem remetente proprio o e-mail sai em nome da conta q autentica no servidor
         String from = senderAddress.isBlank() ? mailUsername : senderAddress;
+        // sem remetente nenhum todo envio falharia calado, entao a api nem sobe
+        if (from.isBlank()) {
+            throw new IllegalStateException(
+                    "MAIL_FROM ou MAIL_USERNAME precisa ter o endereço do remetente quando MAIL_HOST está preenchido");
+        }
         return new SmtpEmailSender(javaMailSender.getObject(), from);
     }
 }

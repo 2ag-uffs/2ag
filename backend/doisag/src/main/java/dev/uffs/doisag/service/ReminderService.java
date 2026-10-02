@@ -1,7 +1,7 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.email.BackgroundEmailSender;
 import dev.uffs.doisag.email.EmailMessage;
-import dev.uffs.doisag.email.EmailSender;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.model.Appointment;
@@ -23,7 +23,10 @@ import java.util.List;
 //
 // o job do dia manda dois: a consulta de amanha e o formulario q esta
 // perto de vencer. cada um sai uma vez so, pq a consulta e a tarefa
-// guardam a data em q o lembrete saiu
+// guardam a data em q o aviso foi criado
+//
+// o e-mail sai dps q o banco confirma. se ele falhar o aviso do sistema
+// continua valendo e o log diz de qual conta era
 @Service
 public class ReminderService {
 
@@ -34,20 +37,20 @@ public class ReminderService {
     private final ScaleTaskRepository taskRepository;
     private final ScaleResponseRepository responseRepository;
     private final NotificationService notificationService;
-    private final EmailSender emailSender;
+    private final BackgroundEmailSender backgroundEmailSender;
     private final String publicUrl;
 
     public ReminderService(AppointmentRepository appointmentRepository,
                            ScaleTaskRepository taskRepository,
                            ScaleResponseRepository responseRepository,
                            NotificationService notificationService,
-                           EmailSender emailSender,
+                           BackgroundEmailSender backgroundEmailSender,
                            @Value("${api.public-url}") String publicUrl) {
         this.appointmentRepository = appointmentRepository;
         this.taskRepository = taskRepository;
         this.responseRepository = responseRepository;
         this.notificationService = notificationService;
-        this.emailSender = emailSender;
+        this.backgroundEmailSender = backgroundEmailSender;
         this.publicUrl = publicUrl.endsWith("/")
                 ? publicUrl.substring(0, publicUrl.length() - 1)
                 : publicUrl;
@@ -116,7 +119,7 @@ public class ReminderService {
         String text = "Olá, " + patient.getName() + ".\n\n" + message
                 + "\n\nAcesse o sistema em " + publicUrl + path
                 + "\n\nSe não quiser mais receber estes e-mails, desligue os avisos por e-mail no seu perfil.";
-        emailSender.send(new EmailMessage(patient.getEmail(), subject, text));
+        backgroundEmailSender.sendLater(new EmailMessage(patient.getEmail(), subject, text), patient.getId());
     }
 
     private String formatDate(LocalDate date) {

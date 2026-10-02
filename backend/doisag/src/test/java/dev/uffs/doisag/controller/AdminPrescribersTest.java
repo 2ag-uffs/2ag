@@ -2,16 +2,22 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.email.EmailSender;
+import dev.uffs.doisag.dto.ProtocolItemDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.enums.Periodicity;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PrescriberService;
+import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -26,6 +32,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -61,6 +68,8 @@ class AdminPrescribersTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
+    @Autowired private TreatmentProtocolRepository protocolRepository;
 
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
 
@@ -261,6 +270,21 @@ class AdminPrescribersTest {
 
         mockMvc.perform(get("/profile").header("Authorization", oldToken))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // sem o prescritor ninguem le as escalas, entao o envio automatico para e n volta sozinho
+    @Test
+    void deactivatingThePrescriberEndsTheFollowUpOfTheirPatients() throws Exception {
+        Prescriber prescriber = savePrescriber("admin-acompanhamento@email.com", "ADM15");
+        Patient patient = savePatient(prescriber);
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null,
+                null, List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
+
+        changeActive(prescriber.getId(), false).andExpect(status().isOk());
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
+
+        changeActive(prescriber.getId(), true).andExpect(status().isOk());
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
     }
 
     @Test

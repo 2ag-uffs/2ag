@@ -751,6 +751,7 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Arquivamento de paciente:**
   - tira o paciente da lista de ativos e da contagem do painel;
   - encerra o acompanhamento automático, e um novo só começa depois de reativar;
+  - fecha as escalas que estavam em aberto, para o paciente não ser cobrado delas (02/10/2026);
   - o paciente continua vendo o próprio histórico, e as escalas enviadas pelo prescritor continuam chegando;
   - arquivar e reativar entram na trilha de auditoria.
 - **Escalas enviadas:** o paciente sempre recebe a escala que o prescritor envia. Reenviar uma escala ainda pendente não cria tarefa repetida.
@@ -804,7 +805,7 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Lembrete de consulta:** o job das 8 da manhã avisa quem tem consulta no dia seguinte. Sai uma vez só, e ainda dá tempo de remarcar.
 - **Lembrete de formulário:** a escala que vence em até dois dias e ainda não teve resposta nenhuma gera um lembrete, um por tarefa, sem repetir. Quem já começou a responder não recebe cobrança.
 - **E-mail:** os dois lembretes também saem por e-mail, respeitando a preferência de cada conta (RF18). Os outros avisos ficam só dentro do sistema, como o §8.3 decidiu. Sem `MAIL_HOST` configurado, a mensagem continua indo para o log da API.
-- **Sem aviso repetido:** a consulta e a tarefa guardam a data em que o lembrete saiu, então o job do dia seguinte não manda de novo.
+- **Sem aviso repetido:** a consulta e a tarefa guardam a data em que o aviso foi criado, então o job do dia seguinte não manda de novo. O e-mail sai depois que o banco confirma e, se falhar, não é tentado de novo; o log diz de qual conta era (02/10/2026).
 - **Lista de avisos:** uma tela só para os dois perfis, paginada de 20 em 20 (RNF06), com o número de não lidos, marcar como lido ao abrir, marcar todos e apagar. Os filtros avançados ficaram de fora, como o §8.4 decidiu.
 
 **Exportação concluída em 14/09/2026:** RF33, que consolidou os RF16 e RF17 da v1.0.

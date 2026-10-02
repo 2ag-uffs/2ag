@@ -36,6 +36,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 // os lembretes automaticos do dia (RF34)
@@ -171,6 +172,18 @@ class ReminderTest {
 
         assertThat(notificationsOf(patient)).hasSize(1);
         verify(emailSender, never()).send(any());
+    }
+
+    // o e-mail q falha n pode fazer o mesmo aviso nascer de novo todo dia
+    @Test
+    void emailQueFalhaNaoRepeteOAviso() {
+        saveTask(ScaleType.ESCALA_HAMILTON, TODAY.plusDays(2));
+
+        reminderService.sendScaleReminders(TODAY);
+        reminderService.sendScaleReminders(TODAY.plusDays(1));
+
+        assertThat(notificationsOf(patient)).hasSize(1);
+        verify(emailSender, times(1)).send(any());
     }
 
     // conta desativada n consegue entrar pra desligar o e-mail no perfil

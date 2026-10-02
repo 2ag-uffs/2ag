@@ -38,16 +38,19 @@ public class PrescriberService {
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
     private final LoginAttemptLimiter loginAttemptLimiter;
+    private final TreatmentProtocolService treatmentProtocolService;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-                             AuditService auditService, LoginAttemptLimiter loginAttemptLimiter) {
+                             AuditService auditService, LoginAttemptLimiter loginAttemptLimiter,
+                             TreatmentProtocolService treatmentProtocolService) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
         this.loginAttemptLimiter = loginAttemptLimiter;
+        this.treatmentProtocolService = treatmentProtocolService;
     }
 
     // o administrador cria a conta de um prescritor (RF02.2)
@@ -100,6 +103,7 @@ public class PrescriberService {
 
     // ativa ou desativa a conta sem apagar nada
     // conta desativada perde o acesso na proxima requisicao
+    // reativar n traz de volta o acompanhamento automatico q foi encerrado
     @Transactional
     public Prescriber changeActive(Long prescriberId, boolean active) {
         Prescriber prescriber = getById(prescriberId);
@@ -110,6 +114,8 @@ public class PrescriberService {
         if (!active) {
             // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
             prescriber.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+            // sem o prescritor ninguem le as escalas, entao o envio automatico dos pacientes dele para
+            treatmentProtocolService.endActiveProtocolsOfPrescriber(prescriberId);
         }
         auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null, active);
         return prescriberRepository.save(prescriber);

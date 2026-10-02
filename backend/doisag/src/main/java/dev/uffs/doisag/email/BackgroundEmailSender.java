@@ -30,22 +30,31 @@ public class BackgroundEmailSender {
         this.inBackground = inBackground;
     }
 
-    public void sendLater(EmailMessage message) {
+    // o userId diz no log de quem era o e-mail q n saiu
+    public void sendLater(EmailMessage message, Long userId) {
         // no teste a transacao nunca eh confirmada, entao la o envio eh direto
         if (!inBackground) {
-            emailSender.send(message);
+            deliver(message, userId);
             return;
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            executor.execute(() -> emailSender.send(message));
+            executor.execute(() -> deliver(message, userId));
             return;
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                executor.execute(() -> emailSender.send(message));
+                executor.execute(() -> deliver(message, userId));
             }
         });
+    }
+
+    // o endereco n vai pro log, so o numero da conta
+    private void deliver(EmailMessage message, Long userId) {
+        boolean wasSent = emailSender.send(message);
+        if (!wasSent) {
+            log.warn("o e-mail com assunto {} n saiu pra conta {}", message.subject(), userId);
+        }
     }
 
     // espera o q ja estava na fila, senao um deploy no meio do envio some com o link de alguem

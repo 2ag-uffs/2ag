@@ -260,9 +260,9 @@ export default function ListaPacientes() {
                 show={patientToArchive !== null}
                 title="Arquivar paciente"
                 message={patientToArchive
-                    ? patientToArchive.name + " sai da lista de ativos e o acompanhamento automático é encerrado."
-                    + " O prontuário fica guardado, as escalas que você enviar continuam chegando"
-                    + " e você pode reativar quando quiser."
+                    ? patientToArchive.name + " sai da lista de ativos, o acompanhamento automático é encerrado"
+                    + " e as escalas em aberto são fechadas. O prontuário fica guardado, as escalas que você"
+                    + " enviar depois continuam chegando e você pode reativar quando quiser."
                     : ""}
                 confirmText="Arquivar"
                 cancelText="Voltar"

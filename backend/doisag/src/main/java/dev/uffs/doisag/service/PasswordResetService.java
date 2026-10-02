@@ -84,7 +84,7 @@ public class PasswordResetService {
         }
 
         // o smtp fica fora da resposta, senao a demora dele contaria q a conta existe
-        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now, VALID_MINUTES)));
+        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now, VALID_MINUTES)), user.getId());
     }
 
     // link de senha nova pedido pelo administrador, sem o limite por hora

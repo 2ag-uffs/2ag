@@ -139,7 +139,7 @@ public class ScaleTask {
         return !day.isBefore(periodStart) && !day.isAfter(periodEnd);
     }
 
-    // quando o lembrete desta tarefa saiu, pra ele n sair duas vezes (RF34)
+    // quando o aviso de lembrete desta tarefa foi criado, pra ele n sair duas vezes (RF34)
     private LocalDateTime reminderSentAt;
 
     public LocalDateTime getReminderSentAt() {

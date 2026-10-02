@@ -162,14 +162,34 @@ public class ScaleTaskService {
     public int closeOverdue(LocalDate today) {
         List<ScaleTask> overdue = taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today);
         for (ScaleTask task : overdue) {
-            long answers = validAnswersOf(task);
-            task.setStatus(answers > 0 ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
-            if (answers > 0 && task.getAnsweredAt() == null) {
-                task.setAnsweredAt(task.getPeriodEnd());
-            }
-            taskRepository.save(task);
+            closeByAnswers(task, task.getPeriodEnd());
         }
         return overdue.size();
+    }
+
+    // arquivar fecha na hora o q o paciente ainda tinha em aberto, pela mesma regra do prazo vencido
+    // o periodo acaba no dia do arquivamento, senao o diario pela metade seguraria o acompanhamento novo
+    @Transactional
+    public int closePendingOf(Long patientId) {
+        LocalDate today = LocalDate.now();
+        List<ScaleTask> pending = taskRepository
+                .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE);
+        for (ScaleTask task : pending) {
+            if (task.getPeriodEnd().isAfter(today)) {
+                task.setPeriodEnd(today);
+            }
+            closeByAnswers(task, today);
+        }
+        return pending.size();
+    }
+
+    private void closeByAnswers(ScaleTask task, LocalDate answeredDay) {
+        long answers = validAnswersOf(task);
+        task.setStatus(answers > 0 ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
+        if (answers > 0 && task.getAnsweredAt() == null) {
+            task.setAnsweredAt(answeredDay);
+        }
+        taskRepository.save(task);
     }
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
