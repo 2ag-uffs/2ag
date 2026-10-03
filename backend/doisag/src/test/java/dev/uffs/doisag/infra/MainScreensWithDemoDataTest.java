@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(NarrowingProxyWatch.class)
 class MainScreensWithDemoDataTest {
 
     @Autowired private MockMvc mockMvc;
@@ -72,6 +74,7 @@ class MainScreensWithDemoDataTest {
                 "/progress/attributes");
 
         assertThat(failedRequests(urls, prescriber)).isEmpty();
+        assertThat(NarrowingProxyWatch.warnings()).isZero();
     }
 
     @Test
@@ -103,6 +106,7 @@ class MainScreensWithDemoDataTest {
                 "/progress/attributes");
 
         assertThat(failedRequests(urls, maria)).isEmpty();
+        assertThat(NarrowingProxyWatch.warnings()).isZero();
     }
 
     // junta todas as falhas pra mostrar o tamanho do problema de uma vez so

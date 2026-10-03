@@ -8,13 +8,12 @@ import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
-import dev.uffs.doisag.model.Users;
-import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
@@ -70,27 +69,27 @@ public class ScaleResponseService {
 
     private final ScaleResponseRepository responseRepository;
     private final PatientRepository patientRepository;
-    private final AppointmentRepository appointmentRepository;
     private final ScaleTaskService taskService;
     private final ScaleCatalog catalog;
     private final ScaleScorer scorer;
     private final AuditService auditService;
+    private final RowLock rowLock;
     private NotificationService notificationService;
 
     public ScaleResponseService(ScaleResponseRepository responseRepository,
                                 PatientRepository patientRepository,
-                                AppointmentRepository appointmentRepository,
                                 ScaleTaskService taskService,
                                 ScaleCatalog catalog,
                                 ScaleScorer scorer,
-                                AuditService auditService) {
+                                AuditService auditService,
+                                RowLock rowLock) {
         this.responseRepository = responseRepository;
         this.patientRepository = patientRepository;
-        this.appointmentRepository = appointmentRepository;
         this.taskService = taskService;
         this.catalog = catalog;
         this.scorer = scorer;
         this.auditService = auditService;
+        this.rowLock = rowLock;
     }
 
     @Autowired
@@ -162,7 +161,7 @@ public class ScaleResponseService {
                                                  Prescriber loggedPrescriber) {
         // a consulta fica travada ate o fim, senao dois cliques em aplicar passavam os dois
         // pela conferencia de exame repetido e gravavam dois exames validos no mesmo atendimento
-        Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId)
+        Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
         if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
             throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);
@@ -223,14 +222,12 @@ public class ScaleResponseService {
     // criar outra no dia novo como acontecia pelo envio
     @Transactional
     public ScaleResponseDTO update(Long responseId, ScaleResponseCreateDTO answerData) {
-        ScaleResponse response = findResponse(responseId);
+        ScaleResponse response = findResponseForUpdate(responseId);
         // o MEEM eh do prescritor e corrigir ele eh anular e aplicar de novo
         if (!response.getScaleType().isFilledByPatient()) {
             throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
         }
         checkCanBeChanged(response);
-        // mesma trava do envio, pq mudar a data tbm confere o dia antes de gravar
-        patientRepository.lockById(response.getPatient().getId());
 
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
         boolean wasComplete = !definition.isIncomplete(response.getScore());
@@ -249,13 +246,13 @@ public class ScaleResponseService {
 
     // o prescritor marca q ja olhou a resposta (trava a edicao do paciente)
     @Transactional
-    public ScaleResponseDTO review(Long responseId, Users loggedUser) {
-        ScaleResponse response = findResponse(responseId);
+    public ScaleResponseDTO review(Long responseId, Prescriber loggedPrescriber) {
+        ScaleResponse response = findResponseForUpdate(responseId);
         if (response.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
         }
         if (!response.isReviewed()) {
-            response.markReviewed(loggedUser);
+            response.markReviewed(loggedPrescriber);
             responseRepository.save(response);
             auditService.recordChange(response.getScaleType().getAuditRecordType(), response.getId(),
                     response.getPatient().getId());
@@ -265,12 +262,12 @@ public class ScaleResponseService {
 
     // resposta registrada por engano n eh apagada, fica anulada com motivo
     @Transactional
-    public ScaleResponseDTO annul(Long responseId, AnnulmentDTO annulmentData, Users loggedUser) {
-        ScaleResponse response = findResponse(responseId);
+    public ScaleResponseDTO annul(Long responseId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
+        ScaleResponse response = findResponseForUpdate(responseId);
         if (response.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
-        response.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
+        response.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         responseRepository.save(response);
         // sem resposta valida a tarefa volta a ser cobrada, senao aquele periodo
         // fica sem ninguem preencher e vira buraco no grafico sem aviso nenhum
@@ -440,12 +437,17 @@ public class ScaleResponseService {
         }
     }
 
-    // data q n veio fica como estava. no diario a data eh o dia da grade e n muda por aqui
+    // data q n veio fica como estava, e o fim q n veio junto de um inicio novo segue a regra
+    // do envio. no diario a data eh o dia da grade e n muda por aqui
     private void changePeriod(ScaleResponse response, ScaleDefinition definition,
                               ScaleResponseCreateDTO answerData) {
         LocalDate periodStart = answerData.periodStart() != null ? answerData.periodStart() : response.getPeriodStart();
-        LocalDate periodEnd = answerData.periodEnd() != null ? answerData.periodEnd() : response.getPeriodEnd();
-        if (periodStart.equals(response.getPeriodStart()) && periodEnd.equals(response.getPeriodEnd())) {
+        boolean startChanged = !periodStart.equals(response.getPeriodStart());
+        LocalDate periodEnd = answerData.periodEnd();
+        if (periodEnd == null) {
+            periodEnd = startChanged ? endOfDefaultPeriod(definition, periodStart) : response.getPeriodEnd();
+        }
+        if (!startChanged && periodEnd.equals(response.getPeriodEnd())) {
             return;
         }
         if (definition.fillMode() == ScaleDefinition.FillMode.DIARIO) {
@@ -453,7 +455,7 @@ public class ScaleResponseService {
         }
         checkPeriod(periodStart, periodEnd);
         // o dia de inicio identifica a resposta na tela e no envio, entao n pode ter duas no mesmo
-        boolean dayTaken = !periodStart.equals(response.getPeriodStart()) && responseRepository
+        boolean dayTaken = startChanged && responseRepository
                 .findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
                         response.getPatient().getId(), response.getScaleType(), periodStart)
                 .isPresent();
@@ -505,8 +507,22 @@ public class ScaleResponseService {
     }
 
     private ScaleResponse findResponse(Long responseId) {
-        return responseRepository.findById(responseId)
-                .orElseThrow(() -> new NotFoundException("Resposta de escala não encontrada com o id: " + responseId));
+        return responseRepository.findById(responseId).orElseThrow(() -> responseNotFound(responseId));
+    }
+
+    // quem vai mudar a resposta trava o paciente (a mesma trava do envio, e sempre antes da
+    // resposta, senao duas transacoes ficam esperando uma pela outra) e so dps trava a resposta
+    // e le ela de novo: a analise ou a anulacao q o outro lado acabou de gravar aparece,
+    // em vez de ser sobrescrita pela correcao
+    private ScaleResponse findResponseForUpdate(Long responseId) {
+        Long patientId = responseRepository.findPatientIdById(responseId)
+                .orElseThrow(() -> responseNotFound(responseId));
+        patientRepository.lockById(patientId);
+        return rowLock.reload(ScaleResponse.class, responseId).orElseThrow(() -> responseNotFound(responseId));
+    }
+
+    private NotFoundException responseNotFound(Long responseId) {
+        return new NotFoundException("Resposta de escala não encontrada com o id: " + responseId);
     }
 
     private Patient findPatient(Long patientId) {

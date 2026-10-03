@@ -3,12 +3,19 @@ package dev.uffs.doisag.repository;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.ScaleResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Long> {
+
+    // so o paciente da resposta, sem carregar ela: quem vai mudar a resposta trava o paciente
+    // primeiro e so dps le a resposta travada, pra ler o q o outro lado acabou de gravar
+    @Query("select response.patient.id from ScaleResponse response where response.id = :id")
+    Optional<Long> findPatientIdById(@Param("id") Long id);
 
     List<ScaleResponse> findByPatientIdOrderByPeriodStartDesc(Long patientId);
 

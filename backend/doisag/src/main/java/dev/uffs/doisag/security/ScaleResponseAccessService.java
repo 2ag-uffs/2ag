@@ -26,8 +26,9 @@ public class ScaleResponseAccessService {
         }
         // resposta q n existe da 403 e n 404, de proposito: assim ninguem
         // descobre quais ids existem chutando
-        return responseRepository.findById(responseId)
-                .map(response -> patientAccess.canAccess(response.getPatient().getId(), authentication))
+        // so o id do paciente, sem carregar a resposta: o servico vai travar e ler ela depois
+        return responseRepository.findPatientIdById(responseId)
+                .map(patientId -> patientAccess.canAccess(patientId, authentication))
                 .orElse(false);
     }
 }

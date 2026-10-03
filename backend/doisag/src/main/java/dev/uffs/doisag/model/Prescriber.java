@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,9 @@ import java.util.List;
 @Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"registry_type", "registry_number"})
 })
+// o lote do Users n vale pro proxy de Prescriber: quem anulou, analisou ou arquivou numa lista
+// vem em lote tbm, em vez de uma consulta por linha
+@BatchSize(size = 50)
 public class Prescriber extends Users {
     private String profession;
 

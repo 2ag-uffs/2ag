@@ -77,9 +77,10 @@ public class ScaleResponse {
     // correcao passa a ser anulacao com motivo
     private LocalDateTime reviewedAt;
 
+    // tipo concreto pelo mesmo motivo do Annulment.annulledBy
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewed_by_id")
-    private Users reviewedBy;
+    private Prescriber reviewedBy;
 
     @Embedded
     private Annulment annulment;
@@ -180,7 +181,7 @@ public class ScaleResponse {
         return reviewedAt;
     }
 
-    public Users getReviewedBy() {
+    public Prescriber getReviewedBy() {
         return reviewedBy;
     }
 
@@ -188,9 +189,9 @@ public class ScaleResponse {
         return reviewedAt != null;
     }
 
-    public void markReviewed(Users prescriberUser) {
+    public void markReviewed(Prescriber prescriber) {
         this.reviewedAt = LocalDateTime.now();
-        this.reviewedBy = prescriberUser;
+        this.reviewedBy = prescriber;
     }
 
     public Annulment getAnnulment() {

@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -14,15 +15,20 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.security.TokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +37,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 // a agenda de um prescritor recebe uma marcacao de cada vez (issue 78)
 //
@@ -39,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // e solta: o fluxo q esperava precisa ler essa consulta e recusar o horario
 // sem a trava os dois passavam pela leitura da agenda vazia e viravam duas consultas no horario
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AgendaRaceTest {
 
@@ -53,6 +61,9 @@ class AgendaRaceTest {
     @Autowired private PrescriberAvailabilityRepository availabilityRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private RowLock rowLock;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private TokenService tokenService;
 
     private HeldLock heldAgenda;
     private Prescriber prescriber;
@@ -146,23 +157,29 @@ class AgendaRaceTest {
         assertThat(appointmentsAt(DISPUTED_SLOT)).hasSize(1);
     }
 
-    // a consulta q vai mudar eh travada antes de ser lida: o cancelamento do paciente gravado
-    // enquanto o prescritor confirmava eh lido de novo, em vez de ser sobrescrito pela confirmacao
+    // a consulta q vai mudar eh travada e lida de novo: o cancelamento do paciente gravado
+    // enquanto o prescritor confirmava aparece, em vez de ser sobrescrito pela confirmacao
+    // pela rota de proposito: a checagem de acesso ja carrega a consulta antes do servico,
+    // e eh esse registro velho q a trava precisa atualizar
     @Test
     void confirmingWaitsForTheAppointmentAndFindsTheCancellationSavedMeanwhile() throws Exception {
         Appointment request = saveAppointment(patient, DISPUTED_SLOT, AppointmentStatus.SOLICITADA);
+        String prescriberToken = "Bearer " + tokenService.generateToken(prescriber);
 
-        HeldLock.Outcome<Appointment> outcome = heldAgenda.run(
-                () -> appointmentRepository.findByIdForUpdate(request.getId()),
+        HeldLock.Outcome<MvcResult> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, request.getId()),
                 () -> {
                     Appointment held = appointmentRepository.findById(request.getId()).orElseThrow();
                     held.setStatus(AppointmentStatus.CANCELADA);
                     appointmentRepository.save(held);
                 },
-                () -> appointmentService.confirm(request.getId()));
+                () -> mockMvc.perform(put("/appointments/" + request.getId() + "/confirm")
+                        .header("Authorization", prescriberToken)).andReturn());
 
-        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
-                .hasMessage(AppointmentService.ALREADY_ANSWERED_MESSAGE);
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value().getResponse().getStatus()).isEqualTo(400);
+        assertThat(outcome.value().getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains(AppointmentService.ALREADY_ANSWERED_MESSAGE);
         assertThat(appointmentRepository.findById(request.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.CANCELADA);
     }

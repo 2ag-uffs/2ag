@@ -3,7 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
-import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +35,14 @@ public class PatientArchiveService {
     }
 
     @Transactional
-    public Patient archive(Long patientId, Users loggedUser) {
+    public Patient archive(Long patientId, Prescriber loggedPrescriber) {
         Patient patient = findPatient(patientId);
         if (patient.isArchived()) {
             throw new BusinessException(ALREADY_ARCHIVED_MESSAGE);
         }
 
         patient.setArchivedAt(LocalDateTime.now());
-        patient.setArchivedBy(loggedUser);
+        patient.setArchivedBy(loggedPrescriber);
         Patient savedPatient = patientRepository.save(patient);
         treatmentProtocolService.endActiveProtocolIfAny(patientId);
         scaleTaskService.closePendingOf(patientId);

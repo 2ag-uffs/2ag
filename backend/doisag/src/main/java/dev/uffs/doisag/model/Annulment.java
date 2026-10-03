@@ -15,9 +15,11 @@ public class Annulment {
 
     private LocalDateTime annulledAt;
 
+    // tipo concreto de proposito: como Users o hibernate criava um proxy generico e avisava
+    // "narrowing proxy" qnd o mesmo prescritor era carregado como Prescriber na mesma sessao
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "annulled_by_id")
-    private Users annulledBy;
+    private Prescriber annulledBy;
 
     @Column(columnDefinition = "TEXT")
     private String annulmentReason;
@@ -26,7 +28,7 @@ public class Annulment {
     protected Annulment() {
     }
 
-    public Annulment(Users annulledBy, String annulmentReason) {
+    public Annulment(Prescriber annulledBy, String annulmentReason) {
         this.annulledAt = LocalDateTime.now();
         this.annulledBy = annulledBy;
         this.annulmentReason = annulmentReason;
@@ -36,7 +38,7 @@ public class Annulment {
         return annulledAt;
     }
 
-    public Users getAnnulledBy() {
+    public Prescriber getAnnulledBy() {
         return annulledBy;
     }
 

@@ -11,13 +11,13 @@ import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.DoseEscalationStep;
+import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.PrescriptionComponent;
-import dev.uffs.doisag.model.Users;
-import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,21 +37,21 @@ public class PrescriptionService {
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
 
     private final PrescriptionRepository prescriptionRepository;
-    private final AppointmentRepository appointmentRepository;
     private final AuditService auditService;
+    private final RowLock rowLock;
 
-    public PrescriptionService(PrescriptionRepository prescriptionRepository, AppointmentRepository appointmentRepository,
-                               AuditService auditService) {
+    public PrescriptionService(PrescriptionRepository prescriptionRepository, AuditService auditService,
+                               RowLock rowLock) {
         this.prescriptionRepository = prescriptionRepository;
-        this.appointmentRepository = appointmentRepository;
         this.auditService = auditService;
+        this.rowLock = rowLock;
     }
 
     // a consulta fica travada ate o fim: duas receitas lancadas ao mesmo tempo liam as duas a mesma
     // vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
     @Transactional
     public Prescription create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
-        Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId)
+        Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
         if (appointment.isAnnulled()) {
             throw new BusinessException(ANNULLED_CONSULTATION_MESSAGE);
@@ -110,13 +110,13 @@ public class PrescriptionService {
 
     // prescricao errada fica no historico marcada como anulada e deixa de valer
     @Transactional
-    public Prescription annul(Long prescriptionId, AnnulmentDTO annulmentData, Users loggedUser) {
+    public Prescription annul(Long prescriptionId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Prescription prescription = findPrescription(prescriptionId);
         if (prescription.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
 
-        prescription.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
+        prescription.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
                 savedPrescription.getAppointment().getPatient().getId());

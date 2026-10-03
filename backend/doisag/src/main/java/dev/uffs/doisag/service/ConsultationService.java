@@ -11,7 +11,6 @@ import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
-import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
@@ -109,7 +108,7 @@ public class ConsultationService {
 
     // registro feito por engano n some e fica marcado como anulado com o motivo
     @Transactional
-    public Appointment annul(Long appointmentId, AnnulmentDTO annulmentData, Users loggedUser) {
+    public Appointment annul(Long appointmentId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Appointment appointment = findAppointment(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
@@ -123,7 +122,7 @@ public class ConsultationService {
             throw new BusinessException(HAS_EXAM_MESSAGE);
         }
 
-        appointment.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
+        appointment.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordAnnulment(AuditRecordType.CONSULTA, savedAppointment.getId(),
                 savedAppointment.getPatient().getId());

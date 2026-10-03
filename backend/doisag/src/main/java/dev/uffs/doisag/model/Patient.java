@@ -24,9 +24,10 @@ public class Patient extends Users {
     // preenchidos so enquanto o prescritor deixar o paciente no arquivo
     private LocalDateTime archivedAt;
 
+    // tipo concreto pelo mesmo motivo do Annulment.annulledBy
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "archived_by_id")
-    private Users archivedBy;
+    private Prescriber archivedBy;
 
     public Patient() {
     }
@@ -53,11 +54,11 @@ public class Patient extends Users {
 
     // o arquivamento sai na resposta pelos dtos e n pela entidade crua
     @JsonIgnore
-    public Users getArchivedBy() {
+    public Prescriber getArchivedBy() {
         return archivedBy;
     }
 
-    public void setArchivedBy(Users archivedBy) {
+    public void setArchivedBy(Prescriber archivedBy) {
         this.archivedBy = archivedBy;
     }
 

@@ -5,6 +5,7 @@ import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.model.AuditEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +23,7 @@ public interface AuditEventRepository extends Repository<AuditEvent, Long> {
                                                                       AuditOperation operation,
                                                                       LocalDateTime moment);
 
+    @EntityGraph(attributePaths = {"actor"})
     @Query(value = "select e from AuditEvent e where e.patientId = :patientId"
             + " and e.occurredAt >= :start and e.occurredAt < :end order by e.occurredAt desc, e.id desc",
             countQuery = "select count(e) from AuditEvent e where e.patientId = :patientId"
@@ -30,6 +32,7 @@ public interface AuditEventRepository extends Repository<AuditEvent, Long> {
                                        @Param("end") LocalDateTime end, Pageable pageable);
 
     // o q prescritores e o sistema fizeram sem as acoes dos proprios pacientes
+    @EntityGraph(attributePaths = {"actor"})
     @Query(value = "select e from AuditEvent e where e.occurredAt >= :start and e.occurredAt < :end"
             + " and (e.actorRole is null or e.actorRole <> :hiddenRole) order by e.occurredAt desc, e.id desc",
             countQuery = "select count(e) from AuditEvent e where e.occurredAt >= :start and e.occurredAt < :end"

@@ -12,6 +12,7 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -82,16 +83,19 @@ public class AppointmentService {
     private final PrescriberRepository prescriberRepository;
     private final PrescriberAvailabilityRepository availabilityRepository;
     private final AuditService auditService;
+    private final RowLock rowLock;
     private NotificationService notificationService;
 
     public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                               PrescriberRepository prescriberRepository,
-                              PrescriberAvailabilityRepository availabilityRepository, AuditService auditService) {
+                              PrescriberAvailabilityRepository availabilityRepository, AuditService auditService,
+                              RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.availabilityRepository = availabilityRepository;
         this.auditService = auditService;
+        this.rowLock = rowLock;
     }
 
     // injetado pelo setter pra n formar ciclo na montagem dos servicos
@@ -543,12 +547,12 @@ public class AppointmentService {
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
     }
 
-    // a consulta q vai mudar fica travada desde a primeira leitura: o q outro acabou de gravar
-    // nela (um cancelamento no meio da confirmacao) eh lido de novo em vez de ser sobrescrito
-    // e a ordem das travas fica sempre consulta e dps prescritor, igual no meem, pra ninguem
-    // ficar esperando o outro
+    // a consulta q vai mudar fica travada e eh lida de novo antes de qualquer decisao: o q outro
+    // acabou de gravar nela (um cancelamento no meio da confirmacao) aparece em vez de ser
+    // sobrescrito. a ordem das travas fica sempre consulta e dps prescritor, igual no meem,
+    // pra ninguem ficar esperando o outro
     private Appointment findAppointmentForUpdate(Long appointmentId) {
-        return appointmentRepository.findByIdForUpdate(appointmentId)
+        return rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
     }
 

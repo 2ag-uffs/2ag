@@ -2,30 +2,16 @@ package dev.uffs.doisag.repository;
 
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
-import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
-
-    // trava a linha da consulta ate o fim da transacao: uma mudanca, um mini exame ou uma
-    // receita de cada vez nela. MANDATORY: fora de uma transacao a trava soltaria na hora
-    @Transactional(propagation = Propagation.MANDATORY)
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select appointment from Appointment appointment where appointment.id = :id")
-    Optional<Appointment> findByIdForUpdate(@Param("id") Long id);
 
     // consultas de um prescritor num intervalo pro painel e pra conta de horario ocupado
     // as consultas de um dia inteiro, q o lembrete do dia seguinte usa (RF34)

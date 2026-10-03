@@ -6,6 +6,7 @@ import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -14,20 +15,27 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
+import dev.uffs.doisag.security.TokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 // o mesmo dia da escala n vira duas linhas (issue 77)
 //
@@ -36,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // achar essa resposta e corrigir ela, em vez de criar a segunda linha do mesmo dia
 // sem a trava os dois passavam pela busca vazia, gravavam duas linhas e toda leitura do dia caia
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ScaleResponseRaceTest {
 
@@ -48,6 +57,9 @@ class ScaleResponseRaceTest {
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private RowLock rowLock;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private TokenService tokenService;
 
     private HeldLock heldLock;
     private Prescriber prescriber;
@@ -103,12 +115,42 @@ class ScaleResponseRaceTest {
         assertThat(responsesOfTheDay.get(0).getAnswers()).containsEntry("dor", 5);
     }
 
+    // a correcao trava o paciente, dps trava a resposta e le ela de novo: a analise do
+    // prescritor gravada no meio tempo aparece, em vez de ser sobrescrita pela correcao
+    // pela rota de proposito: a checagem de acesso e o open-in-view ja deixavam a resposta
+    // carregada antes do servico, e eh esse registro velho q a trava precisa atualizar
+    @Test
+    void theCorrectionWaitsAndFindsTheReviewSavedMeanwhile() throws Exception {
+        ScaleResponse response = saveDiaryAnswerOfToday(8);
+        String patientToken = "Bearer " + tokenService.generateToken(patient);
+
+        HeldLock.Outcome<MvcResult> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> {
+                    ScaleResponse held = responseRepository.findById(response.getId()).orElseThrow();
+                    held.markReviewed(prescriber);
+                    responseRepository.save(held);
+                },
+                () -> mockMvc.perform(put("/scales/responses/" + response.getId())
+                        .header("Authorization", patientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"dor\":5,\"sono\":6}}")).andReturn());
+
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value().getResponse().getStatus()).isEqualTo(400);
+        assertThat(outcome.value().getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains(ScaleResponseService.REVIEWED_MESSAGE);
+        ScaleResponse kept = responseRepository.findById(response.getId()).orElseThrow();
+        assertThat(kept.isReviewed()).isTrue();
+        assertThat(kept.getAnswers()).containsEntry("dor", 8);
+    }
+
     @Test
     void theSecondMiniExamOfTheAppointmentWaitsAndIsRefused() throws Exception {
         Appointment appointment = saveAppointmentOfYesterday();
 
         HeldLock.Outcome<ScaleResponseDTO> outcome = heldLock.run(
-                () -> appointmentRepository.findByIdForUpdate(appointment.getId()),
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> saveMiniExamOf(appointment),
                 () -> responseService.applyMentalStateExam(appointment.getId(),
                         new ScaleResponseCreateDTO(null, null, Map.of("orientacaoTemporal", 5)), prescriber));

@@ -8,7 +8,6 @@ import dev.uffs.doisag.dto.ScaleResponseDTO;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
-import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.service.ScaleResponseService;
 import jakarta.validation.Valid;
@@ -97,16 +96,16 @@ public class ScalesController {
     // o prescritor marca q ja conferiu a resposta e o paciente para de editar
     @PreAuthorize("hasRole('PRESCRIBER') and @scaleAccess.canAccess(#id, authentication)")
     @PutMapping("/responses/{id}/review")
-    public ScaleResponseDTO review(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {
-        return responseService.review(id, loggedUser);
+    public ScaleResponseDTO review(@PathVariable Long id, @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        return responseService.review(id, loggedPrescriber);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @scaleAccess.canAccess(#id, authentication)")
     @PutMapping("/responses/{id}/annul")
     public ScaleResponseDTO annul(@PathVariable Long id,
                                   @RequestBody @Valid AnnulmentDTO annulmentData,
-                                  @AuthenticationPrincipal Users loggedUser) {
-        return responseService.annul(id, annulmentData, loggedUser);
+                                  @AuthenticationPrincipal Prescriber loggedPrescriber) {
+        return responseService.annul(id, annulmentData, loggedPrescriber);
     }
 
     // o exame ja aplicado nessa consulta, pra tela abrir no resultado em vez

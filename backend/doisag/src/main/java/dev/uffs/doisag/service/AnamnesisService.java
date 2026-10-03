@@ -10,7 +10,7 @@ import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Patient;
-import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,13 +78,13 @@ public class AnamnesisService {
 
     // anamnese feita por engano fica no historico marcada como anulada com o motivo
     @Transactional
-    public Anamnesis annul(Long anamnesisId, AnnulmentDTO annulmentData, Users loggedUser) {
+    public Anamnesis annul(Long anamnesisId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Anamnesis anamnesis = findAnamnesis(anamnesisId);
         if (anamnesis.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
 
-        anamnesis.setAnnulment(new Annulment(loggedUser, annulmentData.reason()));
+        anamnesis.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordAnnulment(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());

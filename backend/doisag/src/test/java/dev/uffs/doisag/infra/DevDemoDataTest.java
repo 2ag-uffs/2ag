@@ -11,6 +11,7 @@ import dev.uffs.doisag.repository.UsersRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.url=jdbc:h2:mem:doisag-demo;DB_CLOSE_DELAY=-1;MODE=PostgreSQL"
 })
 @ActiveProfiles("test")
+@Import(NarrowingProxyWatch.class)
 class DevDemoDataTest {
 
     @Autowired private UsersRepository usersRepository;
@@ -48,5 +50,7 @@ class DevDemoDataTest {
         assertThat(taskRepository.countByPatientIdAndStatus(paulo.getId(), ScaleTaskStatus.PENDENTE)).isEqualTo(1);
         // os avisos do historico saem e so os dos ultimos dias ficam pra ler
         assertThat(notificationRepository.countUnread(prescriber.getId())).isBetween(1L, 15L);
+        // a subida com o seed era onde o hibernate mais avisava "narrowing proxy" (issue 39)
+        assertThat(NarrowingProxyWatch.warnings()).isZero();
     }
 }

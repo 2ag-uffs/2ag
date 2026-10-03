@@ -14,6 +14,7 @@ import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -62,6 +63,7 @@ class ClinicalRecordRaceTest {
     @Autowired private PrescriptionRepository prescriptionRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private RowLock rowLock;
 
     private HeldLock heldLock;
     private Prescriber prescriber;
@@ -143,7 +145,7 @@ class ClinicalRecordRaceTest {
                 ConcentrationUnit.MG_POR_ML)), null, "2 gotas", null, List.of(), null, null, null, null, null, null);
 
         HeldLock.Outcome<Prescription> outcome = heldLock.run(
-                () -> appointmentRepository.findByIdForUpdate(appointment.getId()),
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> savePrescriptionOf(appointment),
                 () -> prescriptionService.create(prescriptionData, appointment.getId()));
 
