@@ -1,6 +1,6 @@
 package dev.uffs.doisag.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AppointmentModality;

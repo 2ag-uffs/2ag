@@ -6,7 +6,7 @@ api em java que guarda os dados clínicos e aplica as regras de acesso. o que o 
 
 - java 17 e spring boot 4.1
 - spring data jpa com hibernate, e **flyway** para o esquema do banco
-- spring security com sessão em cookie `httpOnly` assinada com jwt (jjwt 0.13)
+- spring security com sessão em cookie `httpOnly` assinada com jwt (jjwt 0.13). o json de dentro do token é escrito e lido pelo jackson 3 do próprio spring boot (`security/JwtJsonSerializer`, registrado em `META-INF/services`), então o jackson 2 não entra no classpath
 - postgresql em produção e h2 em memória nos testes
 - maven, pelo wrapper `mvnw` que já vem no repositório
 
