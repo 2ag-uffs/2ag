@@ -27,8 +27,6 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     Optional<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
             Long patientId, ScaleType scaleType, LocalDate periodStart);
 
-    List<ScaleResponse> findByTaskIdOrderByPeriodStartAsc(Long taskId);
-
     List<ScaleResponse> findByAppointmentIdOrderByPeriodStartAsc(Long appointmentId);
 
     // o mini exame valido daquela consulta: barra o segundo exame e a anulacao da consulta

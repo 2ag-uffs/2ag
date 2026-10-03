@@ -1,3 +1,5 @@
+import {isInTheFuture} from "./date-format.js";
+
 // textos da agenda do jeito q a tela mostra (RF10 e RF11)
 
 export const MODALITY_OPTIONS = [
@@ -42,4 +44,13 @@ export function statusLabelOf(appointment) {
         return "Anulada";
     }
     return STATUS_LABELS[appointment.status] || appointment.status;
+}
+
+// o q o historico e a impressao contam como consulta: a q ja passou e foi atendida,
+// estava marcada ou virou falta. pedido recusado, cancelada e pedido sem resposta
+// n sao atendimento, e so por data eles entravam na conta
+const HISTORY_STATUSES = ["AGENDADA", "EM_ANDAMENTO", "CONCLUIDA", "NAO_COMPARECEU"];
+
+export function belongsToHistory(appointment) {
+    return !isInTheFuture(appointment.dateTime) && HISTORY_STATUSES.includes(appointment.status);
 }

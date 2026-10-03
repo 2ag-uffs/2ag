@@ -90,8 +90,9 @@ class ClinicalDataRetentionTest {
         mockMvc.perform(delete("/patients/" + patient.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isMethodNotAllowed());
 
+        // a receita n tem nem rota por id: o caminho inteiro responde q n existe
         mockMvc.perform(delete("/prescriptions/1").header("Authorization", prescriberToken))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isNotFound());
     }
 
     @Test

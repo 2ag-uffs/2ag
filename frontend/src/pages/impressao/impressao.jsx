@@ -6,6 +6,7 @@ import ConsultationCard from "../../components/consultation-card/consultation-ca
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {addDays, ageFrom, formatDate, formatNow, toIsoDate} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
 
@@ -75,7 +76,9 @@ export default function Impressao() {
     }
 
     const {patient, appointments, prescriptions, anamneses, scales} = history;
-    const appointmentsInPeriod = appointments.filter((appointment) => insidePeriod(appointment.dateTime));
+    // consulta marcada pro futuro e pedido recusado ou cancelado n entram na impressao
+    const appointmentsInPeriod = appointments.filter(
+        (appointment) => belongsToHistory(appointment) && insidePeriod(appointment.dateTime));
     const prescriptionsInPeriod = prescriptions.filter(
         (prescription) => insidePeriod(prescription.appointmentDateTime));
     const anamnesesInPeriod = anamneses.filter((anamnesis) => insidePeriod(anamnesis.assessmentDate));

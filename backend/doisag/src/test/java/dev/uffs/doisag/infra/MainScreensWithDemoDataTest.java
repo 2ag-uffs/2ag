@@ -69,7 +69,6 @@ class MainScreensWithDemoDataTest {
                 mariaPath + "/audit-events?from=" + today.minusDays(30) + "&to=" + today,
                 "/scales/responses/" + lastResponseIdOf(maria),
                 "/scales/assignable",
-                "/scales/definitions",
                 "/progress/attributes");
 
         assertThat(failedRequests(urls, prescriber)).isEmpty();

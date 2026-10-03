@@ -30,6 +30,7 @@ const EMPTY_FORM = {
     instructions: "",
     precautions: "",
     expectedEffects: "",
+    observation: "",
     treatmentDurationDays: "",
     nextConsultationDate: "",
 };
@@ -159,6 +160,7 @@ export default function PrescriptionForm() {
             instructions: textOrNull(form.instructions),
             precautions: textOrNull(form.precautions),
             expectedEffects: textOrNull(form.expectedEffects),
+            observation: textOrNull(form.observation),
             treatmentDurationDays: numberOrNull(form.treatmentDurationDays),
             nextConsultationDate: form.nextConsultationDate === "" ? null : form.nextConsultationDate,
         };
@@ -444,6 +446,13 @@ export default function PrescriptionForm() {
                             rows={3}
                             value={form.expectedEffects}
                             onChange={(event) => updateField("expectedEffects", event.target.value)}
+                        />
+                        <TextAreaField
+                            label="Observações"
+                            name="observation"
+                            rows={3}
+                            value={form.observation}
+                            onChange={(event) => updateField("observation", event.target.value)}
                         />
                     </FormSection>
 

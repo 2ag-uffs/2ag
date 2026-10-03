@@ -134,12 +134,6 @@ public class PrescriptionService {
                 .toList();
     }
 
-    public Prescription getById(Long id) {
-        Prescription prescription = findPrescription(id);
-        auditService.recordChartView(prescription.getAppointment().getPatient().getId());
-        return prescription;
-    }
-
     // receita lancada numa consulta mais antiga q a da vigente n derruba a q o paciente usa hoje
     private boolean replaceCurrentPrescriptionsOlderThan(Appointment appointment) {
         Long patientId = appointment.getPatient().getId();

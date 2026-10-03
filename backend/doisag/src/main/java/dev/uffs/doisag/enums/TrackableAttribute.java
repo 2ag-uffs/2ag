@@ -1,8 +1,5 @@
 package dev.uffs.doisag.enums;
 
-import java.util.Arrays;
-import java.util.List;
-
 // o que da pra acompanhar num grafico ao longo do tempo (RF27 e RF28)
 //
 // cada atributo aponta pra um item de uma escala, ou pro escore dela
@@ -71,9 +68,4 @@ public enum TrackableAttribute {
         return itemKey == null;
     }
 
-    public static List<TrackableAttribute> doTipo(ScaleType scaleType) {
-        return Arrays.stream(values())
-                .filter(attribute -> attribute.scaleType == scaleType)
-                .toList();
-    }
 }

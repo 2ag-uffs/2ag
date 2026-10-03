@@ -90,6 +90,7 @@ class ExportTest {
         prescription.setAppointment(appointment);
         prescription.setProductDescription("Óleo de CBD 10%");
         prescription.setPosology("2 gotas pela manhã");
+        prescription.setObservation("Guardar o frasco longe da luz");
         prescriptionRepository.save(prescription);
 
         Anamnesis anamnesis = new Anamnesis();
@@ -233,6 +234,8 @@ class ExportTest {
 
         assertThat(csv).contains("Óleo de CBD 10%");
         assertThat(csv).contains("2 gotas pela manhã");
+        assertThat(csv).contains("Observações");
+        assertThat(csv).contains("Guardar o frasco longe da luz");
     }
 
     // RF30 ninguem exporta paciente de outro prescritor

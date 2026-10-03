@@ -21,8 +21,6 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     List<ScaleTask> findByPatientIdAndStatusOrderByPeriodEndAsc(Long patientId, ScaleTaskStatus status,
                                                                Pageable pageable);
 
-    List<ScaleTask> findByPrescriberIdAndStatusOrderByPeriodEndAsc(Long prescriberId, ScaleTaskStatus status);
-
     List<ScaleTask> findByPatientIdOrderByPeriodStartDesc(Long patientId);
 
     // a tarefa aberta de uma escala, q recebe a resposta do paciente

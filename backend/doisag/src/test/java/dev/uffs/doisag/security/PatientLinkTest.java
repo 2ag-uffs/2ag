@@ -331,8 +331,7 @@ class PatientLinkTest {
                 "/patients/" + patientId + "/export/progress.csv?attribute=ESCORE_HAMILTON&period=DIAS_30",
                 "/scales/responses/" + records.scaleId(),
                 "/scales/responses/" + records.examId(),
-                "/anamneses/" + records.anamnesisId(),
-                "/prescriptions/" + records.prescriptionId()
+                "/anamneses/" + records.anamnesisId()
         );
     }
 

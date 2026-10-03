@@ -37,6 +37,8 @@ export default function Escala() {
     const [editsByDay, setEditsByDay] = useState({});
     const [selectedDay, setSelectedDay] = useState(chosenDate && chosenDate <= today ? chosenDate : today);
     const [periodEndByDay, setPeriodEndByDay] = useState({});
+    // o inicio do periodo q a paciente mexeu na correcao, antes de salvar
+    const [periodStartByDay, setPeriodStartByDay] = useState({});
     const [notice, setNotice] = useState(null);
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -123,8 +125,11 @@ export default function Escala() {
         return days;
     }, [selectedDay, today, openTask]);
 
+    // o dia pode ter uma resposta anulada e a valida q veio dps: a valida eh a q abre
     const currentResponse = useMemo(
-        () => responses.find((response) => response.periodStart === selectedDay) || null,
+        () => responses.find((response) => response.periodStart === selectedDay && !response.annulled)
+            || responses.find((response) => response.periodStart === selectedDay)
+            || null,
         [responses, selectedDay]);
 
     // cada dia mostra o q ja foi respondido nele ou o q a paciente esta mexendo
@@ -149,6 +154,19 @@ export default function Escala() {
 
     const isReadOnly = currentResponse !== null && !currentResponse.editableByPatient;
 
+    // a correcao de escala de periodo abre pela data (?data=) e mexe na resposta q ja existe:
+    // as datas viram campo dela e salvar atualiza ela, em vez de criar outra no dia novo
+    // e deixar a errada no historico. no diario o dia eh o da grade e a correcao segue
+    // pelo envio do dia, q o servidor ja trata como correcao
+    const isCorrecting = !isDiary && chosenDate !== null && currentResponse !== null && !isReadOnly;
+    const periodStart = isCorrecting
+        ? (periodStartByDay[selectedDay] || currentResponse.periodStart)
+        : selectedDay;
+
+    const changePeriodStart = (dayIso) => {
+        setPeriodStartByDay((current) => ({...current, [selectedDay]: dayIso}));
+    };
+
     const changeAnswer = (key, value) => {
         setEditsByDay((current) => ({
             ...current,
@@ -170,17 +188,29 @@ export default function Escala() {
 
         setIsSaving(true);
         try {
-            const saved = await apiService.post("/scales/" + slug + "/responses", {
-                periodStart: selectedDay,
-                periodEnd: isPeriod ? periodEnd : selectedDay,
+            const body = {
+                periodStart,
+                periodEnd: isPeriod ? periodEnd : periodStart,
                 answers: answersPayload(definition.items, values),
-            });
+            };
+            const saved = isCorrecting
+                ? await apiService.put("/scales/responses/" + currentResponse.id, body)
+                : await apiService.post("/scales/" + slug + "/responses", body);
             setNotice(saved.result ? "Respostas salvas. Resultado: " + saved.result : "Respostas salvas.");
             // a resposta salva entra na lista na hora e o rascunho daquele dia sai
-            setResponses((current) => [saved, ...current.filter((response) => response.periodStart !== saved.periodStart)]);
+            setResponses((current) => [saved, ...current.filter((response) => response.id !== saved.id
+                && response.periodStart !== saved.periodStart)]);
             setEditsByDay((current) => ({...current, [selectedDay]: null}));
             setPeriodEndByDay((current) => ({...current, [selectedDay]: null}));
-            setReloadCount((currentCount) => currentCount + 1);
+            setPeriodStartByDay((current) => ({...current, [selectedDay]: null}));
+            // a tela segue na resposta salva ja em modo de correcao: mexer na data dps
+            // de salvar corrige essa resposta, em vez de abrir outro dia em branco
+            if (!isDiary && chosenDate !== saved.periodStart) {
+                setSelectedDay(saved.periodStart);
+                navigate("/escalas/" + slug + "?data=" + saved.periodStart, {replace: true});
+            } else {
+                setReloadCount((currentCount) => currentCount + 1);
+            }
         } catch (requestError) {
             setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
         } finally {
@@ -262,9 +292,11 @@ export default function Escala() {
                                 id="periodStart"
                                 type="date"
                                 max={today}
-                                value={selectedDay}
+                                value={periodStart}
                                 disabled={isReadOnly}
-                                onChange={(event) => changeDay(event.target.value)}
+                                onChange={(event) => (isCorrecting
+                                    ? changePeriodStart(event.target.value)
+                                    : changeDay(event.target.value))}
                             />
                         </div>
                         {isPeriod && (
@@ -314,9 +346,13 @@ export default function Escala() {
                     missingKeys={missingKeys}
                 />
 
-                {isPeriod && currentResponse && (
+                {!isDiary && currentResponse && (
                     <p className={styles.periodNote}>
-                        Período respondido: {formatDate(currentResponse.periodStart)} a {formatDate(currentResponse.periodEnd)}.
+                        {isPeriod
+                            ? "Período respondido: " + formatDate(currentResponse.periodStart) + " a "
+                                + formatDate(currentResponse.periodEnd) + "."
+                            : "Avaliação de " + formatDate(currentResponse.periodStart) + "."}
+                        {isCorrecting && " Mudar a data corrige esta resposta, sem criar outra."}
                     </p>
                 )}
 

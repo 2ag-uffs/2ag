@@ -21,6 +21,7 @@ import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import styles from "./historico-clinico-prescritor.module.css";
 
@@ -105,7 +106,7 @@ export default function HistoricoClinicoPrescritor() {
 
     // a lista vem da consulta mais recente pra mais antiga
     // entao a proxima consulta marcada eh a ultima futura da lista
-    const pastAppointments = appointments.filter((appointment) => !isInTheFuture(appointment.dateTime));
+    const pastAppointments = appointments.filter(belongsToHistory);
     const upcomingAppointments = appointments.filter((appointment) => isInTheFuture(appointment.dateTime)
         && !appointment.annulled && appointment.status === "AGENDADA");
     const nextAppointment = upcomingAppointments.length > 0

@@ -201,13 +201,12 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /scales/definitions` | o formulário de todas as escalas, que a tela genérica usa para desenhar os campos. para o paciente a lista vem sem o MEEM, que ele não preenche |
 | `GET /scales/definitions/{slug}` | o formulário de uma escala |
 | `GET /scales/assignable` | as escalas que o prescritor pode enviar ao paciente |
 | `POST /scales/{slug}/responses` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
 | `GET /scales/{slug}/responses` | as respostas do paciente logado naquela escala, que a grade da semana usa |
 | `GET /scales/responses/{id}` | uma resposta com o escore, a faixa e o valor de cada item |
-| `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou. o MEEM não se corrige: o prescritor anula e aplica de novo |
+| `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou, inclusive as datas do período. o MEEM não se corrige: o prescritor anula e aplica de novo |
 | `PUT /scales/responses/{id}/review` | o prescritor marca que já conferiu, e o paciente para de editar |
 | `PUT /scales/responses/{id}/annul` | anula a resposta com motivo |
 | `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta, depois que ela aconteceu. o exame só é gravado com as 11 seções e a escolaridade |
@@ -218,6 +217,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 - cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10)
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
+- a correção de uma escala de período ou pontual vai pelo `PUT` com as datas junto: mudar a data move a mesma resposta, em vez de criar outra no dia novo como o envio faria. o dia de início identifica a resposta, então mover para cima de outra é recusado. no diário a data é o dia da grade e não muda na correção
 - o paciente responde uma escala de cada vez: a resposta trava a linha do paciente até o fim da transação, então dois envios do mesmo dia ao mesmo tempo (duplo toque, retry da rede) não viram duas linhas do mesmo dia. o segundo espera e corrige o dia. pelo mesmo motivo a consulta fica travada enquanto o MEEM ou uma receita é lançada nela, e o prescritor fica travado enquanto envia uma escala avulsa ou cria um acompanhamento
 - item em branco não é gravado, e escala validada sem todos os itens não tem escore. essa resposta pela metade é guardada com o resultado "Incompleta: sem escore", mas não vale pela tarefa: ela continua pendente, o lembrete continua cobrando e no prazo vira não respondida. completar depois, pela correção, fecha a tarefa e avisa o prescritor
 - a resposta avisa o prescritor quando a escala fica completa. nas escalas de preenchimento diário o aviso é um só, quando o período fecha, dizendo quantos dias foram preenchidos

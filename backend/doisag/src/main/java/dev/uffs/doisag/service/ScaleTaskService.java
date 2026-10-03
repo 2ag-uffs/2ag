@@ -276,16 +276,6 @@ public class ScaleTaskService {
         return new PatientScalesPageDTO(patient.getName(), pending, history);
     }
 
-    // as pendencias q o prescritor ve no painel dele
-    @Transactional(readOnly = true)
-    public List<ScaleTaskDTO> getPendingOfPrescriber(Long prescriberId) {
-        LocalDate today = LocalDate.now();
-        return taskRepository.findByPrescriberIdAndStatusOrderByPeriodEndAsc(prescriberId, ScaleTaskStatus.PENDENTE)
-                .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
-                .toList();
-    }
-
     @Transactional(readOnly = true)
     public List<ScaleTaskDTO> getTasksOfPatient(Long patientId) {
         LocalDate today = LocalDate.now();

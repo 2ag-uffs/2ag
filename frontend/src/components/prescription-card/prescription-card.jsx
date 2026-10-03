@@ -108,6 +108,12 @@ export default function PrescriptionCard({prescription, actions}) {
                     <p>{prescription.expectedEffects}</p>
                 </div>
             )}
+            {prescription.observation && (
+                <div className={styles.block}>
+                    <h4>Observações</h4>
+                    <p>{prescription.observation}</p>
+                </div>
+            )}
 
             {prescription.annulled && <AnnulmentNotice record={prescription}/>}
 

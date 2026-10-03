@@ -350,10 +350,8 @@ class ScaleDeliveryTest {
     void mentalStateExamIsNotSentToThePatient() throws Exception {
         sendScale("MINI_EXAME_ESTADO_MENTAL").andExpect(status().isBadRequest());
 
-        mockMvc.perform(get("/scales/definitions").header("Authorization", bearerTokenOf(patient)))
+        mockMvc.perform(get("/scales/assignable").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(jsonPath("$[?(@.type == 'MINI_EXAME_ESTADO_MENTAL')]").doesNotExist());
-        mockMvc.perform(get("/scales/definitions").header("Authorization", bearerTokenOf(prescriber)))
-                .andExpect(jsonPath("$[?(@.type == 'MINI_EXAME_ESTADO_MENTAL')]").exists());
     }
 
     // a barra de dias eh do diario: a escala de resposta unica n mostra 0 de 7 dias

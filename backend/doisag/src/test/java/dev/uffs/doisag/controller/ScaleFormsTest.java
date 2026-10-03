@@ -137,6 +137,63 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("já analisou")));
     }
 
+    // corrigir o periodo mexe na resposta q ja existe: pelo envio, a data nova virava
+    // uma segunda resposta e a errada ficava no historico (issue 108)
+    @Test
+    void aCorrecaoMudaOPeriodoDaMesmaResposta() throws Exception {
+        LocalDate today = LocalDate.now();
+        Long responseId = idOf(answerScale("registro-dor", "{\"intensidadeDor\":9}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.periodStart").value(today.minusDays(6).toString())));
+
+        updateResponse(responseId, today.minusDays(8), today.minusDays(2), "{\"intensidadeDor\":4}", patient)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(responseId))
+                .andExpect(jsonPath("$.periodStart").value(today.minusDays(8).toString()))
+                .andExpect(jsonPath("$.periodEnd").value(today.minusDays(2).toString()));
+
+        mockMvc.perform(get("/scales/registro-dor/responses").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].answers.intensidadeDor").value(4));
+
+        // o fim antes do inicio e o inicio no futuro valem as mesmas regras do envio
+        updateResponse(responseId, today.minusDays(2), today.minusDays(8), "{\"intensidadeDor\":4}", patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.INVALID_PERIOD_MESSAGE));
+        updateResponse(responseId, today.plusDays(1), today.plusDays(7), "{\"intensidadeDor\":4}", patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.FUTURE_PERIOD_MESSAGE));
+    }
+
+    // o dia de inicio identifica a resposta, entao mover pra cima de outra eh recusado
+    @Test
+    void aCorrecaoNaoMoveARespostaParaODiaDeOutra() throws Exception {
+        LocalDate today = LocalDate.now();
+        Long firstId = idOf(answerScale("registro-dor", today.minusDays(20), "{\"intensidadeDor\":9}")
+                .andExpect(status().isCreated()));
+        answerScale("registro-dor", today.minusDays(6), "{\"intensidadeDor\":5}").andExpect(status().isCreated());
+
+        updateResponse(firstId, today.minusDays(6), today, "{\"intensidadeDor\":3}", patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.PERIOD_START_TAKEN_MESSAGE));
+    }
+
+    // no diario o dia eh o da grade: a correcao troca as respostas, nunca a data
+    @Test
+    void noDiarioACorrecaoNaoTrocaODia() throws Exception {
+        LocalDate today = LocalDate.now();
+        Long responseId = idOf(answerScale("acompanhamento-semanal", "{\"dor\":8,\"sono\":4}")
+                .andExpect(status().isCreated()));
+
+        updateResponse(responseId, today.minusDays(1), today.minusDays(1), "{\"dor\":5,\"sono\":6}", patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.DIARY_DAY_MESSAGE));
+        // a mesma data de sempre passa, pq a tela manda o dia junto
+        updateResponse(responseId, today, today, "{\"dor\":5,\"sono\":6}", patient)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answers.dor").value(5));
+    }
+
     // depois da analise a correcao passa a ser anulacao com motivo
     @Test
     void prescritorAnulaComMotivoEmVezDeCorrigir() throws Exception {
@@ -292,6 +349,22 @@ class ScaleFormsTest {
                 .header("Authorization", bearerTokenOf(loggedUser))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"answers\":" + answers + "}"));
+    }
+
+    private ResultActions updateResponse(Long responseId, LocalDate periodStart, LocalDate periodEnd, String answers,
+                                         Users loggedUser) throws Exception {
+        return mockMvc.perform(put("/scales/responses/" + responseId)
+                .header("Authorization", bearerTokenOf(loggedUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"periodStart\":\"" + periodStart + "\",\"periodEnd\":\"" + periodEnd + "\",\"answers\":"
+                        + answers + "}"));
+    }
+
+    private ResultActions answerScale(String slug, LocalDate periodStart, String answers) throws Exception {
+        return mockMvc.perform(post("/scales/" + slug + "/responses")
+                .header("Authorization", bearerTokenOf(patient))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"periodStart\":\"" + periodStart + "\",\"answers\":" + answers + "}"));
     }
 
     // o exame inteiro, q da os 30 pontos

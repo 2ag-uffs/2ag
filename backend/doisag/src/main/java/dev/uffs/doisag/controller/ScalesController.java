@@ -43,16 +43,6 @@ public class ScalesController {
         this.responseService = responseService;
     }
 
-    // o paciente so ve o q ele mesmo preenche, entao o meem fica fora da lista dele (RN09)
-    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
-    @GetMapping("/definitions")
-    public List<ScaleDefinitionDTO> getDefinitions(@AuthenticationPrincipal Users loggedUser) {
-        return catalog.all().stream()
-                .filter(definition -> !(loggedUser instanceof Patient) || definition.type().isFilledByPatient())
-                .map(ScaleDefinitionDTO::new)
-                .toList();
-    }
-
     // o q o prescritor pode enviar pro paciente responder (RN09)
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/assignable")

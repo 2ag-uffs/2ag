@@ -60,6 +60,9 @@ public class ScaleResponseService {
             "Só consulta confirmada na agenda recebe o Mini-Exame";
     public static final String INCOMPLETE_EXAM_MESSAGE = "Falta preencher no Mini-Exame";
     public static final String FUTURE_APPOINTMENT_MESSAGE = "Consulta que ainda não aconteceu não recebe o Mini-Exame";
+    public static final String DIARY_DAY_MESSAGE =
+            "No diário a data é o dia escolhido na grade e não muda na correção";
+    public static final String PERIOD_START_TAKEN_MESSAGE = "Já existe uma resposta dessa escala começando nesse dia";
 
     private static final int MAX_TEXT_LENGTH = 2000;
     // os acompanhamentos de dor e de TEA falam da ultima semana
@@ -216,6 +219,8 @@ public class ScaleResponseService {
     // correcao da resposta
     // o paciente corrige enquanto o prescritor n analisou, e depois
     // disso a correcao passa a ser anulacao com motivo
+    // as datas vem junto: corrigir o periodo mexe nessa resposta, em vez de
+    // criar outra no dia novo como acontecia pelo envio
     @Transactional
     public ScaleResponseDTO update(Long responseId, ScaleResponseCreateDTO answerData) {
         ScaleResponse response = findResponse(responseId);
@@ -224,9 +229,12 @@ public class ScaleResponseService {
             throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
         }
         checkCanBeChanged(response);
+        // mesma trava do envio, pq mudar a data tbm confere o dia antes de gravar
+        patientRepository.lockById(response.getPatient().getId());
 
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
         boolean wasComplete = !definition.isIncomplete(response.getScore());
+        changePeriod(response, definition, answerData);
         fillAnswersAndScore(response, definition, answerData.answers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
@@ -419,13 +427,41 @@ public class ScaleResponseService {
         LocalDate periodEnd = answerData.periodEnd() != null
                 ? answerData.periodEnd()
                 : endOfDefaultPeriod(definition, periodStart);
+        checkPeriod(periodStart, periodEnd);
+        return periodEnd;
+    }
+
+    private void checkPeriod(LocalDate periodStart, LocalDate periodEnd) {
         if (periodEnd.isBefore(periodStart)) {
             throw new BusinessException(INVALID_PERIOD_MESSAGE);
         }
         if (periodStart.isAfter(LocalDate.now())) {
             throw new BusinessException(FUTURE_PERIOD_MESSAGE);
         }
-        return periodEnd;
+    }
+
+    // data q n veio fica como estava. no diario a data eh o dia da grade e n muda por aqui
+    private void changePeriod(ScaleResponse response, ScaleDefinition definition,
+                              ScaleResponseCreateDTO answerData) {
+        LocalDate periodStart = answerData.periodStart() != null ? answerData.periodStart() : response.getPeriodStart();
+        LocalDate periodEnd = answerData.periodEnd() != null ? answerData.periodEnd() : response.getPeriodEnd();
+        if (periodStart.equals(response.getPeriodStart()) && periodEnd.equals(response.getPeriodEnd())) {
+            return;
+        }
+        if (definition.fillMode() == ScaleDefinition.FillMode.DIARIO) {
+            throw new BusinessException(DIARY_DAY_MESSAGE);
+        }
+        checkPeriod(periodStart, periodEnd);
+        // o dia de inicio identifica a resposta na tela e no envio, entao n pode ter duas no mesmo
+        boolean dayTaken = !periodStart.equals(response.getPeriodStart()) && responseRepository
+                .findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
+                        response.getPatient().getId(), response.getScaleType(), periodStart)
+                .isPresent();
+        if (dayTaken) {
+            throw new BusinessException(PERIOD_START_TAKEN_MESSAGE);
+        }
+        response.setPeriodStart(periodStart);
+        response.setPeriodEnd(periodEnd);
     }
 
     private LocalDate endOfDefaultPeriod(ScaleDefinition definition, LocalDate periodStart) {

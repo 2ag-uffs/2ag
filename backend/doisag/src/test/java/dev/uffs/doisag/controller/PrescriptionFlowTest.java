@@ -224,6 +224,7 @@ class PrescriptionFlowTest {
     }
 
     // mudar a prescricao eh emitir uma nova entao a anterior nunca eh editada
+    // a receita n tem nem rota por id, so a de anular, entao o caminho responde q n existe
     @Test
     void prescriptionIsNeverEditedInPlace() throws Exception {
         Long prescriptionId = issuedPrescriptionId(registeredConsultationId(), "Oleo");
@@ -232,7 +233,7 @@ class PrescriptionFlowTest {
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"posology\":\"10 gotas\"}"))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -241,8 +242,9 @@ class PrescriptionFlowTest {
         Long prescriptionId = issuedPrescriptionId(appointmentId, "Oleo");
         String patientToken = bearerTokenOf(patient);
 
-        mockMvc.perform(get("/prescriptions/" + prescriptionId).header("Authorization", patientToken))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(prescriptionId));
         mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
                         .header("Authorization", patientToken)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -3,7 +3,6 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
-import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -236,9 +235,4 @@ public class TreatmentProtocolService {
         return taskRepository.countByPatientIdAndStatus(patientId, ScaleTaskStatus.NAO_RESPONDIDA);
     }
 
-    public ScaleType[] escalasDoProtocolo(Long patientId) {
-        return findActiveProtocol(patientId).getItems().stream()
-                .map(ProtocolItem::getScaleType)
-                .toArray(ScaleType[]::new);
-    }
 }

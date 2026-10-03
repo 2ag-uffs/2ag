@@ -11,7 +11,7 @@ import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import {isInTheFuture} from "../../utils/date-format.js";
+import {belongsToHistory} from "../../utils/appointment-labels.js";
 import styles from "./historico-clinico-paciente.module.css";
 
 // historico clinico do proprio paciente (RF12)
@@ -64,8 +64,8 @@ export default function HistoricoClinicoPaciente() {
     }
 
     const {appointments, prescriptions, anamneses, scalesPage} = history;
-    // consulta marcada pro futuro aparece no inicio e aqui entra so a q ja aconteceu
-    const pastAppointments = appointments.filter((appointment) => !isInTheFuture(appointment.dateTime));
+    // so a consulta q ja passou e foi atendida, estava marcada ou virou falta
+    const pastAppointments = appointments.filter(belongsToHistory);
     // a vigente aparece primeiro
     const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
         .concat(prescriptions.filter((prescription) => !prescription.current));

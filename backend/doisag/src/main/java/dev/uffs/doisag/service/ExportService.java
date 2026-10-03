@@ -130,7 +130,7 @@ public class ExportService {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data da consulta", "Situação", "Produto",
                 "Espectro", "Composição", "Marca", "Lote", "Volume", "Posologia", "Via", "Duração em dias",
-                "Próxima consulta", "Anulada", "Motivo da anulação");
+                "Próxima consulta", "Observações", "Anulada", "Motivo da anulação");
 
         for (Prescription prescription
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
@@ -148,6 +148,7 @@ public class ExportService {
                     prescription.getAdministrationRoute(),
                     prescription.getTreatmentDurationDays(),
                     date(prescription.getNextConsultationDate()),
+                    prescription.getObservation(),
                     prescription.isAnnulled() ? "sim" : "não",
                     prescription.getAnnulment() == null ? null : prescription.getAnnulment().getAnnulmentReason());
         }
