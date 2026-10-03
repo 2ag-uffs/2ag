@@ -13,6 +13,7 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
@@ -45,6 +46,7 @@ public class ScaleTaskService {
     private final ScaleTaskRepository taskRepository;
     private final ScaleResponseRepository responseRepository;
     private final PatientRepository patientRepository;
+    private final PrescriberRepository prescriberRepository;
     private final ScaleCatalog catalog;
     private final AuditService auditService;
     private NotificationService notificationService;
@@ -52,11 +54,13 @@ public class ScaleTaskService {
     public ScaleTaskService(ScaleTaskRepository taskRepository,
                             ScaleResponseRepository responseRepository,
                             PatientRepository patientRepository,
+                            PrescriberRepository prescriberRepository,
                             ScaleCatalog catalog,
                             AuditService auditService) {
         this.taskRepository = taskRepository;
         this.responseRepository = responseRepository;
         this.patientRepository = patientRepository;
+        this.prescriberRepository = prescriberRepository;
         this.catalog = catalog;
         this.auditService = auditService;
     }
@@ -69,8 +73,15 @@ public class ScaleTaskService {
     }
 
     // envio avulso feito pelo prescritor (RF09)
+    // a linha do prescritor fica travada ate o fim: dois envios da mesma escala ao mesmo tempo
+    // passavam os dois pela busca da tarefa aberta e viravam duas pendencias iguais
+    // so aqui e n na versao do job, senao ele seguraria todos os prescritores a rodada inteira
     @Transactional
     public ScaleTask assign(Long patientId, ScaleType scaleType) {
+        Prescriber prescriber = findPatient(patientId).getPrescriber();
+        if (prescriber != null) {
+            prescriberRepository.lockById(prescriber.getId());
+        }
         return assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS, false);
     }
 

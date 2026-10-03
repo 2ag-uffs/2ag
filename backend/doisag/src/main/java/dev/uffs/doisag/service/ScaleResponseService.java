@@ -104,6 +104,11 @@ public class ScaleResponseService {
             throw new BusinessException(PRESCRIBER_SCALE_MESSAGE);
         }
         ScaleDefinition definition = catalog.definitionOf(scaleType);
+        // a linha do paciente fica travada ate o fim: dois envios do mesmo dia ao mesmo tempo
+        // (duplo toque, retry da rede) passavam os dois pela busca vazia e viravam duas linhas
+        // do mesmo dia, e dai toda leitura daquele dia quebrava. agora o segundo espera o
+        // primeiro gravar e acha a resposta dele, virando a correcao do dia
+        patientRepository.lockById(patientId);
         Patient patient = findPatient(patientId);
         LocalDate periodStart = periodStartOf(definition, answerData);
         LocalDate periodEnd = periodEndOf(definition, answerData, periodStart);
@@ -152,7 +157,9 @@ public class ScaleResponseService {
     @Transactional
     public ScaleResponseDTO applyMentalStateExam(Long appointmentId, ScaleResponseCreateDTO answerData,
                                                  Prescriber loggedPrescriber) {
-        Appointment appointment = appointmentRepository.findById(appointmentId)
+        // a consulta fica travada ate o fim, senao dois cliques em aplicar passavam os dois
+        // pela conferencia de exame repetido e gravavam dois exames validos no mesmo atendimento
+        Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
         if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
             throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);

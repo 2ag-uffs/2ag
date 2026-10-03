@@ -12,12 +12,15 @@ import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 // cuida do acompanhamento automatico dos 90 dias (RF32)
@@ -42,17 +45,20 @@ public class TreatmentProtocolService {
 
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
+    private final PrescriberRepository prescriberRepository;
     private final ScaleTaskRepository taskRepository;
     private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
 
     public TreatmentProtocolService(TreatmentProtocolRepository protocolRepository,
                                     PatientRepository patientRepository,
+                                    PrescriberRepository prescriberRepository,
                                     ScaleTaskRepository taskRepository,
                                     ScaleTaskService scaleTaskService,
                                     AuditService auditService) {
         this.protocolRepository = protocolRepository;
         this.patientRepository = patientRepository;
+        this.prescriberRepository = prescriberRepository;
         this.taskRepository = taskRepository;
         this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
@@ -68,6 +74,9 @@ public class TreatmentProtocolService {
         }
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
+        // a linha do prescritor fica travada ate o fim: dois cadastros ao mesmo tempo passavam
+        // os dois pela busca vazia e o segundo acompanhamento seguia invisivel por 90 dias
+        prescriberRepository.lockById(prescriber.getId());
         protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(anterior -> {
             throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
         });
@@ -181,19 +190,24 @@ public class TreatmentProtocolService {
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram
     private int designarRodada(TreatmentProtocol protocol, LocalDate hoje) {
+        // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
+        // e recebe a mesma escala de novo no dia seguinte
+        // isso fica pro fim, dps de todos os envios: mexer na tarefa antes do envio seguinte
+        // segurava a linha dela enquanto o paciente respondia, e no postgres os dois ficavam
+        // esperando um ao outro
+        Map<ScaleTask, LocalDate> avulsasAbertas = new LinkedHashMap<>();
         int designadas = 0;
         for (ProtocolItem item : protocol.getItems()) {
             if (estaNaHora(protocol, item, hoje)) {
                 ScaleTask task = scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
                         item.getPeriodicity().getDays(), true);
-                // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
-                // e recebe a mesma escala de novo no dia seguinte
                 if (!task.isFromProtocol()) {
-                    scaleTaskService.adoptAsProtocolRound(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
+                    avulsasAbertas.put(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
                 }
                 designadas++;
             }
         }
+        avulsasAbertas.forEach(scaleTaskService::adoptAsProtocolRound);
         return designadas;
     }
 

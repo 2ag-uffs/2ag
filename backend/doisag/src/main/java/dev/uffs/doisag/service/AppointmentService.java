@@ -154,6 +154,7 @@ public class AppointmentService {
         }
 
         // so vale um dos horarios livres entao fora do atendimento ocupado ou passado n entra
+        lockAgendaOf(prescriber.getId());
         boolean isFreeSlot = getFreeSlots(prescriber.getId(), requestData.dateTime().toLocalDate())
                 .stream()
                 .anyMatch(slot -> slot.start().equals(requestData.dateTime()));
@@ -180,9 +181,10 @@ public class AppointmentService {
 
     @Transactional
     public Appointment confirm(Long appointmentId) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
         // outro pedido do mesmo horario pode ter sido confirmado antes desse
+        lockAgendaOf(appointment.getPrescriber().getId());
         if (overlapsAny(appointment.getDateTime(), endOf(appointment), confirmedAppointmentsOnTheDayOf(appointment))) {
             throw new BusinessException(SLOT_TAKEN_MESSAGE);
         }
@@ -220,7 +222,7 @@ public class AppointmentService {
     // o pedido recusado devolve o horario pra agenda
     @Transactional
     public Appointment decline(Long appointmentId, AppointmentDeclineDTO declineData) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
 
         appointment.setStatus(AppointmentStatus.RECUSADA);
@@ -241,7 +243,7 @@ public class AppointmentService {
     // o pedido remarcado pelo prescritor ja fica confirmado no horario novo
     @Transactional
     public Appointment reschedule(Long appointmentId, AppointmentRescheduleDTO rescheduleData) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         boolean canBeMoved = appointment.getStatus() == AppointmentStatus.SOLICITADA
                 || appointment.getStatus() == AppointmentStatus.AGENDADA;
         if (appointment.isAnnulled() || !canBeMoved) {
@@ -273,7 +275,7 @@ public class AppointmentService {
     // o pedido ainda sem resposta o paciente cancela a qualquer hora
     @Transactional
     public Appointment cancel(Long appointmentId, Users loggedUser) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new BusinessException(ALREADY_CANCELED_MESSAGE);
         }
@@ -310,7 +312,7 @@ public class AppointmentService {
     // era digitar o registro clinico de um atendimento q n aconteceu
     @Transactional
     public Appointment markNoShow(Long appointmentId) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
         }
@@ -479,11 +481,20 @@ public class AppointmentService {
 
     // RN08 dois horarios do mesmo prescritor n se sobrepoem
     private void checkSlotIsFree(Long prescriberId, LocalDateTime start, int durationMinutes, Long ignoredAppointmentId) {
+        lockAgendaOf(prescriberId);
         List<Appointment> takenAppointments =
                 appointmentsHoldingTimeOn(prescriberId, start.toLocalDate(), ignoredAppointmentId);
         if (overlapsAny(start, start.plusMinutes(durationMinutes), takenAppointments)) {
             throw new BusinessException(SLOT_TAKEN_MESSAGE);
         }
+    }
+
+    // a conferencia de horario livre le a agenda e so dps grava, entao dois pedidos
+    // do mesmo horario ao mesmo tempo passavam os dois pela leitura e viravam duas consultas
+    // a linha do prescritor fica travada ate o fim da transacao: o segundo pedido espera o
+    // primeiro gravar, le a agenda ja com a consulta nova e recebe horario ocupado
+    private void lockAgendaOf(Long prescriberId) {
+        prescriberRepository.lockById(prescriberId);
     }
 
     // pedidos e consultas do dia q seguram o horario
@@ -529,6 +540,15 @@ public class AppointmentService {
 
     private Appointment findAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+    }
+
+    // a consulta q vai mudar fica travada desde a primeira leitura: o q outro acabou de gravar
+    // nela (um cancelamento no meio da confirmacao) eh lido de novo em vez de ser sobrescrito
+    // e a ordem das travas fica sempre consulta e dps prescritor, igual no meem, pra ninguem
+    // ficar esperando o outro
+    private Appointment findAppointmentForUpdate(Long appointmentId) {
+        return appointmentRepository.findByIdForUpdate(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
     }
 

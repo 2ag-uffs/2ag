@@ -47,9 +47,11 @@ public class PrescriptionService {
         this.auditService = auditService;
     }
 
+    // a consulta fica travada ate o fim: duas receitas lancadas ao mesmo tempo liam as duas a mesma
+    // vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
     @Transactional
     public Prescription create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
-        Appointment appointment = appointmentRepository.findById(appointmentId)
+        Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
         if (appointment.isAnnulled()) {
             throw new BusinessException(ANNULLED_CONSULTATION_MESSAGE);

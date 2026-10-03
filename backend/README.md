@@ -189,6 +189,8 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
+- a agenda de um prescritor recebe uma marcação de cada vez: marcar, pedir, confirmar e remarcar travam a linha do prescritor no banco até o fim da transação. dois pedidos do mesmo horário ao mesmo tempo não viram duas consultas: o segundo espera o primeiro gravar, lê a agenda já com a consulta nova e recebe horário ocupado (RN08)
+- confirmar, recusar, remarcar, cancelar e marcar falta travam a própria consulta antes de ler ela, então o que o outro lado acabou de gravar (um cancelamento no meio da confirmação) é lido de novo em vez de ser sobrescrito
 - só consulta confirmada e que já aconteceu recebe registro clínico (`PUT /appointments/{id}/clinical-record`), prescrição (`POST /appointments/{id}/prescriptions`) e Mini-Exame. os três usam a mesma folga de 5 minutos para o relógio
 - a prescrição nova só vira a vigente quando a consulta dela não é mais antiga que a da vigente atual. receita lançada numa consulta anterior é gravada já como `SUBSTITUIDA`, só para o histórico, e a resposta vem com `current: false`
 - a falta só vale para consulta que estava `AGENDADA` e cujo horário já terminou. ela libera o horário e avisa o paciente. registrar o atendimento depois desfaz a falta e conclui a consulta, para o erro de clique não trancar o prontuário
@@ -216,6 +218,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 - cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10)
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel
+- o paciente responde uma escala de cada vez: a resposta trava a linha do paciente até o fim da transação, então dois envios do mesmo dia ao mesmo tempo (duplo toque, retry da rede) não viram duas linhas do mesmo dia. o segundo espera e corrige o dia. pelo mesmo motivo a consulta fica travada enquanto o MEEM ou uma receita é lançada nela, e o prescritor fica travado enquanto envia uma escala avulsa ou cria um acompanhamento
 - item em branco não é gravado, e escala validada sem todos os itens não tem escore. essa resposta pela metade é guardada com o resultado "Incompleta: sem escore", mas não vale pela tarefa: ela continua pendente, o lembrete continua cobrando e no prazo vira não respondida. completar depois, pela correção, fecha a tarefa e avisa o prescritor
 - a resposta avisa o prescritor quando a escala fica completa. nas escalas de preenchimento diário o aviso é um só, quando o período fecha, dizendo quantos dias foram preenchidos
 - o acompanhamento de 90 dias vai do primeiro ao nonagésimo dia, e o que começa hoje manda a primeira rodada na hora, sem esperar o job de amanhã. começo no passado ou no futuro fica com o job
@@ -328,6 +331,10 @@ o esquema vem das migrações do flyway em `src/main/resources/db/migration/`. o
 
 - `V1__esquema_base.sql` consolida as migrações antigas numa base limpa, com restrições de nulidade e índices
 - toda mudança de esquema é uma migração nova. nunca edite uma migração que já rodou em algum banco
+- a regra do horário único (RN08) e a do registro único por dia no diário ficam no java, com trava pessimista na linha do prescritor e na do paciente, e não em índice do banco: o índice precisaria ser parcial (ignorando anuladas e o MEEM), e o h2 dos testes não aceita. a trava roda igual no h2 e no postgres
+- essas travas são sql direto (`lockById`): com `@Lock` em jpql o hibernate trava prescritor e paciente (que herdam de `users`) numa consulta separada no h2, e pula essa trava quando a entidade já estava carregada na transação. a consulta e o convite, sem herança, usam `@Lock` normal (`findByIdForUpdate`). os métodos de trava são `MANDATORY`: fora de uma transação a trava soltaria no fim do select sem ninguém perceber, então eles falham na hora
+- a ordem das travas é sempre consulta, depois prescritor, depois paciente (que no postgres também é tomado em modo compartilhado por todo insert que aponta pra ele). quem for travar algo novo segue essa ordem, senão duas transações ficam esperando uma pela outra. pelo mesmo motivo o job diário manda todos os envios de um acompanhamento antes de mexer na tarefa avulsa que vira rodada
+- isso conta com o `READ COMMITTED` padrão do postgres: depois que a trava libera, a leitura seguinte enxerga o que a outra transação gravou. em `REPEATABLE READ` a corrida voltaria sem ninguém perceber
 
 ## testes
 
@@ -338,6 +345,8 @@ o esquema vem das migrações do flyway em `src/main/resources/db/migration/`. o
 os testes rodam no perfil `test`, com h2 em memória, então não precisam de postgres nem de variável de ambiente. todo teste que sobe o contexto do spring precisa de `@ActiveProfiles("test")`.
 
 testes de fluxo que envolvem job agendado ou serialização de resposta devem rodar sem `@Transactional`: a transação do teste esconde carregamento sob demanda que falharia em uso real.
+
+os testes de corrida (`AgendaRaceTest`, `ScaleResponseRaceTest` e `ClinicalRecordRaceTest`) seguram a trava numa transação de fora, pelo `HeldLock`, disparam o fluxo numa thread e conferem que ele espera. a url do h2 de teste leva `LOCK_TIMEOUT=10000` por causa deles: com o padrão de 2 segundos o fluxo que espera cairia por tempo esgotado.
 
 ## padrão de código
 
