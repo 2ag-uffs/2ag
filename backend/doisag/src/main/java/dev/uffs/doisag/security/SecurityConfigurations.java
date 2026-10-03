@@ -57,6 +57,9 @@ public class SecurityConfigurations {
                     routes.requestMatchers("/admin/**").hasRole("ADMIN");
                     routes.requestMatchers("/auth/me", "/profile", "/profile/**")
                             .hasAnyRole("PATIENT", "PRESCRIBER", "ADMIN");
+                    // a documentacao da api (perfil docs do maven, API_DOCS=true) abre pra qualquer conta
+                    routes.requestMatchers("/v3/api-docs/**", "/v3/api-docs.yaml", "/swagger-ui/**", "/swagger-ui.html")
+                            .hasAnyRole("PATIENT", "PRESCRIBER", "ADMIN");
                     // o resto eh dado clinico ou de uso do paciente e do prescritor
                     routes.anyRequest().hasAnyRole("PATIENT", "PRESCRIBER");
                 })

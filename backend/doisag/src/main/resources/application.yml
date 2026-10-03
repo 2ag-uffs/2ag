@@ -2,6 +2,13 @@
 # o q muda de um ambiente pro outro vem de variavel de ambiente
 # o valor depois dos dois pontos eh o padrao quando a variavel n existe
 
+# o springdoc (perfil docs do maven) liga e desliga junto com a api.docs.enabled la embaixo
+springdoc:
+  api-docs:
+    enabled: ${api.docs.enabled}
+  swagger-ui:
+    enabled: ${api.docs.enabled}
+
 server:
   port: ${SERVER_PORT:8080}
   # atras do nginx o endereco de quem acessa vem no cabecalho x-forwarded-for
@@ -81,6 +88,10 @@ api:
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}
+  docs:
+    # documentacao da api em /api/swagger-ui/index.html, pra quem esta logado
+    # so existe rodando com o perfil docs do maven (desenvolvimento e ci)
+    enabled: ${API_DOCS:false}
   # endereco onde as pessoas abrem o sistema
   # vai nos links enviados por e-mail como o de criar uma senha nova
   # e eh o unico endereco aceito nas requisicoes q mudam dado com o cookie da sessao

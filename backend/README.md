@@ -29,6 +29,18 @@ para mexer só nas telas, sem instalar postgres, a api sobe com o h2 em memória
 ./mvnw spring-boot:test-run "-Dspring-boot.run.arguments=--spring.profiles.active=test --api.seed.enabled=true --api.session.secure-cookie=false"
 ```
 
+## documentação da api
+
+a documentação gerada do código fica em `/api/swagger-ui/index.html` no endereço do front (`http://localhost:5173/api/swagger-ui/index.html` com o `npm run dev`; o json cru em `/api/v3/api-docs`), com o corpo e a resposta de cada rota tirados dos dtos e, em cada rota, quem pode usar, lido das regras de acesso do código. ela só abre para quem está logado: entre no sistema e abra o endereço. pelo endereço da api direto (`:8080`) a página abre, mas o *try it out* do que grava recebe 403, porque a origem não é o `PUBLIC_URL`.
+
+ela só existe rodando com o perfil `docs` do maven e com `--api.docs.enabled=true` (ou `export API_DOCS=true`):
+
+```bash
+./mvnw spring-boot:test-run -Pdocs "-Dspring-boot.run.arguments=--spring.profiles.active=test --api.seed.enabled=true --api.session.secure-cookie=false --api.docs.enabled=true"
+```
+
+o perfil existe de propósito: o springdoc traz o jackson 2 de volta pelo swagger-core, e a imagem de produção (`mvn package` sem perfil) segue só com o jackson 3. a configuração dele mora em `src/docs/java`, que só compila com o perfil, e o `ApiDocsTest` é pulado sem ele. o ci roda os testes com o perfil.
+
 ## configuração
 
 tudo que muda entre ambientes vem de variável de ambiente:
@@ -344,6 +356,8 @@ o esquema vem das migrações do flyway em `src/main/resources/db/migration/`. o
 ```bash
 ./mvnw clean install
 ```
+
+com `-Pdocs` a suíte inclui o teste da documentação da api, igual ao ci.
 
 os testes rodam no perfil `test`, com h2 em memória, então não precisam de postgres nem de variável de ambiente. todo teste que sobe o contexto do spring precisa de `@ActiveProfiles("test")`.
 

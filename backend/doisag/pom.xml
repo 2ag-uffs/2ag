@@ -132,4 +132,44 @@
 		</plugins>
 	</build>
 
+	<profiles>
+		<!-- documentacao da api gerada do codigo, so em desenvolvimento e no ci (issue 40)
+		     fica num perfil pq o springdoc traz o jackson 2 de volta pelo swagger-core,
+		     e a imagem de producao (mvn package sem perfil) segue so com o jackson 3
+		     a configuracao dele mora em src/docs/java, q so compila com o perfil -->
+		<profile>
+			<id>docs</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.springdoc</groupId>
+					<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+					<version>3.0.1</version>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>build-helper-maven-plugin</artifactId>
+						<version>3.6.1</version>
+						<executions>
+							<execution>
+								<id>docs-source</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>add-source</goal>
+								</goals>
+								<configuration>
+									<sources>
+										<source>src/docs/java</source>
+									</sources>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

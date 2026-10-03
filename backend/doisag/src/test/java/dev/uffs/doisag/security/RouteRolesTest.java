@@ -171,6 +171,15 @@ class RouteRolesTest {
         }
     }
 
+    // a documentacao da api so existe com o perfil docs e API_DOCS=true: por padrao nem logado abre
+    @Test
+    void theApiDocumentationIsOffByDefault() throws Exception {
+        mockMvc.perform(get("/v3/api-docs").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/swagger-ui/index.html").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isNotFound());
+    }
+
     // o administrador cuida das contas e n chega em dado clinico nem por engano
     @Test
     void adminOnlyReachesAdministrationAndTheirOwnAccount() throws Exception {
