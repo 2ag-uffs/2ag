@@ -17,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -57,6 +58,8 @@ public class Prescription {
     private Spectrum spectrum;
 
     // cada canabinoide do oleo com a propria concentracao (RN03)
+    // o historico lista varias receitas e cada lista vem em lote, n uma por receita
+    @BatchSize(size = 50)
     @OneToMany(mappedBy = "prescription", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PrescriptionComponent> components = new ArrayList<>();
 
@@ -68,6 +71,7 @@ public class Prescription {
     private String administrationRoute;
 
     // o plano de subida de dose semana a semana (RN02)
+    @BatchSize(size = 50)
     @OneToMany(mappedBy = "prescription", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DoseEscalationStep> escalationSteps = new ArrayList<>();
 

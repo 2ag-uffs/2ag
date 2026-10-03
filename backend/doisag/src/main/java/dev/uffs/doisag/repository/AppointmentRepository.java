@@ -3,6 +3,7 @@ package dev.uffs.doisag.repository;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -50,5 +51,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                                            LocalDateTime end);
 
     // historico de um paciente da consulta mais recente pra mais antiga
+    // paciente e prescritor vem na mesma consulta, senao cada linha fazia mais um select
+    @EntityGraph(attributePaths = {"patient", "prescriber"})
     List<Appointment> findByPatientIdOrderByDateTimeDesc(Long patientId);
 }

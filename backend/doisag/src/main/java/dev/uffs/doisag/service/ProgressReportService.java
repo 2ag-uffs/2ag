@@ -46,7 +46,7 @@ public class ProgressReportService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ProgressDataPointDTO> getPatientProgress(Long patientId, TrackableAttribute attribute,
                                                          TimePeriod period) {
         auditService.recordChartView(patientId);
@@ -67,7 +67,7 @@ public class ProgressReportService {
 
     // o q o paciente escreveu nas escalas do periodo, do mais antigo pro
     // mais novo. eh o relato em cima da curva (RF07)
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ProgressCommentDTO> getPatientComments(Long patientId, TimePeriod period) {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();

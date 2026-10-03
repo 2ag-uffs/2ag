@@ -244,7 +244,7 @@ public class ScaleTaskService {
     }
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
-    @Transactional(readOnly = true)
+    @Transactional
     public PatientScalesPageDTO getPatientScalesPage(Long patientId) {
         auditService.recordChartView(patientId);
         Patient patient = findPatient(patientId);

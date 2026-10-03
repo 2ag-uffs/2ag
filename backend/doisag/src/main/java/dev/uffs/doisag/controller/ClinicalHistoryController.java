@@ -34,27 +34,18 @@ public class ClinicalHistoryController {
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/anamneses")
     public List<AnamnesisResponseDTO> getAnamneses(@PathVariable Long patientId) {
-        return anamnesisService.getByPatientId(patientId)
-                .stream()
-                .map(AnamnesisResponseDTO::new)
-                .toList();
+        return anamnesisService.getByPatientId(patientId);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/appointments")
     public List<AppointmentResponseDTO> getAppointments(@PathVariable Long patientId) {
-        return appointmentService.getByPatientId(patientId)
-                .stream()
-                .map(AppointmentResponseDTO::new)
-                .toList();
+        return appointmentService.getByPatientId(patientId);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/prescriptions")
     public List<PrescriptionResponseDTO> getPrescriptions(@PathVariable Long patientId) {
-        return prescriptionService.getByPatientId(patientId)
-                .stream()
-                .map(PrescriptionResponseDTO::new)
-                .toList();
+        return prescriptionService.getByPatientId(patientId);
     }
 }

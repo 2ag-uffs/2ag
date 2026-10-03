@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AnamnesisResponseDTO;
 import dev.uffs.doisag.dto.AnamnesisDTO;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -91,9 +92,14 @@ public class AnamnesisService {
     }
 
     // anamneses de um paciente da mais recente pra mais antiga
-    public List<Anamnesis> getByPatientId(Long patientId) {
+    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
+    @Transactional
+    public List<AnamnesisResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId);
+        return anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId)
+                .stream()
+                .map(AnamnesisResponseDTO::new)
+                .toList();
     }
 
     public Anamnesis getById(Long anamnesisId) {

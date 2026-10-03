@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.DoseEscalationStepDTO;
 import dev.uffs.doisag.dto.PrescriptionComponentDTO;
@@ -121,9 +122,14 @@ public class PrescriptionService {
     }
 
     // prescricoes de um paciente da consulta mais recente pra mais antiga
-    public List<Prescription> getByPatientId(Long patientId) {
+    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
+    @Transactional
+    public List<PrescriptionResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(patientId);
+        return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(patientId)
+                .stream()
+                .map(PrescriptionResponseDTO::new)
+                .toList();
     }
 
     public Prescription getById(Long id) {

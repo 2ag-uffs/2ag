@@ -95,7 +95,7 @@ public class ExportService {
         this.auditService = auditService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String appointmentsCsv(Long patientId, boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data", "Hora", "Modalidade", "Situação",
@@ -125,7 +125,7 @@ public class ExportService {
         return csv.build();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String prescriptionsCsv(Long patientId, boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data da consulta", "Situação", "Produto",
@@ -156,7 +156,7 @@ public class ExportService {
 
     // uma linha por item respondido, q eh o formato q a planilha filtra
     // e agrupa sem precisar de uma coluna por escala
-    @Transactional(readOnly = true)
+    @Transactional
     public String scaleResponsesCsv(Long patientId, boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Escala", "Início do período", "Fim do período",
@@ -233,7 +233,7 @@ public class ExportService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String progressCsv(Long patientId, TrackableAttribute attribute, TimePeriod period,
                               boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
@@ -248,7 +248,7 @@ public class ExportService {
         return csv.build();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public String anamnesisCsv(Long patientId, boolean anonymous, Users loggedUser) {
         Patient patient = startExport(patientId, anonymous, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data", "Pergunta", "Resposta", "Anulada");

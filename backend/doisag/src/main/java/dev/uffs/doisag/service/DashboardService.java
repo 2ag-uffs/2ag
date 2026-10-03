@@ -99,7 +99,7 @@ public class DashboardService {
                 lateScales);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PatientDashboardDTO getPatientDashboard(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();

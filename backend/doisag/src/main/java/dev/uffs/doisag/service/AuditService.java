@@ -96,6 +96,9 @@ public class AuditService {
 
     // o prescritor abrindo dado clinico de um paciente
     // o paciente olhando os proprios dados n entra na trilha
+    //
+    // quem chama isso n pode estar numa transacao readOnly: no postgres ela vira
+    // BEGIN READ ONLY e o insert da trilha eh recusado, o h2 n reclama e esconde o erro
     @Transactional
     public void recordChartView(Long patientId) {
         Users loggedUser = findLoggedUser();

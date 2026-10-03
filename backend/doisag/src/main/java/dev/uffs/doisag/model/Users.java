@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +18,8 @@ import java.util.List;
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED) // respeitar minha definição de especialização total em BD
 @EntityListeners(AuditingEntityListener.class)
+// quem anulou um registro eh um usuario lazy, e numa lista eles vem em lote em vez de um por linha
+@BatchSize(size = 50)
 public abstract class Users implements UserDetails { // implementa a interface do spring security
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

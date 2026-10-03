@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.AppointmentDeclineDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
@@ -393,9 +394,14 @@ public class AppointmentService {
     }
 
     // consultas de um paciente da mais recente pra mais antiga
-    public List<Appointment> getByPatientId(Long patientId) {
+    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
+    @Transactional
+    public List<AppointmentResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId);
+        return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)
+                .stream()
+                .map(AppointmentResponseDTO::new)
+                .toList();
     }
 
     // as consultas de um paciente dentro da janela do grafico

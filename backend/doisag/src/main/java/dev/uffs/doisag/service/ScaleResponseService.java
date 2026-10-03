@@ -265,14 +265,14 @@ public class ScaleResponseService {
         return dtoOf(response);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ScaleResponseDTO getById(Long responseId) {
         ScaleResponse response = findResponse(responseId);
         auditService.recordChartView(response.getPatient().getId());
         return dtoOf(response);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ScaleResponseSummaryDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
         return responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)
@@ -283,7 +283,7 @@ public class ScaleResponseService {
 
     // as respostas de uma escala so, q a grade da semana usa pra mostrar
     // os dias q ja foram preenchidos
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ScaleResponseDTO> getByPatientIdAndType(Long patientId, ScaleType scaleType) {
         auditService.recordChartView(patientId);
         return responseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(patientId, scaleType)

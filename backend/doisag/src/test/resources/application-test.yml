@@ -18,6 +18,10 @@ spring:
       # entidade e esquecer da migracao, o teste quebra
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        # contagem de consultas ao banco, pro teste do historico pegar o n+1 de volta
+        generate_statistics: true
 
 api:
   security:
