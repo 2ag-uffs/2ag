@@ -50,7 +50,7 @@ public class PrescriptionService {
     // a consulta fica travada ate o fim: duas receitas lancadas ao mesmo tempo liam as duas a mesma
     // vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
     @Transactional
-    public Prescription create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
+    public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
         if (appointment.isAnnulled()) {
@@ -105,12 +105,12 @@ public class PrescriptionService {
 
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(), patientId);
-        return savedPrescription;
+        return new PrescriptionResponseDTO(savedPrescription);
     }
 
     // prescricao errada fica no historico marcada como anulada e deixa de valer
     @Transactional
-    public Prescription annul(Long prescriptionId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
+    public PrescriptionResponseDTO annul(Long prescriptionId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Prescription prescription = findPrescription(prescriptionId);
         if (prescription.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
@@ -120,11 +120,10 @@ public class PrescriptionService {
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
                 savedPrescription.getAppointment().getPatient().getId());
-        return savedPrescription;
+        return new PrescriptionResponseDTO(savedPrescription);
     }
 
     // prescricoes de um paciente da consulta mais recente pra mais antiga
-    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
     @Transactional
     public List<PrescriptionResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);

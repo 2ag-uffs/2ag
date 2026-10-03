@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AgendaAppointmentDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
@@ -109,7 +110,7 @@ class AgendaRaceTest {
 
     @Test
     void thePrescriberMarkingWaitsForTheAgendaAndFindsTheConsultationSavedMeanwhile() throws Exception {
-        HeldLock.Outcome<Appointment> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.schedule(
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.schedule(
                 new AppointmentScheduleDTO(patient.getId(), DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null),
                 prescriber.getId()));
 
@@ -120,7 +121,7 @@ class AgendaRaceTest {
 
     @Test
     void thePatientRequestWaitsForTheAgendaAndFindsTheSlotTaken() throws Exception {
-        HeldLock.Outcome<Appointment> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.request(
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.request(
                 patient.getId(), new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
@@ -132,7 +133,7 @@ class AgendaRaceTest {
     void confirmingARequestWaitsForTheAgendaAndFindsTheSlotTaken() throws Exception {
         Appointment request = saveAppointment(patient, DISPUTED_SLOT, AppointmentStatus.SOLICITADA);
 
-        HeldLock.Outcome<Appointment> outcome = runWhileTheAgendaIsHeld(
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(
                 () -> appointmentService.confirm(request.getId()));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
@@ -147,7 +148,7 @@ class AgendaRaceTest {
     void reschedulingWaitsForTheAgendaAndFindsTheSlotTaken() throws Exception {
         Appointment appointment = saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.AGENDADA);
 
-        HeldLock.Outcome<Appointment> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.reschedule(
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.reschedule(
                 appointment.getId(), new AppointmentRescheduleDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
@@ -185,7 +186,7 @@ class AgendaRaceTest {
     }
 
     // a transacao de fora segura a linha do prescritor e, antes de soltar, marca o outro paciente no horario
-    private HeldLock.Outcome<Appointment> runWhileTheAgendaIsHeld(Callable<Appointment> flow) throws Exception {
+    private HeldLock.Outcome<AgendaAppointmentDTO> runWhileTheAgendaIsHeld(Callable<AgendaAppointmentDTO> flow) throws Exception {
         return heldAgenda.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
                 () -> saveAppointment(otherPatient, DISPUTED_SLOT, AppointmentStatus.AGENDADA),

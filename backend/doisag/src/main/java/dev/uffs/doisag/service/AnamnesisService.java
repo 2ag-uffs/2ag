@@ -40,7 +40,7 @@ public class AnamnesisService {
     }
 
     @Transactional
-    public Anamnesis create(AnamnesisDTO anamnesisData, Patient patient) {
+    public AnamnesisResponseDTO create(AnamnesisDTO anamnesisData, Patient patient) {
         // prontuario de quem foi arquivado n recebe registro novo, o acompanhamento acabou
         if (patient.isArchived()) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
@@ -54,12 +54,12 @@ public class AnamnesisService {
         auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), patient.getId());
         // preencher a anamnese da baixa na tarefa q o prescritor enviou igual as outras escalas
         scaleTaskService.completeTask(patient.getId(), ScaleType.ANAMNESE);
-        return savedAnamnesis;
+        return new AnamnesisResponseDTO(savedAnamnesis);
     }
 
     // o paciente corrige o q ele mesmo respondeu e o dono do registro nunca muda
     @Transactional
-    public Anamnesis update(Long anamnesisId, AnamnesisDTO anamnesisData) {
+    public AnamnesisResponseDTO update(Long anamnesisId, AnamnesisDTO anamnesisData) {
         Anamnesis anamnesis = findAnamnesis(anamnesisId);
         if (anamnesis.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
@@ -73,12 +73,12 @@ public class AnamnesisService {
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordChange(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());
-        return savedAnamnesis;
+        return new AnamnesisResponseDTO(savedAnamnesis);
     }
 
     // anamnese feita por engano fica no historico marcada como anulada com o motivo
     @Transactional
-    public Anamnesis annul(Long anamnesisId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
+    public AnamnesisResponseDTO annul(Long anamnesisId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Anamnesis anamnesis = findAnamnesis(anamnesisId);
         if (anamnesis.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
@@ -88,11 +88,10 @@ public class AnamnesisService {
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordAnnulment(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());
-        return savedAnamnesis;
+        return new AnamnesisResponseDTO(savedAnamnesis);
     }
 
     // anamneses de um paciente da mais recente pra mais antiga
-    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
     @Transactional
     public List<AnamnesisResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
@@ -102,10 +101,11 @@ public class AnamnesisService {
                 .toList();
     }
 
-    public Anamnesis getById(Long anamnesisId) {
+    @Transactional
+    public AnamnesisResponseDTO getById(Long anamnesisId) {
         Anamnesis anamnesis = findAnamnesis(anamnesisId);
         auditService.recordChartView(anamnesis.getPatient().getId());
-        return anamnesis;
+        return new AnamnesisResponseDTO(anamnesis);
     }
 
     private Anamnesis findAnamnesis(Long anamnesisId) {

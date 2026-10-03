@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InputCleaner;
@@ -61,19 +62,23 @@ public class PatientService {
     }
 
     // abrir os dados do paciente conta como abrir o prontuario
-    public Patient getById(Long id) {
+    @Transactional
+    public PatientResponseDTO getById(Long id) {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
         auditService.recordChartView(patient.getId());
-        return patient;
+        return new PatientResponseDTO(patient);
     }
 
     // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
-    public List<Patient> getPatientsByPrescriberId(Long prescriberId, boolean archived) {
-        if (archived) {
-            return patientRepository.findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(prescriberId);
-        }
-        return patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId);
+    @Transactional(readOnly = true)
+    public List<PatientResponseDTO> getPatientsByPrescriberId(Long prescriberId, boolean archived) {
+        List<Patient> patients = archived
+                ? patientRepository.findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(prescriberId)
+                : patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId);
+        return patients.stream()
+                .map(PatientResponseDTO::new)
+                .toList();
     }
 
     // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)

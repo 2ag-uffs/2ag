@@ -87,6 +87,9 @@ class ChartViewAuditWithoutTestTransactionTest {
             mockMvc.perform(get("/patients/" + patient.getId() + path).header("Authorization", prescriberToken))
                     .andExpect(status().isOk());
         }
+        // sem acompanhamento a pagina responde 404, e abrir ela conta como abrir o prontuario do mesmo jeito
+        mockMvc.perform(get("/patients/" + patient.getId() + "/treatment-protocol").header("Authorization", prescriberToken))
+                .andExpect(status().isNotFound());
         mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", prescriberToken))
                 .andExpect(status().isOk());
 

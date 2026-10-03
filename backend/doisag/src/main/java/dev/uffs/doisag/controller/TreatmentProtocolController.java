@@ -28,21 +28,23 @@ public class TreatmentProtocolController {
             @PathVariable Long patientId,
             @RequestBody @Valid TreatmentProtocolCreateDTO dados,
             @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        var protocolo = treatmentProtocolService.create(patientId, dados, loggedPrescriber);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new TreatmentProtocolResponseDTO(protocolo));
+        TreatmentProtocolResponseDTO protocol = treatmentProtocolService.create(patientId, dados, loggedPrescriber);
+        return ResponseEntity.status(HttpStatus.CREATED).body(protocol);
     }
 
     // o paciente tambem pode ver o proprio acompanhamento
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
-    public TreatmentProtocolResponseDTO getActive(@PathVariable Long patientId) {
-        return new TreatmentProtocolResponseDTO(treatmentProtocolService.getActiveByPatient(patientId));
+    public ResponseEntity<TreatmentProtocolResponseDTO> getActive(@PathVariable Long patientId) {
+        return treatmentProtocolService.getActiveByPatient(patientId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // encerrar n apaga nada o protocolo fica guardado como inativo
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @PutMapping("/end")
     public TreatmentProtocolResponseDTO end(@PathVariable Long patientId) {
-        return new TreatmentProtocolResponseDTO(treatmentProtocolService.end(patientId));
+        return treatmentProtocolService.end(patientId);
     }
 }

@@ -187,8 +187,7 @@ class TreatmentProtocolServiceTest {
         int designadas = treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(91));
 
         assertThat(designadas).isZero();
-        assertThatThrownBy(() -> treatmentProtocolService.getActiveByPatient(paciente.getId()))
-                .hasMessageContaining("Nenhum acompanhamento em andamento");
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId())).isEmpty();
     }
 
     @Test
@@ -265,7 +264,8 @@ class TreatmentProtocolServiceTest {
         treatmentProtocolService.designarEscalasVencidas(INICIO);
 
         assertThat(tarefaDoDia(INICIO).isFromProtocol()).isTrue();
-        assertThat(scaleTaskService.assign(paciente.getId(), ScaleType.REGISTRO_DOR).isFromProtocol()).isFalse();
+        assertThat(taskRepository.findById(scaleTaskService.assign(paciente.getId(), ScaleType.REGISTRO_DOR).id())
+                .orElseThrow().isFromProtocol()).isFalse();
     }
 
     // a mesma escala nunca fica pendente duas vezes, venha de onde vier
@@ -346,8 +346,7 @@ class TreatmentProtocolServiceTest {
 
         treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(91));
 
-        assertThatThrownBy(() -> treatmentProtocolService.getActiveByPatient(paciente.getId()))
-                .isInstanceOf(NotFoundException.class);
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId())).isEmpty();
     }
 
     // o acompanhamento q comeca hoje n espera o job de amanha
@@ -360,7 +359,7 @@ class TreatmentProtocolServiceTest {
 
         assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isEqualTo(1);
         assertThat(treatmentProtocolService.designarEscalasVencidas(hoje)).isZero();
-        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId()).getEndDate())
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId()).orElseThrow().endDate())
                 .isEqualTo(hoje.plusDays(89));
     }
 

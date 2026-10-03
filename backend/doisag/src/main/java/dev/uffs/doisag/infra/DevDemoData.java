@@ -3,6 +3,7 @@ package dev.uffs.doisag.infra;
 import dev.uffs.doisag.dto.AnamnesisDTO;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
+import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.AvailabilityDTO;
 import dev.uffs.doisag.dto.AvailabilityPeriodDTO;
@@ -22,7 +23,6 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.model.Address;
-import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -196,7 +196,8 @@ public class DevDemoData {
                 "Lombar, quase todos os dias, intensidade 7 de 10",
                 "Dormir melhor e depender menos de remédio para dor", "Sim", null), maria);
 
-        Appointment firstConsultation = registerConsultation(maria, prescriber, pastWorkingDay(firstDay).atTime(9, 0),
+        AppointmentResponseDTO firstConsultation = registerConsultation(maria, prescriber,
+                pastWorkingDay(firstDay).atTime(9, 0),
                 "Dor lombar crônica há três anos, pior à noite, com despertares frequentes.",
                 "Sem déficit neurológico. Dor à palpação paravertebral lombar.", null,
                 "Lombalgia crônica com insônia secundária",
@@ -209,7 +210,8 @@ public class DevDemoData {
                         new DoseEscalationStepDTO(3, "5 gotas à noite", null)),
                 30, secondConsultationDay);
 
-        Appointment secondConsultation = registerConsultation(maria, prescriber, secondConsultationDay.atTime(9, 30),
+        AppointmentResponseDTO secondConsultation = registerConsultation(maria, prescriber,
+                secondConsultationDay.atTime(9, 30),
                 null, null, "Melhora parcial da dor e do sono. Sonolência leve pela manhã só na primeira semana.",
                 "Lombalgia crônica com insônia secundária",
                 "Trocar para óleo full spectrum com THC em baixa concentração e manter o diário.", "120/80");
@@ -250,7 +252,7 @@ public class DevDemoData {
         mentalStateAnswers.put("leitura", 1);
         mentalStateAnswers.put("escrita", 1);
         mentalStateAnswers.put("copia", 1);
-        scaleResponseService.applyMentalStateExam(firstConsultation.getId(),
+        scaleResponseService.applyMentalStateExam(firstConsultation.id(),
                 new ScaleResponseCreateDTO(null, null, mentalStateAnswers), prescriber);
 
         // duas semanas de diario do sono com algumas noites sem registro
@@ -318,7 +320,7 @@ public class DevDemoData {
     // ansiedade q melhorou mas ainda aperta no fim da tarde
     private void createJoaoPast(Prescriber prescriber, Patient joao, LocalDate today) {
         LocalDate consultationDay = pastWorkingDay(today.minusDays(20));
-        Appointment consultation = registerConsultation(joao, prescriber, consultationDay.atTime(10, 0),
+        AppointmentResponseDTO consultation = registerConsultation(joao, prescriber, consultationDay.atTime(10, 0),
                 "Crises de ansiedade à tarde e dificuldade para desligar à noite.",
                 "Taquicardia leve durante a consulta.", null, "Transtorno de ansiedade generalizada",
                 "Iniciar CBD isolado em dose baixa e reavaliar em três semanas.", "130/85");
@@ -373,7 +375,7 @@ public class DevDemoData {
 
     // dor neuropatica nos pes com uma escala q passou do prazo sem resposta
     private void createRenataPast(Prescriber prescriber, Patient renata, LocalDate today) {
-        Appointment consultation = registerConsultation(renata, prescriber,
+        AppointmentResponseDTO consultation = registerConsultation(renata, prescriber,
                 pastWorkingDay(today.minusDays(40)).atTime(14, 0),
                 "Dor em queimação nos pés, pior à noite.", "Sensibilidade diminuída nos dois pés.", null,
                 "Neuropatia periférica dolorosa", "Iniciar óleo broad spectrum e acompanhar a dor pelo diário.",
@@ -449,23 +451,24 @@ public class DevDemoData {
         return patientRepository.save(patient);
     }
 
-    private Appointment registerConsultation(Patient patient, Prescriber prescriber, LocalDateTime dateTime,
-                                             String complaint, String exam, String evolution, String diagnosis,
-                                             String plan, String bloodPressure) {
+    private AppointmentResponseDTO registerConsultation(Patient patient, Prescriber prescriber,
+                                                        LocalDateTime dateTime, String complaint, String exam,
+                                                        String evolution, String diagnosis, String plan,
+                                                        String bloodPressure) {
         ConsultationRecordDTO record = new ConsultationRecordDTO(dateTime, AppointmentModality.PRESENCIAL,
                 complaint, exam, evolution, diagnosis, plan, null, bloodPressure, null, null);
         return consultationService.register(patient.getId(), record, prescriber);
     }
 
-    private void prescribe(Appointment consultation, String product, Spectrum spectrum,
+    private void prescribe(AppointmentResponseDTO consultation, String product, Spectrum spectrum,
                            List<PrescriptionComponentDTO> components, String posology,
                            List<DoseEscalationStepDTO> steps, int durationDays, LocalDate nextConsultation) {
         PrescriptionCreateDTO prescription = new PrescriptionCreateDTO(product, "Associação Flor do Oeste",
-                "L2026-" + consultation.getId(), spectrum, components, "30", posology, "Sublingual", steps,
+                "L2026-" + consultation.id(), spectrum, components, "30", posology, "Sublingual", steps,
                 "Agitar o frasco antes de usar. Pingar embaixo da língua e esperar um minuto antes de engolir.",
                 "Evitar dirigir nas primeiras semanas se sentir sonolência.",
                 "Melhora gradual dos sintomas ao longo das semanas.", null, durationDays, nextConsultation);
-        prescriptionService.create(prescription, consultation.getId());
+        prescriptionService.create(prescription, consultation.id());
     }
 
     private PrescriptionComponentDTO component(Cannabinoid cannabinoid, String concentration) {

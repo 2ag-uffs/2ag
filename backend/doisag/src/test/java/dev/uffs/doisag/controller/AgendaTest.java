@@ -499,7 +499,7 @@ class AgendaTest {
         Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
         noShow(yesterday.getId(), prescriber).andExpect(status().isOk());
 
-        assertThat(appointmentService.getById(yesterday.getId()).getStatus().holdsTimeSlot()).isFalse();
+        assertThat(appointmentService.getById(yesterday.getId()).status().holdsTimeSlot()).isFalse();
     }
 
     // ---------- listas ----------

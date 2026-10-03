@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AgendaAppointmentDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.AppointmentDeclineDTO;
 import dev.uffs.doisag.dto.AppointmentMarkerDTO;
@@ -106,7 +107,7 @@ public class AppointmentService {
 
     // o prescritor marca direto pra paciente da carteira dele e a consulta ja nasce confirmada
     @Transactional
-    public Appointment schedule(AppointmentScheduleDTO scheduleData, Long prescriberId) {
+    public AgendaAppointmentDTO schedule(AppointmentScheduleDTO scheduleData, Long prescriberId) {
         Patient patient = findPatient(scheduleData.patientId());
         Prescriber prescriber = findPrescriber(prescriberId);
         int durationMinutes = scheduleData.durationMinutes() == null
@@ -130,12 +131,12 @@ public class AppointmentService {
                 "Sua consulta com " + prescriber.getName() + " foi marcada para "
                         + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // o paciente pede um dos horarios livres da agenda do prescritor dele
     @Transactional
-    public Appointment request(Long patientId, AppointmentRequestDTO requestData) {
+    public AgendaAppointmentDTO request(Long patientId, AppointmentRequestDTO requestData) {
         Patient patient = findPatient(patientId);
         // arquivado saiu do acompanhamento: o pedido dele seguraria horario de quem esta em tratamento
         if (patient.isArchived()) {
@@ -180,11 +181,11 @@ public class AppointmentService {
         notificationService.createNotification(prescriber, "Pedido de consulta",
                 patient.getName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PRESCRIBER_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     @Transactional
-    public Appointment confirm(Long appointmentId) {
+    public AgendaAppointmentDTO confirm(Long appointmentId) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
         // outro pedido do mesmo horario pode ter sido confirmado antes desse
@@ -199,7 +200,7 @@ public class AppointmentService {
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " em "
                         + formatDateTime(savedAppointment) + " foi confirmada.",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // pedido q passou da data sem resposta n pode ficar em aberto pra sempre:
@@ -225,7 +226,7 @@ public class AppointmentService {
 
     // o pedido recusado devolve o horario pra agenda
     @Transactional
-    public Appointment decline(Long appointmentId, AppointmentDeclineDTO declineData) {
+    public AgendaAppointmentDTO decline(Long appointmentId, AppointmentDeclineDTO declineData) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
 
@@ -240,13 +241,13 @@ public class AppointmentService {
         }
         notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta recusado",
                 message, "ALERT", PATIENT_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // remarcar muda quando e como a consulta acontece e avisa o paciente
     // o pedido remarcado pelo prescritor ja fica confirmado no horario novo
     @Transactional
-    public Appointment reschedule(Long appointmentId, AppointmentRescheduleDTO rescheduleData) {
+    public AgendaAppointmentDTO reschedule(Long appointmentId, AppointmentRescheduleDTO rescheduleData) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         boolean canBeMoved = appointment.getStatus() == AppointmentStatus.SOLICITADA
                 || appointment.getStatus() == AppointmentStatus.AGENDADA;
@@ -272,13 +273,13 @@ public class AppointmentService {
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "
                         + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // cancelar n apaga e a consulta continua no historico como cancelada
     // o pedido ainda sem resposta o paciente cancela a qualquer hora
     @Transactional
-    public Appointment cancel(Long appointmentId, Users loggedUser) {
+    public AgendaAppointmentDTO cancel(Long appointmentId, Users loggedUser) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new BusinessException(ALREADY_CANCELED_MESSAGE);
@@ -307,7 +308,7 @@ public class AppointmentService {
                             + formatDateTime(savedAppointment) + " foi cancelada.",
                     "ALERT", PATIENT_AGENDA_LINK);
         }
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // o paciente n apareceu na consulta marcada (RF10)
@@ -315,7 +316,7 @@ public class AppointmentService {
     // sem isso a consulta ficava AGENDADA pra sempre, pq o unico jeito de fechar
     // era digitar o registro clinico de um atendimento q n aconteceu
     @Transactional
-    public Appointment markNoShow(Long appointmentId) {
+    public AgendaAppointmentDTO markNoShow(Long appointmentId) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
@@ -333,7 +334,7 @@ public class AppointmentService {
                 "A consulta de " + formatDateTime(savedAppointment)
                         + " foi marcada como falta. Fale com a clínica para remarcar.",
                 "ALERT", PATIENT_AGENDA_LINK);
-        return savedAppointment;
+        return new AgendaAppointmentDTO(savedAppointment);
     }
 
     // horarios livres de alguns dias na agenda do prescritor do paciente
@@ -364,9 +365,9 @@ public class AppointmentService {
 
     // agenda do prescritor entre duas datas e sem as datas vem inteira
     @Transactional(readOnly = true)
-    public List<Appointment> getAgenda(Long prescriberId, LocalDate from, LocalDate to) {
+    public List<AgendaAppointmentDTO> getAgenda(Long prescriberId, LocalDate from, LocalDate to) {
         if (from == null && to == null) {
-            return appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriberId);
+            return agendaOf(appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriberId));
         }
         // so um lado do periodo ficava sem filtro nenhum e devolvia a agenda inteira
         if (from == null || to == null) {
@@ -375,32 +376,39 @@ public class AppointmentService {
         if (from.isAfter(to)) {
             throw new BusinessException(INVALID_RANGE_MESSAGE);
         }
-        return appointmentRepository.findByPrescriberIdAndDateTimeBetweenOrderByDateTimeAsc(
-                prescriberId, from.atStartOfDay(), to.atTime(LocalTime.MAX));
+        return agendaOf(appointmentRepository.findByPrescriberIdAndDateTimeBetweenOrderByDateTimeAsc(
+                prescriberId, from.atStartOfDay(), to.atTime(LocalTime.MAX)));
     }
 
     // pedidos de pacientes q ainda esperam a resposta do prescritor
     @Transactional(readOnly = true)
-    public List<Appointment> getWaitingRequests(Long prescriberId) {
-        return appointmentRepository.findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
-                prescriberId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
+    public List<AgendaAppointmentDTO> getWaitingRequests(Long prescriberId) {
+        return agendaOf(appointmentRepository.findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
+                prescriberId, AppointmentStatus.SOLICITADA, LocalDateTime.now()));
     }
 
     // proximos pedidos e consultas do paciente com a situacao de cada um
     @Transactional(readOnly = true)
-    public List<Appointment> getUpcomingForPatient(Long patientId) {
-        return appointmentRepository.findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(patientId, LocalDateTime.now());
+    public List<AgendaAppointmentDTO> getUpcomingForPatient(Long patientId) {
+        return agendaOf(appointmentRepository.findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(patientId,
+                LocalDateTime.now()));
     }
 
     // abrir a consulta conta como abrir o prontuario do paciente
-    public Appointment getById(Long id) {
+    @Transactional
+    public AppointmentResponseDTO getById(Long id) {
         Appointment appointment = findAppointment(id);
         auditService.recordChartView(appointment.getPatient().getId());
-        return appointment;
+        return new AppointmentResponseDTO(appointment);
+    }
+
+    private List<AgendaAppointmentDTO> agendaOf(List<Appointment> appointments) {
+        return appointments.stream()
+                .map(AgendaAppointmentDTO::new)
+                .toList();
     }
 
     // consultas de um paciente da mais recente pra mais antiga
-    // a resposta eh montada aqui dentro, com a transacao aberta, pra n depender do open-in-view
     @Transactional
     public List<AppointmentResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
@@ -412,6 +420,7 @@ public class AppointmentService {
 
     // as consultas de um paciente dentro da janela do grafico
     // entra so a consulta confirmada e n anulada pq o q n aconteceu n explica mudanca nenhuma
+    @Transactional
     public List<AppointmentMarkerDTO> getMarcadoresDoPaciente(Long patientId, TimePeriod period) {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();

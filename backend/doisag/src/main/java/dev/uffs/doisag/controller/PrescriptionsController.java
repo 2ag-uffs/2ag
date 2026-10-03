@@ -4,7 +4,6 @@ import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.model.Prescriber;
-import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.service.PrescriptionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -33,8 +32,8 @@ public class PrescriptionsController {
     @PostMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<PrescriptionResponseDTO> create(@PathVariable Long appointmentId,
                                                           @RequestBody @Valid PrescriptionCreateDTO prescriptionData) {
-        Prescription createdPrescription = prescriptionService.create(prescriptionData, appointmentId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new PrescriptionResponseDTO(createdPrescription));
+        PrescriptionResponseDTO createdPrescription = prescriptionService.create(prescriptionData, appointmentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdPrescription);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
@@ -42,6 +41,6 @@ public class PrescriptionsController {
     public PrescriptionResponseDTO annul(@PathVariable Long id,
                                          @RequestBody @Valid AnnulmentDTO annulmentData,
                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        return new PrescriptionResponseDTO(prescriptionService.annul(id, annulmentData, loggedPrescriber));
+        return prescriptionService.annul(id, annulmentData, loggedPrescriber);
     }
 }

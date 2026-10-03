@@ -361,7 +361,7 @@ com `-Pdocs` a suíte inclui o teste da documentação da api, igual ao ci.
 
 os testes rodam no perfil `test`, com h2 em memória, então não precisam de postgres nem de variável de ambiente. todo teste que sobe o contexto do spring precisa de `@ActiveProfiles("test")`.
 
-testes de fluxo que envolvem job agendado ou serialização de resposta devem rodar sem `@Transactional`: a transação do teste esconde carregamento sob demanda que falharia em uso real.
+testes de fluxo que envolvem job agendado ou serialização de resposta devem rodar sem `@Transactional`: a transação do teste esconde carregamento sob demanda que falharia em uso real. o `MainScreensWithDemoDataTest` (telas) e o `ClinicalActionsWithoutTestTransactionTest` (rotas que gravam) fazem isso para as rotas principais.
 
 os testes de corrida (`AgendaRaceTest`, `ScaleResponseRaceTest` e `ClinicalRecordRaceTest`) seguram a trava numa transação de fora, pelo `HeldLock`, disparam o fluxo numa thread e conferem que ele espera. a url do h2 de teste leva `LOCK_TIMEOUT=10000` por causa deles: com o padrão de 2 segundos o fluxo que espera cairia por tempo esgotado.
 
@@ -370,6 +370,7 @@ os testes de corrida (`AgendaRaceTest`, `ScaleResponseRaceTest` e `ClinicalRecor
 vale para todo código novo ou reescrito:
 
 - dto de entrada e saída em toda rota, nunca a entidade
+- o serviço devolve a resposta pronta (dto), montada dentro da transação dele, e o controller só repassa. o `open-in-view` fica desligado, então ler paciente ou prescritor fora do serviço quebra em uso real, mesmo passando nos testes com `@Transactional`
 - regra de negócio no serviço, com `@Transactional`
 - nomes em inglês, em camelCase e descritivos
 - comentários curtos, em minúsculas, sem acento e sem pontuação

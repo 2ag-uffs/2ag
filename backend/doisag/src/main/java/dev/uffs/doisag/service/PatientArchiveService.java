@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -35,7 +36,7 @@ public class PatientArchiveService {
     }
 
     @Transactional
-    public Patient archive(Long patientId, Prescriber loggedPrescriber) {
+    public PatientResponseDTO archive(Long patientId, Prescriber loggedPrescriber) {
         Patient patient = findPatient(patientId);
         if (patient.isArchived()) {
             throw new BusinessException(ALREADY_ARCHIVED_MESSAGE);
@@ -47,12 +48,12 @@ public class PatientArchiveService {
         treatmentProtocolService.endActiveProtocolIfAny(patientId);
         scaleTaskService.closePendingOf(patientId);
         auditService.recordArchiving(patientId);
-        return savedPatient;
+        return new PatientResponseDTO(savedPatient);
     }
 
     // reativar n recria o acompanhamento automatico e o prescritor monta um novo se quiser
     @Transactional
-    public Patient reactivate(Long patientId) {
+    public PatientResponseDTO reactivate(Long patientId) {
         Patient patient = findPatient(patientId);
         if (!patient.isArchived()) {
             throw new BusinessException(NOT_ARCHIVED_MESSAGE);
@@ -62,7 +63,7 @@ public class PatientArchiveService {
         patient.setArchivedBy(null);
         Patient savedPatient = patientRepository.save(patient);
         auditService.recordReactivation(patientId);
-        return savedPatient;
+        return new PatientResponseDTO(savedPatient);
     }
 
     private Patient findPatient(Long patientId) {

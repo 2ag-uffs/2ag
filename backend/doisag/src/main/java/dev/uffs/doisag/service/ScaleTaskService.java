@@ -77,12 +77,13 @@ public class ScaleTaskService {
     // passavam os dois pela busca da tarefa aberta e viravam duas pendencias iguais
     // so aqui e n na versao do job, senao ele seguraria todos os prescritores a rodada inteira
     @Transactional
-    public ScaleTask assign(Long patientId, ScaleType scaleType) {
+    public ScaleTaskDTO assign(Long patientId, ScaleType scaleType) {
         Prescriber prescriber = findPatient(patientId).getPrescriber();
         if (prescriber != null) {
             prescriberRepository.lockById(prescriber.getId());
         }
-        return assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS, false);
+        ScaleTask task = assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS, false);
+        return new ScaleTaskDTO(task, validAnswersOf(task), LocalDate.now(), isDaily(scaleType));
     }
 
     // a versao com data e prazo serve pro acompanhamento automatico: o

@@ -2,8 +2,11 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PrescriptionComponentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
+import dev.uffs.doisag.dto.PrescriptionResponseDTO;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
+import dev.uffs.doisag.dto.ScaleTaskDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Cannabinoid;
@@ -113,7 +116,7 @@ class ClinicalRecordRaceTest {
         TreatmentProtocolCreateDTO protocolData = new TreatmentProtocolCreateDTO(null, null, null, null,
                 List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL)));
 
-        HeldLock.Outcome<TreatmentProtocol> outcome = heldLock.run(
+        HeldLock.Outcome<TreatmentProtocolResponseDTO> outcome = heldLock.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
                 this::saveActiveProtocol,
                 () -> protocolService.create(patient.getId(), protocolData, prescriber));
@@ -126,7 +129,7 @@ class ClinicalRecordRaceTest {
 
     @Test
     void theSecondHandSentScaleWaitsAndReusesTheTaskSavedMeanwhile() throws Exception {
-        HeldLock.Outcome<ScaleTask> outcome = heldLock.run(
+        HeldLock.Outcome<ScaleTaskDTO> outcome = heldLock.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
                 this::savePendingSleepDiaryTask,
                 () -> taskService.assign(patient.getId(), ScaleType.REGISTRO_SONO));
@@ -134,7 +137,7 @@ class ClinicalRecordRaceTest {
         assertThat(outcome.error()).isNull();
         List<ScaleTask> tasks = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId());
         assertThat(tasks).hasSize(1);
-        assertThat(outcome.value().getId()).isEqualTo(tasks.get(0).getId());
+        assertThat(outcome.value().id()).isEqualTo(tasks.get(0).getId());
     }
 
     @Test
@@ -144,7 +147,7 @@ class ClinicalRecordRaceTest {
                 Spectrum.ISOLADO, List.of(new PrescriptionComponentDTO(Cannabinoid.CBD, new BigDecimal("10"),
                 ConcentrationUnit.MG_POR_ML)), null, "2 gotas", null, List.of(), null, null, null, null, null, null);
 
-        HeldLock.Outcome<Prescription> outcome = heldLock.run(
+        HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> savePrescriptionOf(appointment),
                 () -> prescriptionService.create(prescriptionData, appointment.getId()));
@@ -154,7 +157,7 @@ class ClinicalRecordRaceTest {
         List<Prescription> currentPrescriptions = prescriptionRepository
                 .findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patient.getId(), PrescriptionStatus.VIGENTE);
         assertThat(currentPrescriptions).hasSize(1);
-        assertThat(currentPrescriptions.get(0).getId()).isEqualTo(outcome.value().getId());
+        assertThat(currentPrescriptions.get(0).getId()).isEqualTo(outcome.value().id());
     }
 
     private void saveActiveProtocol() {

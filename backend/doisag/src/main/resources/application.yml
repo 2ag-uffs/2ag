@@ -37,10 +37,11 @@ spring:
       ddl-auto: ${JPA_DDL_AUTO:validate}
     # sql no console so quando alguem pedir
     show-sql: ${JPA_SHOW_SQL:false}
-    # ligado pq varios controllers montam a resposta depois do servico e leem paciente e prescritor nessa hora
-    # desligado a agenda o prontuario e a lista de pacientes davam erro 500
-    # o MainScreensWithDemoDataTest confere isso sem a transacao dos outros testes
-    open-in-view: true
+    # desligado: a sessao do banco fecha com a transacao do servico, e toda resposta eh montada
+    # la dentro. com isso ligado a sessao ficava aberta ate a resposta e escondia leitura
+    # preguicosa fora do servico. o MainScreensWithDemoDataTest e o
+    # ClinicalActionsWithoutTestTransactionTest conferem as rotas sem a transacao dos outros testes
+    open-in-view: false
   mail:
     # servidor q manda os e-mails como o link de criar senha nova
     # sem MAIL_HOST a api n manda nada e so escreve a mensagem no log

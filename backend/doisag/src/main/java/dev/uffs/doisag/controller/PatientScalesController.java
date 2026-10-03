@@ -4,7 +4,6 @@ import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
 import dev.uffs.doisag.dto.ScaleTaskDTO;
-import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
 import jakarta.validation.Valid;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
 import java.util.List;
 
 // as escalas de um paciente: o q foi enviado e o q ja foi respondido
@@ -39,9 +37,7 @@ public class PatientScalesController {
     @PostMapping
     public ResponseEntity<ScaleTaskDTO> assign(@PathVariable Long patientId,
                                                @RequestBody @Valid AssignScaleDTO assignData) {
-        ScaleTask task = taskService.assign(patientId, assignData.scaleType());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ScaleTaskDTO(task, 0, LocalDate.now(), taskService.isDaily(task.getScaleType())));
+        return ResponseEntity.status(HttpStatus.CREATED).body(taskService.assign(patientId, assignData.scaleType()));
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")

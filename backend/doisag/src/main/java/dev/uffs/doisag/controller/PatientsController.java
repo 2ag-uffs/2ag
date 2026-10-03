@@ -37,28 +37,25 @@ public class PatientsController {
     public List<PatientResponseDTO> getMyPatients(@RequestParam(name = "archived", defaultValue = "false") boolean archived,
                                                   Authentication authentication) {
         Long prescriberId = ((Users) authentication.getPrincipal()).getId();
-        return patientService.getPatientsByPrescriberId(prescriberId, archived)
-                .stream()
-                .map(PatientResponseDTO::new)
-                .toList();
+        return patientService.getPatientsByPrescriberId(prescriberId, archived);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @GetMapping("/{id}")
     public ResponseEntity<PatientResponseDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(new PatientResponseDTO(patientService.getById(id)));
+        return ResponseEntity.ok(patientService.getById(id));
     }
 
     // arquivar tira o paciente da lista de ativos e encerra o acompanhamento automatico dele
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @PutMapping("/{id}/archive")
     public PatientResponseDTO archive(@PathVariable Long id, @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        return new PatientResponseDTO(patientArchiveService.archive(id, loggedPrescriber));
+        return patientArchiveService.archive(id, loggedPrescriber);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")
     @PutMapping("/{id}/reactivate")
     public PatientResponseDTO reactivate(@PathVariable Long id) {
-        return new PatientResponseDTO(patientArchiveService.reactivate(id));
+        return patientArchiveService.reactivate(id);
     }
 }

@@ -3,7 +3,6 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
-import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.service.ConsultationService;
 import jakarta.validation.Valid;
@@ -33,15 +32,15 @@ public class ConsultationController {
     public ResponseEntity<AppointmentResponseDTO> register(@PathVariable Long patientId,
                                                            @RequestBody @Valid ConsultationRecordDTO recordData,
                                                            @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment appointment = consultationService.register(patientId, recordData, loggedPrescriber);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AppointmentResponseDTO(appointment));
+        AppointmentResponseDTO appointment = consultationService.register(patientId, recordData, loggedPrescriber);
+        return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @PutMapping("/appointments/{appointmentId}/clinical-record")
     public AppointmentResponseDTO updateRecord(@PathVariable Long appointmentId,
                                                @RequestBody @Valid ConsultationRecordDTO recordData) {
-        return new AppointmentResponseDTO(consultationService.updateRecord(appointmentId, recordData));
+        return consultationService.updateRecord(appointmentId, recordData);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
@@ -49,6 +48,6 @@ public class ConsultationController {
     public AppointmentResponseDTO annul(@PathVariable Long appointmentId,
                                         @RequestBody @Valid AnnulmentDTO annulmentData,
                                         @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        return new AppointmentResponseDTO(consultationService.annul(appointmentId, annulmentData, loggedPrescriber));
+        return consultationService.annul(appointmentId, annulmentData, loggedPrescriber);
     }
 }

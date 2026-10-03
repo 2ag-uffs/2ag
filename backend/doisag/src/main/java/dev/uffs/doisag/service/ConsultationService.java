@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.AnnulmentDTO;
+import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -55,7 +56,7 @@ public class ConsultationService {
 
     // consulta q aconteceu sem ter sido marcada antes ou lancada depois
     @Transactional
-    public Appointment register(Long patientId, ConsultationRecordDTO recordData, Prescriber prescriber) {
+    public AppointmentResponseDTO register(Long patientId, ConsultationRecordDTO recordData, Prescriber prescriber) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 
@@ -73,12 +74,12 @@ public class ConsultationService {
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
-        return savedAppointment;
+        return new AppointmentResponseDTO(savedAppointment);
     }
 
     // corrige o registro ou registra o atendimento de uma consulta q estava marcada
     @Transactional
-    public Appointment updateRecord(Long appointmentId, ConsultationRecordDTO recordData) {
+    public AppointmentResponseDTO updateRecord(Long appointmentId, ConsultationRecordDTO recordData) {
         Appointment appointment = findAppointment(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
@@ -103,12 +104,12 @@ public class ConsultationService {
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
                 savedAppointment.getPatient().getId());
-        return savedAppointment;
+        return new AppointmentResponseDTO(savedAppointment);
     }
 
     // registro feito por engano n some e fica marcado como anulado com o motivo
     @Transactional
-    public Appointment annul(Long appointmentId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
+    public AppointmentResponseDTO annul(Long appointmentId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Appointment appointment = findAppointment(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
@@ -126,7 +127,7 @@ public class ConsultationService {
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordAnnulment(AuditRecordType.CONSULTA, savedAppointment.getId(),
                 savedAppointment.getPatient().getId());
-        return savedAppointment;
+        return new AppointmentResponseDTO(savedAppointment);
     }
 
     private Appointment findAppointment(Long appointmentId) {

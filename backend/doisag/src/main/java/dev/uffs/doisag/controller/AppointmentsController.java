@@ -7,7 +7,6 @@ import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.TimeSlotDTO;
-import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -47,8 +46,8 @@ public class AppointmentsController {
     @PostMapping
     public ResponseEntity<AgendaAppointmentDTO> schedule(@RequestBody @Valid AppointmentScheduleDTO scheduleData,
                                                          @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        Appointment appointment = appointmentService.schedule(scheduleData, loggedPrescriber.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AgendaAppointmentDTO(appointment));
+        AgendaAppointmentDTO appointment = appointmentService.schedule(scheduleData, loggedPrescriber.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
     }
 
     // o paciente pede um horario livre da agenda do prescritor dele
@@ -57,8 +56,8 @@ public class AppointmentsController {
     @PostMapping("/requests")
     public ResponseEntity<AgendaAppointmentDTO> request(@RequestBody @Valid AppointmentRequestDTO requestData,
                                                         @AuthenticationPrincipal Patient loggedPatient) {
-        Appointment appointment = appointmentService.request(loggedPatient.getId(), requestData);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AgendaAppointmentDTO(appointment));
+        AgendaAppointmentDTO appointment = appointmentService.request(loggedPatient.getId(), requestData);
+        return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
     }
 
     // horarios livres de alguns dias na agenda do prescritor do paciente logado
@@ -76,7 +75,7 @@ public class AppointmentsController {
     @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/mine")
     public List<AgendaAppointmentDTO> getMyUpcomingAppointments(@AuthenticationPrincipal Patient loggedPatient) {
-        return toAgendaList(appointmentService.getUpcomingForPatient(loggedPatient.getId()));
+        return appointmentService.getUpcomingForPatient(loggedPatient.getId());
     }
 
     // agenda do prescritor logado entre duas datas e sem as datas vem inteira
@@ -86,34 +85,34 @@ public class AppointmentsController {
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        return toAgendaList(appointmentService.getAgenda(loggedPrescriber.getId(), from, to));
+        return appointmentService.getAgenda(loggedPrescriber.getId(), from, to);
     }
 
     // pedidos de pacientes esperando a resposta do prescritor logado
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/requests")
     public List<AgendaAppointmentDTO> getWaitingRequests(@AuthenticationPrincipal Prescriber loggedPrescriber) {
-        return toAgendaList(appointmentService.getWaitingRequests(loggedPrescriber.getId()));
+        return appointmentService.getWaitingRequests(loggedPrescriber.getId());
     }
 
     // o vinculo com o paciente da consulta eh conferido antes de abrir
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @GetMapping("/{id}")
     public AppointmentResponseDTO getById(@PathVariable Long id) {
-        return new AppointmentResponseDTO(appointmentService.getById(id));
+        return appointmentService.getById(id);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}")
     public AgendaAppointmentDTO reschedule(@PathVariable Long id,
                                            @RequestBody @Valid AppointmentRescheduleDTO rescheduleData) {
-        return new AgendaAppointmentDTO(appointmentService.reschedule(id, rescheduleData));
+        return appointmentService.reschedule(id, rescheduleData);
     }
 
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/confirm")
     public AgendaAppointmentDTO confirm(@PathVariable Long id) {
-        return new AgendaAppointmentDTO(appointmentService.confirm(id));
+        return appointmentService.confirm(id);
     }
 
     // o motivo da recusa eh opcional e vai no aviso pro paciente
@@ -121,26 +120,20 @@ public class AppointmentsController {
     @PutMapping("/{id}/decline")
     public AgendaAppointmentDTO decline(@PathVariable Long id,
                                         @RequestBody(required = false) @Valid AppointmentDeclineDTO declineData) {
-        return new AgendaAppointmentDTO(appointmentService.decline(id, declineData));
+        return appointmentService.decline(id, declineData);
     }
 
     // o prescritor anota q o paciente n apareceu, depois q a hora da consulta passou
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/no-show")
     public AgendaAppointmentDTO markNoShow(@PathVariable Long id) {
-        return new AgendaAppointmentDTO(appointmentService.markNoShow(id));
+        return appointmentService.markNoShow(id);
     }
 
     // o paciente e o prescritor cancelam e a regra das 24 horas vale so pro paciente
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/cancel")
     public AgendaAppointmentDTO cancel(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {
-        return new AgendaAppointmentDTO(appointmentService.cancel(id, loggedUser));
-    }
-
-    private List<AgendaAppointmentDTO> toAgendaList(List<Appointment> appointments) {
-        return appointments.stream()
-                .map(AgendaAppointmentDTO::new)
-                .toList();
+        return appointmentService.cancel(id, loggedUser);
     }
 }

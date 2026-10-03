@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.infra.BusinessException;
@@ -64,7 +65,7 @@ public class TreatmentProtocolService {
     }
 
     @Transactional
-    public TreatmentProtocol create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
+    public TreatmentProtocolResponseDTO create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
         // paciente arquivado n recebe envio automatico ate o prescritor reativar
@@ -118,12 +119,17 @@ public class TreatmentProtocolService {
         if (inicio.equals(LocalDate.now()) && patient.isActive()) {
             designarRodada(savedProtocol, inicio);
         }
-        return savedProtocol;
+        return new TreatmentProtocolResponseDTO(savedProtocol);
     }
 
-    public TreatmentProtocol getActiveByPatient(Long patientId) {
+    // abrir a pagina do acompanhamento conta como abrir o prontuario, mesmo sem acompanhamento
+    // em andamento: por isso o "n tem" volta vazio em vez de erro, senao a transacao desfazia
+    // a trilha gravada aqui
+    @Transactional
+    public Optional<TreatmentProtocolResponseDTO> getActiveByPatient(Long patientId) {
         auditService.recordChartView(patientId);
-        return findActiveProtocol(patientId);
+        return protocolRepository.findFirstByPatientIdAndActiveTrue(patientId)
+                .map(TreatmentProtocolResponseDTO::new);
     }
 
     // busca usada dentro do servico q n conta como abrir o prontuario
@@ -134,8 +140,8 @@ public class TreatmentProtocolService {
     }
 
     @Transactional
-    public TreatmentProtocol end(Long patientId) {
-        return endProtocol(findActiveProtocol(patientId));
+    public TreatmentProtocolResponseDTO end(Long patientId) {
+        return new TreatmentProtocolResponseDTO(endProtocol(findActiveProtocol(patientId)));
     }
 
     // arquivar o paciente encerra o acompanhamento automatico q estiver andando
