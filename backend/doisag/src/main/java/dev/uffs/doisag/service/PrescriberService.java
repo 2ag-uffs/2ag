@@ -31,6 +31,10 @@ public class PrescriberService {
 
     public static final String INACTIVE_ACCOUNT_MESSAGE =
             "Esta conta está desativada. Ative ela antes de gerar uma senha nova";
+    public static final String PASSWORD_ALREADY_CREATED_MESSAGE =
+            "Essa pessoa já criou a senha dela. Só ela troca o e-mail, no próprio perfil";
+    public static final String INACTIVE_ACCOUNT_EMAIL_MESSAGE =
+            "Esta conta está desativada. Ative ela antes de corrigir o e-mail";
 
     private final PrescriberRepository prescriberRepository;
     private final UsersRepository usersRepository;
@@ -57,7 +61,7 @@ public class PrescriberService {
     // a senha nasce aleatoria e ninguem conhece, a pessoa cria a dela pelo link de primeiro acesso
     @Transactional
     public PasswordResetLinkDTO createByAdmin(PrescriberCreateDTO dados) {
-        Prescriber prescriber = create(dados, SecureTokens.createRandomToken());
+        Prescriber prescriber = createAccount(dados, SecureTokens.createRandomToken());
         auditService.recordCreation(AuditRecordType.CONTA_DE_PRESCRITOR, prescriber.getId(), null);
         String firstAccessLink = passwordResetService.createFirstAccessLinkFor(prescriber);
         return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), firstAccessLink,
@@ -65,8 +69,16 @@ public class PrescriberService {
     }
 
     // com a senha escolhida so o seed de desenvolvimento chama
+    // a senha veio pronta, entao a conta ja conta como senha criada: senao o administrador
+    // ainda poderia trocar o e-mail dela pela rota de corrigir e-mail e tomar a conta de teste
     @Transactional
     public Prescriber create(PrescriberCreateDTO dados, String password) {
+        Prescriber prescriber = createAccount(dados, password);
+        prescriber.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        return prescriberRepository.save(prescriber);
+    }
+
+    private Prescriber createAccount(PrescriberCreateDTO dados, String password) {
         // conselho e numero de registro identificam o profissional
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(dados.registryType(), dados.registryNumber())) {
             throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
@@ -126,15 +138,7 @@ public class PrescriberService {
     @Transactional
     public PasswordResetLinkDTO startPasswordReset(Long prescriberId, String adminPassword, Users admin,
                                                    String clientAddress) {
-        // a sessao aberta n basta pq isso toma a conta de outra pessoa
-        if (loginAttemptLimiter.isBlocked(admin.getEmail(), clientAddress)) {
-            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
-        }
-        if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
-            loginAttemptLimiter.registerFailure(admin.getEmail(), clientAddress);
-            throw new InvalidFieldException("adminPassword", "A sua senha está incorreta");
-        }
-        loginAttemptLimiter.registerSuccess(admin.getEmail(), clientAddress);
+        checkAdminPassword(adminPassword, admin, clientAddress);
 
         Prescriber prescriber = getById(prescriberId);
         if (!prescriber.isActive()) {
@@ -145,6 +149,51 @@ public class PrescriberService {
         auditService.recordPasswordReset(prescriber.getId());
         return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), resetLink,
                 PasswordResetService.VALID_MINUTES);
+    }
+
+    // o administrador corrige o e-mail digitado errado, so enquanto a pessoa ainda n criou a senha:
+    // com o e-mail errado o link de primeiro acesso nunca chega e a conta fica presa (issue 131)
+    // dps q a pessoa criou a senha a conta eh dela, e a troca de e-mail passa pelo perfil
+    @Transactional
+    public PasswordResetLinkDTO changeEmailByAdmin(Long prescriberId, String newEmail, String adminPassword,
+                                                   Users admin, String clientAddress) {
+        checkAdminPassword(adminPassword, admin, clientAddress);
+
+        // primeiro o link antigo deixa de valer, com a linha dele travada: se a pessoa errada
+        // estiver criando a senha por ele nesse instante, um dos dois espera o outro e a conta
+        // n fica com o e-mail novo e a senha de um estranho
+        passwordResetService.cancelPendingLinksOf(prescriberId);
+        Prescriber prescriber = getById(prescriberId);
+        if (prescriber.getPasswordChangedAt() != null) {
+            throw new BusinessException(PASSWORD_ALREADY_CREATED_MESSAGE);
+        }
+        if (!prescriber.isActive()) {
+            throw new BusinessException(INACTIVE_ACCOUNT_EMAIL_MESSAGE);
+        }
+        String email = InputCleaner.normalizeEmail(newEmail);
+        if (!email.equals(prescriber.getEmail()) && usersRepository.existsByEmail(email)) {
+            throw new DuplicateValueException("email", "Este e-mail já tem conta no sistema");
+        }
+
+        prescriber.setEmail(email);
+        prescriberRepository.save(prescriber);
+        auditService.recordChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null);
+        // o link novo cancela o q foi pro endereco errado
+        String firstAccessLink = passwordResetService.createFirstAccessLinkFor(prescriber);
+        return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), firstAccessLink,
+                PasswordResetService.FIRST_ACCESS_VALID_MINUTES);
+    }
+
+    // a sessao aberta n basta pq essas acoes tomam a conta de outra pessoa
+    private void checkAdminPassword(String adminPassword, Users admin, String clientAddress) {
+        if (loginAttemptLimiter.isBlocked(admin.getEmail(), clientAddress)) {
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
+        }
+        if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
+            loginAttemptLimiter.registerFailure(admin.getEmail(), clientAddress);
+            throw new InvalidFieldException("adminPassword", "A sua senha está incorreta");
+        }
+        loginAttemptLimiter.registerSuccess(admin.getEmail(), clientAddress);
     }
 
     // read by id prescriber

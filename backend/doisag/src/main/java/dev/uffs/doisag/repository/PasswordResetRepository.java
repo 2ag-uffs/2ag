@@ -21,6 +21,9 @@ public interface PasswordResetRepository extends JpaRepository<PasswordReset, Lo
     // quantos links a conta pediu desde um momento
     long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime moment);
 
-    // links da conta q ainda n foram usados
-    List<PasswordReset> findAllByUserIdAndUsedAtIsNull(Long userId);
+    // links da conta q ainda n foram usados, travados ate o fim da transacao: quem esta
+    // usando um deles nesse exato momento (findByTokenHashForUpdate) espera, ou eh esperado
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select reset from PasswordReset reset where reset.user.id = :userId and reset.usedAt is null")
+    List<PasswordReset> findPendingForUpdate(@Param("userId") Long userId);
 }

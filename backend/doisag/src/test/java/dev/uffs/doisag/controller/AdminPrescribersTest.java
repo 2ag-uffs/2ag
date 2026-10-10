@@ -37,6 +37,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -190,6 +191,97 @@ class AdminPrescribersTest {
         verify(emailSender).send(sentMessage.capture());
         assertThat(sentMessage.getValue().to()).isEqualTo("novo-prescritor@email.com");
         assertThat(sentMessage.getValue().text()).contains("token=").contains("48 horas");
+    }
+
+    private ResultActions changeEmail(Long prescriberId, String newEmail, String adminPassword) throws Exception {
+        return mockMvc.perform(put("/admin/prescribers/" + prescriberId + "/email")
+                .header("Authorization", adminToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"" + newEmail + "\",\"adminPassword\":\"" + adminPassword + "\"}"));
+    }
+
+    private Long idOf(ResultActions result) throws Exception {
+        String response = result.andReturn().getResponse().getContentAsString();
+        return Long.valueOf(response.split("\"prescriberId\":")[1].split("[,}]")[0]);
+    }
+
+    // o e-mail digitado errado deixava a conta presa: o link de primeiro acesso ia pro
+    // endereco errado e ninguem tinha como corrigir (issue 131)
+    @Test
+    void adminCorrectsTheEmailAndTheFirstAccessLinkGoesToTheRightAddress() throws Exception {
+        String created = createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long prescriberId = Long.valueOf(created.split("\"prescriberId\":")[1].split("[,}]")[0]);
+        String oldToken = tokenOfLink(created);
+
+        String corrected = changeEmail(prescriberId, "Certo@Email.com", ADMIN_PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.validMinutes").value(48 * 60))
+                .andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(get("/admin/prescribers").header("Authorization", adminToken()))
+                .andExpect(jsonPath("$[?(@.id == " + prescriberId + ")].email").value("certo@email.com"))
+                .andExpect(jsonPath("$[?(@.id == " + prescriberId + ")].passwordCreated").value(false));
+
+        // o link q foi pro endereco errado n vale mais, e o novo cria a senha
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + oldToken + "\",\"newPassword\":\"SenhaDela@2026\"}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + tokenOfLink(corrected) + "\",\"newPassword\":\"SenhaDela@2026\"}"))
+                .andExpect(status().isNoContent());
+        login("certo@email.com", "SenhaDela@2026").andExpect(status().isOk());
+
+        // agora a conta eh da pessoa e o administrador n mexe mais no e-mail dela
+        mockMvc.perform(get("/admin/prescribers").header("Authorization", adminToken()))
+                .andExpect(jsonPath("$[?(@.id == " + prescriberId + ")].passwordCreated").value(true));
+        changeEmail(prescriberId, "outro@email.com", ADMIN_PASSWORD)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriberService.PASSWORD_ALREADY_CREATED_MESSAGE));
+    }
+
+    @Test
+    void theEmailCorrectionRefusesAnEmailInUseAndTheWrongAdminPassword() throws Exception {
+        savePrescriber("ja-existe@email.com", "88888");
+        Long prescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+
+        changeEmail(prescriberId, "ja-existe@email.com", ADMIN_PASSWORD)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
+        changeEmail(prescriberId, "certo@email.com", "senha-errada")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("adminPassword"));
+        // conta desativada primeiro volta a ativa
+        changeActive(prescriberId, false).andExpect(status().isOk());
+        changeEmail(prescriberId, "certo@email.com", ADMIN_PASSWORD)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriberService.INACTIVE_ACCOUNT_EMAIL_MESSAGE));
+    }
+
+    @Test
+    void whenTheEmailGoesOutTheCorrectedLinkIsNotInTheResponse() throws Exception {
+        Long prescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+        when(emailSender.send(any(EmailMessage.class))).thenReturn(true);
+
+        String response = changeEmail(prescriberId, "certo@email.com", ADMIN_PASSWORD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resetLink").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("token=");
+
+        // o primeiro envio foi o da criacao, pro endereco errado. o ultimo eh o da correcao
+        ArgumentCaptor<EmailMessage> sentMessage = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(sentMessage.capture());
+        assertThat(sentMessage.getValue().to()).isEqualTo("certo@email.com");
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", adminToken()))
+                .andExpect(jsonPath("$.events[?(@.operation == 'ALTERACAO' "
+                        + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(1)));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.AdminEmailChangeDTO;
 import dev.uffs.doisag.dto.AdminPasswordResetDTO;
 import dev.uffs.doisag.dto.AdminPrescriberDTO;
 import dev.uffs.doisag.dto.ChangeActiveDTO;
@@ -62,6 +63,17 @@ public class AdminPrescriberController {
                                                    HttpServletRequest request) {
         return prescriberService.startPasswordReset(prescriberId, resetData.adminPassword(), loggedAdmin,
                 request.getRemoteAddr());
+    }
+
+    // corrige o e-mail digitado errado enquanto a pessoa ainda n criou a senha
+    // o link de primeiro acesso sai de novo, pro endereco certo
+    @PutMapping("/{prescriberId}/email")
+    public PasswordResetLinkDTO changeEmail(@PathVariable Long prescriberId,
+                                            @RequestBody @Valid AdminEmailChangeDTO emailData,
+                                            @AuthenticationPrincipal Users loggedAdmin,
+                                            HttpServletRequest request) {
+        return prescriberService.changeEmailByAdmin(prescriberId, emailData.email(), emailData.adminPassword(),
+                loggedAdmin, request.getRemoteAddr());
     }
 
     // desativar tira o acesso na hora e n apaga nada do historico

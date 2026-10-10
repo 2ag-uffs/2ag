@@ -107,9 +107,20 @@ public class PasswordResetService {
         return wasEmailed ? null : firstAccessLink;
     }
 
+    // os links pendentes da conta deixam de valer
+    // quem corrige o e-mail chama isso antes de olhar a conta: assim o link q foi pro endereco
+    // errado n pode ser usado no meio da correcao, nem a correcao desfazer uma senha ja criada
+    @Transactional
+    public void cancelPendingLinksOf(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
+            pendingReset.setUsedAt(now);
+        }
+    }
+
     // um link novo cancela os anteriores
     private String createLink(Users user, LocalDateTime now, int validMinutes) {
-        for (PasswordReset pendingReset : passwordResetRepository.findAllByUserIdAndUsedAtIsNull(user.getId())) {
+        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(user.getId())) {
             pendingReset.setUsedAt(now);
         }
 

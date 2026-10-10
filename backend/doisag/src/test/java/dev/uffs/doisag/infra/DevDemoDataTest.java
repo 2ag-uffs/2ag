@@ -52,5 +52,9 @@ class DevDemoDataTest {
         assertThat(notificationRepository.countUnread(prescriber.getId())).isBetween(1L, 15L);
         // a subida com o seed era onde o hibernate mais avisava "narrowing proxy" (issue 39)
         assertThat(NarrowingProxyWatch.warnings()).isZero();
+        // a senha das contas de teste veio pronta, entao o administrador n troca o e-mail delas (issue 131)
+        assertThat(prescriber.getPasswordChangedAt()).isNotNull();
+        assertThat(usersRepository.findByEmail("carlos.pereira@email.com").orElseThrow().getPasswordChangedAt())
+                .isNotNull();
     }
 }

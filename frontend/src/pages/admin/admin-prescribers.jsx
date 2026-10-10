@@ -111,6 +111,13 @@ export default function AdminPrescribers() {
     const [isResetting, setIsResetting] = useState(false);
     const [newLink, setNewLink] = useState(null);
     const [isLinkCopied, setIsLinkCopied] = useState(false);
+    // correcao do e-mail digitado errado, so enquanto a pessoa ainda n criou a senha
+    const [emailTarget, setEmailTarget] = useState(null);
+    const [newEmail, setNewEmail] = useState("");
+    const [emailAdminPassword, setEmailAdminPassword] = useState("");
+    const [emailError, setEmailError] = useState(null);
+    const [isChangingEmail, setIsChangingEmail] = useState(false);
+    const [emailLink, setEmailLink] = useState(null);
 
     // devolve a promessa pra quem cria ou desativa prescritor poder esperar a lista nova
     const loadPrescribers = useCallback(() => {
@@ -249,6 +256,50 @@ export default function AdminPrescribers() {
         }
     };
 
+    const openEmailChange = (prescriber) => {
+        setEmailTarget(prescriber);
+        setNewEmail(prescriber.email);
+        setEmailAdminPassword("");
+        setEmailError(null);
+        setEmailLink(null);
+        setIsLinkCopied(false);
+    };
+
+    const closeEmailChange = () => {
+        if (!isChangingEmail) {
+            setEmailTarget(null);
+            setEmailLink(null);
+        }
+    };
+
+    const handleEmailChange = async (event) => {
+        event.preventDefault();
+        setIsChangingEmail(true);
+        setEmailError(null);
+        try {
+            const link = await apiService.put("/admin/prescribers/" + emailTarget.id + "/email", {
+                email: newEmail,
+                adminPassword: emailAdminPassword,
+            });
+            setNewEmail(newEmail.trim().toLowerCase());
+            setEmailLink(link);
+            setEmailAdminPassword("");
+            // a lista mostra o e-mail certo do jeito q a api guardou
+            await loadPrescribers();
+        } catch (requestError) {
+            if (requestError instanceof ApiError) {
+                const errors = requestError.fieldErrors();
+                setEmailError(errors.email || errors.adminPassword || requestError.message);
+                // a pessoa pode ter criado a senha nesse meio tempo, e ai o botao some da linha
+                loadPrescribers();
+            } else {
+                setEmailError("Não foi possível falar com o servidor.");
+            }
+        } finally {
+            setIsChangingEmail(false);
+        }
+    };
+
     // navegador sem area de transferencia n quebra a tela, o link fica ali pra copiar na mao
     const copyLink = async (link) => {
         try {
@@ -331,6 +382,16 @@ export default function AdminPrescribers() {
                                         onClick={() => openReset(prescriber)}
                                     >
                                         Senha nova
+                                    </button>
+                                )}
+                                {/* enquanto a pessoa n cria a senha, o e-mail errado ainda pode ser corrigido */}
+                                {prescriber.active && !prescriber.passwordCreated && (
+                                    <button
+                                        type="button"
+                                        className="button-secondary button-small"
+                                        onClick={() => openEmailChange(prescriber)}
+                                    >
+                                        Corrigir e-mail
                                     </button>
                                 )}
                                 <button
@@ -434,12 +495,69 @@ export default function AdminPrescribers() {
                         link={newLink.resetLink}
                         sentText={"O link de senha nova foi enviado para " + resetTarget.email + ". Ele vale "
                             + validityText(newLink.validMinutes) + " e serve uma vez só. Se não chegar, peça para"
-                            + " a pessoa conferir a caixa de spam."}
+                            + " a pessoa conferir a caixa de spam"
+                            + (resetTarget.passwordCreated ? "." : " ou, se o endereço estiver errado, use Corrigir e-mail.")}
                         handText={"Entregue este link para " + newLink.prescriberName + ". Ele vale "
                             + validityText(newLink.validMinutes) + " e serve uma vez só."}
                         isCopied={isLinkCopied}
                         onCopy={copyLink}
                         onClose={closeReset}
+                    />
+                )}
+            </Modal>
+
+            <Modal
+                show={emailTarget !== null}
+                title={emailTarget === null ? "" : "Corrigir e-mail de " + emailTarget.name}
+                onClickClose={closeEmailChange}
+            >
+                {emailLink === null ? (
+                    <form className={styles.form} onSubmit={handleEmailChange}>
+                        <p className={styles.fieldWide}>
+                            Serve para quando o e-mail foi digitado errado e o link de criar a senha não chegou.
+                            O link sai de novo para o endereço certo, e o anterior deixa de valer.
+                        </p>
+                        {emailError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{emailError}</p>}
+
+                        <FormField
+                            label="E-mail certo"
+                            fieldName="newEmail"
+                            type="email"
+                            value={newEmail}
+                            onChange={(fieldName, value) => setNewEmail(value)}
+                            isWide={true}
+                        />
+                        <FormField
+                            label="Sua senha de administrador"
+                            fieldName="emailAdminPassword"
+                            type="password"
+                            value={emailAdminPassword}
+                            onChange={(fieldName, value) => setEmailAdminPassword(value)}
+                            autoComplete="current-password"
+                            isWide={true}
+                        />
+
+                        <div className={styles.formActions}>
+                            <button type="button" className="button-secondary" onClick={closeEmailChange}
+                                    disabled={isChangingEmail}>
+                                Cancelar
+                            </button>
+                            <button type="submit" className="button" disabled={isChangingEmail}>
+                                {isChangingEmail ? "Corrigindo..." : "Corrigir e reenviar o link"}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <LinkResult
+                        link={emailLink.resetLink}
+                        sentText={"O e-mail foi corrigido e o link para criar a senha foi enviado para " + newEmail
+                            + ". Ele vale " + validityText(emailLink.validMinutes) + " e serve uma vez só."}
+                        handText={"O e-mail foi corrigido. Entregue este link para " + emailLink.prescriberName
+                            + " criar a própria senha. Ele vale " + validityText(emailLink.validMinutes)
+                            + " e serve uma vez só."}
+                        isCopied={isLinkCopied}
+                        onCopy={copyLink}
+                        onClose={closeEmailChange}
                     />
                 )}
             </Modal>
@@ -450,8 +568,8 @@ export default function AdminPrescribers() {
                         link={firstAccess.resetLink}
                         sentText={"A conta de " + firstAccess.prescriberName + " foi criada e o link para criar a"
                             + " senha foi enviado para " + firstAccess.email + ". Ele vale "
-                            + validityText(firstAccess.validMinutes) + " e serve uma vez só. Se não chegar ou"
-                            + " vencer, gere outro em Senha nova."}
+                            + validityText(firstAccess.validMinutes) + " e serve uma vez só. Se não chegar, confira"
+                            + " o endereço em Corrigir e-mail. Se vencer, gere outro em Senha nova."}
                         handText={"A conta de " + firstAccess.prescriberName + " foi criada. Entregue este link"
                             + " para a pessoa criar a própria senha. Ele vale "
                             + validityText(firstAccess.validMinutes) + " e serve uma vez só. Se vencer, gere"

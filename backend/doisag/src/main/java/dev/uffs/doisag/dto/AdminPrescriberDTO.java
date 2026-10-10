@@ -11,7 +11,9 @@ public record AdminPrescriberDTO(
         String profession,
         String registryType,
         String registryNumber,
-        boolean active
+        boolean active,
+        // enquanto a pessoa n cria a senha pelo link, o administrador ainda pode corrigir o e-mail
+        boolean passwordCreated
 ) {
     public AdminPrescriberDTO(Prescriber prescriber) {
         this(
@@ -21,7 +23,8 @@ public record AdminPrescriberDTO(
                 prescriber.getProfession(),
                 prescriber.getRegistryType(),
                 prescriber.getRegistryNumber(),
-                prescriber.isActive()
+                prescriber.isActive(),
+                prescriber.getPasswordChangedAt() != null
         );
     }
 }

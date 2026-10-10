@@ -111,6 +111,7 @@ o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declar
 | `GET /admin/prescribers` | lista os prescritores |
 | `POST /admin/prescribers` | cria conta de prescritor, sem senha. o link de primeiro acesso só volta na resposta quando o e-mail não saiu |
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
+| `PUT /admin/prescribers/{id}/email` | corrige o e-mail digitado errado de um prescritor que ainda não criou a senha, com a senha do administrador. o link de primeiro acesso sai de novo para o endereço certo e o anterior deixa de valer. depois que a pessoa criou a senha, só ela troca o e-mail, no perfil |
 | `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu |
 | `POST /admin/patients/lookup` | acha a conta de um paciente pelo e-mail inteiro, que vai no corpo. devolve só `{id, name, email, active}` |
 | `GET /admin/patients/deactivated` | as contas de paciente desativadas, para dar para reativar depois |
