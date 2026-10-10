@@ -58,7 +58,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `LOGIN_MAX_FAILURES_PER_EMAIL` | senhas erradas de um e-mail, somando todos os endereços, antes do bloqueio. teto alto, só para frear ataque distribuído | `100` |
 | `LOGIN_BLOCK_MINUTES` | minutos que o bloqueio do login dura | `15` |
 | `PASSWORD_RESET_MAX_REQUESTS_PER_ADDRESS` | pedidos de link de senha nova do mesmo endereço antes do bloqueio, que dura o mesmo tempo do login | `10` |
-| `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https | `true` |
+| `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https. precisa combinar com o esquema do `PUBLIC_URL`: `https` com `false` ou `http` com `true` e a api não sobe | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
@@ -83,6 +83,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
+- com `SESSION_SECURE_COOKIE=true` o cookie se chama `__Host-session` e leva `Secure`: o navegador recusa um cookie `__Host-` sem `Secure`, com `Domain` ou fora de `Path=/`, então servidor configurado errado aparece na hora em vez de um login que não gruda. em `false` (só http, no próprio computador) ele se chama `session`
 - além disso, requisição que muda dado (`POST`, `PUT`, `PATCH` e `DELETE`) com o cookie da sessão só passa se o cabeçalho `Origin`, ou o `Referer` quando ele não vem, for o endereço do `PUBLIC_URL`. vinda de outro endereço recebe `403`. isso cobre navegador antigo e subdomínio vizinho, que o `SameSite` não pega, e por isso o sistema precisa ser aberto pelo mesmo endereço do `PUBLIC_URL`: em desenvolvimento, `localhost` e não `127.0.0.1`
 - a sessão é renovada enquanto a pessoa usa o sistema, então ninguém é derrubado no meio de um formulário, mas ela termina 12 horas depois do login
 - sair da conta encerra as sessões abertas daquela pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie

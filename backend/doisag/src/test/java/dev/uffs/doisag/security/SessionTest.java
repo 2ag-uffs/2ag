@@ -113,12 +113,13 @@ class SessionTest {
         // resposta da api nunca fica guardada no navegador de quem usou o pc antes
         assertThat(result.getResponse().getHeader("Cache-Control")).contains("no-store");
 
+        // no teste o endereco eh http, entao sem Secure e sem o __Host-: os dois ficam no SessionCookieServiceTest
         String setCookieHeader = result.getResponse().getHeader("Set-Cookie");
         assertThat(setCookieHeader)
-                .contains("session=")
+                .startsWith("session=")
                 .contains("HttpOnly")
                 .contains("SameSite=Strict")
-                .contains("Secure");
+                .doesNotContain("Secure");
     }
 
     @Test

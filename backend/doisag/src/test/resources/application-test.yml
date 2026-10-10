@@ -35,6 +35,10 @@ api:
       max-failures-per-address: 1000
   # endereco do sistema nos testes e o unico aceito nas requisicoes c/ cookie q mudam dado
   public-url: http://localhost:5173
+  session:
+    # o endereco do teste eh http, entao o cookie n pode ser Secure, senao a api nem sobe
+    # o __Host- e o Secure do https sao conferidos no SessionCookieServiceTest
+    secure-cookie: false
   seed:
     # sem usuario de teste automatico, cada teste monta o que precisa
     enabled: false

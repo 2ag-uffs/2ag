@@ -54,7 +54,7 @@ abra http://localhost:5173. o nginx do front entrega a tela e repassa as chamada
 
 os dados ficam num volume e não somem quando os containers param. para parar, use `ctrl+c`.
 
-> num servidor com https, troque `SESSION_SECURE_COOKIE` para `true` no `.env`. em `false` o cookie da sessão também trafega sem https, o que só serve para testar no próprio computador.
+> num servidor com https, troque `SESSION_SECURE_COOKIE` para `true` no `.env`. em `false` o cookie da sessão também trafega sem https, o que só serve para testar no próprio computador. a api confere na subida que o valor combina com o esquema do `PUBLIC_URL` e recusa subir quando não combina.
 
 ---
 

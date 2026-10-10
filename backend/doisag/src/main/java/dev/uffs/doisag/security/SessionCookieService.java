@@ -19,14 +19,29 @@ import java.time.Instant;
 public class SessionCookieService {
 
     public static final String COOKIE_NAME = "session";
+    // com https o nome ganha o prefixo __Host-: o navegador recusa esse cookie sem Secure, com Domain
+    // ou fora de Path=/, entao servidor configurado errado aparece na hora em vez de login q n gruda
+    public static final String SECURE_COOKIE_NAME = "__Host-" + COOKIE_NAME;
 
     private final TokenService tokenService;
     private final boolean secureCookie;
 
     public SessionCookieService(TokenService tokenService,
-                                @Value("${api.session.secure-cookie:true}") boolean secureCookie) {
+                                @Value("${api.session.secure-cookie:true}") boolean secureCookie,
+                                @Value("${api.public-url}") String publicUrl) {
         this.tokenService = tokenService;
         this.secureCookie = secureCookie;
+        // cookie Secure em http o navegador descarta e o login falha em silencio, e https sem
+        // Secure deixa o cookie trafegar em claro: nos dois casos a api nem sobe (issue 118)
+        String problem = secureCookieProblem(publicUrl, secureCookie);
+        if (problem != null) {
+            throw new IllegalStateException(problem);
+        }
+    }
+
+    // o nome q vale nesta configuracao
+    public String cookieName() {
+        return secureCookie ? SECURE_COOKIE_NAME : COOKIE_NAME;
     }
 
     public void writeSession(HttpServletResponse response, Users user) {
@@ -50,7 +65,7 @@ public class SessionCookieService {
             return null;
         }
         for (Cookie cookie : cookies) {
-            if (COOKIE_NAME.equals(cookie.getName()) && !cookie.getValue().isBlank()) {
+            if (cookieName().equals(cookie.getName()) && !cookie.getValue().isBlank()) {
                 return cookie.getValue();
             }
         }
@@ -58,7 +73,7 @@ public class SessionCookieService {
     }
 
     private void addCookie(HttpServletResponse response, String value, Duration maxAge) {
-        ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, value)
+        ResponseCookie cookie = ResponseCookie.from(cookieName(), value)
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite("Strict")
@@ -66,5 +81,19 @@ public class SessionCookieService {
                 .maxAge(maxAge)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    // nulo qnd o esquema do PUBLIC_URL e o secure-cookie combinam
+    // endereco sem esquema fica pro OriginCheckFilter recusar com a mensagem dele
+    static String secureCookieProblem(String publicUrl, boolean secureCookie) {
+        String url = publicUrl == null ? "" : publicUrl.trim().toLowerCase();
+        if (url.startsWith("https://") && !secureCookie) {
+            return "PUBLIC_URL com https precisa de SESSION_SECURE_COOKIE=true, senão o cookie da sessão trafega sem proteção";
+        }
+        if (url.startsWith("http://") && secureCookie) {
+            return "PUBLIC_URL com http precisa de SESSION_SECURE_COOKIE=false, senão o navegador descarta o cookie Secure"
+                    + " e o login falha em silêncio";
+        }
+        return null;
     }
 }
