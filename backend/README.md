@@ -69,7 +69,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `MAIL_PORT` | porta do servidor smtp | `587` |
 | `MAIL_USERNAME` e `MAIL_PASSWORD` | conta que autentica no servidor smtp | vazio |
 | `MAIL_FROM` | remetente dos e-mails. com `MAIL_HOST` preenchido e os dois vazios a api não sobe | o `MAIL_USERNAME` |
-| `MAIL_SMTP_AUTH` e `MAIL_SMTP_STARTTLS` | autenticação e tls do smtp. um servidor local de teste costuma pedir `false` nos dois | `true` |
+| `MAIL_SMTP_AUTH` e `MAIL_SMTP_STARTTLS` | autenticação e tls do smtp. com o starttls ligado ele é obrigatório: servidor que não oferece tls não recebe a senha nem o link. um servidor local de teste costuma pedir `false` nos dois | `true` |
 
 a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde roda.
 

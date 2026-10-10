@@ -52,6 +52,9 @@ spring:
     properties:
       "[mail.smtp.auth]": ${MAIL_SMTP_AUTH:true}
       "[mail.smtp.starttls.enable]": ${MAIL_SMTP_STARTTLS:true}
+      # com o starttls ligado ele eh obrigatorio: sem isso um servidor q n oferece tls recebia
+      # a senha do smtp e o link de senha nova em claro
+      "[mail.smtp.starttls.required]": ${MAIL_SMTP_STARTTLS:true}
       # sem limite de tempo um servidor fora do ar prenderia a requisicao de quem pediu o e-mail
       "[mail.smtp.connectiontimeout]": 5000
       "[mail.smtp.timeout]": 5000

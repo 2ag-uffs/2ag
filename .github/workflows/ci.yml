@@ -87,5 +87,7 @@ jobs:
       - run: docker compose build
       # o build so copia o arquivo do nginx, quem confere se ele esta certo eh o proprio nginx
       - run: docker compose run --rm --no-deps web nginx -t
+      # o age cifra o backup q o smoke gera e restaura (issue 117)
+      - run: sudo apt-get install -y age
       # sobe tudo com um .env de mentira, espera o healthcheck, faz login e um POST com cookie (issue 102)
       - run: bash scripts/ci-compose-smoke.sh

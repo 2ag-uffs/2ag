@@ -500,8 +500,9 @@ Conformidade no tratamento de dado pessoal sensível de saúde (art. 11).
 - Nenhum dado pessoal em parâmetro de URL
 
 **RNF05 — Criptografia** · `ampliado` · **E**
-Toda conexão externa por HTTPS/TLS. Senha armazenada apenas como hash BCrypt.
+Toda conexão externa por HTTPS/TLS. Senha armazenada apenas como hash BCrypt. O backup do banco sai cifrado (age) antes de deixar o servidor, e o e-mail só sai com STARTTLS.
 *Critério de aceite:* não há URL `http://` fixa no código; a origem da API é configurável por ambiente.
+*Decisão registrada (10/10/2026):* o dado clínico **não é cifrado por campo** dentro do banco. O banco não publica porta e só a api chega nele; cifrar campo a campo tiraria a busca e a ordenação do PostgreSQL, espalharia chave pela api e não protegeria de quem já tem a api na mão, que é quem lê o dado de qualquer jeito. O que sai do servidor é o backup, e esse vai cifrado. A decisão volta a ser discutida se o banco for para host compartilhado ou nuvem de terceiro.
 
 **RNF06 — Tempo de resposta** · `ampliado` · **I**
 Funcionalidades principais respondem em menos de 3 segundos em rede estável.

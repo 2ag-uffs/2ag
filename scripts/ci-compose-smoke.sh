@@ -69,4 +69,17 @@ other_status=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/cookies.txt \
     "$PUBLIC_URL/api/admin/prescribers/1/active")
 [ "$other_status" = "403" ] || { echo "requisicao de outra origem respondeu $other_status em vez de 403"; exit 1; }
 
+echo "=== backup cifrado pelo compose e restauracao num banco separado ==="
+age-keygen -o /tmp/chave-do-backup.txt 2> /tmp/chave-publica.txt
+PUBKEY=$(grep -o 'age1[a-z0-9]*' /tmp/chave-publica.txt | head -1)
+echo "BACKUP_AGE_PUBKEY=$PUBKEY" >> .env
+./scripts/backup-banco.sh /tmp/backups-ci
+backup_file=$(ls /tmp/backups-ci/doisag-*.dump.age | head -1)
+[ -n "$backup_file" ] || { echo "o backup n gerou arquivo"; exit 1; }
+CONFIRMAR_RESTAURACAO=doisag_teste BACKUP_AGE_KEY=/tmp/chave-do-backup.txt \
+    ./scripts/restaurar-banco.sh "$backup_file" doisag_teste
+restored=$(docker compose exec -T banco psql --username admindoisag --dbname doisag_teste -tAc \
+    "select count(*) from users where email = 'prescritor-ci@email.com'")
+[ "$restored" = "1" ] || { echo "a conta criada antes do backup n apareceu no banco restaurado"; exit 1; }
+
 echo "pilha do compose sobe e responde de ponta a ponta"

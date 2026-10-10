@@ -146,12 +146,13 @@ os testes do front usam vitest e testing library e ficam ao lado do arquivo test
 
 ## backup
 
-o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./docs/backup-e-restauracao.md).
+o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./docs/backup-e-restauracao.md). o backup sai cifrado com o `age` (chave pública em `BACKUP_AGE_PUBKEY` no `.env`, privada guardada fora do servidor) e roda pelo compose, sem precisar de senha nem de porta aberta:
 
 ```bash
-export DATABASE_PASSWORD='a_senha_do_banco'
 ./scripts/backup-banco.sh /var/backups/2ag
 ```
+
+precisa do `age` instalado no servidor (`apt install age`). com o postgres instalado na própria máquina, sem compose, `BACKUP_VIA_COMPOSE=false` e o `pg_dump` e o `pg_restore` 17 instalados.
 
 o backup do dia não substitui o do dia anterior, porque o prontuário tem guarda mínima de 20 anos. e backup que ninguém restaurou não vale: o documento tem a tabela onde cada teste de restauração fica registrado.
 
