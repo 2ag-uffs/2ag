@@ -22,15 +22,23 @@ updates:
       interval: monthly
 
   # imagens base dos dockerfiles: node e nginx no front, maven e temurin na api
+  # salto de versao maior (java 17 pra 25, node 22 pra 26) eh decisao do projeto, n do robo
   - package-ecosystem: docker
     directories:
       - /frontend
       - /backend/doisag
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # a imagem do postgres fica no docker-compose.yml da raiz
+  # postgres novo pede migracao do volume de dados, entao a versao maior tbm fica por conta do projeto
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

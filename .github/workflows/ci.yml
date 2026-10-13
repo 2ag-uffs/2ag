@@ -9,6 +9,9 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # contents: write eh so pra mandar a arvore de dependencia pro github (issue 116)
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: backend/doisag
@@ -22,6 +25,13 @@ jobs:
       # os testes usam h2 em memoria entao n precisa de banco nenhum aqui
       # o perfil docs traz o springdoc so pro teste da documentacao da api rodar
       - run: ./mvnw -B verify -Pdocs
+      # manda a arvore inteira de dependencia do pom pro github, com as transitivas: sem isso o
+      # dependabot so via as 19 diretas sem versao e nunca alertava sobre tomcat, spring, hibernate e cia
+      # so no push da main: em pull request o token eh de leitura e o envio falharia
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: advanced-security/maven-dependency-submission-action@v6
+        with:
+          directory: backend/doisag
 
   # os mesmos testes do backend num postgres de verdade igual ao do compose (issue 38)
   # o h2 aceita coisa q o postgres recusa entao migracao ou query q so roda no h2 quebra aqui
@@ -74,6 +84,8 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # dependencia de producao com falha alta ou critica quebra o build; a de desenvolvimento so avisa
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm test
       - run: npm run build
