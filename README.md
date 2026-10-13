@@ -35,7 +35,7 @@ cp .env.example .env
 - `POSTGRES_PASSWORD`: uma senha para o banco
 - `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
-- `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
+- `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema, com https. vai nos links enviados por e-mail. no seu computador, `https://localhost`
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova e o link que confirma a troca do e-mail de acesso. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
 
 sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. o link de primeiro acesso de uma conta nova de prescritor funciona igual: sem e-mail, aparece na tela. para a senha do administrador não existe essa saída — ele troca em *Perfil* enquanto lembra a atual, e se esquecer só com `MAIL_HOST`.
@@ -44,17 +44,23 @@ sem e-mail configurado, quem esquece a senha depende do administrador: em *Presc
 
 sem `ADMIN_EMAIL` e `ADMIN_PASSWORD` o sistema sobe normalmente, mas nenhuma conta é criada e ninguém consegue entrar: o autocadastro do paciente exige convite, o convite exige prescritor e o prescritor exige administrador. o log da api avisa quando isso acontece; preencha as duas e suba de novo.
 
-**3.** suba tudo:
+**3.** gere um certificado só para o seu computador, porque o nginx não sobe sem certificado:
+
+```bash
+./scripts/gerar-certificado-local.sh
+```
+
+**4.** suba tudo:
 
 ```bash
 docker compose up
 ```
 
-abra http://localhost:5173. o nginx do front entrega a tela e repassa as chamadas de `/api` para o backend, então só essa porta fica exposta. o banco não fica acessível de fora da rede do compose.
+abra https://localhost. o navegador avisa que o certificado não é confiável, porque ele acabou de ser gerado no seu computador: aceite o aviso, mas não instale o certificado como confiável, senão o navegador passa a exigir https também no `npm run dev`. o nginx do front entrega a tela pela porta 443, redireciona a 80 para https e repassa as chamadas de `/api` para o backend, então só essas duas portas ficam expostas. o banco não fica acessível de fora da rede do compose.
 
 os dados ficam num volume e não somem quando os containers param. para parar, use `ctrl+c`.
 
-> num servidor com https, troque `SESSION_SECURE_COOKIE` para `true` no `.env`. em `false` o cookie da sessão também trafega sem https, o que só serve para testar no próprio computador. a api confere na subida que o valor combina com o esquema do `PUBLIC_URL` e recusa subir quando não combina.
+> o `.env.example` já vem com `SESSION_SECURE_COOKIE=true`, que é o valor do servidor e do compose no computador, os dois em https. só o `npm run dev` sem docker roda em http, e aí a variável precisa ser `false` (veja a seção seguinte). a api confere na subida que o valor combina com o esquema do `PUBLIC_URL` e recusa subir quando não combina.
 
 ---
 
@@ -80,6 +86,8 @@ export SESSION_SECURE_COOKIE=false
 export SEED_DADOS_TESTE=true
 ./mvnw spring-boot:run
 ```
+
+> **aqui é http de propósito:** sem docker não tem nginx nem certificado, o vite serve a tela em http://localhost:5173, e por isso `SESSION_SECURE_COOKIE=false` e `PUBLIC_URL` com `http://`. é o único lugar onde esses dois valores são esses. no servidor e no compose eles são `true` e `https://`.
 
 a api sobe em http://localhost:8080/api. no intellij, as variáveis vão em `run` → `edit configurations` → `environment variables`.
 
@@ -118,7 +126,7 @@ com `SEED_DADOS_TESTE=true` a api cria três contas, todas com a senha `Senha@12
 
 na primeira subida o seed também cria dados fictícios para demonstração: horários de atendimento, consultas, prescrições, dois meses de diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`) e um segundo prescritor (`carlos.pereira`), todos `@email.com` com a mesma senha. nomes, cpfs e históricos são inventados.
 
-o seed nunca pode ser ligado em produção: no `.env` do servidor a variável `SEED_DADOS_TESTE` nem deve existir. como segunda trava, a api ignora o seed quando o `PUBLIC_URL` começa com `https://`.
+o seed nunca pode ser ligado em produção: no `.env` do servidor a variável `SEED_DADOS_TESTE` nem deve existir. como segunda trava, a api ignora o seed em qualquer `PUBLIC_URL` com `https://` que não seja `localhost`.
 
 > **banco local antigo:** as migrações foram consolidadas numa base única em 13/09/2026. quem já tinha um banco de antes dessa data precisa recriá-lo: `docker compose down -v` com docker, ou `drop database doisag;` seguido de `create database doisag owner admindoisag;` sem docker.
 
@@ -144,6 +152,12 @@ os testes do front usam vitest e testing library e ficam ao lado do arquivo test
 
 ---
 
+## colocando no ar
+
+o passo a passo do servidor da clínica (docker, domínio, certificado, `.env` de produção, primeira entrada, backup e atualização) está em [`docs/guia-de-deploy.md`](./docs/guia-de-deploy.md). a seção *rodando com docker* acima é a receita do computador de desenvolvimento, não a do servidor.
+
+---
+
 ## backup
 
 o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./docs/backup-e-restauracao.md). o backup sai cifrado com o `age` (chave pública em `BACKUP_AGE_PUBKEY` no `.env`, privada guardada fora do servidor) e roda pelo compose, sem precisar de senha nem de porta aberta:
@@ -164,7 +178,7 @@ o backup do dia não substitui o do dia anterior, porque o prontuário tem guard
 backend/     a api, em java com spring boot
 frontend/    a tela, em react
 database/    a modelagem de 2025 e o passo a passo de instalação do banco
-docs/        requisitos, escalas clínicas, identidade visual e documentos da extensão
+docs/        requisitos, guia de deploy, backup, segurança, escalas clínicas, identidade visual e documentos da extensão
 ```
 
 ---

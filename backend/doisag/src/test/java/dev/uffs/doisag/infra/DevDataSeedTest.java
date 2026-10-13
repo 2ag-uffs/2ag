@@ -7,6 +7,7 @@ import dev.uffs.doisag.service.PrescriberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -32,6 +33,16 @@ class DevDataSeedTest {
         runSeedWith("  HTTPS://2ag.exemplo.com");
 
         verifyNoInteractions(usersRepository, prescriberRepository, patientRepository, prescriberService, demoData);
+    }
+
+    // o compose no proprio computador roda em https://localhost e o seed continua valendo la
+    @Test
+    void httpsOnLocalhostIsNotARealServer() {
+        assertThat(DevDataSeed.isRealServer("https://localhost")).isFalse();
+        assertThat(DevDataSeed.isRealServer("https://localhost:8443/")).isFalse();
+        assertThat(DevDataSeed.isRealServer("http://localhost:5173")).isFalse();
+        assertThat(DevDataSeed.isRealServer("https://localhost.exemplo.com")).isTrue();
+        assertThat(DevDataSeed.isRealServer("https://2ag.exemplo.com")).isTrue();
     }
 
     private void runSeedWith(String publicUrl) {

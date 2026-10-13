@@ -23,6 +23,8 @@ export SEED_DADOS_TESTE=true
 
 a api responde em `http://localhost:8080/api`. toda rota fica embaixo de `/api` para o front e a api dividirem a mesma origem, sem cors.
 
+o `SESSION_SECURE_COOKIE=false` é só porque aqui o front roda em http, no `npm run dev`. no servidor e no compose, que rodam em https, ele fica `true`.
+
 para mexer só nas telas, sem instalar postgres, a api sobe com o h2 em memória dos testes. os dados somem quando ela para:
 
 ```bash

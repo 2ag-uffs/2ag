@@ -55,8 +55,7 @@ public class DevDataSeed implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        // endereco https eh servidor de verdade, e la n pode nascer conta com senha q esta no README
-        if (publicUrl.trim().toLowerCase(Locale.ROOT).startsWith("https://")) {
+        if (isRealServer(publicUrl)) {
             log.warn("SEED_DADOS_TESTE esta ligado num endereco https e o seed foi ignorado");
             return;
         }
@@ -67,6 +66,13 @@ public class DevDataSeed implements ApplicationRunner {
         if (patient != null) {
             demoData.create(prescriber, patient, DEV_PASSWORD);
         }
+    }
+
+    // endereco https eh servidor de verdade, e la n pode nascer conta com senha q esta no README
+    // a excecao eh o compose no proprio computador, q tbm roda em https mas em localhost
+    static boolean isRealServer(String publicUrl) {
+        String address = publicUrl.trim().toLowerCase(Locale.ROOT);
+        return address.startsWith("https://") && !address.matches("https://localhost(:[0-9]+)?(/.*)?");
     }
 
     private void createAdminIfMissing() {

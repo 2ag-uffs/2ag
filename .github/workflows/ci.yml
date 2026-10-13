@@ -85,6 +85,8 @@ jobs:
       - uses: actions/checkout@v7
       - run: cp .env.example .env
       - run: docker compose build
+      # o nginx n sobe sem certificado, e aqui ele eh autoassinado (issue 57)
+      - run: bash scripts/gerar-certificado-local.sh
       # o build so copia o arquivo do nginx, quem confere se ele esta certo eh o proprio nginx
       - run: docker compose run --rm --no-deps web nginx -t
       # o age cifra o backup q o smoke gera e restaura (issue 117)

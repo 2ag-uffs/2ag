@@ -536,6 +536,8 @@ Pronto quando: `curl -sI http://dominio/` dá 301 para https, `curl -sI https://
 
 **Card.** #57, #103, #18, #102, #101.
 
+**Nota de 13/10/2026 (#57, #103, #18).** O TLS passou a terminar no próprio nginx (`frontend/nginx.conf`: `listen 443 ssl`, `http2`, TLS 1.2/1.3, certificado em `certs/` montado pelo compose; a porta 80 só redireciona e atende o `/.well-known/acme-challenge/` do certbot), sem proxy na frente, então os dois limitadores seguem vendo o endereço real. HSTS com `includeSubDomains` e `proxy_hide_header Strict-Transport-Security` para não sair o duplicado do Spring (item 18). `.env.example` com `SESSION_SECURE_COOKIE=true`. O smoke do CI sobe a pilha em `https://localhost` com certificado autoassinado e confere o 301, o HSTS único, o cookie `__Host-session; Secure; HttpOnly; SameSite=Strict` e o 403 de outra origem. O critério do RNF05 foi corrigido. Guia em `docs/guia-de-deploy.md`.
+
 ---
 
 ## 20 — Scan de dependências

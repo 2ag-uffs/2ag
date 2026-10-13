@@ -502,7 +502,7 @@ Conformidade no tratamento de dado pessoal sensível de saúde (art. 11).
 
 **RNF05 — Criptografia** · `ampliado` · **E**
 Toda conexão externa por HTTPS/TLS. Senha armazenada apenas como hash BCrypt. O backup do banco sai cifrado (age) antes de deixar o servidor, e o e-mail só sai com STARTTLS.
-*Critério de aceite:* não há URL `http://` fixa no código; a origem da API é configurável por ambiente.
+*Critério de aceite:* o sistema só abre por https: o nginx termina o TLS com o certificado da clínica, a porta 80 redireciona para https, o HSTS sai com `includeSubDomains` e o cookie de sessão sai com `Secure`; não há URL `http://` fixa no código e a origem da API é configurável por ambiente. Atendido em 13/10/2026 (#57).
 *Decisão registrada (10/10/2026):* o dado clínico **não é cifrado por campo** dentro do banco. O banco não publica porta e só a api chega nele; cifrar campo a campo tiraria a busca e a ordenação do PostgreSQL, espalharia chave pela api e não protegeria de quem já tem a api na mão, que é quem lê o dado de qualquer jeito. O que sai do servidor é o backup, e esse vai cifrado. A decisão volta a ser discutida se o banco for para host compartilhado ou nuvem de terceiro.
 
 **RNF06 — Tempo de resposta** · `ampliado` · **I**
@@ -763,6 +763,8 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 **Troca do e-mail de acesso em 13/10/2026:** o e-mail só muda depois que a pessoa abre o link enviado para o endereço novo (RF18). Sem `MAIL_HOST` esse link também vai só para o log da API: a troca nunca é direta, porque é o link que prova que a pessoa recebe e-mail naquele endereço.
 
+**HTTPS na pilha em 13/10/2026 (RNF05):** o TLS termina no nginx do compose com o certificado da clínica (pasta `certs/`), a porta 80 só redireciona, o cookie de sessão sai com `Secure` por padrão (`.env.example`) e o smoke do CI sobe a pilha em https com certificado autoassinado. O passo a passo do servidor está em `docs/guia-de-deploy.md`. O desenvolvimento sem docker continua em http://localhost:5173 com `SESSION_SECURE_COOKIE=false`.
+
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.
@@ -983,7 +985,7 @@ A sequência é deliberada: segurança antes de funcionalidade, porque cada tela
 - **RNF15:** segredos fora do arquivo versionado, configuração por variável de ambiente, `docker compose up` sobe banco, API e interface
 - **RNF13:** perfil `test` com H2 em memória. `./mvnw clean install` passa sem PostgreSQL instalado e sem nenhuma variável de ambiente definida — o comando que antes falhava sempre
 
-**Fase 1 concluída em 12/09/2026:** RF29, RF30, RF31 (parcial), RF02.2, RN12, RNF03, RNF04 e RNF05. Nenhuma entidade de usuário atravessa a API, autorização por papel e por vínculo em todas as rotas, dono verificado por registro nas escalas, e falha de autenticação responde 401.
+**Fase 1 concluída em 12/09/2026:** RF29, RF30, RF31 (parcial), RF02.2, RN12, RNF03, RNF04 e RNF05 (o RNF05 só fechou de fato em 13/10/2026, com o TLS no nginx, #57). Nenhuma entidade de usuário atravessa a API, autorização por papel e por vínculo em todas as rotas, dono verificado por registro nas escalas, e falha de autenticação responde 401.
 
 **Fase 4 (parcial) e Fase 3 concluídas em 12/09/2026:** RF21, RF23, RF26, RF27, RF28, RN09, RN13 e RN14, além do religamento das telas de consulta e prescrição. Os três escores clínicos passaram a seguir o algoritmo oficial do instrumento, as oito escalas têm tela, e o gráfico de evolução funciona para qualquer uma delas.
 

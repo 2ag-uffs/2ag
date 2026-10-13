@@ -1,9 +1,11 @@
 # sobe o sistema inteiro com banco api e front
 #
-#   cp .env.example .env    e preencha as senhas
+#   cp .env.example .env               e preencha as senhas
+#   ./scripts/gerar-certificado-local.sh   so no proprio computador: no servidor o certificado eh de verdade
 #   docker compose up
 #
-# depois abra o navegador em localhost na porta 5173
+# depois abra o navegador em https://localhost (ou no PUBLIC_URL do servidor)
+# o passo a passo do servidor esta em docs/guia-de-deploy.md
 
 # log de cada container com tamanho maximo, senao ele enche o disco do servidor
 x-logging: &logging
@@ -89,11 +91,27 @@ services:
     logging: *logging
     environment:
       TZ: America/Sao_Paulo
+    volumes:
+      # certificado da clinica (fullchain.pem e privkey.pem), do certbot ou comprado
+      # no computador o scripts/gerar-certificado-local.sh cria um autoassinado
+      - ./certs:/etc/nginx/certs:ro
+      # o certbot prova o dominio por aqui qnd renova (modo webroot)
+      - ./acme:/var/www/certbot:ro
     depends_on:
       api:
         condition: service_healthy
+    # o tls termina no nginx: a 80 so redireciona pra 443
+    # so ipv4 de proposito: a rede do compose n tem ipv6, e uma conexao ipv6 chegaria ao nginx
+    # pelo proxy do docker, com o endereco do proprio docker, estragando o limite por endereco
     ports:
-      - "5173:80"
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+    # o healthcheck bate na 80 por dentro, q responde sem redirecionar nesse caminho
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz | grep -q ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
 volumes:
   dados-do-banco:
