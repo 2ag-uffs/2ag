@@ -31,7 +31,8 @@ jobs:
       - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: advanced-security/maven-dependency-submission-action@v6
         with:
-          directory: backend/doisag
+          # caminho absoluto: com o relativo a action procurava o mvnw em backend/doisag/backend/doisag
+          directory: ${{ github.workspace }}/backend/doisag
 
   # os mesmos testes do backend num postgres de verdade igual ao do compose (issue 38)
   # o h2 aceita coisa q o postgres recusa entao migracao ou query q so roda no h2 quebra aqui
