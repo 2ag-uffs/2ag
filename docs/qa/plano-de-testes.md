@@ -11,7 +11,7 @@ cada fluxo tem um código (`CT-01`, `CT-02`...) e o requisito que ele confere em
 suba a api com o banco em memória e os dados de demonstração, como está no [README](../../README.md#sem-postgres-só-para-olhar-as-telas), e depois o front com `npm run dev`. abra http://localhost:5173.
 
 - **reiniciar a api apaga tudo e recria os dados.** use isso para repetir um teste do zero.
-- os e-mails (senha nova, convite) não saem de verdade: o texto aparece no log da api.
+- os e-mails (senha nova, convite, confirmação de e-mail novo) não saem de verdade: o texto aparece no log da api.
 - teste no Chrome e no Firefox atuais, em três larguras: celular (375 px), tablet (768 px) e computador (1280 px ou mais). as ferramentas de desenvolvedor do navegador simulam as larguras.
 - para usar dois perfis ao mesmo tempo, abra uma janela normal e outra anônima.
 
@@ -61,7 +61,7 @@ requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
 | CT-03 | sair da conta e usar o botão voltar do navegador | volta para a tela de entrada, sem reabrir tela protegida |
 | CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova. depois, como administração, usar *Senha nova* na conta de uma prescritora, errando e acertando a senha do administrador | entra com a senha nova e o mesmo link não serve uma segunda vez. na administração, a senha errada não gera link, a certa mostra o endereço para copiar e a ação aparece em *Auditoria* |
 | CT-05 | como prescritora, gerar dois convites, cancelar um em *Convites em aberto* e abrir os dois links na janela anônima. no que vale, tentar antes com o e-mail ou o CPF de uma conta que já existe | o link cancelado não serve. no outro, o cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve. com e-mail ou CPF repetido a tela mostra uma mensagem só, sem dizer qual dos dois, e o mesmo link continua servindo para os dados certos |
-| CT-06 | em *Perfil*, mudar dados pessoais, depois e-mail e depois senha. errar a senha atual 5 vezes na troca de senha e tentar de novo com a certa | dados salvos. troca de e-mail e de senha pedem a senha atual e a senha nova segue a regra de senha forte. depois de 5 erros aparece o aviso de bloqueio por 15 minutos, mesmo com a senha certa, e o login daquela conta naquele aparelho também fica bloqueado |
+| CT-06 | em *Perfil*, mudar dados pessoais, depois pedir a troca de e-mail, abrir o link de confirmação que aparece no log da api e depois trocar a senha. errar a senha atual 5 vezes na troca de senha e tentar de novo com a certa | dados salvos. troca de e-mail e de senha pedem a senha atual e a senha nova segue a regra de senha forte. o e-mail só muda depois do link: antes dele o perfil mostra o endereço aguardando confirmação, e depois o sistema pede para entrar de novo com o e-mail novo. depois de 5 erros aparece o aviso de bloqueio por 15 minutos, mesmo com a senha certa, e o login daquela conta naquele aparelho também fica bloqueado |
 
 ## 2. permissões e isolamento
 

@@ -8,7 +8,6 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import dev.uffs.doisag.service.ProfileService;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SessionCookieService;
@@ -210,33 +209,6 @@ class ProfileTest {
     }
 
     @Test
-    void changingTheEmailRequiresTheCurrentPassword() throws Exception {
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(patient))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\"novo@email.com\",\"currentPassword\":\"Errada@123\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("currentPassword"));
-
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(patient))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\" Novo@Email.com \",\"currentPassword\":\"Senha@123\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("novo@email.com"));
-    }
-
-    @Test
-    void emailOfAnotherAccountIsRefused() throws Exception {
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(patient))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\"perfil-prescritora@email.com\",\"currentPassword\":\"Senha@123\"}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errors[0].field").value("newEmail"));
-    }
-
-    @Test
     void wrongCurrentPasswordDoesNotChangeThePassword() throws Exception {
         mockMvc.perform(put("/profile/password")
                         .header("Authorization", bearerTokenOf(patient))
@@ -284,41 +256,6 @@ class ProfileTest {
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"currentPassword\":\"Senha@123\",\"newPassword\":\"Senha-Nova#2026\"}"))
-                .andExpect(status().isTooManyRequests());
-    }
-
-    @Test
-    void fiveWrongCurrentPasswordsBlockTheEmailChangeEvenWithTheRightOne() throws Exception {
-        for (int attempt = 1; attempt <= 5; attempt++) {
-            mockMvc.perform(put("/profile/email")
-                            .header("Authorization", bearerTokenOf(patient))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"newEmail\":\"novo@email.com\",\"currentPassword\":\"Errada@123\"}"))
-                    .andExpect(status().isBadRequest());
-        }
-
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(patient))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\"novo@email.com\",\"currentPassword\":\"Senha@123\"}"))
-                .andExpect(status().isTooManyRequests());
-    }
-
-    // o 409 conta quem tem conta, entao quem fica testando e-mail tbm eh barrado
-    @Test
-    void fiveTakenEmailsBlockTheEmailChange() throws Exception {
-        for (int attempt = 1; attempt <= 5; attempt++) {
-            mockMvc.perform(put("/profile/email")
-                            .header("Authorization", bearerTokenOf(patient))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"newEmail\":\"perfil-prescritora@email.com\",\"currentPassword\":\"Senha@123\"}"))
-                    .andExpect(status().isConflict());
-        }
-
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(patient))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\"livre@email.com\",\"currentPassword\":\"Senha@123\"}"))
                 .andExpect(status().isTooManyRequests());
     }
 
@@ -410,21 +347,6 @@ class ProfileTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"perfil-admin@email.com\",\"password\":\"Senha-Nova#2026\"}"))
                 .andExpect(status().isOk());
-    }
-
-    // se trocasse, a proxima subida da api criava outro admin com o ADMIN_EMAIL e a senha inicial
-    @Test
-    void adminDoesNotChangeTheEmailByTheProfile() throws Exception {
-        Admin admin = saveAdmin();
-
-        mockMvc.perform(put("/profile/email")
-                        .header("Authorization", bearerTokenOf(admin))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"newEmail\":\"outro-admin@email.com\",\"currentPassword\":\"Senha@123\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(ProfileService.ADMIN_EMAIL_MESSAGE));
-
-        assertThat(usersRepository.existsByEmail("outro-admin@email.com")).isFalse();
     }
 
     @Test

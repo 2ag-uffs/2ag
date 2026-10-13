@@ -1,46 +1,36 @@
 package dev.uffs.doisag.service;
 
-import dev.uffs.doisag.dto.EmailChangeDTO;
 import dev.uffs.doisag.dto.EmailPreferenceDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
-import dev.uffs.doisag.infra.BusinessException;
-import dev.uffs.doisag.infra.DuplicateValueException;
-import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
-import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
-import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.EmailChangeRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import dev.uffs.doisag.security.LoginAttemptLimiter;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 // perfil da propria conta (RF18)
 // quem chama passa o id da sessao entao ninguem mexe no perfil de outra pessoa
 @Service
 public class ProfileService {
 
-    public static final String ADMIN_EMAIL_MESSAGE =
-            "O e-mail da conta administrativa é definido no servidor, na variável ADMIN_EMAIL";
-
     private final UsersRepository usersRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final LoginAttemptLimiter loginAttemptLimiter;
+    private final EmailChangeRepository emailChangeRepository;
 
-    public ProfileService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
-                          LoginAttemptLimiter loginAttemptLimiter) {
+    public ProfileService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository) {
         this.usersRepository = usersRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.loginAttemptLimiter = loginAttemptLimiter;
+        this.emailChangeRepository = emailChangeRepository;
     }
 
     @Transactional(readOnly = true)
     public ProfileDTO getProfile(Long userId) {
-        return ProfileDTO.from(findUser(userId));
+        return profileOf(findUser(userId));
     }
 
     @Transactional
@@ -58,45 +48,22 @@ public class ProfileService {
         } else {
             user.setAddress(profileData.address().toAddress());
         }
-        return ProfileDTO.from(usersRepository.save(user));
+        return profileOf(usersRepository.save(user));
     }
 
-    @Transactional
-    public ProfileDTO changeEmail(Long userId, EmailChangeDTO emailData, String clientAddress) {
-        Users user = findUser(userId);
-        // se o admin trocasse aqui, a proxima subida criava outra conta com o ADMIN_EMAIL e a senha inicial
-        if (user instanceof Admin) {
-            throw new BusinessException(ADMIN_EMAIL_MESSAGE);
-        }
-        // o e-mail novo eh pra onde vai o link de senha nova, entao o chute da senha atual tem limite
-        if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)
-                || loginAttemptLimiter.isEmailChangeBlocked(userId)) {
-            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
-        }
-        if (!passwordEncoder.matches(emailData.currentPassword(), user.getPassword())) {
-            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
-            throw new InvalidFieldException("currentPassword", "A senha atual está incorreta");
-        }
-        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
-
-        String newEmail = InputCleaner.normalizeEmail(emailData.newEmail());
-        if (newEmail.equals(user.getEmail())) {
-            return ProfileDTO.from(user);
-        }
-        if (usersRepository.existsByEmail(newEmail)) {
-            loginAttemptLimiter.registerEmailChangeFailure(userId);
-            throw new DuplicateValueException("newEmail", "Este e-mail já tem conta no sistema");
-        }
-
-        user.setEmail(newEmail);
-        return ProfileDTO.from(usersRepository.save(user));
-    }
+    // a troca do e-mail de acesso fica no EmailChangeService: ela so vale dps do link no endereco novo
 
     @Transactional
     public ProfileDTO changeEmailPreference(Long userId, EmailPreferenceDTO preferenceData) {
         Users user = findUser(userId);
         user.setEmailNotificationsEnabled(preferenceData.emailNotificationsEnabled());
-        return ProfileDTO.from(usersRepository.save(user));
+        return profileOf(usersRepository.save(user));
+    }
+
+    // o endereco q esta esperando confirmacao aparece no perfil ate o link ser aberto ou vencer
+    private ProfileDTO profileOf(Users user) {
+        List<String> pendingEmails = emailChangeRepository.findPendingEmails(user.getId(), LocalDateTime.now());
+        return ProfileDTO.from(user, pendingEmails.isEmpty() ? null : pendingEmails.get(0));
     }
 
     // o paciente continua com os dados q o cadastro pediu

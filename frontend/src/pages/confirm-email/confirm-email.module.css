@@ -1,0 +1,26 @@
+/* tela de confirmacao do e-mail novo pelo link do e-mail */
+
+.message {
+    margin-bottom: 0;
+}
+
+.errorBox {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.submitButton {
+    margin-top: var(--space-1);
+}
+
+.linkButton {
+    align-self: flex-start;
+    text-decoration: none;
+}
+
+.textLink {
+    align-self: flex-start;
+    color: var(--color-primary);
+    font-weight: 600;
+}

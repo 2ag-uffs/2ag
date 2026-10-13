@@ -5,7 +5,9 @@ import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.EmailChange;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.EmailChangeRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,12 +25,14 @@ public class PasswordService {
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptLimiter loginAttemptLimiter;
+    private final EmailChangeRepository emailChangeRepository;
 
     public PasswordService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
-                           LoginAttemptLimiter loginAttemptLimiter) {
+                           LoginAttemptLimiter loginAttemptLimiter, EmailChangeRepository emailChangeRepository) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptLimiter = loginAttemptLimiter;
+        this.emailChangeRepository = emailChangeRepository;
     }
 
     @Transactional
@@ -56,6 +60,7 @@ public class PasswordService {
     }
 
     // grava a senha nova e derruba as sessoes abertas antes da troca
+    // quem chama ja esta numa transacao, por causa da trava do pedido de e-mail novo
     public void applyNewPassword(Users user, String newPassword) {
         if (!PasswordRules.fitsInBcrypt(newPassword)) {
             throw new InvalidFieldException("newPassword", PasswordRules.TOO_LONG_MESSAGE);
@@ -63,6 +68,14 @@ public class PasswordService {
         user.setPassword(passwordEncoder.encode(newPassword));
         // o token guarda a emissao em milissegundos, entao a troca tbm fica em milissegundos
         // senao a sessao emitida no mesmo segundo da troca continuava valendo
-        user.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        LocalDateTime now = LocalDateTime.now();
+        user.setPasswordChangedAt(now.truncatedTo(ChronoUnit.MILLIS));
+        // trocar a senha eh como a dona da conta retoma ela, entao o pedido de e-mail novo
+        // q estiver esperando confirmacao cai junto (issue 130). a conta fica travada antes,
+        // pra um pedido feito no mesmo instante esperar e encontrar a senha nova
+        usersRepository.lockById(user.getId());
+        for (EmailChange pendingChange : emailChangeRepository.findPendingForUpdate(user.getId())) {
+            pendingChange.setUsedAt(now);
+        }
     }
 }

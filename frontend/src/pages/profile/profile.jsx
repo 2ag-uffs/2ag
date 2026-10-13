@@ -237,12 +237,16 @@ function PersonalDataCard({profile, onSaved}) {
 }
 
 // troca do e-mail de acesso pedindo a senha atual
+// o e-mail so muda dps q a pessoa abre o link q vai pro endereco novo (issue 130)
 function EmailCard({profile, onSaved}) {
     const [newEmail, setNewEmail] = useState("");
     const [currentPassword, setCurrentPassword] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+
+    // qnd o pedido some (a senha foi trocada) a mensagem de link enviado sai junto
+    const shownMessage = message && !message.isError && !profile.pendingEmail ? null : message;
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -258,8 +262,8 @@ function EmailCard({profile, onSaved}) {
             onSaved(savedProfile);
             setNewEmail("");
             setCurrentPassword("");
-            // sem ponto depois do e-mail pra ele n parecer parte do endereco
-            setMessage({isError: false, text: "Pronto. Agora você entra com " + savedProfile.email});
+            setMessage({isError: false, text: "Enviamos um link para " + savedProfile.pendingEmail
+                + ". O e-mail de acesso só muda depois que você abrir esse link. Ele vale por 30 minutos."});
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
             setFieldErrors(errorInfo.fieldErrors);
@@ -275,8 +279,14 @@ function EmailCard({profile, onSaved}) {
         <Card title={cardTitle(FiMail, "E-mail de acesso")}>
             {/* sem ponto depois do e-mail pra ele n parecer parte do endereco */}
             <p className={styles.cardText}>Hoje você entra com <strong>{profile.email}</strong></p>
+            {profile.pendingEmail && (
+                <p className={styles.hint}>
+                    Aguardando a confirmação de <strong>{profile.pendingEmail}</strong>. Se o link não chegou,
+                    confira a caixa de spam ou peça de novo com o endereço certo.
+                </p>
+            )}
 
-            <CardMessage message={message}/>
+            <CardMessage message={shownMessage}/>
 
             <form className={styles.form} onSubmit={handleSubmit}>
                 <TextField
@@ -310,7 +320,7 @@ function EmailCard({profile, onSaved}) {
 }
 
 // troca de senha pedindo a senha atual
-function PasswordCard() {
+function PasswordCard({onPasswordChanged}) {
     const [formData, setFormData] = useState(EMPTY_PASSWORD_FORM);
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
@@ -347,6 +357,9 @@ function PasswordCard() {
                 isError: false,
                 text: "Senha trocada. Quem estava logado com a senha antiga em outro aparelho precisa entrar de novo.",
             });
+            if (onPasswordChanged) {
+                onPasswordChanged();
+            }
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
             setFieldErrors(errorInfo.fieldErrors);
@@ -479,6 +492,11 @@ export default function Profile() {
         }
     };
 
+    // trocar a senha cancela o pedido de e-mail novo, entao o endereco esperando sai da tela
+    const handlePasswordChanged = () => {
+        setProfile((currentProfile) => ({...currentProfile, pendingEmail: null}));
+    };
+
     if (loadError) {
         return (
             <section className={styles.page}>
@@ -508,7 +526,7 @@ export default function Profile() {
                 <PersonalDataCard profile={profile} onSaved={handleSaved}/>
                 <div className={styles.column}>
                     {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
-                    <PasswordCard/>
+                    <PasswordCard onPasswordChanged={handlePasswordChanged}/>
                     {!isAdmin && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
                 </div>
             </div>

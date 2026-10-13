@@ -141,6 +141,7 @@ Alteração de dados pessoais, de contato, **idioma preferido** e **preferência
 
 *Critérios de aceite:*
 - Alteração de senha exige a senha atual e re-hash com BCrypt
+- Alteração do e-mail de acesso exige a senha atual e só vale depois de confirmada por link enviado ao endereço novo; o endereço antigo é avisado
 - Nunca é possível gravar senha em texto puro (ver RN12)
 - O idioma escolhido determina o idioma das mensagens do sistema para aquele usuário (RNF12)
 - Preferência de notificação controla, por canal e por tipo, o que o usuário recebe (RF14/RF15/RF34)
@@ -759,6 +760,8 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Trilha de auditoria:** a abertura do prontuário gera uma linha por visita, mesmo quando a tela carrega várias listas ao mesmo tempo.
 
 **E-mail configurado em 13/09/2026:** com `MAIL_HOST` definido, o link de recuperação de senha sai por e-mail pelo servidor SMTP. Sem ele, o link continua indo para o log da API.
+
+**Troca do e-mail de acesso em 13/10/2026:** o e-mail só muda depois que a pessoa abre o link enviado para o endereço novo (RF18). Sem `MAIL_HOST` esse link também vai só para o log da API: a troca nunca é direta, porque é o link que prova que a pessoa recebe e-mail naquele endereço.
 
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 

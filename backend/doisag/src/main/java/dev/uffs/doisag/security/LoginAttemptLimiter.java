@@ -89,12 +89,13 @@ public class LoginAttemptLimiter {
         addFailure(resetKey(address), maxResetRequestsPerAddress, now);
     }
 
-    // trocar pra um e-mail q ja tem conta responde 409, e sem limite isso contaria quem eh da clinica
+    // cada pedido de e-mail novo aceito conta, livre ou n o endereco: assim a contagem n revela
+    // quem tem conta e ninguem usa a propria conta pra encher a caixa de e-mail dos outros
     public synchronized boolean isEmailChangeBlocked(Long userId) {
         return isBlocked(emailChangeKey(userId), clock.instant());
     }
 
-    public synchronized void registerEmailChangeFailure(Long userId) {
+    public synchronized void registerEmailChangeRequest(Long userId) {
         Instant now = clock.instant();
         removeFinished(now);
         addFailure(emailChangeKey(userId), maxFailures, now);

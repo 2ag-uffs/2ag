@@ -7,6 +7,7 @@ import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.security.SessionCookieService;
+import dev.uffs.doisag.service.EmailChangeService;
 import dev.uffs.doisag.service.PasswordService;
 import dev.uffs.doisag.service.ProfileService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,12 +30,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final EmailChangeService emailChangeService;
     private final PasswordService passwordService;
     private final SessionCookieService sessionCookieService;
 
-    public ProfileController(ProfileService profileService, PasswordService passwordService,
-                             SessionCookieService sessionCookieService) {
+    public ProfileController(ProfileService profileService, EmailChangeService emailChangeService,
+                             PasswordService passwordService, SessionCookieService sessionCookieService) {
         this.profileService = profileService;
+        this.emailChangeService = emailChangeService;
         this.passwordService = passwordService;
         this.sessionCookieService = sessionCookieService;
     }
@@ -50,11 +53,13 @@ public class ProfileController {
         return profileService.updateProfile(loggedUser.getId(), profileData);
     }
 
+    // o e-mail so muda dps q a pessoa abre o link q vai pro endereco novo (issue 130)
+    // a resposta eh o perfil de sempre, com o endereco esperando em pendingEmail
     @PutMapping("/email")
     public ProfileDTO changeEmail(@AuthenticationPrincipal Users loggedUser,
                                   @RequestBody @Valid EmailChangeDTO emailData,
                                   HttpServletRequest request) {
-        return profileService.changeEmail(loggedUser.getId(), emailData, request.getRemoteAddr());
+        return emailChangeService.request(loggedUser.getId(), emailData, request.getRemoteAddr());
     }
 
     @PutMapping("/email-preference")

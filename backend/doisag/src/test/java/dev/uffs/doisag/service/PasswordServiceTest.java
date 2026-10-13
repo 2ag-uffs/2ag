@@ -7,6 +7,7 @@ import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.EmailChangeRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,13 +44,16 @@ class PasswordServiceTest {
     @Mock
     private LoginAttemptLimiter loginAttemptLimiter;
 
+    @Mock
+    private EmailChangeRepository emailChangeRepository;
+
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
     private PasswordService passwordService;
     private Patient user;
 
     @BeforeEach
     void setUp() {
-        passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter);
+        passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter, emailChangeRepository);
         user = new Patient();
         user.setId(1L);
         user.setPassword(encoder.encode(CURRENT_PASSWORD));

@@ -1,11 +1,11 @@
-import {render, screen} from "@testing-library/react";
+import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, setLoggedUser} from "../../services/api.js";
 import Profile from "./profile.jsx";
 
 const ADMIN_PROFILE = {
-    id: 1, role: "ADMIN", name: "Administrador", email: "admin@clinica.com", cpf: null, birthDate: null,
+    id: 1, role: "ADMIN", name: "Administrador", email: "admin@clinica.com", pendingEmail: null, cpf: null, birthDate: null,
     phone: null, address: null, emailNotificationsEnabled: true, prescriberName: null, profession: null,
     registryType: null, registryNumber: null,
 };
@@ -61,5 +61,49 @@ describe("Profile", () => {
         expect(screen.getByText("CPF")).toBeInTheDocument();
         expect(screen.getByLabelText(/Data de nascimento/)).toBeInTheDocument();
         expect(screen.getByRole("heading", {name: "Avisos por e-mail"})).toBeInTheDocument();
+    });
+
+    it("paciente pede a troca de e-mail e ve q precisa confirmar no endereco novo", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PATIENT_PROFILE);
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        await screen.findByRole("heading", {name: "E-mail de acesso"});
+        await user.type(screen.getByLabelText(/Novo e-mail/), "Nova@Email.com");
+        // o cartao do e-mail vem antes do cartao da senha, e os dois pedem a senha atual
+        await user.type(screen.getAllByLabelText(/Senha atual/)[0], "Senha@123");
+        await user.click(screen.getByRole("button", {name: "Trocar e-mail"}));
+
+        expect(put).toHaveBeenCalledWith("/profile/email", {newEmail: "Nova@Email.com", currentPassword: "Senha@123"});
+        expect(await screen.findByText(/Enviamos um link para nova@email.com/)).toBeInTheDocument();
+        // o e-mail de acesso continua o antigo ate o link ser aberto
+        expect(screen.getByText("maria@email.com")).toBeInTheDocument();
+        expect(screen.getByText(/Aguardando a confirmação de/)).toBeInTheDocument();
+    });
+
+    it("trocar a senha some com o endereco esperando confirmacao", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
+        vi.spyOn(apiService, "put").mockResolvedValue(null);
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        expect(await screen.findByText(/Aguardando a confirmação de/)).toBeInTheDocument();
+        // o segundo "Senha atual" eh o do cartao da senha
+        await user.type(screen.getAllByLabelText(/Senha atual/)[1], "Senha@123");
+        await user.type(screen.getByLabelText(/^Nova senha/), "Valor-Novo#2026");
+        await user.type(screen.getByLabelText(/Repita a nova senha/), "Valor-Novo#2026");
+        await user.click(screen.getByRole("button", {name: "Trocar senha"}));
+
+        expect(await screen.findByText(/Senha trocada/)).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByText(/Aguardando a confirmação de/)).not.toBeInTheDocument());
+    });
+
+    it("o perfil mostra o endereco q esta esperando confirmacao", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
+        render(<Profile/>);
+
+        expect(await screen.findByText(/Aguardando a confirmação de/)).toBeInTheDocument();
+        expect(screen.getByText("nova@email.com")).toBeInTheDocument();
     });
 });

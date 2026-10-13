@@ -106,9 +106,9 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
-    void fiveTakenEmailsBlockTheEmailChangeOfThatAccountOnly() {
+    void fiveEmailChangeRequestsBlockThatAccountOnly() {
         for (int attempt = 0; attempt < 5; attempt++) {
-            limiter.registerEmailChangeFailure(1L);
+            limiter.registerEmailChangeRequest(1L);
         }
 
         assertThat(limiter.isEmailChangeBlocked(1L)).isTrue();

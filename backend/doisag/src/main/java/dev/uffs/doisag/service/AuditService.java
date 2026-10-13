@@ -85,6 +85,18 @@ public class AuditService {
                 AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null));
     }
 
+    // a propria pessoa confirmou um e-mail de acesso novo pelo link, sem sessao,
+    // entao quem fez vai explicito em vez de sair do contexto de seguranca
+    // a conta de paciente leva o paciente junto pra aparecer tbm na trilha do prontuario dele
+    @Transactional
+    public void recordEmailChange(Users user) {
+        boolean isPatient = user.getRole() == UserRole.PATIENT;
+        AuditRecordType accountType = isPatient ? AuditRecordType.CONTA_DE_PACIENTE
+                : AuditRecordType.CONTA_DE_PRESCRITOR;
+        auditEventRepository.save(new AuditEvent(user, AuditOperation.ALTERACAO, accountType, user.getId(),
+                isPatient ? user.getId() : null));
+    }
+
     // conta ligada ou desligada pela administracao
     // a de paciente leva o paciente junto pra aparecer tbm na trilha do prontuario dele
     @Transactional

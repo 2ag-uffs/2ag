@@ -13,6 +13,8 @@ public record ProfileDTO(
         String role,
         String name,
         String email,
+        // endereco esperando a confirmacao pelo link, ou nulo
+        String pendingEmail,
         String cpf,
         LocalDate birthDate,
         String phone,
@@ -25,7 +27,7 @@ public record ProfileDTO(
 ) {
     // monta o perfil conforme o tipo de conta
     // precisa rodar dentro de uma transacao pq le o prescritor do paciente
-    public static ProfileDTO from(Users user) {
+    public static ProfileDTO from(Users user, String pendingEmail) {
         String prescriberName = null;
         String profession = null;
         String registryType = null;
@@ -50,6 +52,7 @@ public record ProfileDTO(
                 user.getRole().name(),
                 user.getName(),
                 user.getEmail(),
+                pendingEmail,
                 user.getCpf(),
                 user.getBirthDate(),
                 user.getPhone(),

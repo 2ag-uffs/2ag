@@ -65,7 +65,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SERVER_PORT` | porta da api | `8080` |
 | `PUBLIC_URL` | endereço onde as pessoas abrem o sistema, usado nos links enviados por e-mail e como único endereço aceito nas requisições com cookie que mudam dado | **obrigatória** |
 | `MAIL_HOST` | servidor smtp. sem ele o e-mail não sai e o log mostra só o destinatário e o assunto | vazio |
-| `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova. só para desenvolvimento | `false` |
+| `EMAIL_LOG_TEXT` | `true` mostra no log o texto inteiro do e-mail, com o link de senha nova e o de confirmação do e-mail novo. só para desenvolvimento | `false` |
 | `MAIL_PORT` | porta do servidor smtp | `587` |
 | `MAIL_USERNAME` e `MAIL_PASSWORD` | conta que autentica no servidor smtp | vazio |
 | `MAIL_FROM` | remetente dos e-mails. com `MAIL_HOST` preenchido e os dois vazios a api não sobe | o `MAIL_USERNAME` |
@@ -90,7 +90,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 - depois de 5 senhas erradas do mesmo e-mail a partir do mesmo endereço, as tentativas desse e-mail vindas dali ficam bloqueadas por 15 minutos, mesmo com a senha certa. 20 erros de um endereço, somando e-mails diferentes, bloqueiam o endereço inteiro
 - o bloqueio não fica na conta: quem erra a senha de outra pessoa não trava o login dela de outro lugar. a exceção é o ataque distribuído: 100 erros no mesmo e-mail, somando todos os endereços, bloqueiam aquele e-mail por 15 minutos em qualquer lugar. e-mail sem cadastro é bloqueado do mesmo jeito, então a resposta não revela quem tem conta, e o link de senha nova libera o e-mail na hora
 - a mesma contagem vale para toda rota que confere senha: trocar a senha, trocar o e-mail e o link de senha nova gerado pelo administrador. sessão esquecida aberta não vira chute livre da senha atual
-- trocar o e-mail para um que já tem conta responde `409`, e 5 dessas respostas bloqueiam a troca por 15 minutos, senão um paciente logado descobriria quem é da clínica
+- trocar o e-mail de acesso não troca nada na hora: a api guarda o pedido, avisa o e-mail antigo e manda um link para o novo, e o e-mail só muda quando esse link é aberto. a resposta é a mesma exista ou não conta com o endereço novo (nesse caso o link só não sai), então um paciente logado não descobre quem é da clínica. 5 pedidos em 15 minutos bloqueiam o sexto
 - o cadastro com e-mail ou CPF que já tem conta responde `400` com uma mensagem só, sem dizer qual dos dois, e o convite continua valendo para os dados certos. 5 tentativas no mesmo convite, ou 20 recusas do mesmo endereço, bloqueiam o cadastro por 15 minutos. a mensagem genérica sozinha não esconde tudo: uma tentativa com o CPF de alguém ainda diz se ele tem conta, e o que segura é o convite ser pessoal e a contagem
 - a conta administrativa não troca de e-mail pelo perfil, porque o e-mail dela é o `ADMIN_EMAIL` do servidor: trocando por fora, a subida seguinte criaria outra conta com a senha inicial
 - a senha vai de 8 a 64 caracteres e precisa caber em 72 bytes, que é o limite do bcrypt. letra com acento e emoji ocupam mais de um byte, e a senha que não cabe é recusada com mensagem no próprio campo
@@ -132,7 +132,7 @@ o link de senha nova é a saída para o prescritor que esqueceu a senha antes de
 | :--- | :--- |
 | `GET /profile` | dados da própria conta |
 | `PUT /profile` | nome, data de nascimento, telefone e endereço |
-| `PUT /profile/email` | troca o e-mail de acesso pedindo a senha atual |
+| `PUT /profile/email` | pede a troca do e-mail de acesso, com a senha atual. devolve o perfil com o endereço novo em `pendingEmail`; o e-mail só muda quando o link enviado para ele é aberto (`POST /auth/email-change/confirm`) |
 | `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
 
@@ -144,8 +144,11 @@ as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perf
 | :--- | :--- |
 | `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma |
 | `POST /auth/password-reset/confirm` | grava a senha nova. o link vale uma vez, por 30 minutos, e as sessões abertas caem |
+| `POST /auth/email-change/confirm` | confirma o e-mail de acesso novo pelo link que chegou nele, sem login. o link vale uma vez, por 30 minutos; na confirmação o e-mail muda, as sessões abertas caem, o link de senha nova que tiver ido para o endereço antigo deixa de valer e o endereço antigo recebe um aviso |
 
 cada conta recebe no máximo 3 links por hora e um link novo cancela os anteriores. o pedido também conta por endereço, exista ou não a conta: depois de 10 pedidos em 15 minutos o endereço recebe `429`. o e-mail sai depois da resposta, em segundo plano, para a espera pelo servidor de e-mail não denunciar que a conta existe. sobra uma diferença de poucos milissegundos de banco entre os dois caminhos, que o limite por endereço torna difícil de medir. o e-mail sai pelo servidor configurado em `MAIL_HOST`. sem ele, o e-mail não sai: o log mostra só o destinatário e o assunto, e o texto com o link só aparece com `EMAIL_LOG_TEXT=true`, que a api local com banco em memória já liga.
+
+a troca do e-mail de acesso segue o mesmo desenho: o pedido guarda o endereço novo com o hash do código, um pedido novo cancela o anterior, trocar a senha (pelo perfil ou pelo link de senha nova) também cancela, e o endereço só vira o e-mail da conta quando o link é aberto e o endereço ainda está livre. sem `MAIL_HOST` o link de confirmação vai só para o log, igual ao de senha nova: a troca nunca é direta, porque é o link que prova que a pessoa recebe e-mail naquele endereço.
 
 ## convite de paciente
 
@@ -334,8 +337,8 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `404` | registro ou rota que não existe. a mensagem é genérica: o detalhe com o id vai para o log, não para a tela |
 | `405` | método http que a rota não aceita |
 | `415` | corpo enviado num formato que a rota não aceita. a api só recebe json |
-| `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors`. o cadastro do paciente não usa: responde `400` sem dizer o campo |
-| `429` | senha errada demais no login, na troca de senha ou de e-mail, pedidos demais de link de senha nova ou cadastro recusado vezes demais |
+| `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors`, só nas rotas da administração. o cadastro do paciente e a troca do e-mail de acesso não usam: um responde `400` sem dizer o campo e o outro responde igual exista ou não a conta |
+| `429` | senha errada demais no login, na troca de senha ou de e-mail, pedidos demais de troca de e-mail ou de link de senha nova, ou cadastro recusado vezes demais |
 | `500` | erro inesperado, registrado no log |
 
 `GET /health` responde se a api e o banco estão de pé. é o que o docker usa.

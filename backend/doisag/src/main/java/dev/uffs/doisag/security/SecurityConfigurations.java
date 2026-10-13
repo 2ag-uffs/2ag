@@ -47,6 +47,8 @@ public class SecurityConfigurations {
                     // quem esqueceu a senha ainda n tem sessao
                     routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/request").permitAll();
                     routes.requestMatchers(HttpMethod.POST, "/auth/password-reset/confirm").permitAll();
+                    // o link de confirmacao do e-mail novo eh aberto sem sessao, em qualquer aparelho
+                    routes.requestMatchers(HttpMethod.POST, "/auth/email-change/confirm").permitAll();
                     // a tela de cadastro confere o convite antes de a pessoa ter conta
                     routes.requestMatchers(HttpMethod.POST, "/invites/lookup").permitAll();
                     // o termo de consentimento eh lido antes de a pessoa ter conta

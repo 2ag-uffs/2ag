@@ -50,6 +50,11 @@ const routes = [
                 lazy: lazyPage(() => import("../pages/reset-password/reset-password.jsx")),
             },
             {
+                // sem o desvio de quem esta logado: a pessoa pode confirmar no mesmo navegador do perfil
+                path: "/confirmar-email",
+                lazy: lazyPage(() => import("../pages/confirm-email/confirm-email.jsx")),
+            },
+            {
                 // daqui pra baixo so entra quem esta logado e todas as telas usam o mesmo layout
                 loader: requireRole(),
                 element: <AppLayout/>,

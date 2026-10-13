@@ -36,7 +36,7 @@ cp .env.example .env
 - `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema. vai nos links enviados por e-mail
-- `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
+- `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova e o link que confirma a troca do e-mail de acesso. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
 
 sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. o link de primeiro acesso de uma conta nova de prescritor funciona igual: sem e-mail, aparece na tela. para a senha do administrador não existe essa saída — ele troca em *Perfil* enquanto lembra a atual, e se esquecer só com `MAIL_HOST`.
 
