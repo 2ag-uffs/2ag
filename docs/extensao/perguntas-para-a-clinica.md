@@ -130,7 +130,7 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a data de cada aceite. O texto atual é um **rascunho técnico** e precisa ser revisado e aprovado pela clínica, de preferência com apoio jurídico, antes de qualquer paciente real.
 
-**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra.
+**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra. Desde 14/10/2026 o sistema já tem esse consentimento (RF37): opcional, aceito no cadastro ou no perfil e retirado no perfil, e a exportação anônima só sai de quem aceitou. O texto dele é um rascunho até o projeto passar no comitê de ética.
 
 **Perguntar:**
 

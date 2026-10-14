@@ -2,6 +2,7 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.EmailChangeDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
+import dev.uffs.doisag.dto.ResearchConsentDTO;
 import dev.uffs.doisag.email.BackgroundEmailSender;
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.infra.BusinessException;
@@ -11,6 +12,7 @@ import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.EmailChange;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.EmailChangeRepository;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -51,12 +53,14 @@ public class EmailChangeService {
     private final BackgroundEmailSender backgroundEmailSender;
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
+    private final ConsentTermService consentTermService;
     private final String publicUrl;
 
     public EmailChangeService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository,
                               PasswordEncoder passwordEncoder, LoginAttemptLimiter loginAttemptLimiter,
                               BackgroundEmailSender backgroundEmailSender, PasswordResetService passwordResetService,
-                              AuditService auditService, @Value("${api.public-url}") String publicUrl) {
+                              AuditService auditService, ConsentTermService consentTermService,
+                              @Value("${api.public-url}") String publicUrl) {
         this.usersRepository = usersRepository;
         this.emailChangeRepository = emailChangeRepository;
         this.passwordEncoder = passwordEncoder;
@@ -64,6 +68,7 @@ public class EmailChangeService {
         this.backgroundEmailSender = backgroundEmailSender;
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
+        this.consentTermService = consentTermService;
         // tira a barra do fim pra o link n sair com barra dupla
         if (publicUrl.endsWith("/")) {
             publicUrl = publicUrl.substring(0, publicUrl.length() - 1);
@@ -114,7 +119,11 @@ public class EmailChangeService {
         if (addressIsFree) {
             backgroundEmailSender.sendLater(linkMessage(user, newEmail, token), userId);
         }
-        return ProfileDTO.from(user, newEmail);
+        ResearchConsentDTO researchConsent = null;
+        if (user instanceof Patient) {
+            researchConsent = consentTermService.researchConsentOf(userId);
+        }
+        return ProfileDTO.from(user, newEmail, researchConsent);
     }
 
     // o link foi aberto no endereco novo: o e-mail muda, o link de senha nova q foi pro endereco

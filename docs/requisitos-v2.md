@@ -767,6 +767,8 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 **Responsável ou cuidador em 14/10/2026 (RF38):** nome, parentesco e telefone, todos opcionais, informados pelo próprio paciente no cadastro e no perfil. Aparecem só no cabeçalho do prontuário, para o prescritor do paciente, com link para ligar, e não saem na lista de pacientes nem em nenhuma exportação. O termo de consentimento passou a citar esse dado. Login do cuidador, lembrete para ele e aceite do termo por responsável de criança esperam a seção 11 de `docs/extensao/perguntas-para-a-clinica.md`.
 
+**Consentimento de pesquisa em 14/10/2026 (RF37):** separado do termo do cadastro, opcional e revogável. O paciente aceita no cadastro ou no perfil e retira no perfil quando quiser; cada aceite guarda a versão e a data, e a retirada fica marcada sem apagar o registro. Só vale o aceite da versão atual do texto: se o texto mudar, quem quiser continuar participando aceita de novo. A exportação anônima, que é a de pesquisa, só sai de quem tem o consentimento valendo. O texto ainda é um rascunho e espera o projeto aprovado no comitê de ética (seção 9 de `docs/extensao/perguntas-para-a-clinica.md`).
+
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.

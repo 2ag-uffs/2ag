@@ -1,7 +1,10 @@
 package dev.uffs.doisag.model;
 
+import dev.uffs.doisag.enums.ConsentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,7 +15,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
-// registro de q a pessoa aceitou uma versao do termo de consentimento (RF36)
+// registro de q a pessoa aceitou uma versao do termo do cadastro (RF36) ou do de pesquisa (RF37)
 @Entity
 @Table(name = "consent_acceptance")
 public class ConsentAcceptance {
@@ -30,6 +33,13 @@ public class ConsentAcceptance {
 
     @Column(nullable = false)
     private LocalDateTime acceptedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ConsentType termType = ConsentType.REGISTRATION;
+
+    // so a pesquisa pode ser retirada, o do cadastro fica valendo enqnt a conta existir
+    private LocalDateTime revokedAt;
 
     public Long getId() {
         return id;
@@ -57,5 +67,21 @@ public class ConsentAcceptance {
 
     public void setAcceptedAt(LocalDateTime acceptedAt) {
         this.acceptedAt = acceptedAt;
+    }
+
+    public ConsentType getTermType() {
+        return termType;
+    }
+
+    public void setTermType(ConsentType termType) {
+        this.termType = termType;
+    }
+
+    public LocalDateTime getRevokedAt() {
+        return revokedAt;
+    }
+
+    public void setRevokedAt(LocalDateTime revokedAt) {
+        this.revokedAt = revokedAt;
     }
 }

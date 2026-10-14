@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
-import {FiBell, FiLock, FiMail, FiUser} from "react-icons/fi";
+import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import Modal from "../../components/modal/modal.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import SelectField from "../../components/form/select-field.jsx";
@@ -10,6 +11,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
+import {formatDate} from "../../utils/date-format.js";
 import {guardianBody, guardianFieldsFrom} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./profile.module.css";
@@ -492,6 +494,95 @@ function EmailPreferenceCard({profile, onSaved}) {
     );
 }
 
+// consentimento de pesquisa, opcional e q pode ser retirado a qq hora (RF37)
+function ResearchCard({profile, onChanged}) {
+    const [term, setTerm] = useState(null);
+    const [isTermOpen, setIsTermOpen] = useState(false);
+    const [message, setMessage] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const consent = profile.researchConsent;
+
+    const openTerm = async () => {
+        setMessage(null);
+        try {
+            setTerm(await apiService.get("/consent-term/research"));
+            setIsTermOpen(true);
+        } catch (requestError) {
+            setMessage({isError: true, text: readRequestError(requestError).message || CONNECTION_ERROR});
+        }
+    };
+
+    const saveChoice = async (path, body, successText) => {
+        setIsSaving(true);
+        setMessage(null);
+        try {
+            const savedConsent = await apiService.post(path, body);
+            onChanged(savedConsent);
+            setIsTermOpen(false);
+            setMessage({isError: false, text: successText});
+            return true;
+        } catch (requestError) {
+            setMessage({isError: true, text: readRequestError(requestError).message || CONNECTION_ERROR});
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const accept = async () => {
+        const isSaved = await saveChoice("/consent-term/research/accept", {termVersion: term.version},
+            "Obrigado. Você aceitou participar da pesquisa.");
+        if (isSaved) {
+            return;
+        }
+        // se o texto mudou com o modal aberto a versao nova aparece pra ler de novo
+        try {
+            setTerm(await apiService.get("/consent-term/research"));
+        } catch {
+            // o erro do aceite ja esta na tela
+        }
+    };
+    const revoke = () => saveChoice("/consent-term/research/revoke", undefined,
+        "Consentimento retirado. Seus dados não entram em novas exportações para pesquisa.");
+
+    let statusText = "Você não participa da pesquisa. Participar é opcional e não muda o seu atendimento.";
+    if (consent.active) {
+        statusText = "Você aceitou participar da pesquisa em " + formatDate(consent.acceptedAt)
+            + ". Pode retirar quando quiser.";
+    } else if (consent.termChanged) {
+        statusText = "O termo de pesquisa mudou desde o seu aceite. Para continuar participando, leia e aceite a versão nova.";
+    }
+
+    return (
+        <Card title={cardTitle(FiBookOpen, "Pesquisa")}>
+            <p className={styles.cardText}>{statusText}</p>
+            {!isTermOpen && <CardMessage message={message}/>}
+            <div className={styles.actions}>
+                <button type="button" className="button-secondary" onClick={openTerm} disabled={isSaving}>
+                    {consent.active ? "Ler o termo" : "Ler o termo e decidir"}
+                </button>
+                {consent.active && (
+                    <button type="button" className="button-danger" onClick={revoke} disabled={isSaving}>
+                        {isSaving ? "Salvando..." : "Retirar consentimento"}
+                    </button>
+                )}
+            </div>
+
+            <Modal show={isTermOpen} title="Termo de pesquisa" onClickClose={() => setIsTermOpen(false)}>
+                <div className={styles.termText}>{term && term.text}</div>
+                <CardMessage message={message}/>
+                {!consent.active && (
+                    <div className={styles.actions}>
+                        <button type="button" className="button" onClick={accept} disabled={isSaving}>
+                            {isSaving ? "Salvando..." : "Aceito participar"}
+                        </button>
+                    </div>
+                )}
+            </Modal>
+        </Card>
+    );
+}
+
 // perfil da propria conta (RF18)
 export default function Profile() {
     const [profile, setProfile] = useState(null);
@@ -524,6 +615,10 @@ export default function Profile() {
         if (loggedUser) {
             setLoggedUser({...loggedUser, name: savedProfile.name});
         }
+    };
+
+    const handleResearchChanged = (researchConsent) => {
+        setProfile((currentProfile) => ({...currentProfile, researchConsent: researchConsent}));
     };
 
     // trocar a senha cancela o pedido de e-mail novo, entao o endereco esperando sai da tela
@@ -562,6 +657,7 @@ export default function Profile() {
                     {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
                     <PasswordCard onPasswordChanged={handlePasswordChanged}/>
                     {!isAdmin && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
+                    {profile.researchConsent && <ResearchCard profile={profile} onChanged={handleResearchChanged}/>}
                 </div>
             </div>
         </section>

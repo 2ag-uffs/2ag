@@ -2,6 +2,7 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Appointment;
@@ -17,6 +18,8 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ConsentTermService;
+import dev.uffs.doisag.service.ExportService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +37,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // exportacao em csv (RF33)
@@ -56,6 +60,7 @@ class ExportTest {
     @Autowired private AnamnesisRepository anamnesisRepository;
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private ConsentTermService consentTermService;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -75,6 +80,8 @@ class ExportTest {
         patient.setBirthDate(LocalDate.of(1990, 1, 1));
         patient.setPrescriber(prescriber);
         patient = patientRepository.save(patient);
+        // o arquivo anonimo eh o de pesquisa e so sai de quem aceitou (RF37)
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
@@ -154,6 +161,35 @@ class ExportTest {
         assertThat(csv).contains("prescritor " + prescriber.getId());
         assertThat(csv).doesNotContain("Dra. Exportação");
         assertThat(csv).doesNotContain("export-prescritora@email.com");
+    }
+
+    @Test
+    void anonymousFileNeedsTheResearchConsent() throws Exception {
+        consentTermService.revokeResearch(patient);
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("anonymous", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ExportService.NO_RESEARCH_CONSENT_MESSAGE));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/progress.csv")
+                        .param("attribute", "DOR").param("period", "DIAS_30").param("anonymous", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest());
+
+        // o arquivo com nome continua saindo pro prescritor do paciente
+        assertThat(download("appointments.csv", "", prescriber)).contains("Paciente da exportação");
+    }
+
+    @Test
+    void consentToAnOlderResearchTextDoesNotCount() throws Exception {
+        consentTermService.revokeResearch(patient);
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, "2025-01-texto-antigo");
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/scales.csv")
+                        .param("anonymous", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

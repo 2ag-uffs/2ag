@@ -386,6 +386,7 @@ export default function HistoricoClinicoPrescritor() {
                     patientId={patientId}
                     printPath={"/paciente/" + patientId + "/impressao"}
                     canAnonymize={true}
+                    hasResearchConsent={Boolean(patient.researchConsent)}
                     onClose={() => setIsExportOpen(false)}
                 />
             )}

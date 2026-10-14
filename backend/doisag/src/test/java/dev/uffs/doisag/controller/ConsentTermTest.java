@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.PendingTermException;
 import dev.uffs.doisag.model.Address;
 import dev.uffs.doisag.model.Patient;
@@ -32,7 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// termo de consentimento do cadastro (RF36) e o aceite de novo qnd a versao muda (#58)
+// termo de consentimento do cadastro (RF36), o aceite de novo qnd a versao muda (#58)
+// e o consentimento de pesquisa separado (RF37)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -176,6 +178,108 @@ class ConsentTermTest {
                         .content("{\"termVersion\":\"2026-01-versao-antiga\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
+    }
+
+    // conta so com o aceite de pesquisa n fica presa no aceite do termo do cadastro
+    @Test
+    void researchConsentAloneDoesNotBlockThePatient() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
+
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.termPending").value(false));
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROFILE_JSON))
+                .andExpect(status().isOk());
+    }
+
+    // o aceite de pesquisa n conta como aceite do termo do cadastro, nem com a msm versao no texto
+    @Test
+    void researchConsentDoesNotSatisfyTheRegistrationTerm() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.CURRENT_VERSION);
+
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.termPending").value(true));
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .filteredOn(acceptance -> acceptance.getTermType() == ConsentType.REGISTRATION)
+                .extracting("termVersion")
+                .containsExactlyInAnyOrder("2026-01-versao-antiga", ConsentTermService.CURRENT_VERSION);
+    }
+
+    @Test
+    void anyoneCanReadTheResearchTermBeforeHavingAnAccount() throws Exception {
+        mockMvc.perform(get("/consent-term/research"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(ConsentTermService.RESEARCH_VERSION))
+                .andExpect(jsonPath("$.text").value(containsString("opcional")));
+    }
+
+    @Test
+    void patientAcceptsAndRevokesTheResearchAndTheHistoryStays() throws Exception {
+        String body = "{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}";
+
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true))
+                .andExpect(jsonPath("$.acceptedAt").exists());
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.researchConsent").value(true));
+
+        mockMvc.perform(post("/consent-term/research/revoke").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.researchConsent").value(false));
+        mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.researchConsent.active").value(false))
+                .andExpect(jsonPath("$.researchConsent.termChanged").value(false));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .singleElement()
+                .satisfies(acceptance -> {
+                    assertThat(acceptance.getTermType()).isEqualTo(ConsentType.RESEARCH);
+                    assertThat(acceptance.getRevokedAt()).isNotNull();
+                });
+    }
+
+    @Test
+    void researchTextThatChangedAsksAgain() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, "2025-01-texto-antigo");
+
+        mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.researchConsent.active").value(false))
+                .andExpect(jsonPath("$.researchConsent.termChanged").value(true));
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"2025-01-texto-antigo\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsentTermService.OUTDATED_RESEARCH_MESSAGE));
+    }
+
+    @Test
+    void onlyPatientsUseTheResearchConsent() throws Exception {
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/consent-term/research/revoke").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.researchConsent").doesNotExist());
     }
 
     @Test

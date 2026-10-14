@@ -358,8 +358,10 @@ export default function Progresso() {
         </Link>
     ) : null;
 
-    // so o prescritor pode pedir o arquivo anonimo, pro paciente a api responde erro
+    // so o prescritor pode pedir o arquivo anonimo
+    // a escolha vai sempre, assim sem o aceite de pesquisa a api recusa e n sai o arquivo com nome (RF37)
     const anonymousParam = isPrescriber && isAnonymous ? "&anonymous=true" : "";
+    const lacksResearchConsent = Boolean(isPrescriber && currentPatient && !currentPatient.researchConsent);
     // pela api, senao sessao vencida salvava um csv com o json do erro dentro
     const downloadCsv = async () => {
         setDownloadError(null);
@@ -465,6 +467,11 @@ export default function Progresso() {
                             />
                             Baixar o CSV sem o nome do paciente
                         </label>
+                    )}
+                    {isPrescriber && chartRows.length > 0 && lacksResearchConsent && (
+                        <p className={styles.checkHint}>
+                            O paciente não aceitou participar da pesquisa, então o CSV sem o nome não sai.
+                        </p>
                     )}
                 </div>
             </div>

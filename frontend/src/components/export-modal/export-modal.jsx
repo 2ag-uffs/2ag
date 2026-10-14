@@ -16,7 +16,8 @@ const FILES = [
 //
 // o csv abre direto na planilha e a versao para impressao serve pra
 // salvar em pdf pelo proprio navegador
-export default function ExportModal({patientId, printPath, canAnonymize, onClose}) {
+// o modo anonimo eh o de pesquisa e so sai de quem aceitou participar (RF37)
+export default function ExportModal({patientId, printPath, canAnonymize, hasResearchConsent, onClose}) {
     const navigate = useNavigate();
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
@@ -27,7 +28,8 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
         setDownloadError(null);
         setDownloadingFile(file);
         try {
-            await download("/patients/" + patientId + "/export/" + file + (isAnonymous ? "?anonymous=true" : ""), file);
+            const anonymousParam = isAnonymous && hasResearchConsent ? "?anonymous=true" : "";
+            await download("/patients/" + patientId + "/export/" + file + anonymousParam, file);
         } catch (requestError) {
             setDownloadError(requestError instanceof ApiError
                 ? requestError.message
@@ -49,14 +51,19 @@ export default function ExportModal({patientId, printPath, canAnonymize, onClose
                     <label className={styles.anonymous}>
                         <input
                             type="checkbox"
-                            checked={isAnonymous}
+                            checked={isAnonymous && hasResearchConsent}
                             onChange={(event) => setIsAnonymous(event.target.checked)}
+                            disabled={!hasResearchConsent}
                         />
                         <span>
                             Modo anônimo, para pesquisa
                             <span className={styles.help}>
-                                Sai sem nome, CPF, e-mail, telefone e endereço. O paciente e o prescritor aparecem só por um número.
-                                Texto livre, como queixa e observação, sai como foi escrito e pode citar nomes.
+                                {hasResearchConsent
+                                    ? "Sai sem nome, CPF, e-mail, telefone e endereço. O paciente e o prescritor "
+                                        + "aparecem só por um número. Texto livre, como queixa e observação, sai como "
+                                        + "foi escrito e pode citar nomes."
+                                    : "O paciente não aceitou participar da pesquisa, então o arquivo anônimo não sai. "
+                                        + "Ele pode aceitar no perfil dele."}
                             </span>
                         </span>
                     </label>

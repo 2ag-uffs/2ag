@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
+import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
@@ -68,7 +69,7 @@ public class PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
         auditService.recordChartView(patient.getId());
-        return PatientResponseDTO.withGuardian(patient);
+        return PatientResponseDTO.forChart(patient, consentTermService.hasResearchConsent(patient.getId()));
     }
 
     // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
@@ -98,6 +99,11 @@ public class PatientService {
             throw new BusinessException(OUTDATED_TERM_MESSAGE);
         }
         GuardianDTO.checkName(registerData.guardian());
+        boolean acceptsResearch = registerData.researchTermVersion() != null
+                && !registerData.researchTermVersion().isBlank();
+        if (acceptsResearch && !ConsentTermService.RESEARCH_VERSION.equals(registerData.researchTermVersion())) {
+            throw new BusinessException(ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
+        }
 
         String inviteHash = SecureTokens.hashToken(registerData.inviteToken());
         if (loginAttemptLimiter.isSignUpBlocked(inviteHash, clientAddress)) {
@@ -136,6 +142,10 @@ public class PatientService {
 
         patientInviteService.markAsUsed(invite, savedPatient);
         consentTermService.registerAcceptance(savedPatient, registerData.consentTermVersion());
+        if (acceptsResearch) {
+            consentTermService.registerAcceptance(savedPatient, ConsentType.RESEARCH,
+                    registerData.researchTermVersion());
+        }
 
         notificationService.createNotification(prescriber, "Novo paciente vinculado",
                 savedPatient.getName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");

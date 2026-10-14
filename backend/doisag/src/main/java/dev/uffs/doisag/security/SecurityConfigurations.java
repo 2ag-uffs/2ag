@@ -53,6 +53,7 @@ public class SecurityConfigurations {
                     routes.requestMatchers(HttpMethod.POST, "/invites/lookup").permitAll();
                     // o termo de consentimento eh lido antes de a pessoa ter conta
                     routes.requestMatchers(HttpMethod.GET, "/consent-term").permitAll();
+                    routes.requestMatchers(HttpMethod.GET, "/consent-term/research").permitAll();
                     // verificacao de saude usada pelo docker
                     routes.requestMatchers(HttpMethod.GET, "/health").permitAll();
                     // o administrador so entra na administracao e nos dados da propria conta

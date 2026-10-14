@@ -1,6 +1,7 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
@@ -140,6 +141,32 @@ class PatientSignUpTest {
         assertThat(patient.getGuardianName()).isEqualTo("Joana Souza");
         assertThat(patient.getGuardianRelationship()).isNull();
         assertThat(patient.getGuardianPhone()).isEqualTo("49988776655");
+    }
+
+    @Test
+    void signUpCanAlsoAcceptTheResearch() throws Exception {
+        String body = signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD)
+                .replace("\"address\":", "\"researchTermVersion\":\"" + ConsentTermService.RESEARCH_VERSION
+                        + "\",\"address\":");
+
+        signUp(body).andExpect(status().isCreated());
+
+        Patient patient = (Patient) usersRepository.findByEmail("maria.silva@email.com").orElseThrow();
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termType")
+                .containsExactlyInAnyOrder(ConsentType.REGISTRATION, ConsentType.RESEARCH);
+    }
+
+    @Test
+    void outdatedResearchTextIsRefusedBeforeTheAccountExists() throws Exception {
+        String body = signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD)
+                .replace("\"address\":", "\"researchTermVersion\":\"2025-01-texto-antigo\",\"address\":");
+
+        signUp(body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsentTermService.OUTDATED_RESEARCH_MESSAGE));
+
+        assertThat(usersRepository.findByEmail("maria.silva@email.com")).isEmpty();
     }
 
     @Test

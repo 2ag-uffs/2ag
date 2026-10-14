@@ -96,8 +96,18 @@
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
 
+/* texto do termo de pesquisa dentro do modal */
+.termText {
+    line-height: var(--leading-normal);
+    max-height: 55svh;
+    overflow-y: auto;
+    white-space: pre-line;
+}
+
 .actions {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     justify-content: flex-end;
 }
 

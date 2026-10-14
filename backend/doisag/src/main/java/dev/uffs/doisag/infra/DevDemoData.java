@@ -19,6 +19,7 @@ import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
+import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.enums.Spectrum;
@@ -33,6 +34,7 @@ import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.service.AnamnesisService;
 import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.AvailabilityService;
+import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.ConsultationService;
 import dev.uffs.doisag.service.PatientArchiveService;
 import dev.uffs.doisag.service.PrescriberService;
@@ -98,6 +100,7 @@ public class DevDemoData {
     private final AppointmentService appointmentService;
     private final PatientArchiveService patientArchiveService;
     private final PrescriberService prescriberService;
+    private final ConsentTermService consentTermService;
 
     public DevDemoData(UsersRepository usersRepository, PatientRepository patientRepository,
                        NotificationRepository notificationRepository, PasswordEncoder passwordEncoder,
@@ -105,7 +108,8 @@ public class DevDemoData {
                        PrescriptionService prescriptionService, AnamnesisService anamnesisService,
                        ScaleResponseService scaleResponseService, ScaleTaskService scaleTaskService,
                        TreatmentProtocolService treatmentProtocolService, AppointmentService appointmentService,
-                       PatientArchiveService patientArchiveService, PrescriberService prescriberService) {
+                       PatientArchiveService patientArchiveService, PrescriberService prescriberService,
+                       ConsentTermService consentTermService) {
         this.usersRepository = usersRepository;
         this.patientRepository = patientRepository;
         this.notificationRepository = notificationRepository;
@@ -120,6 +124,7 @@ public class DevDemoData {
         this.appointmentService = appointmentService;
         this.patientArchiveService = patientArchiveService;
         this.prescriberService = prescriberService;
+        this.consentTermService = consentTermService;
     }
 
     public void create(Prescriber prescriber, Patient maria, String password) {
@@ -143,6 +148,8 @@ public class DevDemoData {
             renata.setGuardianRelationship("filho");
             renata.setGuardianPhone("49981234567");
             renata = patientRepository.save(renata);
+            // o joao aceitou a pesquisa, assim da pra testar a exportacao anonima
+            consentTermService.registerAcceptance(joao, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
             Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
                     LocalDate.of(1983, 7, 30), "49993456789",
                     new Address("Rua Marechal Deodoro", "88", "Xaxim", "SC", "Brasil"), prescriber, password);

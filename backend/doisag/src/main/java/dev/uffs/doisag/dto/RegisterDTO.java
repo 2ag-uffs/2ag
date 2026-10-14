@@ -53,6 +53,9 @@ public record RegisterDTO(
         @NotBlank(message = "Para criar a conta, leia e aceite o termo de consentimento")
         String consentTermVersion,
 
+        // versao do termo de pesquisa qnd a pessoa marcou q aceita participar, opcional (RF37)
+        String researchTermVersion,
+
         // campo escondido na tela, pessoa n ve e robo preenche
         String site
 ) {

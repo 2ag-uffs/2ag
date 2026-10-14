@@ -105,6 +105,6 @@ class ApiDocsTest {
         }
         // as abertas de proposito sao so essas
         List<String> publicRoutes = JsonPath.read(docs, "$.paths.*.*[?(@.summary == 'sem login')]");
-        assertThat(publicRoutes).hasSize(9);
+        assertThat(publicRoutes).hasSize(10);
     }
 }

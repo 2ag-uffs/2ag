@@ -170,6 +170,9 @@ o banco guarda só o hash do código que vai no link, então a lista não mostra
 | :--- | :--- |
 | `GET /consent-term` | rota pública com a versão e o texto do termo que o cadastro pede |
 | `POST /consent-term/accept` | o paciente que aceitou uma versão antiga aceita a atual (`termVersion` no corpo) e recebe de volta os dados da sessão |
+| `GET /consent-term/research` | rota pública com a versão e o texto do consentimento de pesquisa, que é opcional |
+| `POST /consent-term/research/accept` | o paciente aceita participar da pesquisa (`termVersion` no corpo) |
+| `POST /consent-term/research/revoke` | o paciente retira o consentimento de pesquisa. a linha fica com a data da retirada |
 
 o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. `[NOME DA CLÍNICA]` e `[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]` saem de `CLINIC_NAME` e `CLINIC_DPO_CONTACT`; vazias, a api sobe com os colchetes no texto e avisa no log. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data. o paciente cujo último aceite é de uma versão antiga recebe `termPending: true` no login e no `GET /auth/me`, e até aceitar a nova a api só deixa ele ler: qualquer outra requisição que grava, fora `/auth` e `/consent-term`, responde 403 com o cabeçalho `X-Term-Pending: true`, e o front abre o termo por cima da tela sem perder o que já foi preenchido.
 
@@ -260,7 +263,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
 | `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
 
-- todas aceitam `anonymous=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo. texto livre, como queixa e observação, sai como foi escrito
+- todas aceitam `anonymous=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria

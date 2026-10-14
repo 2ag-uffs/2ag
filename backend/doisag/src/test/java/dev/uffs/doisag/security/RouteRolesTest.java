@@ -68,6 +68,7 @@ class RouteRolesTest {
             "POST /auth/email-change/confirm",
             "POST /invites/lookup",
             "GET /consent-term",
+            "GET /consent-term/research",
             "GET /health"
     );
 

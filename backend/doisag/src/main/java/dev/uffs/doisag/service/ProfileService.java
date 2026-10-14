@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.EmailPreferenceDTO;
 import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
+import dev.uffs.doisag.dto.ResearchConsentDTO;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -23,10 +24,13 @@ public class ProfileService {
 
     private final UsersRepository usersRepository;
     private final EmailChangeRepository emailChangeRepository;
+    private final ConsentTermService consentTermService;
 
-    public ProfileService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository) {
+    public ProfileService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository,
+                          ConsentTermService consentTermService) {
         this.usersRepository = usersRepository;
         this.emailChangeRepository = emailChangeRepository;
+        this.consentTermService = consentTermService;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +72,11 @@ public class ProfileService {
     // o endereco q esta esperando confirmacao aparece no perfil ate o link ser aberto ou vencer
     private ProfileDTO profileOf(Users user) {
         List<String> pendingEmails = emailChangeRepository.findPendingEmails(user.getId(), LocalDateTime.now());
-        return ProfileDTO.from(user, pendingEmails.isEmpty() ? null : pendingEmails.get(0));
+        ResearchConsentDTO researchConsent = null;
+        if (user instanceof Patient) {
+            researchConsent = consentTermService.researchConsentOf(user.getId());
+        }
+        return ProfileDTO.from(user, pendingEmails.isEmpty() ? null : pendingEmails.get(0), researchConsent);
     }
 
     // o paciente continua com os dados q o cadastro pediu

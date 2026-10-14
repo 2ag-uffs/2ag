@@ -17,15 +17,17 @@ public record PatientResponseDTO(
         String prescriberName,
         boolean archived,
         LocalDateTime archivedAt,
-        // so no prontuario de um paciente, a lista n leva (RF38)
+        // os dois so vem no prontuario de um paciente, a lista n leva (RF38 e RF37)
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        GuardianDTO guardian
+        GuardianDTO guardian,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        Boolean researchConsent
 ) {
     public PatientResponseDTO(Patient patient) {
-        this(patient, null);
+        this(patient, null, null);
     }
 
-    private PatientResponseDTO(Patient patient, GuardianDTO guardian) {
+    private PatientResponseDTO(Patient patient, GuardianDTO guardian, Boolean researchConsent) {
         this(
                 patient.getId(),
                 patient.getName(),
@@ -34,12 +36,13 @@ public record PatientResponseDTO(
                 prescriberNameOf(patient),
                 patient.isArchived(),
                 patient.getArchivedAt(),
-                guardian
+                guardian,
+                researchConsent
         );
     }
 
-    public static PatientResponseDTO withGuardian(Patient patient) {
-        return new PatientResponseDTO(patient, GuardianDTO.from(patient));
+    public static PatientResponseDTO forChart(Patient patient, boolean researchConsent) {
+        return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent);
     }
 
     // o prescritor pode ser nulo e o campo eh lazy entao separei

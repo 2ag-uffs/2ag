@@ -76,6 +76,10 @@ export default function SignUp() {
     const [consentTerm, setConsentTerm] = useState(null);
     const [hasAcceptedConsent, setHasAcceptedConsent] = useState(false);
     const [isTermOpen, setIsTermOpen] = useState(false);
+    // pesquisa eh opcional e separada do termo do cadastro (RF37)
+    const [researchTerm, setResearchTerm] = useState(null);
+    const [acceptsResearch, setAcceptsResearch] = useState(false);
+    const [isResearchOpen, setIsResearchOpen] = useState(false);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [site, setSite] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
@@ -114,11 +118,13 @@ export default function SignUp() {
         Promise.all([
             apiService.post("/invites/lookup", {token: inviteToken}),
             apiService.get("/consent-term"),
+            apiService.get("/consent-term/research"),
         ])
-            .then(([invite, term]) => {
+            .then(([invite, term, research]) => {
                 if (isCurrentPage) {
                     setInviteInfo(invite);
                     setConsentTerm(term);
+                    setResearchTerm(research);
                     setInviteStatus("valid");
                 }
             })
@@ -184,6 +190,7 @@ export default function SignUp() {
             email: formData.email,
             password: formData.password,
             consentTermVersion: consentTerm.version,
+            researchTermVersion: acceptsResearch ? researchTerm.version : null,
             site: site,
         };
 
@@ -433,6 +440,23 @@ export default function SignUp() {
                     )}
                 </div>
 
+                <label className={styles.researchLabel}>
+                    <input
+                        type="checkbox"
+                        name="researchTermVersion"
+                        className={styles.consentCheckbox}
+                        checked={acceptsResearch}
+                        onChange={(event) => setAcceptsResearch(event.target.checked)}
+                    />
+                    <span>
+                        Aceito participar da pesquisa da clínica com os meus dados sem identificação. É opcional e
+                        não muda o atendimento.{" "}
+                        <button type="button" className={styles.termButton} onClick={() => setIsResearchOpen(true)}>
+                            Ler o termo de pesquisa
+                        </button>
+                    </span>
+                </label>
+
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                     {isSubmitting ? "Criando conta..." : "Criar conta"}
                 </button>
@@ -447,6 +471,22 @@ export default function SignUp() {
                 <div className={styles.termActions}>
                     <button type="button" className={styles.termAcceptButton} onClick={acceptTerm}>
                         Li e aceito
+                    </button>
+                </div>
+            </Modal>
+
+            <Modal show={isResearchOpen} title="Termo de pesquisa" onClickClose={() => setIsResearchOpen(false)}>
+                <div className={styles.termText}>{researchTerm.text}</div>
+                <div className={styles.termActions}>
+                    <button
+                        type="button"
+                        className={styles.termAcceptButton}
+                        onClick={() => {
+                            setAcceptsResearch(true);
+                            setIsResearchOpen(false);
+                        }}
+                    >
+                        Aceito participar
                     </button>
                 </div>
             </Modal>

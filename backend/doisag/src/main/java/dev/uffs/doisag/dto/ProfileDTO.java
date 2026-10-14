@@ -20,6 +20,8 @@ public record ProfileDTO(
         String phone,
         AddressDTO address,
         GuardianDTO guardian,
+        // so pra paciente, nulo nas outras contas (RF37)
+        ResearchConsentDTO researchConsent,
         boolean emailNotificationsEnabled,
         String prescriberName,
         String profession,
@@ -28,7 +30,7 @@ public record ProfileDTO(
 ) {
     // monta o perfil conforme o tipo de conta
     // precisa rodar dentro de uma transacao pq le o prescritor do paciente
-    public static ProfileDTO from(Users user, String pendingEmail) {
+    public static ProfileDTO from(Users user, String pendingEmail, ResearchConsentDTO researchConsent) {
         String prescriberName = null;
         String profession = null;
         String registryType = null;
@@ -63,6 +65,7 @@ public record ProfileDTO(
                 user.getPhone(),
                 address,
                 guardian,
+                researchConsent,
                 user.isEmailNotificationsEnabled(),
                 prescriberName,
                 profession,

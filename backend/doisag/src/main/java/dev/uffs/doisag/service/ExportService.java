@@ -40,6 +40,8 @@ public class ExportService {
 
     public static final String ANONYMOUS_IS_FOR_PRESCRIBER_MESSAGE =
             "O modo anônimo é da exportação do prescritor, para pesquisa";
+    public static final String NO_RESEARCH_CONSENT_MESSAGE =
+            "Este paciente não aceitou participar da pesquisa. O arquivo anônimo só sai de quem aceitou";
 
     // os campos da anamnese com o nome q o paciente leu na tela (RF19)
     private static final List<AnamnesisField> ANAMNESIS_FIELDS = List.of(
@@ -76,6 +78,7 @@ public class ExportService {
     private final ScaleCatalog catalog;
     private final ProgressReportService progressReportService;
     private final AuditService auditService;
+    private final ConsentTermService consentTermService;
 
     public ExportService(PatientRepository patientRepository,
                          AppointmentRepository appointmentRepository,
@@ -84,7 +87,8 @@ public class ExportService {
                          ScaleResponseRepository responseRepository,
                          ScaleCatalog catalog,
                          ProgressReportService progressReportService,
-                         AuditService auditService) {
+                         AuditService auditService,
+                         ConsentTermService consentTermService) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
         this.prescriptionRepository = prescriptionRepository;
@@ -93,6 +97,7 @@ public class ExportService {
         this.catalog = catalog;
         this.progressReportService = progressReportService;
         this.auditService = auditService;
+        this.consentTermService = consentTermService;
     }
 
     @Transactional
@@ -280,6 +285,10 @@ public class ExportService {
     private Patient startExport(Long patientId, boolean anonymous, Users loggedUser) {
         if (anonymous && !(loggedUser instanceof Prescriber)) {
             throw new BusinessException(ANONYMOUS_IS_FOR_PRESCRIBER_MESSAGE);
+        }
+        // o arquivo anonimo eh o de pesquisa e so sai de quem aceitou participar (RF37)
+        if (anonymous && !consentTermService.hasResearchConsent(patientId)) {
+            throw new BusinessException(NO_RESEARCH_CONSENT_MESSAGE);
         }
         auditService.recordChartView(patientId);
         return patientRepository.findById(patientId)
