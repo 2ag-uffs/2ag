@@ -63,6 +63,17 @@ $CURL -D - -o /dev/null "$PUBLIC_URL/" | grep -qi "^strict-transport-security: m
 hsts_count=$($CURL -D - -o /dev/null "$PUBLIC_URL/api/health" | grep -ci "^strict-transport-security:")
 [ "$hsts_count" = "1" ] || { echo "esperava um cabecalho hsts na api, vieram $hsts_count"; exit 1; }
 
+echo "=== cabecalhos de seguranca na pagina, num arquivo do build e na api ==="
+asset=$($CURL "$PUBLIC_URL/" | grep -o '/assets/[^"]*\.js' | head -1)
+[ -n "$asset" ] || { echo "n achei arquivo js do build na pagina inicial"; exit 1; }
+for path in "/" "$asset" "/api/health"; do
+    headers=$($CURL -D - -o /dev/null "$PUBLIC_URL$path")
+    for header in "content-security-policy: default-src 'self'" "cross-origin-opener-policy: same-origin" \
+            "cross-origin-resource-policy: same-origin" "x-frame-options: deny" "x-content-type-options: nosniff"; do
+        echo "$headers" | grep -qi "^$header" || { echo "$path saiu sem $header"; exit 1; }
+    done
+done
+
 echo "=== admin criado na subida ==="
 docker compose logs --no-color api | grep -q "conta administrativa criada" || { echo "o admin n foi criado"; exit 1; }
 
@@ -104,5 +115,18 @@ CONFIRMAR_RESTAURACAO=doisag_teste BACKUP_AGE_KEY=/tmp/chave-do-backup.txt \
 restored=$(docker compose exec -T banco psql --username admindoisag --dbname doisag_teste -tAc \
     "select count(*) from users where email = 'prescritor-ci@email.com'")
 [ "$restored" = "1" ] || { echo "a conta criada antes do backup n apareceu no banco restaurado"; exit 1; }
+
+# fica no fim pq depois disso o login desse endereco fica travado por um minuto
+echo "=== limite do nginx no login pela porta publica ==="
+limited=0
+for attempt in $(seq 1 15); do
+    status=$($CURL -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -H "Origin: $PUBLIC_URL" \
+        -d "{\"email\":\"limite-$attempt@email.com\",\"password\":\"senha-errada\"}" "$PUBLIC_URL/api/auth/login")
+    if [ "$status" = "429" ]; then
+        limited=$((limited + 1))
+    fi
+done
+# e-mail diferente a cada tentativa, entao quem barra eh o nginx e n o limitador da api
+[ "$limited" -gt 0 ] || { echo "15 logins seguidos e nenhum 429: o limit_req do nginx n esta valendo"; exit 1; }
 
 echo "pilha do compose sobe em https e responde de ponta a ponta"
