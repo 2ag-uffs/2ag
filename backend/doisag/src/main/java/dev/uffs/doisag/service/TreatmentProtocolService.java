@@ -15,8 +15,12 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.TreatmentProtocolRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -34,6 +38,8 @@ import java.util.Optional;
 @Service
 public class TreatmentProtocolService {
 
+    private static final Logger log = LoggerFactory.getLogger(TreatmentProtocolService.class);
+
     // o acompanhamento dura 90 dias por padrao (RN01)
     private static final int DURACAO_PADRAO_EM_DIAS = 90;
 
@@ -49,19 +55,22 @@ public class TreatmentProtocolService {
     private final ScaleTaskRepository taskRepository;
     private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
+    private final TransactionTemplate transactionTemplate;
 
     public TreatmentProtocolService(TreatmentProtocolRepository protocolRepository,
                                     PatientRepository patientRepository,
                                     PrescriberRepository prescriberRepository,
                                     ScaleTaskRepository taskRepository,
                                     ScaleTaskService scaleTaskService,
-                                    AuditService auditService) {
+                                    AuditService auditService,
+                                    PlatformTransactionManager transactionManager) {
         this.protocolRepository = protocolRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.taskRepository = taskRepository;
         this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Transactional
@@ -169,28 +178,45 @@ public class TreatmentProtocolService {
 
     // roda uma vez por dia. recebe a data de fora em vez de chamar
     // LocalDate.now() aqui dentro, senao n daria pra testar
-    // tudo numa transacao so pra ler os itens de cada protocolo e gravar a auditoria junto
-    @Transactional
+    // cada protocolo na propria transacao: um com problema n desfaz nem trava o dos outros (#110)
     public int designarEscalasVencidas(LocalDate hoje) {
         int designadas = 0;
-        for (TreatmentProtocol protocol : protocolRepository.findByActiveTrue()) {
-            if (hoje.isBefore(protocol.getStartDate())) {
-                continue;
+        int failures = 0;
+        for (Long protocolId : protocolRepository.findActiveIds()) {
+            try {
+                Integer sent = transactionTemplate.execute(status -> assignDueRound(protocolId, hoje));
+                designadas += sent == null ? 0 : sent;
+            } catch (RuntimeException exception) {
+                failures++;
+                log.error("Tarefas do dia: falha no acompanhamento {}", protocolId, exception);
             }
-            // passou dos 90 dias: encerra e n designa mais nada
-            if (hoje.isAfter(protocol.getEndDate())) {
-                endProtocol(protocol);
-                continue;
-            }
-            // conta desativada n recebe escala nova. se a do paciente for reativada o envio continua
-            Patient patient = protocol.getPatient();
-            Prescriber prescriber = patient.getPrescriber();
-            if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
-                continue;
-            }
-            designadas += designarRodada(protocol, hoje);
+        }
+        // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
+        if (failures > 0) {
+            throw new IllegalStateException(failures + " acompanhamento(s) com falha, "
+                    + designadas + " escalas enviadas nos outros");
         }
         return designadas;
+    }
+
+    private int assignDueRound(Long protocolId, LocalDate hoje) {
+        TreatmentProtocol protocol = protocolRepository.findById(protocolId).orElse(null);
+        // pode ter sido encerrado entre a busca dos ids e agora
+        if (protocol == null || !protocol.isActive() || hoje.isBefore(protocol.getStartDate())) {
+            return 0;
+        }
+        // passou dos 90 dias: encerra e n designa mais nada
+        if (hoje.isAfter(protocol.getEndDate())) {
+            endProtocol(protocol);
+            return 0;
+        }
+        // conta desativada n recebe escala nova. se a do paciente for reativada o envio continua
+        Patient patient = protocol.getPatient();
+        Prescriber prescriber = patient.getPrescriber();
+        if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
+            return 0;
+        }
+        return designarRodada(protocol, hoje);
     }
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram
