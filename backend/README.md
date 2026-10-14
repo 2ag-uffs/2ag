@@ -62,6 +62,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `PASSWORD_RESET_MAX_REQUESTS_PER_ADDRESS` | pedidos de link de senha nova do mesmo endereço antes do bloqueio, que dura o mesmo tempo do login | `10` |
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https. precisa combinar com o esquema do `PUBLIC_URL`: `https` com `false` ou `http` com `true` e a api não sobe | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
+| `CLINIC_NAME` e `CLINIC_DPO_CONTACT` | razão social da clínica e contato do encarregado de dados, que entram no termo de consentimento no lugar dos colchetes | vazias: o termo sai com os colchetes e a api avisa no log |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
@@ -79,9 +80,9 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 
 | rota | o que faz |
 | :--- | :--- |
-| `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role}` |
+| `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role, termPending}` |
 | `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
-| `GET /auth/me` | quem está logado |
+| `GET /auth/me` | quem está logado. `termPending` diz se o paciente precisa aceitar a versão nova do termo |
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
@@ -168,8 +169,9 @@ o banco guarda só o hash do código que vai no link, então a lista não mostra
 | rota | o que faz |
 | :--- | :--- |
 | `GET /consent-term` | rota pública com a versão e o texto do termo que o cadastro pede |
+| `POST /consent-term/accept` | o paciente que aceitou uma versão antiga aceita a atual (`termVersion` no corpo) e recebe de volta os dados da sessão |
 
-o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data.
+o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. `[NOME DA CLÍNICA]` e `[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]` saem de `CLINIC_NAME` e `CLINIC_DPO_CONTACT`; vazias, a api sobe com os colchetes no texto e avisa no log. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data. o paciente cujo último aceite é de uma versão antiga recebe `termPending: true` no login e no `GET /auth/me`, e até aceitar a nova a api só deixa ele ler: qualquer outra requisição que grava, fora `/auth` e `/consent-term`, responde 403 com o cabeçalho `X-Term-Pending: true`, e o front abre o termo por cima da tela sem perder o que já foi preenchido.
 
 ## histórico clínico
 

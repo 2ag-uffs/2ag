@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
 import {
     FiActivity,
@@ -19,6 +19,7 @@ import {
     FiUsers,
 } from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
+import TermUpdate from "../term-update/term-update.jsx";
 import {getLoggedUser, logout} from "../../services/api.js";
 import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
@@ -94,6 +95,15 @@ export default function AppLayout() {
     const homePath = homePathFor(loggedUser);
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
+    // paciente com versao antiga do termo ve o aceite no lugar de qualquer tela (#58)
+    const [isTermPending, setIsTermPending] = useState(
+        Boolean(loggedUser && loggedUser.role === "PATIENT" && loggedUser.termPending));
+
+    useEffect(() => {
+        const openTerm = () => setIsTermPending(true);
+        window.addEventListener("term-pending", openTerm);
+        return () => window.removeEventListener("term-pending", openTerm);
+    }, []);
 
     // a barra do celular tem menos itens entao ela acha o item marcado dela
     // assim no progresso de um paciente o celular marca a lista de pacientes
@@ -201,7 +211,11 @@ export default function AppLayout() {
                 )}
                 {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
                 <div key={location.pathname} className={styles.page}>
-                    <Outlet/>
+                    {isTermPending && <TermUpdate onAccepted={() => setIsTermPending(false)}/>}
+                    {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
+                    <div className={styles.pageContent} hidden={isTermPending}>
+                        <Outlet/>
+                    </div>
                 </div>
             </main>
 

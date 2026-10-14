@@ -80,6 +80,7 @@ Abra o `.env` e preencha. O arquivo de exemplo explica cada linha; o que importa
 | `JWT_SECRET` | `openssl rand -base64 48`. nunca reaproveite uma chave que já apareceu em alguma versão antiga do repositório |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não |
 | `PUBLIC_URL` | `https://2ag.clinica.com.br`, exatamente como as pessoas vão abrir, sem barra no fim |
+| `CLINIC_NAME` e `CLINIC_DPO_CONTACT` | a razão social da clínica e o contato do encarregado de dados. entram no termo de consentimento no lugar dos colchetes |
 | `SESSION_SECURE_COOKIE` | `true`, que já é o valor do exemplo |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | os dados da conta SMTP. porta 587 com STARTTLS é o padrão |
 | `BACKUP_AGE_PUBKEY` | a chave pública do backup (`age1...`) |

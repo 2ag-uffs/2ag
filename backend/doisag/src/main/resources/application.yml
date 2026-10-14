@@ -89,6 +89,10 @@ api:
     # sem essas duas variaveis nenhuma conta de administrador eh criada
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  clinic:
+    # controladora dos dados e contato do encarregado (lgpd art. 41), entram no termo de consentimento
+    name: ${CLINIC_NAME:}
+    dpo-contact: ${CLINIC_DPO_CONTACT:}
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento
     enabled: ${SEED_DADOS_TESTE:false}

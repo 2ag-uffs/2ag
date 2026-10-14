@@ -61,6 +61,14 @@ public class ErrorHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "Acesso negado", request);
     }
 
+    // o cabecalho avisa o front pra abrir o termo, a versao pode ter mudado com a sessao aberta
+    @ExceptionHandler(PendingTermException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePendingTerm(PendingTermException exception,
+                                                              HttpServletRequest request) {
+        ErrorResponseDTO body = buildResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request).getBody();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).header(PendingTermException.HEADER, "true").body(body);
+    }
+
     // regra de negocio violada
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponseDTO> handleBusinessRule(BusinessException exception, HttpServletRequest request) {

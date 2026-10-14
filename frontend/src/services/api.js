@@ -72,6 +72,12 @@ async function request(path, options = {}) {
         throw new ApiError(401, message);
     }
 
+    // a versao do termo mudou com a sessao aberta e o layout abre o termo por cima da tela
+    if (response.status === 403 && response.headers.get("X-Term-Pending") === "true" && loggedUser) {
+        loggedUser = {...loggedUser, termPending: true};
+        window.dispatchEvent(new Event("term-pending"));
+    }
+
     if (!response.ok) {
         throw new ApiError(response.status, body && body.message, body && body.errors);
     }

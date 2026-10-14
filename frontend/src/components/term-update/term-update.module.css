@@ -1,0 +1,28 @@
+/* aceite da versao nova do termo, no lugar da tela q a pessoa abriu */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: var(--width-default);
+}
+
+.statusText {
+    color: var(--color-text-secondary);
+}
+
+.termText {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    line-height: var(--leading-normal);
+    max-height: 55svh;
+    overflow-y: auto;
+    padding: var(--space-4);
+    white-space: pre-line;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}

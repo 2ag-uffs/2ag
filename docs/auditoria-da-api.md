@@ -53,6 +53,8 @@ Em qualquer variante, o mesmo commit precisa levar `SESSION_SECURE_COOKIE=true` 
 3. Acrescentar `CLINIC_NAME` e `CLINIC_DPO_CONTACT` ao `.env.example` e ao bloco `environment` da api no compose.
 4. Apagar a linha 1 e trocar `CURRENT_VERSION` só depois do aval. Atenção: aceites já gravados ficam presos à versão antiga, e o sistema vai pedir novo aceite — o que é o comportamento correto.
 
+**Nota de 14/10/2026 (#58).** Os passos 2 e 3 estão feitos: o `ConsentTermService` troca os dois marcadores por `CLINIC_NAME` e `CLINIC_DPO_CONTACT` e, com as variáveis vazias, mantém os colchetes e avisa no log. O novo aceite também existe: o paciente cujo último aceite é de uma versão antiga recebe `termPending` no login e no `GET /auth/me`, o front mostra o termo novo no lugar de qualquer tela até ele aceitar (`POST /consent-term/accept`), e a api recusa com 403 o que grava enquanto isso. Faltam os passos 1 e 4, que dependem da clínica.
+
 ---
 
 ## Altos

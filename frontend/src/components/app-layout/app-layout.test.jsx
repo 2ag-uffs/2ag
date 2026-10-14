@@ -1,8 +1,8 @@
-import {render, screen, within} from "@testing-library/react";
+import {act, fireEvent, render, screen, within} from "@testing-library/react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
-import {afterEach, describe, expect, it} from "vitest";
-import {setLoggedUser} from "../../services/api.js";
+import {afterEach, describe, expect, it, vi} from "vitest";
+import {apiService, setLoggedUser} from "../../services/api.js";
 import AppLayout from "./app-layout.jsx";
 
 function openLayoutAt(path) {
@@ -23,6 +23,38 @@ function bottomMenu() {
 describe("AppLayout", () => {
     afterEach(() => {
         setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    it("paciente com termo antigo ve o aceite no lugar da tela e volta pra ela depois de aceitar", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({version: "v2", text: "texto do termo novo"});
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        expect(screen.getByText("conteudo da tela")).not.toBeVisible();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // a versao mudou com a sessao aberta: o termo abre por cima e a tela fica guardada embaixo
+    it("o aviso de termo pendente da api abre o aceite sem desmontar a tela", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({version: "v3", text: "texto do termo mais novo"});
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        openLayoutAt("/painel-paciente");
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+
+        act(() => {
+            window.dispatchEvent(new Event("term-pending"));
+        });
+
+        expect(await screen.findByText("texto do termo mais novo")).toBeInTheDocument();
+        expect(screen.getByText("conteudo da tela")).not.toBeVisible();
     });
 
     it("no progresso de um paciente o menu lateral marca Progresso e n Pacientes", async () => {

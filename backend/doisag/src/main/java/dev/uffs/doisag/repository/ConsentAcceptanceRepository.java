@@ -9,4 +9,8 @@ public interface ConsentAcceptanceRepository extends JpaRepository<ConsentAccept
 
     // aceites de uma pessoa do mais novo pro mais antigo
     List<ConsentAcceptance> findAllByUserIdOrderByAcceptedAtDesc(Long userId);
+
+    boolean existsByUserId(Long userId);
+
+    boolean existsByUserIdAndTermVersion(Long userId, String termVersion);
 }

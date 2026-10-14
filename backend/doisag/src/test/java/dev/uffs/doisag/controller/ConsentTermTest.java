@@ -1,26 +1,82 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.infra.PendingTermException;
+import dev.uffs.doisag.model.Address;
+import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
+import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsentTermService;
+import dev.uffs.doisag.service.PatientService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// termo de consentimento do cadastro (RF36)
+// termo de consentimento do cadastro (RF36) e o aceite de novo qnd a versao muda (#58)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional
 class ConsentTermTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    private static final String PROFILE_JSON = """
+            {"name":"Paciente do Termo","birthDate":"1990-04-12","phone":"49999887766",
+             "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"SC"}}
+            """;
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private PatientRepository patientRepository;
+    @Autowired private PrescriberRepository prescriberRepository;
+    @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
+    @Autowired private ConsentTermService consentTermService;
+    @Autowired private TokenService tokenService;
+
+    private Prescriber prescriber;
+    private Patient patient;
+
+    @BeforeEach
+    void createAccounts() {
+        prescriber = new Prescriber();
+        prescriber.setName("Prescritora do Termo");
+        prescriber.setEmail("termo-prescritora@email.com");
+        prescriber.setPassword("hash");
+        prescriber = prescriberRepository.save(prescriber);
+
+        patient = new Patient();
+        patient.setName("Paciente do Termo");
+        patient.setEmail("termo-paciente@email.com");
+        patient.setPassword("hash");
+        patient.setCpf("52998224725");
+        patient.setBirthDate(LocalDate.of(1990, 4, 12));
+        patient.setPhone("49999887766");
+        patient.setAddress(new Address("Rua das Flores", "120", "Chapeco", "SC", "Brasil"));
+        patient.setPrescriber(prescriber);
+        patient = patientRepository.save(patient);
+    }
+
+    private String bearerTokenOf(Users user) {
+        return "Bearer " + tokenService.generateToken(user);
+    }
 
     @Test
     void anyoneCanReadTheCurrentTermBeforeHavingAnAccount() throws Exception {
@@ -28,5 +84,110 @@ class ConsentTermTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(ConsentTermService.CURRENT_VERSION))
                 .andExpect(jsonPath("$.text").value(containsString("13.709/2018")));
+    }
+
+    @Test
+    void clinicDataFromTheServerReplacesTheMarkers() {
+        String text = new ConsentTermService(null, " Instituto Exemplo Ltda ", "dados@exemplo.com.br")
+                .getCurrentTerm().text();
+
+        assertThat(text).contains("Instituto Exemplo Ltda, responsável pelo seu atendimento");
+        assertThat(text).contains("dados@exemplo.com.br");
+        assertThat(text).doesNotContain("[NOME DA CLÍNICA]").doesNotContain("[CONTATO DO ENCARREGADO");
+    }
+
+    // sem as variaveis a api sobe e o termo continua com os colchetes
+    @Test
+    void blankClinicDataKeepsTheMarkers() {
+        String text = new ConsentTermService(null, "", null).getCurrentTerm().text();
+
+        assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
+    }
+
+    @Test
+    void patientWhoAcceptedTheCurrentVersionHasNothingPending() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION);
+
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+    }
+
+    @Test
+    void patientWithAnOldVersionOnlyReadsUntilAcceptingTheNewOne() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(true));
+        mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROFILE_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string(PendingTermException.HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(PendingTermException.MESSAGE));
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("PATIENT"))
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROFILE_JSON))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.termPending").value(false));
+    }
+
+    @Test
+    void acceptingTwiceKeepsOneRecordOfTheVersion() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        String body = "{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}";
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(post("/consent-term/accept")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+        }
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termVersion")
+                .containsExactlyInAnyOrder("2026-01-versao-antiga", ConsentTermService.CURRENT_VERSION);
+    }
+
+    // a tela pode ter ficado aberta enquanto o texto mudou de novo
+    @Test
+    void acceptingAVersionThatIsNoLongerCurrentIsRefused() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"2026-01-versao-antiga\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
+    }
+
+    @Test
+    void onlyPatientsAcceptTheTerm() throws Exception {
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/consent-term/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isUnauthorized());
     }
 }
