@@ -32,6 +32,8 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # tag do maven tem o jdk no sufixo, a regra de cima n ve o salto do java
+      - dependency-name: "maven"
 
   # a imagem do postgres fica no docker-compose.yml da raiz
   # postgres novo pede migracao do volume de dados, entao a versao maior tbm fica por conta do projeto
