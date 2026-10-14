@@ -24,8 +24,8 @@ todas com a senha `Senha@123`, que só existe na instalação de desenvolvimento
 | `prescritor@email.com` | Ana Lima, prescritora | quatro pacientes ativos, uma arquivada, agenda com horários |
 | `carlos.pereira@email.com` | Carlos Pereira, prescritor | nenhum paciente. serve para testar isolamento |
 | `paciente@email.com` | Maria Souza | dois meses de diário, duas consultas, prescrição trocada, escalas pendentes |
-| `joao.almeida@email.com` | João Pedro Almeida | pedido de consulta esperando resposta |
-| `renata.dias@email.com` | Renata Dias Carvalho | escala de Hamilton vencida e um registro anulado |
+| `joao.almeida@email.com` | João Pedro Almeida | pedido de consulta esperando resposta e consentimento de pesquisa aceito |
+| `renata.dias@email.com` | Renata Dias Carvalho | escala de Hamilton vencida, um registro anulado e o filho como familiar de contato |
 | `paulo.nunes@email.com` | Paulo Nunes | paciente novo com a anamnese pendente |
 | `carla.menezes@email.com` | Carla Menezes | arquivada depois da alta |
 | `admin@email.com` | administração | contas de prescritor e auditoria |
@@ -52,7 +52,7 @@ gravidade:
 
 ## 1. acesso e conta
 
-requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
+requisitos RF01, RF02, RF18, RF35, RF36, RF37, RF38 e RN06.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
@@ -61,6 +61,7 @@ requisitos RF01, RF02, RF18, RF35, RF36 e RN06.
 | CT-03 | sair da conta e usar o botão voltar do navegador | volta para a tela de entrada, sem reabrir tela protegida |
 | CT-04 | em *esqueci minha senha*, pedir o link, abrir o endereço que aparece no log da api e criar senha nova. depois, como administração, usar *Senha nova* na conta de uma prescritora, errando e acertando a senha do administrador | entra com a senha nova e o mesmo link não serve uma segunda vez. na administração, a senha errada não gera link, a certa mostra o endereço para copiar e a ação aparece em *Auditoria* |
 | CT-05 | como prescritora, gerar dois convites, cancelar um em *Convites em aberto* e abrir os dois links na janela anônima. no que vale, tentar antes com o e-mail ou o CPF de uma conta que já existe | o link cancelado não serve. no outro, o cadastro pede o aceite do termo de consentimento e a conta nasce ligada à prescritora. link usado ou vencido não serve. com e-mail ou CPF repetido a tela mostra uma mensagem só, sem dizer qual dos dois, e o mesmo link continua servindo para os dados certos |
+| CT-43 | gerar um convite e, no cadastro, preencher só o telefone do familiar ou cuidador e tentar criar a conta. depois preencher o nome também, marcar *Aceito participar da pesquisa* e criar. em *Perfil*, ver o familiar e o cartão *Pesquisa*, retirar o consentimento e aceitar de novo | só com o telefone a tela pede o nome de quem acompanha. a conta nasce com o familiar e com a pesquisa aceita. o perfil mostra o familiar preenchido e salvar com os três campos vazios apaga. retirar troca o cartão para *você não participa*, e aceitar de novo mostra a data do aceite |
 | CT-06 | em *Perfil*, mudar dados pessoais, depois pedir a troca de e-mail, abrir o link de confirmação que aparece no log da api e depois trocar a senha. errar a senha atual 5 vezes na troca de senha e tentar de novo com a certa | dados salvos. troca de e-mail e de senha pedem a senha atual e a senha nova segue a regra de senha forte. o e-mail só muda depois do link: antes dele o perfil mostra o endereço aguardando confirmação, e depois o sistema pede para entrar de novo com o e-mail novo. depois de 5 erros aparece o aviso de bloqueio por 15 minutos, mesmo com a senha certa, e o login daquela conta naquele aparelho também fica bloqueado |
 
 ## 2. permissões e isolamento
@@ -96,6 +97,8 @@ requisitos RF04, RF05, RF12, RF13 e RF19.
 | CT-17 | registrar a consulta de hoje de um paciente | registro aparece no histórico da prescritora e da paciente |
 | CT-18 | emitir prescrição com dois canabinoides, concentração e escalonamento. depois, no histórico, lançar uma receita numa consulta mais antiga que a da vigente | a nova fica vigente e a anterior aparece como substituída. na consulta antiga o botão diz *Lançar receita no histórico*, a tela avisa que a vigente continua e, depois de salvar, a vigente do paciente é a mesma |
 | CT-19 | anular uma consulta e uma prescrição | o motivo é obrigatório e o registro continua visível, marcado como anulado |
+| CT-44 | no histórico da Maria, anular a prescrição vigente | antes de anular, o modal avisa que a paciente fica sem prescrição em uso e que a anterior não volta a valer. depois, nenhuma prescrição aparece como vigente e a tela repete o aviso |
+| CT-45 | abrir o histórico da Renata e depois a lista de pacientes | o cabeçalho do histórico mostra *Familiar ou cuidador* com nome, parentesco e telefone, e no celular o telefone abre a ligação. a lista de pacientes não mostra esse contato |
 | CT-20 | como Paulo, preencher e enviar a anamnese, depois corrigir. como prescritora, abrir o histórico dele | a prescritora vê a versão corrigida |
 | CT-21 | arquivar um paciente e depois reativar | some da lista de ativos e aparece em arquivados com o histórico inteiro. o acompanhamento automático é encerrado |
 
@@ -132,7 +135,7 @@ requisitos RF14, RF15, RF33 e RF34.
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
 | CT-34 | abrir *Avisos*, abrir um aviso, marcar todos como lidos e apagar um | cada aviso leva à tela certa e a contagem de não lidos atualiza |
-| CT-35 | exportar cada CSV do histórico e abrir no Excel ou LibreOffice. em *Progresso*, marcar a opção de baixar sem o nome. depois, com a sessão vencida (sair em outra aba), tentar baixar de novo | colunas certas, acentos legíveis e datas no formato brasileiro. no modo anônimo não aparece nome nem CPF, nem do paciente nem da prescritora. com a sessão vencida a tela manda entrar de novo, em vez de salvar um arquivo com erro dentro |
+| CT-35 | exportar cada CSV do histórico e abrir no Excel ou LibreOffice. em *Progresso*, marcar a opção de baixar sem o nome. depois, com a sessão vencida (sair em outra aba), tentar baixar de novo | colunas certas, acentos legíveis e datas no formato brasileiro. no modo anônimo não aparece nome nem CPF, nem do paciente nem da prescritora. o modo anônimo só sai de quem aceitou a pesquisa: no histórico do João ele funciona, no da Maria a opção fica desligada com a explicação, e em *Progresso* marcar *sem o nome* para a Maria faz a tela recusar o download. com a sessão vencida a tela manda entrar de novo, em vez de salvar um arquivo com erro dentro |
 | CT-36 | abrir a impressão do histórico e salvar em PDF | o PDF sai sem menu, botões ou cortes no meio dos cartões |
 
 > os lembretes automáticos (RF34) rodam uma vez por dia e ficam desligados no ambiente de teste local. eles entram no teste do servidor.
@@ -144,6 +147,7 @@ requisitos RF14, RF15, RF33 e RF34.
 | CT-37 | cadastrar prescritor com CPF inválido, depois com dados certos, abrir o link de primeiro acesso numa janela anônima e criar a senha. depois desativar e reativar | CPF inválido é recusado com mensagem. o formulário não pede senha, o link aparece na tela para copiar e a pessoa entra com a senha que ela mesma criou. prescritor desativado não consegue entrar |
 | CT-41 | como administração, abrir *Pacientes*, buscar a conta de um paciente pelo e-mail, desativar com ele logado em outra janela e depois reativar | a busca mostra só nome, e-mail e situação. o paciente é derrubado na hora e não consegue entrar. a linha da conta passa a mostrar *Desativada* e o botão *Reativar*, e abrindo a tela de novo, sem buscar, ela aparece em *Contas desativadas*. reativada, volta a entrar com a mesma senha. as duas ações aparecem em *Auditoria* e no *Histórico de acesso* do paciente |
 | CT-42 | como administração, abrir *Perfil*, trocar o nome e a senha | a tela mostra só nome, e-mail e senha. sai e entra de novo com a senha nova |
+| CT-46 | cadastrar um prescritor e, antes de ele criar a senha, usar *Corrigir e-mail*. abrir o link novo, criar a senha e tentar corrigir o e-mail de novo | antes da senha o e-mail muda e o link de primeiro acesso passa a valer para o endereço novo. depois que a senha existe, a administração não corrige mais o e-mail: daí em diante só o próprio prescritor troca, pelo perfil |
 
 ## 9. telas, celular e acessibilidade
 
