@@ -32,7 +32,7 @@ Conferência dos 20 itens do checklist de segurança sobre o 2AG, feita em 01/10
 | 17 | Trim respostas de API | parcial | média | #109, #61, #37 · #122, #124 |
 | 18 | Security headers | parcial | baixa | #57, #102, #111 |
 | 19 | Forçar HTTPS | falta | alta | #57, #103, #18, #102 |
-| 20 | Scan de dependências | parcial | média | #115, #116 |
+| 20 | Scan de dependências | parcial | baixa | #115, #116 |
 
 ---
 
@@ -569,6 +569,8 @@ com `permissions: contents: write` no job. A partir daí o Dependabot alerta sob
 5. Opcional: `org.owasp:dependency-check-maven` num profile `security` com `<failBuildOnCVSS>7</failBuildOnCVSS>` semanal no CI (precisa de `NVD_API_KEY` nos secrets).
 
 **Card.** #115 e #116.
+
+**Nota de 14/10/2026 (#116).** O job backend do CI manda a árvore do `pom.xml` para o grafo de dependências (`maven-dependency-submission-action@v6`, só no push da `main`), e o grafo passou de 19 para 132 pacotes maven, com transitivas e versões. A primeira submissão já abriu 10 alertas que antes não apareciam: 3 críticos no `tomcat-embed-core 11.0.24` (autenticação FORM e DIGEST e controle de acesso, corrigidos na 11.0.25) e 7 no `jackson-core`/`jackson-databind 3.1.5` (DoS no parser, corrigidos na 3.1.7). O `pom.xml` fixa `tomcat.version` 11.0.27 e `jackson-bom.version` 3.1.7 até o Spring Boot trazer versões iguais ou maiores; aí as duas linhas saem. O alerta do `brace-expansion` (só dev) foi resolvido no `package-lock.json`. O job frontend roda `npm audit --omit=dev --audit-level=high`. Fila triada: mergeadas #53, #54, #55, #132, #133, #135, #137, #138 e #139; fechadas as de versão maior de imagem (#50, #51, #52, #136). O `dependabot.yml` ignora versão maior nas imagens e a imagem do maven inteira, porque a tag dela leva o JDK no sufixo e a regra de versão maior não pega o salto do Java. Fica para o #115: Dependabot security updates, CodeQL, secret scanning e push protection.
 
 ---
 
