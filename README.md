@@ -154,7 +154,7 @@ os testes do front usam vitest e testing library e ficam ao lado do arquivo test
 
 ## colocando no ar
 
-o passo a passo do servidor da clínica (docker, domínio, certificado, `.env` de produção, primeira entrada, backup e atualização) está em [`docs/guia-de-deploy.md`](./docs/guia-de-deploy.md). a seção *rodando com docker* acima é a receita do computador de desenvolvimento, não a do servidor.
+o passo a passo do servidor, uma VPS alugada para a clínica (docker, domínio, certificado, `.env` de produção, primeira entrada, backup e atualização) está em [`docs/guia-de-deploy.md`](./docs/guia-de-deploy.md). a seção *rodando com docker* acima é a receita do computador de desenvolvimento, não a do servidor.
 
 ---
 

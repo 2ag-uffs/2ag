@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # certificado autoassinado pra rodar o compose no proprio computador ou no ci (issue 57)
 # o nginx n sobe sem certificado, e no computador n tem dominio pra pedir um de verdade
-# no servidor da clinica o certificado eh de verdade e nunca passa por aqui
+# no servidor de verdade o certificado eh do certbot e nunca passa por aqui
 #
 # uso, na pasta do compose:
 #   ./scripts/gerar-certificado-local.sh [nome-do-host]

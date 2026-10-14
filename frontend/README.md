@@ -4,8 +4,8 @@ interface web do 2ag, pensada primeiro para o celular. consome a api do [`backen
 
 ## tecnologias
 
-- react 19 e vite 6
-- react router 7, com cada tela carregada sob demanda
+- react 19 e vite 8
+- react router 8, com cada tela carregada sob demanda
 - recharts no gráfico de evolução
 - react-icons nos ícones do menu
 - css puro, com css modules nos componentes novos
@@ -26,6 +26,7 @@ abra http://localhost:5173. o vite repassa as chamadas de `/api` para a api em `
 | `npm run build` | build de produção em `dist/` |
 | `npm run preview` | serve o build de produção |
 | `npm run lint` | eslint |
+| `npm test` | testes com vitest e testing library |
 
 ## estrutura
 
@@ -61,7 +62,7 @@ src/
 
 ## sessão
 
-a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login.
+a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login. o paciente cujo aceite do termo de consentimento é de uma versão antiga vê o termo novo no lugar de qualquer tela até aceitar, e um `403` com `X-Term-Pending` abre esse aceite por cima da tela aberta.
 
 ## padrão de código
 
@@ -74,4 +75,4 @@ vale para todo código novo ou reescrito:
 
 ## situação das telas
 
-o layout, as rotas, o login, o cadastro, o perfil e a tela do administrador já seguem o padrão novo. as telas clínicas ainda são as de 2025 e estão sendo reescritas junto com cada requisito, na ordem do §8.6 do [documento de requisitos](../docs/requisitos-v2.md). até lá, o css delas continua global.
+todas as telas seguem o padrão novo, cada uma com o seu css module. o css global que sobrou fica em `src/styles`: cores, fontes, botões, campos, avisos e os tokens de espaço e tamanho.

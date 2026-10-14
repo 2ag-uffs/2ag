@@ -2,7 +2,7 @@
 
 Levantamento do que impede liberar o 2AG para teste com a clínica. Feito em 20/09/2026 sobre o commit `b9049bf`, lendo o código de ponta a ponta: 23 controllers, 25 serviços, 16 repositórios, 16 migrações, as 8 escalas do catálogo e as ~50 telas que consomem a API.
 
-**Veredito:** o sistema não está pronto para receber paciente real. Dois itens são impeditivos por si só (não há HTTPS em lugar nenhum; o termo de consentimento é um rascunho com campos em branco) e outros oito quebram fluxos que a clínica vai usar no primeiro dia. Nenhum deles é reescrita: a maior parte são correções de poucas linhas em pontos já mapeados. Fora isso, o sistema está estruturalmente íntegro — nenhuma tela chama rota que não existe, nenhum campo lido pelo front falta no DTO, a autorização cobre todas as rotas e as 16 migrações aplicam num Postgres limpo.
+**Veredito em 20/09/2026:** o sistema não está pronto para receber paciente real. Dois itens são impeditivos por si só (não há HTTPS em lugar nenhum; o termo de consentimento é um rascunho com campos em branco) e outros oito quebram fluxos que a clínica vai usar no primeiro dia. Nenhum deles é reescrita: a maior parte são correções de poucas linhas em pontos já mapeados. Fora isso, o sistema está estruturalmente íntegro — nenhuma tela chama rota que não existe, nenhum campo lido pelo front falta no DTO, a autorização cobre todas as rotas e as 16 migrações aplicam num Postgres limpo.
 
 | Severidade | Quantidade | O que significa |
 | :--- | ---: | :--- |
@@ -12,6 +12,15 @@ Levantamento do que impede liberar o 2AG para teste com a clínica. Feito em 20/
 | Baixo | 37 | Polimento, dívida técnica e risco futuro |
 
 Os códigos (`AUTZ`, `CLIN`, `CONTRATO`, `ERRO`, `JOBS`, `NOOP`, `BANCO`, `OPS`, `LACUNA`) indicam a frente em que o achado apareceu e servem para rastrear a correção.
+
+**Situação em 14/10/2026.** Os achados abaixo ficam como foram escritos em 20/09/2026. O andamento de cada um está no cartão do GitHub, e o comentário de fechamento diz em que commit e como foi corrigido.
+
+- **Corrigidos, com cartão fechado:** todos os altos — `OPS-04` (#59), `OPS-05` (#17), `OPS-06` (#60), `LACUNA-02` (#61), `AUTZ-01` (#62), `CLIN-01` (#63), `NOOP-01` (#64), `LACUNA-01` (#65), `JOBS-03` com `NOOP-03` (#66) e `JOBS-04` (#67) —, os médios e baixos dos cartões #68 a #108, #110 e #111, e quatro dos cinco itens do #109 (`AUTZ-06`, `AUTZ-07`, `AUTZ-08` e `JOBS-12`).
+- **Fechados com decisão diferente da correção sugerida:** em `AUTZ-02` só a agenda mudou, e a rota para trocar o prescritor de um paciente ficou de fora (#80); `NOOP-04` ficou no mínimo seguro — a prescrição anulada passa a substituída e a tela avisa que o paciente fica sem prescrição em uso —, e "voltar a anterior" virou pergunta para a prescritora (#108); `NOOP-11` ficou sem mudança (#108); `BANCO-07` manteve os dois checks diferentes de propósito, com a razão escrita na `V17` (#106); e `ERRO-05` ganhou um tratamento próprio para o 415, sem estender o `ResponseEntityExceptionHandler`, para não mudar o formato de erro que o front lê (#105).
+- **Em aberto:** `OPS-02` (#58), em que a parte de código está feita (ver a nota na seção do achado) e faltam o texto aprovado, a razão social e o contato do encarregado, que dependem da clínica; e `CLIN-11` (#109), o nome social, que também espera a resposta da clínica.
+- **Corrigidos no código, à espera do servidor:** o sistema ainda não foi instalado em servidor. `OPS-01` foi resolvido no #57, com o TLS no nginx do compose e o CI subindo a pilha em https com certificado autoassinado, mas o domínio e o certificado de verdade só existem no deploy (`docs/guia-de-deploy.md`). O backup do `OPS-05` roda pelo compose e o CI restaura a cópia num banco separado, mas o RNF07 só fecha com a restauração testada no servidor do piloto e anotada (#19, aberto). No `OPS-06`, a conta SMTP também chega com o deploy: até lá, o link de senha nova do prescritor sai na tela do administrador (#60), e a senha do próprio administrador só se recupera por e-mail.
+
+Por isso o veredito acima continua valendo: o piloto com paciente real espera o termo aprovado e o sistema no ar, com domínio, certificado, SMTP e uma restauração testada.
 
 ---
 
@@ -274,4 +283,4 @@ Oito frentes independentes leram o código em paralelo — contrato entre front 
 - **#25 (montar respostas dentro dos serviços):** `BANCO-05`.
 - **#26 e #27 (clínica):** `OPS-02` (texto do termo), `NOOP-04` e `NOOP-11` (decisões que dependem da prescritora), `CLIN-11` (nome social).
 - **#28 a #36 (QA):** os médios de escala e agenda são bons casos de teste para ela; vale acrescentar ao plano o preenchimento parcial de escala (`CLIN-01`) e a resposta de escala de período (`NOOP-01`).
-- **Sem cartão ainda:** todos os altos de segurança e primeiro acesso (`AUTZ-01`, `LACUNA-02`, `OPS-06`).
+- **#60, #61 e #62 (segurança e primeiro acesso):** `OPS-06`, `LACUNA-02` e `AUTZ-01`, que estavam sem cartão quando esta auditoria foi escrita. Os três cartões foram abertos no mesmo dia; o #60 fechou em 20/09/2026 e o #61 e o #62 em 02/10/2026.

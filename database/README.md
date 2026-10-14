@@ -51,6 +51,7 @@ a senha do banco não fica em arquivo, ela vem de variável de ambiente:
 export DATABASE_PASSWORD='<a senha que você criou para o admindoisag>'
 export JWT_SECRET="$(openssl rand -base64 48)"
 export SESSION_SECURE_COOKIE=false
+export PUBLIC_URL=http://localhost:5173
 ```
 
 para ter contas de teste na primeira subida, exporte também:

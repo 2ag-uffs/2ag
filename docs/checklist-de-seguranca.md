@@ -6,33 +6,35 @@ Conferência dos 20 itens do checklist de segurança sobre o 2AG, feita em 01/10
 
 | Situação | Quantidade |
 | :--- | ---: |
-| ok | 6 |
-| parcial | 12 |
-| falta | 1 |
+| ok | 14 |
+| parcial | 5 |
+| falta | 0 |
 | não se aplica | 1 |
 
 | nº | Item | Situação | Gravidade | Card |
 | ---: | :--- | :--- | :--- | :--- |
-| 1 | Esconder API Keys | parcial | baixa | #18, #103 · #114 |
+| 1 | Esconder API Keys | ok | baixa | #18, #103 · #114 |
 | 2 | Limpar secrets do git | parcial | baixa | #18 · #115 |
 | 3 | Banco acessível de fora / credencial exposta | ok | baixa | #17, #18 |
-| 4 | Escopo por dono na API (o "RLS" daqui) | ok | baixa | #29, #27 · #124 |
-| 5 | Criptografia de dados | parcial | alta | #57, #17, #18, #19 · #117 |
+| 4 | Escopo por dono na API (o "RLS" daqui) | ok | nenhuma | #29, #27 · #124 |
+| 5 | Criptografia de dados | parcial | baixa | #57, #17, #18, #19 · #117 |
 | 6 | Auth server side | ok | baixa | #57, #109 |
-| 7 | Restringir acessos | parcial | média | #61, #62, #83, #84 |
+| 7 | Restringir acessos | ok | baixa | #61, #62, #83, #84 |
 | 8 | Bloquear mass assignment | ok | nenhuma | #124 |
-| 9 | Proteger cookies | parcial | alta | #57, #103, #109 · #118 |
+| 9 | Proteger cookies | ok | baixa | #57, #103, #109 · #118 |
 | 10 | Hash nas senhas | ok | baixa | #61, #84 |
-| 11 | Rate limit | parcial | média | #82, #94, #111 · #119, #120 |
+| 11 | Rate limit | ok | baixa | #82, #94, #111 · #119, #120 |
 | 12 | Bot protection | parcial | baixa | #82, #102 · #119 |
 | 13 | Queries parametrizadas | ok | nenhuma | — |
-| 14 | Validação dos inputs | parcial | baixa | #111, #82 · #120, #121 |
-| 15 | Vazar conteúdo | parcial | média | #82, #97, #109, #111 · #120, #123 |
+| 14 | Validação dos inputs | ok | baixa | #111, #82 · #120, #121 |
+| 15 | Vazar conteúdo | ok | baixa | #82, #97, #109, #111 · #120, #123 |
 | 16 | Restringir uploads | não se aplica | nenhuma | #111 |
-| 17 | Trim respostas de API | parcial | média | #109, #61, #37 · #122, #124 |
-| 18 | Security headers | parcial | baixa | #57, #102, #111 |
-| 19 | Forçar HTTPS | falta | alta | #57, #103, #18, #102 |
+| 17 | Trim respostas de API | ok | baixa | #109, #61, #37 · #122, #124 |
+| 18 | Security headers | ok | baixa | #57, #102, #111 |
+| 19 | Forçar HTTPS | parcial | baixa | #57, #103, #18, #102 |
 | 20 | Scan de dependências | parcial | baixa | #115, #116 |
+
+**Revisão de 14/10/2026.** Situação e gravidade da tabela revistas contra o código até o `c09873e` e os comentários de fechamento dos cards; o texto de cada item continua sendo o da conferência de 01/10, e o que mudou depois está nas notas datadas e nos cards. Continuam pendentes até o deploy os critérios que só se provam no servidor de verdade: o domínio com certificado real (item 19), o disco cifrado, a chave privada do backup fora da máquina e o teste de restauração registrado (item 5, #19) e o endereço real de quem acessa chegando ao limitador da API (item 12).
 
 ---
 
@@ -542,7 +544,7 @@ Pronto quando: `curl -sI http://dominio/` dá 301 para https, `curl -sI https://
 
 ## 20 — Scan de dependências
 
-**Situação.** parcial, gravidade média.
+**Situação.** parcial, gravidade baixa desde 14/10/2026 (era média).
 
 **Evidência.** *Configurado:* `.github/dependabot.yml:6-36` cobre npm (`/frontend`, semanal), maven (`/backend/doisag`, semanal), github-actions (mensal), docker (`/frontend` e `/backend/doisag`, mensal) e docker-compose (mensal). Alertas de vulnerabilidade ligados (`gh api repos/2ag-uffs/2ag/vulnerability-alerts` → 204), 0 abertos; 47 alertas históricos, todos npm em `frontend/package-lock.json`, criados e corrigidos em 13/09. `package-lock.json` commitado e `npm ci` no CI (`ci.yml:75`) e no `Dockerfile` (`:6`). `npm audit --omit=dev` em `frontend`: 0 vulnerabilidades. Com dev: 1 high, `brace-expansion 5.0.9` (três advisories de DoS) via `eslint@10.10.0 > minimatch > brace-expansion`, só dev, e a PR #113 (eslint 10.11.0) está aberta. Backend: `pom.xml:8` BOM `spring-boot-starter-parent 4.1.1` gerencia tudo, único pin manual `jjwt 0.13.0`; `./mvnw -o dependency:list` resolve 99 artefatos compile/runtime: `tomcat-embed-core 11.0.24`, `spring-security 7.1.1`, `spring-core/web/webmvc 7.0.9`, `hibernate-core 7.4.5.Final`, `jackson-databind 2.21.5` (ainda no classpath pelo jjwt, #37) e 3.1.5, `logback 1.5.38`, `flyway-core 12.4.0`, `postgresql 42.7.13`.
 

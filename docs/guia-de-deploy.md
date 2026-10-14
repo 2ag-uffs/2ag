@@ -1,6 +1,6 @@
 # guia de deploy
 
-Passo a passo para colocar o 2ag no ar no servidor da clínica, com https (RNF05), backup diário (RNF07) e configuração por variável de ambiente (RNF15). Quem nunca viu o projeto consegue subir seguindo este documento: o que precisa saber está aqui ou nos documentos apontados.
+Passo a passo para colocar o 2ag no ar numa VPS alugada para a clínica, com https (RNF05), backup diário (RNF07) e configuração por variável de ambiente (RNF15). Quem nunca viu o projeto consegue subir seguindo este documento: o que precisa saber está aqui ou nos documentos apontados.
 
 A seção *rodando com docker* do [`README.md`](../README.md) é a receita do computador de desenvolvimento. Este guia é a do servidor.
 
@@ -8,7 +8,7 @@ A seção *rodando com docker* do [`README.md`](../README.md) é a receita do co
 
 ## o que você precisa antes
 
-- **Um servidor Linux** (Ubuntu 24.04 ou Debian 12), com acesso `sudo`, 2 GB de memória e 20 GB de disco bastam para 300 pessoas. O disco, ou pelo menos o volume onde o docker guarda os dados, cifrado: LUKS na instalação ou a cifra que o provedor oferece. Quem leva o disco não pode ler o prontuário.
+- **Uma VPS Linux** (Ubuntu 24.04 ou Debian 12) num data center no Brasil, com acesso `sudo`, 2 vCPU, 4 GB de memória e 20 GB de disco. Para 300 pessoas o sistema roda com menos, mas as imagens são montadas no próprio servidor a cada atualização e o build fica apertado com 2 GB. De preferência, o contrato fica no nome da clínica, que é a controladora dos dados (LGPD), e o grupo entra como administrador. O disco, ou pelo menos o volume onde o docker guarda os dados, cifrado: LUKS na instalação ou a cifra que o provedor oferece. Quem leva o disco não pode ler o prontuário.
 - **Um nome próprio para o sistema**, como `2ag.clinica.com.br`, apontando para o servidor por registro A. Não crie registro AAAA por enquanto: a rede do compose é só IPv4, e um acesso por IPv6 chegaria ao nginx com o endereço do próprio docker, o que estragaria o limite de tentativas por endereço. Precisa ser um nome dedicado ao 2ag, e não o domínio raiz da clínica: o sistema manda o navegador exigir https nesse nome e nos subdomínios dele por um ano.
 - **Um certificado para esse nome.** Let's Encrypt é gratuito e renova sozinho com o `certbot`; um certificado comprado também serve, mas aí a renovação é manual e, desde março de 2026, eles valem no máximo 200 dias.
 - **Uma conta de e-mail SMTP** (o e-mail da clínica no Google Workspace, Microsoft 365 ou provedor parecido). Sem ela o sistema funciona, mas ninguém recebe link de senha nova nem lembrete, a troca de e-mail de acesso não acontece e o administrador só consegue entregar links na mão.

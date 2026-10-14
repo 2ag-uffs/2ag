@@ -344,7 +344,7 @@ Avaliação com pontuação de 0 a 4 em cada item, onde valores maiores indicam 
 *Critérios de aceite:*
 - **14 itens**, conforme o instrumento original: humor ansioso, tensão, medos, insônia, comprometimento intelectual, humor deprimido, somatizações motoras, somatizações sensoriais, sintomas cardiovasculares, sintomas respiratórios, sintomas gastrointestinais, sintomas geniturinários, sintomas autonômicos e **comportamento durante a entrevista**
 - Escore total de 0 a 56, com faixa interpretativa (Anexo A.1)
-- A v1.0 e a implementação contemplam apenas 13 itens, com máximo de 52 — fora da escala do instrumento
+- A v1.0 e a primeira implementação contemplavam apenas 13 itens, com máximo de 52 — fora da escala do instrumento. Os 14 itens estão no sistema desde 12/09/2026 (Anexo A.1)
 
 ---
 
@@ -365,7 +365,7 @@ Avaliação do sono do último mês. O sistema calcula o índice global conforme
 - Existe teste automatizado com caso de referência publicado
 - A entidade recebe o campo faltante de **frequência do item "outros motivos"**, necessário para compor o componente de distúrbios do sono
 
-*Justificativa:* a implementação atual soma 13 campos crus, gerando faixa de 0 a 39, incomparável a qualquer ponto de corte publicado. O próprio código documenta a limitação em comentário. Como o valor é apresentado à prescritora rotulado como índice de qualidade do sono e pode influenciar ajuste de dose, a soma crua é inaceitável.
+*Justificativa:* a primeira implementação somava 13 campos crus, gerando faixa de 0 a 39, incomparável a qualquer ponto de corte publicado, e o próprio código documentava a limitação em comentário. Como o valor era apresentado à prescritora rotulado como índice de qualidade do sono e podia influenciar ajuste de dose, a soma crua é inaceitável. O cálculo pelos 7 componentes está no sistema desde 12/09/2026 (Anexo A.2).
 
 ---
 
@@ -398,7 +398,7 @@ Aplicado pelo prescritor durante a consulta. Registra nome do paciente, data da 
 - **Pontuação máxima de 30 pontos**, com todas as seções do instrumento (Anexo A.3): orientação temporal (5), orientação espacial (5), registro (3), atenção e cálculo (5), memória de evocação (3), nomeação (2), repetição (1), comando de três etapas (3), **leitura (1)**, **escrita (1)** e **cópia dos pentágonos (1)**
 - Faixa interpretativa ajustada por escolaridade
 - Exame com seção ou escolaridade em branco não é gravado: a tela aponta o que falta e a API recusa o envio. É a exceção à RN10: como o MEEM não tem correção, um exame incompleto ficaria sem escore ou sem faixa (RN14)
-- A implementação atual contempla 8 seções, com máximo de **27 pontos** — faltam leitura, escrita e cópia, todas descritas no RF26 da v1.0. Um teto de 27 desloca todas as faixas de interpretação
+- A primeira implementação contemplava 8 seções, com máximo de **27 pontos** — faltavam leitura, escrita e cópia, todas descritas no RF26 da v1.0, e um teto de 27 desloca todas as faixas de interpretação. As 11 seções, de 0 a 30, estão no sistema desde 12/09/2026 (Anexo A.3)
 - Vinculado à consulta que o originou, e só depois que ela aconteceu: em consulta futura o envio é recusado
 - Não é designável como tarefa ao paciente (RN09)
 
@@ -579,16 +579,16 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 |---|---|
 | **RN01** | O acompanhamento clínico tem duração padrão de **90 dias**, renovável, contados do início do tratamento |
 | **RN02** | A conduta terapêutica segue escalonamento gradual de dose (*start low, go slow*): toda prescrição inicia na menor dose eficaz e é ajustada conforme resposta clínica |
-| **RN03** | Formulações possíveis: **isolado** (CBD, THC, CBG), **broad spectrum** (sem THC) e **full spectrum**. A concentração de cada canabinoide é definida **caso a caso**, porque a resposta varia por paciente e por condição tratada — não existe formulação padrão. *A tela hoje oferece cinco opções fixas que misturam canabinoide com espectro e aceita um único número de concentração, o que impede registrar um óleo com CBD e THC em percentuais próprios. Modelagem em aberto, ver `docs/extensao/perguntas-para-a-clinica.md`* |
-| **RN04** | E-mail e CPF são únicos em todo o sistema. *Hoje o CPF não possui restrição de unicidade nem na entidade nem no script SQL, permitindo paciente duplicado — embora a documentação técnica afirme o contrário* |
+| **RN03** | Formulações possíveis: **isolado** (CBD, THC, CBG), **broad spectrum** (sem THC) e **full spectrum**. A concentração de cada canabinoide é definida **caso a caso**, porque a resposta varia por paciente e por condição tratada — não existe formulação padrão. *Desde 13/09/2026 o espectro é um campo próprio e o óleo é descrito por uma lista de canabinoides, cada um com a sua concentração e unidade, mg/mL ou % (`PrescriptionComponent`); desde 02/10/2026 a tela abre em mg/mL, que é como a clínica cadastra hoje. Segue em aberto se o mg/mL é de cada canabinoide ou do produto: ver a seção 1 de `docs/extensao/perguntas-para-a-clinica.md`* |
+| **RN04** | E-mail e CPF são únicos em todo o sistema. *Atendido em 12/09/2026: o CPF é único na entidade (`Users`) e na migração base (`V1__esquema_base.sql`), e o cadastro confere e-mail e CPF antes de gravar, recusando com uma mensagem só, sem dizer qual dos dois já tem conta (#82)* |
 | **RN05** | Cada paciente está vinculado a exatamente um prescritor. O vínculo é estabelecido no cadastro pelo código do prescritor e só pode ser alterado por administrador |
-| **RN06** | O código de vínculo do prescritor é único e **não é adivinhável**. *O formato atual — três letras do nome + dois dígitos — oferece 90 combinações por prefixo, permitindo que um paciente se vincule a prescritor alheio por tentativa, e a geração pode entrar em laço infinito se as 90 esgotarem* |
+| **RN06** | O código de vínculo do prescritor é único e **não é adivinhável**. *Alterado em 13/09/2026 (§8.3): o código de três letras e dois dígitos, que oferecia 90 combinações por prefixo, saiu do banco (`V3__remove_codigo_do_prescritor.sql`), e o vínculo passou a ser feito por convite de uso único, com 32 bytes sorteados e validade de 7 dias (`PatientInviteService`, `SecureTokens`). Desde 02/10/2026 o prescritor também lista e cancela os convites em aberto* |
 | **RN07** | O prescritor não comercializa produtos. O sistema registra orientação quanto a marca, lote e concentração, sem função de venda |
 | **RN08** | Dois agendamentos do mesmo prescritor não podem ocupar o mesmo horário |
-| **RN09** | Escalas de **autoaplicação** (ficha de acompanhamento, HAM-A, PSQI, diário de sono, registro de dor, registro TEA, anamnese) são designáveis ao paciente. Escalas de **heteroaplicação** (MEEM) são aplicadas pelo prescritor em consulta e não geram tarefa ao paciente. *Hoje o MEEM é designável, criando tarefa que o paciente não pode concluir* |
-| **RN10** | Item de escala não respondido é registrado como **ausente**, nunca como zero. *Hoje os campos usam tipo primitivo e um formulário incompleto grava `dor = 0` ("sem dor") e `sono = 0` ("muito ruim"), e esses zeros são plotados como dado real no gráfico de evolução* |
-| **RN11** | Campo de texto clínico livre (observação, plano terapêutico, evolução, diagnóstico, campos descritivos da anamnese) não tem limite prático de tamanho. *Hoje esses campos são limitados a 255 caracteres, truncando ou rejeitando registro clínico legítimo* |
-| **RN12** | Senha nunca é gravada em texto puro nem transita em resposta da API. *Hoje a atualização de paciente grava o valor recebido diretamente, sem aplicar o hash, invalidando o acesso do paciente* |
+| **RN09** | Escalas de **autoaplicação** (ficha de acompanhamento, HAM-A, PSQI, diário de sono, registro de dor, registro TEA, anamnese) são designáveis ao paciente. Escalas de **heteroaplicação** (MEEM) são aplicadas pelo prescritor em consulta e não geram tarefa ao paciente. *Atendido em 12/09/2026: o MEEM é marcado como aplicado pelo prescritor (`ScaleType`), o envio avulso e o acompanhamento de 90 dias recusam a escala (`ScaleTaskService`, `TreatmentProtocolService`) e o check `ck_scale_task_type` da `V13__escalas.sql` não aceita tarefa de MEEM* |
+| **RN10** | Item de escala não respondido é registrado como **ausente**, nunca como zero. *Atendido desde 12/09/2026: item em branco não entra nas respostas gravadas (`ScaleResponseService`), escala pontuada sem todos os itens fica sem escore (`ScaleScorer`) e o gráfico de evolução deixa lacuna onde falta o item (`ProgressReportService`). A exceção é o MEEM, que incompleto não é gravado (RF26)* |
+| **RN11** | Campo de texto clínico livre (observação, plano terapêutico, evolução, diagnóstico, campos descritivos da anamnese) não tem limite prático de tamanho. *Atendido em 12/09/2026: esses campos são `TEXT` na migração base e nas entidades, e os testes gravam 10.000 caracteres na evolução da consulta e numa resposta da anamnese sem truncar (`ConsultationRecordTest`, `AnamnesisTest`)* |
+| **RN12** | Senha nunca é gravada em texto puro nem transita em resposta da API. *Atendido desde 12/09/2026: a atualização de perfil não recebe senha (`ProfileUpdateDTO`), toda senha gravada passa pelo `passwordEncoder` (cadastro, troca no perfil, link de senha nova ou de primeiro acesso e conta do administrador), e o hash não sai em resposta nenhuma, com `@JsonIgnore` em `Users.getPassword` e o `PasswordExposureTest` conferindo* |
 | **RN13** | Escore de escala validada é calculado exclusivamente pelo algoritmo oficial do instrumento (Anexo A). Adaptação ou simplificação de algoritmo não é permitida: escore fora do instrumento não pode ser exibido com o nome do instrumento |
 | **RN14** | O escore é sempre apresentado com sua **faixa interpretativa**, nunca como número isolado |
 | **RN15** | O paciente é identificado pelo **nome social** em toda a interface, nos formulários e nos relatórios. O nome de registro civil é armazenado apenas onde houver exigência legal. *O formulário de PSQI-BR aplicado pela clínica já traz o campo "NOME DO PACIENTE (SOCIAL)"; o sistema hoje guarda um único campo `name`* |
@@ -885,7 +885,7 @@ Faixas interpretativas, **conforme o formulário aplicado pela clínica** (`docs
 
 > Existem outras faixas em circulação para o HAM-A. O sistema deve usar as do instrumento que a prescritora efetivamente aplica, porque é contra elas que ela interpreta o resultado.
 
-*Ajuste necessário:* acrescentar o item 14, ausente na v1.0 e na implementação.
+*Atendido desde 12/09/2026:* o item 14, que faltava na v1.0 e na primeira implementação, está no formulário como "Comportamento na entrevista" (`ScaleCatalog.hamilton()`), e o escore soma os 14 itens, de 0 a 56 (`ScaleScorer.hamiltonScore`, coberto pelo `ScaleScorerTest`).
 
 ---
 
@@ -921,11 +921,11 @@ Converter: 0 = 0 · 1 a 2 = 1 · 3 a 4 = 2 · 5 a 6 = 3.
 
 **Índice global = C1 + C2 + C3 + C4 + C5 + C6 + C7**
 
-*Ajustes necessários:*
-- Acrescentar o campo de **frequência do item "outros motivos"**. É o único dado faltante: o campo descritivo existe, mas não há frequência, e sem ela o componente C5 não fecha os 9 itens
-- Substituir a soma crua de 13 campos pelo cálculo dos 7 componentes
-- Calcular C4, em vez de coletar eficiência
-- A presença de parceiro de quarto **não compõe** o índice global; é informação de contexto
+*Atendido desde 12/09/2026:* os quatro ajustes que este anexo pedia estão no motor de escalas.
+- A **frequência do item "outros motivos"** existe ao lado do campo descritivo (`freqOutrasRazoes` em `ScaleCatalog.pittsburgh()`) e entra no C5 com os outros 8 itens
+- O índice global é a soma dos 7 componentes, de 0 a 21, e não mais a soma crua de 13 campos (`ScaleScorer.pittsburghScore`)
+- O C4 é calculado das horas de sono e dos horários de deitar e levantar, e não perguntado (`ScaleScorer.pittsburghEfficiency`)
+- A presença de parceiro de quarto continua no formulário como contexto e **não compõe** o índice global (teste `pittsburghNaoMudaComOParceiroDeQuarto`)
 
 ---
 
@@ -965,7 +965,7 @@ Enunciados exatos do formulário aplicado pela clínica (`docs/scales/meem.pdf`)
 
 Faixas interpretativas variam por escolaridade; o resultado é sempre exibido com a faixa correspondente (RN14).
 
-*Ajuste necessário:* acrescentar leitura, escrita e cópia. As três constam do RF26 da v1.0 mas não foram implementadas, e sua ausência limita o teto a 27 pontos, deslocando todas as faixas de interpretação.
+*Atendido desde 12/09/2026:* leitura, escrita e cópia, que constavam do RF26 da v1.0 e faltavam na primeira implementação (com teto de 27 pontos), estão no formulário do prescritor (`ScaleCatalog.mentalStateExam()`), e o escore soma as 11 seções, de 0 a 30, com o ponto de corte por escolaridade (`ScaleScorer.mentalStateExamResult`).
 
 ---
 

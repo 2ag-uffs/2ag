@@ -17,6 +17,7 @@ cd backend/doisag
 export DATABASE_PASSWORD='a_senha_do_banco'
 export JWT_SECRET="$(openssl rand -base64 48)"
 export SESSION_SECURE_COOKIE=false
+export PUBLIC_URL=http://localhost:5173
 export SEED_DADOS_TESTE=true
 ./mvnw spring-boot:run
 ```

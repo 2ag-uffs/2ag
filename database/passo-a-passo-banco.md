@@ -46,10 +46,11 @@ a senha não vai em arquivo versionado. exporte as variáveis antes de subir a a
 export DATABASE_PASSWORD='<a senha que você criou acima>'
 export JWT_SECRET="$(openssl rand -base64 48)"
 export SESSION_SECURE_COOKIE=false
+export PUBLIC_URL=http://localhost:5173
 export SEED_DADOS_TESTE=true
 ```
 
-`DATABASE_PASSWORD` e `JWT_SECRET` não têm valor padrão: a api não sobe sem elas, de propósito.
+`DATABASE_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão: a api não sobe sem elas, de propósito. Abra o sistema por `http://localhost:5173`, e não por `127.0.0.1`, senão o que grava recebe 403.
 
 ## subir a api
 
