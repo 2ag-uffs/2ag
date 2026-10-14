@@ -201,6 +201,7 @@ class PrescriptionFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.annulled").value(true))
                 .andExpect(jsonPath("$.current").value(false))
+                .andExpect(jsonPath("$.status").value("SUBSTITUIDA"))
                 .andExpect(jsonPath("$.annulmentReason").value("Produto trocado na hora de registrar"));
 
         annulPrescription(prescriptionId, "Anulando de novo")
@@ -211,6 +212,21 @@ class PrescriptionFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].annulled").value(true));
+    }
+
+    // anular a vigente deixa o paciente sem prescricao em uso, a anterior n volta sozinha (NOOP-04)
+    @Test
+    void annullingTheCurrentPrescriptionDoesNotBringBackThePreviousOne() throws Exception {
+        Long firstPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Primeiro oleo");
+        Long secondPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Dose errada");
+
+        annulPrescription(secondPrescriptionId, "Dose lancada errada").andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + firstPrescriptionId + ")].status", contains("SUBSTITUIDA")))
+                .andExpect(jsonPath("$[?(@.id == " + secondPrescriptionId + ")].status", contains("SUBSTITUIDA")))
+                .andExpect(jsonPath("$[?(@.current == true)]", hasSize(0)));
     }
 
     // a prescricao anulada deixa de travar a anulacao da consulta

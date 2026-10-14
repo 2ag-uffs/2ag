@@ -117,6 +117,10 @@ public class PrescriptionService {
         }
 
         prescription.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
+        // a anulada n fica como vigente, e a anterior n volta sozinha pq isso eh escolha da prescritora (NOOP-04)
+        if (prescription.getStatus() == PrescriptionStatus.VIGENTE) {
+            prescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
+        }
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
                 savedPrescription.getAppointment().getPatient().getId());

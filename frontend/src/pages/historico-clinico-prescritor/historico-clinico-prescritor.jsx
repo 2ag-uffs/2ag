@@ -90,8 +90,9 @@ export default function HistoricoClinicoPrescritor() {
     };
 
     const handleAnnulled = () => {
+        setNotice(annulmentTarget.annulledNotice
+            || "Registro anulado. Ele continua no histórico com o motivo da anulação.");
         setAnnulmentTarget(null);
-        setNotice("Registro anulado. Ele continua no histórico com o motivo da anulação.");
         setReloadCount((currentCount) => currentCount + 1);
     };
 
@@ -181,6 +182,14 @@ export default function HistoricoClinicoPrescritor() {
                     recordDescription: prescription.productDescription + ", emitida em "
                         + formatDate(prescription.appointmentDateTime),
                     endpoint: "/prescriptions/" + prescription.id + "/annul",
+                    // a anterior n volta a valer sozinha, entao o paciente fica sem prescricao em uso (NOOP-04)
+                    warning: prescription.current
+                        ? "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
+                            + "até você emitir uma nova. A anterior não volta a valer."
+                        : null,
+                    annulledNotice: prescription.current
+                        ? "Prescrição anulada. O paciente está sem prescrição em uso até você emitir uma nova."
+                        : null,
                 })}
             >
                 Anular
@@ -395,6 +404,7 @@ export default function HistoricoClinicoPrescritor() {
                 <AnnulmentModal
                     title={annulmentTarget.title}
                     recordDescription={annulmentTarget.recordDescription}
+                    warning={annulmentTarget.warning}
                     endpoint={annulmentTarget.endpoint}
                     onClose={() => setAnnulmentTarget(null)}
                     onAnnulled={handleAnnulled}

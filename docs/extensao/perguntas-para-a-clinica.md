@@ -219,6 +219,7 @@ A clínica já usa um sistema que emite a receita assinada, agenda, envia a fich
 
 - Durante o piloto, o que você faz neste sistema e o que continua no de hoje: receita, agenda, escalas, ficha de acompanhamento?
 - Se lançar uma prescrição no paciente errado, como você corrige hoje?
+- Ao anular a prescrição em uso, a anterior deve voltar a valer? Desde 14/10/2026 o sistema deixa o paciente sem prescrição em uso e avisa antes de anular.
 - Quais são as "várias outras" escalas que você usa? Alguma precisa entrar no piloto?
 
 ---

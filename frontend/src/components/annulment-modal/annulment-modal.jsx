@@ -7,7 +7,8 @@ import styles from "./annulment-modal.module.css";
 // pede o motivo e anula um registro clinico feito por engano
 // o registro n some e continua no historico com o motivo e quem anulou
 // quem usa so monta o modal quando ele precisa aparecer entao o motivo sempre comeca vazio
-export default function AnnulmentModal({title, recordDescription, endpoint, onClose, onAnnulled}) {
+// warning eh opcional, pra quando anular tem uma consequencia q a pessoa precisa saber antes
+export default function AnnulmentModal({title, recordDescription, warning, endpoint, onClose, onAnnulled}) {
     const [reason, setReason] = useState("");
     const [reasonError, setReasonError] = useState(null);
     const [formError, setFormError] = useState(null);
@@ -46,6 +47,7 @@ export default function AnnulmentModal({title, recordDescription, endpoint, onCl
         <Modal show={true} title={title} onClickClose={onClose}>
             <form className={styles.form} onSubmit={handleSubmit} noValidate>
                 <p className={styles.recordDescription}>{recordDescription}</p>
+                {warning && <p className="aviso aviso--atencao">{warning}</p>}
                 <p className={styles.note}>
                     O registro não é apagado. Ele continua no histórico marcado como anulado, com o motivo e o nome de
                     quem anulou.
