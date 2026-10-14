@@ -765,6 +765,8 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 **HTTPS na pilha em 13/10/2026 (RNF05):** o TLS termina no nginx do compose com o certificado da clínica (pasta `certs/`), a porta 80 só redireciona, o cookie de sessão sai com `Secure` por padrão (`.env.example`) e o smoke do CI sobe a pilha em https com certificado autoassinado. O passo a passo do servidor está em `docs/guia-de-deploy.md`. O desenvolvimento sem docker continua em http://localhost:5173 com `SESSION_SECURE_COOKIE=false`.
 
+**Responsável ou cuidador em 14/10/2026 (RF38):** nome, parentesco e telefone, todos opcionais, informados pelo próprio paciente no cadastro e no perfil. Aparecem só no cabeçalho do prontuário, para o prescritor do paciente, com link para ligar, e não saem na lista de pacientes nem em nenhuma exportação. O termo de consentimento passou a citar esse dado. Login do cuidador, lembrete para ele e aceite do termo por responsável de criança esperam a seção 11 de `docs/extensao/perguntas-para-a-clinica.md`.
+
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.

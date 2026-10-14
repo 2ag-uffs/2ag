@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.dto.RegisterDTO;
@@ -67,7 +68,7 @@ public class PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
         auditService.recordChartView(patient.getId());
-        return new PatientResponseDTO(patient);
+        return PatientResponseDTO.withGuardian(patient);
     }
 
     // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
@@ -96,6 +97,7 @@ public class PatientService {
         if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
             throw new BusinessException(OUTDATED_TERM_MESSAGE);
         }
+        GuardianDTO.checkName(registerData.guardian());
 
         String inviteHash = SecureTokens.hashToken(registerData.inviteToken());
         if (loginAttemptLimiter.isSignUpBlocked(inviteHash, clientAddress)) {
@@ -127,6 +129,7 @@ public class PatientService {
         patient.setBirthDate(registerData.birthDate());
         patient.setPhone(InputCleaner.keepOnlyDigits(registerData.phone()));
         patient.setAddress(registerData.address().toAddress());
+        GuardianDTO.applyTo(patient, registerData.guardian());
         patient.setPassword(passwordEncoder.encode(registerData.password()));
         patient.setPrescriber(prescriber);
         Patient savedPatient = patientRepository.save(patient);

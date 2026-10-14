@@ -1,5 +1,6 @@
 package dev.uffs.doisag.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 
@@ -15,9 +16,16 @@ public record PatientResponseDTO(
         Long prescriberId,
         String prescriberName,
         boolean archived,
-        LocalDateTime archivedAt
+        LocalDateTime archivedAt,
+        // so no prontuario de um paciente, a lista n leva (RF38)
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        GuardianDTO guardian
 ) {
     public PatientResponseDTO(Patient patient) {
+        this(patient, null);
+    }
+
+    private PatientResponseDTO(Patient patient, GuardianDTO guardian) {
         this(
                 patient.getId(),
                 patient.getName(),
@@ -25,8 +33,13 @@ public record PatientResponseDTO(
                 prescriberIdOf(patient),
                 prescriberNameOf(patient),
                 patient.isArchived(),
-                patient.getArchivedAt()
+                patient.getArchivedAt(),
+                guardian
         );
+    }
+
+    public static PatientResponseDTO withGuardian(Patient patient) {
+        return new PatientResponseDTO(patient, GuardianDTO.from(patient));
     }
 
     // o prescritor pode ser nulo e o campo eh lazy entao separei

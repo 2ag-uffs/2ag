@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.EmailPreferenceDTO;
+import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
 import dev.uffs.doisag.infra.InvalidFieldException;
@@ -38,6 +39,7 @@ public class ProfileService {
         Users user = findUser(userId);
         if (user instanceof Patient) {
             checkPatientRequiredData(profileData);
+            GuardianDTO.checkName(profileData.guardian());
         }
 
         user.setName(profileData.name().trim());
@@ -47,6 +49,9 @@ public class ProfileService {
             user.setAddress(null);
         } else {
             user.setAddress(profileData.address().toAddress());
+        }
+        if (user instanceof Patient patient) {
+            GuardianDTO.applyTo(patient, profileData.guardian());
         }
         return profileOf(usersRepository.save(user));
     }

@@ -9,6 +9,7 @@ Ao criar sua conta no 2AG, você autoriza o uso dos seus dados pessoais e de sa�
 
 2. Quais dados são coletados
 - Identificação e contato: nome, CPF, data de nascimento, telefone, e-mail e endereço.
+- Familiar ou cuidador, se você informar: nome, parentesco e telefone.
 - Saúde: respostas da anamnese, escalas clínicas, diários de sono, dor e sintomas, consultas, prescrições e a evolução do tratamento.
 
 3. Para que os dados são usados

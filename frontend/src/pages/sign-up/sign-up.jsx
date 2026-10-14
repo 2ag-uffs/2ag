@@ -10,6 +10,7 @@ import {isStrongPassword} from "../../components/form/password-rules.js";
 import Modal from "../../components/modal/modal.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
+import {findGuardianErrors, guardianBody} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./sign-up.module.css";
 
@@ -22,6 +23,9 @@ const EMPTY_FORM = {
     number: "",
     city: "",
     state: "",
+    guardianName: "",
+    guardianRelationship: "",
+    guardianPhone: "",
     email: "",
     password: "",
     passwordConfirmation: "",
@@ -29,7 +33,7 @@ const EMPTY_FORM = {
 
 // confere no navegador o q da pra conferir antes de mandar pra api
 function findFormErrors(formData, hasAcceptedConsent) {
-    const errors = {};
+    const errors = findGuardianErrors(formData);
     if (onlyDigits(formData.cpf).length !== 11) {
         errors.cpf = "O CPF tem 11 números";
     }
@@ -176,6 +180,7 @@ export default function SignUp() {
                 city: formData.city,
                 state: formData.state,
             },
+            guardian: guardianBody(formData),
             email: formData.email,
             password: formData.password,
             consentTermVersion: consentTerm.version,
@@ -333,6 +338,40 @@ export default function SignUp() {
                             onChange={(event) => updateField("state", event.target.value)}
                             error={fieldErrors["address.state"]}
                             required={true}
+                        />
+                    </div>
+                </fieldset>
+
+                <fieldset className={styles.section}>
+                    <legend className={styles.sectionTitle}>Familiar ou cuidador (opcional)</legend>
+                    <p className={styles.sectionHint}>
+                        Se alguém ajuda você no tratamento, deixe o contato. A clínica pode ligar para essa pessoa
+                        quando precisar.
+                    </p>
+                    <TextField
+                        label="Nome"
+                        name="guardian.name"
+                        value={formData.guardianName}
+                        onChange={(event) => updateField("guardianName", event.target.value)}
+                        error={fieldErrors["guardian.name"]}
+                    />
+                    <div className={styles.row}>
+                        <TextField
+                            label="Parentesco"
+                            name="guardian.relationship"
+                            placeholder="Filha, marido, cuidadora..."
+                            value={formData.guardianRelationship}
+                            onChange={(event) => updateField("guardianRelationship", event.target.value)}
+                            error={fieldErrors["guardian.relationship"]}
+                        />
+                        <TextField
+                            label="Telefone com DDD"
+                            name="guardian.phone"
+                            type="tel"
+                            placeholder="(49) 99999-9999"
+                            value={formData.guardianPhone}
+                            onChange={(event) => updateField("guardianPhone", formatPhone(event.target.value))}
+                            error={fieldErrors["guardian.phone"]}
                         />
                     </div>
                 </fieldset>

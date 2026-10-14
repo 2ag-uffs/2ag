@@ -6,6 +6,7 @@ import {
     FiCalendar,
     FiDownload,
     FiFileText,
+    FiPhone,
     FiRepeat,
     FiShield,
     FiTrendingUp,
@@ -23,6 +24,7 @@ import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
+import {formatPhone} from "../../utils/masks.js";
 import styles from "./historico-clinico-prescritor.module.css";
 
 // historico clinico de um paciente do prescritor (RF13)
@@ -230,12 +232,29 @@ export default function HistoricoClinicoPrescritor() {
                 )}
             />
 
-            {(nextAppointment || patient.archived) && (
+            {(nextAppointment || patient.archived || patient.guardian) && (
                 <div className={styles.facts}>
                     {nextAppointment && (
                         <span className={styles.fact}>
                             <FiCalendar aria-hidden="true"/>
                             Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
+                        </span>
+                    )}
+                    {patient.guardian && (
+                        <span className={styles.fact}>
+                            <FiPhone aria-hidden="true"/>
+                            <span>
+                                Familiar ou cuidador: {patient.guardian.name}
+                                {patient.guardian.relationship ? " (" + patient.guardian.relationship + ")" : ""}
+                                {patient.guardian.phone && (
+                                    <>
+                                        {" · "}
+                                        <a href={"tel:+55" + patient.guardian.phone}>
+                                            {formatPhone(patient.guardian.phone)}
+                                        </a>
+                                    </>
+                                )}
+                            </span>
                         </span>
                     )}
                     {patient.archived && (

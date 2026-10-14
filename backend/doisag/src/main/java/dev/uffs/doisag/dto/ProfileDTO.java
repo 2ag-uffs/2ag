@@ -19,6 +19,7 @@ public record ProfileDTO(
         LocalDate birthDate,
         String phone,
         AddressDTO address,
+        GuardianDTO guardian,
         boolean emailNotificationsEnabled,
         String prescriberName,
         String profession,
@@ -32,9 +33,13 @@ public record ProfileDTO(
         String profession = null;
         String registryType = null;
         String registryNumber = null;
+        GuardianDTO guardian = null;
 
-        if (user instanceof Patient patient && patient.getPrescriber() != null) {
-            prescriberName = patient.getPrescriber().getName();
+        if (user instanceof Patient patient) {
+            guardian = GuardianDTO.from(patient);
+            if (patient.getPrescriber() != null) {
+                prescriberName = patient.getPrescriber().getName();
+            }
         }
         if (user instanceof Prescriber prescriber) {
             profession = prescriber.getProfession();
@@ -57,6 +62,7 @@ public record ProfileDTO(
                 user.getBirthDate(),
                 user.getPhone(),
                 address,
+                guardian,
                 user.isEmailNotificationsEnabled(),
                 prescriberName,
                 profession,

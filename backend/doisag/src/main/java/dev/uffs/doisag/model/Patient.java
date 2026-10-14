@@ -29,6 +29,11 @@ public class Patient extends Users {
     @JoinColumn(name = "archived_by_id")
     private Prescriber archivedBy;
 
+    // responsavel ou cuidador (RF38)
+    private String guardianName;
+    private String guardianRelationship;
+    private String guardianPhone;
+
     public Patient() {
     }
 
@@ -60,6 +65,30 @@ public class Patient extends Users {
 
     public void setArchivedBy(Prescriber archivedBy) {
         this.archivedBy = archivedBy;
+    }
+
+    public String getGuardianName() {
+        return guardianName;
+    }
+
+    public void setGuardianName(String guardianName) {
+        this.guardianName = guardianName;
+    }
+
+    public String getGuardianRelationship() {
+        return guardianRelationship;
+    }
+
+    public void setGuardianRelationship(String guardianRelationship) {
+        this.guardianRelationship = guardianRelationship;
+    }
+
+    public String getGuardianPhone() {
+        return guardianPhone;
+    }
+
+    public void setGuardianPhone(String guardianPhone) {
+        this.guardianPhone = guardianPhone;
     }
 
     @JsonIgnore

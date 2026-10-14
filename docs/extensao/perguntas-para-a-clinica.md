@@ -158,13 +158,13 @@ O formulário do MEEM que a clínica aplica (`docs/scales/meem.pdf`) não traz f
 
 ## 11. Responsável ou cuidador
 
-**Status:** aberta · **afeta:** cadastro do paciente e RF36
+**Status:** aberta · **afeta:** cadastro do paciente, RF36 e RF38
 
-Muitos pacientes têm cuidador: idosos, filhos que acompanham os pais, crianças (resposta de 01/10/2026). O sistema hoje guarda um telefone só, o do próprio paciente, e o cadastro e o termo partem do princípio de que o titular é o paciente.
+Muitos pacientes têm cuidador: idosos, filhos que acompanham os pais, crianças (resposta de 01/10/2026). Desde 14/10/2026 (RF38), o paciente pode informar no cadastro e no perfil um familiar ou cuidador, com nome, parentesco e telefone, todos opcionais. Esse contato aparece só para o prescritor, no cabeçalho do prontuário, com link para ligar, e fica fora da lista de pacientes e da exportação anonimizada. O login, os lembretes e o aceite do termo continuam partindo do princípio de que o titular é o paciente.
 
 **Perguntar:**
 
-- Basta nome, parentesco e telefone do responsável, ou precisa de e-mail também? Pode ter mais de um?
+- O sistema guarda nome, parentesco e telefone de uma pessoa. Basta, ou precisa de e-mail também? Pode ter mais de um?
 - O responsável preenche as escalas pelo login do paciente?
 - O lembrete deve chegar também ao responsável?
 - No caso de criança, quem aceita o termo?

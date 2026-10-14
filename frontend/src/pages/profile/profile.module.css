@@ -64,6 +64,25 @@
     gap: var(--space-4);
 }
 
+/* grupo do familiar, a legenda vira o nome do grupo pro leitor de tela */
+.formSection {
+    border: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin: var(--space-2) 0 0;
+    min-width: 0;
+    padding: 0;
+}
+
+.formSubtitle {
+    color: var(--color-text-headings);
+    float: left;
+    font-weight: 600;
+    padding: 0;
+    width: 100%;
+}
+
 .row {
     display: grid;
     gap: var(--space-3) var(--space-4);

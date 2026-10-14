@@ -199,6 +199,69 @@ class ProfileTest {
     }
 
     @Test
+    void patientAddsTheGuardianAndThePrescriberSeesItOnlyInTheChart() throws Exception {
+        String body = """
+                {"name":"Paciente do Perfil","birthDate":"1990-04-12","phone":"49999887766",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"},
+                 "guardian":{"name":" Joana Souza ","relationship":"filha","phone":"49988776655"}}
+                """;
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.guardian.name").value("Joana Souza"))
+                .andExpect(jsonPath("$.guardian.relationship").value("filha"))
+                .andExpect(jsonPath("$.guardian.phone").value("49988776655"));
+
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.guardian.name").value("Joana Souza"))
+                .andExpect(jsonPath("$.guardian.phone").value("49988776655"));
+
+        mockMvc.perform(get("/patients").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Paciente do Perfil"))
+                .andExpect(jsonPath("$[0].guardian").doesNotExist());
+    }
+
+    @Test
+    void guardianPhoneWithoutNameIsRefused() throws Exception {
+        String body = """
+                {"name":"Paciente do Perfil","birthDate":"1990-04-12","phone":"49999887766",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"},
+                 "guardian":{"name":"  ","relationship":"","phone":"49988776655"}}
+                """;
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"));
+
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getGuardianPhone()).isNull();
+    }
+
+    @Test
+    void profileWithoutGuardianRemovesIt() throws Exception {
+        patient.setGuardianName("Joana Souza");
+        patient.setGuardianPhone("49988776655");
+        patientRepository.save(patient);
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PATIENT_PROFILE_JSON))
+                .andExpect(status().isOk());
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.getGuardianName()).isNull();
+        assertThat(savedPatient.getGuardianPhone()).isNull();
+    }
+
+    @Test
     void emailNoticesCanBeTurnedOff() throws Exception {
         mockMvc.perform(put("/profile/email-preference")
                         .header("Authorization", bearerTokenOf(patient))

@@ -10,6 +10,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
+import {guardianBody, guardianFieldsFrom} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./profile.module.css";
 
@@ -40,6 +41,7 @@ function personalDataFrom(profile) {
         number: address.number || "",
         city: address.city || "",
         state: address.state || "",
+        ...guardianFieldsFrom(profile.guardian),
     };
 }
 
@@ -93,6 +95,7 @@ function PersonalDataCard({profile, onSaved}) {
             address: hasAddress
                 ? {street: formData.street, number: formData.number, city: formData.city, state: formData.state}
                 : null,
+            guardian: isPatient ? guardianBody(formData) : null,
         };
 
         try {
@@ -225,6 +228,37 @@ function PersonalDataCard({profile, onSaved}) {
                     />
                 </div>
                 </>
+                )}
+                {isPatient && (
+                <fieldset className={styles.formSection}>
+                <legend className={styles.formSubtitle}>Familiar ou cuidador (opcional)</legend>
+                <TextField
+                    label="Nome"
+                    name="guardian.name"
+                    value={formData.guardianName}
+                    onChange={(event) => updateField("guardianName", event.target.value)}
+                    error={fieldErrors["guardian.name"]}
+                />
+                <div className={styles.row}>
+                    <TextField
+                        label="Parentesco"
+                        name="guardian.relationship"
+                        placeholder="Filha, marido, cuidadora..."
+                        value={formData.guardianRelationship}
+                        onChange={(event) => updateField("guardianRelationship", event.target.value)}
+                        error={fieldErrors["guardian.relationship"]}
+                    />
+                    <TextField
+                        label="Telefone com DDD"
+                        name="guardian.phone"
+                        type="tel"
+                        placeholder="(49) 99999-9999"
+                        value={formData.guardianPhone}
+                        onChange={(event) => updateField("guardianPhone", formatPhone(event.target.value))}
+                        error={fieldErrors["guardian.phone"]}
+                    />
+                </div>
+                </fieldset>
                 )}
                 <div className={styles.actions}>
                     <button type="submit" className="button" disabled={isSaving}>

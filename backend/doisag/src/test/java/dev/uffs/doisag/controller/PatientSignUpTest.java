@@ -94,6 +94,10 @@ class PatientSignUpTest {
                 """.formatted(inviteToken, cpf, email, password, termVersionJson);
     }
 
+    private String withGuardian(String body, String guardianJson) {
+        return body.replace("\"address\":", "\"guardian\":" + guardianJson + ",\"address\":");
+    }
+
     private ResultActions signUp(String body) throws Exception {
         return mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(body));
     }
@@ -121,6 +125,34 @@ class PatientSignUpTest {
         PatientInvite invite = patientInviteRepository.findByTokenHash(SecureTokens.hashToken(inviteToken)).orElseThrow();
         assertThat(invite.getUsedAt()).isNotNull();
         assertThat(invite.getPatient().getId()).isEqualTo(patient.getId());
+    }
+
+    // quem acompanha eh opcional e o campo em branco n vira texto vazio no banco (RF38)
+    @Test
+    void signUpKeepsTheGuardianAndBlankFieldsBecomeNull() throws Exception {
+        String body = withGuardian(signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD),
+                """
+                {"name":"Joana Souza","relationship":" ","phone":"49988776655"}""");
+
+        signUp(body).andExpect(status().isCreated());
+
+        Patient patient = (Patient) usersRepository.findByEmail("maria.silva@email.com").orElseThrow();
+        assertThat(patient.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(patient.getGuardianRelationship()).isNull();
+        assertThat(patient.getGuardianPhone()).isEqualTo("49988776655");
+    }
+
+    @Test
+    void guardianWithoutNameIsRefusedBeforeTheAccountExists() throws Exception {
+        String body = withGuardian(signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD),
+                """
+                {"relationship":"filha"}""");
+
+        signUp(body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"));
+
+        assertThat(usersRepository.findByEmail("maria.silva@email.com")).isEmpty();
     }
 
     @Test

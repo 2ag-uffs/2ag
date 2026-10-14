@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -226,6 +227,23 @@ class ExportTest {
         assertThat(csv).contains("paciente " + patient.getId());
         assertThat(csv).doesNotContain("Paciente da exportação");
         assertThat(csv).contains("\"7\"");
+    }
+
+    // responsavel eh dado de outra pessoa e n sai no arquivo de pesquisa (RF38)
+    @Test
+    void anonymousFilesLeaveTheGuardianOut() throws Exception {
+        patient.setGuardianName("Joana Responsável");
+        patient.setGuardianRelationship("filha");
+        patient.setGuardianPhone("49988776655");
+        patientRepository.save(patient);
+
+        List<String> files = List.of("appointments.csv?anonymous=true", "prescriptions.csv?anonymous=true",
+                "scales.csv?anonymous=true", "anamneses.csv?anonymous=true",
+                "progress.csv?attribute=DOR&period=DIAS_30&anonymous=true");
+        for (String file : files) {
+            String csv = download(file, "", prescriber);
+            assertThat(csv).doesNotContain("Joana").doesNotContain("49988776655");
+        }
     }
 
     @Test

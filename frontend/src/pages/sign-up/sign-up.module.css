@@ -35,6 +35,12 @@
     width: 100%;
 }
 
+.sectionHint {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    margin: 0;
+}
+
 .row {
     display: grid;
     gap: var(--space-3) var(--space-4);

@@ -37,6 +37,9 @@ public record RegisterDTO(
         @Valid
         AddressDTO address,
 
+        @Valid
+        GuardianDTO guardian,
+
         @NotBlank(message = "Informe o e-mail")
         @Email(message = "E-mail inválido")
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")

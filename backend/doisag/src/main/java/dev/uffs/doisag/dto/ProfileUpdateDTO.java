@@ -22,6 +22,10 @@ public record ProfileUpdateDTO(
         String phone,
 
         @Valid
-        AddressDTO address
+        AddressDTO address,
+
+        // so vale pra paciente
+        @Valid
+        GuardianDTO guardian
 ) {
 }

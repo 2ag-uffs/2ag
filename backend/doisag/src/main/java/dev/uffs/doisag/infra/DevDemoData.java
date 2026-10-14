@@ -139,6 +139,10 @@ public class DevDemoData {
             Patient renata = createPatient("Renata Dias Carvalho", "renata.dias@email.com", "274153869",
                     LocalDate.of(1965, 2, 8), "49992345678",
                     new Address("Avenida Getúlio Vargas", "1450", "Chapecó", "SC", "Brasil"), prescriber, password);
+            renata.setGuardianName("Lucas Dias Carvalho");
+            renata.setGuardianRelationship("filho");
+            renata.setGuardianPhone("49981234567");
+            renata = patientRepository.save(renata);
             Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
                     LocalDate.of(1983, 7, 30), "49993456789",
                     new Address("Rua Marechal Deodoro", "88", "Xaxim", "SC", "Brasil"), prescriber, password);

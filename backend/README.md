@@ -82,7 +82,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role}` |
 | `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
 | `GET /auth/me` | quem está logado |
-| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado |
+| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
 - com `SESSION_SECURE_COOKIE=true` o cookie se chama `__Host-session` e leva `Secure`: o navegador recusa um cookie `__Host-` sem `Secure`, com `Domain` ou fora de `Path=/`, então servidor configurado errado aparece na hora em vez de um login que não gruda. em `false` (só http, no próprio computador) ele se chama `session`
@@ -133,7 +133,7 @@ o link de senha nova é a saída para o prescritor que esqueceu a senha antes de
 | rota | o que faz |
 | :--- | :--- |
 | `GET /profile` | dados da própria conta |
-| `PUT /profile` | nome, data de nascimento, telefone e endereço |
+| `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian`, e mandar sem ele apaga o que estava salvo |
 | `PUT /profile/email` | pede a troca do e-mail de acesso, com a senha atual. devolve o perfil com o endereço novo em `pendingEmail`; o e-mail só muda quando o link enviado para ele é aberto (`POST /auth/email-change/confirm`) |
 | `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
