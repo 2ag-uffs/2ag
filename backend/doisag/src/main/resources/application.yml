@@ -91,6 +91,8 @@ api:
     # sem essas duas variaveis nenhuma conta de administrador eh criada
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+    # true troca a senha da conta q ja existe pela do ADMIN_PASSWORD, so pra quem esqueceu
+    reset-password: ${ADMIN_PASSWORD_RESET:false}
   clinic:
     # controladora dos dados e contato do encarregado (lgpd art. 41), entram no termo de consentimento
     name: ${CLINIC_NAME:}

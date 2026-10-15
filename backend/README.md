@@ -62,7 +62,8 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `LOGIN_BLOCK_MINUTES` | minutos que o bloqueio do login dura | `15` |
 | `PASSWORD_RESET_MAX_REQUESTS_PER_ADDRESS` | pedidos de link de senha nova do mesmo endereço antes do bloqueio, que dura o mesmo tempo do login | `10` |
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https. precisa combinar com o esquema do `PUBLIC_URL`: `https` com `false` ou `http` com `true` e a api não sobe | `true` |
-| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida | nenhuma conta |
+| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida. a senha segue a mesma regra de senha forte das outras contas; fraca, a conta não é criada e o log diz por quê | nenhuma conta |
+| `ADMIN_PASSWORD_RESET` | `true` troca a senha da conta administrativa que já existe pela do `ADMIN_PASSWORD` na subida e derruba as sessões abertas. serve para quem esqueceu a senha num servidor sem e-mail; depois de entrar, tire a variável | `false` |
 | `CLINIC_NAME` e `CLINIC_DPO_CONTACT` | razão social da clínica e contato do encarregado de dados, que entram no termo de consentimento no lugar dos colchetes | vazias: o termo sai com os colchetes e a api avisa no log |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |

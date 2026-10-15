@@ -78,7 +78,7 @@ Abra o `.env` e preencha. O arquivo de exemplo explica cada linha; o que importa
 | :--- | :--- |
 | `POSTGRES_PASSWORD` | uma senha gerada: `openssl rand -base64 24` |
 | `JWT_SECRET` | `openssl rand -base64 48`. nunca reaproveite uma chave que já apareceu em alguma versão antiga do repositório |
-| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não |
+| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais, com letra maiúscula, número e símbolo. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não. se a senha não seguir a regra, a conta não é criada e o log da api diz por quê |
 | `PUBLIC_URL` | `https://2ag.clinica.com.br`, exatamente como as pessoas vão abrir, sem barra no fim |
 | `CLINIC_NAME` e `CLINIC_DPO_CONTACT` | a razão social da clínica e o contato do encarregado de dados. entram no termo de consentimento no lugar dos colchetes |
 | `SESSION_SECURE_COOKIE` | `true`, que já é o valor do exemplo |
@@ -213,6 +213,7 @@ Backup antes de qualquer atualização. As migrações do banco rodam sozinhas q
 - **Login entra, o resto dá 403.** `PUBLIC_URL` diferente do endereço aberto (seção 7).
 - **Muita gente recebe "muitas requisições".** O limite é por endereço de rede: 10 tentativas de login por minuto e 20 chamadas por segundo. Numa clínica onde todos saem pelo mesmo IP isso pode apertar; os limites do nginx ficam em `frontend/nginx.conf` e os da api em `LOGIN_*` no `.env`.
 - **E-mail não chega.** `docker compose logs api | grep -i e-mail` mostra se saiu. Confira `MAIL_FROM`, a porta 587 e se o provedor exige senha de aplicativo.
+- **Esqueceram a senha do administrador.** Com e-mail funcionando, use *Esqueci minha senha* na tela de entrada. Sem e-mail: coloque uma senha nova em `ADMIN_PASSWORD`, acrescente `ADMIN_PASSWORD_RESET=true` no `.env` e rode `docker compose up -d`. A api troca a senha, derruba as sessões abertas e avisa no log. Entre com a senha nova, **apague a linha `ADMIN_PASSWORD_RESET`** e rode `docker compose up -d` de novo; enquanto ela estiver lá, a senha volta para a do `.env` a cada subida.
 
 ---
 
