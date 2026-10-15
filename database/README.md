@@ -69,7 +69,7 @@ cd backend/doisag
 ./mvnw spring-boot:run
 ```
 
-na primeira subida o **flyway** cria as tabelas a partir das migrações em `backend/doisag/src/main/resources/db/migration/`. com `SEED_DADOS_TESTE=true` também são criadas as contas de teste, todas com a senha `Senha@123`: `admin@email.com`, `prescritor@email.com` e `paciente@email.com`.
+na primeira subida o **flyway** cria as tabelas a partir das migrações em `backend/doisag/src/main/resources/db/migration/`. o que só existe num banco fica em `db/vendor/<banco>/`: hoje, os índices únicos parciais do Postgres, que o H2 dos testes não aceita. com `SEED_DADOS_TESTE=true` também são criadas as contas de teste, todas com a senha `Senha@123`: `admin@email.com`, `prescritor@email.com` e `paciente@email.com`.
 
 > para rodar os **testes** nada disso é necessário: `./mvnw clean install` usa h2 em memória.
 

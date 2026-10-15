@@ -31,6 +31,8 @@ spring:
   flyway:
     # quem cria e altera tabela eh o flyway pelos arquivos da pasta de migracoes
     enabled: ${FLYWAY_ENABLED:true}
+    # a pasta do vendor tem o q so roda num banco, como indice parcial no postgres
+    locations: classpath:db/migration,classpath:db/vendor/{vendor}
   jpa:
     hibernate:
       # o hibernate so confere se o banco bate com as entidades e n altera nada
