@@ -126,7 +126,7 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a data de cada aceite. O texto atual é um **rascunho técnico** e precisa ser revisado e aprovado pela clínica, de preferência com apoio jurídico, antes de qualquer paciente real.
 
-**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra. Desde 14/10/2026 o sistema já tem esse consentimento (RF37): opcional, aceito no cadastro ou no perfil e retirado no perfil, e a exportação anônima só sai de quem aceitou. O texto dele é um rascunho até o projeto passar no comitê de ética.
+**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra. Desde 14/10/2026 o sistema já tem esse consentimento (RF37): opcional, aceito no cadastro ou no perfil e retirado no perfil, e a exportação sem identificação só sai de quem aceitou. Em 15/10/2026 ela deixou de se chamar exportação anônima: sai sem nome e contato, mas a clínica sabe de quem é cada número e o texto das consultas sai como foi escrito, então pela LGPD o arquivo continua sendo dado pessoal de saúde (dados codificados, não anônimos). O texto do consentimento de pesquisa passou a dizer isso ao paciente, e o projeto no comitê de ética deve tratar o arquivo do mesmo jeito. O texto dele é um rascunho até o projeto passar no comitê de ética.
 
 **Perguntar:**
 
@@ -156,7 +156,7 @@ O formulário do MEEM que a clínica aplica (`docs/scales/meem.pdf`) não traz f
 
 **Status:** aberta · **afeta:** cadastro do paciente, RF36 e RF38
 
-Muitos pacientes têm cuidador: idosos, filhos que acompanham os pais, crianças (resposta de 01/10/2026). Desde 14/10/2026 (RF38), o paciente pode informar no cadastro e no perfil um familiar ou cuidador, com nome, parentesco e telefone, todos opcionais. Esse contato aparece só para o prescritor, no cabeçalho do prontuário, com link para ligar, e fica fora da lista de pacientes e da exportação anonimizada. O login, os lembretes e o aceite do termo continuam partindo do princípio de que o titular é o paciente.
+Muitos pacientes têm cuidador: idosos, filhos que acompanham os pais, crianças (resposta de 01/10/2026). Desde 14/10/2026 (RF38), o paciente pode informar no cadastro e no perfil um familiar ou cuidador, com nome, parentesco e telefone, todos opcionais. Esse contato aparece só para o prescritor, no cabeçalho do prontuário, com link para ligar, e fica fora da lista de pacientes e da exportação sem identificação. O login, os lembretes e o aceite do termo continuam partindo do princípio de que o titular é o paciente.
 
 **Perguntar:**
 

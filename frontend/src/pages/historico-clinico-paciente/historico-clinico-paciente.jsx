@@ -89,7 +89,7 @@ export default function HistoricoClinicoPaciente() {
                 <ExportModal
                     patientId={loggedUser.id}
                     printPath="/impressao"
-                    canAnonymize={false}
+                    canDeidentify={false}
                     onClose={() => setIsExportOpen(false)}
                 />
             )}

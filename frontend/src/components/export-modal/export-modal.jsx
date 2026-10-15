@@ -16,10 +16,10 @@ const FILES = [
 //
 // o csv abre direto na planilha e a versao para impressao serve pra
 // salvar em pdf pelo proprio navegador
-// o modo anonimo eh o de pesquisa e so sai de quem aceitou participar (RF37)
-export default function ExportModal({patientId, printPath, canAnonymize, hasResearchConsent, onClose}) {
+// o modo sem identificacao eh o de pesquisa e so sai de quem aceitou participar (RF37)
+export default function ExportModal({patientId, printPath, canDeidentify, hasResearchConsent, onClose}) {
     const navigate = useNavigate();
-    const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isDeidentified, setIsDeidentified] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
     const [downloadingFile, setDownloadingFile] = useState(null);
 
@@ -28,8 +28,8 @@ export default function ExportModal({patientId, printPath, canAnonymize, hasRese
         setDownloadError(null);
         setDownloadingFile(file);
         try {
-            const anonymousParam = isAnonymous && hasResearchConsent ? "?anonymous=true" : "";
-            await download("/patients/" + patientId + "/export/" + file + anonymousParam, file);
+            const deidentifiedParam = isDeidentified && hasResearchConsent ? "?deidentified=true" : "";
+            await download("/patients/" + patientId + "/export/" + file + deidentifiedParam, file);
         } catch (requestError) {
             setDownloadError(requestError instanceof ApiError
                 ? requestError.message
@@ -47,23 +47,25 @@ export default function ExportModal({patientId, printPath, canAnonymize, hasRese
                     para impressão.
                 </p>
 
-                {canAnonymize && (
-                    <label className={styles.anonymous}>
+                {canDeidentify && (
+                    <label className={styles.deidentified}>
                         <input
                             type="checkbox"
-                            checked={isAnonymous && hasResearchConsent}
-                            onChange={(event) => setIsAnonymous(event.target.checked)}
+                            checked={isDeidentified && hasResearchConsent}
+                            onChange={(event) => setIsDeidentified(event.target.checked)}
                             disabled={!hasResearchConsent}
                         />
                         <span>
-                            Modo anônimo, para pesquisa
+                            Modo sem identificação, para pesquisa
                             <span className={styles.help}>
                                 {hasResearchConsent
-                                    ? "Sai sem nome, CPF, e-mail, telefone e endereço. O paciente e o prescritor "
-                                        + "aparecem só por um número. Texto livre, como queixa e observação, sai como "
-                                        + "foi escrito e pode citar nomes."
-                                    : "O paciente não aceitou participar da pesquisa, então o arquivo anônimo não sai. "
-                                        + "Ele pode aceitar no perfil dele."}
+                                    ? "Nome, CPF, e-mail, telefone e endereço ficam de fora, e o paciente e o "
+                                        + "prescritor aparecem só por um número. Não é anônimo: a clínica sabe de quem "
+                                        + "é cada número, as datas saem como estão e o texto livre, como queixa e "
+                                        + "observação, sai como foi escrito e pode citar nomes. Pela LGPD o arquivo "
+                                        + "continua sendo dado de saúde: guarde e envie com o mesmo cuidado do prontuário."
+                                    : "O paciente não aceitou participar da pesquisa, então o arquivo sem "
+                                        + "identificação não sai. Ele pode aceitar no perfil dele."}
                             </span>
                         </span>
                     </label>
@@ -94,7 +96,7 @@ export default function ExportModal({patientId, printPath, canAnonymize, hasRese
 
                 <p className={styles.help}>
                     A série de evolução sai na tela de progresso, junto com a escala e o período escolhidos.
-                    {canAnonymize ? " O modo anônimo dela é marcado lá." : ""}
+                    {canDeidentify ? " O modo sem identificação dela é marcado lá." : ""}
                 </p>
 
                 <div className={styles.actions}>

@@ -81,7 +81,7 @@ export default function Progresso() {
     const [showDose, setShowDose] = useState(Boolean(keptFilters.showDose));
     const [appointments, setAppointments] = useState([]);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
-    const [isAnonymous, setIsAnonymous] = useState(Boolean(keptFilters.isAnonymous));
+    const [isDeidentified, setIsDeidentified] = useState(Boolean(keptFilters.isDeidentified));
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
     const [comments, setComments] = useState([]);
@@ -278,7 +278,7 @@ export default function Progresso() {
                 attribute: chosenAttribute,
                 showDose: showDose,
                 showAppointments: showAppointments,
-                isAnonymous: isAnonymous,
+                isDeidentified: isDeidentified,
             },
         });
     };
@@ -358,9 +358,9 @@ export default function Progresso() {
         </Link>
     ) : null;
 
-    // so o prescritor pode pedir o arquivo anonimo
+    // so o prescritor pode pedir o arquivo sem identificacao
     // a escolha vai sempre, assim sem o aceite de pesquisa a api recusa e n sai o arquivo com nome (RF37)
-    const anonymousParam = isPrescriber && isAnonymous ? "&anonymous=true" : "";
+    const deidentifiedParam = isPrescriber && isDeidentified ? "&deidentified=true" : "";
     const lacksResearchConsent = Boolean(isPrescriber && currentPatient && !currentPatient.researchConsent);
     // pela api, senao sessao vencida salvava um csv com o json do erro dentro
     const downloadCsv = async () => {
@@ -368,7 +368,7 @@ export default function Progresso() {
         setIsDownloading(true);
         try {
             await download("/patients/" + patientId + "/export/progress.csv?attribute="
-                + chosenAttribute + "&period=" + period + anonymousParam, "progresso.csv");
+                + chosenAttribute + "&period=" + period + deidentifiedParam, "progresso.csv");
         } catch (requestError) {
             setDownloadError(requestError instanceof ApiError
                 ? requestError.message
@@ -462,15 +462,21 @@ export default function Progresso() {
                         <label className={styles.check}>
                             <input
                                 type="checkbox"
-                                checked={isAnonymous}
-                                onChange={(event) => setIsAnonymous(event.target.checked)}
+                                checked={isDeidentified}
+                                onChange={(event) => setIsDeidentified(event.target.checked)}
                             />
-                            Baixar o CSV sem o nome do paciente
+                            Baixar o CSV sem identificação, para pesquisa
                         </label>
                     )}
                     {isPrescriber && chartRows.length > 0 && lacksResearchConsent && (
                         <p className={styles.checkHint}>
-                            O paciente não aceitou participar da pesquisa, então o CSV sem o nome não sai.
+                            O paciente não aceitou participar da pesquisa, então o CSV sem identificação não sai.
+                        </p>
+                    )}
+                    {isPrescriber && chartRows.length > 0 && isDeidentified && !lacksResearchConsent && (
+                        <p className={styles.checkHint}>
+                            O paciente aparece só por um número, mas a clínica sabe de quem é. Guarde o arquivo com
+                            o mesmo cuidado do prontuário.
                         </p>
                     )}
                 </div>

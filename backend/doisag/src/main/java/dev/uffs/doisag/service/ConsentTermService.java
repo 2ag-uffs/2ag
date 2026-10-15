@@ -31,7 +31,7 @@ public class ConsentTermService {
 
     // troque a versao junto com o texto do arquivo
     public static final String CURRENT_VERSION = "2026-09-rascunho";
-    public static final String RESEARCH_VERSION = "2026-10-rascunho";
+    public static final String RESEARCH_VERSION = "2026-10-rascunho-2";
 
     public static final String OUTDATED_RESEARCH_MESSAGE =
             "O termo de pesquisa foi atualizado. Leia a versão nova antes de aceitar";

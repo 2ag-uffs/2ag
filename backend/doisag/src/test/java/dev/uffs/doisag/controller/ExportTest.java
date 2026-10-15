@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // exportacao em csv (RF33)
 //
 // o paciente leva os proprios dados e o prescritor os dos pacientes
-// dele. o modo anonimo eh pra pesquisa e n pode levar dado pessoal
+// dele. o modo sem identificacao eh pra pesquisa e n pode levar nome nem contato
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -80,7 +80,7 @@ class ExportTest {
         patient.setBirthDate(LocalDate.of(1990, 1, 1));
         patient.setPrescriber(prescriber);
         patient = patientRepository.save(patient);
-        // o arquivo anonimo eh o de pesquisa e so sai de quem aceitou (RF37)
+        // o arquivo sem identificacao eh o de pesquisa e so sai de quem aceitou (RF37)
         consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
 
         Appointment appointment = new Appointment();
@@ -140,10 +140,10 @@ class ExportTest {
                         org.hamcrest.Matchers.containsString("consultas-paciente-" + patient.getId())));
     }
 
-    // RNF04 no modo anonimo nenhum dado pessoal sai
+    // RNF04 no modo sem identificacao n sai nome nem contato
     @Test
-    void oModoAnonimoTiraONomeDoPaciente() throws Exception {
-        String csv = download("appointments.csv", "?anonymous=true", prescriber);
+    void oModoSemIdentificacaoTiraONomeDoPaciente() throws Exception {
+        String csv = download("appointments.csv", "?deidentified=true", prescriber);
 
         assertThat(csv).contains("\"Identificador\"");
         assertThat(csv).contains("paciente " + patient.getId());
@@ -155,8 +155,8 @@ class ExportTest {
 
     // com um prescritor so na clinica o nome dele ja diz de onde o arquivo veio
     @Test
-    void oModoAnonimoTiraONomeDoPrescritor() throws Exception {
-        String csv = download("appointments.csv", "?anonymous=true", prescriber);
+    void oModoSemIdentificacaoTiraONomeDoPrescritor() throws Exception {
+        String csv = download("appointments.csv", "?deidentified=true", prescriber);
 
         assertThat(csv).contains("prescritor " + prescriber.getId());
         assertThat(csv).doesNotContain("Dra. Exportação");
@@ -164,16 +164,16 @@ class ExportTest {
     }
 
     @Test
-    void anonymousFileNeedsTheResearchConsent() throws Exception {
+    void deidentifiedFileNeedsTheResearchConsent() throws Exception {
         consentTermService.revokeResearch(patient);
 
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
-                        .param("anonymous", "true")
+                        .param("deidentified", "true")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(ExportService.NO_RESEARCH_CONSENT_MESSAGE));
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/progress.csv")
-                        .param("attribute", "DOR").param("period", "DIAS_30").param("anonymous", "true")
+                        .param("attribute", "DOR").param("period", "DIAS_30").param("deidentified", "true")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isBadRequest());
 
@@ -187,17 +187,39 @@ class ExportTest {
         consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, "2025-01-texto-antigo");
 
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/scales.csv")
-                        .param("anonymous", "true")
+                        .param("deidentified", "true")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void oModoAnonimoEhSoDoPrescritor() throws Exception {
+    void oModoSemIdentificacaoEhSoDoPrescritor() throws Exception {
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("deidentified", "true")
+                        .header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ExportService.DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE));
+    }
+
+    // o nome do arquivo tbm n pode levar o numero do paciente
+    @Test
+    void oArquivoSemIdentificacaoTemNomeProprio() throws Exception {
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("deidentified", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("consultas-sem-identificacao-")));
+    }
+
+    // o parametro antigo era ignorado e saia o arquivo com nome
+    @Test
+    void oParametroAntigoEhRecusado() throws Exception {
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
                         .param("anonymous", "true")
-                        .header("Authorization", bearerTokenOf(patient)))
-                .andExpect(status().isBadRequest());
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ExportController.OLD_PARAM_MESSAGE));
     }
 
     @Test
@@ -256,8 +278,8 @@ class ExportTest {
     }
 
     @Test
-    void aEvolucaoAnonimaSaiSemONome() throws Exception {
-        String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30&anonymous=true", prescriber);
+    void aEvolucaoSemIdentificacaoSaiSemONome() throws Exception {
+        String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30&deidentified=true", prescriber);
 
         assertThat(csv).contains("\"Identificador\";\"Escala\";\"Atributo\"");
         assertThat(csv).contains("paciente " + patient.getId());
@@ -267,15 +289,15 @@ class ExportTest {
 
     // responsavel eh dado de outra pessoa e n sai no arquivo de pesquisa (RF38)
     @Test
-    void anonymousFilesLeaveTheGuardianOut() throws Exception {
+    void deidentifiedFilesLeaveTheGuardianOut() throws Exception {
         patient.setGuardianName("Joana Responsável");
         patient.setGuardianRelationship("filha");
         patient.setGuardianPhone("49988776655");
         patientRepository.save(patient);
 
-        List<String> files = List.of("appointments.csv?anonymous=true", "prescriptions.csv?anonymous=true",
-                "scales.csv?anonymous=true", "anamneses.csv?anonymous=true",
-                "progress.csv?attribute=DOR&period=DIAS_30&anonymous=true");
+        List<String> files = List.of("appointments.csv?deidentified=true", "prescriptions.csv?deidentified=true",
+                "scales.csv?deidentified=true", "anamneses.csv?deidentified=true",
+                "progress.csv?attribute=DOR&period=DIAS_30&deidentified=true");
         for (String file : files) {
             String csv = download(file, "", prescriber);
             assertThat(csv).doesNotContain("Joana").doesNotContain("49988776655");

@@ -14,7 +14,7 @@
     margin-top: 0.125rem;
 }
 
-.anonymous {
+.deidentified {
     align-items: flex-start;
     background-color: var(--color-background);
     border-radius: var(--radius-md);
@@ -24,7 +24,7 @@
     padding: var(--space-3) var(--space-4);
 }
 
-.anonymous input {
+.deidentified input {
     accent-color: var(--color-primary);
     flex: 0 0 auto;
     height: 1.25rem;

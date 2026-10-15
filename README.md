@@ -190,7 +190,7 @@ docs/        requisitos, guia de deploy, backup, segurança, escalas clínicas, 
 - o administrador cuida só das contas: cria prescritor, desativa e reativa conta de prescritor e de paciente, e não vê prontuário. desativar tira o acesso na hora e não apaga nada.
 - nenhum dado clínico é apagado, e toda criação, alteração e abertura de prontuário fica na trilha de auditoria. o prescritor consulta a trilha de cada paciente pela lista de pacientes, e o administrador consulta em Auditoria, sem ver nome de paciente.
 - o paciente pede consulta só nos horários de atendimento que o prescritor cadastra, e o horário fica reservado até o prescritor responder.
-- paciente e prescritor exportam o histórico em CSV, e a página de impressão salva em PDF pelo próprio navegador. a exportação do prescritor tem modo anônimo para pesquisa.
+- paciente e prescritor exportam o histórico em CSV, e a página de impressão salva em PDF pelo próprio navegador. a exportação do prescritor tem modo sem identificação para pesquisa.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
 - nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.
 

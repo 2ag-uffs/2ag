@@ -32,16 +32,17 @@ import java.util.stream.Collectors;
 
 // exportacao dos dados em csv (RF33)
 //
-// um arquivo por tipo, pra abrir direto na planilha. o modo anonimo eh
-// pra pesquisa e sai sem nome, cpf, e-mail, telefone e endereco, com o
+// um arquivo por tipo, pra abrir direto na planilha. o modo sem identificacao
+// eh pra pesquisa e sai sem nome, cpf, e-mail, telefone e endereco, com o
 // paciente e o prescritor identificados so por um numero (RNF04)
+// n eh anonimo: a clinica sabe de quem eh cada numero, entao pela lgpd o arquivo continua sendo dado pessoal (art. 12)
 @Service
 public class ExportService {
 
-    public static final String ANONYMOUS_IS_FOR_PRESCRIBER_MESSAGE =
-            "O modo anônimo é da exportação do prescritor, para pesquisa";
+    public static final String DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE =
+            "O modo sem identificação é da exportação do prescritor, para pesquisa";
     public static final String NO_RESEARCH_CONSENT_MESSAGE =
-            "Este paciente não aceitou participar da pesquisa. O arquivo anônimo só sai de quem aceitou";
+            "Este paciente não aceitou participar da pesquisa. O arquivo sem identificação só sai de quem aceitou";
 
     // os campos da anamnese com o nome q o paciente leu na tela (RF19)
     private static final List<AnamnesisField> ANAMNESIS_FIELDS = List.of(
@@ -101,20 +102,20 @@ public class ExportService {
     }
 
     @Transactional
-    public String appointmentsCsv(Long patientId, boolean anonymous, Users loggedUser) {
-        Patient patient = startExport(patientId, anonymous, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data", "Hora", "Modalidade", "Situação",
+    public String appointmentsCsv(Long patientId, boolean deidentified, Users loggedUser) {
+        Patient patient = startExport(patientId, deidentified, loggedUser);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Hora", "Modalidade", "Situação",
                 "Prescritor", "Queixa e observações", "Exame físico", "Evolução", "Hipótese diagnóstica",
                 "Conduta", "Exames complementares", "Pressão arterial", "Peso", "Altura", "Anulada",
                 "Motivo da anulação");
 
         for (Appointment appointment : appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)) {
-            csv.line(patientCell(patient, anonymous),
+            csv.line(patientCell(patient, deidentified),
                     date(appointment.getDateTime().toLocalDate()),
                     time(appointment.getDateTime()),
                     appointment.getModality(),
                     appointment.getStatus(),
-                    prescriberCell(appointment.getPrescriber(), anonymous),
+                    prescriberCell(appointment.getPrescriber(), deidentified),
                     appointment.getClinicalObservation(),
                     appointment.getPhysicalExam(),
                     appointment.getEvolution(),
@@ -131,16 +132,16 @@ public class ExportService {
     }
 
     @Transactional
-    public String prescriptionsCsv(Long patientId, boolean anonymous, Users loggedUser) {
-        Patient patient = startExport(patientId, anonymous, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data da consulta", "Situação", "Produto",
+    public String prescriptionsCsv(Long patientId, boolean deidentified, Users loggedUser) {
+        Patient patient = startExport(patientId, deidentified, loggedUser);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação", "Produto",
                 "Espectro", "Composição", "Marca", "Lote", "Volume", "Posologia", "Via", "Duração em dias",
                 "Próxima consulta", "Observações", "Anulada", "Motivo da anulação");
 
         for (Prescription prescription
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
                         patientId)) {
-            csv.line(patientCell(patient, anonymous),
+            csv.line(patientCell(patient, deidentified),
                     date(prescription.getAppointment().getDateTime().toLocalDate()),
                     prescription.getStatus(),
                     prescription.getProductDescription(),
@@ -163,9 +164,9 @@ public class ExportService {
     // uma linha por item respondido, q eh o formato q a planilha filtra
     // e agrupa sem precisar de uma coluna por escala
     @Transactional
-    public String scaleResponsesCsv(Long patientId, boolean anonymous, Users loggedUser) {
-        Patient patient = startExport(patientId, anonymous, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Escala", "Início do período", "Fim do período",
+    public String scaleResponsesCsv(Long patientId, boolean deidentified, Users loggedUser) {
+        Patient patient = startExport(patientId, deidentified, loggedUser);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Início do período", "Fim do período",
                 "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada");
 
         for (ScaleResponse response : responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)) {
@@ -177,7 +178,7 @@ public class ExportService {
                 if (answer == null) {
                     continue;
                 }
-                csv.line(patientCell(patient, anonymous),
+                csv.line(patientCell(patient, deidentified),
                         response.getScaleType().getDisplayName(),
                         date(response.getPeriodStart()),
                         date(response.getPeriodEnd()),
@@ -241,12 +242,12 @@ public class ExportService {
 
     @Transactional
     public String progressCsv(Long patientId, TrackableAttribute attribute, TimePeriod period,
-                              boolean anonymous, Users loggedUser) {
-        Patient patient = startExport(patientId, anonymous, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Escala", "Atributo", "Data", "Valor");
+                              boolean deidentified, Users loggedUser) {
+        Patient patient = startExport(patientId, deidentified, loggedUser);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor");
 
         progressReportService.getPatientProgress(patientId, attribute, period)
-                .forEach(point -> csv.line(patientCell(patient, anonymous),
+                .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
                         attribute.name(),
                         date(point.date()),
@@ -255,9 +256,9 @@ public class ExportService {
     }
 
     @Transactional
-    public String anamnesisCsv(Long patientId, boolean anonymous, Users loggedUser) {
-        Patient patient = startExport(patientId, anonymous, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(anonymous), "Data", "Pergunta", "Resposta", "Anulada");
+    public String anamnesisCsv(Long patientId, boolean deidentified, Users loggedUser) {
+        Patient patient = startExport(patientId, deidentified, loggedUser);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Pergunta", "Resposta", "Anulada");
 
         for (Anamnesis anamnesis : anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId)) {
             for (AnamnesisField field : ANAMNESIS_FIELDS) {
@@ -265,7 +266,7 @@ public class ExportService {
                 if (answer == null || answer.isBlank()) {
                     continue;
                 }
-                csv.line(patientCell(patient, anonymous),
+                csv.line(patientCell(patient, deidentified),
                         date(anamnesis.getAssessmentDate()),
                         field.label(),
                         answer,
@@ -276,18 +277,18 @@ public class ExportService {
     }
 
     // o nome do arquivo q vai no download
-    public String fileName(String content, Long patientId, boolean anonymous) {
-        String owner = anonymous ? "anonimo" : "paciente-" + patientId;
+    public String fileName(String content, Long patientId, boolean deidentified) {
+        String owner = deidentified ? "sem-identificacao" : "paciente-" + patientId;
         return content + "-" + owner + "-" + LocalDate.now() + ".csv";
     }
 
     // toda exportacao eh leitura de prontuario e entra na trilha (RF31)
-    private Patient startExport(Long patientId, boolean anonymous, Users loggedUser) {
-        if (anonymous && !(loggedUser instanceof Prescriber)) {
-            throw new BusinessException(ANONYMOUS_IS_FOR_PRESCRIBER_MESSAGE);
+    private Patient startExport(Long patientId, boolean deidentified, Users loggedUser) {
+        if (deidentified && !(loggedUser instanceof Prescriber)) {
+            throw new BusinessException(DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE);
         }
-        // o arquivo anonimo eh o de pesquisa e so sai de quem aceitou participar (RF37)
-        if (anonymous && !consentTermService.hasResearchConsent(patientId)) {
+        // o arquivo sem identificacao eh o de pesquisa e so sai de quem aceitou participar (RF37)
+        if (deidentified && !consentTermService.hasResearchConsent(patientId)) {
             throw new BusinessException(NO_RESEARCH_CONSENT_MESSAGE);
         }
         auditService.recordChartView(patientId);
@@ -295,21 +296,21 @@ public class ExportService {
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
     }
 
-    private String patientColumn(boolean anonymous) {
-        return anonymous ? "Identificador" : "Paciente";
+    private String patientColumn(boolean deidentified) {
+        return deidentified ? "Identificador" : "Paciente";
     }
 
-    // no modo anonimo o paciente vira um numero e nenhum dado pessoal sai
-    private String patientCell(Patient patient, boolean anonymous) {
-        return anonymous ? "paciente " + patient.getId() : patient.getName();
+    // no modo sem identificacao o paciente vira um numero, sem nome nem contato
+    private String patientCell(Patient patient, boolean deidentified) {
+        return deidentified ? "paciente " + patient.getId() : patient.getName();
     }
 
     // o prescritor tbm vira numero, senao o nome dele entrega a clinica e o grupo de paciente
-    private String prescriberCell(Prescriber prescriber, boolean anonymous) {
+    private String prescriberCell(Prescriber prescriber, boolean deidentified) {
         if (prescriber == null) {
             return null;
         }
-        return anonymous ? "prescritor " + prescriber.getId() : prescriber.getName();
+        return deidentified ? "prescritor " + prescriber.getId() : prescriber.getName();
     }
 
     private String composition(Prescription prescription) {

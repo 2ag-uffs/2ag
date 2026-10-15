@@ -265,7 +265,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
 | `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
 
-- todas aceitam `anonymous=true`, que é a exportação para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito
+- todas aceitam `deidentified=true`, que é a exportação sem identificação, para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito. não é anônimo: o número é o id do banco e a clínica sabe de quem é, então pela LGPD o arquivo continua sendo dado pessoal de saúde (art. 12). o parâmetro antigo `anonymous` responde 400, para uma aba desatualizada não baixar o arquivo com nome
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria

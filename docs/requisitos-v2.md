@@ -433,7 +433,7 @@ Exportação de histórico clínico, escalas respondidas e séries de evolução
 *Critérios de aceite:*
 - O paciente exporta apenas os próprios dados, para levar a outras consultas
 - O prescritor exporta dados dos seus pacientes
-- Existe modo **anonimizado** para fins de pesquisa, sem nome, CPF, e-mail, telefone e endereço
+- Existe modo **sem identificação** para fins de pesquisa, sem nome, CPF, e-mail, telefone e endereço
 - O PDF identifica paciente, prescritor, período e data de emissão
 
 *Origem:* consolida os RF16 e RF17 da v1.0 e atende as necessidades "exportação de dados para pesquisa" e "padronização para estudos científicos" da tabela de §1.5, além do RNF09.
@@ -496,7 +496,7 @@ Conformidade no tratamento de dado pessoal sensível de saúde (art. 11).
 *Critérios de aceite:*
 - Acesso a dado clínico restrito por vínculo (RF30)
 - Trilha de auditoria de acesso e alteração (RF31)
-- Exportação anonimizada disponível para uso científico (RF33)
+- Exportação sem identificação disponível para uso científico (RF33). Não é anonimização: a clínica sabe de quem é cada número, então o arquivo continua sendo dado pessoal sensível de saúde (LGPD, art. 5º, II, e art. 12)
 - Nenhuma resposta da API expõe hash de senha ou credencial
 - Nenhum dado pessoal em parâmetro de URL
 
@@ -686,7 +686,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF18 | Restrito a dados pessoais, senha e preferência de e-mail, sem escolha de idioma |
 | RF26 | *Critério acrescentado:* a escolaridade usada no ponto de corte e a data da avaliação são registradas |
 | RF31 | Tabela de auditoria somente de inserção, gravada pelos serviços |
-| RF33 | Exportação em CSV, com opção anonimizada, e página de impressão |
+| RF33 | Exportação em CSV, com opção sem identificação, e página de impressão |
 | RF34 | E-mail e notificação no sistema para formulário pendente e consulta. O lembrete de dose fica para fase posterior: a clínica ajusta a dose pelo WhatsApp, a partir das respostas do formulário, e a pergunta sobre lembrete segue aberta (01/10/2026) |
 | RF14/RF15 | Lista de notificações com marcação de leitura, sem filtros avançados |
 | RNF06 | Paginação apenas nas listagens que crescem sem limite: notificações e auditoria |
@@ -709,7 +709,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF35 | Recuperação de senha por e-mail, com link de uso único e validade curta | E |
 | RF36 | Termo de consentimento (LGPD, art. 11) aceito no cadastro, com versão e data registradas | E |
 | RF37 | Consentimento para pesquisa separado do termo do cadastro, opcional e revogável, com versão e data registradas. A exportação para pesquisa só inclui quem aceitou (clínica, 01/10/2026) | I |
-| RF38 | Responsável ou cuidador do paciente: nome, parentesco e telefone, opcionais, fora da exportação anonimizada (clínica, 01/10/2026) | I |
+| RF38 | Responsável ou cuidador do paciente: nome, parentesco e telefone, opcionais, fora da exportação sem identificação (clínica, 01/10/2026) | I |
 | RNF16 | Operação: fuso horário único `America/Sao_Paulo`, verificação de saúde da API e integração contínua | E |
 
 O RNF07 (backup automático com restauração testada) permanece essencial e é pré-requisito do piloto.
@@ -767,7 +767,7 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 
 **Responsável ou cuidador em 14/10/2026 (RF38):** nome, parentesco e telefone, todos opcionais, informados pelo próprio paciente no cadastro e no perfil. Aparecem só no cabeçalho do prontuário, para o prescritor do paciente, com link para ligar, e não saem na lista de pacientes nem em nenhuma exportação. O termo de consentimento passou a citar esse dado. Login do cuidador, lembrete para ele e aceite do termo por responsável de criança esperam a seção 11 de `docs/extensao/perguntas-para-a-clinica.md`.
 
-**Consentimento de pesquisa em 14/10/2026 (RF37):** separado do termo do cadastro, opcional e revogável. O paciente aceita no cadastro ou no perfil e retira no perfil quando quiser; cada aceite guarda a versão e a data, e a retirada fica marcada sem apagar o registro. Só vale o aceite da versão atual do texto: se o texto mudar, quem quiser continuar participando aceita de novo. A exportação anônima, que é a de pesquisa, só sai de quem tem o consentimento valendo. O texto ainda é um rascunho e espera o projeto aprovado no comitê de ética (seção 9 de `docs/extensao/perguntas-para-a-clinica.md`).
+**Consentimento de pesquisa em 14/10/2026 (RF37):** separado do termo do cadastro, opcional e revogável. O paciente aceita no cadastro ou no perfil e retira no perfil quando quiser; cada aceite guarda a versão e a data, e a retirada fica marcada sem apagar o registro. Só vale o aceite da versão atual do texto: se o texto mudar, quem quiser continuar participando aceita de novo. A exportação sem identificação, que é a de pesquisa, só sai de quem tem o consentimento valendo. O texto ainda é um rascunho e espera o projeto aprovado no comitê de ética (seção 9 de `docs/extensao/perguntas-para-a-clinica.md`).
 
 **Reforço no banco em 15/10/2026 (RN08 e escalas):** no Postgres, três índices únicos parciais repetem regras que o código já garante com trava de linha: uma resposta valendo por paciente, escala e dia de início (o MEEM fica fora, porque é por consulta), um MEEM valendo por consulta e um acompanhamento ativo por paciente. A RN08 não ganhou restrição no banco: o registro de uma consulta feita fora da agenda grava no horário do atendimento sem passar pela agenda, e uma restrição de sobreposição recusaria esse registro clínico. A RN08 continua garantida no agendamento, pela trava do prescritor.
 
@@ -829,7 +829,7 @@ As questões que dependem da clínica estão em `docs/extensao/perguntas-para-a-
 - **Um arquivo por tipo:** consultas, prescrições, escalas respondidas e anamnese saem em CSV separados, e a série de evolução sai da própria tela de progresso, com a escala e o período já escolhidos.
 - **Formato:** ponto e vírgula como separador e marca de UTF-8 no começo, para o arquivo abrir com acento certo na planilha. Texto clínico com quebra de linha não estraga as colunas.
 - **Escalas e anamnese:** uma linha por item respondido, com a data, a escala, o escore e a faixa, que é o formato que a planilha filtra e agrupa.
-- **Modo anonimizado:** é do prescritor, para pesquisa. Sai sem nome, CPF, e-mail, telefone e endereço, com o paciente identificado só por um número (RNF04).
+- **Modo sem identificação:** é do prescritor, para pesquisa. Sai sem nome, CPF, e-mail, telefone e endereço, com o paciente e o prescritor identificados só por um número (RNF04). Antes de 15/10/2026 se chamava "modo anônimo", mas não é anonimização: o número é o id do banco e a clínica sabe de quem é, as datas saem como estão e o texto livre sai como foi escrito e pode citar nomes. Por isso o arquivo continua sendo dado pessoal sensível de saúde (LGPD, art. 5º, II, e art. 12). O termo técnico mais próximo é pseudonimização, que a LGPD só define no art. 13, § 4º, para estudos em saúde pública feitos por órgão de pesquisa. O texto do consentimento de pesquisa diz o mesmo ao paciente (versão `2026-10-rascunho-2`), e a API recusa o parâmetro antigo `anonymous`, para uma aba desatualizada não baixar o arquivo com nome.
 - **PDF pela impressão:** em vez de gerar PDF no servidor, existe uma página de impressão com cabeçalho de paciente, prescritor, período e data de emissão, e o histórico do período. O navegador imprime ou salva em PDF.
 - **Trilha:** exportar é leitura de prontuário e entra na trilha de auditoria como qualquer abertura (RF31).
 

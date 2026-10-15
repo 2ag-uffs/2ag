@@ -8,7 +8,8 @@ Este consentimento é separado do termo do cadastro e é opcional. Você usa o 2
 [NOME DA CLÍNICA] pretende usar dados do acompanhamento em pesquisas sobre o tratamento com cannabis, como estudos que acompanham os pacientes ao longo do tempo e estudos de evidência do mundo real.
 
 2. Quais dados entram
-Somente dados de saúde, sem identificação: respostas das escalas, consultas, prescrições e evolução do tratamento. Nome, CPF, e-mail, telefone e endereço não saem do sistema. Você e o seu prescritor aparecem só por um número.
+Dados de saúde: respostas das escalas, anamnese, consultas, prescrições e evolução do tratamento, com as datas. Nome, CPF, e-mail, telefone e endereço ficam fora do arquivo de pesquisa, e você e o seu prescritor aparecem só por um número.
+Os dados não ficam anônimos: a clínica sabe a quem pertence cada número, e o que é escrito nas consultas e nas fichas, como queixas e observações, vai como foi escrito e pode conter nomes. Por isso eles continuam protegidos pela LGPD.
 
 3. Sua escolha
 Você pode retirar este consentimento quando quiser, na tela de perfil. Depois da retirada, os seus dados não entram em nenhuma exportação nova para pesquisa.

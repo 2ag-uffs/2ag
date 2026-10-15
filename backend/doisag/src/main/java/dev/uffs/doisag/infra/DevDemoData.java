@@ -148,7 +148,7 @@ public class DevDemoData {
             renata.setGuardianRelationship("filho");
             renata.setGuardianPhone("49981234567");
             renata = patientRepository.save(renata);
-            // o joao aceitou a pesquisa, assim da pra testar a exportacao anonima
+            // o joao aceitou a pesquisa, assim da pra testar a exportacao sem identificacao
             consentTermService.registerAcceptance(joao, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
             Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
                     LocalDate.of(1983, 7, 30), "49993456789",
