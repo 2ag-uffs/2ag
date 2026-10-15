@@ -10,11 +10,7 @@ Serve também como registro de diário de bordo: o que foi perguntado, quando e 
 
 **Status:** parcialmente respondida · **trava:** modelagem da prescrição (RN03)
 
-A tela de prescrição oferece cinco opções fixas de formulação: `CBD Isolado`, `CBD Broad Spectrum`, `CBD Full Spectrum`, `THC Isolado`, `THC + CBD`. E aceita **um único** número de concentração.
-
-Há indício de que isso não corresponde à prática: a prescrição parece envolver **percentuais de cada canabinoide, definidos caso a caso**, porque a resposta varia por pessoa e por condição tratada.
-
-Se for isso, a lista fixa impede o registro correto — "CBD Full Spectrum" não diz se é 10% ou 20%, nem quanto de THC tem dentro.
+A tela de prescrição de 2025 oferecia cinco opções fixas de formulação e **um único** número de concentração. Desde 13/09/2026 ela guarda uma **lista de canabinoides**, cada um com a sua concentração em mg/mL ou %, com o espectro num campo próprio, além de marca, lote e volume. As perguntas abaixo servem para confirmar que isso bate com a prática dela.
 
 **Já respondido (01/10/2026):** no sistema que ela usa hoje, cada produto é cadastrado com marca, concentração em mg/mL e volume do frasco. Ela ofereceu mandar um print dessa tela. O sistema já guarda volume e lote; o que falta saber é se ela usa o lote.
 
@@ -24,7 +20,7 @@ Se for isso, a lista fixa impede o registro correto — "CBD Full Spectrum" não
 - O mg/mL é de cada canabinoide (ex.: CBD 20 mg/mL, THC 1 mg/mL), ou é uma concentração só do produto?
 - Existe lote do produto que você precise anotar? *(a tabela de necessidades de 2025 menciona lote)*
 
-**Por que importa:** hoje só cabe um número. Se forem dois ou três canabinoides com percentuais próprios, a prescrição precisa de uma lista, como já foi feito com o escalonamento de dose.
+**Por que importa:** se ela pensa em combinações prontas, a tela pode oferecer atalhos para elas; se o mg/mL é um número só do produto, a lista por canabinoide sobra.
 
 ---
 
