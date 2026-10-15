@@ -40,6 +40,8 @@ export default function Notificacoes() {
             .then((loadedPage) => {
                 setPage(loadedPage);
                 setLoadError(null);
+                // o numero do menu acompanha o q foi lido ou apagado aqui
+                window.dispatchEvent(new CustomEvent("notifications-changed", {detail: loadedPage.unread}));
             })
             .catch((requestError) => {
                 setLoadError(requestError instanceof ApiError

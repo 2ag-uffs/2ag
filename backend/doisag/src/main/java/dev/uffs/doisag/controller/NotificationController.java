@@ -1,6 +1,7 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.NotificationPageDTO;
+import dev.uffs.doisag.dto.UnreadCountDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.NotificationService;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,11 @@ public class NotificationController {
     public NotificationPageDTO getUserNotifications(@RequestParam(name = "page", defaultValue = "0") int page,
                                                     @AuthenticationPrincipal Users user) {
         return notificationService.getNotificationsForUser(user.getId(), page);
+    }
+
+    @GetMapping("/unread-count")
+    public UnreadCountDTO countUnread(@AuthenticationPrincipal Users user) {
+        return new UnreadCountDTO(notificationService.countUnread(user.getId()));
     }
 
     @PostMapping("/{id}/read")

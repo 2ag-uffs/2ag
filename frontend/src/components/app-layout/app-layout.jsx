@@ -20,7 +20,7 @@ import {
 } from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
 import TermUpdate from "../term-update/term-update.jsx";
-import {getLoggedUser, logout} from "../../services/api.js";
+import {apiService, getLoggedUser, logout} from "../../services/api.js";
 import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
 
@@ -82,6 +82,22 @@ function findActiveItem(items, pathname) {
     });
 }
 
+// o leitor de tela le o numero pelo rotulo do link, entao o desenho fica escondido dele
+function UnreadBadge({count}) {
+    if (count <= 0) {
+        return null;
+    }
+    return <span className={styles.unreadBadge} aria-hidden="true">{count > 99 ? "99+" : count}</span>;
+}
+
+// "Avisos, 3 não lidos" pro leitor de tela qnd tem aviso novo
+function menuLabelOf(item, unreadCount) {
+    if (item.path === "/notificacoes" && unreadCount > 0) {
+        return item.label + ", " + unreadCount + " não lidos";
+    }
+    return undefined;
+}
+
 // moldura de todas as telas de quem esta logado
 // no computador o menu fica na lateral, no tablet a lateral mostra so os
 // icones e no celular o menu vai pra barra de baixo
@@ -98,6 +114,36 @@ export default function AppLayout() {
     // paciente com versao antiga do termo ve o aceite no lugar de qualquer tela (#58)
     const [isTermPending, setIsTermPending] = useState(
         Boolean(loggedUser && loggedUser.role === "PATIENT" && loggedUser.termPending));
+
+    // numero de avisos n lidos ao lado do item Avisos (#92)
+    // busca so a contagem a cada troca de tela, e a tela de avisos manda o numero novo qnd muda
+    const [unreadCount, setUnreadCount] = useState(0);
+    const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
+
+    useEffect(() => {
+        if (!hasNotices) {
+            return;
+        }
+        let isCurrentPage = true;
+        apiService.get("/notifications/unread-count")
+            .then((count) => {
+                if (isCurrentPage) {
+                    setUnreadCount(Number(count && count.unread) || 0);
+                }
+            })
+            .catch(() => {
+                // sem o numero o menu continua funcionando
+            });
+        return () => {
+            isCurrentPage = false;
+        };
+    }, [location.pathname, hasNotices]);
+
+    useEffect(() => {
+        const updateCount = (event) => setUnreadCount(Number(event.detail) || 0);
+        window.addEventListener("notifications-changed", updateCount);
+        return () => window.removeEventListener("notifications-changed", updateCount);
+    }, []);
 
     useEffect(() => {
         const openTerm = () => setIsTermPending(true);
@@ -154,11 +200,13 @@ export default function AppLayout() {
                                 key={item.path}
                                 to={item.path}
                                 title={item.label}
+                                aria-label={menuLabelOf(item, unreadCount)}
                                 className={active ? styles.sideLink + " " + styles.sideLinkActive : styles.sideLink}
                                 aria-current={active ? "page" : undefined}
                             >
                                 <Icon className={styles.sideIcon}/>
                                 <span className={styles.sideLabel}>{item.label}</span>
+                                {item.path === "/notificacoes" && <UnreadBadge count={unreadCount}/>}
                             </Link>
                         );
                     })}
@@ -228,9 +276,13 @@ export default function AppLayout() {
                             key={item.path}
                             to={item.path}
                             className={active ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink}
+                            aria-label={menuLabelOf(item, unreadCount)}
                             aria-current={active ? "page" : undefined}
                         >
-                            <span className={styles.bottomIcon}><Icon/></span>
+                            <span className={styles.bottomIcon}>
+                                <Icon/>
+                                {item.path === "/notificacoes" && <UnreadBadge count={unreadCount}/>}
+                            </span>
                             <span>{item.label}</span>
                         </Link>
                     );

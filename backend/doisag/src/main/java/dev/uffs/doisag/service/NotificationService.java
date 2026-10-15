@@ -31,6 +31,11 @@ public class NotificationService {
                 notificationRepository.countUnread(userId));
     }
 
+    @Transactional(readOnly = true)
+    public long countUnread(Long userId) {
+        return notificationRepository.countUnread(userId);
+    }
+
     @Transactional
     public void markAsRead(Long notificationId, Long userId) {
         Notification notification = findOwnNotification(notificationId, userId);

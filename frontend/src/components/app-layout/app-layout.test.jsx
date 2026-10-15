@@ -42,6 +42,21 @@ describe("AppLayout", () => {
         expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
     });
 
+    it("o item Avisos mostra quantos avisos n foram lidos e acompanha a tela de avisos", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({unread: 3});
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        openLayoutAt("/painel-paciente");
+
+        expect(await sideMenu().findByRole("link", {name: "Avisos, 3 não lidos"})).toBeInTheDocument();
+        expect(bottomMenu().getByRole("link", {name: "Avisos, 3 não lidos"})).toHaveTextContent("3");
+
+        act(() => {
+            window.dispatchEvent(new CustomEvent("notifications-changed", {detail: 0}));
+        });
+
+        expect(await sideMenu().findByRole("link", {name: "Avisos"})).toBeInTheDocument();
+    });
+
     // a versao mudou com a sessao aberta: o termo abre por cima e a tela fica guardada embaixo
     it("o aviso de termo pendente da api abre o aceite sem desmontar a tela", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({version: "v3", text: "texto do termo mais novo"});

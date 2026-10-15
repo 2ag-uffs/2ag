@@ -136,6 +136,20 @@
     white-space: nowrap;
 }
 
+/* contador de avisos n lidos no item Avisos, pessego pq eh a cor de destaque */
+.unreadBadge {
+    background-color: var(--color-peach);
+    border-radius: var(--radius-pill);
+    color: #1d1b1b;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    line-height: 1;
+    margin-left: auto;
+    min-width: 1.25rem;
+    padding: 0.2rem 0.375rem;
+    text-align: center;
+}
+
 .account {
     align-items: center;
     border-top: 1px solid rgba(255, 255, 255, 0.16);
@@ -271,6 +285,13 @@
         padding: var(--space-2);
     }
 
+    /* so com o icone o numero fica no canto dele */
+    .sideLink .unreadBadge {
+        position: absolute;
+        right: 0.25rem;
+        top: 0.125rem;
+    }
+
     /* o texto some da tela mas o leitor de tela continua lendo */
     .sideLabel {
         clip: rect(0 0 0 0);
@@ -369,6 +390,12 @@
         -webkit-tap-highlight-color: transparent;
     }
 
+    .bottomIcon .unreadBadge {
+        position: absolute;
+        right: 0.125rem;
+        top: -0.25rem;
+    }
+
     .bottomIcon {
         align-items: center;
         border-radius: var(--radius-pill);
@@ -376,6 +403,7 @@
         font-size: 1.25rem;
         height: 1.75rem;
         justify-content: center;
+        position: relative;
         transition: background-color var(--duration-base) var(--easing-standard);
         width: 3.25rem;
     }

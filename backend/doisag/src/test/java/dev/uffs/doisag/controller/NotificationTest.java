@@ -85,6 +85,25 @@ class NotificationTest {
                 .andExpect(jsonPath("$.page").value(1));
     }
 
+    // o menu pede so o numero, e cada conta conta so os proprios avisos (#92)
+    @Test
+    void unreadCountOnlyCountsTheOwnUnreadNotices() throws Exception {
+        notificationService.createNotification(patient, "Consulta confirmada", "mensagem", "APPOINTMENT", "/");
+        notificationService.createNotification(patient, "Escala enviada", "mensagem", "FORM", "/");
+        notificationService.createNotification(prescriber, "Novo paciente", "mensagem", "ALERT", "/");
+
+        mockMvc.perform(get("/notifications/unread-count").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread").value(2));
+
+        mockMvc.perform(post("/notifications/read-all").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/notifications/unread-count").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.unread").value(0));
+        mockMvc.perform(get("/notifications/unread-count").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.unread").value(1));
+    }
+
     @Test
     void marcarTodasComoLidasZeraOContador() throws Exception {
         notificationService.createNotification(patient, "Consulta confirmada", "mensagem", "APPOINTMENT", "/");
