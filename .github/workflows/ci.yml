@@ -6,6 +6,10 @@ on:
   push:
   pull_request:
 
+# o token do ci so le o repositorio, o job q precisa de mais pede no proprio job
+permissions:
+  contents: read
+
 jobs:
   backend:
     runs-on: ubuntu-latest

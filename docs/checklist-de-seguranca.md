@@ -6,15 +6,15 @@ Conferência dos 20 itens do checklist de segurança sobre o 2AG, feita em 01/10
 
 | Situação | Quantidade |
 | :--- | ---: |
-| ok | 14 |
-| parcial | 5 |
+| ok | 16 |
+| parcial | 3 |
 | falta | 0 |
 | não se aplica | 1 |
 
 | nº | Item | Situação | Gravidade | Card |
 | ---: | :--- | :--- | :--- | :--- |
 | 1 | Esconder API Keys | ok | baixa | #18, #103 · #114 |
-| 2 | Limpar secrets do git | parcial | baixa | #18 · #115 |
+| 2 | Limpar secrets do git | ok | baixa | #18 · #115 |
 | 3 | Banco acessível de fora / credencial exposta | ok | baixa | #17, #18 |
 | 4 | Escopo por dono na API (o "RLS" daqui) | ok | nenhuma | #29, #27 · #124 |
 | 5 | Criptografia de dados | parcial | baixa | #57, #17, #18, #19 · #117 |
@@ -32,7 +32,7 @@ Conferência dos 20 itens do checklist de segurança sobre o 2AG, feita em 01/10
 | 17 | Trim respostas de API | ok | baixa | #109, #61, #37 · #122, #124 |
 | 18 | Security headers | ok | baixa | #57, #102, #111 |
 | 19 | Forçar HTTPS | parcial | baixa | #57, #103, #18, #102 |
-| 20 | Scan de dependências | parcial | baixa | #115, #116 |
+| 20 | Scan de dependências | ok | baixa | #115, #116 |
 
 **Revisão de 14/10/2026.** Situação e gravidade da tabela revistas contra o código até o `c09873e` e os comentários de fechamento dos cards; o texto de cada item continua sendo o da conferência de 01/10, e o que mudou depois está nas notas datadas e nos cards. Continuam pendentes até o deploy os critérios que só se provam no servidor de verdade: o domínio com certificado real (item 19), o disco cifrado, a chave privada do backup fora da máquina e o teste de restauração registrado (item 5, #19) e o endereço real de quem acessa chegando ao limitador da API (item 12).
 
@@ -77,7 +77,7 @@ public void run(ApplicationArguments args) {
 
 ## 2 — Limpar secrets do git
 
-**Situação.** parcial, gravidade baixa.
+**Situação.** ok desde 15/10/2026 (era parcial), gravidade baixa.
 
 **Evidência.** O repositório é público (`gh repo view`: `visibility=PUBLIC`), com 161 commits em `main`, 0 forks e sem proteção de branch. `git log --all --diff-filter=A --name-only | grep -i env` lista apenas `.env.example` e um `frontend/.env.example` que existiu entre `c5c9a8b` e `bddc60e` com um único conteúdo, `VITE_API_URL=http://localhost:8080`. Nenhum `.env`, `.pem`, `.key`, `.jks` ou `.p12` jamais entrou, e o `.gitignore` já os ignorava desde o primeiro commit `1f49dc1`, antes de importar o protótipo. A varredura de linhas adicionadas em toda a história (fora lockfiles) por `JWT_SECRET=`, `*_PASSWORD=`, `secret:`, `password:`, `BEGIN PRIVATE KEY`, `AKIA`, `ghp_`, `sk-`, `eyJ`, `AIza`, host real ou IP fora de localhost acha **um** segredo real: `api.security.token.secret: minha-api-super-secreta-e-protegida-0123456789-com-uma-chave-bem-grande` em `backend/doisag/src/main/resources/application.yml:25` no commit `4c711a2` (12/09/2026 17:46, importação do protótipo de 2025), removido em `85a2dc5` quatro minutos depois; `git grep` no HEAD não acha. O mesmo protótipo tinha um seed que gravava a senha do prescritor em texto puro (`DoisagApplication.java:42`, `setPassword("123456")` sem encode), retirado em `3e47583` no mesmo dia. No HEAD, `database/physical-model/script-insert.sql:4,5,13` guarda três hashes bcrypt de usuários de teste do protótipo — arquivo morto, sem referência e sem `$2a$` em nenhuma migração do Flyway. Só constantes de teste restam: `application-test.yml:26` (chave fixa de teste), `AdminPrescribersTest.java:42`, `ci.yml:39,53` (`doisag-ci` num Postgres descartável do runner). O `docs/scales/anamnese.xlsx` é exportação de Google Forms em branco (23 strings, só cabeçalho), e `*(respostas)*.xlsx` está no `.gitignore`. No GitHub, `secret_scanning`, `secret_scanning_push_protection` e `non_provider_patterns` estão todos `disabled`.
 
@@ -90,6 +90,8 @@ public void run(ApplicationArguments args) {
 3. Apagar `database/physical-model/script-insert.sql` ou trocar os hashes por `'<hash>'`, já que nada usa o arquivo.
 
 **Card.** #18 e #103 (ambos ganham a frase sobre não reaproveitar). As configurações do GitHub estão no #115 (junto com o item 20).
+
+**Nota de 15/10/2026 (#115).** Secret scanning e push protection estão ligados (`gh api repos/2ag-uffs/2ag` mostra os dois `enabled`): um `.env` ou uma chave colada por engano é barrada antes de subir. O `database/physical-model/script-insert.sql`, com os três hashes de teste do protótipo, saiu no `56d3014`. A chave JWT do protótipo continua no histórico, como decidido acima: o código atual nunca lê aquele valor.
 
 ---
 
@@ -544,7 +546,7 @@ Pronto quando: `curl -sI http://dominio/` dá 301 para https, `curl -sI https://
 
 ## 20 — Scan de dependências
 
-**Situação.** parcial, gravidade baixa desde 14/10/2026 (era média).
+**Situação.** ok desde 15/10/2026, gravidade baixa (era parcial e média até 14/10/2026).
 
 **Evidência.** *Configurado:* `.github/dependabot.yml:6-36` cobre npm (`/frontend`, semanal), maven (`/backend/doisag`, semanal), github-actions (mensal), docker (`/frontend` e `/backend/doisag`, mensal) e docker-compose (mensal). Alertas de vulnerabilidade ligados (`gh api repos/2ag-uffs/2ag/vulnerability-alerts` → 204), 0 abertos; 47 alertas históricos, todos npm em `frontend/package-lock.json`, criados e corrigidos em 13/09. `package-lock.json` commitado e `npm ci` no CI (`ci.yml:75`) e no `Dockerfile` (`:6`). `npm audit --omit=dev` em `frontend`: 0 vulnerabilidades. Com dev: 1 high, `brace-expansion 5.0.9` (três advisories de DoS) via `eslint@10.10.0 > minimatch > brace-expansion`, só dev, e a PR #113 (eslint 10.11.0) está aberta. Backend: `pom.xml:8` BOM `spring-boot-starter-parent 4.1.1` gerencia tudo, único pin manual `jjwt 0.13.0`; `./mvnw -o dependency:list` resolve 99 artefatos compile/runtime: `tomcat-embed-core 11.0.24`, `spring-security 7.1.1`, `spring-core/web/webmvc 7.0.9`, `hibernate-core 7.4.5.Final`, `jackson-databind 2.21.5` (ainda no classpath pelo jjwt, #37) e 3.1.5, `logback 1.5.38`, `flyway-core 12.4.0`, `postgresql 42.7.13`.
 
@@ -573,6 +575,8 @@ com `permissions: contents: write` no job. A partir daí o Dependabot alerta sob
 **Card.** #115 e #116.
 
 **Nota de 14/10/2026 (#116).** O job backend do CI manda a árvore do `pom.xml` para o grafo de dependências (`maven-dependency-submission-action@v6`, só no push da `main`), e o grafo passou de 19 para 132 pacotes maven, com transitivas e versões. A primeira submissão já abriu 10 alertas que antes não apareciam: 3 críticos no `tomcat-embed-core 11.0.24` (autenticação FORM e DIGEST e controle de acesso, corrigidos na 11.0.25) e 7 no `jackson-core`/`jackson-databind 3.1.5` (DoS no parser, corrigidos na 3.1.7). O `pom.xml` fixa `tomcat.version` 11.0.27 e `jackson-bom.version` 3.1.7 até o Spring Boot trazer versões iguais ou maiores; aí as duas linhas saem. O alerta do `brace-expansion` (só dev) foi resolvido no `package-lock.json`. O job frontend roda `npm audit --omit=dev --audit-level=high`. Fila triada: mergeadas #53, #54, #55, #132, #133, #135, #137, #138 e #139; fechadas as de versão maior de imagem (#50, #51, #52, #136). O `dependabot.yml` ignora versão maior nas imagens e a imagem do maven inteira, porque a tag dela leva o JDK no sufixo e a regra de versão maior não pega o salto do Java. Fica para o #115: Dependabot security updates, CodeQL, secret scanning e push protection.
+
+**Nota de 15/10/2026 (#115).** Dependabot security updates e o CodeQL (configuração padrão, para Java, JavaScript e as próprias actions) estão ligados. A primeira análise achou quatro pontos: três jobs do CI sem permissão declarada, corrigidos com `permissions: contents: read` no topo do `ci.yml` (o job do backend continua pedindo escrita só para mandar a árvore de dependências), e o CSRF do Spring desligado, que é de propósito: o cookie é `__Host-session` com `SameSite=Strict` e o `OriginCheckFilter` recusa com 403 o que grava vindo de outra origem (item 9). Esse alerta fica para ser marcado como falso positivo no GitHub.
 
 ---
 
