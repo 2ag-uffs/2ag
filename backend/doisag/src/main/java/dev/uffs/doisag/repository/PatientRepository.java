@@ -34,6 +34,10 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     List<Patient> findAllByActiveFalseOrderByNameAsc();
 
+    // so o prescritor do paciente, sem carregar o paciente: quem trava os dois trava o prescritor primeiro
+    @Query("select patient.prescriber.id from Patient patient where patient.id = :id")
+    Optional<Long> findPrescriberIdById(@Param("id") Long id);
+
     // trava a linha do paciente ate o fim da transacao: ele responde uma escala de cada vez
     // sql direto e MANDATORY pelo mesmo motivo do PrescriberRepository.lockById
     @Transactional(propagation = Propagation.MANDATORY)

@@ -16,6 +16,7 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import org.springframework.stereotype.Service;
@@ -47,17 +48,19 @@ public class ConsultationService {
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
+    private final PrescriberRepository prescriberRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final ScaleResponseRepository responseRepository;
     private final AuditService auditService;
     private final RowLock rowLock;
 
     public ConsultationService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
-                               PrescriptionRepository prescriptionRepository,
+                               PrescriberRepository prescriberRepository, PrescriptionRepository prescriptionRepository,
                                ScaleResponseRepository responseRepository, AuditService auditService,
                                RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
+        this.prescriberRepository = prescriberRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.responseRepository = responseRepository;
         this.auditService = auditService;
@@ -67,6 +70,11 @@ public class ConsultationService {
     // consulta q aconteceu sem ter sido marcada antes ou lancada depois
     @Transactional
     public AppointmentResponseDTO register(Long patientId, ConsultationRecordDTO recordData, Prescriber prescriber) {
+        // o prescritor fica travado antes de tudo, igual na agenda: no postgres o insert da consulta toma o paciente
+        // e dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
+        // paciente. sem essa trava os dois ficavam esperando um pelo outro. de quebra dois registros do mesmo
+        // prescritor passam um de cada vez e o segundo ja conta o primeiro na hora de decidir o tipo
+        prescriberRepository.lockById(prescriber.getId());
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
 

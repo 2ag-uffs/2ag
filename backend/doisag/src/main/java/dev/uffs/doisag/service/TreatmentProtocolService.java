@@ -73,6 +73,12 @@ public class TreatmentProtocolService {
 
     @Transactional
     public TreatmentProtocolResponseDTO create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
+        // a linha do prescritor fica travada ate o fim: dois cadastros ao mesmo tempo passavam
+        // os dois pela busca vazia e o segundo acompanhamento seguia invisivel por 90 dias
+        // o paciente vem logo dps, antes de ler ele: o arquivamento gravado enquanto o cadastro esperava aparece,
+        // em vez de o paciente arquivado ficar com um acompanhamento ativo
+        prescriberRepository.lockById(prescriber.getId());
+        patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
         // paciente arquivado n recebe envio automatico ate o prescritor reativar
@@ -81,9 +87,6 @@ public class TreatmentProtocolService {
         }
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
-        // a linha do prescritor fica travada ate o fim: dois cadastros ao mesmo tempo passavam
-        // os dois pela busca vazia e o segundo acompanhamento seguia invisivel por 90 dias
-        prescriberRepository.lockById(prescriber.getId());
         protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(anterior -> {
             throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
         });
@@ -198,6 +201,20 @@ public class TreatmentProtocolService {
     }
 
     private int assignDueRound(Long protocolId, LocalDate hoje) {
+        Long patientId = protocolRepository.findPatientIdById(protocolId).orElse(null);
+        if (patientId == null) {
+            return 0;
+        }
+        // trava o prescritor da tarefa nova e dps o paciente, na mesma ordem do cadastro e do envio avulso,
+        // senao no postgres o job segurava o paciente e esperava o prescritor no insert da tarefa, e o envio
+        // avulso segurava o prescritor e esperava o paciente. a trava solta no fim deste acompanhamento
+        // as duas vem antes de ler o protocolo e o paciente: o job q lia antes e so dps esperava a trava mandava
+        // a rodada pra quem foi arquivado, encerrado ou desativado nesse meio tempo
+        Long prescriberId = patientRepository.findPrescriberIdById(patientId).orElse(null);
+        if (prescriberId != null) {
+            prescriberRepository.lockById(prescriberId);
+        }
+        patientRepository.lockById(patientId);
         TreatmentProtocol protocol = protocolRepository.findById(protocolId).orElse(null);
         // pode ter sido encerrado entre a busca dos ids e agora
         if (protocol == null || !protocol.isActive() || hoje.isBefore(protocol.getStartDate())) {
@@ -214,21 +231,16 @@ public class TreatmentProtocolService {
         if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
             return 0;
         }
-        // trava o prescritor da tarefa nova antes do paciente, na mesma ordem do cadastro e do envio avulso
-        // senao no postgres o job segurava o paciente e esperava o prescritor no insert da tarefa, e o envio
-        // avulso segurava o prescritor e esperava o paciente. a trava solta no fim deste acompanhamento
-        prescriberRepository.lockById(prescriber.getId());
         return designarRodada(protocol, hoje);
     }
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram
-    // quem chama ja travou o prescritor: o cadastro e o job
+    // quem chama ja travou o prescritor e dps o paciente: o cadastro e o job
+    // a trava do paciente vem antes de ler as tarefas dele, igual na resposta da escala, senao o job lia a
+    // tarefa enquanto o paciente respondia ela e um gravava por cima do outro: a rodada voltava a tarefa
+    // respondida pra pendente, ou a resposta desfazia o prazo novo da rodada
     private int designarRodada(TreatmentProtocol protocol, LocalDate hoje) {
         Long patientId = protocol.getPatient().getId();
-        // a linha do paciente fica travada ate o fim, antes de ler as tarefas dele, igual na resposta da escala
-        // senao o job lia a tarefa enquanto o paciente respondia ela e um gravava por cima do outro: a rodada
-        // voltava a tarefa respondida pra pendente, ou a resposta desfazia o prazo novo da rodada
-        patientRepository.lockById(patientId);
         int designadas = 0;
         for (ProtocolItem item : protocol.getItems()) {
             if (estaNaHora(item, hoje)) {

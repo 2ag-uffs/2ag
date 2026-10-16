@@ -15,6 +15,7 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.PrescriberAvailability;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -59,6 +60,8 @@ class AgendaRaceTest {
 
     @Autowired private AppointmentService appointmentService;
     @Autowired private AvailabilityService availabilityService;
+    @Autowired private ReminderService reminderService;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -223,6 +226,70 @@ class AgendaRaceTest {
                 .contains(AppointmentService.ALREADY_ANSWERED_MESSAGE);
         assertThat(appointmentRepository.findById(request.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.CANCELADA);
+    }
+
+    // o job recusa cada pedido vencido travando a consulta antes, como o cancelamento: o cancelamento gravado
+    // no meio tempo fica, em vez de virar pedido recusado. sem isso, no postgres, a trilha do job tomava o
+    // paciente antes da consulta e o cancelamento, q trava a consulta e dps o paciente, esperava o job enquanto
+    // o job esperava a consulta: o banco derrubava um dos dois. no h2 a chave estrangeira n trava nada, entao
+    // la so aparece o job gravando recusado por cima, e o impasse mesmo so no job backend-postgres do ci
+    @Test
+    void decliningTheExpiredRequestWaitsForTheAppointmentAndKeepsTheCancellation() throws Exception {
+        Appointment expired = saveAppointment(patient, LocalDateTime.now().minusHours(2), AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<Integer> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, expired.getId()),
+                () -> appointmentService.cancel(expired.getId(), prescriber),
+                () -> appointmentService.declineExpiredRequests(LocalDateTime.now()));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(appointmentRepository.findById(expired.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CANCELADA);
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Pedido de consulta sem resposta");
+    }
+
+    // a remarcacao do pedido vencido gravada no meio tempo tbm fica: antes o job gravava por cima a linha inteira
+    // lida antes, e o pedido voltava pra recusado no horario velho dps de o paciente saber do horario novo
+    @Test
+    void decliningTheExpiredRequestWaitsForTheAppointmentAndKeepsTheReschedule() throws Exception {
+        Appointment expired = saveAppointment(patient, LocalDateTime.now().minusHours(2), AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<Integer> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, expired.getId()),
+                () -> appointmentService.reschedule(expired.getId(),
+                        new AppointmentRescheduleDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null, null)),
+                () -> appointmentService.declineExpiredRequests(LocalDateTime.now()));
+
+        assertThat(outcome.error()).isNull();
+        Appointment kept = appointmentRepository.findById(expired.getId()).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(kept.getDateTime()).isEqualTo(DISPUTED_SLOT);
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Pedido de consulta sem resposta");
+    }
+
+    // o lembrete trava a consulta e le ela de novo: a consulta de amanha cancelada no meio tempo n volta
+    // pra agendada nem recebe lembrete, como acontecia com o job gravando a linha inteira lida antes
+    @Test
+    void theAppointmentReminderWaitsForTheAppointmentAndSkipsTheCancellation() throws Exception {
+        Appointment tomorrow = saveAppointment(patient, LocalDate.now().plusDays(1).atTime(10, 0),
+                AppointmentStatus.AGENDADA);
+
+        HeldLock.Outcome<Integer> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, tomorrow.getId()),
+                () -> appointmentService.cancel(tomorrow.getId(), prescriber),
+                () -> reminderService.sendAppointmentReminders(LocalDate.now()));
+
+        assertThat(outcome.error()).isNull();
+        Appointment kept = appointmentRepository.findById(tomorrow.getId()).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(AppointmentStatus.CANCELADA);
+        assertThat(kept.getReminderSentAt()).isNull();
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta amanhã");
+    }
+
+    private List<String> notificationTitlesOf(Patient owner) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(owner.getId()).stream()
+                .map(notification -> notification.getTitle())
+                .toList();
     }
 
     // a transacao de fora segura a linha do prescritor e, antes de soltar, marca o outro paciente no horario

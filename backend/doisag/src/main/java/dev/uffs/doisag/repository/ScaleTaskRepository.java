@@ -38,6 +38,10 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     List<ScaleTask> findByStatusAndPeriodEndLessThanEqualAndReminderSentAtIsNull(
             ScaleTaskStatus status, LocalDate day);
 
+    // so o paciente da tarefa, sem carregar ela: o job trava o paciente antes de ler a tarefa travada
+    @Query("select task.patient.id from ScaleTask task where task.id = :id")
+    Optional<Long> findPatientIdById(@Param("id") Long id);
+
     // as escalas vencidas sem resposta q o prescritor ve no painel (RF03 e RF32)
     // entram as q o job ja fechou e as q venceram antes de ele rodar
     // paciente arquivado fica de fora: o arquivamento fecha as escalas abertas no dia, e elas

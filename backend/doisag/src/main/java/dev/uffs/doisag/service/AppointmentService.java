@@ -26,10 +26,14 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
 import dev.uffs.doisag.repository.PrescriberDayOffRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,6 +49,8 @@ import java.util.List;
 // o paciente cancela o pedido a qualquer hora e a consulta marcada so com 24 horas de antecedencia
 @Service
 public class AppointmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
     public static final String PAST_DATE_MESSAGE = "Não é possível marcar consulta em um horário que já passou";
     public static final String SLOT_TAKEN_MESSAGE = "Já existe consulta marcada nesse horário";
@@ -97,13 +103,15 @@ public class AppointmentService {
     private final AuditService auditService;
     private final ConsultationService consultationService;
     private final RowLock rowLock;
+    private final TransactionTemplate transactionTemplate;
     private NotificationService notificationService;
 
     public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                               PrescriberRepository prescriberRepository,
                               PrescriberAvailabilityRepository availabilityRepository,
                               PrescriberDayOffRepository dayOffRepository, AuditService auditService,
-                              ConsultationService consultationService, RowLock rowLock) {
+                              ConsultationService consultationService, RowLock rowLock,
+                              PlatformTransactionManager transactionManager) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
@@ -112,6 +120,7 @@ public class AppointmentService {
         this.auditService = auditService;
         this.consultationService = consultationService;
         this.rowLock = rowLock;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     // injetado pelo setter pra n formar ciclo na montagem dos servicos
@@ -241,23 +250,48 @@ public class AppointmentService {
 
     // pedido q passou da data sem resposta n pode ficar em aberto pra sempre:
     // ele some das telas, o paciente fica esperando e o registro nunca fecha (RF11)
-    @Transactional
+    // cada pedido na propria transacao, com a consulta travada e lida de novo antes de tudo, igual nas rotas:
+    // o cancelamento ou a remarcacao q o prescritor grava no mesmo instante aparece e o pedido fica como ele
+    // deixou. antes o job gravava a linha inteira lida antes, por cima, e no postgres a trilha dele tomava o
+    // paciente antes da consulta, e ficava esperando o cancelamento q segurava a consulta e esperava o paciente
+    // um pedido com problema n segura os outros (#110)
     public int declineExpiredRequests(LocalDateTime moment) {
-        List<Appointment> expired = appointmentRepository
-                .findByStatusAndDateTimeBefore(AppointmentStatus.SOLICITADA, moment)
-                .stream()
-                .filter(appointment -> !appointment.isAnnulled())
-                .toList();
-
-        for (Appointment appointment : expired) {
-            appointment.setStatus(AppointmentStatus.RECUSADA);
-            Appointment savedAppointment = saveChange(appointment);
-            notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta sem resposta",
-                    "Seu pedido de consulta para " + formatDateTime(savedAppointment)
-                            + " passou da data sem resposta. Escolha outro horário na agenda.",
-                    "ALERT", PATIENT_AGENDA_LINK);
+        int declined = 0;
+        int failures = 0;
+        for (Appointment expired : appointmentRepository.findByStatusAndDateTimeBefore(AppointmentStatus.SOLICITADA,
+                moment)) {
+            try {
+                Boolean wasDeclined = transactionTemplate.execute(
+                        status -> declineIfStillExpired(expired.getId(), moment));
+                if (Boolean.TRUE.equals(wasDeclined)) {
+                    declined++;
+                }
+            } catch (RuntimeException exception) {
+                failures++;
+                log.error("Tarefas do dia: falha no pedido de consulta vencido {}", expired.getId(), exception);
+            }
         }
-        return expired.size();
+        // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
+        if (failures > 0) {
+            throw new IllegalStateException(failures + " pedido(s) de consulta vencido(s) com falha, "
+                    + declined + " recusados nos outros");
+        }
+        return declined;
+    }
+
+    private boolean declineIfStillExpired(Long appointmentId, LocalDateTime moment) {
+        Appointment appointment = rowLock.reload(Appointment.class, appointmentId).orElse(null);
+        if (appointment == null || appointment.isAnnulled() || appointment.getStatus() != AppointmentStatus.SOLICITADA
+                || !appointment.getDateTime().isBefore(moment)) {
+            return false;
+        }
+        appointment.setStatus(AppointmentStatus.RECUSADA);
+        Appointment savedAppointment = saveChange(appointment);
+        notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta sem resposta",
+                "Seu pedido de consulta para " + formatDateTime(savedAppointment)
+                        + " passou da data sem resposta. Escolha outro horário na agenda.",
+                "ALERT", PATIENT_AGENDA_LINK);
+        return true;
     }
 
     // o pedido recusado devolve o horario pra agenda

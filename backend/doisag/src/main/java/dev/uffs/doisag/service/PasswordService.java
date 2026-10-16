@@ -38,6 +38,9 @@ public class PasswordService {
     @Transactional
     public Users changePassword(Long userId, ChangePasswordDTO passwordData, String clientAddress) {
         // a senha atual eh conferida no banco e n no objeto da sessao
+        // a conta fica travada antes de ler a senha, igual no pedido de e-mail novo: a senha nova q o link
+        // gravou no mesmo instante aparece e a atual eh conferida com ela, em vez de a troca gravar por cima
+        usersRepository.lockById(userId);
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
 

@@ -116,7 +116,7 @@ public class PrescriptionService {
     // prescricao errada fica no historico marcada como anulada e deixa de valer
     @Transactional
     public PrescriptionResponseDTO annul(Long prescriptionId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
-        Prescription prescription = findPrescription(prescriptionId);
+        Prescription prescription = findPrescriptionForUpdate(prescriptionId);
         if (prescription.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
@@ -160,8 +160,15 @@ public class PrescriptionService {
         return true;
     }
 
-    private Prescription findPrescription(Long id) {
-        return prescriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Prescrição não encontrada com o id: " + id));
+    // trava o paciente e dps a receita, lida de novo, na ordem do lancamento (consulta, paciente, receitas):
+    // duas anulacoes ao mesmo tempo passavam as duas pela conferencia e a segunda trocava o motivo da primeira
+    private Prescription findPrescriptionForUpdate(Long id) {
+        Long patientId = prescriptionRepository.findPatientIdById(id).orElseThrow(() -> prescriptionNotFound(id));
+        patientRepository.lockById(patientId);
+        return rowLock.reload(Prescription.class, id).orElseThrow(() -> prescriptionNotFound(id));
+    }
+
+    private NotFoundException prescriptionNotFound(Long id) {
+        return new NotFoundException("Prescrição não encontrada com o id: " + id);
     }
 }

@@ -8,6 +8,7 @@ import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
@@ -18,10 +19,14 @@ import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -35,6 +40,8 @@ import java.util.Optional;
 // pendencia arrastar pra sempre e travar as seguintes
 @Service
 public class ScaleTaskService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScaleTaskService.class);
 
     public static final String PRESCRIBER_SCALE_MESSAGE =
             "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta";
@@ -53,6 +60,8 @@ public class ScaleTaskService {
     private final PrescriberRepository prescriberRepository;
     private final ScaleCatalog catalog;
     private final AuditService auditService;
+    private final RowLock rowLock;
+    private final TransactionTemplate transactionTemplate;
     private NotificationService notificationService;
 
     public ScaleTaskService(ScaleTaskRepository taskRepository,
@@ -60,13 +69,17 @@ public class ScaleTaskService {
                             PatientRepository patientRepository,
                             PrescriberRepository prescriberRepository,
                             ScaleCatalog catalog,
-                            AuditService auditService) {
+                            AuditService auditService,
+                            RowLock rowLock,
+                            PlatformTransactionManager transactionManager) {
         this.taskRepository = taskRepository;
         this.responseRepository = responseRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.catalog = catalog;
         this.auditService = auditService;
+        this.rowLock = rowLock;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     // o aviso depende do servico de notificacao e ele volta aqui, entao
@@ -269,17 +282,48 @@ public class ScaleTaskService {
     // roda uma vez por dia: fecha as tarefas q passaram do prazo
     // quem tem ao menos uma resposta conta como respondida, e o resto
     // fica como nao respondida pra virar lacuna no grafico (RN10)
-    @Transactional
+    // cada tarefa na propria transacao, com o paciente travado e dps a tarefa lida de novo, na ordem da resposta
+    // e do arquivamento (a vencida aceita resposta ate o job das 8h): a resposta gravada antes de o job ler a
+    // tarefa conta, e a q fica esperando o job encontra a tarefa fechada. o job nunca grava nao respondida por
+    // cima de uma resposta ja gravada. uma tarefa com problema n segura as outras (#110)
     public int closeOverdue(LocalDate today) {
-        List<ScaleTask> overdue = taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today);
-        for (ScaleTask task : overdue) {
-            closeByAnswers(task, task.getPeriodEnd());
-            // no diario o prescritor recebe um aviso por periodo e n um por dia (RF15)
-            if (isDaily(task.getScaleType())) {
-                notifyDailyPeriodClosed(task);
+        int closed = 0;
+        int failures = 0;
+        for (ScaleTask found : taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today)) {
+            try {
+                Boolean wasClosed = transactionTemplate.execute(status -> closeIfStillOverdue(found.getId(), today));
+                if (Boolean.TRUE.equals(wasClosed)) {
+                    closed++;
+                }
+            } catch (RuntimeException exception) {
+                failures++;
+                log.error("Tarefas do dia: falha ao fechar a tarefa {}", found.getId(), exception);
             }
         }
-        return overdue.size();
+        // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
+        if (failures > 0) {
+            throw new IllegalStateException(failures + " tarefa(s) vencida(s) com falha, "
+                    + closed + " fechadas nas outras");
+        }
+        return closed;
+    }
+
+    private boolean closeIfStillOverdue(Long taskId, LocalDate today) {
+        Long patientId = taskRepository.findPatientIdById(taskId).orElse(null);
+        if (patientId == null) {
+            return false;
+        }
+        patientRepository.lockById(patientId);
+        ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
+        if (task == null || task.getStatus() != ScaleTaskStatus.PENDENTE || !task.getPeriodEnd().isBefore(today)) {
+            return false;
+        }
+        closeByAnswers(task, task.getPeriodEnd());
+        // no diario o prescritor recebe um aviso por periodo e n um por dia (RF15)
+        if (isDaily(task.getScaleType())) {
+            notifyDailyPeriodClosed(task);
+        }
+        return true;
     }
 
     // arquivar fecha na hora o q o paciente ainda tinha em aberto, pela mesma regra do prazo vencido

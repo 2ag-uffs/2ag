@@ -247,8 +247,10 @@ class ReminderTest {
 
         treatmentProtocolService.designarEscalasVencidas(TODAY.plusDays(5));
 
-        assertThat(avulsa.isFromProtocol()).isTrue();
-        assertThat(avulsa.getPeriodEnd()).isEqualTo(TODAY.plusDays(11));
+        // lida de novo: o lembrete trava a tarefa e le ela de novo, entao a copia de cima ficou pra tras
+        ScaleTask round = taskRepository.findById(avulsa.getId()).orElseThrow();
+        assertThat(round.isFromProtocol()).isTrue();
+        assertThat(round.getPeriodEnd()).isEqualTo(TODAY.plusDays(11));
         assertThat(reminderService.sendScaleReminders(TODAY.plusDays(8))).isZero();
         assertThat(reminderService.sendScaleReminders(TODAY.plusDays(9))).isEqualTo(1);
     }

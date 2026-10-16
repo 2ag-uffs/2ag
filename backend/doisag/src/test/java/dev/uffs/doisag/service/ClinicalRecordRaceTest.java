@@ -14,6 +14,7 @@ import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.Periodicity;
@@ -55,6 +56,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 // o acompanhamento ativo, o envio avulso de escala, a rodada do job, a receita vigente e a anulacao da consulta
 // a trava eh a linha do prescritor nos tres primeiros, a da consulta e a do paciente na receita
 // e a da consulta na anulacao, na correcao do registro e na remarcacao
+// o registro da consulta trava o prescritor, e o cadastro do acompanhamento, a rodada e a anulacao da
+// receita travam o paciente antes de ler ele, entao o arquivamento e a anulacao gravados no meio aparecem
 @SpringBootTest
 @ActiveProfiles("test")
 class ClinicalRecordRaceTest {
@@ -66,6 +69,7 @@ class ClinicalRecordRaceTest {
     @Autowired private PrescriptionService prescriptionService;
     @Autowired private ConsultationService consultationService;
     @Autowired private AppointmentService appointmentService;
+    @Autowired private PatientArchiveService patientArchiveService;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -260,6 +264,98 @@ class ClinicalRecordRaceTest {
                 .isEqualTo(TODAY.minusDays(1).atTime(10, 0));
     }
 
+    // o registro da consulta trava o prescritor antes de tudo, como a agenda. sem isso, no postgres, o insert
+    // dela tomava o paciente e ficava esperando o prescritor q o cadastro do acompanhamento segurava, e o cadastro
+    // esperava o paciente: o banco derrubava um dos dois. no h2 a chave estrangeira n trava nada, entao aqui o
+    // teste pega o registro q n espera o prescritor, e o impasse mesmo so aparece no job backend-postgres do ci
+    @Test
+    void registeringAConsultationWaitsForTheProtocolCreation() throws Exception {
+        TreatmentProtocolCreateDTO protocolData = new TreatmentProtocolCreateDTO(null, null, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL)));
+
+        HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> protocolService.create(patient.getId(), protocolData, prescriber),
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(appointmentRepository.findById(outcome.value().id())).isPresent();
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isPresent();
+    }
+
+    // de quebra dois registros do mesmo prescritor passam um de cada vez, e o segundo ja conta o primeiro
+    // na hora de decidir se eh primeira consulta ou retorno
+    @Test
+    void registeringAConsultationWaitsForThePrescriberAndCountsTheOneSavedMeanwhile() throws Exception {
+        HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(10)), prescriber),
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(appointmentRepository.findById(outcome.value().id()).orElseThrow().getAppointmentType())
+                .isEqualTo(AppointmentType.RETORNO);
+    }
+
+    // o cadastro trava o prescritor e dps o paciente antes de ler ele: o arquivamento gravado enquanto ele
+    // esperava aparece, em vez de o paciente arquivado ficar com um acompanhamento ativo
+    @Test
+    void theProtocolWaitsForTheArchivingAndIsRefused() throws Exception {
+        TreatmentProtocolCreateDTO protocolData = new TreatmentProtocolCreateDTO(null, null, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL)));
+
+        HeldLock.Outcome<TreatmentProtocolResponseDTO> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> protocolService.create(patient.getId(), protocolData, prescriber));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(TreatmentProtocolService.ARCHIVED_PATIENT_MESSAGE);
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
+    }
+
+    // a rodada trava o prescritor e o paciente antes de ler o acompanhamento: o arquivamento gravado enquanto
+    // ela esperava encerra o acompanhamento e a rodada n manda tarefa nova pro paciente arquivado
+    @Test
+    void theRoundWaitsForTheArchivingAndSendsNothing() throws Exception {
+        // comecou ontem, entao a primeira rodada fica pro job
+        protocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY.minusDays(1), 90, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL))), prescriber);
+
+        HeldLock.Outcome<Integer> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> protocolService.designarEscalasVencidas(TODAY));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value()).isZero();
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
+    }
+
+    // a anulacao da receita trava o paciente e dps a receita, lida de novo: a segunda anulacao espera, encontra
+    // a receita ja anulada e eh recusada, em vez de trocar o motivo da primeira
+    @Test
+    void theSecondPrescriptionAnnulmentWaitsAndIsRefused() throws Exception {
+        Prescription prescription = savePrescriptionOf(saveAppointmentOn(TODAY.minusDays(1)));
+
+        HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> prescriptionService.annul(prescription.getId(), new AnnulmentDTO("Lançada no paciente errado"),
+                        prescriber),
+                () -> prescriptionService.annul(prescription.getId(), new AnnulmentDTO("Dose errada"), prescriber));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(PrescriptionService.ALREADY_ANNULLED_MESSAGE);
+        assertThat(prescriptionRepository.findById(prescription.getId()).orElseThrow().getAnnulment()
+                .getAnnulmentReason()).isEqualTo("Lançada no paciente errado");
+    }
+
+    private ConsultationRecordDTO recordOn(LocalDate day) {
+        return new ConsultationRecordDTO(day.atTime(10, 0), AppointmentModality.PRESENCIAL, null, null, null,
+                "Dor crônica", null, null, null, null, null);
+    }
+
     private PrescriptionCreateDTO prescriptionData() {
         return new PrescriptionCreateDTO("Óleo novo", null, null,
                 Spectrum.ISOLADO, List.of(new PrescriptionComponentDTO(Cannabinoid.CBD, new BigDecimal("10"),
@@ -287,14 +383,14 @@ class ClinicalRecordRaceTest {
         taskRepository.save(task);
     }
 
-    private void savePrescriptionOf(Appointment appointment) {
+    private Prescription savePrescriptionOf(Appointment appointment) {
         Prescription prescription = new Prescription();
         prescription.setAppointment(appointment);
         prescription.setProductDescription("Óleo gravado no meio tempo");
         prescription.setPosology("1 gota");
         prescription.addComponent(new PrescriptionComponent(Cannabinoid.CBD, new BigDecimal("5"),
                 ConcentrationUnit.MG_POR_ML));
-        prescriptionRepository.save(prescription);
+        return prescriptionRepository.save(prescription);
     }
 
     private Appointment saveAppointmentOn(LocalDate day) {

@@ -388,7 +388,8 @@ class TreatmentProtocolServiceTest {
                         .isEqualTo(item.getLastRoundEnd());
             }
         }
-        assertThat(hamiltonDaSemana.getReminderSentAt()).isNotNull();
+        // lida de novo: o lembrete trava a tarefa e le ela de novo, entao a copia de cima ficou pra tras
+        assertThat(taskRepository.findById(hamiltonDaSemana.getId()).orElseThrow().getReminderSentAt()).isNotNull();
     }
 
     // a ordem do job de verdade: fecha o q venceu, manda a rodada e os lembretes

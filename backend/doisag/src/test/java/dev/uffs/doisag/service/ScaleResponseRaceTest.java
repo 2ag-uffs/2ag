@@ -17,6 +17,7 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
@@ -72,6 +73,10 @@ class ScaleResponseRaceTest {
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private PlatformTransactionManager transactionManager;
+    @Autowired private ScaleTaskService scaleTaskService;
+    @Autowired private ReminderService reminderService;
+    @Autowired private PatientArchiveService patientArchiveService;
+    @Autowired private NotificationRepository notificationRepository;
 
     private HeldLock heldLock;
     private Prescriber prescriber;
@@ -173,6 +178,83 @@ class ScaleResponseRaceTest {
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(ScaleResponseService.EXAM_ALREADY_APPLIED_MESSAGE);
         assertThat(responseRepository.findByAppointmentIdOrderByPeriodStartAsc(appointment.getId())).hasSize(1);
+    }
+
+    // o meem trava a consulta e dps o prescritor, antes de gravar. sem isso, no postgres, o insert do exame
+    // tomava o paciente e ficava esperando o prescritor q o cadastro do acompanhamento segurava, e o cadastro
+    // esperava o paciente: o banco derrubava um dos dois. no h2 a chave estrangeira n trava nada, entao aqui o
+    // teste pega o exame q n espera o prescritor, e o impasse mesmo so aparece no job backend-postgres do ci
+    @Test
+    void theMiniExamWaitsForTheProtocolCreation() throws Exception {
+        Appointment appointment = saveAppointmentOfYesterday();
+
+        HeldLock.Outcome<ScaleResponseDTO> outcome = heldLock.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY, 90,
+                        null, null, List.of(new ProtocolItemDTO(ScaleType.REGISTRO_DOR, null, Periodicity.SEMANAL))),
+                        prescriber),
+                () -> responseService.applyMentalStateExam(appointment.getId(),
+                        new ScaleResponseCreateDTO(null, null, completeMiniExam()), prescriber));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(responseRepository.findByAppointmentIdOrderByPeriodStartAsc(appointment.getId())).hasSize(1);
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).hasSize(1);
+    }
+
+    // o job trava o paciente e dps a tarefa vencida, lida de novo: a resposta q chega antes das 8h e ainda
+    // fecha a vencida aparece, em vez de o job gravar nao respondida por cima com a contagem velha
+    @Test
+    void closingTheOverdueTaskWaitsForTheAnswerAndKeepsItAnswered() throws Exception {
+        ScaleTask overdue = saveOverduePainTask();
+
+        HeldLock.Outcome<Integer> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> responseService.answer(patient.getId(), ScaleType.REGISTRO_DOR,
+                        new ScaleResponseCreateDTO(null, null, Map.of("intensidadeDor", 7))),
+                () -> scaleTaskService.closeOverdue(TODAY));
+
+        assertThat(outcome.error()).isNull();
+        ScaleTask kept = taskRepository.findById(overdue.getId()).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(kept.getAnsweredAt()).isEqualTo(TODAY);
+    }
+
+    // o lembrete trava o paciente e dps a tarefa, como o arquivamento: a tarefa q o arquivamento fechou no
+    // meio tempo n recebe lembrete. no postgres os dois gravavam varias tarefas em ordens diferentes e podiam
+    // ficar esperando um pelo outro, e agora o lembrete grava uma tarefa por transacao
+    @Test
+    void theScaleReminderWaitsForTheArchivingAndSendsNothing() throws Exception {
+        ScaleTask task = saveHandSentPainTask();
+
+        HeldLock.Outcome<Integer> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> reminderService.sendScaleReminders(TODAY.plusDays(2)));
+
+        assertThat(outcome.error()).isNull();
+        ScaleTask kept = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(kept.getReminderSentAt()).isNull();
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId())).isEmpty();
+    }
+
+    // a dor da semana passada, q venceu ontem e o job das 8h ainda n fechou
+    private ScaleTask saveOverduePainTask() {
+        ScaleTask task = new ScaleTask();
+        task.setPatient(patient);
+        task.setPrescriber(prescriber);
+        task.setScaleType(ScaleType.REGISTRO_DOR);
+        task.setPeriodStart(TODAY.minusDays(7));
+        task.setPeriodEnd(TODAY.minusDays(1));
+        task.setStatus(ScaleTaskStatus.PENDENTE);
+        return taskRepository.save(task);
+    }
+
+    private Map<String, Object> completeMiniExam() {
+        return Map.ofEntries(Map.entry("escolaridade", 1), Map.entry("orientacaoTemporal", 5),
+                Map.entry("orientacaoEspacial", 5), Map.entry("registro", 3), Map.entry("atencaoECalculo", 5),
+                Map.entry("memoriaEvocacao", 3), Map.entry("nomeacao", 2), Map.entry("repeticao", 1),
+                Map.entry("comando", 3), Map.entry("leitura", 1), Map.entry("escrita", 1), Map.entry("copia", 1));
     }
 
     // o job da rodada trava o paciente antes de olhar as tarefas dele, igual a resposta. antes ele lia a avulsa

@@ -16,6 +16,7 @@ import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
@@ -71,6 +72,7 @@ public class ScaleResponseService {
 
     private final ScaleResponseRepository responseRepository;
     private final PatientRepository patientRepository;
+    private final PrescriberRepository prescriberRepository;
     private final ScaleTaskService taskService;
     private final ScaleCatalog catalog;
     private final ScaleScorer scorer;
@@ -80,6 +82,7 @@ public class ScaleResponseService {
 
     public ScaleResponseService(ScaleResponseRepository responseRepository,
                                 PatientRepository patientRepository,
+                                PrescriberRepository prescriberRepository,
                                 ScaleTaskService taskService,
                                 ScaleCatalog catalog,
                                 ScaleScorer scorer,
@@ -87,6 +90,7 @@ public class ScaleResponseService {
                                 RowLock rowLock) {
         this.responseRepository = responseRepository;
         this.patientRepository = patientRepository;
+        this.prescriberRepository = prescriberRepository;
         this.taskService = taskService;
         this.catalog = catalog;
         this.scorer = scorer;
@@ -171,6 +175,10 @@ public class ScaleResponseService {
         if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
             throw new BusinessException(EXAM_ALREADY_APPLIED_MESSAGE);
         }
+        // dps da consulta vem o prescritor e so dps o paciente: no postgres o insert do exame toma o paciente e
+        // dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
+        // paciente. com o prescritor travado antes os dois n ficam esperando um pelo outro
+        prescriberRepository.lockById(loggedPrescriber.getId());
         ScaleType scaleType = ScaleType.MINI_EXAME_ESTADO_MENTAL;
         ScaleDefinition definition = catalog.definitionOf(scaleType);
         LocalDate examDay = appointment.getDateTime().toLocalDate();

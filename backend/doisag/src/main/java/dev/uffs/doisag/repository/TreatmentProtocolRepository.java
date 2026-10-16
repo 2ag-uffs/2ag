@@ -22,6 +22,10 @@ public interface TreatmentProtocolRepository extends JpaRepository<TreatmentProt
     @Query("select protocol.id from TreatmentProtocol protocol where protocol.active = true order by protocol.id")
     List<Long> findActiveIds();
 
+    // so o paciente do protocolo, sem carregar ele: o job trava o prescritor e o paciente antes de ler o protocolo
+    @Query("select protocol.patient.id from TreatmentProtocol protocol where protocol.id = :id")
+    Optional<Long> findPatientIdById(@Param("id") Long id);
+
     // quem esta no ciclo hoje: acompanhamento valendo, conta ativa e fora do arquivo (RF39)
     @Query("select count(distinct protocol.patient.id) from TreatmentProtocol protocol "
             + "where protocol.patient.prescriber.id = :prescriberId and protocol.active = true "

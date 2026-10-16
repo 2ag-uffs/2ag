@@ -47,19 +47,26 @@ public class AnamnesisService {
 
     @Transactional
     public AnamnesisResponseDTO create(AnamnesisDTO anamnesisData, Patient patient) {
+        // o paciente fica travado antes de tudo, igual na resposta de escala, pq a anamnese da baixa na tarefa:
+        // o job q fecha a tarefa vencida trava o paciente antes de ler ela, entao um espera o outro
+        patientRepository.lockById(patient.getId());
+        // o paciente da sessao eh do login: lido de novo dps da trava, o arquivamento gravado enquanto
+        // a anamnese esperava aparece
+        Patient current = patientRepository.findById(patient.getId())
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patient.getId()));
         // prontuario de quem foi arquivado n recebe registro novo, o acompanhamento acabou
-        if (patient.isArchived()) {
+        if (current.isArchived()) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
         }
         Anamnesis anamnesis = new Anamnesis();
-        anamnesis.setPatient(patient);
+        anamnesis.setPatient(current);
         anamnesis.setAssessmentDate(anamnesisData.assessmentDate() == null ? LocalDate.now() : anamnesisData.assessmentDate());
         copyAnswers(anamnesisData, anamnesis);
 
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
-        auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), patient.getId());
+        auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), current.getId());
         // preencher a anamnese da baixa na tarefa q o prescritor enviou igual as outras escalas
-        scaleTaskService.completeTask(patient.getId(), ScaleType.ANAMNESE);
+        scaleTaskService.completeTask(current.getId(), ScaleType.ANAMNESE);
         return new AnamnesisResponseDTO(savedAnamnesis);
     }
 

@@ -281,6 +281,24 @@ class EmailChangeRaceTest {
         assertThat(passwordEncoder.matches(NEW_PASSWORD, savedPatient().getPassword())).isTrue();
     }
 
+    // a dona usa o link de senha nova enquanto quem sabe a senha antiga troca a senha pelo perfil: a troca
+    // trava a conta antes de conferir a senha atual, entao espera o link, confere a senha nova e eh recusada,
+    // em vez de gravar a senha dela por cima da q a dona acabou de criar
+    @Test
+    void thePasswordChangeWaitsForTheResetLinkAndIsRefusedWithTheOldPassword() throws Exception {
+        passwordResetService.requestReset(OLD_EMAIL, ADDRESS);
+        String resetToken = tokenFromLastLinkTo(OLD_EMAIL);
+
+        HeldLock.Outcome<Object> outcome = heldLock.run(
+                () -> usersRepository.lockById(patient.getId()),
+                () -> passwordResetService.resetPassword(new PasswordResetDTO(resetToken, NEW_PASSWORD)),
+                () -> passwordService.changePassword(patient.getId(),
+                        new ChangePasswordDTO(PASSWORD, "Senha-Do-Outro#2026"), ADDRESS));
+
+        assertThat(outcome.error()).isInstanceOf(InvalidFieldException.class);
+        assertThat(passwordEncoder.matches(NEW_PASSWORD, savedPatient().getPassword())).isTrue();
+    }
+
     // a escala trava o paciente e dps grava a trilha com ele como autor, q no postgres segura a conta
     // em modo compartilhado. a confirmacao grava a trilha apontando pro paciente: se ela travasse a conta
     // antes, ficava esperando o paciente enquanto a escala esperava a conta. ela trava o paciente primeiro,
