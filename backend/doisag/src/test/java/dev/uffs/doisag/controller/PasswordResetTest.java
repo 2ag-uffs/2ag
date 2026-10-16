@@ -148,6 +148,20 @@ class PasswordResetTest {
         assertThat(emailCaptor.getValue().text()).contains("/redefinir-senha?token=");
     }
 
+    // o e-mail chama a pessoa pelo nome social qnd ela tem (RN15)
+    @Test
+    void theEmailGreetsByTheSocialName() throws Exception {
+        patient.setSocialName("Nome Social da Recuperacao");
+        patientRepository.save(patient);
+
+        requestReset(PATIENT_EMAIL).andExpect(status().isNoContent());
+
+        ArgumentCaptor<EmailMessage> emailCaptor = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(emailCaptor.capture());
+        assertThat(emailCaptor.getValue().text()).startsWith("Olá, Nome Social da Recuperacao.")
+                .doesNotContain("Paciente da Recuperacao");
+    }
+
     @Test
     void unknownEmailGetsTheSameAnswerAndNoEmail() throws Exception {
         requestReset("ninguem@email.com").andExpect(status().isNoContent());

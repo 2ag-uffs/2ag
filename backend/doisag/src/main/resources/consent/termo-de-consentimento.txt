@@ -8,7 +8,7 @@ Ao criar sua conta no 2AG, você autoriza o uso dos seus dados pessoais e de sa�
 [NOME DA CLÍNICA], CNPJ [CNPJ DA CLÍNICA], responsável pelo seu atendimento, decide como os seus dados são usados no sistema.
 
 2. Quais dados são coletados
-- Identificação e contato: nome, CPF, data de nascimento, telefone, e-mail e endereço.
+- Identificação e contato: nome, nome social (se você informar), CPF, data de nascimento, telefone, e-mail e endereço.
 - Familiar ou cuidador, se você informar: nome, parentesco e telefone.
 - Saúde: respostas da anamnese, escalas clínicas, diários de sono, dor e sintomas, consultas, prescrições e a evolução do tratamento.
 

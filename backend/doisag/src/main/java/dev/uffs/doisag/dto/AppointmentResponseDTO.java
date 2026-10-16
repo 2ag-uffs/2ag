@@ -51,7 +51,7 @@ public record AppointmentResponseDTO(
                 appointment.getDurationMinutes(),
                 appointment.getPatientNote(),
                 appointment.getPatient().getId(),
-                appointment.getPatient().getName(),
+                appointment.getPatient().getDisplayName(),
                 appointment.getPrescriber().getId(),
                 appointment.getPrescriber().getName(),
                 appointment.isAnnulled(),

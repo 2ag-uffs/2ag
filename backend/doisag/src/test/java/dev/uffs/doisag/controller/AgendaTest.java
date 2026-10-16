@@ -523,6 +523,23 @@ class AgendaTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
+    // a agenda e os avisos do prescritor usam o nome social qnd o paciente tem (RN15)
+    @Test
+    void agendaAndNoticesUseTheSocialName() throws Exception {
+        patient.setSocialName("Nome Social da Agenda");
+        patientRepository.save(patient);
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+
+        mockMvc.perform(get("/appointments/requests").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].patientName").value("Nome Social da Agenda"));
+        assertThat(notificationMessageOf(prescriber, "Pedido de consulta")).startsWith("Nome Social da Agenda pediu");
+
+        cancel(requestId, patient).andExpect(status().isOk());
+        assertThat(notificationMessageOf(prescriber, "Consulta cancelada pelo paciente"))
+                .startsWith("Nome Social da Agenda cancelou");
+    }
+
     @Test
     void patientSeesTheirUpcomingRequestsAndAppointments() throws Exception {
         schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated());

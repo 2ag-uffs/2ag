@@ -47,7 +47,7 @@ public record ScaleResponseDTO(
                 response.getScoreBand(),
                 result,
                 response.getPatient().getId(),
-                response.getPatient().getName(),
+                response.getPatient().getDisplayName(),
                 response.getPrescriber() == null ? null : response.getPrescriber().getName(),
                 response.getAppointment() == null ? null : response.getAppointment().getId(),
                 response.isReviewed(),

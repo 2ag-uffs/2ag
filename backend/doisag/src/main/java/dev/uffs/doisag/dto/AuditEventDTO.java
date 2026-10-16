@@ -21,7 +21,7 @@ public record AuditEventDTO(
         Users actor = auditEvent.getActor();
         return new AuditEventDTO(
                 auditEvent.getOccurredAt(),
-                actor == null ? "Sistema" : actor.getName(),
+                actor == null ? "Sistema" : actor.getDisplayName(),
                 auditEvent.getActorRole() == null ? null : auditEvent.getActorRole().name(),
                 auditEvent.getOperation().name(),
                 auditEvent.getOperation().getLabel(),

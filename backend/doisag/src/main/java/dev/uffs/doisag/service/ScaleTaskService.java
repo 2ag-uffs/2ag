@@ -261,7 +261,7 @@ public class ScaleTaskService {
         long totalDays = ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1;
         notificationService.createNotification(task.getPrescriber(), "Escala diária concluída",
                 task.getScaleType().getDisplayName() + " de " + formatDate(task.getPeriodStart()) + " a "
-                        + formatDate(task.getPeriodEnd()) + ": " + patient.getName() + " preencheu "
+                        + formatDate(task.getPeriodEnd()) + ": " + patient.getDisplayName() + " preencheu "
                         + filledDays + " de " + totalDays + " dias.",
                 "FORM", "/paciente/" + patient.getId() + "/historico");
     }
@@ -285,7 +285,7 @@ public class ScaleTaskService {
                 .map(this::summaryOf)
                 .toList();
 
-        return new PatientScalesPageDTO(patient.getName(), pending, history);
+        return new PatientScalesPageDTO(patient.getDisplayName(), pending, history);
     }
 
     @Transactional(readOnly = true)

@@ -118,6 +118,7 @@ export default function Impressao() {
                         <dt>Paciente</dt>
                         <dd>
                             {patient.name}
+                            {patient.civilName ? " (nome civil: " + patient.civilName + ")" : ""}
                             {patient.birthDate ? " · " + ageFrom(patient.birthDate) + " anos" : ""}
                         </dd>
                     </div>

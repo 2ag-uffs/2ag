@@ -28,7 +28,7 @@ public record AgendaAppointmentDTO(
                 appointment.getModality(),
                 appointment.getStatus(),
                 appointment.getPatient().getId(),
-                appointment.getPatient().getName(),
+                appointment.getPatient().getDisplayName(),
                 appointment.getPrescriber().getName(),
                 appointment.getPatientNote(),
                 appointment.isAnnulled()

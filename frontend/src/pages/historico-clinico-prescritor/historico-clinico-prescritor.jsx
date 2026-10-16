@@ -10,6 +10,7 @@ import {
     FiRepeat,
     FiShield,
     FiTrendingUp,
+    FiUser,
 } from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
@@ -241,8 +242,15 @@ export default function HistoricoClinicoPrescritor() {
                 )}
             />
 
-            {(nextAppointment || patient.archived || patient.guardian) && (
+            {(nextAppointment || patient.archived || patient.guardian || patient.civilName) && (
                 <div className={styles.facts}>
+                    {/* o titulo usa o nome social e o civil fica aqui pq o prontuario identifica a pessoa */}
+                    {patient.civilName && (
+                        <span className={styles.fact}>
+                            <FiUser aria-hidden="true"/>
+                            Nome civil: {patient.civilName}
+                        </span>
+                    )}
                     {nextAppointment && (
                         <span className={styles.fact}>
                             <FiCalendar aria-hidden="true"/>

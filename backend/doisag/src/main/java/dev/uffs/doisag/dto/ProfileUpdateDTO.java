@@ -15,6 +15,10 @@ public record ProfileUpdateDTO(
         @Size(max = 255, message = "O nome pode ter até 255 caracteres")
         String name,
 
+        // nome social, so vale pra paciente (RN15)
+        @Size(max = 255, message = "O nome social pode ter até 255 caracteres")
+        String socialName,
+
         @Past(message = "A data de nascimento precisa ser no passado")
         LocalDate birthDate,
 

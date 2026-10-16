@@ -23,7 +23,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Collator;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class PatientService {
@@ -73,13 +76,17 @@ public class PatientService {
     }
 
     // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
+    // a ordem eh pelo nome q a tela mostra, e o banco so sabe ordenar pelo civil (RN15)
     @Transactional(readOnly = true)
     public List<PatientResponseDTO> getPatientsByPrescriberId(Long prescriberId, boolean archived) {
         List<Patient> patients = archived
                 ? patientRepository.findAllByPrescriberIdAndArchivedAtIsNotNullOrderByNameAsc(prescriberId)
                 : patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId);
+        // collator do portugues pra letra com acento n ir pro fim da lista
+        Collator collator = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
         return patients.stream()
                 .map(PatientResponseDTO::new)
+                .sorted(Comparator.comparing(PatientResponseDTO::name, collator))
                 .toList();
     }
 
@@ -130,6 +137,7 @@ public class PatientService {
         Prescriber prescriber = invite.getPrescriber();
         Patient patient = new Patient();
         patient.setName(registerData.name().trim());
+        patient.setSocialName(InputCleaner.socialNameOrNull(registerData.socialName(), registerData.name()));
         patient.setEmail(email);
         patient.setCpf(cpf);
         patient.setBirthDate(registerData.birthDate());
@@ -148,7 +156,7 @@ public class PatientService {
         }
 
         notificationService.createNotification(prescriber, "Novo paciente vinculado",
-                savedPatient.getName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
+                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
         return savedPatient;
     }
 }

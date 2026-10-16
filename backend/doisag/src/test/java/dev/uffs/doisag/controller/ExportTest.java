@@ -304,6 +304,33 @@ class ExportTest {
         }
     }
 
+    // o arquivo com nome identifica a pessoa entao leva o nome social e o civil na mesma celula (RN15)
+    @Test
+    void identifiedFileHasTheSocialNameWithTheCivilName() throws Exception {
+        patient.setSocialName("Ana Social");
+        patientRepository.save(patient);
+
+        String csv = download("appointments.csv", "", prescriber);
+
+        assertThat(csv).contains("\"Paciente\";\"Data\";\"Hora\"");
+        assertThat(csv).contains("\"Ana Social (nome civil: Paciente da exportação)\"");
+    }
+
+    // o arquivo de pesquisa n leva nem o nome social nem o civil
+    @Test
+    void deidentifiedFilesLeaveBothNamesOut() throws Exception {
+        patient.setSocialName("Ana Social");
+        patientRepository.save(patient);
+
+        List<String> files = List.of("appointments.csv?deidentified=true", "prescriptions.csv?deidentified=true",
+                "scales.csv?deidentified=true", "anamneses.csv?deidentified=true",
+                "progress.csv?attribute=DOR&period=DIAS_30&deidentified=true");
+        for (String file : files) {
+            String csv = download(file, "", prescriber);
+            assertThat(csv).doesNotContain("Ana Social").doesNotContain("Paciente da exportação");
+        }
+    }
+
     @Test
     void asPrescricoesSaemComPosologia() throws Exception {
         String csv = download("prescriptions.csv", "", patient);

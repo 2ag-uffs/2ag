@@ -153,6 +153,9 @@ public class DevDemoData {
             Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
                     LocalDate.of(1983, 7, 30), "49993456789",
                     new Address("Rua Marechal Deodoro", "88", "Xaxim", "SC", "Brasil"), prescriber, password);
+            // nome social pra conferir as telas com ele (RN15)
+            paulo.setSocialName("Paula Nunes");
+            paulo = patientRepository.save(paulo);
             Patient carla = createPatient("Carla Menezes", "carla.menezes@email.com", "603918274",
                     LocalDate.of(1972, 9, 14), "49994567890",
                     new Address("Rua Clevelândia", "35", "Chapecó", "SC", "Brasil"), prescriber, password);

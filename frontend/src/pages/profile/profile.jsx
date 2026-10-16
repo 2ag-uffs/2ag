@@ -37,6 +37,7 @@ function personalDataFrom(profile) {
     const address = profile.address || {};
     return {
         name: profile.name || "",
+        socialName: profile.socialName || "",
         birthDate: profile.birthDate || "",
         phone: formatPhone(profile.phone || ""),
         street: address.street || "",
@@ -92,6 +93,8 @@ function PersonalDataCard({profile, onSaved}) {
         const hasAddress = Boolean(formData.street || formData.number || formData.city || formData.state);
         const requestBody = {
             name: formData.name,
+            // nome social so existe na conta do paciente
+            socialName: isPatient ? (formData.socialName.trim() || null) : null,
             birthDate: formData.birthDate || null,
             phone: onlyDigits(formData.phone) || null,
             address: hasAddress
@@ -164,6 +167,17 @@ function PersonalDataCard({profile, onSaved}) {
                     error={fieldErrors.name}
                     required={true}
                 />
+                {isPatient && (
+                    <TextField
+                        label="Nome social (opcional)"
+                        name="socialName"
+                        maxLength={255}
+                        hint="Se você usa um nome social, é ele que aparece no sistema e nos avisos."
+                        value={formData.socialName}
+                        onChange={(event) => updateField("socialName", event.target.value)}
+                        error={fieldErrors.socialName}
+                    />
+                )}
                 {!isAdmin && (
                 <>
                 <div className={styles.row}>
@@ -608,12 +622,12 @@ export default function Profile() {
         };
     }, []);
 
-    // o nome novo tbm vale pro cabecalho
+    // o nome novo tbm vale pro cabecalho, e o social vem na frente qnd o paciente tem
     const handleSaved = (savedProfile) => {
         setProfile(savedProfile);
         const loggedUser = getLoggedUser();
         if (loggedUser) {
-            setLoggedUser({...loggedUser, name: savedProfile.name});
+            setLoggedUser({...loggedUser, name: savedProfile.socialName || savedProfile.name});
         }
     };
 

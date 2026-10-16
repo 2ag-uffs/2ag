@@ -226,6 +226,123 @@ class ProfileTest {
                 .andExpect(jsonPath("$[0].guardian").doesNotExist());
     }
 
+    private String patientProfileWithSocialName(String socialName) {
+        return """
+                {"name":"Paciente do Perfil","socialName":%s,"birthDate":"1990-04-12","phone":"49999887766",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"}}
+                """.formatted(socialName);
+    }
+
+    // o perfil devolve os dois pq o nome civil eh o campo editavel (RN15)
+    @Test
+    void patientSetsTheSocialNameAndTheProfileKeepsTheCivilName() throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patientProfileWithSocialName("\" Ana Souza \"")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Paciente do Perfil"))
+                .andExpect(jsonPath("$.socialName").value("Ana Souza"));
+
+        mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.socialName").value("Ana Souza"));
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.name").value("Ana Souza"));
+    }
+
+    // no prontuario o prescritor ve o nome social e o civil, na lista so o social
+    @Test
+    void chartShowsBothNamesAndTheListOnlyTheSocialName() throws Exception {
+        patient.setSocialName("Ana Souza");
+        patientRepository.save(patient);
+
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Ana Souza"))
+                .andExpect(jsonPath("$.civilName").value("Paciente do Perfil"));
+
+        mockMvc.perform(get("/patients").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Ana Souza"))
+                .andExpect(jsonPath("$[0].civilName").doesNotExist());
+    }
+
+    @Test
+    void chartWithoutSocialNameHasNoCivilNameField() throws Exception {
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Paciente do Perfil"))
+                .andExpect(jsonPath("$.civilName").doesNotExist());
+    }
+
+    // a lista segue o nome q a tela mostra, com a letra acentuada no lugar certo
+    @Test
+    void patientListIsSortedByTheNameShown() throws Exception {
+        patient.setSocialName("Zélia Souza");
+        patientRepository.save(patient);
+        savePatientOf(prescriber, "Bruno Lima", "lista-bruno@email.com");
+        Patient withSocialName = savePatientOf(prescriber, "Xavier Costa", "lista-xavier@email.com");
+        withSocialName.setSocialName("Érica Costa");
+        patientRepository.save(withSocialName);
+        savePatientOf(prescriber, "Fábio Rocha", "lista-fabio@email.com");
+
+        mockMvc.perform(get("/patients").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Bruno Lima"))
+                .andExpect(jsonPath("$[1].name").value("Érica Costa"))
+                .andExpect(jsonPath("$[2].name").value("Fábio Rocha"))
+                .andExpect(jsonPath("$[3].name").value("Zélia Souza"));
+    }
+
+    @Test
+    void blankSocialNameClearsIt() throws Exception {
+        patient.setSocialName("Ana Souza");
+        patientRepository.save(patient);
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patientProfileWithSocialName("\"   \"")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.socialName").doesNotExist());
+
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getSocialName()).isNull();
+    }
+
+    @Test
+    void socialNameLongerThan255IsRefused() throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(patientProfileWithSocialName("\"" + "a".repeat(256) + "\"")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("socialName"));
+    }
+
+    // so a conta do paciente tem nome social
+    @Test
+    void prescriberSendingSocialNameIsIgnored() throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Prescritora do Perfil\",\"socialName\":\"Outro Nome\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Prescritora do Perfil"))
+                .andExpect(jsonPath("$.socialName").doesNotExist());
+
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.name").value("Prescritora do Perfil"));
+    }
+
+    private Patient savePatientOf(Prescriber owner, String name, String email) {
+        Patient otherPatient = new Patient();
+        otherPatient.setName(name);
+        otherPatient.setEmail(email);
+        otherPatient.setPassword("hash");
+        otherPatient.setPrescriber(owner);
+        return patientRepository.save(otherPatient);
+    }
+
     @Test
     void guardianPhoneWithoutNameIsRefused() throws Exception {
         String body = """

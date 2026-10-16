@@ -17,6 +17,8 @@ import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AuditService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
+import jakarta.persistence.EntityManager;
+import org.hibernate.proxy.HibernateProxy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +68,7 @@ class AuditTrailTest {
     @Autowired private AuditService auditService;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private TokenService tokenService;
+    @Autowired private EntityManager entityManager;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -97,6 +100,23 @@ class AuditTrailTest {
                 .andExpect(jsonPath("$.events[0].recordType").value("ESCALA_HAMILTON"))
                 .andExpect(jsonPath("$.events[0].actorName").value("Paciente Auditado"))
                 .andExpect(jsonPath("$.events[0].actorRole").value("PATIENT"));
+    }
+
+    // a acao do proprio paciente aparece com o nome social na trilha (RN15)
+    @Test
+    void patientWithSocialNameShowsUpByTheSocialName() throws Exception {
+        patient.setSocialName("Nome Social Auditado");
+        patientRepository.save(patient);
+        fillHamiltonScaleAsThePatient();
+
+        // limpa a sessao e deixa o ator como proxy de Users, q tem q chegar no nome social do Patient
+        entityManager.flush();
+        entityManager.clear();
+        Users actorReference = entityManager.getReference(Users.class, patient.getId());
+        assertThat(actorReference).isInstanceOf(HibernateProxy.class);
+
+        readPatientTrail(TODAY, TODAY, 0)
+                .andExpect(jsonPath("$.events[0].actorName").value("Nome Social Auditado"));
     }
 
     @Test

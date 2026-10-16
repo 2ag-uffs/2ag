@@ -12,6 +12,7 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
@@ -174,12 +175,12 @@ public class AppointmentService {
         appointment.setModality(requestData.modality());
         appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
         appointment.setStatus(AppointmentStatus.SOLICITADA);
-        appointment.setPatientNote(textOrNull(requestData.patientNote()));
+        appointment.setPatientNote(InputCleaner.textOrNull(requestData.patientNote()));
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
         notificationService.createNotification(prescriber, "Pedido de consulta",
-                patient.getName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
+                patient.getDisplayName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PRESCRIBER_AGENDA_LINK);
         return new AgendaAppointmentDTO(savedAppointment);
     }
@@ -235,7 +236,7 @@ public class AppointmentService {
 
         String message = "Seu pedido de consulta para " + formatDateTime(savedAppointment)
                 + " não foi aceito. Escolha outro horário na agenda.";
-        String reason = declineData == null ? null : textOrNull(declineData.reason());
+        String reason = declineData == null ? null : InputCleaner.textOrNull(declineData.reason());
         if (reason != null) {
             message = message + " Motivo: " + reason;
         }
@@ -299,7 +300,7 @@ public class AppointmentService {
         Appointment savedAppointment = saveChange(appointment);
         if (canceledByPatient) {
             notificationService.createNotification(savedAppointment.getPrescriber(), "Consulta cancelada pelo paciente",
-                    savedAppointment.getPatient().getName() + " cancelou a consulta de "
+                    savedAppointment.getPatient().getDisplayName() + " cancelou a consulta de "
                             + formatDateTime(savedAppointment) + ".",
                     "ALERT", PRESCRIBER_AGENDA_LINK);
         } else {
@@ -545,10 +546,6 @@ public class AppointmentService {
 
     private String formatDateTime(Appointment appointment) {
         return appointment.getDateTime().format(DATE_TIME_FORMAT);
-    }
-
-    private String textOrNull(String text) {
-        return text == null || text.isBlank() ? null : text.trim();
     }
 
     private Appointment findAppointment(Long appointmentId) {

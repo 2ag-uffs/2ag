@@ -8,9 +8,12 @@ import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Collator;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 // a administracao liga e desliga o acesso de um paciente
 // arquivar eh ato clinico do prescritor e n tira o acesso, quem tira eh isso aqui
@@ -35,9 +38,15 @@ public class PatientAccountService {
     }
 
     // pra administracao achar de novo quem ela desativou e poder reativar
+    // a ordem eh pelo nome q a tela mostra, e o banco so sabe ordenar pelo civil (RN15)
     @Transactional(readOnly = true)
     public List<Patient> listDeactivated() {
-        return patientRepository.findAllByActiveFalseOrderByNameAsc();
+        // collator do portugues pra letra com acento n ir pro fim da lista
+        Collator collator = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+        return patientRepository.findAllByActiveFalseOrderByNameAsc()
+                .stream()
+                .sorted(Comparator.comparing(Patient::getDisplayName, collator))
+                .toList();
     }
 
     @Transactional

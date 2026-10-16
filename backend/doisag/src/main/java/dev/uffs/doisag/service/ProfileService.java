@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.ProfileDTO;
 import dev.uffs.doisag.dto.ProfileUpdateDTO;
 import dev.uffs.doisag.dto.ResearchConsentDTO;
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -54,8 +55,10 @@ public class ProfileService {
         } else {
             user.setAddress(profileData.address().toAddress());
         }
+        // nome social so vale pra paciente, as outras contas ignoram o campo
         if (user instanceof Patient patient) {
             GuardianDTO.applyTo(patient, profileData.guardian());
+            patient.setSocialName(InputCleaner.socialNameOrNull(profileData.socialName(), profileData.name()));
         }
         return profileOf(usersRepository.save(user));
     }

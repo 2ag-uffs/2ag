@@ -489,7 +489,7 @@ public class ScaleResponseService {
             return;
         }
         notificationService.createNotification(prescriber, "Escala respondida",
-                response.getPatient().getName() + " respondeu " + response.getScaleType().getDisplayName() + ".",
+                response.getPatient().getDisplayName() + " respondeu " + response.getScaleType().getDisplayName() + ".",
                 "FORM", "/paciente/" + response.getPatient().getId() + "/historico");
     }
 

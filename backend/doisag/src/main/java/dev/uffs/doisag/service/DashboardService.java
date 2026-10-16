@@ -70,7 +70,7 @@ public class DashboardService {
                 .map(appointment -> new PrescriberDashboardDTO.TodayAppointmentDTO(
                         appointment.getId(),
                         appointment.getPatient().getId(),
-                        appointment.getPatient().getName(),
+                        appointment.getPatient().getDisplayName(),
                         appointment.getDateTime(),
                         appointment.getModality()))
                 .toList();
@@ -158,7 +158,7 @@ public class DashboardService {
         return new PrescriberDashboardDTO.WaitingRequestDTO(
                 appointment.getId(),
                 appointment.getPatient().getId(),
-                appointment.getPatient().getName(),
+                appointment.getPatient().getDisplayName(),
                 appointment.getDateTime(),
                 appointment.getModality(),
                 appointment.getPatientNote());
@@ -168,7 +168,7 @@ public class DashboardService {
         return new PrescriberDashboardDTO.LateScaleDTO(
                 task.getId(),
                 task.getPatient().getId(),
-                task.getPatient().getName(),
+                task.getPatient().getDisplayName(),
                 task.getScaleType().getDisplayName(),
                 task.getPeriodEnd());
     }

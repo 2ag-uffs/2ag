@@ -99,6 +99,21 @@ class ReminderTest {
         assertThat(email.getValue().text()).contains("Dra. Lembrete");
     }
 
+    // o e-mail chama a pessoa pelo nome social qnd ela tem (RN15)
+    @Test
+    void oEmailCumprimentaPeloNomeSocial() {
+        patient.setSocialName("Nome Social do Lembrete");
+        patientRepository.save(patient);
+        saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+
+        reminderService.sendAppointmentReminders(TODAY);
+
+        ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(email.capture());
+        assertThat(email.getValue().text()).startsWith("Olá, Nome Social do Lembrete.")
+                .doesNotContain("Paciente do lembrete");
+    }
+
     // o job roda todo dia, entao o mesmo lembrete n pode sair de novo
     @Test
     void oMesmoLembreteNaoSaiDuasVezes() {

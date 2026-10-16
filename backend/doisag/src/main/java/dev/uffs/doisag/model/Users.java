@@ -112,6 +112,12 @@ public abstract class Users implements UserDetails { // implementa a interface d
         this.name = name;
     }
 
+    // o nome q as telas e os avisos usam. o paciente troca pelo nome social (RN15)
+    @JsonIgnore
+    public String getDisplayName() {
+        return name;
+    }
+
     public void setPassword(String password) {
         this.password = password;
     }

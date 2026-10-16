@@ -592,7 +592,7 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 | **RN12** | Senha nunca é gravada em texto puro nem transita em resposta da API. *Atendido desde 12/09/2026: a atualização de perfil não recebe senha (`ProfileUpdateDTO`), toda senha gravada passa pelo `passwordEncoder` (cadastro, troca no perfil, link de senha nova ou de primeiro acesso e conta do administrador), e o hash não sai em resposta nenhuma, com `@JsonIgnore` em `Users.getPassword` e o `PasswordExposureTest` conferindo* |
 | **RN13** | Escore de escala validada é calculado exclusivamente pelo algoritmo oficial do instrumento (Anexo A). Adaptação ou simplificação de algoritmo não é permitida: escore fora do instrumento não pode ser exibido com o nome do instrumento |
 | **RN14** | O escore é sempre apresentado com sua **faixa interpretativa**, nunca como número isolado |
-| **RN15** | O paciente é identificado pelo **nome social** em toda a interface, nos formulários e nos relatórios. O nome de registro civil é armazenado apenas onde houver exigência legal. *O formulário de PSQI-BR aplicado pela clínica já traz o campo "NOME DO PACIENTE (SOCIAL)"; o sistema hoje guarda um único campo `name`* |
+| **RN15** | O paciente é identificado pelo **nome social** em toda a interface, nos formulários e nos relatórios. O nome de registro civil é armazenado apenas onde houver exigência legal. *Atendido em 16/10/2026: nome social opcional no cadastro e no perfil do paciente (`Patient.socialName`, `V27__nome_social_do_paciente.sql`), mostrado no lugar do nome civil nas telas, nos avisos e nos e-mails. O nome civil aparece junto só no prontuário, na impressão, na exportação com identificação e na tela de contas da administração (#109)* |
 
 ---
 
@@ -771,6 +771,15 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 **Consentimento de pesquisa em 14/10/2026 (RF37):** separado do termo do cadastro, opcional e revogável. O paciente aceita no cadastro ou no perfil e retira no perfil quando quiser; cada aceite guarda a versão e a data, e a retirada fica marcada sem apagar o registro. Só vale o aceite da versão atual do texto: se o texto mudar, quem quiser continuar participando aceita de novo. A exportação sem identificação, que é a de pesquisa, só sai de quem tem o consentimento valendo. O texto ainda é um rascunho e espera o projeto aprovado no comitê de ética.
 
 **Reforço no banco em 15/10/2026 (RN08 e escalas):** no Postgres, três índices únicos parciais repetem regras que o código já garante com trava de linha: uma resposta valendo por paciente, escala e dia de início (o MEEM fica fora, porque é por consulta), um MEEM valendo por consulta e um acompanhamento ativo por paciente. A RN08 não ganhou restrição no banco: o registro de uma consulta feita fora da agenda grava no horário do atendimento sem passar pela agenda, e uma restrição de sobreposição recusaria esse registro clínico. A RN08 continua garantida no agendamento, pela trava do prescritor.
+
+**Nome social em 16/10/2026 (RN15):** opcional, como a clínica pediu (#109), e informado pelo próprio paciente no cadastro e no perfil. Quando existe, é ele que aparece em todas as telas (lista de pacientes, painéis, agenda, consulta, escalas, cabeçalho do sistema e trilha de auditoria), nos avisos e nos e-mails. O nome civil continua guardado e aparece ao lado do social só onde o registro identifica a pessoa:
+
+- no cabeçalho do prontuário, como *Nome civil*;
+- na impressão do histórico, junto do nome no campo *Paciente*;
+- na exportação com identificação, na mesma célula, como "Nome social (nome civil: Nome civil)";
+- na tela de contas de paciente da administração.
+
+A exportação sem identificação não leva nenhum dos dois. Nome social em branco ou igual ao nome civil não é guardado. A lista de pacientes do prescritor e a de contas desativadas da administração seguem a ordem alfabética do nome mostrado, e a busca do prescritor procura por ele. O prescritor e a administração não editam o nome social, e a troca não entra na trilha de auditoria, como os outros dados do perfil. Os avisos já criados continuam com o nome da época.
 
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 

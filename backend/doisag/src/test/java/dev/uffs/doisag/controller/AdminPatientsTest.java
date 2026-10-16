@@ -129,6 +129,25 @@ class AdminPatientsTest {
         assertThat(response).doesNotContain("52998224725").doesNotContain("49999887766").doesNotContain("1990");
     }
 
+    // a administracao confere a conta, entao ve o nome social e o civil (RN15)
+    @Test
+    void adminSeesTheSocialNameAndTheCivilName() throws Exception {
+        patient.setSocialName("Nome Social da Conta");
+        patientRepository.save(patient);
+
+        lookUp(PATIENT_EMAIL, adminToken())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Nome Social da Conta"))
+                .andExpect(jsonPath("$.civilName").value("Paciente da Conta"));
+    }
+
+    @Test
+    void withoutSocialNameTheAdminGetsNoCivilNameField() throws Exception {
+        lookUp(PATIENT_EMAIL, adminToken())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.civilName").doesNotExist());
+    }
+
     @Test
     void emailOfAPrescriberOrOfNobodyIsNotFound() throws Exception {
         lookUp("conta-prescritora@email.com", adminToken())
@@ -203,6 +222,36 @@ class AdminPatientsTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].email").value(PATIENT_EMAIL))
                 .andExpect(jsonPath("$[0].cpf").doesNotExist());
+    }
+
+    // a lista segue o nome q a tela mostra, com a letra acentuada no lugar certo (RN15)
+    @Test
+    void theDeactivatedListIsSortedByTheNameShown() throws Exception {
+        patient.setSocialName("Zélia Souza");
+        patient.setActive(false);
+        patientRepository.save(patient);
+        saveDeactivatedPatient("Bruno Lima", null, "desativado-bruno@email.com");
+        saveDeactivatedPatient("Xavier Costa", "Érica Costa", "desativado-xavier@email.com");
+        saveDeactivatedPatient("Fábio Rocha", null, "desativado-fabio@email.com");
+
+        mockMvc.perform(get("/admin/patients/deactivated").header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Bruno Lima"))
+                .andExpect(jsonPath("$[1].name").value("Érica Costa"))
+                .andExpect(jsonPath("$[1].civilName").value("Xavier Costa"))
+                .andExpect(jsonPath("$[2].name").value("Fábio Rocha"))
+                .andExpect(jsonPath("$[3].name").value("Zélia Souza"));
+    }
+
+    private void saveDeactivatedPatient(String name, String socialName, String email) {
+        Patient otherPatient = new Patient();
+        otherPatient.setName(name);
+        otherPatient.setSocialName(socialName);
+        otherPatient.setEmail(email);
+        otherPatient.setPassword("hash");
+        otherPatient.setPrescriber(prescriber);
+        otherPatient.setActive(false);
+        patientRepository.save(otherPatient);
     }
 
     @Test

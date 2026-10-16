@@ -99,6 +99,10 @@ class PatientSignUpTest {
         return body.replace("\"address\":", "\"guardian\":" + guardianJson + ",\"address\":");
     }
 
+    private String withSocialName(String body, String socialName) {
+        return body.replace("\"address\":", "\"socialName\":\"" + socialName + "\",\"address\":");
+    }
+
     private ResultActions signUp(String body) throws Exception {
         return mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(body));
     }
@@ -141,6 +145,39 @@ class PatientSignUpTest {
         assertThat(patient.getGuardianName()).isEqualTo("Joana Souza");
         assertThat(patient.getGuardianRelationship()).isNull();
         assertThat(patient.getGuardianPhone()).isEqualTo("49988776655");
+    }
+
+    // o nome social eh opcional e eh ele q a sessao e o aviso do prescritor mostram (RN15)
+    @Test
+    void signUpKeepsTheSocialNameTrimmedAndTheSessionUsesIt() throws Exception {
+        String body = withSocialName(signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD),
+                " Ana Souza ");
+
+        signUp(body)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Ana Souza"));
+
+        Patient patient = (Patient) usersRepository.findByEmail("maria.silva@email.com").orElseThrow();
+        assertThat(patient.getName()).isEqualTo("Maria da Silva");
+        assertThat(patient.getSocialName()).isEqualTo("Ana Souza");
+        assertThat(notificationRepository.findAll())
+                .anyMatch(notification -> notification.getMessage().startsWith("Ana Souza criou a conta"));
+    }
+
+    // em branco ou igual ao nome civil n muda nada na tela, entao fica nulo
+    @Test
+    void blankSocialNameOrTheSameAsTheCivilNameIsStoredAsNull() throws Exception {
+        signUp(withSocialName(signUpBody(newInviteToken(), "em-branco@email.com", VALID_CPF, VALID_PASSWORD), "  "))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Maria da Silva"));
+        signUp(withSocialName(signUpBody(newInviteToken(), "igual@email.com", OTHER_VALID_CPF, VALID_PASSWORD),
+                " maria DA silva "))
+                .andExpect(status().isCreated());
+
+        assertThat(((Patient) usersRepository.findByEmail("em-branco@email.com").orElseThrow()).getSocialName())
+                .isNull();
+        assertThat(((Patient) usersRepository.findByEmail("igual@email.com").orElseThrow()).getSocialName())
+                .isNull();
     }
 
     @Test

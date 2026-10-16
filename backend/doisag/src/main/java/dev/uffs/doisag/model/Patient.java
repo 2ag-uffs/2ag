@@ -34,6 +34,9 @@ public class Patient extends Users {
     private String guardianRelationship;
     private String guardianPhone;
 
+    // nome social, opcional (RN15)
+    private String socialName;
+
     public Patient() {
     }
 
@@ -89,6 +92,24 @@ public class Patient extends Users {
 
     public void setGuardianPhone(String guardianPhone) {
         this.guardianPhone = guardianPhone;
+    }
+
+    public String getSocialName() {
+        return socialName;
+    }
+
+    public void setSocialName(String socialName) {
+        this.socialName = socialName;
+    }
+
+    // qnd tem nome social eh ele q aparece, o civil fica so onde identifica a pessoa
+    @JsonIgnore
+    @Override
+    public String getDisplayName() {
+        if (socialName != null) {
+            return socialName;
+        }
+        return getName();
     }
 
     @JsonIgnore

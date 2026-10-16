@@ -301,8 +301,15 @@ public class ExportService {
     }
 
     // no modo sem identificacao o paciente vira um numero, sem nome nem contato
+    // no arquivo identificado o nome civil vai junto do social pq o registro identifica a pessoa (RN15)
     private String patientCell(Patient patient, boolean deidentified) {
-        return deidentified ? "paciente " + patient.getId() : patient.getName();
+        if (deidentified) {
+            return "paciente " + patient.getId();
+        }
+        if (patient.getSocialName() == null) {
+            return patient.getName();
+        }
+        return patient.getSocialName() + " (nome civil: " + patient.getName() + ")";
     }
 
     // o prescritor tbm vira numero, senao o nome dele entrega a clinica e o grupo de paciente

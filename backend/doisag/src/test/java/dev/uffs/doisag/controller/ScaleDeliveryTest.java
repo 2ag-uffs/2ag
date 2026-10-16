@@ -125,6 +125,20 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.notifications[0].link").value("/paciente/" + patient.getId() + "/historico"));
     }
 
+    // o aviso usa o nome social qnd o paciente tem (RN15)
+    @Test
+    void theAnswerNoticeUsesTheSocialName() throws Exception {
+        patient.setSocialName("Nome Social do Envio");
+        patientRepository.save(patient);
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        answerHamilton(bearerTokenOf(patient)).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications[0].message")
+                        .value("Nome Social do Envio respondeu Escala de ansiedade de Hamilton."));
+    }
+
     // a escala de periodo abre a grade em hoje-6, entao a data informada cai antes do
     // comeco da tarefa: o vinculo tem q ser pela data do envio
     @Test

@@ -21,7 +21,7 @@ public record TreatmentProtocolResponseDTO(
         this(
                 protocol.getId(),
                 protocol.getPatient().getId(),
-                protocol.getPatient().getName(),
+                protocol.getPatient().getDisplayName(),
                 protocol.getStartDate(),
                 protocol.getEndDate(),
                 protocol.isActive(),

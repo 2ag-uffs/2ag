@@ -11,7 +11,10 @@ import java.time.LocalDate;
 public record ProfileDTO(
         Long id,
         String role,
+        // nome civil, q eh o campo editavel do perfil
         String name,
+        // nome social do paciente, nulo nas outras contas e qnd n tem (RN15)
+        String socialName,
         String email,
         // endereco esperando a confirmacao pelo link, ou nulo
         String pendingEmail,
@@ -36,9 +39,11 @@ public record ProfileDTO(
         String registryType = null;
         String registryNumber = null;
         GuardianDTO guardian = null;
+        String socialName = null;
 
         if (user instanceof Patient patient) {
             guardian = GuardianDTO.from(patient);
+            socialName = patient.getSocialName();
             if (patient.getPrescriber() != null) {
                 prescriberName = patient.getPrescriber().getName();
             }
@@ -58,6 +63,7 @@ public record ProfileDTO(
                 user.getId(),
                 user.getRole().name(),
                 user.getName(),
+                socialName,
                 user.getEmail(),
                 pendingEmail,
                 user.getCpf(),

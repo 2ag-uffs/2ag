@@ -16,6 +16,7 @@ import styles from "./sign-up.module.css";
 
 const EMPTY_FORM = {
     name: "",
+    socialName: "",
     cpf: "",
     birthDate: "",
     phone: "",
@@ -177,6 +178,7 @@ export default function SignUp() {
         const requestBody = {
             inviteToken: inviteToken,
             name: formData.name,
+            socialName: formData.socialName.trim() || null,
             cpf: onlyDigits(formData.cpf),
             birthDate: formData.birthDate,
             phone: onlyDigits(formData.phone),
@@ -269,6 +271,15 @@ export default function SignUp() {
                         onChange={(event) => updateField("name", event.target.value)}
                         error={fieldErrors.name}
                         required={true}
+                    />
+                    <TextField
+                        label="Nome social (opcional)"
+                        name="socialName"
+                        maxLength={255}
+                        hint="Se você usa um nome social, é ele que aparece no sistema e nos avisos."
+                        value={formData.socialName}
+                        onChange={(event) => updateField("socialName", event.target.value)}
+                        error={fieldErrors.socialName}
                     />
                     <TextField
                         label="CPF"

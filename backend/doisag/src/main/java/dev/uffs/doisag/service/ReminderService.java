@@ -119,7 +119,7 @@ public class ReminderService {
         if (!patient.isActive() || !patient.isEmailNotificationsEnabled() || patient.getEmail() == null) {
             return;
         }
-        String text = "Olá, " + patient.getName() + ".\n\n" + message
+        String text = "Olá, " + patient.getDisplayName() + ".\n\n" + message
                 + "\n\nAcesse o sistema em " + publicUrl + path
                 + "\n\nSe não quiser mais receber estes e-mails, desligue os avisos por e-mail no seu perfil.";
         backgroundEmailSender.sendLater(new EmailMessage(patient.getEmail(), subject, text), patient.getId());

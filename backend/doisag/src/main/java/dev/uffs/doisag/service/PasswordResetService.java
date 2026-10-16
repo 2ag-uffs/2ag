@@ -102,7 +102,7 @@ public class PasswordResetService {
     public String createFirstAccessLinkFor(Users user) {
         String firstAccessLink = createLink(user, LocalDateTime.now(), FIRST_ACCESS_VALID_MINUTES);
         EmailMessage message = new EmailMessage(user.getEmail(), "Sua conta no 2AG foi criada",
-                buildFirstAccessText(user.getName(), firstAccessLink));
+                buildFirstAccessText(user.getDisplayName(), firstAccessLink));
         boolean wasEmailed = emailSender.send(message);
         return wasEmailed ? null : firstAccessLink;
     }
@@ -137,7 +137,7 @@ public class PasswordResetService {
 
     private EmailMessage linkMessage(Users user, String resetLink) {
         return new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
-                buildEmailText(user.getName(), resetLink));
+                buildEmailText(user.getDisplayName(), resetLink));
     }
 
     // grava a senha nova pelo link e derruba as sessoes abertas

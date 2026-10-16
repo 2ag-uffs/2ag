@@ -183,7 +183,7 @@ public class EmailChangeService {
 
     private EmailMessage linkMessage(Users user, String newEmail, String token) {
         return new EmailMessage(newEmail, "Confirmar o e-mail novo no 2AG",
-                "Olá, " + user.getName() + ".\n\n"
+                "Olá, " + user.getDisplayName() + ".\n\n"
                 + "Recebemos um pedido para usar este endereço como e-mail de acesso da sua conta no 2AG. "
                 + "Abra o link abaixo em até " + VALID_MINUTES + " minutos para confirmar:\n\n"
                 + publicUrl + "/confirmar-email?token=" + token + "\n\n"
@@ -194,7 +194,7 @@ public class EmailChangeService {
     // eh ele q conta pra dona da conta q alguem com a senha dela esta tentando levar a conta
     private EmailMessage warningMessage(Users user, String newEmail) {
         return new EmailMessage(user.getEmail(), "Pedido de troca do e-mail de acesso no 2AG",
-                "Olá, " + user.getName() + ".\n\n"
+                "Olá, " + user.getDisplayName() + ".\n\n"
                 + "Recebemos um pedido para trocar o e-mail de acesso da sua conta no 2AG para " + newEmail + ". "
                 + "Nada muda até esse endereço abrir o link de confirmação.\n\n"
                 + "Se foi você, não precisa fazer nada. Se não foi você, alguém está usando a sua conta: "
@@ -205,7 +205,7 @@ public class EmailChangeService {
 
     private EmailMessage changedMessage(Users user, String oldEmail, String newEmail) {
         return new EmailMessage(oldEmail, "O e-mail de acesso da sua conta no 2AG mudou",
-                "Olá, " + user.getName() + ".\n\n"
+                "Olá, " + user.getDisplayName() + ".\n\n"
                 + "O e-mail de acesso da sua conta no 2AG passou a ser " + newEmail + ". "
                 + "Este endereço não entra mais no sistema.\n\n"
                 + "Se não foi você, fale com a clínica.");

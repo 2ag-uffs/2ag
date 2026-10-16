@@ -21,6 +21,10 @@ public record RegisterDTO(
         @Size(max = 255, message = "O nome pode ter até 255 caracteres")
         String name,
 
+        // nome social, opcional (RN15)
+        @Size(max = 255, message = "O nome social pode ter até 255 caracteres")
+        String socialName,
+
         @NotBlank(message = "Informe o CPF")
         @CPF(message = "CPF inválido. Confira os números")
         String cpf,

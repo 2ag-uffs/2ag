@@ -26,7 +26,7 @@ todas com a senha `Senha@123`, que só existe na instalação de desenvolvimento
 | `paciente@email.com` | Maria Souza | dois meses de diário, duas consultas, prescrição trocada, escalas pendentes |
 | `joao.almeida@email.com` | João Pedro Almeida | pedido de consulta esperando resposta e consentimento de pesquisa aceito |
 | `renata.dias@email.com` | Renata Dias Carvalho | escala de Hamilton vencida, um registro anulado e o filho como familiar de contato |
-| `paulo.nunes@email.com` | Paulo Nunes | paciente novo com a anamnese pendente |
+| `paulo.nunes@email.com` | Paulo Nunes, com o nome social Paula Nunes | paciente novo com a anamnese pendente |
 | `carla.menezes@email.com` | Carla Menezes | arquivada depois da alta |
 | `admin@email.com` | administração | contas de prescritor e auditoria |
 

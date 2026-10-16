@@ -64,7 +64,7 @@ public record AnamnesisResponseDTO(
                 anamnesis.getTreatmentAwareness(),
                 anamnesis.getObservation(),
                 anamnesis.getPatient().getId(),
-                anamnesis.getPatient().getName(),
+                anamnesis.getPatient().getDisplayName(),
                 anamnesis.isAnnulled(),
                 annulledAtOf(anamnesis.getAnnulment()),
                 reasonOf(anamnesis.getAnnulment()),

@@ -37,7 +37,7 @@ public record ScaleTaskDTO(
                 (int) ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1,
                 daily,
                 task.getStatus().isOpen() && task.getPeriodEnd().isBefore(today),
-                task.getPatient().getName()
+                task.getPatient().getDisplayName()
         );
     }
 }

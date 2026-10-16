@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 // so o q as telas usam: cpf e contato ficam no perfil da propria pessoa
 public record PatientResponseDTO(
         Long id,
+        // nome q as telas mostram, o social qnd tem (RN15)
         String name,
         LocalDate birthDate,
         Long prescriberId,
@@ -21,28 +22,33 @@ public record PatientResponseDTO(
         @JsonInclude(JsonInclude.Include.NON_NULL)
         GuardianDTO guardian,
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        Boolean researchConsent
+        Boolean researchConsent,
+        // nome civil so no prontuario e so qnd o paciente tem nome social
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        String civilName
 ) {
     public PatientResponseDTO(Patient patient) {
-        this(patient, null, null);
+        this(patient, null, null, null);
     }
 
-    private PatientResponseDTO(Patient patient, GuardianDTO guardian, Boolean researchConsent) {
+    private PatientResponseDTO(Patient patient, GuardianDTO guardian, Boolean researchConsent, String civilName) {
         this(
                 patient.getId(),
-                patient.getName(),
+                patient.getDisplayName(),
                 patient.getBirthDate(),
                 prescriberIdOf(patient),
                 prescriberNameOf(patient),
                 patient.isArchived(),
                 patient.getArchivedAt(),
                 guardian,
-                researchConsent
+                researchConsent,
+                civilName
         );
     }
 
     public static PatientResponseDTO forChart(Patient patient, boolean researchConsent) {
-        return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent);
+        String civilName = patient.getSocialName() == null ? null : patient.getName();
+        return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent, civilName);
     }
 
     // o prescritor pode ser nulo e o campo eh lazy entao separei

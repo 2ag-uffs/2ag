@@ -62,7 +62,7 @@ public record PrescriptionResponseDTO(
                 prescription.getAppointment().getId(),
                 prescription.getAppointment().getDateTime(),
                 prescription.getAppointment().getPatient().getId(),
-                prescription.getAppointment().getPatient().getName(),
+                prescription.getAppointment().getPatient().getDisplayName(),
                 prescription.getAppointment().getPrescriber().getName(),
                 prescription.isAnnulled(),
                 annulledAtOf(prescription.getAnnulment()),

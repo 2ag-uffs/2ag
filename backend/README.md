@@ -85,7 +85,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role, termPending}` |
 | `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
 | `GET /auth/me` | quem está logado. `termPending` diz se o paciente precisa aceitar a versão nova do termo |
-| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional |
+| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional, e o `socialName` (nome social) também |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
 - com `SESSION_SECURE_COOKIE=true` o cookie se chama `__Host-session` e leva `Secure`: o navegador recusa um cookie `__Host-` sem `Secure`, com `Domain` ou fora de `Path=/`, então servidor configurado errado aparece na hora em vez de um login que não gruda. em `false` (só http, no próprio computador) ele se chama `session`
@@ -119,9 +119,9 @@ o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declar
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
 | `PUT /admin/prescribers/{id}/email` | corrige o e-mail digitado errado de um prescritor que ainda não criou a senha, com a senha do administrador. o link de primeiro acesso sai de novo para o endereço certo e o anterior deixa de valer. depois que a pessoa criou a senha, só ela troca o e-mail, no perfil |
 | `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu |
-| `POST /admin/patients/lookup` | acha a conta de um paciente pelo e-mail inteiro, que vai no corpo. devolve só `{id, name, email, active}` |
-| `GET /admin/patients/deactivated` | as contas de paciente desativadas, para dar para reativar depois |
-| `PUT /admin/patients/{id}/active` | ativa ou desativa a conta de um paciente |
+| `POST /admin/patients/lookup` | acha a conta de um paciente pelo e-mail inteiro, que vai no corpo. devolve só `{id, name, email, active}`, e o `civilName` quando o paciente tem nome social |
+| `GET /admin/patients/deactivated` | as contas de paciente desativadas, em ordem alfabética do nome mostrado, para dar para reativar depois |
+| `PUT /admin/patients/{id}/active` | ativa ou desativa a conta de um paciente e devolve a conta como a busca |
 
 o administrador não acessa nenhum dado clínico.
 
@@ -136,12 +136,14 @@ o link de senha nova é a saída para o prescritor que esqueceu a senha antes de
 | rota | o que faz |
 | :--- | :--- |
 | `GET /profile` | dados da própria conta |
-| `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian`, e mandar sem ele apaga o que estava salvo |
+| `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian` e o `socialName`: mandar sem o `guardian` apaga o que estava salvo, e o `socialName` em branco ou ausente apaga o nome social. as outras contas ignoram o `socialName` |
 | `PUT /profile/email` | pede a troca do e-mail de acesso, com a senha atual. devolve o perfil com o endereço novo em `pendingEmail`; o e-mail só muda quando o link enviado para ele é aberto (`POST /auth/email-change/confirm`) |
 | `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
 
 as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perfil de outra pessoa.
+
+o nome social é opcional e só o próprio paciente informa, no cadastro ou no perfil (RN15). nome social em branco ou igual ao nome civil não é guardado. o nome do paciente nas respostas é sempre o nome mostrado: `name`, `patientName` e o `actorName` da trilha trazem o nome social quando ele existe e o civil quando não existe, e os avisos e os e-mails usam o mesmo nome. o perfil é a exceção: lá `name` é o nome civil, que é o campo editável, e o social vem em `socialName`. o nome civil só aparece junto do social onde o registro identifica a pessoa: o `GET /patients/{patientId}` e todas as rotas de paciente da administração (busca, lista das desativadas e ativar ou desativar) devolvem também o `civilName`, que só vem quando o paciente tem nome social. a lista de pacientes do prescritor não leva o `civilName`.
 
 ## recuperação de senha
 
@@ -266,6 +268,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
 
 - todas aceitam `deidentified=true`, que é a exportação sem identificação, para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito. não é anônimo: o número é o id do banco e a clínica sabe de quem é, então pela LGPD o arquivo continua sendo dado pessoal de saúde (art. 12). o parâmetro antigo `anonymous` responde 400, para uma aba desatualizada não baixar o arquivo com nome
+- no arquivo com identificação, o paciente com nome social sai como `Nome social (nome civil: Nome civil)` na coluna `Paciente`. o arquivo sem identificação não leva nenhum dos dois
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria

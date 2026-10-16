@@ -11,6 +11,6 @@ public record SessionUserDTO(Long id, String name, String role, boolean termPend
     }
 
     public SessionUserDTO(Users user, boolean termPending) {
-        this(user.getId(), user.getName(), user.getRole().name(), termPending);
+        this(user.getId(), user.getDisplayName(), user.getRole().name(), termPending);
     }
 }

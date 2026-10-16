@@ -20,7 +20,10 @@ function PatientRow({patient, onToggle}) {
             </span>
             <div className={accountStyles.rowText}>
                 <strong className={accountStyles.name}>{patient.name}</strong>
-                <span className={accountStyles.details}>{patient.email}</span>
+                <span className={accountStyles.details}>
+                    {patient.civilName ? "Nome civil: " + patient.civilName + " · " : ""}
+                    {patient.email}
+                </span>
             </div>
             <div className={accountStyles.rowActions}>
                 <span className={patient.active ? accountStyles.badgeActive : accountStyles.badgeInactive}>

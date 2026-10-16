@@ -95,6 +95,17 @@ class PrescriptionFlowTest {
                 .andExpect(jsonPath("$.prescriberName").value("Prescritora da prescricao"));
     }
 
+    // a prescricao mostra o nome social do paciente qnd ele tem (RN15)
+    @Test
+    void prescriptionShowsTheSocialName() throws Exception {
+        patient.setSocialName("Nome Social da Prescricao");
+        patientRepository.save(patient);
+
+        issuePrescription(registeredConsultationId(), prescriptionWith("Oleo do nome social"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.patientName").value("Nome Social da Prescricao"));
+    }
+
     // a prescricao nova passa a valer e a anterior vai pro historico
     @Test
     void newPrescriptionReplacesTheCurrentOne() throws Exception {

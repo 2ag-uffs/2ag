@@ -137,6 +137,21 @@ class DashboardTest {
                 .andExpect(jsonPath("$.lateScales[0].patientName").value("Paciente do painel"));
     }
 
+    // o painel mostra o nome social qnd o paciente tem (RN15)
+    @Test
+    void oPainelDoPrescritorUsaONomeSocial() throws Exception {
+        patient.setSocialName("Nome Social do Painel");
+        patientRepository.save(patient);
+        saveAppointment(TODAY.atTime(14, 0), AppointmentStatus.AGENDADA);
+        saveAppointment(TODAY.plusDays(4).atTime(11, 0), AppointmentStatus.SOLICITADA);
+        saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2));
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.todaysAppointments[0].patientName").value("Nome Social do Painel"))
+                .andExpect(jsonPath("$.waitingRequests[0].patientName").value("Nome Social do Painel"))
+                .andExpect(jsonPath("$.lateScales[0].patientName").value("Nome Social do Painel"));
+    }
+
     // a escala vencida q o paciente respondeu ja saiu da fila do prescritor,
     // mas se a resposta for anulada ela volta como atraso (RF32)
     @Test

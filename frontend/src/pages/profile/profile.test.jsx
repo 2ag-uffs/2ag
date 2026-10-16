@@ -1,7 +1,7 @@
 import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import Profile from "./profile.jsx";
 
 const ADMIN_PROFILE = {
@@ -30,6 +30,7 @@ describe("Profile", () => {
         expect(screen.getByText("admin@clinica.com")).toBeInTheDocument();
         expect(screen.queryByText("CPF")).not.toBeInTheDocument();
         expect(screen.queryByLabelText(/Data de nascimento/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/Nome social/)).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", {name: "E-mail de acesso"})).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", {name: "Avisos por e-mail"})).not.toBeInTheDocument();
     });
@@ -105,5 +106,49 @@ describe("Profile", () => {
 
         expect(await screen.findByText(/Aguardando a confirmação de/)).toBeInTheDocument();
         expect(screen.getByText("nova@email.com")).toBeInTheDocument();
+    });
+
+    it("paciente ve o nome social e salvar manda o campo e troca o nome do cabecalho", async () => {
+        const patientWithSocialName = {
+            ...PATIENT_PROFILE, socialName: "Ana Souza", birthDate: "1990-04-12", phone: "49999887766",
+            address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC"},
+        };
+        vi.spyOn(apiService, "get").mockResolvedValue(patientWithSocialName);
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({...patientWithSocialName, socialName: "Ana Lima"});
+        setLoggedUser({id: 3, name: "Ana Souza", role: "PATIENT"});
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        const socialNameField = await screen.findByLabelText(/Nome social/);
+        expect(socialNameField).toHaveValue("Ana Souza");
+        expect(screen.getByLabelText(/Nome completo/)).toHaveValue("Maria Souza");
+
+        await user.clear(socialNameField);
+        await user.type(socialNameField, " Ana Lima ");
+        await user.click(screen.getByRole("button", {name: "Salvar dados"}));
+
+        expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+        expect(put).toHaveBeenCalledWith("/profile", expect.objectContaining({
+            name: "Maria Souza",
+            socialName: "Ana Lima",
+        }));
+        expect(getLoggedUser().name).toBe("Ana Lima");
+    });
+
+    it("nome social em branco vai como nulo", async () => {
+        const patientWithSocialName = {
+            ...PATIENT_PROFILE, socialName: "Ana Souza", birthDate: "1990-04-12", phone: "49999887766",
+            address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC"},
+        };
+        vi.spyOn(apiService, "get").mockResolvedValue(patientWithSocialName);
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({...patientWithSocialName, socialName: null});
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        await user.clear(await screen.findByLabelText(/Nome social/));
+        await user.click(screen.getByRole("button", {name: "Salvar dados"}));
+
+        expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+        expect(put).toHaveBeenCalledWith("/profile", expect.objectContaining({socialName: null}));
     });
 });
