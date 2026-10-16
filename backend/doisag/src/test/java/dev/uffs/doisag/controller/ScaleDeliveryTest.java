@@ -2,6 +2,7 @@ package dev.uffs.doisag.controller;
 
 import com.jayway.jsonpath.JsonPath;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleTask;
@@ -11,6 +12,7 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -307,7 +309,7 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.notifications[0].link").value("/paciente/" + patient.getId() + "/historico"));
     }
 
-    // dia atrasado de outra semana fica ligado na tarefa nova, mas o aviso conta so os dias do periodo
+    // dia de outra semana n fica ligado na tarefa nova, e o aviso conta so os dias do periodo
     @Test
     void theDailyNoticeCountsOnlyTheDaysOfThatPeriod() throws Exception {
         sendScale("ACOMPANHAMENTO_SEMANAL").andExpect(status().isCreated());
@@ -316,10 +318,118 @@ class ScaleDeliveryTest {
                 "{\"dor\":3}", "\"periodStart\":\"" + LocalDate.now().minusDays(10) + "\",", patientToken)
                 .andExpect(status().isCreated());
 
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].answeredDays").value(0));
+
         scaleTaskService.closeOverdue(LocalDate.now().plusDays(7));
 
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(jsonPath("$.notifications.length()").value(0));
+    }
+
+    // o ideal eh preencher todo dia, mas o paciente pode preencher de uma vez os dias q esqueceu
+    @Test
+    void missedDaysOfTheOpenPeriodCanBeFilledAllAtOnce() throws Exception {
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, LocalDate.now().minusDays(5), 7,
+                true);
+        String patientToken = bearerTokenOf(patient);
+        for (int daysAgo = 5; daysAgo >= 1; daysAgo = daysAgo - 1) {
+            answerScale("acompanhamento-semanal",
+                    "{\"dor\":" + daysAgo + "}", "\"periodStart\":\"" + LocalDate.now().minusDays(daysAgo) + "\",",
+                    patientToken)
+                    .andExpect(status().isCreated());
+        }
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].answeredDays").value(5))
+                .andExpect(jsonPath("$.pending[0].totalDays").value(7));
+
+        scaleTaskService.closeOverdue(LocalDate.now().plusDays(2));
+
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].message").value(containsString("5 de 7 dias")));
+    }
+
+    @Test
+    void aFutureDiaryDayIsRefused() throws Exception {
+        sendScale("ACOMPANHAMENTO_SEMANAL").andExpect(status().isCreated());
+
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + LocalDate.now().plusDays(1) + "\",", bearerTokenOf(patient))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.FUTURE_PERIOD_MESSAGE));
+    }
+
+    // antes do job das 8h a tarefa da semana passada ainda ta pendente, e o dia de ontem eh dela
+    @Test
+    void yesterdayFilledBeforeTheJobCountsForThePreviousTask() throws Exception {
+        LocalDate today = LocalDate.now();
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(7), 7, true);
+
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + today.minusDays(1) + "\",", bearerTokenOf(patient))
+                .andExpect(status().isCreated());
+        scaleTaskService.closeOverdue(today);
+
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].message").value(containsString("1 de 7 dias")));
+    }
+
+    // o dia preenchido antes de existir a tarefa q cobre ele entra nela qnd ela eh criada
+    @Test
+    void aDayFilledBeforeTheTaskExistsCountsForTheNewTask() throws Exception {
+        LocalDate today = LocalDate.now();
+        String patientToken = bearerTokenOf(patient);
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + today + "\",", patientToken)
+                .andExpect(status().isCreated());
+
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today, 7, true);
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].status").value("PENDENTE"))
+                .andExpect(jsonPath("$.pending[0].answeredDays").value(1));
+
+        scaleTaskService.closeOverdue(today.plusDays(7));
+
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+    }
+
+    // a tarefa antiga pode voltar pra pendente (resposta anulada) enquanto a atual ta aberta:
+    // cada dia vai pra tarefa q cobre ele, e n pra mais nova
+    @Test
+    void eachDayGoesToThePendingTaskThatCoversIt() throws Exception {
+        LocalDate today = LocalDate.now();
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(10), 7, true);
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(3), 7, true);
+        String patientToken = bearerTokenOf(patient);
+
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + today.minusDays(6) + "\",", patientToken)
+                .andExpect(status().isCreated());
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":4}", "\"periodStart\":\"" + today.minusDays(1) + "\",", patientToken)
+                .andExpect(status().isCreated());
+
+        // a lista vem pelo fim do prazo, entao a antiga vem primeiro
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(2))
+                .andExpect(jsonPath("$.pending[0].periodStart").value(today.minusDays(10).toString()))
+                .andExpect(jsonPath("$.pending[0].answeredDays").value(1))
+                .andExpect(jsonPath("$.pending[1].periodStart").value(today.minusDays(3).toString()))
+                .andExpect(jsonPath("$.pending[1].answeredDays").value(1));
     }
 
     // a anamnese eh tarefa sem definicao no catalogo e n pode derrubar o fechamento do dia

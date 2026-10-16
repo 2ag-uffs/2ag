@@ -15,6 +15,23 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 // os acompanhamentos semanais falam da ultima semana
 const PERIOD_DAYS = 7;
 
+// pode ter duas pendentes da mesma escala (a antiga q voltou pra pendente e a atual)
+// vale a q cobre hoje, pq o servidor liga cada dia na tarefa q cobre ele, e sem nenhuma a q comecou por ultimo
+function openTaskOf(pendingTasks, slug, today) {
+    const tasksOfScale = pendingTasks.filter((task) => task.path === "/escalas/" + slug);
+    const taskOfToday = tasksOfScale.find((task) => task.periodStart <= today && task.periodEnd >= today);
+    if (taskOfToday) {
+        return taskOfToday;
+    }
+    let latestTask = null;
+    for (const task of tasksOfScale) {
+        if (latestTask === null || task.periodStart > latestTask.periodStart) {
+            latestTask = task;
+        }
+    }
+    return latestTask;
+}
+
 // tela unica de preenchimento de escala (RF08 e RF21 a RF26)
 //
 // o formulario inteiro vem do servidor: titulo, itens, ancoras e
@@ -98,32 +115,35 @@ export default function Escala() {
             return;
         }
         apiService.get("/patients/" + loggedUser.id + "/scales/overview")
-            .then((page) => setOpenTask(page.pending.find((task) => task.path === "/escalas/" + slug) || null))
+            .then((page) => setOpenTask(openTaskOf(page.pending, slug, today)))
             .catch(() => setOpenTask(null));
-    }, [isDiary, slug, loggedUser.id]);
+    }, [isDiary, slug, loggedUser.id, today]);
 
-    // a semana do dia escolhido, como a grade do formulario em papel
-    //
-    // qnd a tarefa aberta comecou no meio da semana, a grade comeca nela: dia
-    // preenchido antes do inicio da tarefa n conta pra ela, e o contador ficava
-    // em "0 de 7" mesmo com o paciente tendo preenchido
-    const weekDays = useMemo(() => {
-        const monday = toIsoDate(mondayOf(new Date(selectedDay + "T00:00:00")));
-        const insideOpenTask = openTask
-            && selectedDay >= openTask.periodStart
-            && selectedDay <= openTask.periodEnd;
-        const firstDay = insideOpenTask && openTask.periodStart > monday ? openTask.periodStart : monday;
-        const lastDay = insideOpenTask && openTask.periodEnd < today ? openTask.periodEnd : today;
+    const insideOpenTask = openTask !== null
+        && selectedDay >= openTask.periodStart
+        && selectedDay <= openTask.periodEnd;
+
+    // a grade cobre o periodo inteiro da tarefa aberta, pro paciente preencher de uma vez os dias q
+    // esqueceu, mesmo qnd o periodo passa de uma semana (issue 71). fora da tarefa fica a semana do
+    // dia escolhido, como no papel, pq eh por ela q o "ver e corrigir" do historico chega no dia antigo
+    // dia q ainda n chegou nunca aparece
+    const gridDays = useMemo(() => {
+        const firstDay = insideOpenTask
+            ? openTask.periodStart
+            : toIsoDate(mondayOf(new Date(selectedDay + "T00:00:00")));
+        const periodLastDay = insideOpenTask
+            ? openTask.periodEnd
+            : toIsoDate(addDays(new Date(firstDay + "T00:00:00"), 6));
+        const lastDay = periodLastDay < today ? periodLastDay : today;
 
         const days = [];
-        for (let dayNumber = 0; dayNumber < 7; dayNumber = dayNumber + 1) {
-            const dayIso = toIsoDate(addDays(new Date(firstDay + "T00:00:00"), dayNumber));
-            if (dayIso <= lastDay) {
-                days.push(dayIso);
-            }
+        let dayIso = firstDay;
+        while (dayIso <= lastDay) {
+            days.push(dayIso);
+            dayIso = toIsoDate(addDays(new Date(dayIso + "T00:00:00"), 1));
         }
         return days;
-    }, [selectedDay, today, openTask]);
+    }, [selectedDay, today, openTask, insideOpenTask]);
 
     // o dia pode ter uma resposta anulada e a valida q veio dps: a valida eh a q abre
     const currentResponse = useMemo(
@@ -257,9 +277,18 @@ export default function Escala() {
 
             {isDiary && (
                 <section className={styles.daysSection}>
-                    <h2 className={styles.sectionTitle}>Dia da semana</h2>
-                    <div className={styles.days} role="group" aria-label="Dias da semana">
-                        {weekDays.map((dayIso) => {
+                    <h2 className={styles.sectionTitle}>{insideOpenTask ? "Dias do período" : "Dia da semana"}</h2>
+                    {insideOpenTask && (
+                        <p className={styles.daysHint}>
+                            Esqueceu algum dia? Escolha o dia na grade e preencha agora.
+                        </p>
+                    )}
+                    <div
+                        className={styles.days}
+                        role="group"
+                        aria-label={insideOpenTask ? "Dias do período" : "Dias da semana"}
+                    >
+                        {gridDays.map((dayIso) => {
                             const isFilled = responses.some((response) => response.periodStart === dayIso);
                             return (
                                 <button

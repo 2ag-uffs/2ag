@@ -328,6 +328,7 @@ Registro de gotas utilizadas pela manhã e à tarde e avaliação, em escala de 
 - **Item não respondido é registrado como ausente, não como zero** (RN10)
 - Preenchimento dá baixa automática na tarefa (RF08)
 - A ficha em papel usada pela clínica (`docs/scales/acompanhamento-semanal.pdf`) é uma **grade semanal**: um formulário cobre um período (`De __/__/__ A __/__/__`) com uma coluna por dia e o registro de gotas da manhã e da tarde em cada uma. O sistema deve permitir o preenchimento diário ao longo da semana, sem exigir que o paciente abra um formulário novo por dia, e sem perder o registro por data individual de que o gráfico de progresso depende
+- O ideal é o preenchimento diário, mas nada impede o paciente de preencher de uma vez os dias que esqueceu dentro do período da tarefa aberta: a grade mostra do início do período até hoje, mesmo quando ele passa de uma semana. Dia que ainda não chegou não é aceito (resposta da clínica em 16/10/2026)
 
 ---
 
@@ -789,11 +790,11 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 - **Formulários conferidos com o papel:** os itens e as âncoras saem dos formulários de `docs/scales`, inclusive as que mudam de sentido de um item para outro — na dor 10 é ruim e no sono 10 é bom (RF20).
 - **Escalas validadas:** HAM-A com os 14 itens e escore de 0 a 56, PSQI calculado pelos 7 componentes de 0 a 21 e MEEM com as 11 seções, de 0 a 30. A faixa do MEEM usa o ponto de corte por escolaridade de Brucki 2003, registrada junto com a data da avaliação (decisão de 13/09/2026, a confirmar com a clínica na pergunta 10).
 - **Tarefa com prazo:** cada envio vale por um período. Sem resposta até o fim do prazo, a tarefa fica como não respondida, vira lacuna no gráfico (RN10) e o período seguinte é enviado, em vez de a mesma pendência arrastar para sempre.
-- **Diários:** a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. A tarefa mostra quantos dias já foram preenchidos e fecha no fim do período; a semana sem nenhum dia conta como não respondida.
+- **Diários:** a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. A tarefa mostra quantos dias já foram preenchidos e fecha no fim do período; a semana sem nenhum dia conta como não respondida. Na tarefa aberta a grade cobre o período inteiro até hoje, e o paciente preenche de uma vez os dias que esqueceu; dia futuro é recusado, e dia de outro período fica fora da contagem da tarefa aberta (16/10/2026).
 - **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição.
 - **Resultado:** a central do paciente mostra o escore com a faixa interpretativa (RN14). Formulário da clínica sem faixa publicada mostra o item principal e nenhuma interpretação inventada (RN13).
 - **MEEM:** aplicado pelo prescritor dentro de consulta confirmada, nunca designado ao paciente (RN09), e aparece nos dois históricos.
-- **Avisos:** a escala enviada avisa o paciente e a resposta completa avisa o prescritor (RF15). Nos diários o prescritor recebe um aviso só, quando o período fecha, com a quantidade de dias preenchidos (02/10/2026). As pendências vencidas aparecem no painel do prescritor.
+- **Avisos:** a escala enviada avisa o paciente e a resposta completa avisa o prescritor (RF15). Nos diários o prescritor recebe um aviso só, quando o período fecha, com a quantidade de dias preenchidos (02/10/2026), contando também os dias do período preenchidos com atraso antes do fechamento (16/10/2026). As pendências vencidas aparecem no painel do prescritor.
 - **Escala pontuada pela metade:** fica guardada como "Incompleta: sem escore", mas a tarefa continua pendente e no prazo vira não respondida; a tela só deixa salvar com todos os itens respondidos (02/10/2026).
 - **Escala avulsa e ciclo:** a tarefa guarda a origem, e só a do acompanhamento marca a próxima rodada (RF32, 02/10/2026).
 - **Convite:** o prescritor vê os convites em aberto e cancela o que foi para a pessoa errada; convite já usado não cancela (RN06, 02/10/2026).

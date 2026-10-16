@@ -119,6 +119,9 @@ public class ScaleTaskService {
 
         ScaleTask savedTask = taskRepository.save(task);
         auditService.recordCreation(AuditRecordType.DESIGNACAO_DE_ESCALA, savedTask.getId(), patientId);
+        if (isDaily(scaleType)) {
+            linkDaysAlreadyFilled(savedTask);
+        }
 
         notificationService.createNotification(patient, "Nova escala para responder",
                 scaleType.getDisplayName() + ". Você tem até " + formatDate(savedTask.getPeriodEnd())
@@ -129,16 +132,24 @@ public class ScaleTaskService {
 
     // liga a resposta na tarefa aberta daquela escala
     //
-    // no diario a tarefa segue aberta ate o fim da semana, pq o paciente
-    // preenche um dia de cada vez e a grade so fecha no fim do periodo
+    // no diario a tarefa segue aberta ate o fim do periodo, pq o paciente
+    // preenche um dia de cada vez (ou os dias q esqueceu de uma vez so)
     @Transactional
     public void linkResponse(ScaleResponse response) {
-        Optional<ScaleTask> openTask = openTaskOf(response.getPatient().getId(), response.getScaleType());
-        // amarra pela data do envio e n pela janela informada: na escala de periodo
-        // o formulario abre em hoje-6, q cai antes do inicio da tarefa, e o diario
-        // aceita preencher dia passado. a tarefa aberta hoje eh a dona da resposta
+        Long patientId = response.getPatient().getId();
         LocalDate today = LocalDate.now();
-        if (openTask.isEmpty() || !openTask.get().coversDay(today)) {
+        boolean daily = isDaily(response.getScaleType());
+        // no diario amarra pelo dia preenchido, na tarefa pendente q cobre aquele dia: antes do job
+        // das 8h o dia de ontem ainda eh da tarefa anterior, e dia de outro periodo n conta na atual.
+        // nas outras amarra pela data do envio na tarefa mais nova, pq na escala de periodo o
+        // formulario abre em hoje-6, q cai antes do inicio da tarefa
+        Optional<ScaleTask> openTask;
+        if (daily) {
+            openTask = pendingTaskOfDay(patientId, response.getScaleType(), response.getPeriodStart());
+        } else {
+            openTask = openTaskOf(patientId, response.getScaleType()).filter(task -> task.coversDay(today));
+        }
+        if (openTask.isEmpty()) {
             return;
         }
         // escala pontuada pela metade n fica com a tarefa: ela segue pendente, o lembrete cobra
@@ -148,7 +159,7 @@ public class ScaleTaskService {
         }
         ScaleTask task = openTask.get();
         response.setTask(task);
-        if (!isDaily(response.getScaleType())) {
+        if (!daily) {
             closeAsAnswered(task, today);
         }
     }
@@ -235,7 +246,7 @@ public class ScaleTaskService {
                 && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.DIARIO;
     }
 
-    // conta os dias do periodo, pq dia atrasado de outra semana tbm fica ligado na tarefa
+    // conta pela data os dias q caem no periodo, inclusive os preenchidos atrasados antes do fim
     private void notifyDailyPeriodClosed(ScaleTask task) {
         Patient patient = task.getPatient();
         long filledDays = responseRepository
@@ -316,6 +327,32 @@ public class ScaleTaskService {
     private Optional<ScaleTask> openTaskOf(Long patientId, ScaleType scaleType) {
         return taskRepository.findFirstByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
                 patientId, scaleType, ScaleTaskStatus.PENDENTE);
+    }
+
+    // a tarefa pendente q cobre o dia, olhando todas e n so a mais nova
+    private Optional<ScaleTask> pendingTaskOfDay(Long patientId, ScaleType scaleType, LocalDate day) {
+        List<ScaleTask> pending = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
+                patientId, scaleType, ScaleTaskStatus.PENDENTE);
+        for (ScaleTask task : pending) {
+            if (task.coversDay(day)) {
+                return Optional.of(task);
+            }
+        }
+        return Optional.empty();
+    }
+
+    // dia preenchido entre a meia noite e o job das 8h ainda n tinha tarefa cobrindo ele,
+    // entao a tarefa nova pega os dias dela q ficaram soltos. ela segue pendente ate o fim do periodo
+    private void linkDaysAlreadyFilled(ScaleTask task) {
+        List<ScaleResponse> days = responseRepository
+                .findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(task.getPatient().getId(),
+                        task.getScaleType(), task.getPeriodStart(), task.getPeriodEnd());
+        for (ScaleResponse response : days) {
+            if (response.getTask() == null && !response.isAnnulled()) {
+                response.setTask(task);
+                responseRepository.save(response);
+            }
+        }
     }
 
     private Patient findPatient(Long patientId) {

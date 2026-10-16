@@ -36,6 +36,12 @@
     font-weight: 600;
 }
 
+.daysHint {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    margin-top: calc(-1 * var(--space-2));
+}
+
 /* os dias rolam de lado em vez de empilhar */
 .days {
     display: flex;

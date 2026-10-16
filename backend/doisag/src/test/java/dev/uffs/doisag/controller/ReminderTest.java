@@ -168,6 +168,16 @@ class ReminderTest {
         assertThat(reminderService.sendScaleReminders(TODAY)).isZero();
     }
 
+    // dia preenchido de outra semana n eh da tarefa aberta, entao n cala o lembrete dela
+    @Test
+    void diaDeOutraSemanaNaoCalaOLembrete() {
+        saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        scaleResponseService.answer(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                new ScaleResponseCreateDTO(TODAY.minusDays(10), TODAY.minusDays(10), Map.of("dor", 3)));
+
+        assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
+    }
+
     // RF18 quem desligou o e-mail continua recebendo o aviso no sistema
     @Test
     void quemDesligouOEmailRecebeSoOAvisoNoSistema() {
