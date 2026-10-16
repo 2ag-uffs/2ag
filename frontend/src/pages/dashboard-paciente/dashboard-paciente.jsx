@@ -7,7 +7,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
-import {formatDate, formatDateTime} from "../../utils/date-format.js";
+import {brasiliaTimeNote, formatDate, formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
 import styles from "./dashboard-paciente.module.css";
 
 // painel do paciente (RF03)
@@ -128,7 +128,7 @@ export default function DashboardPaciente() {
                             {panel.upcomingAppointments.map((appointment) => (
                                 <ListItem
                                     key={appointment.appointmentId}
-                                    title={formatDateTime(appointment.dateTime)}
+                                    title={formatDateTime(appointment.dateTime) + brasiliaTimeNote()}
                                     details={modalityLabelOf(appointment.modality)
                                         + (appointment.prescriberName ? " com " + appointment.prescriberName : "")}
                                     aside={<AppointmentStatusBadge appointment={appointment}/>}
@@ -184,7 +184,7 @@ export default function DashboardPaciente() {
                                 <ListItem
                                     key={notification.id}
                                     title={notification.title}
-                                    details={notification.message}
+                                    details={withBrasiliaTimeNote(notification.message)}
                                 />
                             ))}
                         </ItemList>

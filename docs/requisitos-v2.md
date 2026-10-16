@@ -791,7 +791,7 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 - na exportação com identificação, na mesma célula, como "Nome social (nome civil: Nome civil)";
 - na tela de contas de paciente da administração.
 
-A exportação sem identificação não leva nenhum dos dois. Nome social em branco ou igual ao nome civil não é guardado. A lista de pacientes do prescritor e a de contas desativadas da administração seguem a ordem alfabética do nome mostrado, e a busca do prescritor procura por ele. O prescritor e a administração não editam o nome social, e a troca não entra na trilha de auditoria, como os outros dados do perfil. Os avisos já criados continuam com o nome da época.
+A exportação sem identificação não leva nenhum dos dois. Nome social em branco ou igual ao nome civil não é guardado. A lista de pacientes do prescritor e a de contas desativadas da administração seguem a ordem alfabética do nome mostrado, e a busca do prescritor procura por ele, sem diferença de acento nem de maiúscula ("joao" acha "João", 16/10/2026). O prescritor e a administração não editam o nome social, e a troca não entra na trilha de auditoria, como os outros dados do perfil. Os avisos já criados continuam com o nome da época.
 
 **Primeira consulta, retorno e dias sem atendimento em 16/10/2026 (RF10 e RF11):** a clínica respondeu que atende de segunda a sexta, que não marca consulta nos dias em que não pode atender e que a primeira consulta dura de 60 a 90 minutos e o retorno, menos.
 
@@ -898,6 +898,15 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 - **Pacientes arquivados:** nos formulários, continuam na conta, senão a desistência sumiria do número. Em *Pacientes no ciclo* eles ficam de fora. Arquivar encurta o prazo das tarefas abertas para o dia do arquivamento, e a que ficou sem resposta conta como fora do prazo.
 - **Arredondamento:** a porcentagem é arredondada para baixo, para 69,6% não aparecer como meta batida.
 - **De fora por enquanto:** a separação entre envio avulso e acompanhamento e uma visão da clínica inteira para a administração. As duas saem das mesmas consultas, se forem pedidas.
+
+**Ajustes nas telas em 16/10/2026:** correções que saíram da revisão das telas.
+
+- **Horário de Brasília no navegador (RNF16):** o hoje e o agora das telas são os de Brasília, mesmo com o navegador em outro fuso. Valem para o dia que o diário abre, a data da anamnese, o início do acompanhamento, os períodos dos indicadores e da trilha, a idade e as comparações com o horário da consulta: se ela já começou ou já acabou e se ainda falta o prazo de 24 horas para o paciente cancelar. Antes, à noite, um navegador adiantado mandava o dia seguinte e a API recusava. Os horários continuam aparecendo como a API manda, no horário de Brasília. Sempre que o fuso do navegador não é `America/Sao_Paulo`, mesmo outro fuso de UTC-3 como `America/Fortaleza`, aparece "(horário de Brasília)" ao lado do horário: nas telas de consultas e do painel do paciente, inclusive nos avisos do painel, e na página de avisos, que o prescritor também vê. Assim quem está no AM, MT, MS, RO, RR, AC ou fora do país não lê 10:00 como o horário local. Os e-mails ainda vão sem essa indicação. O dia que a tela monta vale do começo do dia local, que nem sempre é meia-noite: onde o horário de verão pula a meia-noite (Açores, Beirute, Cairo) o dia da virada começa à 1h, e a grade do diário não trava mais nesse dia.
+- **Plano de dose (RN02):** cada dose vai com a semana da linha que a prescritora vê na tela. A linha sem dose fica de fora e não adianta as semanas seguintes.
+- **Erro de campo:** a prescrição e o acompanhamento automático mostram no próprio campo o motivo da recusa da API, e o erro de um campo que não aparece na tela vai para o aviso de cima. A duração do acompanhamento já pede de 7 a 365 dias no campo, como a API.
+- **Avisos:** apagar o único aviso da última página volta para a página anterior, em vez de mostrar a lista vazia sem os botões de página.
+- **Termo atualizado no cadastro (RF36):** se o termo mudar com o cadastro aberto, a tela busca o texto novo e desmarca o aceite, para a pessoa ler e aceitar a versão nova.
+- **Convite com outra conta aberta:** o link de convite aberto com alguém logado diz com qual conta o navegador está e oferece sair e continuar o cadastro com o mesmo convite. Antes o convite sumia e a pessoa caía na tela inicial da conta aberta, o que pega o responsável com dois filhos (RF38).
 
 ---
 

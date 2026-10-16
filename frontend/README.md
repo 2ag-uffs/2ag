@@ -64,6 +64,10 @@ src/
 
 a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login. o paciente cujo aceite do termo de consentimento é de uma versão antiga vê o termo novo no lugar de qualquer tela até aceitar, e um `403` com `X-Term-Pending` abre esse aceite por cima da tela aberta.
 
+## datas
+
+a api trabalha no horário de Brasília (`America/Sao_Paulo`) e as telas também. o hoje e o agora saem de `utils/date-format.js`, que usa o fuso de Brasília mesmo com o navegador em outro fuso: `toIsoDate(new Date())` é o dia de hoje em Brasília, e `isInTheFuture`, `hasEnded` e `minutesUntil` comparam o horário da consulta com o agora de Brasília. os horários aparecem como a api manda, e sempre que o fuso do navegador não é `America/Sao_Paulo`, mesmo outro de UTC-3 como `America/Fortaleza`, vai "(horário de Brasília)" do lado: `brasiliaTimeNote()` depois do horário nas telas de consultas e do painel do paciente, e `withBrasiliaTimeNote(texto)` nos avisos que já vêm com o horário no texto, no painel do paciente e na página de avisos, que o prescritor também vê. um dia montado pela tela (`addDays`, `mondayOf`, `new Date("2026-10-16T00:00:00")`) fica no começo do dia local, que onde o horário de verão pula a meia-noite é 1h.
+
 ## padrão de código
 
 vale para todo código novo ou reescrito:

@@ -14,6 +14,10 @@ import styles from "./acompanhamento-protocolo.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
+// a api aceita de 7 a 365 dias (TreatmentProtocolCreateDTO)
+const MIN_DURATION_DAYS = 7;
+const MAX_DURATION_DAYS = 365;
+
 const PERIODICITIES = [
     {value: "SEMANAL", label: "Toda semana"},
     {value: "QUINZENAL", label: "A cada 14 dias"},
@@ -40,6 +44,7 @@ export default function AcompanhamentoProtocolo() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [notice, setNotice] = useState(null);
     const [isEndingOpen, setIsEndingOpen] = useState(false);
 
@@ -84,6 +89,7 @@ export default function AcompanhamentoProtocolo() {
     const create = async (event) => {
         event.preventDefault();
         setFormError(null);
+        setFieldErrors({});
 
         const items = Object.entries(chosen).map(([scaleType, periodicity]) => ({scaleType, periodicity}));
         if (items.length === 0) {
@@ -103,7 +109,17 @@ export default function AcompanhamentoProtocolo() {
             setNotice("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
             load();
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            if (requestError instanceof ApiError) {
+                const errorsByField = requestError.fieldErrors();
+                setFieldErrors(errorsByField);
+                // erro de campo q n aparece no formulario, tipo o limite de escalas, vai pro aviso de cima
+                const hiddenErrors = Object.keys(errorsByField)
+                    .filter((field) => field !== "startDate" && field !== "durationDays")
+                    .map((field) => errorsByField[field]);
+                setFormError(hiddenErrors.length > 0 ? hiddenErrors.join(". ") + "." : requestError.message);
+            } else {
+                setFormError(CONNECTION_ERROR_MESSAGE);
+            }
         } finally {
             setIsSaving(false);
         }
@@ -201,15 +217,18 @@ export default function AcompanhamentoProtocolo() {
                                 value={startDate}
                                 required={true}
                                 onChange={(event) => setStartDate(event.target.value)}
+                                error={fieldErrors.startDate}
                             />
                             <TextField
                                 label="Duração em dias"
                                 name="durationDays"
                                 type="number"
-                                min="1"
+                                min={MIN_DURATION_DAYS}
+                                max={MAX_DURATION_DAYS}
                                 value={durationDays}
                                 required={true}
                                 onChange={(event) => setDurationDays(event.target.value)}
+                                error={fieldErrors.durationDays}
                             />
                         </FieldRow>
                     </FormSection>

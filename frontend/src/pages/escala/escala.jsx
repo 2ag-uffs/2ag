@@ -140,7 +140,12 @@ export default function Escala() {
         let dayIso = firstDay;
         while (dayIso <= lastDay) {
             days.push(dayIso);
-            dayIso = toIsoDate(addDays(new Date(dayIso + "T00:00:00"), 1));
+            const nextDay = toIsoDate(addDays(new Date(dayIso + "T00:00:00"), 1));
+            // se a conta do dia seguinte n andar a grade para aqui em vez de travar a tela
+            if (nextDay <= dayIso) {
+                break;
+            }
+            dayIso = nextDay;
         }
         return days;
     }, [selectedDay, today, openTask, insideOpenTask]);

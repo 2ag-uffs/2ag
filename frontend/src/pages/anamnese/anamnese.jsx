@@ -6,6 +6,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {toIsoDate} from "../../utils/date-format.js";
 import styles from "./anamnese.module.css";
 
 const SMOKING_OPTIONS = [
@@ -25,12 +26,9 @@ const AWARENESS_OPTIONS = [
     {value: "Não", label: "Não"},
 ];
 
-// data de hoje no formato do input date sem passar por utc
+// data de hoje em brasilia no formato do input date, q eh o hoje da api
 function todayForInput() {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return today.getFullYear() + "-" + month + "-" + day;
+    return toIsoDate(new Date());
 }
 
 function emptyAnswers() {

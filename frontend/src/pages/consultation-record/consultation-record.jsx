@@ -9,7 +9,7 @@ import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import {ageFrom} from "../../utils/date-format.js";
+import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import styles from "./consultation-record.module.css";
 
 const MODALITY_OPTIONS = [
@@ -31,15 +31,9 @@ const EMPTY_RECORD = {
     complementaryExams: "",
 };
 
-// data e hora no formato do input datetime-local sem passar por utc
-// o toISOString adiantaria tres horas no horario de brasilia
-function toInputDateTime(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return year + "-" + month + "-" + day + "T" + hours + ":" + minutes;
+// agora em brasilia no formato do input datetime-local, q eh o agora da api
+function nowForInput() {
+    return nowInBrasilia().slice(0, 16);
 }
 
 // o formulario guarda texto vazio e a api espera null
@@ -59,7 +53,7 @@ function textOf(value) {
 // a consulta de hoje pode estar marcada pra mais tarde, e o campo n aceita hora futura
 // entao ela entra limitada ao momento atual, q eh o q a api tbm aceita
 function recordFromAppointment(appointment) {
-    const now = toInputDateTime(new Date());
+    const now = nowForInput();
     const scheduled = appointment.dateTime ? appointment.dateTime.slice(0, 16) : "";
     return {
         dateTime: scheduled > now ? now : scheduled,
@@ -84,7 +78,7 @@ export default function ConsultationRecord() {
     const isNewConsultation = appointmentId === undefined;
 
     const [patient, setPatient] = useState(null);
-    const [record, setRecord] = useState(() => ({...EMPTY_RECORD, dateTime: toInputDateTime(new Date())}));
+    const [record, setRecord] = useState(() => ({...EMPTY_RECORD, dateTime: nowForInput()}));
     // consulta anulada ou cancelada abre so pra leitura
     const [blockedMessage, setBlockedMessage] = useState(null);
     const [savedAppointmentId, setSavedAppointmentId] = useState(null);
@@ -256,7 +250,7 @@ export default function ConsultationRecord() {
                             name="dateTime"
                             type="datetime-local"
                             value={record.dateTime}
-                            max={toInputDateTime(new Date())}
+                            max={nowForInput()}
                             onChange={(event) => updateField("dateTime", event.target.value)}
                             error={fieldErrors.dateTime}
                         />

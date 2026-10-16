@@ -30,6 +30,15 @@ export function redirectLoggedUserHome() {
     return null;
 }
 
+// o cadastro abre com o link de convite mesmo com alguem logado
+// a tela explica q precisa sair da conta aberta, em vez de o convite sumir sem aviso
+export function redirectLoggedUserHomeUnlessInvite({request}) {
+    if (new URL(request.url).searchParams.get("convite")) {
+        return null;
+    }
+    return redirectLoggedUserHome();
+}
+
 // o endereco raiz manda cada um pra sua tela inicial
 export function redirectHome() {
     return redirect(homePathFor(getLoggedUser()));

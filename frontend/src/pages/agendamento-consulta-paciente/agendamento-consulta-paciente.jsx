@@ -10,7 +10,15 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
-import {addDays, formatDateTime, formatTime, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
+import {
+    addDays,
+    brasiliaTimeNote,
+    formatDateTime,
+    formatTime,
+    formatWeekdayAndDate,
+    minutesUntil,
+    toIsoDate,
+} from "../../utils/date-format.js";
 import styles from "./agendamento-consulta-paciente.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -45,8 +53,8 @@ function canPatientCancel(appointment) {
     if (appointment.status !== "AGENDADA") {
         return false;
     }
-    const millisecondsUntil = new Date(appointment.dateTime.slice(0, 19)).getTime() - Date.now();
-    return millisecondsUntil >= PATIENT_CANCELLATION_HOURS * 60 * 60 * 1000;
+    // a conta eh no horario de brasilia, igual a api faz
+    return minutesUntil(appointment.dateTime) >= PATIENT_CANCELLATION_HOURS * 60;
 }
 
 // consultas do paciente (RF10)
@@ -236,7 +244,7 @@ export default function AgendamentoConsultaPaciente() {
                             <div className={styles.step}>
                                 <h3 className={styles.stepTitle}>
                                     <span className={styles.stepNumber}>2</span>
-                                    Escolha o horário
+                                    Escolha o horário{brasiliaTimeNote()}
                                 </h3>
                                 <div className={styles.slots} role="group" aria-label="Horários livres do dia">
                                     {daySlots.map((slot) => (
@@ -281,7 +289,7 @@ export default function AgendamentoConsultaPaciente() {
                                     />
                                     <p className={styles.summary}>
                                         <FiCalendar aria-hidden="true"/>
-                                        Pedido para {formatDateTime(currentSlot)} até {formatTime(currentSlotEnd)} com {patient.prescriberName}.
+                                        Pedido para {formatDateTime(currentSlot)} até {formatTime(currentSlotEnd)}{brasiliaTimeNote()} com {patient.prescriberName}.
                                     </p>
                                     <div className={styles.actions}>
                                         <button
@@ -309,7 +317,7 @@ export default function AgendamentoConsultaPaciente() {
                             <li key={appointment.id} className={styles.appointment}>
                                 <div className={styles.appointmentInfo}>
                                     <div className={styles.appointmentTitle}>
-                                        <strong>{formatDateTime(appointment.dateTime)}</strong>
+                                        <strong>{formatDateTime(appointment.dateTime) + brasiliaTimeNote()}</strong>
                                         <AppointmentStatusBadge appointment={appointment}/>
                                     </div>
                                     <p className={styles.meta}>
@@ -346,7 +354,8 @@ export default function AgendamentoConsultaPaciente() {
                 show={cancelTarget !== null}
                 title={cancelTarget !== null && cancelTarget.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
                 message={cancelTarget !== null
-                    ? "O horário de " + formatDateTime(cancelTarget.dateTime) + " volta a ficar livre na agenda. Quer cancelar?"
+                    ? "O horário de " + formatDateTime(cancelTarget.dateTime) + brasiliaTimeNote()
+                        + " volta a ficar livre na agenda. Quer cancelar?"
                     : ""}
                 confirmText="Sim, cancelar"
                 cancelText="Voltar"

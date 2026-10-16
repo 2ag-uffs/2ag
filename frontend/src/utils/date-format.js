@@ -1,5 +1,50 @@
 // datas q vem da api mostradas no formato brasileiro
 
+// a api trabalha sempre no horario de brasilia (RNF16)
+// entao o hoje e o agora das telas tbm sao os de brasilia, mesmo com o navegador em outro fuso
+const API_TIME_ZONE = "America/Sao_Paulo";
+
+const brasiliaClock = new Intl.DateTimeFormat("en-CA", {
+    timeZone: API_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+});
+
+// a data e a hora de um momento no relogio de brasilia, no formato da api (2026-10-16T22:30:00)
+function brasiliaDateTimeOf(date) {
+    const parts = {};
+    brasiliaClock.formatToParts(date).forEach((part) => {
+        parts[part.type] = part.value;
+    });
+    return parts.year + "-" + parts.month + "-" + parts.day
+        + "T" + parts.hour + ":" + parts.minute + ":" + parts.second;
+}
+
+// a data e a hora de agora em brasilia, no formato da api
+export function nowInBrasilia() {
+    return brasiliaDateTimeOf(new Date());
+}
+
+// fora do fuso de brasilia o horario da consulta leva esse aviso do lado
+// senao quem esta no AM, MT, MS, RO, RR, AC ou fora do pais le o 10:00 como o horario de la
+export function brasiliaTimeNote() {
+    const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserTimeZone === API_TIME_ZONE) {
+        return "";
+    }
+    return " (horário de Brasília)";
+}
+
+// o aviso da consulta vem pronto da api com o horario no meio do texto
+export function withBrasiliaTimeNote(text) {
+    return text.replace(/(\d{2}:\d{2})/g, "$1" + brasiliaTimeNote());
+}
+
 // a api manda data sem fuso e as vezes com microssegundos
 // data sem hora vira meia noite local pra n voltar um dia no fuso de brasilia
 // e cortar no segundo faz todo navegador ler a data do mesmo jeito
@@ -8,6 +53,28 @@ function toLocalDate(isoText) {
         return new Date(isoText + "T00:00:00");
     }
     return new Date(isoText.slice(0, 19));
+}
+
+// data e hora sem fuso viram um numero, com as duas lidas no mesmo relogio
+// assim o fuso do navegador n entra na conta
+function wallClockTime(isoText) {
+    const dateTime = isoText.length === 10 ? isoText + "T00:00:00" : isoText.slice(0, 19);
+    return Date.parse(dateTime + "Z");
+}
+
+// dia do calendario de uma data no formato ano mes dia
+// data no comeco do dia local eh um dia q a tela montou (addDays, mondayOf, "2026-10-16T00:00:00") e fica como esta
+// o comeco do dia nem sempre eh meia noite: onde o horario de verao pula a meia noite (acores, beirute, cairo)
+// o dia da virada comeca a 1h, por isso a comparacao eh com o new Date(ano, mes, dia)
+// qualquer outra hora eh um momento, tipo o new Date() de agora, e vale o dia de brasilia
+function calendarDayOf(date) {
+    const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (date.getTime() !== startOfDay.getTime()) {
+        return brasiliaDateTimeOf(date).slice(0, 10);
+    }
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return date.getFullYear() + "-" + month + "-" + day;
 }
 
 export function formatDate(isoText) {
@@ -44,56 +111,58 @@ export function formatWeekdayAndDate(isoText) {
     return weekday.charAt(0).toUpperCase() + weekday.slice(1) + " " + dayAndMonth;
 }
 
-// a data e a hora de agora no mesmo formato das datas q vem da api
+// a data e a hora de agora em brasilia no mesmo formato das datas q vem da api
 // passar pelo toISOString adiantaria 3 horas e viraria o dia a partir das 21h
 export function formatNow() {
-    const now = new Date();
-    const time = now.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
-    return now.toLocaleDateString("pt-BR") + " às " + time;
+    return formatDateTime(nowInBrasilia());
 }
 
-// true quando a data e hora ainda n chegou
+// true quando a data e hora ainda n chegou em brasilia
 export function isInTheFuture(isoText) {
-    return toLocalDate(isoText) > new Date();
+    return wallClockTime(isoText) > wallClockTime(nowInBrasilia());
+}
+
+// minutos q faltam pra data e hora chegar em brasilia, negativo se ja passou
+export function minutesUntil(isoText) {
+    return (wallClockTime(isoText) - wallClockTime(nowInBrasilia())) / 60000;
 }
 
 export function isSameOrAfter(isoText, otherIsoText) {
     return toLocalDate(isoText) >= toLocalDate(otherIsoText);
 }
 
-// true quando a hora da consulta ja acabou, contando a duracao dela
+// true quando a hora da consulta ja acabou em brasilia, contando a duracao dela
 export function hasEnded(isoText, durationMinutes) {
-    const end = toLocalDate(isoText);
-    end.setMinutes(end.getMinutes() + (durationMinutes || 0));
-    return end <= new Date();
+    const end = wallClockTime(isoText) + (durationMinutes || 0) * 60000;
+    return end <= wallClockTime(nowInBrasilia());
 }
 
-// data local no formato ano mes dia q a api usa sem passar por utc
+// dia no formato ano mes dia q a api usa sem passar por utc
+// o toIsoDate(new Date()) eh o hoje de brasilia
 export function toIsoDate(date) {
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return date.getFullYear() + "-" + month + "-" + day;
+    return calendarDayOf(date);
 }
 
 // data nova somando dias sem mexer na original
+// monta pelo ano, mes e dia pra cair sempre no comeco do dia, ate no dia q comeca a 1h
 export function addDays(date, days) {
-    const newDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    newDate.setDate(newDate.getDate() + days);
-    return newDate;
+    const parts = calendarDayOf(date).split("-");
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]) + days);
 }
 
 // a segunda feira da semana de uma data
 export function mondayOf(date) {
-    const daysSinceMonday = (date.getDay() + 6) % 7;
-    return addDays(date, -daysSinceMonday);
+    const day = toLocalDate(calendarDayOf(date));
+    const daysSinceMonday = (day.getDay() + 6) % 7;
+    return addDays(day, -daysSinceMonday);
 }
 
-// idade em anos completos
+// idade em anos completos, contando o hoje de brasilia
 export function ageFrom(birthDate) {
     if (!birthDate) {
         return null;
     }
-    const today = new Date();
+    const today = toLocalDate(calendarDayOf(new Date()));
     const birth = toLocalDate(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const hadBirthdayThisYear = today.getMonth() > birth.getMonth()

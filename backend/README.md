@@ -76,7 +76,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `MAIL_FROM` | remetente dos e-mails. com `MAIL_HOST` preenchido e os dois vazios a api não sobe | o `MAIL_USERNAME` |
 | `MAIL_SMTP_AUTH` e `MAIL_SMTP_STARTTLS` | autenticação e tls do smtp. com o starttls ligado ele é obrigatório: servidor que não oferece tls não recebe a senha nem o link. um servidor local de teste costuma pedir `false` nos dois | `true` |
 
-a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde roda.
+a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde roda. o front segue o mesmo fuso: o hoje e o agora das telas são os de Brasília, mesmo com o navegador em outro fuso. sempre que o fuso do navegador não é `America/Sao_Paulo`, mesmo outro de UTC-3 como `America/Fortaleza`, aparece "(horário de Brasília)" do lado do horário da consulta nas telas de consultas e do painel do paciente e na página de avisos, que o prescritor também vê.
 
 ## sessão e perfis
 

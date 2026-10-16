@@ -9,6 +9,7 @@ import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
 import {initialsOf} from "../../utils/initials.js";
+import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./lista-paciente.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -110,8 +111,7 @@ export default function ListaPacientes() {
         }
     };
 
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const visiblePatients = patients.filter((patient) => patient.name.toLowerCase().includes(normalizedSearch));
+    const visiblePatients = patients.filter((patient) => matchesSearch(patient.name, searchTerm));
 
     let emptyMessage = "Nenhum paciente encontrado com esse nome.";
     if (patients.length === 0) {

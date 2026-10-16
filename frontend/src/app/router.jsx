@@ -6,7 +6,7 @@ import AppLayout from "../components/app-layout/app-layout.jsx";
 import PageLoader from "../components/page-loader/page-loader.jsx";
 import RouteError from "../components/route-error/route-error.jsx";
 import StatusPage from "../components/status-page/status-page.jsx";
-import {redirectHome, redirectLoggedUserHome, requireRole} from "./route-guards.js";
+import {redirectHome, redirectLoggedUserHome, redirectLoggedUserHomeUnlessInvite, requireRole} from "./route-guards.js";
 
 // cada tela vira um arquivo separado q so eh baixado quando a rota abre
 // enquanto baixa a tela anterior continua na frente e a troca fica suave
@@ -36,7 +36,7 @@ const routes = [
             },
             {
                 path: "/cadastro",
-                loader: redirectLoggedUserHome,
+                loader: redirectLoggedUserHomeUnlessInvite,
                 lazy: lazyPage(() => import("../pages/sign-up/sign-up.jsx")),
             },
             {

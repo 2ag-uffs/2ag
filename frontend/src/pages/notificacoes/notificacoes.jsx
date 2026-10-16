@@ -5,7 +5,7 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import {formatDateTime} from "../../utils/date-format.js";
+import {formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
 import styles from "./notificacoes.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -38,6 +38,11 @@ export default function Notificacoes() {
     const loadPage = useCallback(() => {
         apiService.get("/notifications?page=" + pageNumber)
             .then((loadedPage) => {
+                // apagar o ultimo aviso da ultima pagina deixa ela vazia, entao volta pra ultima q ainda tem aviso
+                if (loadedPage.notifications.length === 0 && loadedPage.page > 0) {
+                    setPageNumber(Math.max(loadedPage.totalPages - 1, 0));
+                    return;
+                }
                 setPage(loadedPage);
                 setLoadError(null);
                 // o numero do menu acompanha o q foi lido ou apagado aqui
@@ -143,7 +148,7 @@ export default function Notificacoes() {
                                         {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
                                     </p>
                                     <h2 className={styles.title}>{notification.title}</h2>
-                                    <p className={styles.message}>{notification.message}</p>
+                                    <p className={styles.message}>{withBrasiliaTimeNote(notification.message)}</p>
                                 </div>
                                 <div className={styles.actions}>
                                     <button

@@ -187,6 +187,8 @@ describe("Escala diaria", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.useRealTimers();
+        vi.unstubAllEnvs();
         setLoggedUser(null);
     });
 
@@ -225,6 +227,24 @@ describe("Escala diaria", () => {
         await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales/overview"));
         expect(within(grid).getAllByRole("button")).toHaveLength((new Date().getDay() + 6) % 7 + 1);
         expect(screen.queryByText(/Esqueceu algum dia/)).not.toBeInTheDocument();
+    });
+
+    // em beirute o horario de verao pula a meia noite e o dia 29/03 comeca a 1h
+    // a grade somava um dia e caia no mesmo dia, e a tela travava num loop sem fim
+    it("no dia em q o horario de verao pula a meia noite a grade mostra a semana inteira", async () => {
+        vi.stubEnv("TZ", "Asia/Beirut");
+        vi.useFakeTimers({toFake: ["Date"]});
+        vi.setSystemTime(new Date("2026-03-29T12:00:00-03:00"));
+        pendingTasks = [];
+        renderScale("/escalas/acompanhamento-semanal");
+
+        const grid = await screen.findByRole("group", {name: "Dias da semana"});
+        await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales/overview"));
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons).toHaveLength(7);
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate("2026-03-23"));
+        expect(buttons[6]).toHaveTextContent(formatWeekdayAndDate("2026-03-29"));
+        expect(buttons[6]).toHaveAttribute("aria-pressed", "true");
     });
 
     // o "ver e corrigir" do historico abre um dia antigo, fora da tarefa aberta

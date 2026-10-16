@@ -59,6 +59,32 @@ function compositionErrorOf(fieldErrors) {
     return errorField ? fieldErrors[errorField] : null;
 }
 
+// o erro de uma semana chega pela posicao na lista enviada, q pula as linhas sem dose
+// aqui ele volta pra linha da tela, q eh a semana menos 1 (step-0-note)
+function stepErrorsOnRows(fieldErrors, sentSteps) {
+    const errors = {};
+    Object.keys(fieldErrors).forEach((field) => {
+        const stepMatch = field.match(/^escalationSteps\[(\d+)\]\.(\w+)$/);
+        const sentStep = stepMatch ? sentSteps[Number(stepMatch[1])] : null;
+        if (sentStep) {
+            errors["step-" + (sentStep.week - 1) + "-" + stepMatch[2]] = fieldErrors[field];
+        } else {
+            errors[field] = fieldErrors[field];
+        }
+    });
+    return errors;
+}
+
+const FIELDS_WITH_ERROR = ["productDescription", "brand", "batch", "spectrum", "volume", "posology", "treatmentDurationDays"];
+
+// erro de campo q o formulario n mostra em lugar nenhum vai pro aviso de cima
+function hiddenErrorsOf(fieldErrors) {
+    return Object.keys(fieldErrors)
+        .filter((field) => !FIELDS_WITH_ERROR.includes(field) && !field.startsWith("components")
+            && !/^step-\d+-(dosage|note)$/.test(field))
+        .map((field) => fieldErrors[field]);
+}
+
 // emissao de prescricao dentro de uma consulta (RF05)
 // a nova so substitui a vigente qnd a consulta dela n eh mais antiga q a da vigente
 export default function PrescriptionForm() {
@@ -153,10 +179,10 @@ export default function PrescriptionForm() {
             volume: textOrNull(form.volume),
             posology: form.posology,
             administrationRoute: form.administrationRoute === "" ? null : form.administrationRoute,
-            // semana sem dose fica de fora e a numeracao segue a ordem da lista
+            // a semana eh a da linha q a prescritora ve na tela, e a linha sem dose fica de fora
             escalationSteps: escalationSteps
-                .filter((step) => step.dosage.trim() !== "")
-                .map((step, index) => ({week: index + 1, dosage: step.dosage, note: textOrNull(step.note)})),
+                .map((step, index) => ({week: index + 1, dosage: step.dosage, note: textOrNull(step.note)}))
+                .filter((step) => step.dosage.trim() !== ""),
             instructions: textOrNull(form.instructions),
             precautions: textOrNull(form.precautions),
             expectedEffects: textOrNull(form.expectedEffects),
@@ -170,10 +196,13 @@ export default function PrescriptionForm() {
             setIssuedPrescription(savedPrescription);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
+                const errorsByField = stepErrorsOnRows(requestError.fieldErrors(), requestBody.escalationSteps);
+                const hiddenErrors = hiddenErrorsOf(errorsByField);
                 setFieldErrors(errorsByField);
                 if (Object.keys(errorsByField).length === 0) {
                     setFormError(requestError.message);
+                } else if (hiddenErrors.length > 0) {
+                    setFormError(hiddenErrors.join(". ") + ".");
                 } else {
                     setFormError("Confira os campos destacados.");
                 }
@@ -279,14 +308,18 @@ export default function PrescriptionForm() {
                             <TextField
                                 label="Marca (opcional)"
                                 name="brand"
+                                maxLength={255}
                                 value={form.brand}
                                 onChange={(event) => updateField("brand", event.target.value)}
+                                error={fieldErrors.brand}
                             />
                             <TextField
                                 label="Lote (opcional)"
                                 name="batch"
+                                maxLength={255}
                                 value={form.batch}
                                 onChange={(event) => updateField("batch", event.target.value)}
+                                error={fieldErrors.batch}
                             />
                         </FieldRow>
                         <FieldRow>
@@ -308,6 +341,7 @@ export default function PrescriptionForm() {
                                 min="1"
                                 value={form.volume}
                                 onChange={(event) => updateField("volume", event.target.value)}
+                                error={fieldErrors.volume}
                             />
                         </FieldRow>
                     </FormSection>
@@ -397,14 +431,18 @@ export default function PrescriptionForm() {
                                     label={"Semana " + (index + 1)}
                                     name={"step-" + index + "-dosage"}
                                     placeholder="Ex: 3 gotas à noite"
+                                    maxLength={255}
                                     value={step.dosage}
                                     onChange={(event) => updateEscalationStep(index, "dosage", event.target.value)}
+                                    error={fieldErrors["step-" + index + "-dosage"]}
                                 />
                                 <TextField
                                     label="Observação (opcional)"
                                     name={"step-" + index + "-note"}
+                                    maxLength={255}
                                     value={step.note}
                                     onChange={(event) => updateEscalationStep(index, "note", event.target.value)}
+                                    error={fieldErrors["step-" + index + "-note"]}
                                 />
                                 <button
                                     type="button"

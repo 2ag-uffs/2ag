@@ -7,6 +7,7 @@ import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./selecao-escalas.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -72,8 +73,7 @@ export default function SelecaoEscalas() {
         return <SkeletonPage cards={3}/>;
     }
 
-    const visibleScales = page.scales.filter((scale) =>
-        scale.name.toLowerCase().includes(search.trim().toLowerCase()));
+    const visibleScales = page.scales.filter((scale) => matchesSearch(scale.name, search));
     const scalesToSend = page.scales.filter((scale) => chosen[scale.type] && !page.waiting.includes(scale.type));
 
     const send = async () => {

@@ -3,10 +3,12 @@ import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {redirectLoggedUserHomeUnlessInvite} from "../../app/route-guards.js";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import SignUp from "./sign-up.jsx";
 
 const INVITE = {prescriberName: "Ana Lima", prescriberProfession: "Médica", expiresAt: "2026-12-01T10:00:00"};
+const OUTDATED_TERM_MESSAGE = "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
 
 function mockApi() {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
@@ -23,11 +25,11 @@ function mockApi() {
     });
 }
 
-function renderSignUp() {
+function renderSignUp(path = "/cadastro?convite=abc") {
     const router = createMemoryRouter([
-        {path: "/cadastro", element: <SignUp/>},
+        {path: "/cadastro", loader: redirectLoggedUserHomeUnlessInvite, element: <SignUp/>},
         {path: "/painel-paciente", element: <p>painel do paciente</p>},
-    ], {initialEntries: ["/cadastro?convite=abc"]});
+    ], {initialEntries: [path]});
     render(<RouterProvider router={router}/>);
 }
 
@@ -198,4 +200,62 @@ describe("SignUp", () => {
             researchTermVersion: null,
         }));
     }, TYPING_TIMEOUT);
+
+    // o deploy de um termo novo pode chegar com a pessoa no meio do cadastro
+    it("qnd o termo muda com a tela aberta, ler e aceitar de novo manda a versao nova", async () => {
+        let termVersion = "termo-1";
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(path === "/consent-term"
+            ? {version: termVersion, text: "Texto do termo " + termVersion}
+            : {version: "pesquisa-1", text: "Texto da pesquisa"}));
+        const post = vi.spyOn(apiService, "post").mockImplementation((path, body) => {
+            if (path === "/invites/lookup") {
+                return Promise.resolve(INVITE);
+            }
+            if (body.consentTermVersion !== termVersion) {
+                return Promise.reject(new ApiError(400, OUTDATED_TERM_MESSAGE));
+            }
+            return Promise.resolve({id: 9, name: "Maria da Silva", role: "PATIENT", termPending: false});
+        });
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        termVersion = "termo-2";
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText(OUTDATED_TERM_MESSAGE)).toBeInTheDocument();
+        expect(screen.getByRole("checkbox", {name: /termo de consentimento/})).not.toBeChecked();
+        await user.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        expect(screen.getByText("Texto do termo termo-2")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Li e aceito"}));
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(post).toHaveBeenLastCalledWith("/auth/register", expect.objectContaining({consentTermVersion: "termo-2"}));
+    }, TYPING_TIMEOUT);
+
+    // responsavel com dois filhos logado na conta do primeiro abre o convite do segundo (RF38)
+    it("convite aberto com outra conta logada explica e deixa sair pra seguir o cadastro", async () => {
+        const post = mockApi();
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({status: 204, ok: true});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        const user = userEvent.setup();
+        renderSignUp();
+
+        expect(await screen.findByText(/Você está conectado como/)).toHaveTextContent("Lucas Souza");
+        expect(post).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", {name: "Sair e continuar o cadastro"}));
+
+        expect(await screen.findByLabelText("Nome completo")).toBeInTheDocument();
+        expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
+        expect(post).toHaveBeenCalledWith("/invites/lookup", {token: "abc"});
+    });
+
+    it("sem convite qm esta logado volta pra tela inicial", async () => {
+        mockApi();
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        renderSignUp("/cadastro");
+
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
 });

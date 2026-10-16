@@ -10,3 +10,5 @@ afterEach(() => {
 
 // o jsdom n rola a tela e o ScrollRestoration do layout chama isso a cada tela
 window.scrollTo = () => {};
+// o cadastro tbm rola ate o aviso de erro la em cima
+Element.prototype.scrollIntoView = () => {};

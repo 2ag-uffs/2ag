@@ -4,6 +4,7 @@ import EmptyState from "../empty-state/empty-state.jsx";
 import TextField from "../form/text-field.jsx";
 import {SkeletonBlock} from "../skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {addDays, toIsoDate} from "../../utils/date-format.js";
 import styles from "./audit-trail.module.css";
 
 // a trilha abre mostrando os ultimos 30 dias
@@ -15,21 +16,6 @@ const ROLE_LABELS = {
     ADMIN: "Administrador",
 };
 
-// data no formato do input date sem passar por utc
-// o toISOString troca o dia depois das 21h no horario de brasilia
-function toInputDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return year + "-" + month + "-" + day;
-}
-
-function daysAgo(days) {
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date;
-}
-
 function formatMoment(isoDateTime) {
     return new Date(isoDateTime).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"});
 }
@@ -37,8 +23,8 @@ function formatMoment(isoDateTime) {
 // lista da trilha de auditoria com filtro de periodo e paginas
 // quem usa passa o endereco da api e diz se cada linha mostra o numero do paciente
 export default function AuditTrail({endpoint, showPatientNumber}) {
-    const [fromDate, setFromDate] = useState(() => toInputDate(daysAgo(DEFAULT_PERIOD_DAYS - 1)));
-    const [toDate, setToDate] = useState(() => toInputDate(new Date()));
+    const [fromDate, setFromDate] = useState(() => toIsoDate(addDays(new Date(), -(DEFAULT_PERIOD_DAYS - 1))));
+    const [toDate, setToDate] = useState(() => toIsoDate(new Date()));
     const [period, setPeriod] = useState({from: fromDate, to: toDate});
     const [page, setPage] = useState(0);
     const [trail, setTrail] = useState(null);
