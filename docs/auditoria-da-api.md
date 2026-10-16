@@ -57,7 +57,7 @@ Em qualquer variante, o mesmo commit precisa levar `SESSION_SECURE_COOKIE=true` 
 
 **Como corrigir.** É tanto técnico quanto de processo:
 
-1. A clínica precisa aprovar o texto final e informar a razão social e o contato do encarregado de dados (está aberto em `docs/extensao/perguntas-para-a-clinica.md`, item 5).
+1. A clínica precisa aprovar o texto final e informar a razão social e o contato do encarregado de dados (está aberto nas perguntas para a clínica, que ficam fora do repositório).
 2. No código, trocar os marcadores por configuração: `api.clinic.name: ${CLINIC_NAME:}` e `api.clinic.dpo-contact: ${CLINIC_DPO_CONTACT:}`, substituindo no `readTermFile()`. Não falhar na subida com valores vazios — o perfil de teste e o fluxo local não definem essas variáveis; quando vierem em branco, manter o marcador e emitir `log.warn`.
 3. Acrescentar `CLINIC_NAME` e `CLINIC_DPO_CONTACT` ao `.env.example` e ao bloco `environment` da api no compose.
 4. Apagar a linha 1 e trocar `CURRENT_VERSION` só depois do aval. Atenção: aceites já gravados ficam presos à versão antiga, e o sistema vai pedir novo aceite — o que é o comportamento correto.

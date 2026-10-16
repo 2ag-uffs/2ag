@@ -12,6 +12,8 @@ dados-reais/
 anamnese-preenchida*
 prontuario*
 /backups/
+# as perguntas pra clinica tem dados da clinica e da prescritora, ficam so na maquina
+docs/extensao/perguntas-para-a-clinica.md
 
 # ---------------------------------------------------------------
 # segredos e configuracao de ambiente

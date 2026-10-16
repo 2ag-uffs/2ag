@@ -162,7 +162,7 @@ A leitura aplicada foi: a **primária domina a identidade** (cabeçalho, barra d
 
 Ou seja: nenhuma cor da marca serve de fundo de tela. A primária porque escureceria demais, e a palha porque já tentamos e ficou pesada.
 
-**Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas de [`perguntas-para-a-clinica.md`](./extensao/perguntas-para-a-clinica.md): a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface-alt`.
+**Vale confirmar com quem fez o manual.** É a mesma natureza das perguntas para a clínica: a resposta muda o resultado e não está no meu alcance decidir. Se a resposta for "aplique literal", o que muda é só `--color-background` e `--color-surface-alt`.
 
 ---
 
