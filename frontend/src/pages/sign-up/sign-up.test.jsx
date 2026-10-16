@@ -47,6 +47,9 @@ async function fillRequiredFields(user) {
     await user.click(screen.getByRole("checkbox", {name: /Li e aceito o/}));
 }
 
+// digitar o formulario inteiro leva uns 2s, e com a maquina ocupada passa dos 5s padrao
+const TYPING_TIMEOUT = 15000;
+
 describe("SignUp", () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -67,7 +70,7 @@ describe("SignUp", () => {
             name: "Maria da Silva",
             socialName: "Ana Souza",
         }));
-    });
+    }, TYPING_TIMEOUT);
 
     it("sem nome social o campo vai como nulo", async () => {
         const post = mockApi();
@@ -79,5 +82,5 @@ describe("SignUp", () => {
 
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
         expect(post).toHaveBeenCalledWith("/auth/register", expect.objectContaining({socialName: null}));
-    });
+    }, TYPING_TIMEOUT);
 });
