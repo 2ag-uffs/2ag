@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.ConsentTermDTO;
+import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.ResearchConsentDTO;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.BusinessException;
@@ -8,6 +9,7 @@ import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
+import dev.uffs.doisag.repository.PatientRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,11 +32,19 @@ public class ConsentTermService {
     private static final Logger log = LoggerFactory.getLogger(ConsentTermService.class);
 
     // troque a versao junto com o texto do arquivo
-    public static final String CURRENT_VERSION = "2026-10-rascunho";
+    public static final String CURRENT_VERSION = "2026-10-rascunho-2";
     public static final String RESEARCH_VERSION = "2026-10-rascunho-2";
 
     public static final String OUTDATED_RESEARCH_MESSAGE =
             "O termo de pesquisa foi atualizado. Leia a versão nova antes de aceitar";
+
+    public static final String GUARDIAN_REQUIRED_MESSAGE =
+            "Paciente com menos de 18 anos: informe o nome e o parentesco do responsável legal "
+                    + "antes de aceitar o termo";
+
+    // a pesquisa com menor espera o comite de etica definir o assentimento dele
+    public static final String MINOR_RESEARCH_MESSAGE =
+            "A pesquisa ainda não está aberta para pacientes com menos de 18 anos";
 
     private static final String TERM_FILE = "consent/termo-de-consentimento.txt";
     private static final String RESEARCH_FILE = "consent/termo-de-pesquisa.txt";
@@ -43,14 +53,17 @@ public class ConsentTermService {
     private static final String DPO_CONTACT_MARKER = "[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]";
 
     private final ConsentAcceptanceRepository consentAcceptanceRepository;
+    private final PatientRepository patientRepository;
     private final String termText;
     private final String researchText;
 
     public ConsentTermService(ConsentAcceptanceRepository consentAcceptanceRepository,
+                              PatientRepository patientRepository,
                               @Value("${api.clinic.name:}") String clinicName,
                               @Value("${api.clinic.cnpj:}") String clinicCnpj,
                               @Value("${api.clinic.dpo-contact:}") String dpoContact) {
         this.consentAcceptanceRepository = consentAcceptanceRepository;
+        this.patientRepository = patientRepository;
         if (clinicName == null || clinicName.isBlank()) {
             log.warn("CLINIC_NAME vazio: os termos saem com {}", CLINIC_NAME_MARKER);
         }
@@ -88,6 +101,15 @@ public class ConsentTermService {
         acceptance.setTermType(termType);
         acceptance.setTermVersion(termVersion);
         acceptance.setAcceptedAt(LocalDateTime.now());
+        // menor de 18: o aceite eh do responsavel e o nome dele fica junto (LGPD art. 14)
+        // adulto com cuidador aceita sozinho, entao ai fica nulo
+        if (user instanceof Patient patient && patient.isMinor()) {
+            if (patient.getGuardianName() == null) {
+                throw new BusinessException(GUARDIAN_REQUIRED_MESSAGE);
+            }
+            acceptance.setGuardianName(patient.getGuardianName());
+            acceptance.setGuardianRelationship(patient.getGuardianRelationship());
+        }
         consentAcceptanceRepository.save(acceptance);
     }
 
@@ -103,9 +125,16 @@ public class ConsentTermService {
     }
 
     @Transactional
-    public void acceptNewVersion(Patient patient, String termVersion) {
+    public void acceptNewVersion(Patient patient, String termVersion, GuardianDTO guardian) {
         if (!isCurrentVersion(termVersion)) {
             throw new BusinessException(PatientService.OUTDATED_TERM_MESSAGE);
+        }
+        // conta de menor sem responsavel salvo (de antes da regra) informa ele aqui
+        // pq com o termo pendente o PUT /profile fica travado
+        if (patient.isMinor() && patient.getGuardianName() == null) {
+            GuardianDTO.checkLegalGuardian(guardian, patient.getBirthDate());
+            GuardianDTO.applyTo(patient, guardian);
+            patient = patientRepository.save(patient);
         }
         // aceitar de novo a msm versao n duplica o registro
         if (!consentAcceptanceRepository.existsByUserIdAndTermTypeAndTermVersion(
@@ -115,12 +144,17 @@ public class ConsentTermService {
     }
 
     // so vale o aceite da versao atual do texto de pesquisa q n foi retirado
-    public boolean hasResearchConsent(Long userId) {
+    // menor de 18 n entra nem com aceite antigo, defesa pra exportacao sem identificacao
+    public boolean hasResearchConsent(Patient patient) {
+        if (patient.isMinor()) {
+            return false;
+        }
         return consentAcceptanceRepository.existsByUserIdAndTermTypeAndTermVersionAndRevokedAtIsNull(
-                userId, ConsentType.RESEARCH, RESEARCH_VERSION);
+                patient.getId(), ConsentType.RESEARCH, RESEARCH_VERSION);
     }
 
     // msm regra do hasResearchConsent, senao o perfil e a exportacao discordam
+    // a diferenca eh o menor: um aceite q ainda vale aparece aqui pra ele conseguir retirar no perfil
     public ResearchConsentDTO researchConsentOf(Long userId) {
         Optional<ConsentAcceptance> current = consentAcceptanceRepository
                 .findFirstByUserIdAndTermTypeAndTermVersionAndRevokedAtIsNullOrderByAcceptedAtDesc(
@@ -138,7 +172,10 @@ public class ConsentTermService {
         if (!RESEARCH_VERSION.equals(termVersion)) {
             throw new BusinessException(OUTDATED_RESEARCH_MESSAGE);
         }
-        if (!hasResearchConsent(patient.getId())) {
+        if (patient.isMinor()) {
+            throw new BusinessException(MINOR_RESEARCH_MESSAGE);
+        }
+        if (!hasResearchConsent(patient)) {
             registerAcceptance(patient, ConsentType.RESEARCH, termVersion);
         }
     }

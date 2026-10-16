@@ -15,6 +15,17 @@ const PATIENT_PROFILE = {
     cpf: "52998224725", prescriberName: "Ana Lima",
 };
 
+// paciente de 10 anos com a mae como responsavel legal
+function minorProfile(researchConsent) {
+    const today = new Date();
+    return {
+        ...PATIENT_PROFILE, birthDate: (today.getFullYear() - 10) + "-01-01", phone: "49999887766",
+        address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC"},
+        guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        researchConsent: researchConsent,
+    };
+}
+
 describe("Profile", () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -150,5 +161,35 @@ describe("Profile", () => {
 
         expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
         expect(put).toHaveBeenCalledWith("/profile", expect.objectContaining({socialName: null}));
+    });
+
+    // o responsavel legal aceitou o termo pelo menor, e a pesquisa ainda n abre pra menor de 18
+    it("paciente menor de 18 ve o responsavel legal obrigatorio e n ve a pesquisa", async () => {
+        vi.spyOn(apiService, "get")
+            .mockResolvedValue(minorProfile({active: false, acceptedAt: null, termChanged: false}));
+        render(<Profile/>);
+
+        expect(await screen.findByRole("group", {name: "Responsável legal"})).toBeInTheDocument();
+        expect(screen.getByLabelText("Nome")).toHaveValue("Joana Souza");
+        expect(screen.getByLabelText("Nome")).toBeRequired();
+        expect(screen.getByLabelText("Parentesco")).toBeRequired();
+        expect(screen.queryByRole("heading", {name: "Pesquisa"})).not.toBeInTheDocument();
+    });
+
+    // o menor n aceita a pesquisa, mas um aceite q ja existe aparece pra ele poder retirar
+    it("paciente menor de 18 com pesquisa aceita ainda ve o cartao pra retirar", async () => {
+        vi.spyOn(apiService, "get")
+            .mockResolvedValue(minorProfile({active: true, acceptedAt: "2026-10-01T10:00:00", termChanged: false}));
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({active: false, acceptedAt: null, termChanged: false});
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        expect(await screen.findByRole("heading", {name: "Pesquisa"})).toBeInTheDocument();
+        expect(screen.getByText(/Você aceitou participar da pesquisa em 01\/10\/2026/)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Retirar consentimento"}));
+
+        expect(post).toHaveBeenCalledWith("/consent-term/research/revoke", undefined);
+        await waitFor(() => expect(screen.queryByRole("heading", {name: "Pesquisa"})).not.toBeInTheDocument());
     });
 });

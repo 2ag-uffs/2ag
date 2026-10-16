@@ -10,7 +10,7 @@ import {isStrongPassword} from "../../components/form/password-rules.js";
 import Modal from "../../components/modal/modal.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
-import {findGuardianErrors, guardianBody} from "../../utils/guardian.js";
+import {ACCEPT_BUTTON_TEXT, ageBandOf, findGuardianErrors, guardianBody} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./sign-up.module.css";
 
@@ -32,9 +32,16 @@ const EMPTY_FORM = {
     passwordConfirmation: "",
 };
 
+// qm aceita o termo muda com a faixa de idade (Codigo Civil arts. 3 e 4)
+const CONSENT_ERRORS = {
+    "adult": "Para criar a conta, leia e aceite o termo de consentimento",
+    "16-17": "Para criar a conta, o paciente e o responsável legal precisam ler e aceitar o termo de consentimento",
+    "under-16": "Para criar a conta, o responsável legal precisa ler e aceitar o termo de consentimento",
+};
+
 // confere no navegador o q da pra conferir antes de mandar pra api
-function findFormErrors(formData, hasAcceptedConsent) {
-    const errors = findGuardianErrors(formData);
+function findFormErrors(formData, hasAcceptedConsent, ageBand) {
+    const errors = findGuardianErrors(formData, ageBand !== "adult");
     if (onlyDigits(formData.cpf).length !== 11) {
         errors.cpf = "O CPF tem 11 números";
     }
@@ -48,7 +55,7 @@ function findFormErrors(formData, hasAcceptedConsent) {
         errors.passwordConfirmation = "As senhas não são iguais";
     }
     if (!hasAcceptedConsent) {
-        errors.consentTermVersion = "Para criar a conta, leia e aceite o termo de consentimento";
+        errors.consentTermVersion = CONSENT_ERRORS[ageBand];
     }
     return errors;
 }
@@ -87,6 +94,11 @@ export default function SignUp() {
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const messageRef = useRef(null);
+    // menor de 16: o responsavel legal aceita o termo em nome do paciente
+    // com 16 e 17: o paciente aceita junto com o responsavel (LGPD art. 14 e Codigo Civil)
+    // a pesquisa fica escondida pro menor ate o comite de etica definir o assentimento dele
+    const ageBand = ageBandOf(formData.birthDate);
+    const isMinor = ageBand !== "adult";
 
     // erro q volta da api: leva a pessoa ate o campo marcado ou ate o aviso la em cima
     // eh um efeito pq o erro so esta na tela depois q ela desenha de novo
@@ -150,6 +162,15 @@ export default function SignUp() {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
     };
 
+    // mudou a faixa de idade, mudou qm marca o aceite: as caixas desmarcam pra pessoa certa marcar o texto certo
+    const changeBirthDate = (birthDate) => {
+        if (ageBandOf(birthDate) !== ageBand) {
+            setHasAcceptedConsent(false);
+            setAcceptsResearch(false);
+        }
+        updateField("birthDate", birthDate);
+    };
+
     // marcar o aceite tira o aviso de erro do aceite
     const changeConsent = (isAccepted) => {
         setHasAcceptedConsent(isAccepted);
@@ -167,7 +188,7 @@ export default function SignUp() {
         event.preventDefault();
         setErrorMessage(null);
 
-        const formErrors = findFormErrors(formData, hasAcceptedConsent);
+        const formErrors = findFormErrors(formData, hasAcceptedConsent, ageBand);
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
             focusFirstInvalidField();
@@ -192,7 +213,7 @@ export default function SignUp() {
             email: formData.email,
             password: formData.password,
             consentTermVersion: consentTerm.version,
-            researchTermVersion: acceptsResearch ? researchTerm.version : null,
+            researchTermVersion: acceptsResearch && !isMinor ? researchTerm.version : null,
             site: site,
         };
 
@@ -262,7 +283,7 @@ export default function SignUp() {
             <form className={styles.form} onSubmit={handleSubmit}>
                 <TrapField value={site} onChange={setSite}/>
                 <fieldset className={styles.section}>
-                    <legend className={styles.sectionTitle}>Seus dados</legend>
+                    <legend className={styles.sectionTitle}>{isMinor ? "Dados do paciente" : "Seus dados"}</legend>
                     <TextField
                         label="Nome completo"
                         name="name"
@@ -298,7 +319,7 @@ export default function SignUp() {
                             type="date"
                             autoComplete="bday"
                             value={formData.birthDate}
-                            onChange={(event) => updateField("birthDate", event.target.value)}
+                            onChange={(event) => changeBirthDate(event.target.value)}
                             error={fieldErrors.birthDate}
                             required={true}
                         />
@@ -361,26 +382,44 @@ export default function SignUp() {
                 </fieldset>
 
                 <fieldset className={styles.section}>
-                    <legend className={styles.sectionTitle}>Familiar ou cuidador (opcional)</legend>
-                    <p className={styles.sectionHint}>
-                        Se alguém ajuda você no tratamento, deixe o contato. A clínica pode ligar para essa pessoa
-                        quando precisar.
-                    </p>
+                    <legend className={styles.sectionTitle}>
+                        {isMinor ? "Responsável legal" : "Familiar ou cuidador (opcional)"}
+                    </legend>
+                    {ageBand === "adult" && (
+                        <p className={styles.sectionHint}>
+                            Se alguém ajuda você no tratamento, deixe o contato. A clínica pode ligar para essa pessoa
+                            quando precisar.
+                        </p>
+                    )}
+                    {ageBand === "16-17" && (
+                        <p className={styles.sectionHint}>
+                            O paciente tem 16 ou 17 anos. Ele preenche o cadastro e aceita o termo junto com o pai, a
+                            mãe ou o responsável legal.
+                        </p>
+                    )}
+                    {ageBand === "under-16" && (
+                        <p className={styles.sectionHint}>
+                            O paciente tem menos de 16 anos. O pai, a mãe ou o responsável legal preenche o cadastro
+                            e aceita o termo em nome dele.
+                        </p>
+                    )}
                     <TextField
                         label="Nome"
                         name="guardian.name"
                         value={formData.guardianName}
                         onChange={(event) => updateField("guardianName", event.target.value)}
                         error={fieldErrors["guardian.name"]}
+                        required={isMinor}
                     />
                     <div className={styles.row}>
                         <TextField
                             label="Parentesco"
                             name="guardian.relationship"
-                            placeholder="Filha, marido, cuidadora..."
+                            placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
                             value={formData.guardianRelationship}
                             onChange={(event) => updateField("guardianRelationship", event.target.value)}
                             error={fieldErrors["guardian.relationship"]}
+                            required={isMinor}
                         />
                         <TextField
                             label="Telefone com DDD"
@@ -438,35 +477,57 @@ export default function SignUp() {
                             onChange={(event) => changeConsent(event.target.checked)}
                             aria-invalid={fieldErrors.consentTermVersion ? "true" : undefined}
                         />
-                        <span>
-                            Li e aceito o{" "}
-                            <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
-                                termo de consentimento
-                            </button>
-                            {" "}para o uso dos meus dados de saúde no acompanhamento.
-                        </span>
+                        {ageBand === "adult" && (
+                            <span>
+                                Li e aceito o{" "}
+                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
+                                    termo de consentimento
+                                </button>
+                                {" "}para o uso dos meus dados de saúde no acompanhamento.
+                            </span>
+                        )}
+                        {ageBand === "16-17" && (
+                            <span>
+                                Eu, paciente, e meu responsável legal lemos e aceitamos o{" "}
+                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
+                                    termo de consentimento
+                                </button>
+                                {" "}para o uso dos meus dados de saúde no acompanhamento.
+                            </span>
+                        )}
+                        {ageBand === "under-16" && (
+                            <span>
+                                Sou o responsável legal pelo paciente e aceito, em nome dele, o{" "}
+                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
+                                    termo de consentimento
+                                </button>
+                                {" "}para o uso dos dados de saúde dele no acompanhamento.
+                            </span>
+                        )}
                     </label>
                     {fieldErrors.consentTermVersion && (
                         <span className={styles.consentError}>{fieldErrors.consentTermVersion}</span>
                     )}
                 </div>
 
-                <label className={styles.researchLabel}>
-                    <input
-                        type="checkbox"
-                        name="researchTermVersion"
-                        className={styles.consentCheckbox}
-                        checked={acceptsResearch}
-                        onChange={(event) => setAcceptsResearch(event.target.checked)}
-                    />
-                    <span>
-                        Aceito participar da pesquisa da clínica com os meus dados sem identificação. É opcional e
-                        não muda o atendimento.{" "}
-                        <button type="button" className={styles.termButton} onClick={() => setIsResearchOpen(true)}>
-                            Ler o termo de pesquisa
-                        </button>
-                    </span>
-                </label>
+                {!isMinor && (
+                    <label className={styles.researchLabel}>
+                        <input
+                            type="checkbox"
+                            name="researchTermVersion"
+                            className={styles.consentCheckbox}
+                            checked={acceptsResearch}
+                            onChange={(event) => setAcceptsResearch(event.target.checked)}
+                        />
+                        <span>
+                            Aceito participar da pesquisa da clínica com os meus dados sem identificação. É opcional e
+                            não muda o atendimento.{" "}
+                            <button type="button" className={styles.termButton} onClick={() => setIsResearchOpen(true)}>
+                                Ler o termo de pesquisa
+                            </button>
+                        </span>
+                    </label>
+                )}
 
                 <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                     {isSubmitting ? "Criando conta..." : "Criar conta"}
@@ -481,7 +542,7 @@ export default function SignUp() {
                 <div className={styles.termText}>{consentTerm.text}</div>
                 <div className={styles.termActions}>
                     <button type="button" className={styles.termAcceptButton} onClick={acceptTerm}>
-                        Li e aceito
+                        {ACCEPT_BUTTON_TEXT[ageBand]}
                     </button>
                 </div>
             </Modal>

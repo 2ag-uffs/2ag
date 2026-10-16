@@ -1,4 +1,5 @@
 import {act, fireEvent, render, screen, within} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
@@ -18,6 +19,16 @@ function sideMenu() {
 
 function bottomMenu() {
     return within(screen.getByRole("navigation", {name: "Menu"}));
+}
+
+// o aceite do termo novo busca o termo e o perfil, q diz a idade e o responsavel
+function mockTermAndProfile(profile) {
+    vi.spyOn(apiService, "get").mockImplementation((path) => {
+        if (path === "/profile") {
+            return Promise.resolve(profile);
+        }
+        return Promise.resolve({version: "v2", text: "texto do termo novo"});
+    });
 }
 
 describe("AppLayout", () => {
@@ -40,6 +51,75 @@ describe("AppLayout", () => {
 
         expect(await screen.findByText("conteudo da tela")).toBeVisible();
         expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // menor de 16: o termo novo tbm eh aceito pelo responsavel legal, em nome do paciente (LGPD art. 14)
+    it("paciente menor de 16 com termo antigo ve o aceite do responsavel legal", async () => {
+        const today = new Date();
+        mockTermAndProfile({
+            id: 3, role: "PATIENT", birthDate: (today.getFullYear() - 10) + "-01-01",
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        });
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText(/quem aceita é o responsável legal/)).toHaveTextContent("Joana Souza (mãe)");
+        expect(screen.queryByRole("button", {name: "Li e aceito"})).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito como responsável"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // com 16 e 17 o paciente aceita junto com o responsavel (Codigo Civil art. 4)
+    it("paciente de 16 ou 17 anos aceita o termo novo junto com o responsavel legal", async () => {
+        const today = new Date();
+        mockTermAndProfile({
+            id: 3, role: "PATIENT", birthDate: (today.getFullYear() - 17) + "-01-01",
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        });
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText(/o paciente e o responsável legal leem e aceitam juntos/))
+            .toHaveTextContent("Joana Souza (mãe)");
+        fireEvent.click(screen.getByRole("button", {name: "Lemos e aceitamos"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // conta de menor sem responsavel (de antes da regra) n consegue abrir o perfil com o termo pendente,
+    // entao informa o responsavel ali msm
+    it("menor sem responsavel salvo informa o responsavel legal junto do aceite", async () => {
+        const today = new Date();
+        mockTermAndProfile({id: 3, role: "PATIENT", birthDate: (today.getFullYear() - 10) + "-01-01", guardian: null});
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        const user = userEvent.setup();
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        const acceptButton = await screen.findByRole("button", {name: "Li e aceito como responsável"});
+        await user.click(acceptButton);
+        expect(screen.getByText("Informe o nome do responsável legal")).toBeInTheDocument();
+        expect(screen.getByText("Informe o parentesco do responsável legal")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+
+        await user.type(screen.getByLabelText("Nome"), " Joana Souza ");
+        await user.type(screen.getByLabelText("Parentesco"), "mãe");
+        await user.click(acceptButton);
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {
+            termVersion: "v2",
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        });
     });
 
     it("o item Avisos mostra quantos avisos n foram lidos e acompanha a tela de avisos", async () => {

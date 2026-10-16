@@ -12,7 +12,7 @@ import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {formatDate} from "../../utils/date-format.js";
-import {guardianBody, guardianFieldsFrom} from "../../utils/guardian.js";
+import {guardianBody, guardianFieldsFrom, isMinorPatient} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./profile.module.css";
 
@@ -78,6 +78,8 @@ function PersonalDataCard({profile, onSaved}) {
     const [isSaving, setIsSaving] = useState(false);
     const isPatient = profile.role === "PATIENT";
     const isAdmin = profile.role === "ADMIN";
+    // menor de 18 n fica sem o responsavel legal q aceitou o termo por ele (LGPD art. 14)
+    const isMinor = isPatient && isMinorPatient(formData.birthDate);
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -247,22 +249,32 @@ function PersonalDataCard({profile, onSaved}) {
                 )}
                 {isPatient && (
                 <fieldset className={styles.formSection}>
-                <legend className={styles.formSubtitle}>Familiar ou cuidador (opcional)</legend>
+                <legend className={styles.formSubtitle}>
+                    {isMinor ? "Responsável legal" : "Familiar ou cuidador (opcional)"}
+                </legend>
+                {isMinor && (
+                    <p className={styles.hint}>
+                        O paciente tem menos de 18 anos e o responsável legal participa do aceite do termo, por
+                        isso o nome e o parentesco não podem ficar em branco.
+                    </p>
+                )}
                 <TextField
                     label="Nome"
                     name="guardian.name"
                     value={formData.guardianName}
                     onChange={(event) => updateField("guardianName", event.target.value)}
                     error={fieldErrors["guardian.name"]}
+                    required={isMinor}
                 />
                 <div className={styles.row}>
                     <TextField
                         label="Parentesco"
                         name="guardian.relationship"
-                        placeholder="Filha, marido, cuidadora..."
+                        placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
                         value={formData.guardianRelationship}
                         onChange={(event) => updateField("guardianRelationship", event.target.value)}
                         error={fieldErrors["guardian.relationship"]}
+                        required={isMinor}
                     />
                     <TextField
                         label="Telefone com DDD"
@@ -655,6 +667,9 @@ export default function Profile() {
 
     // a conta administrativa n troca de e-mail por aqui e n recebe lembrete
     const isAdmin = profile.role === "ADMIN";
+    // a pesquisa ainda n abre pra menor de 18, so aparece pra retirar um aceite q ja existe
+    const showResearch = profile.researchConsent
+        && (!isMinorPatient(profile.birthDate) || profile.researchConsent.active);
 
     return (
         <section className={styles.page}>
@@ -671,7 +686,7 @@ export default function Profile() {
                     {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
                     <PasswordCard onPasswordChanged={handlePasswordChanged}/>
                     {!isAdmin && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
-                    {profile.researchConsent && <ResearchCard profile={profile} onChanged={handleResearchChanged}/>}
+                    {showResearch && <ResearchCard profile={profile} onChanged={handleResearchChanged}/>}
                 </div>
             </div>
         </section>

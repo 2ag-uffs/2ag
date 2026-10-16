@@ -1,8 +1,10 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.PendingTermException;
 import dev.uffs.doisag.model.Address;
+import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -80,6 +82,21 @@ class ConsentTermTest {
         return "Bearer " + tokenService.generateToken(user);
     }
 
+    private ConsentAcceptance acceptanceOfVersion(String termVersion) {
+        return consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()).stream()
+                .filter(acceptance -> acceptance.getTermVersion().equals(termVersion))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    // paciente de 10 anos, com o responsavel legal ou sem ele (conta de antes da regra)
+    private void makePatientTenYearsOld(String guardianName) {
+        patient.setBirthDate(LocalDate.now().minusYears(10));
+        patient.setGuardianName(guardianName);
+        patient.setGuardianRelationship(guardianName == null ? null : "mãe");
+        patientRepository.save(patient);
+    }
+
     @Test
     void anyoneCanReadTheCurrentTermBeforeHavingAnAccount() throws Exception {
         mockMvc.perform(get("/consent-term"))
@@ -88,9 +105,22 @@ class ConsentTermTest {
                 .andExpect(jsonPath("$.text").value(containsString("13.709/2018")));
     }
 
+    // clausula em destaque pro responsavel legal do menor de 18 (LGPD art. 14 e Codigo Civil)
+    @Test
+    void termExplainsThatTheLegalGuardianAcceptsForMinors() throws Exception {
+        mockMvc.perform(get("/consent-term"))
+                .andExpect(jsonPath("$.text").value(containsString("9. Paciente com menos de 18 anos")))
+                .andExpect(jsonPath("$.text").value(containsString("ATENÇÃO")))
+                .andExpect(jsonPath("$.text").value(containsString("a LGPD (art. 14) e o Código Civil")))
+                .andExpect(jsonPath("$.text").value(containsString("menos de 16 anos")))
+                .andExpect(jsonPath("$.text").value(containsString("16 ou 17 anos")))
+                .andExpect(jsonPath("$.text").value(containsString("A clínica explica ao paciente")))
+                .andExpect(jsonPath("$.text").value(containsString("nome social")));
+    }
+
     @Test
     void clinicDataFromTheServerReplacesTheMarkers() {
-        String text = new ConsentTermService(null, " Instituto Exemplo Ltda ", " 00.000.000/0001-91 ",
+        String text = new ConsentTermService(null, null, " Instituto Exemplo Ltda ", " 00.000.000/0001-91 ",
                 "dados@exemplo.com.br").getCurrentTerm().text();
 
         assertThat(text).contains("Instituto Exemplo Ltda, CNPJ 00.000.000/0001-91, responsável pelo seu atendimento");
@@ -102,7 +132,7 @@ class ConsentTermTest {
     // sem as variaveis a api sobe e o termo continua com os colchetes
     @Test
     void blankClinicDataKeepsTheMarkers() {
-        String text = new ConsentTermService(null, "", null, null).getCurrentTerm().text();
+        String text = new ConsentTermService(null, null, "", null, null).getCurrentTerm().text();
 
         assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CNPJ DA CLÍNICA]")
                 .contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
@@ -167,6 +197,92 @@ class ConsentTermTest {
         assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
                 .extracting("termVersion")
                 .containsExactlyInAnyOrder("2026-01-versao-antiga", ConsentTermService.CURRENT_VERSION);
+    }
+
+    // o aceite de novo do menor tbm guarda o responsavel q aceitou
+    @Test
+    void minorAcceptingTheNewVersionRecordsTheLegalGuardian() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        makePatientTenYearsOld("Joana Souza");
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        ConsentAcceptance acceptance = acceptanceOfVersion(ConsentTermService.CURRENT_VERSION);
+        assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(acceptance.getGuardianRelationship()).isEqualTo("mãe");
+        assertThat(acceptanceOfVersion("2026-01-versao-antiga").getGuardianName()).isNull();
+    }
+
+    // conta de menor sem responsavel so existe de antes da regra, e ai o aceite n vale sozinho
+    @Test
+    void minorWithoutLegalGuardianCannotAcceptAlone() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        makePatientTenYearsOld(null);
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"))
+                .andExpect(jsonPath("$.errors[0].message").value(GuardianDTO.LEGAL_GUARDIAN_NAME_MESSAGE));
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\" \"}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termVersion")
+                .containsExactly("2026-01-versao-antiga");
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getGuardianName()).isNull();
+    }
+
+    // o termo pendente trava o perfil, entao o responsavel vem junto do aceite
+    @Test
+    void minorWithoutLegalGuardianSendsItWithTheAcceptance() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        makePatientTenYearsOld(null);
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"guardian\":{\"name\":\" Joana Souza \",\"relationship\":\"mãe\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(savedPatient.getGuardianRelationship()).isEqualTo("mãe");
+        ConsentAcceptance acceptance = acceptanceOfVersion(ConsentTermService.CURRENT_VERSION);
+        assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(acceptance.getGuardianRelationship()).isEqualTo("mãe");
+    }
+
+    // o responsavel q ja estava salvo n eh trocado pelo q vier no aceite
+    @Test
+    void guardianSentWithTheAcceptanceDoesNotReplaceTheSavedOne() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        makePatientTenYearsOld("Joana Souza");
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"guardian\":{\"name\":\"Outra Pessoa\",\"relationship\":\"tia\"}}"))
+                .andExpect(status().isOk());
+
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getGuardianName())
+                .isEqualTo("Joana Souza");
+        assertThat(acceptanceOfVersion(ConsentTermService.CURRENT_VERSION).getGuardianName()).isEqualTo("Joana Souza");
     }
 
     // a tela pode ter ficado aberta enquanto o texto mudou de novo
@@ -269,6 +385,21 @@ class ConsentTermTest {
                         .content("{\"termVersion\":\"2025-01-texto-antigo\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(ConsentTermService.OUTDATED_RESEARCH_MESSAGE));
+    }
+
+    // a pesquisa com menor espera o comite de etica definir o assentimento dele
+    @Test
+    void minorCannotAcceptTheResearchYet() throws Exception {
+        makePatientTenYearsOld("Joana Souza");
+
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsentTermService.MINOR_RESEARCH_MESSAGE));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId())).isEmpty();
     }
 
     @Test

@@ -287,13 +287,14 @@ public class ExportService {
         if (deidentified && !(loggedUser instanceof Prescriber)) {
             throw new BusinessException(DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE);
         }
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
         // o arquivo sem identificacao eh o de pesquisa e so sai de quem aceitou participar (RF37)
-        if (deidentified && !consentTermService.hasResearchConsent(patientId)) {
+        if (deidentified && !consentTermService.hasResearchConsent(patient)) {
             throw new BusinessException(NO_RESEARCH_CONSENT_MESSAGE);
         }
         auditService.recordChartView(patientId);
-        return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+        return patient;
     }
 
     private String patientColumn(boolean deidentified) {

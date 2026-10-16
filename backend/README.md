@@ -85,7 +85,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 | `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role, termPending}` |
 | `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
 | `GET /auth/me` | quem está logado. `termPending` diz se o paciente precisa aceitar a versão nova do termo |
-| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional, e o `socialName` (nome social) também |
+| `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional, e o `socialName` (nome social) também. se a `birthDate` dá menos de 18 anos, o `guardian` é o responsável legal e o nome e o parentesco dele são obrigatórios, e o `researchTermVersion` é recusado |
 
 - o cookie é `httpOnly` e `SameSite=Strict`: o javascript não lê o token e outro site não consegue usar a sessão
 - com `SESSION_SECURE_COOKIE=true` o cookie se chama `__Host-session` e leva `Secure`: o navegador recusa um cookie `__Host-` sem `Secure`, com `Domain` ou fora de `Path=/`, então servidor configurado errado aparece na hora em vez de um login que não gruda. em `false` (só http, no próprio computador) ele se chama `session`
@@ -136,7 +136,7 @@ o link de senha nova é a saída para o prescritor que esqueceu a senha antes de
 | rota | o que faz |
 | :--- | :--- |
 | `GET /profile` | dados da própria conta |
-| `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian` e o `socialName`: mandar sem o `guardian` apaga o que estava salvo, e o `socialName` em branco ou ausente apaga o nome social. as outras contas ignoram o `socialName` |
+| `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian` e o `socialName`: mandar sem o `guardian` apaga o que estava salvo, e o `socialName` em branco ou ausente apaga o nome social. paciente com menos de 18 anos não pode ficar sem o nome e o parentesco do responsável legal, e a `birthDate` de um menor retira o consentimento de pesquisa que estiver valendo. as outras contas ignoram o `socialName` |
 | `PUT /profile/email` | pede a troca do e-mail de acesso, com a senha atual. devolve o perfil com o endereço novo em `pendingEmail`; o e-mail só muda quando o link enviado para ele é aberto (`POST /auth/email-change/confirm`) |
 | `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
@@ -173,12 +173,14 @@ o banco guarda só o hash do código que vai no link, então a lista não mostra
 | rota | o que faz |
 | :--- | :--- |
 | `GET /consent-term` | rota pública com a versão e o texto do termo que o cadastro pede |
-| `POST /consent-term/accept` | o paciente que aceitou uma versão antiga aceita a atual (`termVersion` no corpo) e recebe de volta os dados da sessão |
+| `POST /consent-term/accept` | o paciente que aceitou uma versão antiga aceita a atual (`termVersion` no corpo) e recebe de volta os dados da sessão. o `guardian` (nome, parentesco e telefone) é opcional e só é usado quando o paciente tem menos de 18 anos e ainda não tem responsável salvo: aí o nome e o parentesco são obrigatórios e ficam salvos no paciente antes do aceite |
 | `GET /consent-term/research` | rota pública com a versão e o texto do consentimento de pesquisa, que é opcional |
-| `POST /consent-term/research/accept` | o paciente aceita participar da pesquisa (`termVersion` no corpo) |
+| `POST /consent-term/research/accept` | o paciente aceita participar da pesquisa (`termVersion` no corpo). paciente com menos de 18 anos recebe 400 até o comitê de ética definir o assentimento do menor |
 | `POST /consent-term/research/revoke` | o paciente retira o consentimento de pesquisa. a linha fica com a data da retirada |
 
 o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. `[NOME DA CLÍNICA]`, `[CNPJ DA CLÍNICA]` e `[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]` saem de `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`; vazias, a api sobe com os colchetes no texto e avisa no log. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data. o paciente cujo último aceite é de uma versão antiga recebe `termPending: true` no login e no `GET /auth/me`, e até aceitar a nova a api só deixa ele ler: qualquer outra requisição que grava, fora `/auth` e `/consent-term`, responde 403 com o cabeçalho `X-Term-Pending: true`, e o front abre o termo por cima da tela sem perder o que já foi preenchido.
+
+paciente com menos de 18 anos (pela `birthDate`, no horário de Brasília, em anos completos) tem o responsável legal no aceite do termo (LGPD, art. 14, e Código Civil): com menos de 16 anos o responsável aceita em nome do paciente, e com 16 e 17 o paciente aceita junto com ele. a api guarda igual nas duas faixas, e só o texto da tela muda. cada aceite de menor guarda em `guardian_name` e `guardian_relationship` o responsável salvo no paciente naquele momento; aceite de adulto, mesmo com cuidador, fica com os dois nulos. menor sem responsável salvo, que só existe em conta de antes dessa regra, manda o `guardian` no `POST /consent-term/accept`, porque com o termo pendente o `PUT /profile` fica bloqueado; sem ele o aceite recebe 400 no campo `guardian.name`. menor também fica fora da exportação sem identificação, mesmo com um aceite de pesquisa antigo valendo.
 
 ## histórico clínico
 

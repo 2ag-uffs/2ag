@@ -13,6 +13,7 @@ import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +64,7 @@ class ExportTest {
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private TokenService tokenService;
     @Autowired private ConsentTermService consentTermService;
+    @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -179,6 +183,45 @@ class ExportTest {
 
         // o arquivo com nome continua saindo pro prescritor do paciente
         assertThat(download("appointments.csv", "", prescriber)).contains("Paciente da exportação");
+    }
+
+    // a pesquisa n abre pra menor de 18, entao a data de nascimento nova retira o aceite
+    @Test
+    void birthDateOfAMinorRevokesTheResearchConsent() throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Paciente da exportação","birthDate":"%s","phone":"49999887766",
+                                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"},
+                                 "guardian":{"name":"Joana Souza","relationship":"mãe"}}
+                                """.formatted(TODAY.minusYears(10))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.researchConsent.active").value(false));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .singleElement()
+                .satisfies(acceptance -> assertThat(acceptance.getRevokedAt()).isNotNull());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("deidentified", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ExportService.NO_RESEARCH_CONSENT_MESSAGE));
+    }
+
+    // defesa: menor com aceite antigo valendo tbm n sai no arquivo de pesquisa
+    @Test
+    void minorWithAnOldResearchConsentStaysOutOfTheDeidentifiedFile() throws Exception {
+        patient.setBirthDate(TODAY.minusYears(10));
+        patientRepository.save(patient);
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
+                        .param("deidentified", "true")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ExportService.NO_RESEARCH_CONSENT_MESSAGE));
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.researchConsent").value(false));
     }
 
     @Test

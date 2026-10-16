@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.model.ConsentAcceptance;
@@ -29,6 +30,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -97,6 +99,28 @@ class PatientSignUpTest {
 
     private String withGuardian(String body, String guardianJson) {
         return body.replace("\"address\":", "\"guardian\":" + guardianJson + ",\"address\":");
+    }
+
+    private String withBirthDate(String body, LocalDate birthDate) {
+        return body.replace("1990-04-12", birthDate.toString());
+    }
+
+    private String withResearch(String body) {
+        return body.replace("\"address\":", "\"researchTermVersion\":\"" + ConsentTermService.RESEARCH_VERSION
+                + "\",\"address\":");
+    }
+
+    // cadastro de alguem com 10 anos, quem preenche eh o responsavel
+    private String minorSignUpBody(String inviteToken, String email) {
+        return withBirthDate(signUpBody(inviteToken, email, VALID_CPF, VALID_PASSWORD),
+                LocalDate.now().minusYears(10));
+    }
+
+    private ConsentAcceptance onlyAcceptanceOf(String email) {
+        Long patientId = usersRepository.findByEmail(email).orElseThrow().getId();
+        List<ConsentAcceptance> acceptances = consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patientId);
+        assertThat(acceptances).hasSize(1);
+        return acceptances.get(0);
     }
 
     private String withSocialName(String body, String socialName) {
@@ -182,9 +206,7 @@ class PatientSignUpTest {
 
     @Test
     void signUpCanAlsoAcceptTheResearch() throws Exception {
-        String body = signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD)
-                .replace("\"address\":", "\"researchTermVersion\":\"" + ConsentTermService.RESEARCH_VERSION
-                        + "\",\"address\":");
+        String body = withResearch(signUpBody(newInviteToken(), "maria.silva@email.com", VALID_CPF, VALID_PASSWORD));
 
         signUp(body).andExpect(status().isCreated());
 
@@ -408,6 +430,90 @@ class PatientSignUpTest {
         assertThat(acceptances).hasSize(1);
         assertThat(acceptances.get(0).getTermVersion()).isEqualTo(ConsentTermService.CURRENT_VERSION);
         assertThat(acceptances.get(0).getAcceptedAt()).isAfter(LocalDateTime.now().minusMinutes(1));
+        assertThat(acceptances.get(0).getGuardianName()).isNull();
+    }
+
+    // menor de 18: o responsavel legal eh obrigatorio e o convite n eh gasto na recusa (LGPD art. 14)
+    @Test
+    void minorWithoutGuardianIsRefusedBeforeTheAccountExists() throws Exception {
+        String inviteToken = newInviteToken();
+
+        signUp(minorSignUpBody(inviteToken, "crianca@email.com"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"))
+                .andExpect(jsonPath("$.errors[0].message").value(GuardianDTO.LEGAL_GUARDIAN_NAME_MESSAGE));
+
+        assertThat(usersRepository.existsByEmail("crianca@email.com")).isFalse();
+        signUp(withGuardian(minorSignUpBody(inviteToken, "crianca@email.com"), """
+                {"name":"Joana Souza","relationship":"mãe"}"""))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void minorWithoutRelationshipIsRefused() throws Exception {
+        signUp(withGuardian(minorSignUpBody(newInviteToken(), "crianca@email.com"), """
+                {"name":"Joana Souza","relationship":" ","phone":"49988776655"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"))
+                .andExpect(jsonPath("$.errors[0].message")
+                        .value(GuardianDTO.LEGAL_GUARDIAN_RELATIONSHIP_MESSAGE));
+
+        assertThat(usersRepository.existsByEmail("crianca@email.com")).isFalse();
+    }
+
+    // o aceite guarda qm aceitou, pq o responsavel do paciente pode mudar dps
+    @Test
+    void minorSignUpRecordsTheGuardianOnTheAcceptance() throws Exception {
+        signUp(withGuardian(minorSignUpBody(newInviteToken(), "crianca@email.com"), """
+                {"name":" Joana Souza ","relationship":"mãe"}"""))
+                .andExpect(status().isCreated());
+
+        ConsentAcceptance acceptance = onlyAcceptanceOf("crianca@email.com");
+        assertThat(acceptance.getTermType()).isEqualTo(ConsentType.REGISTRATION);
+        assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(acceptance.getGuardianRelationship()).isEqualTo("mãe");
+    }
+
+    // a pesquisa com menor espera o comite de etica definir o assentimento
+    @Test
+    void minorCannotAcceptTheResearchYet() throws Exception {
+        String body = withResearch(withGuardian(minorSignUpBody(newInviteToken(), "crianca@email.com"), """
+                {"name":"Joana Souza","relationship":"mãe"}"""));
+
+        signUp(body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsentTermService.MINOR_RESEARCH_MESSAGE));
+
+        assertThat(usersRepository.existsByEmail("crianca@email.com")).isFalse();
+    }
+
+    // idoso com cuidador aceita sozinho, o cuidador n vira responsavel legal
+    @Test
+    void adultWithCaregiverAcceptsPersonally() throws Exception {
+        String body = withGuardian(signUpBody(newInviteToken(), "idoso@email.com", VALID_CPF, VALID_PASSWORD),
+                """
+                {"name":"Joana Souza","relationship":"cuidadora"}""");
+
+        signUp(withBirthDate(body, LocalDate.of(1940, 3, 1))).andExpect(status().isCreated());
+
+        ConsentAcceptance acceptance = onlyAcceptanceOf("idoso@email.com");
+        assertThat(acceptance.getGuardianName()).isNull();
+        assertThat(acceptance.getGuardianRelationship()).isNull();
+    }
+
+    // no dia do aniversario de 18 a pessoa ja aceita sozinha
+    @Test
+    void eighteenthBirthdayIsTheLimit() throws Exception {
+        String adultBody = withBirthDate(signUpBody(newInviteToken(), "fez-18@email.com", VALID_CPF, VALID_PASSWORD),
+                LocalDate.now().minusYears(18));
+        String minorBody = withBirthDate(
+                signUpBody(newInviteToken(), "faz-18-amanha@email.com", OTHER_VALID_CPF, VALID_PASSWORD),
+                LocalDate.now().minusYears(18).plusDays(1));
+
+        signUp(adultBody).andExpect(status().isCreated());
+        signUp(minorBody)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"));
     }
 
     @Test

@@ -378,6 +378,60 @@ class ProfileTest {
         assertThat(savedPatient.getGuardianPhone()).isNull();
     }
 
+    // perfil de alguem com 10 anos, com ou sem o guardian no fim
+    private String minorProfileJson(String guardianJson) {
+        String guardian = guardianJson == null ? "" : ",\"guardian\":" + guardianJson;
+        return """
+                {"name":"Paciente do Perfil","birthDate":"%s","phone":"49999887766",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"}%s}
+                """.formatted(LocalDate.now().minusYears(10), guardian);
+    }
+
+    // o responsavel legal aceitou o termo pelo paciente menor, entao n some do perfil (LGPD art. 14)
+    @Test
+    void minorCannotRemoveTheLegalGuardian() throws Exception {
+        patient.setBirthDate(LocalDate.now().minusYears(10));
+        patient.setGuardianName("Joana Souza");
+        patient.setGuardianRelationship("mãe");
+        patientRepository.save(patient);
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(minorProfileJson(null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"));
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(minorProfileJson("{\"name\":\"Joana Souza\",\"relationship\":\"\"}")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"));
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(savedPatient.getGuardianRelationship()).isEqualTo("mãe");
+    }
+
+    @Test
+    void changingTheBirthDateToAMinorRequiresTheLegalGuardian() throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(minorProfileJson(null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.name"));
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getBirthDate())
+                .isEqualTo(LocalDate.of(1990, 4, 12));
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(minorProfileJson("{\"name\":\"Joana Souza\",\"relationship\":\"mãe\"}")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.guardian.relationship").value("mãe"));
+    }
+
     @Test
     void emailNoticesCanBeTurnedOff() throws Exception {
         mockMvc.perform(put("/profile/email-preference")

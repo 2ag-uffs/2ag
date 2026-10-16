@@ -44,6 +44,8 @@ public class ProfileService {
         Users user = findUser(userId);
         if (user instanceof Patient) {
             checkPatientRequiredData(profileData);
+            // menor de 18 n pode ficar sem o responsavel legal q aceitou o termo
+            GuardianDTO.checkLegalGuardian(profileData.guardian(), profileData.birthDate());
             GuardianDTO.checkName(profileData.guardian());
         }
 
@@ -59,6 +61,10 @@ public class ProfileService {
         if (user instanceof Patient patient) {
             GuardianDTO.applyTo(patient, profileData.guardian());
             patient.setSocialName(InputCleaner.socialNameOrNull(profileData.socialName(), profileData.name()));
+            // a pesquisa n abre pra menor de 18: a data nova retira o aceite como se o paciente tivesse retirado
+            if (patient.isMinor()) {
+                consentTermService.revokeResearch(patient);
+            }
         }
         return profileOf(usersRepository.save(user));
     }

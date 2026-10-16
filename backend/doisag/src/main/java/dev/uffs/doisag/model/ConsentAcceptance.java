@@ -41,6 +41,12 @@ public class ConsentAcceptance {
     // so a pesquisa pode ser retirada, o do cadastro fica valendo enqnt a conta existir
     private LocalDateTime revokedAt;
 
+    // paciente menor de 18: qm aceitou foi o responsavel legal, nulo qnd foi o proprio paciente
+    private String guardianName;
+
+    @Column(length = 60)
+    private String guardianRelationship;
+
     public Long getId() {
         return id;
     }
@@ -83,5 +89,21 @@ public class ConsentAcceptance {
 
     public void setRevokedAt(LocalDateTime revokedAt) {
         this.revokedAt = revokedAt;
+    }
+
+    public String getGuardianName() {
+        return guardianName;
+    }
+
+    public void setGuardianName(String guardianName) {
+        this.guardianName = guardianName;
+    }
+
+    public String getGuardianRelationship() {
+        return guardianRelationship;
+    }
+
+    public void setGuardianRelationship(String guardianRelationship) {
+        this.guardianRelationship = guardianRelationship;
     }
 }

@@ -31,11 +31,22 @@ function renderSignUp() {
     render(<RouterProvider router={router}/>);
 }
 
-// preenche so o q o cadastro exige
-async function fillRequiredFields(user) {
+// 1o de janeiro nunca vira data invalida (29/02) e a idade fica certa o ano todo
+// alguem com 10 anos hoje
+function childBirthDate() {
+    return (new Date().getFullYear() - 10) + "-01-01";
+}
+
+// alguem com 17 anos hoje
+function teenBirthDate() {
+    return (new Date().getFullYear() - 17) + "-01-01";
+}
+
+// preenche so o q o cadastro de um adulto exige
+async function fillRequiredFields(user, birthDate = "1990-04-12") {
     await user.type(await screen.findByLabelText("Nome completo"), "Maria da Silva");
     await user.type(screen.getByLabelText("CPF"), "52998224725");
-    fireEvent.change(screen.getByLabelText("Data de nascimento"), {target: {value: "1990-04-12"}});
+    fireEvent.change(screen.getByLabelText("Data de nascimento"), {target: {value: birthDate}});
     await user.type(screen.getAllByLabelText("Telefone com DDD")[0], "49999887766");
     await user.type(screen.getByLabelText("Rua"), "Rua das Flores");
     await user.type(screen.getByLabelText("Número"), "120");
@@ -44,7 +55,7 @@ async function fillRequiredFields(user) {
     await user.type(screen.getByLabelText("E-mail"), "maria@email.com");
     await user.type(screen.getByLabelText("Senha"), "Minha#Senha1");
     await user.type(screen.getByLabelText("Repita a senha"), "Minha#Senha1");
-    await user.click(screen.getByRole("checkbox", {name: /Li e aceito o/}));
+    await user.click(screen.getByRole("checkbox", {name: /termo de consentimento/}));
 }
 
 // digitar o formulario inteiro leva uns 2s, e com a maquina ocupada passa dos 5s padrao
@@ -82,5 +93,109 @@ describe("SignUp", () => {
 
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
         expect(post).toHaveBeenCalledWith("/auth/register", expect.objectContaining({socialName: null}));
+    }, TYPING_TIMEOUT);
+
+    // menor de 18: qm preenche e aceita eh o responsavel legal, e a pesquisa ainda n abre pra menor
+    it("data de nascimento de crianca pede o responsavel legal e esconde a pesquisa", async () => {
+        mockApi();
+        renderSignUp();
+
+        const birthDateField = await screen.findByLabelText("Data de nascimento");
+        expect(screen.getByRole("group", {name: "Familiar ou cuidador (opcional)"})).toBeInTheDocument();
+        expect(screen.getByRole("checkbox", {name: /pesquisa/})).toBeInTheDocument();
+
+        fireEvent.change(birthDateField, {target: {value: childBirthDate()}});
+
+        expect(screen.getByRole("group", {name: "Responsável legal"})).toBeInTheDocument();
+        expect(screen.getByLabelText("Nome")).toBeRequired();
+        expect(screen.getByLabelText("Parentesco")).toBeRequired();
+        expect(screen.getByRole("checkbox", {name: /Sou o responsável legal pelo paciente e aceito, em nome dele/}))
+            .toBeInTheDocument();
+        expect(screen.queryByRole("checkbox", {name: /pesquisa/})).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        expect(screen.getByRole("button", {name: "Li e aceito como responsável"})).toBeInTheDocument();
+    });
+
+    // com 16 e 17 o paciente aceita junto com o responsavel (Codigo Civil art. 4)
+    it("paciente de 16 ou 17 anos aceita o termo junto com o responsavel legal", async () => {
+        mockApi();
+        renderSignUp();
+
+        fireEvent.change(await screen.findByLabelText("Data de nascimento"), {target: {value: teenBirthDate()}});
+
+        expect(screen.getByRole("group", {name: "Responsável legal"})).toBeInTheDocument();
+        expect(screen.getByText(/O paciente tem 16 ou 17 anos/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Nome")).toBeRequired();
+        expect(screen.getByRole("checkbox", {name: /Eu, paciente, e meu responsável legal lemos e aceitamos/}))
+            .toBeInTheDocument();
+        expect(screen.queryByRole("checkbox", {name: /Sou o responsável legal/})).not.toBeInTheDocument();
+        expect(screen.queryByRole("checkbox", {name: /pesquisa/})).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        fireEvent.click(screen.getByRole("button", {name: "Lemos e aceitamos"}));
+        expect(screen.getByRole("checkbox", {name: /lemos e aceitamos/})).toBeChecked();
+    });
+
+    // trocar de faixa troca qm marca o aceite, entao a marcacao antiga n vale
+    it("trocar a data pra outra faixa de idade desmarca o termo e a pesquisa", async () => {
+        mockApi();
+        renderSignUp();
+
+        const birthDateField = await screen.findByLabelText("Data de nascimento");
+        fireEvent.change(birthDateField, {target: {value: "1990-04-12"}});
+        fireEvent.click(screen.getByRole("checkbox", {name: /Li e aceito o/}));
+        fireEvent.click(screen.getByRole("checkbox", {name: /pesquisa/}));
+
+        // msm faixa: continua marcado
+        fireEvent.change(birthDateField, {target: {value: "1985-07-01"}});
+        expect(screen.getByRole("checkbox", {name: /Li e aceito o/})).toBeChecked();
+        expect(screen.getByRole("checkbox", {name: /pesquisa/})).toBeChecked();
+
+        fireEvent.change(birthDateField, {target: {value: teenBirthDate()}});
+        const teenConsent = screen.getByRole("checkbox", {name: /lemos e aceitamos/});
+        expect(teenConsent).not.toBeChecked();
+        fireEvent.click(teenConsent);
+
+        fireEvent.change(birthDateField, {target: {value: childBirthDate()}});
+        expect(screen.getByRole("checkbox", {name: /Sou o responsável legal/})).not.toBeChecked();
+
+        // voltando pra adulto a pesquisa tbm aparece desmarcada
+        fireEvent.change(birthDateField, {target: {value: "1990-04-12"}});
+        expect(screen.getByRole("checkbox", {name: /Li e aceito o/})).not.toBeChecked();
+        expect(screen.getByRole("checkbox", {name: /pesquisa/})).not.toBeChecked();
+    });
+
+    it("responsavel legal em branco n deixa criar a conta do menor", async () => {
+        const post = mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user, childBirthDate());
+        await user.type(screen.getByLabelText("Nome"), " ");
+        await user.type(screen.getByLabelText("Parentesco"), " ");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("Informe o nome do responsável legal")).toBeInTheDocument();
+        expect(screen.getByText("Informe o parentesco do responsável legal")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
+    }, TYPING_TIMEOUT);
+
+    it("menor manda o responsavel legal e nunca a pesquisa, mesmo marcada antes", async () => {
+        const post = mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await user.click(await screen.findByRole("checkbox", {name: /pesquisa/}));
+        await fillRequiredFields(user, childBirthDate());
+        await user.type(screen.getByLabelText("Nome"), "Joana Souza");
+        await user.type(screen.getByLabelText("Parentesco"), "mãe");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/auth/register", expect.objectContaining({
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+            researchTermVersion: null,
+        }));
     }, TYPING_TIMEOUT);
 });

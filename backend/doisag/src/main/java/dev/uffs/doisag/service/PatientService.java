@@ -72,7 +72,7 @@ public class PatientService {
         Patient patient = patientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
         auditService.recordChartView(patient.getId());
-        return PatientResponseDTO.forChart(patient, consentTermService.hasResearchConsent(patient.getId()));
+        return PatientResponseDTO.forChart(patient, consentTermService.hasResearchConsent(patient));
     }
 
     // os ativos e os arquivados aparecem em abas separadas na lista do prescritor
@@ -105,11 +105,16 @@ public class PatientService {
         if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
             throw new BusinessException(OUTDATED_TERM_MESSAGE);
         }
+        // menor de 18 so cria a conta com o responsavel legal, antes de gastar o convite
+        GuardianDTO.checkLegalGuardian(registerData.guardian(), registerData.birthDate());
         GuardianDTO.checkName(registerData.guardian());
         boolean acceptsResearch = registerData.researchTermVersion() != null
                 && !registerData.researchTermVersion().isBlank();
         if (acceptsResearch && !ConsentTermService.RESEARCH_VERSION.equals(registerData.researchTermVersion())) {
             throw new BusinessException(ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
+        }
+        if (acceptsResearch && Patient.isMinor(registerData.birthDate())) {
+            throw new BusinessException(ConsentTermService.MINOR_RESEARCH_MESSAGE);
         }
 
         String inviteHash = SecureTokens.hashToken(registerData.inviteToken());

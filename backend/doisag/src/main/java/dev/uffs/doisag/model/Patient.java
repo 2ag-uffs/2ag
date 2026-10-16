@@ -10,9 +10,14 @@ import jakarta.persistence.ManyToOne;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 
 @Entity
 public class Patient extends Users {
+
+    // abaixo disso o responsavel legal participa do aceite do termo (LGPD art. 14 e Codigo Civil)
+    // menor de 16 eh representado, ele aceita em nome do paciente. com 16 e 17 o paciente aceita junto com ele
+    public static final int ADULT_AGE = 18;
 
     // adicionei essa anotacao desse lado gerenciado para evitar a referencia infinita
     @JsonBackReference
@@ -115,6 +120,22 @@ public class Patient extends Users {
     @JsonIgnore
     public boolean isArchived() {
         return archivedAt != null;
+    }
+
+    // a idade sai sempre da data de nascimento no servidor, o front n manda se eh menor
+    // o LocalDate.now() ja eh o horario de brasilia (DoisagApplication)
+    public static boolean isMinor(LocalDate birthDate) {
+        return isMinor(birthDate, LocalDate.now());
+    }
+
+    // anos completos, como no front: qm nasceu em 29/02 faz 18 em 01/03 (Codigo Civil art. 132 § 3)
+    public static boolean isMinor(LocalDate birthDate, LocalDate today) {
+        return birthDate != null && Period.between(birthDate, today).getYears() < ADULT_AGE;
+    }
+
+    @JsonIgnore
+    public boolean isMinor() {
+        return isMinor(getBirthDate());
     }
 
     @Override

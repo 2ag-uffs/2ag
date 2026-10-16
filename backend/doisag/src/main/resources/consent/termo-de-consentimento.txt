@@ -9,7 +9,7 @@ Ao criar sua conta no 2AG, você autoriza o uso dos seus dados pessoais e de sa�
 
 2. Quais dados são coletados
 - Identificação e contato: nome, nome social (se você informar), CPF, data de nascimento, telefone, e-mail e endereço.
-- Familiar ou cuidador, se você informar: nome, parentesco e telefone.
+- Responsável legal (obrigatório quando o paciente tem menos de 18 anos), familiar ou cuidador: nome, parentesco e telefone.
 - Saúde: respostas da anamnese, escalas clínicas, diários de sono, dor e sintomas, consultas, prescrições e a evolução do tratamento.
 
 3. Para que os dados são usados
@@ -33,4 +33,14 @@ Você pode, a qualquer momento, pedir a confirmação e o acesso aos seus dados,
 8. Contato
 Dúvidas e pedidos sobre os seus dados: [CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA].
 
-Ao marcar "Li e aceito", você declara que leu este termo e concorda com o uso dos seus dados nas condições acima. O sistema registra a versão do termo e a data do seu aceite.
+9. Paciente com menos de 18 anos
+ATENÇÃO: o paciente com menos de 18 anos não aceita este termo sozinho, como pedem a LGPD (art. 14) e o Código Civil.
+- Se o paciente tem menos de 16 anos, quem lê e aceita este termo é o pai, a mãe ou o responsável legal, em nome do paciente.
+- Se o paciente tem 16 ou 17 anos, ele lê e aceita este termo junto com o pai, a mãe ou o responsável legal.
+- O sistema guarda, junto com o aceite, o nome e o parentesco do responsável legal.
+- Os dados da criança ou do adolescente são usados somente no interesse dele, para o acompanhamento do tratamento.
+- O responsável pode entrar com a conta do paciente para preencher os formulários.
+- A clínica explica ao paciente, com palavras simples e adequadas à idade dele, como os dados dele são usados, por exemplo na consulta.
+- A participação na pesquisa ainda não está aberta para pacientes com menos de 18 anos.
+
+Ao marcar o aceite, você declara que leu este termo e concorda com o uso dos seus dados nas condições acima. Se o paciente tem menos de 16 anos, quem marca o aceite declara ser o pai, a mãe ou o responsável legal e aceita em nome do paciente. Se o paciente tem 16 ou 17 anos, o paciente e o pai, a mãe ou o responsável legal declaram que leram este termo juntos e que os dois aceitam. O sistema registra a versão do termo, a data do aceite e, quando o paciente tem menos de 18 anos, o nome e o parentesco do responsável legal.
