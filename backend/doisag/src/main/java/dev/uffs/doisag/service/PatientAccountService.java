@@ -51,6 +51,9 @@ public class PatientAccountService {
 
     @Transactional
     public Patient changeActive(Long patientId, boolean active) {
+        // a trilha aponta pro paciente e a conta eh gravada no fim, entao o paciente eh travado antes,
+        // na ordem da escala e da confirmacao do e-mail (paciente, dps conta)
+        patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
         if (patient.isActive() == active) {

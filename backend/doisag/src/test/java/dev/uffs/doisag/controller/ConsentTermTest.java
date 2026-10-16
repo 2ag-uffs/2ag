@@ -2,6 +2,7 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.enums.ConsentType;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.PendingTermException;
 import dev.uffs.doisag.model.Address;
 import dev.uffs.doisag.model.ConsentAcceptance;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -265,6 +267,57 @@ class ConsentTermTest {
         ConsentAcceptance acceptance = acceptanceOfVersion(ConsentTermService.CURRENT_VERSION);
         assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza");
         assertThat(acceptance.getGuardianRelationship()).isEqualTo("mãe");
+    }
+
+    // conta de menor feita qnd o parentesco ainda era opcional tem o nome do responsavel e mais nada
+    // o aceite guarda o nome e o parentesco, entao o parentesco vem junto do aceite
+    @Test
+    void minorWhoseGuardianHasNoRelationshipSendsItWithTheAcceptance() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        patient.setBirthDate(LocalDate.now().minusYears(10));
+        patient.setGuardianName("Joana Souza");
+        patient.setGuardianPhone("49988776655");
+        patientRepository.save(patient);
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"))
+                .andExpect(jsonPath("$.errors[0].message").value(GuardianDTO.LEGAL_GUARDIAN_RELATIONSHIP_MESSAGE));
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termVersion")
+                .containsExactly("2026-01-versao-antiga");
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\"mãe\","
+                                + "\"phone\":\"49988776655\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.getGuardianRelationship()).isEqualTo("mãe");
+        assertThat(savedPatient.getGuardianPhone()).isEqualTo("49988776655");
+        ConsentAcceptance acceptance = acceptanceOfVersion(ConsentTermService.CURRENT_VERSION);
+        assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza");
+        assertThat(acceptance.getGuardianRelationship()).isEqualTo("mãe");
+    }
+
+    // nenhum caminho grava o aceite de menor sem o parentesco do responsavel
+    @Test
+    void minorAcceptanceIsNotSavedWithoutTheGuardianRelationship() {
+        patient.setBirthDate(LocalDate.now().minusYears(10));
+        patient.setGuardianName("Joana Souza");
+        patientRepository.save(patient);
+
+        assertThatThrownBy(() -> consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(ConsentTermService.GUARDIAN_REQUIRED_MESSAGE);
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId())).isEmpty();
     }
 
     // o responsavel q ja estava salvo n eh trocado pelo q vier no aceite

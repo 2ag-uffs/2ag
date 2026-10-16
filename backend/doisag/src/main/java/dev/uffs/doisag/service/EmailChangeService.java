@@ -15,6 +15,7 @@ import dev.uffs.doisag.model.EmailChange;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.EmailChangeRepository;
+import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SecureTokens;
@@ -47,6 +48,7 @@ public class EmailChangeService {
     public static final int VALID_MINUTES = 30;
 
     private final UsersRepository usersRepository;
+    private final PatientRepository patientRepository;
     private final EmailChangeRepository emailChangeRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptLimiter loginAttemptLimiter;
@@ -56,12 +58,14 @@ public class EmailChangeService {
     private final ConsentTermService consentTermService;
     private final String publicUrl;
 
-    public EmailChangeService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository,
+    public EmailChangeService(UsersRepository usersRepository, PatientRepository patientRepository,
+                              EmailChangeRepository emailChangeRepository,
                               PasswordEncoder passwordEncoder, LoginAttemptLimiter loginAttemptLimiter,
                               BackgroundEmailSender backgroundEmailSender, PasswordResetService passwordResetService,
                               AuditService auditService, ConsentTermService consentTermService,
                               @Value("${api.public-url}") String publicUrl) {
         this.usersRepository = usersRepository;
+        this.patientRepository = patientRepository;
         this.emailChangeRepository = emailChangeRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptLimiter = loginAttemptLimiter;
@@ -135,7 +139,11 @@ public class EmailChangeService {
         if (userId == null) {
             throw new BusinessException(INVALID_LINK_MESSAGE);
         }
-        // as travas seguem a ordem do link de senha nova (password_reset, dps users, dps email_change),
+        // conta de paciente trava o paciente antes de tudo, na ordem da escala (paciente, dps conta):
+        // a trilha daqui aponta pro paciente, e com a conta travada antes a confirmacao e a escala
+        // ficavam esperando uma pela outra no postgres. nas outras contas n acha linha e n trava nada
+        patientRepository.lockById(userId);
+        // dps segue a ordem do link de senha nova (password_reset, dps users, dps email_change),
         // senao a confirmacao e o link de senha nova abertos no mesmo instante esperariam um ao outro
         // o link de senha nova q tiver ido pro endereco antigo deixa de valer aqui; se o link daqui
         // n valer, o erro desfaz isso junto

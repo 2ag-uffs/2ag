@@ -7,6 +7,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,8 @@ import java.util.List;
 // o lote do Users n vale pro proxy de Prescriber: quem anulou, analisou ou arquivou numa lista
 // vem em lote tbm, em vez de uma consulta por linha
 @BatchSize(size = 50)
+// msm motivo do Users
+@DynamicUpdate
 public class Prescriber extends Users {
     private String profession;
 

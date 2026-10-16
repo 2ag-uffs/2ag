@@ -330,6 +330,10 @@ public class AppointmentService {
     @Transactional
     public AgendaAppointmentDTO cancel(Long appointmentId, Users loggedUser) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
+        // a trilha e o aviso daqui encostam no paciente e na conta, entao o paciente eh travado logo dps
+        // da consulta: o cancelamento espera a confirmacao do e-mail (paciente, dps conta) em vez de
+        // segurar a conta q ela vai travar enquanto ela segura o paciente
+        patientRepository.lockById(appointment.getPatient().getId());
         if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
             throw new BusinessException(ALREADY_CANCELED_MESSAGE);
         }

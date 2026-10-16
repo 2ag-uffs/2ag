@@ -37,7 +37,8 @@ public class ConsentTermController {
     @PostMapping("/accept")
     public SessionUserDTO acceptNewVersion(@RequestBody @Valid TermAcceptanceDTO acceptanceData,
                                            @AuthenticationPrincipal Patient loggedPatient) {
-        consentTermService.acceptNewVersion(loggedPatient, acceptanceData.termVersion(), acceptanceData.guardian());
+        consentTermService.acceptNewVersion(loggedPatient.getId(), acceptanceData.termVersion(),
+                acceptanceData.guardian());
         return new SessionUserDTO(loggedPatient);
     }
 

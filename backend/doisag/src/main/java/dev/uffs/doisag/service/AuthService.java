@@ -9,6 +9,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -67,6 +68,9 @@ public class AuthService {
 
     // sair da conta derruba todas as sessoes abertas daquela pessoa em qualquer aparelho
     // o token guarda a emissao em milissegundos entao o fim tbm fica em milissegundos
+    // na transacao a conta lida eh a q grava, e so o fim das sessoes. sem ela o save copiava a conta
+    // lida antes por cima da do banco, e a desativacao feita no meio voltava atras
+    @Transactional
     public void endSessions(Long userId) {
         usersRepository.findById(userId).ifPresent(user -> {
             user.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));

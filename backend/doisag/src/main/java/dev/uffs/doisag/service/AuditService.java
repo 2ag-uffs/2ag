@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AuditEventDTO;
 import dev.uffs.doisag.dto.AuditPageDTO;
 import dev.uffs.doisag.enums.AuditOperation;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -9,6 +10,7 @@ import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AuditEventRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // grava e le a trilha de auditoria do prontuario (RF31)
@@ -174,11 +177,18 @@ public class AuditService {
     }
 
     // o q prescritores e o sistema fizeram no periodo sem as acoes dos pacientes
+    // e sem dizer qual registro clinico foi, ver AuditEventDTO.forAdmin
     @Transactional(readOnly = true)
     public AuditPageDTO getStaffEvents(LocalDate from, LocalDate to, int page) {
         checkPeriod(from, to);
-        return AuditPageDTO.from(auditEventRepository.findStaffEvents(
-                from.atStartOfDay(), to.plusDays(1).atStartOfDay(), UserRole.PATIENT, pageRequest(page)));
+        Page<AuditEvent> staffEvents = auditEventRepository.findStaffEvents(
+                from.atStartOfDay(), to.plusDays(1).atStartOfDay(), UserRole.PATIENT, pageRequest(page));
+        List<AuditEventDTO> events = staffEvents.getContent()
+                .stream()
+                .map(AuditEventDTO::forAdmin)
+                .toList();
+        return new AuditPageDTO(events, staffEvents.getNumber(), staffEvents.getTotalPages(),
+                staffEvents.getTotalElements());
     }
 
     private void checkPeriod(LocalDate from, LocalDate to) {

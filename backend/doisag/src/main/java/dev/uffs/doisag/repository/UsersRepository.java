@@ -22,7 +22,11 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
     // trava a linha da conta ate o fim da transacao: o pedido de e-mail novo, a troca de senha
     // e a confirmacao do e-mail passam um de cada vez, entao um pedido feito no mesmo instante
     // da troca de senha espera e encontra a senha nova
-    // ordem das travas por conta: password_reset, dps users, dps email_change
+    // ordem das travas por conta: paciente, dps password_reset, dps users, dps email_change
+    // quem segura essa trava n encosta no paciente dps, nem por insert q aponta pra ele (a trilha):
+    // no postgres a escala trava o paciente e dps a trilha dela segura a conta em modo compartilhado,
+    // q o for update barra, e as duas ficavam esperando uma pela outra. quem precisa dos dois trava
+    // o paciente antes, como a confirmacao do e-mail
     // MANDATORY: fora de uma transacao a trava soltaria no fim do select sem ninguem perceber
     @Transactional(propagation = Propagation.MANDATORY)
     @Query(value = "select id from users where id = :id for update", nativeQuery = true)

@@ -11,6 +11,7 @@ import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.EmailChangeRepository;
+import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +25,14 @@ import java.util.List;
 public class ProfileService {
 
     private final UsersRepository usersRepository;
+    private final PatientRepository patientRepository;
     private final EmailChangeRepository emailChangeRepository;
     private final ConsentTermService consentTermService;
 
-    public ProfileService(UsersRepository usersRepository, EmailChangeRepository emailChangeRepository,
-                          ConsentTermService consentTermService) {
+    public ProfileService(UsersRepository usersRepository, PatientRepository patientRepository,
+                          EmailChangeRepository emailChangeRepository, ConsentTermService consentTermService) {
         this.usersRepository = usersRepository;
+        this.patientRepository = patientRepository;
         this.emailChangeRepository = emailChangeRepository;
         this.consentTermService = consentTermService;
     }
@@ -39,8 +42,13 @@ public class ProfileService {
         return profileOf(findUser(userId));
     }
 
+    // a conta eh lida aqui dentro e o update grava so os campos do perfil (@DynamicUpdate no Users),
+    // entao a desativacao ou a senha nova gravada no meio do salvamento n volta atras
     @Transactional
     public ProfileDTO updateProfile(Long userId, ProfileUpdateDTO profileData) {
+        // gravar o paciente grava a conta antes, entao o paciente eh travado primeiro, na ordem da escala
+        // e da confirmacao do e-mail (paciente, dps conta). as outras contas n tem linha de paciente
+        patientRepository.lockById(userId);
         Users user = findUser(userId);
         if (user instanceof Patient) {
             checkPatientRequiredData(profileData);

@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,6 +21,10 @@ import java.util.List;
 @EntityListeners(AuditingEntityListener.class)
 // quem anulou um registro eh um usuario lazy, e numa lista eles vem em lote em vez de um por linha
 @BatchSize(size = 50)
+// o update grava so as colunas q mudaram: o perfil, a senha e a desativacao mexem na msm linha,
+// e cada um gravando a linha inteira q tinha lido apagava o q o outro gravou no meio
+// a anotacao n passa pra subclasse, entao Patient, Prescriber e Admin repetem ela
+@DynamicUpdate
 public abstract class Users implements UserDetails { // implementa a interface do spring security
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

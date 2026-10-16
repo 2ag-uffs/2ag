@@ -7,12 +7,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 
 @Entity
+// msm motivo do Users
+@DynamicUpdate
 public class Patient extends Users {
 
     // abaixo disso o responsavel legal participa do aceite do termo (LGPD art. 14 e Codigo Civil)

@@ -122,6 +122,37 @@ describe("AppLayout", () => {
         });
     });
 
+    // conta de menor feita qnd o parentesco era opcional: o aceite guarda o nome e o parentesco,
+    // entao o nome salvo vem preenchido e falta so o parentesco
+    it("menor com responsavel salvo sem parentesco completa o parentesco junto do aceite", async () => {
+        const today = new Date();
+        mockTermAndProfile({
+            id: 3, role: "PATIENT", birthDate: (today.getFullYear() - 10) + "-01-01",
+            guardian: {name: "Joana Souza", relationship: null, phone: "49988776655"},
+        });
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        const user = userEvent.setup();
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        const acceptButton = await screen.findByRole("button", {name: "Li e aceito como responsável"});
+        expect(screen.getByText(/Falta o parentesco do responsável legal/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Nome")).toHaveValue("Joana Souza");
+        await user.click(acceptButton);
+        expect(screen.getByText("Informe o parentesco do responsável legal")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+
+        await user.type(screen.getByLabelText("Parentesco"), "mãe");
+        await user.click(acceptButton);
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {
+            termVersion: "v2",
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: "49988776655"},
+        });
+    });
+
     it("o item Avisos mostra quantos avisos n foram lidos e acompanha a tela de avisos", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({unread: 3});
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});

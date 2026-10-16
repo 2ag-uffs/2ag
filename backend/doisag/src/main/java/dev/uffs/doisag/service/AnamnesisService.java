@@ -7,11 +7,13 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.AnamnesisRepository;
+import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +31,18 @@ public class AnamnesisService {
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta anamnese já foi anulada";
 
     private final AnamnesisRepository anamnesisRepository;
+    private final PatientRepository patientRepository;
     private final AuditService auditService;
     private final ScaleTaskService scaleTaskService;
+    private final RowLock rowLock;
 
-    public AnamnesisService(AnamnesisRepository anamnesisRepository, AuditService auditService,
-                            ScaleTaskService scaleTaskService) {
+    public AnamnesisService(AnamnesisRepository anamnesisRepository, PatientRepository patientRepository,
+                            AuditService auditService, ScaleTaskService scaleTaskService, RowLock rowLock) {
         this.anamnesisRepository = anamnesisRepository;
+        this.patientRepository = patientRepository;
         this.auditService = auditService;
         this.scaleTaskService = scaleTaskService;
+        this.rowLock = rowLock;
     }
 
     @Transactional
@@ -60,7 +66,7 @@ public class AnamnesisService {
     // o paciente corrige o q ele mesmo respondeu e o dono do registro nunca muda
     @Transactional
     public AnamnesisResponseDTO update(Long anamnesisId, AnamnesisDTO anamnesisData) {
-        Anamnesis anamnesis = findAnamnesis(anamnesisId);
+        Anamnesis anamnesis = findAnamnesisForUpdate(anamnesisId);
         if (anamnesis.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
         }
@@ -79,7 +85,7 @@ public class AnamnesisService {
     // anamnese feita por engano fica no historico marcada como anulada com o motivo
     @Transactional
     public AnamnesisResponseDTO annul(Long anamnesisId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
-        Anamnesis anamnesis = findAnamnesis(anamnesisId);
+        Anamnesis anamnesis = findAnamnesisForUpdate(anamnesisId);
         if (anamnesis.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
@@ -110,7 +116,25 @@ public class AnamnesisService {
 
     private Anamnesis findAnamnesis(Long anamnesisId) {
         return anamnesisRepository.findById(anamnesisId)
-                .orElseThrow(() -> new NotFoundException("Anamnese não encontrada com o id: " + anamnesisId));
+                .orElseThrow(() -> anamnesisNotFound(anamnesisId));
+    }
+
+    // a correcao e a anulacao gravam a linha inteira, entao uma apagava a outra qnd vinham juntas
+    // com a trava quem chega dps espera e le a anamnese de novo: a correcao encontra ela anulada
+    // e eh recusada, e a anulacao mantem o q o paciente acabou de corrigir
+    // o paciente eh travado antes da anamnese, igual na resposta de escala: a trilha das duas encosta
+    // no paciente e a da correcao na conta dele tbm, entao elas esperam a confirmacao do e-mail
+    // (paciente, dps conta) em vez de segurar a conta q ela vai travar
+    private Anamnesis findAnamnesisForUpdate(Long anamnesisId) {
+        Long patientId = anamnesisRepository.findPatientIdById(anamnesisId)
+                .orElseThrow(() -> anamnesisNotFound(anamnesisId));
+        patientRepository.lockById(patientId);
+        return rowLock.reload(Anamnesis.class, anamnesisId)
+                .orElseThrow(() -> anamnesisNotFound(anamnesisId));
+    }
+
+    private NotFoundException anamnesisNotFound(Long anamnesisId) {
+        return new NotFoundException("Anamnese não encontrada com o id: " + anamnesisId);
     }
 
     private void copyAnswers(AnamnesisDTO anamnesisData, Anamnesis anamnesis) {

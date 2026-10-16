@@ -2,7 +2,13 @@ import {useEffect, useState} from "react";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
-import {ACCEPT_BUTTON_TEXT, ageBandOf, findGuardianErrors, guardianBody} from "../../utils/guardian.js";
+import {
+    ACCEPT_BUTTON_TEXT,
+    ageBandOf,
+    findGuardianErrors,
+    guardianBody,
+    guardianFieldsFrom,
+} from "../../utils/guardian.js";
 import styles from "./term-update.module.css";
 
 const CONNECTION_ERROR = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -28,6 +34,8 @@ export default function TermUpdate({onAccepted}) {
                 if (isCurrentPage) {
                     setTerm(currentTerm);
                     setProfile(loadedProfile);
+                    // o q ja esta salvo vem preenchido e o telefone salvo vai junto no aceite
+                    setGuardianData(guardianFieldsFrom(loadedProfile.guardian));
                 }
             })
             .catch(() => {
@@ -43,8 +51,9 @@ export default function TermUpdate({onAccepted}) {
     // menor de 16: o responsavel aceita em nome do paciente. com 16 e 17 os dois aceitam juntos
     const ageBand = profile ? ageBandOf(profile.birthDate) : "adult";
     const guardian = profile ? profile.guardian : null;
-    // conta de menor sem responsavel salvo (de antes da regra) informa ele aqui, pq o termo pendente trava o perfil
-    const needsGuardian = ageBand !== "adult" && !guardian;
+    // conta de menor sem responsavel salvo, ou com ele sem o parentesco (de antes da regra), informa ele aqui,
+    // pq o termo pendente trava o perfil e o aceite guarda o nome e o parentesco
+    const needsGuardian = ageBand !== "adult" && (!guardian || !guardian.relationship);
 
     const updateGuardianField = (fieldName, value) => {
         setGuardianData((currentData) => ({...currentData, [fieldName]: value}));
@@ -120,8 +129,11 @@ export default function TermUpdate({onAccepted}) {
                         <fieldset className={styles.guardianFields}>
                             <legend className={styles.guardianTitle}>Responsável legal</legend>
                             <p className={styles.statusText}>
-                                O responsável legal ainda não foi informado. Preencha o nome e o parentesco dele para
-                                aceitar o termo.
+                                {guardian
+                                    ? "Falta o parentesco do responsável legal. Confira o nome e preencha o parentesco "
+                                    + "para aceitar o termo."
+                                    : "O responsável legal ainda não foi informado. Preencha o nome e o parentesco "
+                                    + "dele para aceitar o termo."}
                             </p>
                             <TextField
                                 label="Nome"

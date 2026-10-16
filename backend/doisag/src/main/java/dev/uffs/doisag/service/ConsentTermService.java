@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.ResearchConsentDTO;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
@@ -104,7 +105,7 @@ public class ConsentTermService {
         // menor de 18: o aceite eh do responsavel e o nome dele fica junto (LGPD art. 14)
         // adulto com cuidador aceita sozinho, entao ai fica nulo
         if (user instanceof Patient patient && patient.isMinor()) {
-            if (patient.getGuardianName() == null) {
+            if (!hasLegalGuardian(patient)) {
                 throw new BusinessException(GUARDIAN_REQUIRED_MESSAGE);
             }
             acceptance.setGuardianName(patient.getGuardianName());
@@ -125,22 +126,37 @@ public class ConsentTermService {
     }
 
     @Transactional
-    public void acceptNewVersion(Patient patient, String termVersion, GuardianDTO guardian) {
+    public void acceptNewVersion(Long patientId, String termVersion, GuardianDTO guardian) {
         if (!isCurrentVersion(termVersion)) {
             throw new BusinessException(PatientService.OUTDATED_TERM_MESSAGE);
         }
-        // conta de menor sem responsavel salvo (de antes da regra) informa ele aqui
-        // pq com o termo pendente o PUT /profile fica travado
-        if (patient.isMinor() && patient.getGuardianName() == null) {
-            GuardianDTO.checkLegalGuardian(guardian, patient.getBirthDate());
-            GuardianDTO.applyTo(patient, guardian);
-            patient = patientRepository.save(patient);
+        // o paciente vem do banco e n da sessao: salvar o objeto da sessao gravava por cima
+        // o q mudou dps do login, como a desativacao pela administracao
+        // e vem travado, na ordem da escala e da confirmacao do e-mail (paciente, dps conta):
+        // o aceite e o responsavel gravam na conta antes do paciente
+        patientRepository.lockById(patientId);
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+        // conta de menor sem responsavel salvo, ou com ele sem o parentesco (de antes da regra),
+        // informa ele aqui pq com o termo pendente o PUT /profile fica travado
+        if (patient.isMinor() && !hasLegalGuardian(patient)) {
+            // sem responsavel no pedido vale o salvo, ai o erro aponta so o campo q falta
+            GuardianDTO newGuardian = guardian == null ? GuardianDTO.from(patient) : guardian;
+            GuardianDTO.checkLegalGuardian(newGuardian, patient.getBirthDate());
+            GuardianDTO.applyTo(patient, newGuardian);
+            patientRepository.save(patient);
         }
         // aceitar de novo a msm versao n duplica o registro
         if (!consentAcceptanceRepository.existsByUserIdAndTermTypeAndTermVersion(
                 patient.getId(), ConsentType.REGISTRATION, termVersion)) {
             registerAcceptance(patient, termVersion);
         }
+    }
+
+    // o aceite do menor guarda o nome e o parentesco do responsavel, entao precisa dos dois salvos
+    private boolean hasLegalGuardian(Patient patient) {
+        return patient.getGuardianName() != null && !patient.getGuardianName().isBlank()
+                && patient.getGuardianRelationship() != null && !patient.getGuardianRelationship().isBlank();
     }
 
     // so vale o aceite da versao atual do texto de pesquisa q n foi retirado

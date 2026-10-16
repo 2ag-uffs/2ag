@@ -66,7 +66,10 @@ public class PatientArchiveService {
         return new PatientResponseDTO(savedPatient);
     }
 
+    // gravar o paciente grava a conta antes (o updated_at), entao o paciente eh travado primeiro,
+    // na ordem da escala e da confirmacao do e-mail (paciente, dps conta)
     private Patient findPatient(Long patientId) {
+        patientRepository.lockById(patientId);
         return patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
     }

@@ -35,6 +35,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -285,6 +286,48 @@ class AuditTrailTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(body).doesNotContain("Paciente Auditado");
+    }
+
+    // o numero do paciente na trilha eh o msm q a busca por e-mail da administracao devolve,
+    // entao o administrador n pode ver qual escala ou exame a pessoa fez (RF30)
+    @Test
+    void adminDoesNotSeeWhichClinicalInstrumentThePatientAnswered() throws Exception {
+        String answer = mockMvc.perform(post("/scales/registro-tea/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"qualidadeDeVida\":7}}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        long responseId = new ObjectMapper().readTree(answer).get("id").asLong();
+        mockMvc.perform(put("/scales/responses/" + responseId + "/review")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        Admin admin = new Admin();
+        admin.setName("Administrador da auditoria");
+        admin.setEmail("auditoria-admin@email.com");
+        admin.setPassword("hash");
+        Users savedAdmin = usersRepository.save(admin);
+
+        String body = mockMvc.perform(get("/admin/audit-events")
+                        .param("from", TODAY.toString())
+                        .param("to", TODAY.toString())
+                        .header("Authorization", bearerTokenOf(savedAdmin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].operation",
+                        contains("ALTERACAO")))
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].recordType",
+                        contains("PRONTUARIO")))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(body).contains("Prontuário")
+                .doesNotContain("REGISTRO_TEA")
+                .doesNotContain(AuditRecordType.REGISTRO_TEA.getLabel());
+
+        // o prescritor do paciente continua vendo qual escala foi
+        readPatientTrail(TODAY, TODAY, 0)
+                .andExpect(jsonPath("$.events[?(@.operation == 'ALTERACAO')].recordType", contains("REGISTRO_TEA")))
+                .andExpect(jsonPath("$.events[?(@.operation == 'ALTERACAO')].recordLabel",
+                        contains(AuditRecordType.REGISTRO_TEA.getLabel())));
     }
 
     @Test
