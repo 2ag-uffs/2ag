@@ -18,8 +18,13 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.service.ReminderService;
+import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.service.ScaleResponseService;
+import dev.uffs.doisag.service.ScaleTaskService;
+import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -54,6 +59,8 @@ class ReminderTest {
 
     @Autowired private ReminderService reminderService;
     @Autowired private ScaleResponseService scaleResponseService;
+    @Autowired private ScaleTaskService scaleTaskService;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -226,6 +233,24 @@ class ReminderTest {
                 new ScaleResponseCreateDTO(null, null, Map.of("humorAnsioso", 2)));
 
         assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
+    }
+
+    // a avulsa q vira rodada ganha o prazo da periodicidade, e o lembrete do prazo antigo
+    // n pode calar o do novo (RF34)
+    @Test
+    void aAvulsaQueViraRodadaGanhaLembreteDoPrazoNovo() {
+        ScaleTask avulsa = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, TODAY, 7, false);
+        assertThat(reminderService.sendScaleReminders(TODAY.plusDays(4))).isEqualTo(1);
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY.plusDays(5), 90,
+                null, null, List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))),
+                prescriber);
+
+        treatmentProtocolService.designarEscalasVencidas(TODAY.plusDays(5));
+
+        assertThat(avulsa.isFromProtocol()).isTrue();
+        assertThat(avulsa.getPeriodEnd()).isEqualTo(TODAY.plusDays(11));
+        assertThat(reminderService.sendScaleReminders(TODAY.plusDays(8))).isZero();
+        assertThat(reminderService.sendScaleReminders(TODAY.plusDays(9))).isEqualTo(1);
     }
 
     // conta desativada n consegue entrar pra desligar o e-mail no perfil

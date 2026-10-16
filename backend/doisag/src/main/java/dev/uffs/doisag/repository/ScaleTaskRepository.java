@@ -31,10 +31,6 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     List<ScaleTask> findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
             Long patientId, ScaleType scaleType, ScaleTaskStatus status);
 
-    // a ultima vez q o acompanhamento enviou essa escala, respondida ou n
-    Optional<ScaleTask> findFirstByPatientIdAndScaleTypeAndFromProtocolTrueOrderByPeriodStartDesc(
-            Long patientId, ScaleType scaleType);
-
     // as pendencias q passaram do prazo e o job precisa fechar
     List<ScaleTask> findByStatusAndPeriodEndBefore(ScaleTaskStatus status, LocalDate day);
 
@@ -44,13 +40,15 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
 
     // as escalas vencidas sem resposta q o prescritor ve no painel (RF03 e RF32)
     // entram as q o job ja fechou e as q venceram antes de ele rodar
+    // paciente arquivado fica de fora: o arquivamento fecha as escalas abertas no dia, e elas
+    // viravam alerta de atraso de quem ja saiu do acompanhamento
     //
     // a conta de quem n tem resposta fica no banco e o corte vem no Pageable:
     // antes o painel carregava todas as vencidas e contava uma por uma pra
     // jogar fora tudo menos cinco
     @Query("select task from ScaleTask task "
             + "where task.prescriber.id = :prescriberId and task.status in :statuses "
-            + "and task.periodEnd < :day "
+            + "and task.periodEnd < :day and task.patient.archivedAt is null "
             + "and not exists (select response.id from ScaleResponse response "
             + "where response.task = task and response.annulment.annulledAt is null) "
             + "order by task.periodEnd desc")

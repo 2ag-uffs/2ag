@@ -26,6 +26,8 @@ export default function SelecaoEscalas() {
     const [search, setSearch] = useState("");
     const [actionError, setActionError] = useState(null);
     const [isSending, setIsSending] = useState(false);
+    // as q o servidor recusou, com o motivo, tipo a escala q ja foi respondida hoje
+    const [refused, setRefused] = useState({});
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -74,7 +76,8 @@ export default function SelecaoEscalas() {
     }
 
     const visibleScales = page.scales.filter((scale) => matchesSearch(scale.name, search));
-    const scalesToSend = page.scales.filter((scale) => chosen[scale.type] && !page.waiting.includes(scale.type));
+    const scalesToSend = page.scales.filter((scale) => chosen[scale.type] && !page.waiting.includes(scale.type)
+        && !refused[scale.type]);
 
     const send = async () => {
         setActionError(null);
@@ -93,7 +96,15 @@ export default function SelecaoEscalas() {
                 },
             });
         } catch (requestError) {
-            const detail = requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
+            const failedScale = scalesToSend[sent.length];
+            let detail = CONNECTION_ERROR_MESSAGE;
+            if (requestError instanceof ApiError) {
+                detail = failedScale.name + ": " + requestError.message;
+                // a recusa vale so pra essa escala: ela fica marcada com o motivo e as outras podem ir
+                if (requestError.status === 400) {
+                    setRefused((current) => ({...current, [failedScale.type]: requestError.message}));
+                }
+            }
             setPage((current) => ({...current, waiting: [...current.waiting, ...sent]}));
             setActionError(sent.length > 0
                 ? "Só parte das escalas foi enviada. " + detail
@@ -129,15 +140,20 @@ export default function SelecaoEscalas() {
                 <ul className={styles.list}>
                     {visibleScales.map((scale) => {
                         const alreadySent = page.waiting.includes(scale.type);
+                        const refusal = refused[scale.type];
+                        let description = scale.description;
+                        if (alreadySent) {
+                            description = "Já enviada. Esperando o paciente responder.";
+                        } else if (refusal) {
+                            description = refusal.endsWith(".") ? refusal : refusal + ".";
+                        }
                         return (
                             <li key={scale.type}>
                                 <ChoiceCard
                                     title={scale.name}
-                                    description={alreadySent
-                                        ? "Já enviada. Esperando o paciente responder."
-                                        : scale.description}
-                                    checked={alreadySent || Boolean(chosen[scale.type])}
-                                    disabled={alreadySent || isSending}
+                                    description={description}
+                                    checked={alreadySent || (!refusal && Boolean(chosen[scale.type]))}
+                                    disabled={alreadySent || Boolean(refusal) || isSending}
                                     onChange={() => toggleScale(scale.type)}
                                 />
                             </li>

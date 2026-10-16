@@ -1,6 +1,7 @@
 package dev.uffs.doisag.scale;
 
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BusinessException;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -17,6 +18,9 @@ import java.util.Map;
 // numero menor seria lido como sintoma mais leve (RN10)
 @Component
 public class ScaleScorer {
+
+    public static final String AWAKE_LONGER_THAN_BED_MESSAGE =
+            "O tempo acordado passa do tempo na cama. Confira os horários e os minutos";
 
     // pontos de corte do MEEM por anos de estudo (Brucki 2003)
     private static final double[] MEEM_CUTOFFS = {20, 25, 26.5, 28, 29};
@@ -219,6 +223,10 @@ public class ScaleScorer {
             completed.put("totalAcordado", totalAwake);
         }
         if (timeInBed != null && totalAwake != null) {
+            // sono negativo n existe: eh minuto digitado errado, entao volta pra pessoa conferir
+            if (totalAwake > timeInBed) {
+                throw new BusinessException(AWAKE_LONGER_THAN_BED_MESSAGE);
+            }
             completed.put("tempoTotalSono", timeInBed - totalAwake);
         }
         return completed;

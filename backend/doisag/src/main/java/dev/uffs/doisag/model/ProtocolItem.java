@@ -4,6 +4,8 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
+
 // uma escala dentro do protocolo, com a periodicidade dela.
 // o mesmo paciente pode responder o acompanhamento toda semana e o
 // pittsburgh uma vez por mes, por exemplo
@@ -25,6 +27,10 @@ public class ProtocolItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "protocol_id", nullable = false)
     private TreatmentProtocol protocol;
+
+    // o fim do prazo da ultima rodada q esse acompanhamento mandou, nulo antes da primeira
+    // fica no item e n na tarefa pq a rodada do acompanhamento anterior n pode segurar o novo
+    private LocalDate lastRoundEnd;
 
     public Long getId() {
         return id;
@@ -52,5 +58,13 @@ public class ProtocolItem {
 
     public void setProtocol(TreatmentProtocol protocol) {
         this.protocol = protocol;
+    }
+
+    public LocalDate getLastRoundEnd() {
+        return lastRoundEnd;
+    }
+
+    public void setLastRoundEnd(LocalDate lastRoundEnd) {
+        this.lastRoundEnd = lastRoundEnd;
     }
 }

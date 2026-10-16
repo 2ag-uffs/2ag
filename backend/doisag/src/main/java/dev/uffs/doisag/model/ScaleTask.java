@@ -13,6 +13,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import org.hibernate.annotations.DynamicUpdate;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -26,7 +27,11 @@ import java.time.LocalDateTime;
 // o periodo eh o q faz a pendencia vencer: passou do fim sem resposta,
 // a tarefa fica como n respondida e o proximo periodo eh enviado, em
 // vez de a mesma pendencia arrastar pra sempre (RF32)
+//
+// grava so as colunas q mudaram: o lembrete do job e a resposta do paciente mexem em colunas diferentes
+// da mesma tarefa, e com a linha inteira o q gravou por ultimo desfazia o outro
 @Entity
+@DynamicUpdate
 @EntityListeners(AuditingEntityListener.class)
 public class ScaleTask {
 

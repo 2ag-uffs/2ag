@@ -9,10 +9,13 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +44,8 @@ class TreatmentProtocolServiceTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private TreatmentProtocolRepository protocolRepository;
+    @Autowired private ReminderService reminderService;
 
     private static final LocalDate INICIO = LocalDate.of(2026, 9, 1);
 
@@ -312,6 +317,99 @@ class TreatmentProtocolServiceTest {
         assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(2))).isZero();
         assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(30))).isEqualTo(1);
         assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(2);
+    }
+
+    // o acompanhamento novo comeca o proprio ciclo com a periodicidade nova, e a rodada
+    // mensal do anterior n segura a semanal dele ate o fim do mes
+    @Test
+    void oAcompanhamentoQueSubstituiOutroNaoFicaPresoNaRodadaDele() {
+        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        marcaRespondida(tarefaDoDia(INICIO));
+        treatmentProtocolService.end(paciente.getId());
+        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL)));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(2))).isEqualTo(1);
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(8))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(9))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(3);
+    }
+
+    // a rodada do anterior q ainda espera resposta vira a primeira do novo, sem repetir a escala
+    @Test
+    void aRodadaAbertaDoAnteriorNaoViraDuasPendencias() {
+        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL)));
+        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        treatmentProtocolService.end(paciente.getId());
+        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL)));
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(2))).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(1);
+    }
+
+    // trocar o acompanhamento no meio da semana n deixa dia sem tarefa: a tarefa do anterior q ainda
+    // espera resposta vira a primeira rodada do novo e acaba junto com ela, pra mais ou pra menos.
+    // antes ela seguia com o prazo velho e a rodada seguinte so saia dias dps
+    @Test
+    void trocarOAcompanhamentoNoMeioDaSemanaNaoDeixaDiaSemTarefa() {
+        criaProtocolo(List.of(
+                item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        LocalDate troca = INICIO.plusDays(4);
+        for (LocalDate dia = INICIO; !dia.isAfter(troca); dia = dia.plusDays(1)) {
+            rodaOJobDoDia(dia);
+        }
+        ScaleTask hamiltonDaSemana = tarefaQueCobre(ScaleType.ESCALA_HAMILTON, troca);
+        assertThat(hamiltonDaSemana.getReminderSentAt()).isNotNull();
+
+        treatmentProtocolService.end(paciente.getId());
+        criaProtocolo(List.of(
+                item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL),
+                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.SEMANAL)));
+        rodaOJobDoDia(troca);
+
+        // a hamilton da semana virou a rodada mensal e o lembrete volta a valer pro prazo novo
+        assertThat(hamiltonDaSemana.getPeriodEnd()).isEqualTo(troca.plusDays(29));
+        assertThat(hamiltonDaSemana.getReminderSentAt()).isNull();
+        assertThat(tarefaQueCobre(ScaleType.ESCALA_PITTSBURGH, troca).getPeriodEnd()).isEqualTo(troca.plusDays(6));
+
+        for (LocalDate dia = troca; dia.isBefore(INICIO.plusDays(75)); dia = dia.plusDays(1)) {
+            rodaOJobDoDia(dia);
+            TreatmentProtocol protocolo = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
+                    .orElseThrow();
+            for (ProtocolItem item : protocolo.getItems()) {
+                assertThat(tarefaQueCobre(item.getScaleType(), dia))
+                        .as(item.getScaleType() + " no dia " + dia)
+                        .isNotNull();
+                assertThat(tarefaMaisNova(item.getScaleType()).getPeriodEnd())
+                        .as("fim da tarefa e da rodada de " + item.getScaleType() + " no dia " + dia)
+                        .isEqualTo(item.getLastRoundEnd());
+            }
+        }
+        assertThat(hamiltonDaSemana.getReminderSentAt()).isNotNull();
+    }
+
+    // a ordem do job de verdade: fecha o q venceu, manda a rodada e os lembretes
+    private void rodaOJobDoDia(LocalDate dia) {
+        scaleTaskService.closeOverdue(dia);
+        treatmentProtocolService.designarEscalasVencidas(dia);
+        reminderService.sendScaleReminders(dia);
+    }
+
+    private ScaleTask tarefaQueCobre(ScaleType escala, LocalDate dia) {
+        return taskRepository.findByPatientIdOrderByPeriodStartDesc(paciente.getId()).stream()
+                .filter(task -> task.getScaleType() == escala && task.coversDay(dia))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private ScaleTask tarefaMaisNova(ScaleType escala) {
+        return taskRepository.findByPatientIdOrderByPeriodStartDesc(paciente.getId()).stream()
+                .filter(task -> task.getScaleType() == escala)
+                .findFirst()
+                .orElseThrow();
     }
 
     // sem o prescritor ninguem le o q o paciente responde

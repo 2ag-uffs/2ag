@@ -115,9 +115,17 @@ export default function Escala() {
             return;
         }
         apiService.get("/patients/" + loggedUser.id + "/scales/overview")
-            .then((page) => setOpenTask(openTaskOf(page.pending, slug, today)))
+            .then((page) => {
+                const task = openTaskOf(page.pending, slug, today);
+                setOpenTask(task);
+                // a pendente q ja venceu ainda aceita os dias dela (antes do job das 8h, ou qnd volta pela
+                // anulacao), entao a tela abre no ultimo dia dela e a grade mostra o periodo dela
+                if (task && task.periodEnd < today && !chosenDate) {
+                    setSelectedDay((currentDay) => (currentDay === today ? task.periodEnd : currentDay));
+                }
+            })
             .catch(() => setOpenTask(null));
-    }, [isDiary, slug, loggedUser.id, today]);
+    }, [isDiary, slug, loggedUser.id, today, chosenDate]);
 
     const insideOpenTask = openTask !== null
         && selectedDay >= openTask.periodStart
@@ -341,6 +349,8 @@ export default function Escala() {
                                 <input
                                     id="periodEnd"
                                     type="date"
+                                    min={periodStart}
+                                    max={today}
                                     value={periodEnd}
                                     disabled={isReadOnly}
                                     onChange={(event) => changePeriodEnd(event.target.value)}

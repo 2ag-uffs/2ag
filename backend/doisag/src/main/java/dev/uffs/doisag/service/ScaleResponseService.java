@@ -14,6 +14,7 @@ import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
@@ -62,6 +63,7 @@ public class ScaleResponseService {
     public static final String DIARY_DAY_MESSAGE =
             "No diário a data é o dia escolhido na grade e não muda na correção";
     public static final String PERIOD_START_TAKEN_MESSAGE = "Já existe uma resposta dessa escala começando nesse dia";
+    public static final String EMPTY_ANSWERS_MESSAGE = "Responda ao menos um item da escala";
 
     private static final int MAX_TEXT_LENGTH = 2000;
     // os acompanhamentos de dor e de TEA falam da ultima semana
@@ -137,10 +139,7 @@ public class ScaleResponseService {
             taskService.linkResponse(savedResponse);
             auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         } else {
-            // a escala pela metade q foi completada na correcao passa a valer pra tarefa
-            if (isComplete && !wasComplete) {
-                taskService.linkCompletedResponse(savedResponse);
-            }
+            linkOrUnlinkAfterCorrection(savedResponse, wasComplete, isComplete);
             auditService.recordChange(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         }
         // o aviso sai qnd a escala fica completa, e o diario avisa uma vez so no fim do periodo
@@ -237,11 +236,26 @@ public class ScaleResponseService {
         ScaleResponse savedResponse = responseRepository.save(response);
         auditService.recordChange(response.getScaleType().getAuditRecordType(), savedResponse.getId(),
                 savedResponse.getPatient().getId());
-        if (!wasComplete && !definition.isIncomplete(savedResponse.getScore())) {
-            taskService.linkCompletedResponse(savedResponse);
+        boolean isComplete = !definition.isIncomplete(savedResponse.getScore());
+        linkOrUnlinkAfterCorrection(savedResponse, wasComplete, isComplete);
+        if (!wasComplete && isComplete) {
             notifyPrescriber(savedResponse);
         }
         return dtoOf(savedResponse);
+    }
+
+    // a escala pela metade q foi completada na correcao passa a valer pra tarefa, e a completa q ficou
+    // pela metade deixa de valer: a tarefa volta a pendente e o lembrete volta a cobrar (RN10)
+    private void linkOrUnlinkAfterCorrection(ScaleResponse response, boolean wasComplete, boolean isComplete) {
+        if (isComplete && !wasComplete) {
+            taskService.linkCompletedResponse(response);
+        }
+        if (wasComplete && !isComplete && response.getTask() != null) {
+            ScaleTask task = response.getTask();
+            response.setTask(null);
+            responseRepository.save(response);
+            taskService.reopenIfWithoutAnswers(task);
+        }
     }
 
     // o prescritor marca q ja olhou a resposta (trava a edicao do paciente)
@@ -272,7 +286,7 @@ public class ScaleResponseService {
         // sem resposta valida a tarefa volta a ser cobrada, senao aquele periodo
         // fica sem ninguem preencher e vira buraco no grafico sem aviso nenhum
         taskService.reopenIfWithoutAnswers(response.getTask());
-        auditService.recordChange(response.getScaleType().getAuditRecordType(), response.getId(),
+        auditService.recordAnnulment(response.getScaleType().getAuditRecordType(), response.getId(),
                 response.getPatient().getId());
         return dtoOf(response);
     }
@@ -307,6 +321,10 @@ public class ScaleResponseService {
     private void fillAnswersAndScore(ScaleResponse response, ScaleDefinition definition,
                                      Map<String, Object> rawAnswers) {
         Map<String, Object> answers = cleanAnswers(definition, rawAnswers);
+        // so item em branco tbm eh resposta vazia, senao virava dia preenchido ou tarefa respondida sem nada
+        if (answers.isEmpty()) {
+            throw new BusinessException(EMPTY_ANSWERS_MESSAGE);
+        }
         answers = scorer.withComputedAnswers(definition.type(), answers);
         ScaleScorer.ScoreResult result = scorer.score(definition.type(), answers);
 
@@ -347,23 +365,33 @@ public class ScaleResponseService {
     }
 
     private Object wholeNumberInRange(ScaleItem item, Object value, Integer minValue, Integer maxValue) {
-        if (!(value instanceof Number number)) {
+        Long wholeNumber = wholeNumberOf(value);
+        if (wholeNumber == null || wholeNumber < minValue || wholeNumber > maxValue) {
             return invalid(item);
         }
-        int wholeNumber = number.intValue();
-        if (wholeNumber < minValue || wholeNumber > maxValue) {
-            return invalid(item);
-        }
-        return wholeNumber;
+        return wholeNumber.intValue();
     }
 
     private Object optionValue(ScaleItem item, Object value) {
-        if (!(value instanceof Number number)) {
+        Long chosen = wholeNumberOf(value);
+        if (chosen == null) {
             return invalid(item);
         }
-        int chosen = number.intValue();
         boolean exists = item.options().stream().anyMatch(option -> option.value() == chosen);
-        return exists ? chosen : invalid(item);
+        return exists ? chosen.intValue() : invalid(item);
+    }
+
+    // so numero inteiro de vdd: o 2.9 virava 2 e o numero gigante dava a volta no int
+    // e caia dentro da faixa, entao a faixa eh conferida antes de converter
+    private Long wholeNumberOf(Object value) {
+        if (!(value instanceof Number number)) {
+            return null;
+        }
+        long wholeNumber = number.longValue();
+        if (number.doubleValue() != wholeNumber) {
+            return null;
+        }
+        return wholeNumber;
     }
 
     private Object decimalHours(ScaleItem item, Object value) {
@@ -378,7 +406,11 @@ public class ScaleResponseService {
     }
 
     private Object time(ScaleItem item, Object value) {
-        if (!(value instanceof String text) || text.isBlank()) {
+        // horario q chega como numero era jogado fora calado e o pittsburgh ficava sem escore
+        if (!(value instanceof String text)) {
+            return invalid(item);
+        }
+        if (text.isBlank()) {
             return null;
         }
         try {
@@ -432,7 +464,8 @@ public class ScaleResponseService {
         if (periodEnd.isBefore(periodStart)) {
             throw new BusinessException(INVALID_PERIOD_MESSAGE);
         }
-        if (periodStart.isAfter(LocalDate.now())) {
+        // o acompanhamento fala do q ja passou, entao o fim do periodo tbm n pode ser um dia q n chegou
+        if (periodStart.isAfter(LocalDate.now()) || periodEnd.isAfter(LocalDate.now())) {
             throw new BusinessException(FUTURE_PERIOD_MESSAGE);
         }
     }
@@ -466,10 +499,13 @@ public class ScaleResponseService {
         response.setPeriodEnd(periodEnd);
     }
 
+    // a semana q comeca ha menos de 7 dias termina hoje, e n num dia q ainda n chegou
     private LocalDate endOfDefaultPeriod(ScaleDefinition definition, LocalDate periodStart) {
-        return definition.fillMode() == ScaleDefinition.FillMode.PERIODO
-                ? periodStart.plusDays(DEFAULT_PERIOD_DAYS - 1L)
-                : periodStart;
+        if (definition.fillMode() != ScaleDefinition.FillMode.PERIODO) {
+            return periodStart;
+        }
+        LocalDate periodEnd = periodStart.plusDays(DEFAULT_PERIOD_DAYS - 1L);
+        return periodEnd.isAfter(LocalDate.now()) ? LocalDate.now() : periodEnd;
     }
 
     private void checkCanBeChanged(ScaleResponse response) {

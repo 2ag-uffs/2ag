@@ -14,6 +14,7 @@ import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
+import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -49,6 +51,7 @@ class ScaleDeliveryTest {
     @Autowired private TokenService tokenService;
     @Autowired private ScaleTaskService scaleTaskService;
     @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -177,6 +180,205 @@ class ScaleDeliveryTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pending.length()").value(1));
         answerHamilton(patientToken).andExpect(status().isCreated());
+    }
+
+    // a tarefa reaberta pela anulacao dps do prazo ainda cobra, entao a resposta nova vale por ela,
+    // em vez de ficar solta e a tarefa virar nao respondida no job do dia seguinte
+    @Test
+    void theNewAnswerClosesATaskReopenedAfterItsDeadline() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(9), 7,
+                false);
+        String patientToken = bearerTokenOf(patient);
+        Number firstId = JsonPath.read(answerScale("hamilton", HAMILTON_ANSWERS,
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        annul(firstId.longValue()).andExpect(status().isOk());
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+
+        answerHamilton(patientToken).andExpect(status().isCreated());
+        scaleTaskService.closeOverdue(today.plusDays(1));
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.lateScales.length()").value(0));
+    }
+
+    // com uma rodada nova aberta, a resposta da data anulada vai pra tarefa daquela data
+    @Test
+    void theAnswerForTheAnnulledDateGoesToTheReopenedTaskAndNotToTheNewRound() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask oldTask = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(10),
+                7, true);
+        String patientToken = bearerTokenOf(patient);
+        String answeredDay = "\"periodStart\":\"" + today.minusDays(8) + "\",";
+        Number firstId = JsonPath.read(answerScale("hamilton", HAMILTON_ANSWERS, answeredDay, patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        ScaleTask newRound = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(3),
+                7, true);
+        annul(firstId.longValue()).andExpect(status().isOk());
+
+        answerScale("hamilton", HAMILTON_ANSWERS, answeredDay, patientToken).andExpect(status().isCreated());
+
+        assertThat(taskRepository.findById(oldTask.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(taskRepository.findById(newRound.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+    }
+
+    // a hamilton enviada na consulta e respondida na hora vale pela primeira rodada do acompanhamento
+    // criado no mesmo dia: a resposta do dia eh uma so, e responder a rodada nova so corrigia a primeira
+    @Test
+    void theRoundCreatedTheSameDayAsAnAnsweredScaleKeepsThatAnswer() throws Exception {
+        LocalDate today = LocalDate.now();
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        answerHamilton(patientToken).andExpect(status().isCreated());
+
+        startFollowUp("ESCALA_HAMILTON", "MENSAL").andExpect(status().isCreated());
+
+        List<ScaleTask> tasks = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId());
+        assertThat(tasks).hasSize(1);
+        assertThat(tasks.get(0).isFromProtocol()).isTrue();
+        assertThat(tasks.get(0).getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(tasks.get(0).getPeriodEnd()).isEqualTo(today.plusDays(29));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(0))
+                .andExpect(jsonPath("$.history.length()").value(1))
+                .andExpect(jsonPath("$.history[0].result").value("14 de 56 · Ansiedade temporária"));
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(29))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(30))).isEqualTo(1);
+    }
+
+    // trocar a periodicidade eh encerrar o acompanhamento e criar outro, e a rodada mensal do
+    // anterior n pode segurar a semanal do novo ate o fim do mes
+    @Test
+    void aWeeklyFollowUpThatReplacesAMonthlyOneIsNotHeldByItsRound() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUp("ESCALA_HAMILTON", "MENSAL").andExpect(status().isCreated());
+        answerHamilton(bearerTokenOf(patient)).andExpect(status().isCreated());
+        mockMvc.perform(put("/patients/" + patient.getId() + "/treatment-protocol/end")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        startFollowUp("ESCALA_HAMILTON", "SEMANAL").andExpect(status().isCreated());
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(6))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(7))).isEqualTo(1);
+    }
+
+    // a avulsa no dia em q a escala ja foi respondida ficava pendente sem jeito de fechar no dia: a resposta
+    // do paciente com a data de hoje so corrigia a primeira. o envio eh recusado e diz onde ver a resposta
+    // a de periodo vai com o corpo da tela, a semana q termina hoje, ou sem data nenhuma
+    @Test
+    void aScaleAlreadyAnsweredTodayIsNotSentAgain() throws Exception {
+        LocalDate today = LocalDate.now();
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        answerHamilton(patientToken).andExpect(status().isCreated());
+        answerScale("registro-dor", "{\"intensidadeDor\":7}", periodOf(today.minusDays(6), today), patientToken)
+                .andExpect(status().isCreated());
+        answerScale("registro-tea", "{\"qualidadeDeVida\":7}", patientToken).andExpect(status().isCreated());
+
+        sendScale("ESCALA_HAMILTON")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ANSWERED_TODAY_MESSAGE));
+        sendScale("REGISTRO_DOR")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ANSWERED_TODAY_MESSAGE));
+        sendScale("REGISTRO_TEA")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ANSWERED_TODAY_MESSAGE));
+
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).hasSize(1);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(0))
+                .andExpect(jsonPath("$.history[?(@.scaleType == 'ESCALA_HAMILTON')].result")
+                        .value("14 de 56 · Ansiedade temporária"));
+    }
+
+    // a resposta anulada, a de outro dia e o dia do diario n seguram o envio: nelas a tarefa nova fecha
+    // com a resposta de hoje. na de periodo a de outro dia eh a semana q terminou ontem, q a tela mandou ontem
+    @Test
+    void aScaleAnsweredForAnotherDayOrAnnulledCanBeSent() throws Exception {
+        LocalDate today = LocalDate.now();
+        String patientToken = bearerTokenOf(patient);
+        Number hamiltonId = JsonPath.read(answerHamilton(patientToken).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        annul(hamiltonId.longValue()).andExpect(status().isOk());
+        answerScale("registro-dor", "{\"intensidadeDor\":7}", periodOf(today.minusDays(7), today.minusDays(1)),
+                patientToken).andExpect(status().isCreated());
+        answerScale("acompanhamento-semanal", "{\"dor\":4}", patientToken).andExpect(status().isCreated());
+
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        sendScale("REGISTRO_DOR").andExpect(status().isCreated());
+        sendScale("ACOMPANHAMENTO_SEMANAL").andExpect(status().isCreated());
+
+        answerHamilton(patientToken).andExpect(status().isCreated());
+        answerScale("registro-dor", "{\"intensidadeDor\":5}", periodOf(today.minusDays(6), today), patientToken)
+                .andExpect(status().isCreated());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].scaleType").value("ACOMPANHAMENTO_SEMANAL"));
+    }
+
+    // so item em branco eh resposta vazia, e n pode virar tarefa respondida (RN10)
+    @Test
+    void anAnswerWithOnlyBlankItemsIsRefusedAndKeepsTheTaskPending() throws Exception {
+        sendScale("REGISTRO_TEA").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+
+        answerScale("registro-tea", "{\"observacao\":\" \",\"qualidadeDeVida\":null}", patientToken)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.EMPTY_ANSWERS_MESSAGE));
+        answerScale("acompanhamento-semanal", "{\"comentario\":\"   \"}", patientToken)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.EMPTY_ANSWERS_MESSAGE));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.history.length()").value(0));
+    }
+
+    // a escala completa q a correcao deixou pela metade deixa de valer pela tarefa (RN10)
+    @Test
+    void aCorrectionThatLeavesTheScaleHalfFilledReopensTheTask() throws Exception {
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        Number responseId = JsonPath.read(answerHamilton(patientToken).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        mockMvc.perform(put("/scales/responses/" + responseId.longValue())
+                        .header("Authorization", patientToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"humorAnsioso\":1}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value(ScaleCatalog.INCOMPLETE_RESULT));
+
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(task.getAnsweredAt()).isNull();
+
+        // completar de novo pelo envio do mesmo dia fecha a tarefa outra vez
+        answerHamilton(patientToken).andExpect(status().isOk());
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+    }
+
+    @Test
+    void aSameDayResendThatLeavesTheScaleHalfFilledAlsoReopensTheTask() throws Exception {
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        answerHamilton(patientToken).andExpect(status().isCreated());
+
+        answerScale("hamilton", "{\"humorAnsioso\":1}", patientToken).andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1));
     }
 
     // mandar de novo uma escala q o paciente ainda n respondeu n cria tarefa repetida
@@ -496,14 +698,30 @@ class ScaleDeliveryTest {
                 .content("{\"scaleType\":\"" + scaleType + "\"}"));
     }
 
+    // acompanhamento q comeca hoje, com uma escala so
+    private ResultActions startFollowUp(String scaleType, String periodicity) throws Exception {
+        return mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"items\":[{\"scaleType\":\"" + scaleType + "\",\"periodicity\":\"" + periodicity + "\"}]}"));
+    }
+
+    private ResultActions annul(Long responseId) throws Exception {
+        return mockMvc.perform(put("/scales/responses/" + responseId + "/annul")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"Respondida errado, responda de novo\"}"));
+    }
+
     // os 14 itens em 1 dao 14 pontos, q eh ansiedade temporaria
-    private static final String HAMILTON_COMPLETE_BODY =
-            "{\"answers\":{\"humorAnsioso\":1,\"tensao\":1,\"medos\":1,\"insonia\":1,"
+    private static final String HAMILTON_ANSWERS =
+            "{\"humorAnsioso\":1,\"tensao\":1,\"medos\":1,\"insonia\":1,"
                     + "\"intelectual\":1,\"humorDeprimido\":1,\"somatizacoesMotoras\":1,"
                     + "\"somatizacoesSensoriais\":1,\"sintomasCardiovasculares\":1,"
                     + "\"sintomasRespiratorios\":1,\"sintomasGastrointestinais\":1,"
                     + "\"sintomasGeniturinarios\":1,\"sintomasAutonomicos\":1,"
-                    + "\"comportamentoNaEntrevista\":1}}";
+                    + "\"comportamentoNaEntrevista\":1}";
+    private static final String HAMILTON_COMPLETE_BODY = "{\"answers\":" + HAMILTON_ANSWERS + "}";
 
     private ResultActions answerHamilton(String patientToken) throws Exception {
         return mockMvc.perform(post("/scales/hamilton/responses")
@@ -523,6 +741,11 @@ class ScaleDeliveryTest {
                 .header("Authorization", patientToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{" + bodyStart + "\"answers\":" + answers + "}"));
+    }
+
+    // o comeco do corpo q a tela manda na escala de periodo, com o inicio e o fim
+    private String periodOf(LocalDate start, LocalDate end) {
+        return "\"periodStart\":\"" + start + "\",\"periodEnd\":\"" + end + "\",";
     }
 
     private String bearerTokenOf(Users user) {

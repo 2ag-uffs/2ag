@@ -25,14 +25,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -171,6 +175,32 @@ class DashboardTest {
         responseRepository.save(response);
 
         prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(1));
+    }
+
+    // quem foi arquivado saiu do acompanhamento: o q venceu e o q o arquivamento fechou no dia
+    // n vira alerta de escala vencida no painel
+    @Test
+    void oPacienteArquivadoNaoViraAlertaDeEscalaVencida() throws Exception {
+        saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2));
+        ScaleTask open = new ScaleTask();
+        open.setPatient(patient);
+        open.setPrescriber(prescriber);
+        open.setScaleType(ScaleType.REGISTRO_DOR);
+        open.setPeriodStart(TODAY);
+        open.setPeriodEnd(TODAY.plusDays(6));
+        taskRepository.save(open);
+        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(1));
+
+        mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(0));
+        // a do arquivamento ficou com o prazo de hoje e amanha seria vencida
+        List<ScaleTask> lateTomorrow = taskRepository.findLateWithoutAnswers(prescriber.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), TODAY.plusDays(1),
+                PageRequest.of(0, 5));
+        assertThat(lateTomorrow).isEmpty();
     }
 
     // a escala ainda dentro do prazo n eh atraso

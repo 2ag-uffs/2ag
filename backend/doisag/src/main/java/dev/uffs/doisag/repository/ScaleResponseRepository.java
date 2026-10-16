@@ -34,6 +34,10 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     Optional<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
             Long patientId, ScaleType scaleType, LocalDate periodStart);
 
+    // a semana respondida q termina naquele dia, na escala de periodo
+    boolean existsByPatientIdAndScaleTypeAndPeriodEndAndAnnulmentAnnulledAtIsNull(
+            Long patientId, ScaleType scaleType, LocalDate periodEnd);
+
     List<ScaleResponse> findByAppointmentIdOrderByPeriodStartAsc(Long appointmentId);
 
     // o mini exame valido daquela consulta: barra o segundo exame e a anulacao da consulta

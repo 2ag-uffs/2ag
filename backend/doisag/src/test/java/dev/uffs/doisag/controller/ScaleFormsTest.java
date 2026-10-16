@@ -10,6 +10,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.scale.ScaleScorer;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsultationService;
 import dev.uffs.doisag.service.ScaleResponseService;
@@ -96,6 +97,75 @@ class ScaleFormsTest {
         answerScale("hamilton", "{\"humorAnsioso\":7}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+    }
+
+    // o valor gravado eh o q foi mandado ou nada: o 2.9 virava 2 e o numero q passa do int
+    // dava a volta e caia dentro da faixa (4294967298 virava 2)
+    @Test
+    void numeroQuebradoOuGiganteEhRecusadoEmVezDeVirarOutroValor() throws Exception {
+        for (String value : new String[] {"2.9", "-0.9", "4294967298", "4294967296", "99999999999999999999"}) {
+            answerScale("hamilton", "{\"humorAnsioso\":" + value + "}")
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+        }
+        // na escolha tbm, e numero inteiro escrito com ponto continua valendo
+        answerScale("pittsburgh", "{\"qualidadeGeral\":1.5}").andExpect(status().isBadRequest());
+        answerScale("hamilton", "{\"humorAnsioso\":2.0}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.humorAnsioso").value(2));
+    }
+
+    // horario mandado como numero era jogado fora calado e o pittsburgh ficava sem escore
+    @Test
+    void horarioMandadoComoNumeroEhRecusado() throws Exception {
+        answerScale("diario-sono", "{\"horarioDormir\":2300,\"cansaco\":2}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+    }
+
+    // so item em branco eh resposta vazia, na correcao tbm
+    @Test
+    void respostaSoComItemEmBrancoEhRecusada() throws Exception {
+        answerScale("registro-tea", "{\"observacao\":\"  \"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.EMPTY_ANSWERS_MESSAGE));
+
+        Long responseId = idOf(answerScale("registro-tea", "{\"qualidadeDeVida\":7}")
+                .andExpect(status().isCreated()));
+        updateResponse(responseId, "{\"qualidadeDeVida\":null}", patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.EMPTY_ANSWERS_MESSAGE));
+    }
+
+    // tempo de sono negativo n existe: o minuto digitado errado volta pra pessoa conferir
+    @Test
+    void diarioDoSonoComMaisTempoAcordadoQueNaCamaEhRecusado() throws Exception {
+        answerScale("diario-sono", "{\"horarioDormir\":\"23:00\",\"horarioLevantar\":\"07:00\","
+                + "\"tempoAteDormir\":60,\"tempoAcordadoNoite\":500}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.AWAKE_LONGER_THAN_BED_MESSAGE));
+
+        answerScale("diario-sono", "{\"horarioDormir\":\"23:00\",\"horarioLevantar\":\"07:00\","
+                + "\"tempoAteDormir\":60,\"tempoAcordadoNoite\":420}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.tempoTotalSono").value(0));
+    }
+
+    // a semana respondida eh a q passou, entao o fim no futuro eh recusado como o inicio
+    @Test
+    void oFimDoPeriodoNoFuturoEhRecusado() throws Exception {
+        mockMvc.perform(post("/scales/registro-dor/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"periodStart\":\"" + TODAY.minusDays(6) + "\",\"periodEnd\":\""
+                                + TODAY.plusYears(1) + "\",\"answers\":{\"intensidadeDor\":3}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.FUTURE_PERIOD_MESSAGE));
+
+        // sem o fim, a semana q comecou ha menos de 7 dias termina hoje
+        answerScale("registro-dor", TODAY.minusDays(2), "{\"intensidadeDor\":3}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.periodEnd").value(TODAY.toString()));
     }
 
     // o diario eh um registro por dia, entao responder o mesmo dia corrige

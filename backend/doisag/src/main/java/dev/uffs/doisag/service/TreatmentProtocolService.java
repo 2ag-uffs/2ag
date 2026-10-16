@@ -23,8 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 
 // cuida do acompanhamento automatico dos 90 dias (RF32)
@@ -216,50 +214,55 @@ public class TreatmentProtocolService {
         if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
             return 0;
         }
+        // trava o prescritor da tarefa nova antes do paciente, na mesma ordem do cadastro e do envio avulso
+        // senao no postgres o job segurava o paciente e esperava o prescritor no insert da tarefa, e o envio
+        // avulso segurava o prescritor e esperava o paciente. a trava solta no fim deste acompanhamento
+        prescriberRepository.lockById(prescriber.getId());
         return designarRodada(protocol, hoje);
     }
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram
+    // quem chama ja travou o prescritor: o cadastro e o job
     private int designarRodada(TreatmentProtocol protocol, LocalDate hoje) {
-        // a avulsa ainda aberta vira a rodada, senao o paciente responde ela
-        // e recebe a mesma escala de novo no dia seguinte
-        // isso fica pro fim, dps de todos os envios: mexer na tarefa antes do envio seguinte
-        // segurava a linha dela enquanto o paciente respondia, e no postgres os dois ficavam
-        // esperando um ao outro
-        Map<ScaleTask, LocalDate> avulsasAbertas = new LinkedHashMap<>();
+        Long patientId = protocol.getPatient().getId();
+        // a linha do paciente fica travada ate o fim, antes de ler as tarefas dele, igual na resposta da escala
+        // senao o job lia a tarefa enquanto o paciente respondia ela e um gravava por cima do outro: a rodada
+        // voltava a tarefa respondida pra pendente, ou a resposta desfazia o prazo novo da rodada
+        patientRepository.lockById(patientId);
         int designadas = 0;
         for (ProtocolItem item : protocol.getItems()) {
-            if (estaNaHora(protocol, item, hoje)) {
-                ScaleTask task = scaleTaskService.assign(protocol.getPatient().getId(), item.getScaleType(), hoje,
+            if (estaNaHora(item, hoje)) {
+                LocalDate fimDaRodada = hoje.plusDays(item.getPeriodicity().getDays() - 1L);
+                ScaleTask task = scaleTaskService.assign(patientId, item.getScaleType(), hoje,
                         item.getPeriodicity().getDays(), true);
-                if (!task.isFromProtocol()) {
-                    avulsasAbertas.put(task, hoje.plusDays(item.getPeriodicity().getDays() - 1L));
+                // a tarefa q ja existia vira a rodada: a avulsa aberta ou respondida no dia, e a do
+                // acompanhamento anterior ainda pendente ou respondida no dia. ela fica com o fim da rodada,
+                // senao a tarefa q o paciente tem acabava antes do lastRoundEnd e os dias entre os dois
+                // ficavam sem tarefa nenhuma
+                if (!task.isFromProtocol() || !task.getPeriodEnd().equals(fimDaRodada)) {
+                    scaleTaskService.adoptAsProtocolRound(task, fimDaRodada);
                 }
+                item.setLastRoundEnd(fimDaRodada);
                 designadas++;
             }
         }
-        avulsasAbertas.forEach(scaleTaskService::adoptAsProtocolRound);
         return designadas;
     }
 
-    // olha quando essa escala foi enviada pela ultima vez em vez de
+    // olha quando a ultima rodada desse acompanhamento acaba em vez de
     // contar os dias desde o inicio. assim, se o servidor ficar fora do
     // ar por uns dias, o acompanhamento continua de onde parou em vez de
     // pular a rodada
-    private boolean estaNaHora(TreatmentProtocol protocol, ProtocolItem item, LocalDate hoje) {
-        Optional<ScaleTask> ultima = scaleTaskService.lastProtocolTaskOf(protocol.getPatient().getId(),
-                item.getScaleType());
-        if (ultima.isEmpty()) {
-            // primeira vez: envia assim que o acompanhamento comeca
+    // a rodada fica no item, entao o acompanhamento q substitui outro comeca o proprio ciclo com a
+    // periodicidade nova, em vez de esperar o prazo da rodada mensal do anterior
+    private boolean estaNaHora(ProtocolItem item, LocalDate hoje) {
+        // primeira vez: envia assim que o acompanhamento comeca
+        if (item.getLastRoundEnd() == null) {
             return true;
         }
-        // tarefa fechada antes do prazo pelo arquivamento n segura a proxima rodada
-        if (ultima.get().getStatus() == ScaleTaskStatus.NAO_RESPONDIDA) {
-            return true;
-        }
-        // a tarefa anterior so eh substituida quando o periodo dela acaba,
+        // a rodada anterior so eh substituida quando o periodo dela acaba,
         // entao a mesma escala nunca fica pendente duas vezes
-        return hoje.isAfter(ultima.get().getPeriodEnd());
+        return hoje.isAfter(item.getLastRoundEnd());
     }
 
     // escalas q venceram sem resposta. o prescritor ve isso no painel dele

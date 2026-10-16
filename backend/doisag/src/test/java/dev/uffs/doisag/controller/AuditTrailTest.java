@@ -102,6 +102,43 @@ class AuditTrailTest {
                 .andExpect(jsonPath("$.events[0].actorRole").value("PATIENT"));
     }
 
+    // anular escala e MEEM eh anulacao na trilha, como na consulta, e n uma alteracao qualquer
+    // q se confunde com a correcao do paciente ou com a analise
+    @Test
+    void annullingAScaleOrAMentalStateExamIsRecordedAsAnnulment() throws Exception {
+        String answer = mockMvc.perform(post("/scales/hamilton/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"humorAnsioso\":2}}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        annulScaleResponse(new ObjectMapper().readTree(answer).get("id").asLong());
+        String exam = mockMvc.perform(post("/scales/mental-state-exam/appointments/" + saveAppointment().getId())
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                                + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
+                                + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
+                                + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        annulScaleResponse(new ObjectMapper().readTree(exam).get("id").asLong());
+
+        readPatientTrail(TODAY, TODAY, 0)
+                .andExpect(jsonPath("$.events[?(@.recordType == 'ESCALA_HAMILTON' && @.actorRole == 'PRESCRIBER')]"
+                        + ".operation", contains("ANULACAO")))
+                .andExpect(jsonPath("$.events[?(@.recordType == 'MINI_EXAME' && @.operation == 'ANULACAO')]",
+                        hasSize(1)));
+    }
+
+    private void annulScaleResponse(long responseId) throws Exception {
+        mockMvc.perform(put("/scales/responses/" + responseId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"respondida pela pessoa errada\"}"))
+                .andExpect(status().isOk());
+    }
+
     // a acao do proprio paciente aparece com o nome social na trilha (RN15)
     @Test
     void patientWithSocialNameShowsUpByTheSocialName() throws Exception {

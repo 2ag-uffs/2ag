@@ -11,6 +11,7 @@ import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PatientArchiveService;
 import dev.uffs.doisag.service.ReminderService;
+import dev.uffs.doisag.service.ScaleTaskService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -179,7 +180,37 @@ class PatientArchiveTest {
                         .content(diaryBody))
                 .andExpect(status().isCreated());
 
-        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(1))).isEqualTo(1);
+        // o acompanhamento novo comeca o proprio ciclo, entao a semana nova sai ja na criacao
+        ScaleTask newDiary = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).stream()
+                .filter(task -> task.getStatus() == ScaleTaskStatus.PENDENTE)
+                .findFirst()
+                .orElseThrow();
+        assertThat(newDiary.getPeriodStart()).isEqualTo(LocalDate.now());
+        assertThat(treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(1))).isZero();
+    }
+
+    // o arquivado n consegue mandar a avaliacao inicial, entao ela n vira tarefa q cobra o impossivel
+    // as outras escalas enviadas pelo prescritor continuam chegando
+    @Test
+    void theArchivedPatientDoesNotReceiveTheInitialAssessment() throws Exception {
+        String prescriberToken = bearerTokenOf(prescriber);
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scaleType\":\"ANAMNESE\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ARCHIVED_ANAMNESIS_MESSAGE));
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
+
+        sendScale(prescriberToken);
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scaleType\":\"ANAMNESE\"}"))
+                .andExpect(status().isCreated());
     }
 
     @Test

@@ -39,6 +39,10 @@ public class ScaleTaskService {
     public static final String PRESCRIBER_SCALE_MESSAGE =
             "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta";
     public static final String NO_PRESCRIBER_MESSAGE = "Este paciente ainda não tem prescritor vinculado";
+    public static final String ARCHIVED_ANAMNESIS_MESSAGE =
+            "Paciente arquivado não preenche a avaliação inicial. Reative o paciente antes de enviar";
+    public static final String ANSWERED_TODAY_MESSAGE =
+            "Esta escala já foi respondida hoje. Veja a resposta no histórico do paciente";
 
     // quanto tempo o paciente tem pra responder uma escala avulsa
     private static final int DEFAULT_TASK_DAYS = 7;
@@ -75,7 +79,8 @@ public class ScaleTaskService {
     // envio avulso feito pelo prescritor (RF09)
     // a linha do prescritor fica travada ate o fim: dois envios da mesma escala ao mesmo tempo
     // passavam os dois pela busca da tarefa aberta e viravam duas pendencias iguais
-    // so aqui e n na versao do job, senao ele seguraria todos os prescritores a rodada inteira
+    // a versao com data n trava: o acompanhamento ja travou o prescritor e dps o paciente antes de chamar ela,
+    // e o job faz isso um acompanhamento por transacao, entao segura um prescritor por vez e n todos
     @Transactional
     public ScaleTaskDTO assign(Long patientId, ScaleType scaleType) {
         Prescriber prescriber = findPatient(patientId).getPrescriber();
@@ -101,11 +106,28 @@ public class ScaleTaskService {
         if (prescriber == null) {
             throw new BusinessException(NO_PRESCRIBER_MESSAGE);
         }
+        // o arquivado n consegue mandar a ficha, entao a tarefa ia ficar cobrando algo impossivel
+        if (scaleType == ScaleType.ANAMNESE && patient.isArchived()) {
+            throw new BusinessException(ARCHIVED_ANAMNESIS_MESSAGE);
+        }
 
         // a mesma escala ainda aberta n vira duas tarefas iguais
         Optional<ScaleTask> openTask = openTaskOf(patientId, scaleType);
         if (openTask.isPresent() && openTask.get().coversDay(today)) {
             return openTask.get();
+        }
+        // a rodada q chega no dia em q a escala ja foi respondida fica com essa resposta: a resposta
+        // do dia eh uma so, entao responder a tarefa nova so corrigia a primeira e ela seguia pendente
+        if (fromProtocol && !isDaily(scaleType)) {
+            Optional<ScaleTask> answeredToday = taskAnsweredOn(patientId, scaleType, today);
+            if (answeredToday.isPresent()) {
+                return answeredToday.get();
+            }
+        }
+        // a avulsa no dia da resposta ficava pendente sem jeito de fechar: o paciente responder de novo
+        // no mesmo dia so corrigia a resposta q ja existia
+        if (!fromProtocol && answeredOn(patientId, scaleType, today)) {
+            throw new BusinessException(ANSWERED_TODAY_MESSAGE);
         }
 
         ScaleTask task = new ScaleTask();
@@ -136,19 +158,9 @@ public class ScaleTaskService {
     // preenche um dia de cada vez (ou os dias q esqueceu de uma vez so)
     @Transactional
     public void linkResponse(ScaleResponse response) {
-        Long patientId = response.getPatient().getId();
         LocalDate today = LocalDate.now();
         boolean daily = isDaily(response.getScaleType());
-        // no diario amarra pelo dia preenchido, na tarefa pendente q cobre aquele dia: antes do job
-        // das 8h o dia de ontem ainda eh da tarefa anterior, e dia de outro periodo n conta na atual.
-        // nas outras amarra pela data do envio na tarefa mais nova, pq na escala de periodo o
-        // formulario abre em hoje-6, q cai antes do inicio da tarefa
-        Optional<ScaleTask> openTask;
-        if (daily) {
-            openTask = pendingTaskOfDay(patientId, response.getScaleType(), response.getPeriodStart());
-        } else {
-            openTask = openTaskOf(patientId, response.getScaleType()).filter(task -> task.coversDay(today));
-        }
+        Optional<ScaleTask> openTask = taskForAnswer(response);
         if (openTask.isEmpty()) {
             return;
         }
@@ -164,16 +176,71 @@ public class ScaleTaskService {
         }
     }
 
-    // a correcao q completa a escala fecha a tarefa aberta no dia em q a resposta pela metade
-    // foi enviada, e n uma tarefa nova q ja comecou
+    // a correcao q completa a escala fecha a tarefa q ja existia no dia em q a resposta pela metade
+    // foi enviada, e n uma tarefa nova q comecou dps
     @Transactional
     public void linkCompletedResponse(ScaleResponse response) {
-        Optional<ScaleTask> openTask = openTaskOf(response.getPatient().getId(), response.getScaleType());
+        Optional<ScaleTask> openTask = taskForAnswer(response);
         LocalDate sentDay = response.getCreatedAt().toLocalDate();
-        if (response.getTask() != null || openTask.isEmpty() || !openTask.get().coversDay(sentDay)) {
+        if (response.getTask() != null || openTask.isEmpty() || openTask.get().getPeriodStart().isAfter(sentDay)) {
             return;
         }
         linkResponse(response);
+    }
+
+    // a tarefa pendente q recebe a resposta
+    // no diario eh a q cobre o dia preenchido: antes do job das 8h o dia de ontem ainda eh da tarefa
+    // anterior, e dia de outro periodo n conta na atual. nas outras eh a q cobre o dia de q a resposta
+    // fala (a data da avaliacao, ou o fim da semana respondida, q na tela eh hoje: o inicio cai em hoje-6,
+    // antes do inicio da tarefa). sem nenhuma, vale a pendente mais nova q ja comecou, q eh a reaberta
+    // pela anulacao ou a q venceu e o job das 8h ainda n fechou. senao a resposta nova nunca contava
+    private Optional<ScaleTask> taskForAnswer(ScaleResponse response) {
+        Long patientId = response.getPatient().getId();
+        ScaleType scaleType = response.getScaleType();
+        if (isDaily(scaleType)) {
+            return pendingTaskOfDay(patientId, scaleType, response.getPeriodStart());
+        }
+        Optional<ScaleTask> taskOfDay = pendingTaskOfDay(patientId, scaleType, response.getPeriodEnd());
+        if (taskOfDay.isPresent()) {
+            return taskOfDay;
+        }
+        LocalDate today = LocalDate.now();
+        List<ScaleTask> pending = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
+                patientId, scaleType, ScaleTaskStatus.PENDENTE);
+        for (ScaleTask task : pending) {
+            if (!task.getPeriodStart().isAfter(today)) {
+                return Optional.of(task);
+            }
+        }
+        return Optional.empty();
+    }
+
+    // a tarefa daquela escala q foi respondida no dia e ainda vale nele
+    private Optional<ScaleTask> taskAnsweredOn(Long patientId, ScaleType scaleType, LocalDate day) {
+        List<ScaleTask> answered = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
+                patientId, scaleType, ScaleTaskStatus.RESPONDIDA);
+        for (ScaleTask task : answered) {
+            if (day.equals(task.getAnsweredAt()) && task.coversDay(day)) {
+                return Optional.of(task);
+            }
+        }
+        return Optional.empty();
+    }
+
+    // a resposta valida daquele dia, q eh a data q a tela sugere: o envio do paciente com ela so corrigiria
+    // essa resposta. na pontual eh a avaliacao q comeca no dia, e na de periodo eh a semana q termina nele,
+    // pq a tela e o servidor mandam o inicio 6 dias antes. no diario cada dia eh um registro e a tarefa
+    // cobre a semana toda, entao n entra
+    private boolean answeredOn(Long patientId, ScaleType scaleType, LocalDate day) {
+        if (isDaily(scaleType)) {
+            return false;
+        }
+        if (isPeriod(scaleType)) {
+            return responseRepository.existsByPatientIdAndScaleTypeAndPeriodEndAndAnnulmentAnnulledAtIsNull(
+                    patientId, scaleType, day);
+        }
+        return responseRepository.findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
+                patientId, scaleType, day).isPresent();
     }
 
     // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
@@ -246,6 +313,11 @@ public class ScaleTaskService {
                 && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.DIARIO;
     }
 
+    private boolean isPeriod(ScaleType scaleType) {
+        return catalog.hasDefinition(scaleType)
+                && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.PERIODO;
+    }
+
     // conta pela data os dias q caem no periodo, inclusive os preenchidos atrasados antes do fim
     private void notifyDailyPeriodClosed(ScaleTask task) {
         Patient patient = task.getPatient();
@@ -297,20 +369,18 @@ public class ScaleTaskService {
                 .toList();
     }
 
-    // a avulsa q estava aberta na hora da rodada passa a ser a rodada, com o prazo da periodicidade
+    // a tarefa q ja existia na hora da rodada passa a ser a rodada, com o prazo dela: a avulsa aberta
+    // ou respondida naquele dia, e a do acompanhamento anterior. o prazo da tarefa acaba junto com a
+    // rodada, pra mais ou pra menos, senao sobrava dia sem tarefa ate a proxima. o prazo novo ganha
+    // lembrete de novo, senao o q ja saiu pro prazo antigo calava o do novo
     @Transactional
     public void adoptAsProtocolRound(ScaleTask task, LocalDate roundEnd) {
         task.setFromProtocol(true);
-        if (task.getPeriodEnd().isBefore(roundEnd)) {
+        if (!task.getPeriodEnd().equals(roundEnd)) {
             task.setPeriodEnd(roundEnd);
+            task.setReminderSentAt(null);
         }
         taskRepository.save(task);
-    }
-
-    // a ultima rodada do acompanhamento automatico, sem contar o envio avulso
-    public Optional<ScaleTask> lastProtocolTaskOf(Long patientId, ScaleType scaleType) {
-        return taskRepository.findFirstByPatientIdAndScaleTypeAndFromProtocolTrueOrderByPeriodStartDesc(
-                patientId, scaleType);
     }
 
     private ScaleResponseSummaryDTO summaryOf(ScaleResponse response) {

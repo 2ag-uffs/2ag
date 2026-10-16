@@ -1,9 +1,13 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
 import dev.uffs.doisag.dto.ScaleResponseDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.Periodicity;
+import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.RowLock;
@@ -11,10 +15,12 @@ import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
+import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,10 +33,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +69,9 @@ class ScaleResponseRaceTest {
     @Autowired private RowLock rowLock;
     @Autowired private MockMvc mockMvc;
     @Autowired private TokenService tokenService;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
+    @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     private HeldLock heldLock;
     private Prescriber prescriber;
@@ -93,6 +105,9 @@ class ScaleResponseRaceTest {
         jdbcTemplate.update("delete from scale_response where patient_id = ?", patient.getId());
         jdbcTemplate.update("delete from scale_task where patient_id = ?", patient.getId());
         jdbcTemplate.update("delete from appointment where patient_id = ?", patient.getId());
+        jdbcTemplate.update("delete from protocol_item where protocol_id in "
+                + "(select id from treatment_protocol where patient_id = ?)", patient.getId());
+        jdbcTemplate.update("delete from treatment_protocol where patient_id = ?", patient.getId());
         patientRepository.delete(patient);
         prescriberRepository.delete(prescriber);
     }
@@ -158,6 +173,68 @@ class ScaleResponseRaceTest {
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(ScaleResponseService.EXAM_ALREADY_APPLIED_MESSAGE);
         assertThat(responseRepository.findByAppointmentIdOrderByPeriodStartAsc(appointment.getId())).hasSize(1);
+    }
+
+    // o job da rodada trava o paciente antes de olhar as tarefas dele, igual a resposta. antes ele lia a avulsa
+    // pendente enquanto o paciente respondia ela e gravava a tarefa por cima: a rodada voltava a resposta pra
+    // pendente, ou a resposta desfazia o prazo novo da rodada. agora a rodada espera e pega a tarefa respondida
+    @Test
+    void theRoundWaitsForTheAnswerAndTakesTheTaskAlreadyAnswered() throws Exception {
+        ScaleTask handSent = saveHandSentPainTask();
+        // comecou ontem, entao a primeira rodada fica pro job
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY.minusDays(1), 90,
+                null, null, List.of(new ProtocolItemDTO(ScaleType.REGISTRO_DOR, null, Periodicity.SEMANAL))),
+                prescriber);
+
+        HeldLock.Outcome<Integer> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> responseService.answer(patient.getId(), ScaleType.REGISTRO_DOR,
+                        new ScaleResponseCreateDTO(null, null, Map.of("intensidadeDor", 7))),
+                () -> treatmentProtocolService.designarEscalasVencidas(TODAY));
+
+        assertThat(outcome.error()).isNull();
+        List<ScaleTask> tasks = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId());
+        assertThat(tasks).hasSize(1);
+        ScaleTask round = tasks.get(0);
+        assertThat(round.getId()).isEqualTo(handSent.getId());
+        assertThat(round.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(round.getAnsweredAt()).isEqualTo(TODAY);
+        assertThat(round.isFromProtocol()).isTrue();
+        assertThat(round.getPeriodEnd()).isEqualTo(TODAY.plusDays(6));
+    }
+
+    // a tarefa grava so as colunas q mudaram: o lembrete do job, gravado em cima da tarefa q ele leu antes
+    // da resposta, n volta a tarefa respondida pra pendente
+    @Test
+    void theReminderSavedOverAnOldCopyKeepsTheAnswerSavedMeanwhile() {
+        ScaleTask task = saveHandSentPainTask();
+        TransactionTemplate answerTransaction = new TransactionTemplate(transactionManager);
+        answerTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            ScaleTask readBeforeTheAnswer = taskRepository.findById(task.getId()).orElseThrow();
+            answerTransaction.executeWithoutResult(inner -> responseService.answer(patient.getId(),
+                    ScaleType.REGISTRO_DOR, new ScaleResponseCreateDTO(null, null, Map.of("intensidadeDor", 7))));
+            readBeforeTheAnswer.setReminderSentAt(LocalDateTime.now());
+            taskRepository.save(readBeforeTheAnswer);
+        });
+
+        ScaleTask kept = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(kept.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(kept.getAnsweredAt()).isEqualTo(TODAY);
+        assertThat(kept.getReminderSentAt()).isNotNull();
+    }
+
+    // a dor enviada a mao ha dois dias, ainda esperando resposta
+    private ScaleTask saveHandSentPainTask() {
+        ScaleTask task = new ScaleTask();
+        task.setPatient(patient);
+        task.setPrescriber(prescriber);
+        task.setScaleType(ScaleType.REGISTRO_DOR);
+        task.setPeriodStart(TODAY.minusDays(2));
+        task.setPeriodEnd(TODAY.plusDays(4));
+        task.setStatus(ScaleTaskStatus.PENDENTE);
+        return taskRepository.save(task);
     }
 
     private ScaleResponse saveDiaryAnswerOfToday(int pain) {

@@ -1,6 +1,7 @@
 package dev.uffs.doisag.scale;
 
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BusinessException;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -8,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 // o calculo de cada escala validada (RN13 e Anexo A)
 //
@@ -181,6 +183,20 @@ class ScaleScorerTest {
         assertThat(completed.get("tempoNaCama")).isEqualTo(480);
         assertThat(completed.get("totalAcordado")).isEqualTo(45);
         assertThat(completed.get("tempoTotalSono")).isEqualTo(435);
+    }
+
+    // mais tempo acordado q na cama eh minuto digitado errado e n vira sono negativo
+    @Test
+    void diarioDoSonoNaoGuardaSonoNegativo() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "23:00");
+        answers.put("horarioLevantar", "07:00");
+        answers.put("tempoAteDormir", 60);
+        answers.put("tempoAcordadoNoite", 500);
+
+        assertThatThrownBy(() -> scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(ScaleScorer.AWAKE_LONGER_THAN_BED_MESSAGE);
     }
 
     // sem os dois horarios n da pra calcular, e a conta n vira zero

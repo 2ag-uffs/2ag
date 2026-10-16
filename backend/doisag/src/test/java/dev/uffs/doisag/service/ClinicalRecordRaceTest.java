@@ -52,8 +52,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // os outros cadastros q liam e so dps gravavam, do mesmo jeito da agenda e da escala:
-// o acompanhamento ativo, o envio avulso de escala, a receita vigente e a anulacao da consulta
-// a trava eh a linha do prescritor nos dois primeiros, a da consulta e a do paciente na receita
+// o acompanhamento ativo, o envio avulso de escala, a rodada do job, a receita vigente e a anulacao da consulta
+// a trava eh a linha do prescritor nos tres primeiros, a da consulta e a do paciente na receita
 // e a da consulta na anulacao, na correcao do registro e na remarcacao
 @SpringBootTest
 @ActiveProfiles("test")
@@ -146,6 +146,27 @@ class ClinicalRecordRaceTest {
         List<ScaleTask> tasks = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId());
         assertThat(tasks).hasSize(1);
         assertThat(outcome.value().id()).isEqualTo(tasks.get(0).getId());
+    }
+
+    // o job da rodada trava o prescritor antes do paciente, na mesma ordem do envio avulso. com a trava so do
+    // paciente, no postgres o job segurava o paciente e esperava o prescritor no insert da tarefa, enquanto o
+    // envio avulso segurava o prescritor e esperava o paciente. agora a rodada espera o envio e pega a tarefa dele
+    @Test
+    void theRoundWaitsForTheHandSentScaleAndTakesItsTask() throws Exception {
+        // comecou ontem, entao a primeira rodada fica pro job
+        protocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY.minusDays(1), 90, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL))), prescriber);
+
+        HeldLock.Outcome<Integer> outcome = heldLock.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> taskService.assign(patient.getId(), ScaleType.REGISTRO_SONO),
+                () -> protocolService.designarEscalasVencidas(TODAY));
+
+        assertThat(outcome.error()).isNull();
+        List<ScaleTask> tasks = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId());
+        assertThat(tasks).hasSize(1);
+        assertThat(tasks.get(0).isFromProtocol()).isTrue();
+        assertThat(tasks.get(0).getPeriodEnd()).isEqualTo(TODAY.plusDays(6));
     }
 
     @Test

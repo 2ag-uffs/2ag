@@ -171,6 +171,22 @@ describe("Escala", () => {
         expect(screen.getByRole("group", {name: "Dor intensa 8 a 10"})).toBeInTheDocument();
         expect(screen.getAllByRole("radio")).toHaveLength(11);
     });
+
+    // a semana respondida eh a q passou, entao o fim n vai alem de hoje nem antes do inicio
+    it("na escala de periodo, o fim do periodo vai do inicio ate hoje", async () => {
+        const periodStart = toIsoDate(addDays(new Date(), -6));
+        const today = toIsoDate(new Date());
+        const periodScale = {...HAMILTON, type: "REGISTRO_DOR", slug: "registro-dor", fillMode: "PERIODO"};
+        responses = [];
+        vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-dor" ? periodScale : responses));
+        renderScale("/escalas/registro-dor");
+
+        const periodEnd = await screen.findByLabelText("Fim do período");
+        await waitFor(() => expect(screen.getByLabelText("Início do período")).toHaveValue(periodStart));
+        expect(periodEnd).toHaveAttribute("max", today);
+        expect(periodEnd).toHaveAttribute("min", periodStart);
+    });
 });
 
 // diario com um item de nota, preenchido um dia por vez na grade
@@ -320,6 +336,26 @@ describe("Escala diaria", () => {
         expect(await screen.findByText(/Respostas salvas/)).toBeInTheDocument();
         expect(post).toHaveBeenCalledWith("/scales/acompanhamento-semanal/responses",
             {periodStart: taskStart, periodEnd: taskStart, answers: {dor: 4}});
+    });
+
+    // antes do job das 8h (ou qnd volta pela anulacao) a semana q venceu ontem ainda aceita os dias
+    // dela, entao o responder do cartao atrasado abre a grade dela e n a semana de hoje
+    it("a pendente q venceu abre a grade do periodo dela", async () => {
+        const lateStart = dayFromToday(-7);
+        pendingTasks = [{
+            id: 3, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: lateStart, periodEnd: dayFromToday(-1), status: "PENDENTE", answeredDays: 0,
+            totalDays: 7, daily: true, late: true,
+        }];
+        renderScale("/escalas/acompanhamento-semanal");
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons).toHaveLength(7);
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(lateStart));
+        expect(within(grid).getByRole("button", {pressed: true}))
+            .toHaveTextContent(formatWeekdayAndDate(dayFromToday(-1)));
+        expect(screen.getByText(/Esqueceu algum dia/)).toBeInTheDocument();
     });
 
     // a antiga q passou do prazo vem antes na lista, mas a grade eh da q cobre hoje
