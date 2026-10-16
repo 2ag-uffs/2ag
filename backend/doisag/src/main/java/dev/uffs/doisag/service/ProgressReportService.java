@@ -11,6 +11,8 @@ import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
 import dev.uffs.doisag.scale.ScaleItem;
 import dev.uffs.doisag.scale.ScaleItemType;
+import dev.uffs.doisag.scale.ScaleScorer;
+import dev.uffs.doisag.scale.ScoreBand;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +32,16 @@ public class ProgressReportService {
 
     private final ScaleResponseRepository responseRepository;
     private final ScaleCatalog catalog;
+    private final ScaleScorer scorer;
     private final AuditService auditService;
 
     public ProgressReportService(ScaleResponseRepository responseRepository,
                                  ScaleCatalog catalog,
+                                 ScaleScorer scorer,
                                  AuditService auditService) {
         this.responseRepository = responseRepository;
         this.catalog = catalog;
+        this.scorer = scorer;
         this.auditService = auditService;
     }
 
@@ -61,8 +66,18 @@ public class ProgressReportService {
                 // zero em dor significa sem dor, entao plotar zero por falta
                 // de resposta inverte o sentido do q aconteceu (RN10)
                 .filter(response -> valueOf(response, attribute) != null)
-                .map(response -> new ProgressDataPointDTO(response.getPeriodStart(), valueOf(response, attribute)))
+                .map(response -> pointOf(response, attribute))
                 .toList();
+    }
+
+    // o escore vai com a faixa q foi gravada na resposta, e o MEEM ainda leva
+    // o corte da escolaridade daquele exame (RN14). item da ficha n tem faixa
+    private ProgressDataPointDTO pointOf(ScaleResponse response, TrackableAttribute attribute) {
+        if (!attribute.isScore()) {
+            return new ProgressDataPointDTO(response.getPeriodStart(), valueOf(response, attribute), null, null);
+        }
+        return new ProgressDataPointDTO(response.getPeriodStart(), response.getScore(), response.getScoreBand(),
+                scorer.cutoffOf(response.getScaleType(), response.getAnswers()));
     }
 
     // o q o paciente escreveu nas escalas do periodo, do mais antigo pro
@@ -107,15 +122,21 @@ public class ProgressReportService {
 
     private TrackableAttributeDTO attributeDtoOf(TrackableAttribute attribute) {
         ScaleDefinition definition = catalog.definitionOf(attribute.getScaleType());
+        // no escore as pontas sao a primeira e a ultima faixa do instrumento,
+        // tipo sem ansiedade no 0 e ansiedade grave no 56
         if (attribute.isScore()) {
             return new TrackableAttributeDTO(attribute.name(), definition.scoreLabel(), attribute.getScaleType(),
                     attribute.getScaleType().getDisplayName(), definition.minScore(), definition.maxScore(),
-                    definition.bands());
+                    definition.bands(), ScoreBand.labelOf(definition.bands(), definition.minScore()),
+                    ScoreBand.labelOf(definition.bands(), definition.maxScore()), definition.higherScoreIsBetter());
         }
         ScaleItem item = definition.itemOf(attribute.getItemKey())
                 .orElseThrow(() -> new IllegalStateException(
                         "Atributo sem item na escala: " + attribute.name()));
+        // contagem e minutos n tem ancora no papel, entao o lado bom fica sem dizer
+        Boolean higherIsBetter = item.lowAnchor() == null ? null : item.higherIsBetter();
         return new TrackableAttributeDTO(attribute.name(), item.label(), attribute.getScaleType(),
-                attribute.getScaleType().getDisplayName(), item.minValue(), item.maxValue(), List.of());
+                attribute.getScaleType().getDisplayName(), item.minValue(), item.maxValue(), List.of(),
+                item.lowAnchor(), item.highAnchor(), higherIsBetter);
     }
 }

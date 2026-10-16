@@ -170,16 +170,30 @@ public class ScaleScorer {
                 .filter(key -> !key.equals("escolaridade"))
                 .toList();
         Integer score = sumOrNull(answers, sections);
-        Integer schooling = intOf(answers, "escolaridade");
-        if (score == null || schooling == null || schooling < 0 || schooling >= MEEM_CUTOFFS.length) {
+        Double cutoff = mentalStateExamCutoff(answers);
+        if (score == null || cutoff == null) {
             return new ScoreResult(score, null);
         }
-        double cutoff = MEEM_CUTOFFS[schooling];
         String cutoffText = String.valueOf(cutoff).replace(".0", "").replace('.', ',');
         String band = score >= cutoff
                 ? "Dentro do esperado para a escolaridade (corte " + cutoffText + ")"
                 : "Abaixo do esperado para a escolaridade (corte " + cutoffText + ")";
         return new ScoreResult(score, band);
+    }
+
+    // o ponto de corte q vale pra essa resposta, qnd ele depende dela. so o
+    // MEEM eh assim, pela escolaridade gravada no exame. o grafico usa pra
+    // desenhar a linha do corte (RN14)
+    public Double cutoffOf(ScaleType type, Map<String, Object> answers) {
+        return type == ScaleType.MINI_EXAME_ESTADO_MENTAL ? mentalStateExamCutoff(answers) : null;
+    }
+
+    private Double mentalStateExamCutoff(Map<String, Object> answers) {
+        Integer schooling = intOf(answers, "escolaridade");
+        if (schooling == null || schooling < 0 || schooling >= MEEM_CUTOFFS.length) {
+            return null;
+        }
+        return MEEM_CUTOFFS[schooling];
     }
 
     // o diario do sono tem tres campos q saem de conta e a pessoa n

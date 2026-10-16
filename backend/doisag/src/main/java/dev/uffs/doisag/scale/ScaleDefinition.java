@@ -20,6 +20,9 @@ public record ScaleDefinition(
         Integer minScore,
         Integer maxScore,
         String scoreLabel,
+        // o lado bom do escore, q o grafico mostra junto da curva. no hamilton
+        // o escore alto eh ruim e no MEEM eh bom. nulo qnd a escala n tem escore
+        Boolean higherScoreIsBetter,
         // item q vira o resultado na lista quando a escala n tem escore
         // proprio, pq inventar faixa em formulario n validado eh
         // justamente o q a RN13 proibe

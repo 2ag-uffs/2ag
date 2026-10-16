@@ -240,18 +240,21 @@ public class ExportService {
         }
     }
 
+    // o escore de escala validada sai com a faixa do lado, igual no scales.csv,
+    // pq numero sozinho n quer dizer nada (RN14). item da ficha fica com a faixa em branco
     @Transactional
     public String progressCsv(Long patientId, TrackableAttribute attribute, TimePeriod period,
                               boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor");
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor", "Faixa");
 
         progressReportService.getPatientProgress(patientId, attribute, period)
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
                         attribute.name(),
                         date(point.date()),
-                        point.value()));
+                        point.value(),
+                        point.band()));
         return csv.build();
     }
 

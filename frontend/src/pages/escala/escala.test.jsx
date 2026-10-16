@@ -148,6 +148,29 @@ describe("Escala", () => {
         await waitFor(() => expect(post).toHaveBeenCalledWith("/scales/pittsburgh/responses",
             {periodStart, periodEnd: today, answers: {humorAnsioso: 2}}));
     });
+
+    // RF25 a intensidade da dor eh a escala visual do papel, com as tres faixas nomeadas
+    // e coloridas, e n onze botoes soltos. as faixas vem na definicao, como em qualquer escala
+    it("o registro de dor mostra a escala visual com as faixas da definicao", async () => {
+        const painLog = {
+            type: "REGISTRO_DOR", slug: "registro-dor", title: "Acompanhamento semanal de dor",
+            instruction: "Pense na última semana para responder.", fillMode: "PERIODO", filledByPatient: true,
+            scoreLabel: "Intensidade da dor", minScore: 0, maxScore: 10,
+            items: [{key: "intensidadeDor", label: "Intensidade da dor no período", type: "NOTA", minValue: 0,
+                maxValue: 10, lowAnchor: "leve", highAnchor: "intensa", higherIsBetter: false, options: []}],
+            bands: [{minScore: 0, maxScore: 2, label: "Dor leve"}, {minScore: 3, maxScore: 7, label: "Dor moderada"},
+                {minScore: 8, maxScore: 10, label: "Dor intensa"}],
+        };
+        vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-dor" ? painLog : []));
+        renderScale("/escalas/registro-dor");
+
+        expect(await screen.findByText("Intensidade da dor no período")).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Dor leve 0 a 2"})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Dor moderada 3 a 7"})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Dor intensa 8 a 10"})).toBeInTheDocument();
+        expect(screen.getAllByRole("radio")).toHaveLength(11);
+    });
 });
 
 // diario com um item de nota, preenchido um dia por vez na grade

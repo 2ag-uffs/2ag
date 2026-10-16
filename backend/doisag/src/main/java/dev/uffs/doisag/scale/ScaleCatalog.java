@@ -130,7 +130,7 @@ public class ScaleCatalog {
         return new ScaleDefinition(ScaleType.ACOMPANHAMENTO_SEMANAL, "Acompanhamento semanal",
                 "Preencha um dia de cada vez, como na ficha em papel. O que você não responder fica em branco, "
                         + "e em branco não vale zero.",
-                FillMode.DIARIO, items, List.of(), null, null, null, "dor");
+                FillMode.DIARIO, items, List.of(), null, null, null, null, "dor");
     }
 
     // diario do sono (RF22)
@@ -177,7 +177,7 @@ public class ScaleCatalog {
 
         return new ScaleDefinition(ScaleType.REGISTRO_SONO, "Diário do sono",
                 "Preencha um dia de cada vez. Se acordar no meio da noite, saia da cama.",
-                FillMode.DIARIO, items, List.of(), null, null, null, "tempoTotalSono");
+                FillMode.DIARIO, items, List.of(), null, null, null, null, "tempoTotalSono");
     }
 
     // HAM-A (RF21 e Anexo A.1)
@@ -234,7 +234,7 @@ public class ScaleCatalog {
 
         return new ScaleDefinition(ScaleType.ESCALA_HAMILTON, "Escala de ansiedade de Hamilton (HAM-A)",
                 "Cada item vai de 0 a 4, e valores maiores indicam sintomas mais severos de ansiedade.",
-                FillMode.PONTUAL, items, bands, 0, 56, "Escore total", null);
+                FillMode.PONTUAL, items, bands, 0, 56, "Escore total", false, null);
     }
 
     private ScaleItem hamiltonItem(String key, String label, String help) {
@@ -292,7 +292,7 @@ public class ScaleCatalog {
         return new ScaleDefinition(ScaleType.ESCALA_PITTSBURGH, "Índice de qualidade do sono de Pittsburgh (PSQI-BR)",
                 "As perguntas são sobre os seus hábitos de sono durante o último mês. Responda pensando na "
                         + "maioria dos dias e das noites.",
-                FillMode.PONTUAL, items, bands, 0, 21, "Índice global", null);
+                FillMode.PONTUAL, items, bands, 0, 21, "Índice global", false, null);
     }
 
     private ScaleItem psqiFreq(String key, String label) {
@@ -321,7 +321,7 @@ public class ScaleCatalog {
 
         return new ScaleDefinition(ScaleType.REGISTRO_DOR, "Acompanhamento semanal de dor",
                 "Pense na última semana para responder.",
-                FillMode.PERIODO, items, bands, 0, 10, "Intensidade da dor", "intensidadeDor");
+                FillMode.PERIODO, items, bands, 0, 10, "Intensidade da dor", false, "intensidadeDor");
     }
 
     private ScaleItem painFreq(String key, String label) {
@@ -355,7 +355,7 @@ public class ScaleCatalog {
 
         return new ScaleDefinition(ScaleType.REGISTRO_TEA, "Acompanhamento semanal de TEA",
                 "Pense na última semana para responder.",
-                FillMode.PERIODO, items, List.of(), null, null, null, "qualidadeDeVida");
+                FillMode.PERIODO, items, List.of(), null, null, null, null, "qualidadeDeVida");
     }
 
     private ScaleItem teaFreq(String key, String label, String help) {
@@ -389,7 +389,7 @@ public class ScaleCatalog {
 
         return new ScaleDefinition(ScaleType.MINI_EXAME_ESTADO_MENTAL, "Mini-Exame do Estado Mental (MEEM)",
                 "Aplicado pelo prescritor durante a consulta.",
-                FillMode.PONTUAL, items, List.of(), 0, 30, "Escore total", null);
+                FillMode.PONTUAL, items, List.of(), 0, 30, "Escore total", true, null);
     }
 
     private ScaleItem meemItem(String key, String label, int maxValue, String help) {

@@ -102,7 +102,7 @@ Sobre fundo sem contraste · esticar horizontalmente · aumentar o tamanho do s�
 
 Quatro valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo.
 
-Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, amarela e vermelha da escala de dor, que copiam o formulário impresso que a clínica já usa.
+Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, âmbar e vermelha da escala de dor, que seguem o formulário impresso que a clínica já usa. No papel a faixa moderada vai do verde ao âmbar; na tela ela foi simplificada num âmbar só.
 
 ### contraste
 

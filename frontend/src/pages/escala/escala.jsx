@@ -379,6 +379,7 @@ export default function Escala() {
 
                 <ScaleForm
                     items={definition.items}
+                    bands={definition.bands}
                     values={values}
                     onChange={changeAnswer}
                     disabled={isReadOnly || isSaving}

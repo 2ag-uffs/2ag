@@ -386,7 +386,7 @@ Período avaliado (`De __/__/__ A __/__/__`) e intensidade da dor em escala visu
 *Critérios de aceite:*
 - **Possui tela de preenchimento acessível.** Existe no backend, sem interface
 - Faixas da escala visual **conforme o formulário aplicado** (`docs/scales/registro-dor.pdf`): **leve 0 a 2 · moderada 3 a 7 · intensa 8 a 10**. A v1.0 especificava 1–3 leve, 4–6 moderada e 7–10 intensa, que não são as do instrumento em uso
-- A escala é apresentada visualmente, com as três faixas nomeadas e coloridas, não como um campo numérico solto
+- A escala é apresentada visualmente, com as três faixas nomeadas e coloridas, não como um campo numérico solto. *Atendido em 16/10/2026: o formulário genérico desenha a nota com as faixas da definição — Dor leve (0 a 2) em azul, Dor moderada (3 a 7) em âmbar e Dor intensa (8 a 10) em vermelho, cores que seguem o formulário impresso (no papel a faixa moderada vai do verde ao âmbar; na tela foi simplificada num âmbar só) — com o nome e o intervalo de cada faixa escritos em cima das notas dela, então a cor não é o único sinal. Vale para qualquer item de nota que vá de ponta a ponta das faixas da escala; no HAM-A as faixas são do total de 0 a 56 e o item de 0 a 4 continua com a régua simples (`ScaleForm`)*
 - O campo de observação exibe a orientação do formulário: relato de efeito colateral, ausência de tomada de alguma medicação, momento significativo na rotina
 
 ---
@@ -418,12 +418,14 @@ Seletor de período no topo (15, 30, 60, 90 dias), seleção da **escala** e fil
 - O seletor de escala funciona para todas as escalas pontuadas, não apenas a ficha de acompanhamento
 - Períodos sem dado aparecem como lacuna, nunca como zero (RN10)
 - Adicionar uma escala nova não exige alterar o serviço de progresso (RNF08)
+- O gráfico diz o que o 0 e o máximo significam e qual lado é melhor, com as âncoras do formulário da clínica (RF20). Em ansiedade o 10 é "tranquilo" e em dor o 10 é "dor intensa", então sem isso a curva subindo pode ser lida ao contrário. *Atendido em 16/10/2026: o catálogo de atributos traz as âncoras e o `higherIsBetter` do item, e a tela mostra, abaixo do nome do atributo, por exemplo "0 = muito ansioso · 10 = tranquilo · Maior é melhor". No escore, as pontas são a primeira e a última faixa do instrumento. Contagem e minutos não têm âncora no papel e ficam sem lado melhor, em vez de um inventado*
+- Escore de escala validada no gráfico vem com a faixa (RN14). *Atendido em 16/10/2026: cada ponto do escore traz a faixa gravada na resposta, que aparece ao lado do valor no ponto do gráfico e no último registro. O MEEM, cuja faixa depende da escolaridade, traz também o ponto de corte da escolaridade de cada exame: quando é o mesmo no período inteiro, vira uma linha de corte no gráfico; quando há dois ou mais pontos de corte diferentes, a tela avisa que a escolaridade mudou e a faixa fica em cada ponto. Exame antigo sem escolaridade registrada vem sem corte e sem faixa e é contado à parte, sem ser lido como mudança de escolaridade: a tela avisa "Exame sem escolaridade registrada: sem faixa", e o ponto e o último registro mostram esse texto ao lado do escore*
 
 ---
 
 **RF28 — Tela de progresso (prescritor)** · `mantido` · **E** · Prescritor
 
-Mesma estrutura do RF27, para o paciente selecionado, com período adicional "todo o tempo". Restrito a pacientes vinculados (RF30).
+Mesma estrutura do RF27, para o paciente selecionado, com período adicional "todo o tempo". Restrito a pacientes vinculados (RF30). As âncoras, o lado melhor e a faixa de cada escore do RF27 valem igual aqui.
 
 ---
 
@@ -591,7 +593,7 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 | **RN11** | Campo de texto clínico livre (observação, plano terapêutico, evolução, diagnóstico, campos descritivos da anamnese) não tem limite prático de tamanho. *Atendido em 12/09/2026: esses campos são `TEXT` na migração base e nas entidades, e os testes gravam 10.000 caracteres na evolução da consulta e numa resposta da anamnese sem truncar (`ConsultationRecordTest`, `AnamnesisTest`)* |
 | **RN12** | Senha nunca é gravada em texto puro nem transita em resposta da API. *Atendido desde 12/09/2026: a atualização de perfil não recebe senha (`ProfileUpdateDTO`), toda senha gravada passa pelo `passwordEncoder` (cadastro, troca no perfil, link de senha nova ou de primeiro acesso e conta do administrador), e o hash não sai em resposta nenhuma, com `@JsonIgnore` em `Users.getPassword` e o `PasswordExposureTest` conferindo* |
 | **RN13** | Escore de escala validada é calculado exclusivamente pelo algoritmo oficial do instrumento (Anexo A). Adaptação ou simplificação de algoritmo não é permitida: escore fora do instrumento não pode ser exibido com o nome do instrumento |
-| **RN14** | O escore é sempre apresentado com sua **faixa interpretativa**, nunca como número isolado |
+| **RN14** | O escore é sempre apresentado com sua **faixa interpretativa**, nunca como número isolado. *No gráfico de evolução desde 16/10/2026: cada ponto de escore traz a faixa gravada, e o MEEM traz o ponto de corte da escolaridade de cada exame (`ProgressReportService`). A série exportada em `progress.csv` ganhou a coluna "Faixa", preenchida nos escores do HAM-A, do PSQI, do MEEM e da intensidade da dor, inclusive no arquivo sem identificação* |
 | **RN15** | O paciente é identificado pelo **nome social** em toda a interface, nos formulários e nos relatórios. O nome de registro civil é armazenado apenas onde houver exigência legal. *Atendido em 16/10/2026: nome social opcional no cadastro e no perfil do paciente (`Patient.socialName`, `V27__nome_social_do_paciente.sql`), mostrado no lugar do nome civil nas telas, nos avisos e nos e-mails. O nome civil aparece junto só no prontuário, na impressão, na exportação com identificação e na tela de contas da administração (#109)* |
 
 ---
@@ -834,7 +836,8 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 
 - **Uma página para os dois perfis:** o paciente vê a própria evolução e o prescritor a de cada paciente vinculado, com o período adicional "todo o tempo" (RF28). O RF07 ficou dentro dela, como decidido em §8.3.
 - **Gráfico:** período, escala e atributo no topo, e a curva do atributo escolhido ao longo das datas de preenchimento. Dia sem resposta é lacuna, nunca zero (RN10).
-- **Faixa no gráfico:** nas escalas validadas, cada faixa do instrumento vira uma linha de corte com o nome, então o escore nunca aparece como número solto (RN14). Formulário sem faixa publicada não ganha linha nenhuma (RN13).
+- **Faixa no gráfico:** nas escalas validadas, cada faixa do instrumento vira uma linha de corte com o nome, então o escore nunca aparece como número solto (RN14). Formulário sem faixa publicada não ganha linha nenhuma (RN13). O MEEM, que não tem faixa fixa, mostra a faixa da escolaridade em cada ponto e a linha do ponto de corte quando a escolaridade é a mesma no período, e só avisa que a escolaridade mudou quando há dois ou mais pontos de corte diferentes. Exame antigo sem escolaridade registrada aparece como "sem faixa", contado à parte (16/10/2026).
+- **Qual lado é melhor:** abaixo do nome do atributo, as âncoras do formulário e se maior ou menor é melhor, porque em ansiedade, náusea e função intestinal a curva subindo é melhora e em dor e tremor é piora (16/10/2026).
 - **Dose junto do sintoma:** nos atributos da ficha de acompanhamento, uma caixa liga a linha das gotas do dia. É o que responde se mexer na dose mudou o sintoma.
 - **Consultas no gráfico:** a consulta do período vira uma linha vertical no dia em que aconteceu, com marca própria quando saiu receita. A que caiu em dia sem preenchimento aparece na lista embaixo, porque não há ponto onde marcar.
 - **Relato do paciente (RF07):** os comentários escritos dentro das escalas aparecem em uma linha do tempo abaixo do gráfico, com a data e a escala de onde vieram.

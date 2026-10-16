@@ -129,6 +129,65 @@
     justify-content: space-between;
 }
 
+/* ---- regua com as faixas, como a escala visual da dor no papel ---- */
+
+.bands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+/* a largura da faixa segue quantas notas ela tem, e no celular a faixa q
+   n cabe desce pra linha de baixo em vez de espremer os botoes */
+.band {
+    background-color: var(--band-fill);
+    border-radius: var(--radius-md);
+    border-top: 4px solid var(--band-stripe);
+    display: flex;
+    flex-basis: 0;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: min-content;
+    padding: var(--space-2);
+}
+
+.bandGood {
+    --band-fill: var(--color-scale-band-good);
+    --band-stripe: var(--color-scale-band-good-stripe);
+}
+
+.bandMiddle {
+    --band-fill: var(--color-scale-band-middle);
+    --band-stripe: var(--color-scale-band-middle-stripe);
+}
+
+.bandBad {
+    --band-fill: var(--color-scale-band-bad);
+    --band-stripe: var(--color-scale-band-bad-stripe);
+}
+
+/* o nome da faixa eh texto de verdade, a cor so acompanha */
+.bandName {
+    align-items: baseline;
+    color: var(--color-text-primary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    gap: 0 var(--space-2);
+}
+
+.bandRange {
+    font-weight: 400;
+}
+
+.bandScores {
+    display: grid;
+    gap: var(--space-2);
+    grid-auto-columns: minmax(2.75rem, 1fr);
+    grid-auto-flow: column;
+}
+
 /* ---- opcoes com a bolinha do radio desenhada ---- */
 
 .options {
@@ -210,5 +269,9 @@ fieldset:disabled .option span:hover {
 
     .scores {
         grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+    }
+
+    .bandScores {
+        grid-auto-columns: minmax(2.5rem, 1fr);
     }
 }

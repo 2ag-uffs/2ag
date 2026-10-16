@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import {Link, useLocation, useNavigate, useParams} from "react-router";
-import {FiDownload, FiFileText, FiTrendingUp, FiUsers} from "react-icons/fi";
+import {FiArrowDown, FiArrowUp, FiDownload, FiFileText, FiTrendingUp, FiUsers} from "react-icons/fi";
 import {
     CartesianGrid,
     Legend,
@@ -18,6 +18,17 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, download, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
+import {
+    anchorsTextOf,
+    bandTextOf,
+    countWithoutCutoff,
+    directionTextOf,
+    formatCutoff,
+    hasVaryingCutoff,
+    NO_SCHOOLING_TEXT,
+    sharedCutoffOf,
+    valueWithBand,
+} from "../../utils/progress-reading.js";
 import {onThemeChange} from "../../utils/theme.js";
 import styles from "./progresso.module.css";
 
@@ -39,6 +50,14 @@ const chartColorsNow = () => ({
 // aaaa-mm-dd vira dd/mm q eh como o eixo do grafico mostra
 const dayAndMonth = (isoDate) => isoDate.slice(8, 10) + "/" + isoDate.slice(5, 7);
 
+// o ponto do escore mostra a faixa junto do valor, como em todo lugar q o escore aparece (RN14)
+const tooltipText = (value, name, entry) => {
+    if (entry && entry.dataKey === "valor" && entry.payload && entry.payload.faixa) {
+        return [valueWithBand(value, entry.payload.faixa), name];
+    }
+    return [value, name];
+};
+
 const PERIODS = [
     {value: "DIAS_15", label: "Últimos 15 dias"},
     {value: "DIAS_30", label: "Últimos 30 dias"},
@@ -51,6 +70,9 @@ const ALL_TIME_PERIOD = {value: "TUDO", label: "Todo o tempo"};
 
 // a ficha de acompanhamento eh a unica q registra a dose do dia
 const FOLLOW_UP_SCALE = "ACOMPANHAMENTO_SEMANAL";
+
+// so o escore do MEEM tem a faixa pela escolaridade de cada exame
+const MENTAL_STATE_EXAM_SCORE = "ESCORE_MEEM";
 
 // evolucao do tratamento (RF07 RF27 e RF28)
 //
@@ -156,6 +178,7 @@ export default function Progresso() {
     const currentAttribute = attributes.find((attribute) => attribute.name === chosenAttribute);
     const chosenScale = currentAttribute ? currentAttribute.scaleType : "";
     const isFollowUpScale = chosenScale === FOLLOW_UP_SCALE;
+    const isMentalStateExam = chosenAttribute === MENTAL_STATE_EXAM_SCORE;
 
     const attributesOfScale = attributes.filter((attribute) => attribute.scaleType === chosenScale);
 
@@ -238,6 +261,7 @@ export default function Progresso() {
     const chartRows = points.map((point) => ({
         label: dayAndMonth(point.date),
         valor: point.value,
+        faixa: bandTextOf(point, isMentalStateExam),
         gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
     }));
 
@@ -260,6 +284,24 @@ export default function Progresso() {
     const bandLines = currentAttribute && currentAttribute.bands
         ? currentAttribute.bands.filter((band) => band.minScore > 0)
         : [];
+
+    // o q o 0 e o maximo querem dizer no papel e qual lado eh melhor. em
+    // ansiedade o 10 eh tranquilo e em dor eh dor intensa, entao a curva
+    // subindo so se le com isso do lado (RF20)
+    const anchorsText = currentAttribute ? anchorsTextOf(currentAttribute) : "";
+    const directionText = currentAttribute ? directionTextOf(currentAttribute) : null;
+    const DirectionIcon = currentAttribute && currentAttribute.higherIsBetter ? FiArrowUp : FiArrowDown;
+
+    // o MEEM n tem faixa fixa: o corte vem da escolaridade de cada exame (RN14)
+    // qnd todos tem o mesmo corte ele vira uma linha, senao a faixa fica em cada ponto.
+    // exame antigo sem escolaridade n tem corte e eh contado a parte
+    const sharedCutoff = sharedCutoffOf(points);
+    const hasSchoolingChanged = hasVaryingCutoff(points);
+    const examsWithoutSchooling = isMentalStateExam ? countWithoutCutoff(points) : 0;
+
+    // o ultimo escore escrito com a faixa, pq o tooltip so aparece passando o mouse ou tocando no ponto
+    const lastPoint = points.length > 0 ? points[points.length - 1] : null;
+    const lastBand = lastPoint ? bandTextOf(lastPoint, isMentalStateExam) : null;
 
     // trocar a escala abre o primeiro atributo dela
     const changeScale = (newScale) => {
@@ -486,6 +528,18 @@ export default function Progresso() {
             {downloadError && <p className="aviso aviso--atencao" role="alert">{downloadError}</p>}
 
             <Card title={currentAttribute ? currentAttribute.displayName : "Gráfico"}>
+                {(anchorsText || directionText) && (
+                    <p className={styles.axisMeaning}>
+                        {anchorsText && <span>{anchorsText}</span>}
+                        {directionText && (
+                            <span className={styles.direction}>
+                                <DirectionIcon aria-hidden="true"/>
+                                {directionText}
+                            </span>
+                        )}
+                    </p>
+                )}
+
                 {isLoading && <SkeletonBlock height="320px"/>}
 
                 {!isLoading && chartRows.length === 0 && !pageError && (
@@ -511,7 +565,7 @@ export default function Progresso() {
                                     allowDecimals={false}
                                     tick={{fontSize: 12, fill: chartColors.text}}
                                 />
-                                <Tooltip/>
+                                <Tooltip formatter={tooltipText}/>
                                 <Legend/>
 
                                 {/* cada faixa do instrumento vira uma linha de corte */}
@@ -524,6 +578,20 @@ export default function Progresso() {
                                         label={{value: band.label, position: "insideTopRight", fontSize: 11}}
                                     />
                                 ))}
+
+                                {sharedCutoff !== null && (
+                                    <ReferenceLine
+                                        y={sharedCutoff}
+                                        stroke={chartColors.text}
+                                        strokeDasharray="6 3"
+                                        label={{
+                                            value: "Corte " + formatCutoff(sharedCutoff),
+                                            position: "insideBottomRight",
+                                            fontSize: 11,
+                                            fill: chartColors.text,
+                                        }}
+                                    />
+                                )}
 
                                 {/* a consulta vira uma linha vertical no dia em q
                                     aconteceu pra dar pra ler a curva junto com a
@@ -568,6 +636,38 @@ export default function Progresso() {
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
+                )}
+
+                {!isLoading && sharedCutoff !== null && (
+                    <p className={styles.note}>
+                        A linha tracejada é o ponto de corte para a escolaridade registrada no exame
+                        ({formatCutoff(sharedCutoff)} pontos). Na linha ou acima dela, o resultado está dentro do
+                        esperado; abaixo dela, está abaixo do esperado.
+                    </p>
+                )}
+
+                {!isLoading && hasSchoolingChanged && (
+                    <p className={styles.note}>
+                        A escolaridade registrada mudou no período, então cada exame tem o próprio ponto de corte.
+                        A faixa de cada um aparece no ponto do gráfico.
+                    </p>
+                )}
+
+                {!isLoading && examsWithoutSchooling > 0 && (
+                    <p className={styles.note}>
+                        {NO_SCHOOLING_TEXT}.{" "}
+                        {examsWithoutSchooling === points.length
+                            ? "Sem a escolaridade não há ponto de corte para dizer se o escore está dentro do esperado."
+                            : "Isso vale para " + examsWithoutSchooling + " de " + points.length
+                            + " exames do período; a faixa dos outros aparece no ponto do gráfico."}
+                    </p>
+                )}
+
+                {!isLoading && lastBand && (
+                    <p className={styles.lastReading}>
+                        Último registro, em {formatDate(lastPoint.date)}:{" "}
+                        <strong>{valueWithBand(lastPoint.value, lastBand)}</strong>
+                    </p>
                 )}
             </Card>
 

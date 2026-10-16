@@ -11,6 +11,11 @@ import java.util.List;
 //
 // as faixas vem junto pq o grafico marca os cortes do instrumento, e
 // escore sem faixa n quer dizer nada (RN14)
+//
+// as ancoras e o lado bom tbm vem, pq em ansiedade o 10 eh tranquilo e
+// em dor o 10 eh dor intensa. sem isso a curva subindo engana (RF20).
+// o higherIsBetter vem nulo qnd o papel n diz qual lado eh melhor, tipo
+// contagem e minutos
 public record TrackableAttributeDTO(
         String name,
         String displayName,
@@ -18,6 +23,9 @@ public record TrackableAttributeDTO(
         String scaleName,
         Integer minValue,
         Integer maxValue,
-        List<ScoreBand> bands
+        List<ScoreBand> bands,
+        String lowAnchor,
+        String highAnchor,
+        Boolean higherIsBetter
 ) {
 }

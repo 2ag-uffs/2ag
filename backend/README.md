@@ -276,11 +276,12 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 | `GET /patients/{patientId}/export/prescriptions.csv` | as prescrições, com composição, posologia e vigência |
 | `GET /patients/{patientId}/export/scales.csv` | as escalas respondidas, uma linha por item, com o escore e a faixa |
 | `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
-| `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período |
+| `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período, com a faixa ao lado do escore |
 
 - todas aceitam `deidentified=true`, que é a exportação sem identificação, para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito. não é anônimo: o número é o id do banco e a clínica sabe de quem é, então pela LGPD o arquivo continua sendo dado pessoal de saúde (art. 12). o parâmetro antigo `anonymous` responde 400, para uma aba desatualizada não baixar o arquivo com nome
 - no arquivo com identificação, o paciente com nome social sai como `Nome social (nome civil: Nome civil)` na coluna `Paciente`. o arquivo sem identificação não leva nenhum dos dois
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
+- no `progress.csv` a coluna `Faixa` traz a faixa gravada do escore (HAM-A, PSQI, MEEM e intensidade da dor), igual à do `scales.csv`, e fica em branco nos itens da ficha, que não têm faixa publicada (RN13 e RN14)
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria
 - não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF
@@ -339,14 +340,15 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cart
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo e as faixas do instrumento |
-| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento |
+| `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo, as faixas do instrumento, as âncoras das pontas (`lowAnchor`, `highAnchor`) e qual lado é melhor (`higherIsBetter`) |
+| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento. no escore, cada ponto traz a faixa gravada (`band`) e, no MEEM, o ponto de corte da escolaridade do exame (`cutoff`), que vem nulo, junto com a faixa, no exame antigo sem escolaridade |
 | `GET /patients/{patientId}/progress/appointments?period=` | as consultas do período, para marcar no gráfico em que dia houve atendimento |
 | `GET /patients/{patientId}/progress/comments?period=` | o que o paciente escreveu nas escalas do período, por data |
 
 - `periodo` é `DIAS_15`, `DIAS_30`, `DIAS_60`, `DIAS_90` ou `TUDO`. o `TUDO` é o "todo o tempo" da tela do prescritor
 - dia sem resposta não vira ponto no zero: ele simplesmente não entra na série (RN10)
 - resposta anulada sai do gráfico e dos comentários, mas continua no histórico
+- as âncoras são as do formulário da clínica: em ansiedade o 0 é "muito ansioso" e o 10 é "tranquilo", em dor o 10 é "dor intensa". no escore, as pontas são a primeira e a última faixa do instrumento. contagem e minutos não têm âncora no papel e vêm com `higherIsBetter` nulo, para a tela não inventar um lado melhor (RF20)
 - acrescentar uma escala não pede mudança aqui: os atributos saem do catálogo das escalas (RNF08)
 
 ## guarda do prontuário

@@ -4,8 +4,8 @@ import styles from "./scale-form.module.css";
 // desenha os itens de qualquer escala a partir da definicao q veio da api
 //
 // a tela n sabe o nome de escala nenhuma: o tipo do item diz q campo
-// usar, e as ancoras e as opcoes vem prontas do servidor (RNF08)
-export default function ScaleForm({items, values, onChange, disabled, missingKeys = []}) {
+// usar, e as ancoras as opcoes e as faixas vem prontas do servidor (RNF08)
+export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = []}) {
     return (
         <ol className={styles.items}>
             {items.map((item) => (
@@ -13,14 +13,44 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
                     key={item.key}
                     className={missingKeys.includes(item.key) ? styles.item + " " + styles.itemMissing : styles.item}
                 >
-                    <ScaleField item={item} values={values} onChange={onChange} disabled={disabled}/>
+                    <ScaleField
+                        item={item}
+                        bands={bandsOfItem(item, bands)}
+                        values={values}
+                        onChange={onChange}
+                        disabled={disabled}
+                    />
                 </li>
             ))}
         </ol>
     );
 }
 
-function ScaleField({item, values, onChange, disabled}) {
+// a faixa da escala so vale pro item q vai de ponta a ponta dela, como a
+// intensidade da dor, q eh o proprio escore. no hamilton a faixa eh do total
+// de 0 a 56 e o item vai de 0 a 4, entao o item fica com a regua simples
+function bandsOfItem(item, bands) {
+    if (item.type !== "NOTA" || !bands || bands.length === 0) {
+        return [];
+    }
+    const insideTheItem = bands.every((band) => band.minScore >= item.minValue && band.maxScore <= item.maxValue);
+    const eachScoreInOneBand = scoresBetween(item.minValue, item.maxValue).every((score) =>
+        bands.filter((band) => score >= band.minScore && score <= band.maxScore).length === 1);
+    if (!insideTheItem || !eachScoreInOneBand) {
+        return [];
+    }
+    return [...bands].sort((first, second) => first.minScore - second.minScore);
+}
+
+function scoresBetween(minValue, maxValue) {
+    const scores = [];
+    for (let score = minValue; score <= maxValue; score = score + 1) {
+        scores.push(score);
+    }
+    return scores;
+}
+
+function ScaleField({item, bands, values, onChange, disabled}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -44,14 +74,19 @@ function ScaleField({item, values, onChange, disabled}) {
             change("");
         };
 
+        let choices = <OptionChoices item={item} value={value} onChange={change}/>;
+        if (item.type === "NOTA" && bands.length > 0) {
+            choices = <BandedScoreChoices item={item} bands={bands} value={value} onChange={change}/>;
+        } else if (item.type === "NOTA") {
+            choices = <ScoreChoices item={item} value={value} onChange={change}/>;
+        }
+
         return (
             <fieldset className={styles.field} disabled={disabled}>
                 <legend className={styles.legend}>
                     <Label item={item}/>
                 </legend>
-                {item.type === "NOTA"
-                    ? <ScoreChoices item={item} value={value} onChange={change}/>
-                    : <OptionChoices item={item} value={value} onChange={change}/>}
+                {choices}
                 {value !== "" && !disabled && (
                     <button
                         type="button"
@@ -110,25 +145,11 @@ function Label({item}) {
 // a regua de notas, com as ancoras nas pontas pra dizer o q eh 0 e o q
 // eh o maximo. sem isso o numero sozinho n quer dizer nada
 function ScoreChoices({item, value, onChange}) {
-    const scores = [];
-    for (let score = item.minValue; score <= item.maxValue; score = score + 1) {
-        scores.push(score);
-    }
-
     return (
         <>
             <div className={styles.scores} role="group">
-                {scores.map((score) => (
-                    <label key={score} className={styles.score}>
-                        <input
-                            type="radio"
-                            name={item.key}
-                            value={score}
-                            checked={String(value) === String(score)}
-                            onChange={() => onChange(String(score))}
-                        />
-                        <span>{score}</span>
-                    </label>
+                {scoresBetween(item.minValue, item.maxValue).map((score) => (
+                    <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}/>
                 ))}
             </div>
             <p className={styles.anchors}>
@@ -136,6 +157,66 @@ function ScoreChoices({item, value, onChange}) {
                 <span>{item.maxValue} {item.highAnchor}</span>
             </p>
         </>
+    );
+}
+
+// a regua desenhada como a escala visual do papel, com cada faixa nomeada e
+// colorida em cima das notas dela (RF25). o nome fica escrito, entao a cor n
+// eh o unico sinal. as pontas ja estao no nome das faixas e as ancoras saem
+function BandedScoreChoices({item, bands, value, onChange}) {
+    return (
+        <div className={styles.bands}>
+            {bands.map((band, index) => {
+                const nameId = item.key + "-faixa-" + index;
+                return (
+                    <div
+                        key={band.label}
+                        role="group"
+                        aria-labelledby={nameId}
+                        className={styles.band + " " + toneOf(index, bands.length, item.higherIsBetter)}
+                        style={{flexGrow: band.maxScore - band.minScore + 1}}
+                    >
+                        <p id={nameId} className={styles.bandName}>
+                            <span>{band.label}</span>{" "}
+                            <span className={styles.bandRange}>{band.minScore} a {band.maxScore}</span>
+                        </p>
+                        <div className={styles.bandScores}>
+                            {scoresBetween(band.minScore, band.maxScore).map((score) => (
+                                <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}/>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+// as cores seguem a escala de dor do papel: azul na ponta boa, vermelho na ponta
+// ruim e ambar no meio. no papel o meio vai do verde ao ambar, aqui ficou um ambar so.
+// o lado bom vem do item, pq em outra escala o 10 pode ser o bom
+function toneOf(index, total, higherIsBetter) {
+    const isFirst = index === 0;
+    const isLast = index === total - 1;
+    if (total === 1 || (!isFirst && !isLast)) {
+        return styles.bandMiddle;
+    }
+    const isGoodEnd = higherIsBetter ? isLast : isFirst;
+    return isGoodEnd ? styles.bandGood : styles.bandBad;
+}
+
+function ScoreOption({item, score, value, onChange}) {
+    return (
+        <label className={styles.score}>
+            <input
+                type="radio"
+                name={item.key}
+                value={score}
+                checked={String(value) === String(score)}
+                onChange={() => onChange(String(score))}
+            />
+            <span>{score}</span>
+        </label>
     );
 }
 

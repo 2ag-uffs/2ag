@@ -144,6 +144,21 @@ class ScaleScorerTest {
         assertThat(result.band()).isNull();
     }
 
+    // o grafico desenha o corte do MEEM, q sai da escolaridade gravada no exame
+    @Test
+    void oCorteDoMiniExameSaiDaEscolaridade() {
+        assertThat(scorer.cutoffOf(ScaleType.MINI_EXAME_ESTADO_MENTAL, fullMentalStateExam(0))).isEqualTo(20.0);
+        assertThat(scorer.cutoffOf(ScaleType.MINI_EXAME_ESTADO_MENTAL, fullMentalStateExam(2))).isEqualTo(26.5);
+        assertThat(scorer.cutoffOf(ScaleType.MINI_EXAME_ESTADO_MENTAL, fullMentalStateExam(4))).isEqualTo(29.0);
+
+        Map<String, Object> withoutSchooling = fullMentalStateExam(1);
+        withoutSchooling.remove("escolaridade");
+        assertThat(scorer.cutoffOf(ScaleType.MINI_EXAME_ESTADO_MENTAL, withoutSchooling)).isNull();
+
+        // escala de faixa fixa n tem corte q dependa da resposta
+        assertThat(scorer.cutoffOf(ScaleType.ESCALA_HAMILTON, allHamiltonItemsWith(2))).isNull();
+    }
+
     // o registro de dor usa as faixas da escala visual do formulario
     @Test
     void dorUsaAsFaixasDaEscalaVisual() {

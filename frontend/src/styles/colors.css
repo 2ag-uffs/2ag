@@ -112,6 +112,19 @@
      * saem da paleta em vez do padrao da biblioteca */
     --color-chart-line: #006633;
     --color-chart-grid: #dbe1dd;
+
+    /* ---- faixas da escala visual ----
+     * as unicas cores fora da cartela: azul, ambar e vermelho, seguindo a
+     * escala de dor do formulario impresso da clinica. no papel a faixa
+     * moderada vai do verde ao ambar, aqui ficou um ambar so. o fundo eh
+     * claro e o nome da faixa vai escuro em cima (11:1 ou mais). o traco eh
+     * o tom forte q marca a faixa e passa de 3:1 sobre o branco e sobre o fundo */
+    --color-scale-band-good: #d6e4f7;
+    --color-scale-band-good-stripe: #3b67b8;
+    --color-scale-band-middle: #fde7bf;
+    --color-scale-band-middle-stripe: #a86b12;
+    --color-scale-band-bad: #f7c9c4;
+    --color-scale-band-bad-stripe: #b8382b;
 }
 
 /*
@@ -178,6 +191,13 @@
 
         --color-chart-line: #4fb87a;
         --color-chart-grid: #2b342d;
+
+        --color-scale-band-good: #1c2b40;
+        --color-scale-band-good-stripe: #7ea6e6;
+        --color-scale-band-middle: #3b2f15;
+        --color-scale-band-middle-stripe: #e3b65a;
+        --color-scale-band-bad: #42211d;
+        --color-scale-band-bad-stripe: #ee8f83;
     }
 }
 
@@ -228,6 +248,13 @@
 
     --color-chart-line: #4fb87a;
     --color-chart-grid: #2b342d;
+
+    --color-scale-band-good: #1c2b40;
+    --color-scale-band-good-stripe: #7ea6e6;
+    --color-scale-band-middle: #3b2f15;
+    --color-scale-band-middle-stripe: #e3b65a;
+    --color-scale-band-bad: #42211d;
+    --color-scale-band-bad-stripe: #ee8f83;
 }
 
 /* a impressao vira peca de prontuario, entao sai sempre clara */
@@ -280,5 +307,12 @@
 
         --color-chart-line: #006633;
         --color-chart-grid: #dbe1dd;
+
+        --color-scale-band-good: #d6e4f7;
+        --color-scale-band-good-stripe: #3b67b8;
+        --color-scale-band-middle: #fde7bf;
+        --color-scale-band-middle-stripe: #a86b12;
+        --color-scale-band-bad: #f7c9c4;
+        --color-scale-band-bad-stripe: #b8382b;
     }
 }

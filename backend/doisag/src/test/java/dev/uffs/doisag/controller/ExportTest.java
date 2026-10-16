@@ -330,6 +330,35 @@ class ExportTest {
         assertThat(csv).contains("\"7\"");
     }
 
+    // RN14 o escore sai com a faixa do lado, igual no scales.csv. o MEEM leva a
+    // faixa da escolaridade do exame, e o arquivo de pesquisa continua sem nome
+    @Test
+    void aEvolucaoDeUmEscoreSaiComAFaixa() throws Exception {
+        saveScore(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2), 30, "Ansiedade grave");
+        saveScore(ScaleType.MINI_EXAME_ESTADO_MENTAL, TODAY.minusDays(4), 24,
+                "Abaixo do esperado para a escolaridade (corte 25)");
+
+        String csv = download("progress.csv", "?attribute=ESCORE_HAMILTON&period=DIAS_30", patient);
+        assertThat(csv).contains("\"Paciente\";\"Escala\";\"Atributo\";\"Data\";\"Valor\";\"Faixa\"");
+        assertThat(csv).contains("\"ESCORE_HAMILTON\"").contains("\"30\";\"Ansiedade grave\"");
+
+        String deidentified = download("progress.csv", "?attribute=ESCORE_MEEM&period=DIAS_30&deidentified=true",
+                prescriber);
+        assertThat(deidentified).contains("\"Identificador\";\"Escala\";\"Atributo\";\"Data\";\"Valor\";\"Faixa\"");
+        assertThat(deidentified).contains("\"24\";\"Abaixo do esperado para a escolaridade (corte 25)\"");
+        assertThat(deidentified).contains("paciente " + patient.getId());
+        assertThat(deidentified).doesNotContain("Paciente da exportação");
+    }
+
+    // item da ficha n tem faixa publicada e a coluna fica em branco, sem faixa inventada (RN13)
+    @Test
+    void aEvolucaoDeUmItemDaFichaSaiComAFaixaEmBranco() throws Exception {
+        String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
+
+        assertThat(csv).contains("\"Valor\";\"Faixa\"");
+        assertThat(csv).contains("\"7\";\"\"");
+    }
+
     // responsavel eh dado de outra pessoa e n sai no arquivo de pesquisa (RF38)
     @Test
     void deidentifiedFilesLeaveTheGuardianOut() throws Exception {
@@ -396,6 +425,18 @@ class ExportTest {
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
                         .header("Authorization", bearerTokenOf(saved)))
                 .andExpect(status().isForbidden());
+    }
+
+    private void saveScore(ScaleType scaleType, LocalDate day, int score, String band) {
+        ScaleResponse response = new ScaleResponse();
+        response.setPatient(patient);
+        response.setScaleType(scaleType);
+        response.setPeriodStart(day);
+        response.setPeriodEnd(day);
+        response.setAnswers(new LinkedHashMap<>());
+        response.setScore(score);
+        response.setScoreBand(band);
+        responseRepository.save(response);
     }
 
     private String download(String file, String query, Users loggedUser) throws Exception {
