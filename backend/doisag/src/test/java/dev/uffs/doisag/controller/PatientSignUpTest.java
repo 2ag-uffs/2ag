@@ -383,6 +383,14 @@ class PatientSignUpTest {
     }
 
     @Test
+    void birthDateWithAnImpossibleYearIsRejected() throws Exception {
+        signUp(withBirthDate(signUpBody(newInviteToken(), "ano-errado@email.com", VALID_CPF, VALID_PASSWORD),
+                LocalDate.of(1800, 1, 1)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field == 'birthDate')]").exists());
+    }
+
+    @Test
     void invalidCpfIsRejected() throws Exception {
         signUp(signUpBody(newInviteToken(), "cpf-invalido@email.com", "12345678900", VALID_PASSWORD))
                 .andExpect(status().isBadRequest())

@@ -198,6 +198,22 @@ class ProfileTest {
                 .andExpect(jsonPath("$.errors[0].field").value("phone"));
     }
 
+    // o ano digitado errado (1800 no lugar de 1980) passava como data de nascimento
+    @Test
+    void birthDateWithAnImpossibleYearIsRejected() throws Exception {
+        String body = """
+                {"name":"Paciente do Perfil","birthDate":"1800-01-01","phone":"49999887766",
+                 "address":{"street":"Rua Nova","number":"45","city":"Chapeco","state":"SC"}}
+                """;
+
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("birthDate"));
+    }
+
     @Test
     void patientAddsTheGuardianAndThePrescriberSeesItOnlyInTheChart() throws Exception {
         String body = """

@@ -55,6 +55,8 @@ public class AppointmentService {
     public static final String INACTIVE_PRESCRIBER_MESSAGE =
             "Seu prescritor não está mais atendendo pelo sistema. Fale com a clínica";
     public static final String ALREADY_ANSWERED_MESSAGE = "Este pedido de consulta já foi respondido";
+    public static final String EXPIRED_REQUEST_MESSAGE =
+            "O horário deste pedido já passou. Recuse o pedido para o paciente escolher outro horário";
     public static final String CLOSED_APPOINTMENT_MESSAGE = "Esta consulta não pode mais ser alterada";
     public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
     public static final String LATE_CANCELLATION_MESSAGE =
@@ -78,6 +80,11 @@ public class AppointmentService {
     // o paciente ve no maximo um mes de horarios livres por vez
     public static final int MAX_FREE_SLOT_DAYS = 31;
 
+    // o paciente pede horario so dos proximos 30 dias contando hoje, a tela e a api seguem o mesmo limite
+    public static final int MAX_DAYS_AHEAD = 30;
+    public static final String TOO_FAR_AHEAD_MESSAGE =
+            "Escolha um horário dos próximos " + MAX_DAYS_AHEAD + " dias";
+
     private static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
     private static final String PRESCRIBER_AGENDA_LINK = "/agendamento-prescritor";
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
@@ -88,6 +95,7 @@ public class AppointmentService {
     private final PrescriberAvailabilityRepository availabilityRepository;
     private final PrescriberDayOffRepository dayOffRepository;
     private final AuditService auditService;
+    private final ConsultationService consultationService;
     private final RowLock rowLock;
     private NotificationService notificationService;
 
@@ -95,13 +103,14 @@ public class AppointmentService {
                               PrescriberRepository prescriberRepository,
                               PrescriberAvailabilityRepository availabilityRepository,
                               PrescriberDayOffRepository dayOffRepository, AuditService auditService,
-                              RowLock rowLock) {
+                              ConsultationService consultationService, RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.availabilityRepository = availabilityRepository;
         this.dayOffRepository = dayOffRepository;
         this.auditService = auditService;
+        this.consultationService = consultationService;
         this.rowLock = rowLock;
     }
 
@@ -162,8 +171,14 @@ public class AppointmentService {
         if (!prescriber.isActive()) {
             throw new BusinessException(INACTIVE_PRESCRIBER_MESSAGE);
         }
+        if (requestData.dateTime().toLocalDate().isAfter(lastDayToRequest())) {
+            throw new BusinessException(TOO_FAR_AHEAD_MESSAGE);
+        }
 
         // cada pedido em aberto segura um horario q some da agenda dos outros pacientes
+        // a conta eh feita ja com a agenda travada, senao dois pedidos do mesmo paciente
+        // ao mesmo tempo contavam os dois 2 em aberto e ele ficava com 4
+        lockAgendaOf(prescriber.getId());
         long openRequests = appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
                 patientId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
         if (openRequests >= MAX_OPEN_REQUESTS) {
@@ -175,7 +190,6 @@ public class AppointmentService {
         int durationMinutes = durationOf(prescriber, type);
 
         // so vale um dos horarios livres entao fora do atendimento ocupado folga ou passado n entra
-        lockAgendaOf(prescriber.getId());
         boolean isFreeSlot = getFreeSlots(prescriber, requestData.dateTime().toLocalDate(), durationMinutes)
                 .stream()
                 .anyMatch(slot -> slot.start().equals(requestData.dateTime()));
@@ -205,9 +219,14 @@ public class AppointmentService {
     public AgendaAppointmentDTO confirm(Long appointmentId) {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
+        // pedido q passou da hora espera a recusa, senao virava consulta no passado
+        // e o paciente so ficava sabendo dps do horario
+        if (appointment.getDateTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(EXPIRED_REQUEST_MESSAGE);
+        }
         // outro pedido do mesmo horario pode ter sido confirmado antes desse
         lockAgendaOf(appointment.getPrescriber().getId());
-        if (overlapsAny(appointment.getDateTime(), endOf(appointment), confirmedAppointmentsOnTheDayOf(appointment))) {
+        if (overlapsAny(appointment.getDateTime(), endOf(appointment), confirmedAppointmentsAround(appointment))) {
             throw new BusinessException(SLOT_TAKEN_MESSAGE);
         }
 
@@ -283,6 +302,9 @@ public class AppointmentService {
             durationMinutes = durationOf(appointment.getPrescriber(), newType);
         }
         checkNotInThePast(rescheduleData.dateTime());
+        // consulta q ja passou pode ter receita ou meem, e a data dela segue a mesma regra da correcao
+        // vem dps do passado pra n mandar anular a receita por uma remarcacao q ia ser recusada de qq jeito
+        consultationService.checkDateCanChange(appointment, rescheduleData.dateTime());
         checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
                 appointment.getId());
 
@@ -383,10 +405,19 @@ public class AppointmentService {
             return List.of();
         }
 
+        // so de hoje ate o limite do pedido: o resto n tem horario q o paciente possa pedir,
+        // e data no fim do calendario nem chega no laco dos dias
+        LocalDate today = LocalDate.now();
+        LocalDate firstDay = from.isBefore(today) ? today : from;
+        LocalDate lastDay = lastDayToRequest();
+        if (to.isBefore(lastDay)) {
+            lastDay = to;
+        }
+
         // o horario do paciente novo tem o tamanho da primeira consulta e o de quem ja foi atendido o do retorno
         int durationMinutes = durationOf(prescriber, typeFor(patientId));
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
-        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+        for (LocalDate day = firstDay; !day.isAfter(lastDay); day = day.plusDays(1)) {
             freeSlots.addAll(getFreeSlots(prescriber, day, durationMinutes));
         }
         return freeSlots;
@@ -481,7 +512,8 @@ public class AppointmentService {
         // anda no passo da consulta mais curta pra primeira e retorno se encaixarem
         int stepMinutes = Math.min(prescriber.getFirstAppointmentDurationMinutes(),
                 prescriber.getAppointmentDurationMinutes());
-        List<Appointment> takenAppointments = appointmentsHoldingTimeOn(prescriberId, day, null);
+        List<Appointment> takenAppointments =
+                appointmentsHoldingTimeAround(prescriberId, day.atStartOfDay(), day.atTime(LocalTime.MAX), null);
         LocalDateTime now = LocalDateTime.now();
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
         for (PrescriberAvailability period : periods) {
@@ -539,12 +571,16 @@ public class AppointmentService {
         }
     }
 
+    // 30 dias contando hoje, igual a tela do paciente
+    private LocalDate lastDayToRequest() {
+        return LocalDate.now().plusDays(MAX_DAYS_AHEAD - 1);
+    }
+
     // RN08 dois horarios do mesmo prescritor n se sobrepoem
     private void checkSlotIsFree(Long prescriberId, LocalDateTime start, int durationMinutes, Long ignoredAppointmentId) {
         lockAgendaOf(prescriberId);
-        List<Appointment> takenAppointments =
-                appointmentsHoldingTimeOn(prescriberId, start.toLocalDate(), ignoredAppointmentId);
-        if (overlapsAny(start, start.plusMinutes(durationMinutes), takenAppointments)) {
+        LocalDateTime end = start.plusMinutes(durationMinutes);
+        if (overlapsAny(start, end, appointmentsHoldingTimeAround(prescriberId, start, end, ignoredAppointmentId))) {
             throw new BusinessException(SLOT_TAKEN_MESSAGE);
         }
     }
@@ -557,10 +593,13 @@ public class AppointmentService {
         prescriberRepository.lockById(prescriberId);
     }
 
-    // pedidos e consultas do dia q seguram o horario
-    private List<Appointment> appointmentsHoldingTimeOn(Long prescriberId, LocalDate day, Long ignoredAppointmentId) {
+    // pedidos e consultas q seguram o horario e podem encostar no intervalo
+    // a busca comeca no dia anterior pq a consulta marcada de noite pode passar da meia noite
+    private List<Appointment> appointmentsHoldingTimeAround(Long prescriberId, LocalDateTime start, LocalDateTime end,
+                                                          Long ignoredAppointmentId) {
+        LocalDateTime previousDay = start.toLocalDate().minusDays(1).atStartOfDay();
         return appointmentRepository
-                .findByPrescriberIdAndDateTimeBetween(prescriberId, day.atStartOfDay(), day.atTime(LocalTime.MAX))
+                .findByPrescriberIdAndDateTimeBetween(prescriberId, previousDay, end)
                 .stream()
                 .filter(appointment -> !appointment.getId().equals(ignoredAppointmentId))
                 .filter(appointment -> appointment.getStatus().holdsTimeSlot())
@@ -568,9 +607,9 @@ public class AppointmentService {
                 .toList();
     }
 
-    // consultas ja confirmadas no dia do pedido sem contar o proprio pedido
-    private List<Appointment> confirmedAppointmentsOnTheDayOf(Appointment request) {
-        return appointmentsHoldingTimeOn(request.getPrescriber().getId(), request.getDateTime().toLocalDate(),
+    // consultas ja confirmadas perto do horario do pedido sem contar o proprio pedido
+    private List<Appointment> confirmedAppointmentsAround(Appointment request) {
+        return appointmentsHoldingTimeAround(request.getPrescriber().getId(), request.getDateTime(), endOf(request),
                 request.getId())
                 .stream()
                 .filter(appointment -> appointment.getStatus().isConfirmed())

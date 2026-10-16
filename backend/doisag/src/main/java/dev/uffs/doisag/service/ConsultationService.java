@@ -9,6 +9,7 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 // registro clinico da consulta (RF04)
 // marcar horario continua no AppointmentService e aqui fica o q aconteceu na consulta
@@ -38,21 +40,28 @@ public class ConsultationService {
             "Esta consulta tem prescrição. Anule a prescrição antes de anular a consulta";
     public static final String HAS_EXAM_MESSAGE =
             "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de anular a consulta";
+    public static final String DATE_WITH_PRESCRIPTION_MESSAGE =
+            "Esta consulta tem prescrição. Anule a prescrição antes de mudar a data da consulta";
+    public static final String DATE_WITH_EXAM_MESSAGE =
+            "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de mudar a data da consulta";
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final ScaleResponseRepository responseRepository;
     private final AuditService auditService;
+    private final RowLock rowLock;
 
     public ConsultationService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                                PrescriptionRepository prescriptionRepository,
-                               ScaleResponseRepository responseRepository, AuditService auditService) {
+                               ScaleResponseRepository responseRepository, AuditService auditService,
+                               RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.responseRepository = responseRepository;
         this.auditService = auditService;
+        this.rowLock = rowLock;
     }
 
     // consulta q aconteceu sem ter sido marcada antes ou lancada depois
@@ -92,7 +101,7 @@ public class ConsultationService {
     // corrige o registro ou registra o atendimento de uma consulta q estava marcada
     @Transactional
     public AppointmentResponseDTO updateRecord(Long appointmentId, ConsultationRecordDTO recordData) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(ANNULLED_MESSAGE);
         }
@@ -108,6 +117,7 @@ public class ConsultationService {
         LocalDateTime dateTime = recordData.dateTime() == null ? appointment.getDateTime() : recordData.dateTime();
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
         checkRecordHasClinicalContent(recordData);
+        checkDateCanChange(appointment, dateTime);
 
         appointment.setDateTime(dateTime);
         appointment.setStatus(AppointmentStatus.CONCLUIDA);
@@ -122,7 +132,7 @@ public class ConsultationService {
     // registro feito por engano n some e fica marcado como anulado com o motivo
     @Transactional
     public AppointmentResponseDTO annul(Long appointmentId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
-        Appointment appointment = findAppointment(appointmentId);
+        Appointment appointment = findAppointmentForUpdate(appointmentId);
         if (appointment.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
@@ -142,8 +152,29 @@ public class ConsultationService {
         return new AppointmentResponseDTO(savedAppointment);
     }
 
-    private Appointment findAppointment(Long appointmentId) {
-        return appointmentRepository.findById(appointmentId)
+    // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta,
+    // entao mudar a data com eles deixava a receita de uma consulta antiga valendo (RF05)
+    // vale pra correcao do registro e pra remarcacao na agenda
+    // a tela manda a hora sem os segundos, por isso a comparacao eh no minuto
+    public void checkDateCanChange(Appointment appointment, LocalDateTime newDateTime) {
+        boolean dateChanged = !newDateTime.truncatedTo(ChronoUnit.MINUTES)
+                .equals(appointment.getDateTime().truncatedTo(ChronoUnit.MINUTES));
+        if (!dateChanged) {
+            return;
+        }
+        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            throw new BusinessException(DATE_WITH_PRESCRIPTION_MESSAGE);
+        }
+        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            throw new BusinessException(DATE_WITH_EXAM_MESSAGE);
+        }
+    }
+
+    // a consulta fica travada e eh lida de novo, igual na receita e no meem: a receita gravada
+    // no meio da anulacao aparece na conferencia, em vez de sobrar uma receita vigente numa
+    // consulta anulada, e a anulacao e a correcao n sobrescrevem uma a outra
+    private Appointment findAppointmentForUpdate(Long appointmentId) {
+        return rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
     }
 

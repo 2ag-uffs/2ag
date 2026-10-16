@@ -158,6 +158,22 @@ class PrescriptionFlowTest {
                 .andExpect(jsonPath("$.errors[0].field").value("components[0].concentration"));
     }
 
+    // item nulo no meio da lista passava pela validacao e derrubava o servico com 500
+    @Test
+    void nullCannabinoidOrDoseStepIsRefusedWithTheField() throws Exception {
+        Map<String, Object> nullComponent = prescriptionWith("Oleo");
+        nullComponent.put("components", Collections.singletonList(null));
+        issuePrescription(registeredConsultationId(), nullComponent)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components[0]"));
+
+        Map<String, Object> nullStep = prescriptionWith("Oleo");
+        nullStep.put("escalationSteps", Collections.singletonList(null));
+        issuePrescription(registeredConsultationId(), nullStep)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("escalationSteps[0]"));
+    }
+
     @Test
     void annulledConsultationDoesNotIssueAPrescription() throws Exception {
         Long appointmentId = registeredConsultationId();

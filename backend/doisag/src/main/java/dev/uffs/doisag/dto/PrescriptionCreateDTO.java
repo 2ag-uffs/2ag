@@ -26,10 +26,10 @@ public record PrescriptionCreateDTO(
         @NotNull(message = "Escolha o espectro do óleo")
         Spectrum spectrum,
 
+        // o @NotNull de dentro vale pra cada item: um item nulo no meio da lista derrubava o servico
         @NotEmpty(message = "Informe pelo menos um canabinoide com a concentração")
         @Size(max = 20, message = "A prescrição pode ter até 20 canabinoides")
-        @Valid
-        List<PrescriptionComponentDTO> components,
+        List<@NotNull(message = "Canabinoide inválido") @Valid PrescriptionComponentDTO> components,
 
         @Size(max = 255, message = "O volume pode ter até 255 caracteres")
         String volume,
@@ -42,8 +42,7 @@ public record PrescriptionCreateDTO(
 
         // o plano de subida de dose semana a semana
         @Size(max = 104, message = "O plano de dose pode ter até 104 degraus")
-        @Valid
-        List<DoseEscalationStepDTO> escalationSteps,
+        List<@NotNull(message = "Degrau do plano de dose inválido") @Valid DoseEscalationStepDTO> escalationSteps,
 
         String instructions,
         String precautions,

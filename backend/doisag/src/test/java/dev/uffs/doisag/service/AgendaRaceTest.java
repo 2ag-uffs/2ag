@@ -136,6 +136,25 @@ class AgendaRaceTest {
         assertThat(appointmentsAt(DISPUTED_SLOT)).hasSize(1);
     }
 
+    // o limite de 3 pedidos em aberto eh contado ja com a agenda travada: o pedido q chega
+    // junto com outro do mesmo paciente espera, conta o terceiro e eh recusado
+    @Test
+    void thePatientRequestWaitsForTheAgendaAndCountsTheRequestSavedMeanwhile() throws Exception {
+        saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA);
+        saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> saveAppointment(patient, AGENDA_DAY.atTime(10, 0), AppointmentStatus.SOLICITADA),
+                () -> appointmentService.request(patient.getId(),
+                        new AppointmentRequestDTO(AGENDA_DAY.atTime(11, 0), AppointmentModality.PRESENCIAL, null)));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(AppointmentService.TOO_MANY_REQUESTS_MESSAGE);
+        assertThat(appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
+                patient.getId(), AppointmentStatus.SOLICITADA, LocalDateTime.now())).isEqualTo(3);
+    }
+
     @Test
     void confirmingARequestWaitsForTheAgendaAndFindsTheSlotTaken() throws Exception {
         Appointment request = saveAppointment(patient, DISPUTED_SLOT, AppointmentStatus.SOLICITADA);

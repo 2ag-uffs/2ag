@@ -18,6 +18,7 @@ import dev.uffs.doisag.model.DoseEscalationStep;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.PrescriptionComponent;
+import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,18 +38,21 @@ public class PrescriptionService {
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
 
     private final PrescriptionRepository prescriptionRepository;
+    private final PatientRepository patientRepository;
     private final AuditService auditService;
     private final RowLock rowLock;
 
-    public PrescriptionService(PrescriptionRepository prescriptionRepository, AuditService auditService,
-                               RowLock rowLock) {
+    public PrescriptionService(PrescriptionRepository prescriptionRepository, PatientRepository patientRepository,
+                               AuditService auditService, RowLock rowLock) {
         this.prescriptionRepository = prescriptionRepository;
+        this.patientRepository = patientRepository;
         this.auditService = auditService;
         this.rowLock = rowLock;
     }
 
-    // a consulta fica travada ate o fim: duas receitas lancadas ao mesmo tempo liam as duas a mesma
-    // vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
+    // a consulta e o paciente ficam travados ate o fim: duas receitas lancadas ao mesmo tempo liam
+    // as duas a mesma vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
+    // a vigente eh do paciente, entao a trava dele pega tbm duas receitas em consultas diferentes
     @Transactional
     public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
@@ -66,6 +70,7 @@ public class PrescriptionService {
         DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_CONSULTATION_MESSAGE);
 
         Long patientId = appointment.getPatient().getId();
+        patientRepository.lockById(patientId);
         boolean becomesCurrent = replaceCurrentPrescriptionsOlderThan(appointment);
 
         Prescription prescription = new Prescription();

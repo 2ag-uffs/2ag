@@ -11,6 +11,7 @@ import java.time.LocalDate;
 public record AnamnesisDTO(
         // vazio vira a data de hoje
         @PastOrPresent(message = "A data de preenchimento não pode estar no futuro")
+        @MinYear(value = 2000, message = "Confira o ano do preenchimento")
         LocalDate assessmentDate,
 
         @Size(max = 255, message = "A ocupação pode ter até 255 caracteres")

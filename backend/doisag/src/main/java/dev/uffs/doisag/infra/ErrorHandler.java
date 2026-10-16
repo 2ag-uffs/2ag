@@ -26,6 +26,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -76,7 +77,8 @@ public class ErrorHandler {
     }
 
     // excecao do java ou do framework traz mensagem tecnica e em ingles, entao ela fica so no log
-    @ExceptionHandler({ValidationException.class, IllegalArgumentException.class})
+    // data no fim do calendario (ano 999999999) estourava a conta de dias e virava 500
+    @ExceptionHandler({ValidationException.class, IllegalArgumentException.class, DateTimeException.class})
     public ResponseEntity<ErrorResponseDTO> handleInvalidArgument(RuntimeException exception,
                                                                  HttpServletRequest request) {
         log.warn("argumento invalido em {}", request.getRequestURI(), exception);

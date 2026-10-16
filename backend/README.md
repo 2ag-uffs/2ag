@@ -206,11 +206,11 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 | `POST /appointments` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `appointmentType`, o tipo sai do histórico do paciente, e sem `durationMinutes`, vale a duração do tipo |
 | `GET /appointments/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |
 | `PUT /appointments/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo. sem `appointmentType` e sem `durationMinutes`, os dois ficam como estavam; trocar o tipo sem `durationMinutes` usa a duração do tipo novo |
-| `PUT /appointments/{id}/confirm` | o prescritor confirma o pedido |
+| `PUT /appointments/{id}/confirm` | o prescritor confirma o pedido, se o horário dele ainda não passou |
 | `PUT /appointments/{id}/decline` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
 | `PUT /appointments/{id}/cancel` | o paciente ou o prescritor cancela o pedido ou a consulta |
 | `PUT /appointments/{id}/no-show` | o prescritor marca que o paciente não compareceu, depois que o horário passou |
-| `GET /appointments/free-slots?from=&to=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias |
+| `GET /appointments/free-slots?from=&to=` | horários livres na agenda do prescritor do paciente logado, em até 31 dias. só entram os 30 dias que começam hoje (de hoje até daqui a 29 dias), e o resto do período volta vazio |
 | `POST /appointments/requests` | o paciente pede um horário livre, com modalidade e motivo opcional |
 | `GET /appointments/mine` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
 
@@ -219,15 +219,19 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 - os horários livres do paciente têm a duração do tipo dele. começam no início de cada período e andam no passo da consulta mais curta entre primeira e retorno, sem os que já passaram, sem os que se sobrepõem a um pedido ou consulta e sem nenhum em dia sem atendimento
 - o dia sem atendimento não cancela nada: pedido e consulta já marcados no dia continuam valendo, e o prescritor ainda marca consulta direto nele
 - o pedido do paciente segura o horário até a resposta. a recusa e o cancelamento liberam o horário
-- o paciente tem no máximo 3 pedidos esperando resposta ao mesmo tempo, porque cada um segura um horário que some da agenda dos outros pacientes
-- pedido que passou da data sem resposta é recusado pelo job diário, com aviso para o paciente, em vez de ficar aberto para sempre
+- o paciente pede horário só nos próximos 30 dias contando hoje, a mesma janela da tela. o pedido para depois disso recebe 400
+- o paciente tem no máximo 3 pedidos esperando resposta ao mesmo tempo, porque cada um segura um horário que some da agenda dos outros pacientes. a conta é feita já com a agenda travada, então dois pedidos do mesmo paciente ao mesmo tempo não passam do limite
+- pedido que passou da data sem resposta é recusado pelo job diário, com aviso para o paciente, em vez de ficar aberto para sempre. até o job passar ele não pode mais ser confirmado: o prescritor recusa, e o paciente escolhe outro horário
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
 - a agenda de um prescritor recebe uma marcação de cada vez: marcar, pedir, confirmar, remarcar e marcar dia sem atendimento travam a linha do prescritor no banco até o fim da transação. dois pedidos do mesmo horário ao mesmo tempo não viram duas consultas: o segundo espera o primeiro gravar, lê a agenda já com a consulta nova e recebe horário ocupado (RN08)
+- a conferência de horário ocupado olha também o dia anterior: a consulta da noite que passa da meia-noite ocupa o começo do dia seguinte
 - confirmar, recusar, remarcar, cancelar e marcar falta travam a própria consulta e leem ela de novo antes de decidir (`RowLock`), então o que o outro lado acabou de gravar (um cancelamento no meio da confirmação) aparece em vez de ser sobrescrito
 - só consulta confirmada e que já aconteceu recebe registro clínico (`PUT /appointments/{id}/clinical-record`), prescrição (`POST /appointments/{id}/prescriptions`) e Mini-Exame. os três usam a mesma folga de 5 minutos para o relógio
-- a prescrição nova só vira a vigente quando a consulta dela não é mais antiga que a da vigente atual. receita lançada numa consulta anterior é gravada já como `SUBSTITUIDA`, só para o histórico, e a resposta vem com `current: false`
+- a correção do registro e a remarcação (`PUT /appointments/{id}`) não mudam a data de uma consulta com prescrição ou Mini-Exame não anulados (400), porque a prescrição vigente sai da consulta mais recente e o exame fica no dia da consulta. o prescritor anula os dois antes, muda a data e lança de novo. a data compara até o minuto, como a tela manda. na remarcação, o horário novo que já passou é recusado antes dessa conferência, para o prescritor não anular a prescrição por uma remarcação que não ia passar. a remarcação também trava a consulta, então a prescrição lançada no meio dela aparece na conferência
+- corrigir o registro e anular a consulta travam a consulta e leem ela de novo (`RowLock`), como a prescrição e o Mini-Exame: a prescrição lançada no meio da anulação aparece na conferência, em vez de sobrar uma prescrição vigente numa consulta anulada
+- a prescrição nova só vira a vigente quando a consulta dela não é mais antiga que a da vigente atual. receita lançada numa consulta anterior é gravada já como `SUBSTITUIDA`, só para o histórico, e a resposta vem com `current: false`. a prescrição trava a consulta e depois o paciente, então duas receitas lançadas ao mesmo tempo em consultas diferentes do mesmo paciente não ficam as duas vigentes
 - a falta só vale para consulta que estava `AGENDADA` e cujo horário já terminou. ela libera o horário e avisa o paciente. registrar o atendimento depois desfaz a falta e conclui a consulta, para o erro de clique não trancar o prontuário
 
 ## escalas
@@ -254,7 +258,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. na tarefa aberta a grade cobre o período inteiro até hoje, e o paciente pode preencher de uma vez os dias que esqueceu. o dia do diário entra na tarefa pendente que cobre a data dele, e não pela do envio, então dia de outro período não conta na tarefa aberta nem cala o lembrete dela. o dia preenchido antes de existir a tarefa que cobre ele (entre a meia-noite e o job das 8h) entra nela quando ela é criada
 - a correção de uma escala de período ou pontual vai pelo `PUT` com as datas junto: mudar a data move a mesma resposta, em vez de criar outra no dia novo como o envio faria. o dia de início identifica a resposta, então mover para cima de outra é recusado. data que não vem fica como está, e o fim que não vem junto de um início novo segue a regra do envio. no diário a data é o dia da grade e não muda na correção
 - corrigir, analisar e anular travam o paciente e depois a própria resposta, lida de novo (`RowLock`), nessa ordem: a análise gravada enquanto a paciente corrigia aparece e a correção é recusada, em vez de apagar a análise
-- o paciente responde uma escala de cada vez: a resposta trava a linha do paciente até o fim da transação, então dois envios do mesmo dia ao mesmo tempo (duplo toque, retry da rede) não viram duas linhas do mesmo dia. o segundo espera e corrige o dia. pelo mesmo motivo a consulta fica travada enquanto o MEEM ou uma receita é lançada nela, e o prescritor fica travado enquanto envia uma escala avulsa ou cria um acompanhamento
+- o paciente responde uma escala de cada vez: a resposta trava a linha do paciente até o fim da transação, então dois envios do mesmo dia ao mesmo tempo (duplo toque, retry da rede) não viram duas linhas do mesmo dia. o segundo espera e corrige o dia. pelo mesmo motivo a consulta fica travada enquanto o MEEM ou uma receita é lançada nela, e a receita trava também o paciente, e o prescritor fica travado enquanto envia uma escala avulsa ou cria um acompanhamento
 - item em branco não é gravado, e escala validada sem todos os itens não tem escore. essa resposta pela metade é guardada com o resultado "Incompleta: sem escore", mas não vale pela tarefa: ela continua pendente, o lembrete continua cobrando e no prazo vira não respondida. completar depois, pela correção, fecha a tarefa e avisa o prescritor
 - a resposta avisa o prescritor quando a escala fica completa. nas escalas de preenchimento diário o aviso é um só, quando o período fecha, dizendo quantos dias foram preenchidos
 - o acompanhamento de 90 dias vai do primeiro ao nonagésimo dia, e o que começa hoje manda a primeira rodada na hora, sem esperar o job de amanhã. começo no passado ou no futuro fica com o job
@@ -377,6 +381,8 @@ toda resposta de erro tem `timestamp`, `status`, `error`, `message` e `path`. er
 | `409` | e-mail, CPF ou registro que já pertence a outra conta, com o campo em `errors`, só nas rotas da administração. o cadastro do paciente e a troca do e-mail de acesso não usam: um responde `400` sem dizer o campo e o outro responde igual exista ou não a conta |
 | `429` | senha errada demais no login, na troca de senha ou de e-mail, pedidos demais de troca de e-mail ou de link de senha nova, ou cadastro recusado vezes demais |
 | `500` | erro inesperado, registrado no log |
+
+data com o ano fora do possível também é dado inválido e recebe `400` no campo: nascimento antes de 1900 e consulta ou anamnese antes de 2000. data no fim do calendário (`+999999999-12-31`), que o java lê mas não consegue somar um dia, e `page` acima de 100000 respondem `400` em vez de `500`.
 
 `GET /health` responde se a api e o banco estão de pé. é o que o docker usa.
 

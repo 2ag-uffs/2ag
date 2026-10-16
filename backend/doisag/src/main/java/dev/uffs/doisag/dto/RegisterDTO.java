@@ -31,6 +31,7 @@ public record RegisterDTO(
 
         @NotNull(message = "Informe a data de nascimento")
         @Past(message = "A data de nascimento precisa ser no passado")
+        @MinYear(value = 1900, message = "Confira o ano de nascimento")
         LocalDate birthDate,
 
         @NotBlank(message = "Informe o telefone")

@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.NotificationPageDTO;
 import dev.uffs.doisag.dto.UnreadCountDTO;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.NotificationService;
+import jakarta.validation.constraints.Max;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
 public class NotificationController {
 
+    // pagina gigante estourava a conta do deslocamento no banco e virava 500
+    private static final int MAX_PAGE = 100000;
+
     private final NotificationService notificationService;
 
     public NotificationController(NotificationService notificationService) {
@@ -28,8 +32,9 @@ public class NotificationController {
     }
 
     @GetMapping
-    public NotificationPageDTO getUserNotifications(@RequestParam(name = "page", defaultValue = "0") int page,
-                                                    @AuthenticationPrincipal Users user) {
+    public NotificationPageDTO getUserNotifications(
+            @RequestParam(name = "page", defaultValue = "0") @Max(MAX_PAGE) int page,
+            @AuthenticationPrincipal Users user) {
         return notificationService.getNotificationsForUser(user.getId(), page);
     }
 

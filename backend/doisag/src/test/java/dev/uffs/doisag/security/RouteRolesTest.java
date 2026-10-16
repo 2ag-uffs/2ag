@@ -81,6 +81,8 @@ class RouteRolesTest {
 
     // consulta n pode ser marcada no passado entao a data anda junto com o calendario
     private static final LocalDate NEXT_MONTH = LocalDate.now().plusMonths(1);
+    // o pedido do paciente so vale nos proximos 30 dias
+    private static final LocalDate NEXT_WEEK = LocalDate.now().plusWeeks(1);
 
     @Autowired private MockMvc mockMvc;
     @Autowired @Qualifier("requestMappingHandlerMapping") private RequestMappingHandlerMapping handlerMapping;
@@ -291,13 +293,13 @@ class RouteRolesTest {
     // o paciente escolhe o horario mas diagnostico e conduta sao do prescritor
     @Test
     void patientSchedulingNeverWritesClinicalFields() throws Exception {
-        String body = "{\"dateTime\":\"" + NEXT_MONTH + "T14:00:00\",\"modality\":\"REMOTA\","
+        String body = "{\"dateTime\":\"" + NEXT_WEEK + "T14:00:00\",\"modality\":\"REMOTA\","
                 + "\"diagnosis\":\"escrito pelo paciente\",\"therapeuticPlan\":\"escrito pelo paciente\"}";
 
         // o paciente so pede horario livre entao a agenda do prescritor precisa ter o periodo aberto
         PrescriberAvailability period = new PrescriberAvailability();
         period.setPrescriber(prescriber);
-        period.setDayOfWeek(NEXT_MONTH.getDayOfWeek().getValue());
+        period.setDayOfWeek(NEXT_WEEK.getDayOfWeek().getValue());
         period.setStartTime(LocalTime.of(8, 0));
         period.setEndTime(LocalTime.of(18, 0));
         availabilityRepository.save(period);

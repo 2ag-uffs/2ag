@@ -18,6 +18,7 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.AvailabilityService;
+import dev.uffs.doisag.service.ConsultationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,6 +188,45 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.RANGE_TOO_LONG_MESSAGE));
     }
 
+    // o paciente pede so nos proximos 30 dias contando hoje, igual a tela, e o limite vale tbm
+    // pra quem chama a api direto
+    @Test
+    void freeSlotsAndRequestsStopThirtyDaysAhead() throws Exception {
+        LocalDate lastDay = LocalDate.now().plusDays(29);
+        LocalDate firstDayOutside = LocalDate.now().plusDays(30);
+        // atende nos dois dias da beirada, entao so o limite tira o segundo
+        saveAvailability(60, List.of(period(lastDay.getDayOfWeek().getValue(), "08:00", "12:00"),
+                period(firstDayOutside.getDayOfWeek().getValue(), "08:00", "12:00")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", lastDay.toString())
+                        .param("to", firstDayOutside.toString())
+                        .header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[3].start", startsWith(lastDay + "T11:00")));
+
+        request(patient, firstDayOutside.atTime(8, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_FAR_AHEAD_MESSAGE));
+        request(patient, LocalDate.now().plusMonths(6).atTime(8, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_FAR_AHEAD_MESSAGE));
+        request(patient, lastDay.atTime(11, 0), null).andExpect(status().isCreated());
+    }
+
+    // a data do fim do calendario estourava a conta dos dias e virava 500
+    @Test
+    void freeSlotsAtTheEndOfTheCalendarComeEmpty() throws Exception {
+        mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", "+999999999-12-31")
+                        .param("to", "+999999999-12-31")
+                        .header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     // ---------- pedido do paciente ----------
 
     @Test
@@ -272,6 +312,25 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_TAKEN_MESSAGE));
     }
 
+    // a tela aberta antes do horario ainda mostrava o confirmar: o pedido virava consulta
+    // no passado e o paciente so era avisado dps da hora
+    @Test
+    void aRequestWhoseTimeAlreadyPassedIsNotConfirmed() throws Exception {
+        Appointment expired = saveAppointment(patient, LocalDateTime.now().minusHours(2), AppointmentStatus.SOLICITADA);
+
+        confirm(expired.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.EXPIRED_REQUEST_MESSAGE));
+
+        assertThat(appointmentRepository.findById(expired.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.SOLICITADA);
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta confirmada");
+
+        // a tela n tem remarcar pra pedido, entao a mensagem manda recusar
+        assertThat(AppointmentService.EXPIRED_REQUEST_MESSAGE).contains("Recuse o pedido").doesNotContain("remarque");
+        decline(expired.getId(), null).andExpect(status().isOk());
+    }
+
     // ---------- prescritor marca direto ----------
 
     @Test
@@ -299,6 +358,21 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_TAKEN_MESSAGE));
         schedule(otherPatient, AGENDA_DAY.atTime(11, 30), 30).andExpect(status().isBadRequest());
         schedule(otherPatient, AGENDA_DAY.atTime(10, 30), 30).andExpect(status().isCreated());
+    }
+
+    // a consulta da noite q passa da meia noite tbm ocupa o comeco do dia seguinte, nos dois sentidos
+    @Test
+    void appointmentsAcrossMidnightDoNotOverlap() throws Exception {
+        schedule(patient, AGENDA_DAY.atTime(23, 30), 90).andExpect(status().isCreated());
+        schedule(otherPatient, AGENDA_DAY.plusDays(1).atTime(0, 30), 60)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_TAKEN_MESSAGE));
+
+        schedule(otherPatient, AGENDA_DAY.plusDays(2).atTime(0, 30), 60).andExpect(status().isCreated());
+        schedule(patient, AGENDA_DAY.plusDays(1).atTime(23, 30), 90)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_TAKEN_MESSAGE));
+        schedule(patient, AGENDA_DAY.plusDays(1).atTime(23, 0), 60).andExpect(status().isCreated());
     }
 
     @Test
@@ -417,6 +491,62 @@ class AgendaTest {
         Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
 
         reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "REMOTA").andExpect(status().isOk());
+    }
+
+    // a consulta q ja passou e ficou agendada pode ter receita: remarcar levava a receita pra uma
+    // consulta futura e ela virava a vigente pela data errada (RF05), igual na correcao do registro
+    @Test
+    void rescheduleOfAConsultationWithPrescriptionIsRejected() throws Exception {
+        LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
+        Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
+        Long prescriptionId = idOf(prescribe(past.getId()).andExpect(status().isCreated()));
+
+        reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE));
+        assertThat(appointmentRepository.findById(past.getId()).orElseThrow().getDateTime()).isEqualTo(pastTime);
+
+        // anulada a receita, a consulta volta a poder mudar de data
+        mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Lancada na consulta errada\"}"))
+                .andExpect(status().isOk());
+        reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL").andExpect(status().isOk());
+    }
+
+    // horario novo no passado eh recusado antes da receita: senao o prescritor anulava a receita
+    // e dps descobria q a remarcacao n passava de qq jeito
+    @Test
+    void rescheduleToThePastIsRejectedBeforeThePrescriptionCheck() throws Exception {
+        LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
+        Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
+        prescribe(past.getId()).andExpect(status().isCreated());
+
+        reschedule(past.getId(), LocalDateTime.now().minusHours(1), "PRESENCIAL")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.PAST_DATE_MESSAGE));
+        assertThat(appointmentRepository.findById(past.getId()).orElseThrow().getDateTime()).isEqualTo(pastTime);
+    }
+
+    // o meem fica no dia da consulta, entao com ele a data tbm n muda na remarcacao
+    @Test
+    void rescheduleOfAConsultationWithAMiniExamIsRejected() throws Exception {
+        LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
+        Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
+        mockMvc.perform(post("/scales/mental-state-exam/appointments/" + past.getId())
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                                + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
+                                + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
+                                + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"))
+                .andExpect(status().isCreated());
+
+        reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_EXAM_MESSAGE));
+        assertThat(appointmentRepository.findById(past.getId()).orElseThrow().getDateTime()).isEqualTo(pastTime);
     }
 
     // ---------- cancelar ----------
@@ -1028,6 +1158,15 @@ class AgendaTest {
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
+    }
+
+    private ResultActions prescribe(Long appointmentId) throws Exception {
+        return mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
+                        + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,"
+                        + "\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"));
     }
 
     private ResultActions cancel(Long appointmentId, Users user) throws Exception {

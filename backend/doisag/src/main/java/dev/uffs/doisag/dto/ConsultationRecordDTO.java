@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 // texto clinico n tem limite pratico de tamanho (RN11)
 public record ConsultationRecordDTO(
         // vazio vira o horario de agora
+        @MinYear(value = 2000, message = "Confira o ano da consulta")
         LocalDateTime dateTime,
 
         @NotNull(message = "Escolha se a consulta foi presencial ou remota")

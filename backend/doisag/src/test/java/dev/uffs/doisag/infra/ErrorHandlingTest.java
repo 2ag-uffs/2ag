@@ -1,10 +1,12 @@
 package dev.uffs.doisag.infra;
 
+import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.NotificationService;
@@ -18,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -36,6 +40,7 @@ class ErrorHandlingTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private PatientRepository patientRepository;
     @Autowired private PrescriberRepository prescriberRepository;
+    @Autowired private UsersRepository usersRepository;
     @Autowired private NotificationService notificationService;
     @Autowired private TokenService tokenService;
 
@@ -100,6 +105,69 @@ class ErrorHandlingTest {
                         .content("{\"items\":[{}]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'items[0].scaleType')]").exists());
+    }
+
+    // item nulo no meio da lista passava pela validacao e derrubava o servico com 500
+    @Test
+    void nullProtocolItemReturns400WithTheField() throws Exception {
+        mockMvc.perform(post("/patients/" + patientId + "/treatment-protocol")
+                        .header("Authorization", "Bearer " + tokenService.generateToken(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[null]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("items[0]"));
+    }
+
+    // pagina alem do q o banco consegue pular estourava a conta e virava 500
+    @Test
+    void pageTooFarReturns400() throws Exception {
+        String today = LocalDate.now().toString();
+        String prescriberToken = "Bearer " + tokenService.generateToken(prescriber);
+        Admin admin = new Admin();
+        admin.setName("Administrador do teste de erro");
+        admin.setEmail("erro-admin@email.com");
+        admin.setPassword("hash");
+        String adminToken = "Bearer " + tokenService.generateToken(usersRepository.save(admin));
+
+        mockMvc.perform(get("/notifications").param("page", "2147483647").header("Authorization", patientToken))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/patients/" + patientId + "/audit-events")
+                        .param("from", today).param("to", today).param("page", "2147483647")
+                        .header("Authorization", prescriberToken))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", today).param("to", today).param("page", "2147483647")
+                        .header("Authorization", adminToken))
+                .andExpect(status().isBadRequest());
+
+        // pagina grande mas possivel so vem vazia
+        mockMvc.perform(get("/notifications").param("page", "100000").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(0));
+    }
+
+    // data no fim do calendario estourava a conta de dias no servico e virava 500
+    @Test
+    void dateAtTheEndOfTheCalendarReturns400() throws Exception {
+        String prescriberToken = "Bearer " + tokenService.generateToken(prescriber);
+
+        mockMvc.perform(get("/patients/" + patientId + "/audit-events")
+                        .param("from", "2026-01-01").param("to", "+999999999-12-31")
+                        .header("Authorization", prescriberToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+        mockMvc.perform(post("/patients/" + patientId + "/treatment-protocol")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"startDate\":\"+999999999-12-31\","
+                                + "\"items\":[{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"SEMANAL\"}]}"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/appointments")
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patientId\":" + patientId
+                                + ",\"dateTime\":\"+999999999-12-31T23:00:00\",\"modality\":\"REMOTA\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     // so um lado do periodo ignorava o filtro e devolvia a agenda inteira

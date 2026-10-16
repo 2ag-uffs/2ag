@@ -101,6 +101,17 @@ class AnamnesisTest {
                 .andExpect(jsonPath("$.errors[0].field").value("assessmentDate"));
     }
 
+    // o ano digitado errado (0001 no lugar de 2026) entrava como a anamnese mais antiga
+    @Test
+    void fillDateWithAnImpossibleYearIsRejected() throws Exception {
+        Map<String, Object> answers = answers();
+        answers.put("assessmentDate", "0001-01-01");
+
+        fillAnamnesis(answers)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("assessmentDate"));
+    }
+
     @Test
     void longAnswersAreKeptWhole() throws Exception {
         Map<String, Object> answers = answers();

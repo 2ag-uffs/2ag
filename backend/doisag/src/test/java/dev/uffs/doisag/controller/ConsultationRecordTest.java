@@ -47,6 +47,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class ConsultationRecordTest {
 
+    private static final String MEEM_BODY = "{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+            + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,\"memoriaEvocacao\":3,"
+            + "\"nomeacao\":2,\"repeticao\":1,\"comando\":3,\"leitura\":1,\"escrita\":1,\"copia\":1}}";
+
     private final ObjectMapper json = new ObjectMapper();
 
     @Autowired private MockMvc mockMvc;
@@ -113,6 +117,17 @@ class ConsultationRecordTest {
         registerConsultation(record)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(ConsultationService.FUTURE_DATE_MESSAGE));
+    }
+
+    // o ano digitado errado (0001, 0202) virava a consulta mais antiga do paciente
+    @Test
+    void consultationWithAnImpossibleYearIsRejected() throws Exception {
+        Map<String, Object> record = clinicalRecord();
+        record.put("dateTime", "0001-01-01T00:00:00");
+
+        registerConsultation(record)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("dateTime"));
     }
 
     @Test
@@ -263,6 +278,47 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.message").value(ConsultationService.HAS_PRESCRIPTION_MESSAGE));
     }
 
+    // a receita vigente sai da consulta mais recente: mudar a data com a receita dentro deixava
+    // valendo a receita de uma consulta q ficou mais antiga (RF05)
+    @Test
+    void theDateOfAConsultationWithPrescriptionDoesNotChange() throws Exception {
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MINUTES);
+        Long appointmentId = registeredConsultationAt(yesterday);
+        issuePrescription(appointmentId).andExpect(status().isCreated());
+
+        Map<String, Object> movedRecord = clinicalRecord();
+        movedRecord.put("dateTime", yesterday.minusDays(10).toString());
+        updateRecord(appointmentId, movedRecord)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE));
+        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getDateTime()).isEqualTo(yesterday);
+
+        // o resto do registro continua corrigindo, com a mesma data ou sem ela
+        Map<String, Object> sameDateRecord = clinicalRecord();
+        sameDateRecord.put("dateTime", yesterday.toString());
+        sameDateRecord.put("evolution", "Melhorou do sono");
+        updateRecord(appointmentId, sameDateRecord).andExpect(status().isOk());
+        updateRecord(appointmentId, clinicalRecord()).andExpect(status().isOk());
+    }
+
+    // o meem fica no dia da consulta, entao com ele a data tbm fica
+    @Test
+    void theDateOfAConsultationWithAMiniExamDoesNotChange() throws Exception {
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MINUTES);
+        Long appointmentId = registeredConsultationAt(yesterday);
+        mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointmentId)
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(MEEM_BODY))
+                .andExpect(status().isCreated());
+
+        Map<String, Object> movedRecord = clinicalRecord();
+        movedRecord.put("dateTime", yesterday.minusDays(10).toString());
+        updateRecord(appointmentId, movedRecord)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_EXAM_MESSAGE));
+    }
+
     // consulta anulada n aconteceu entao sai do grafico de evolucao
     @Test
     void annulledConsultationLeavesTheProgressChart() throws Exception {
@@ -291,6 +347,15 @@ class ConsultationRecordTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"quero apagar\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    private ResultActions issuePrescription(Long appointmentId) throws Exception {
+        return mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
+                        + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],"
+                        + "\"posology\":\"2 gotas a noite\"}"));
     }
 
     private Map<String, Object> clinicalRecord() {

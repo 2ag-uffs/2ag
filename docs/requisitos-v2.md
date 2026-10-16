@@ -745,8 +745,8 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 
 **Atendimento concluído em 13/09/2026:** RF04, RF05, RF19, RF12 e RF13, com o arquivamento de paciente.
 
-- **Anulação:** consulta, prescrição e anamnese registradas por engano não são apagadas. O prescritor anula com motivo obrigatório e o registro continua no histórico, com data, motivo e autor. Uma consulta com prescrição ativa só é anulada depois da prescrição.
-- **Consulta (RF04):** o prescritor registra a consulta que já aconteceu ou completa a que estava agendada. Consulta futura é assunto da agenda.
+- **Anulação:** consulta, prescrição e anamnese registradas por engano não são apagadas. O prescritor anula com motivo obrigatório e o registro continua no histórico, com data, motivo e autor. Uma consulta com prescrição ativa só é anulada depois da prescrição. Pelo mesmo motivo, a data da consulta não muda na correção do registro nem na remarcação pela agenda enquanto ela tem prescrição ou Mini-Exame não anulados: a prescrição vigente sai da consulta mais recente e o exame fica no dia da consulta (16/10/2026).
+- **Consulta (RF04):** o prescritor registra a consulta que já aconteceu ou completa a que estava agendada. Consulta futura é assunto da agenda. Data com o ano digitado errado é recusada: consulta e anamnese antes de 2000 e data de nascimento antes de 1900 (16/10/2026).
 - **Prescrição (RF05):** a nova prescrição substitui a vigente, e a anterior fica guardada como substituída. O óleo é descrito por uma lista de canabinoides, cada um com a sua concentração, até a clínica responder a questão 1. O paciente vê as próprias prescrições em tela própria.
 - **Anamnese (RF19):** o paciente preenche e corrige a ficha. A data de preenchimento é a do dia, e o preenchimento dá baixa na tarefa enviada pelo prescritor.
 - **Histórico (RF12 e RF13):**
@@ -806,9 +806,10 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.
 - **Pedido do paciente:**
   - o paciente escolhe um horário livre dos próximos 30 dias e pode escrever o motivo da consulta, que fica fora dos campos clínicos;
+  - a API segue a mesma janela de 30 dias contando o dia de hoje e recusa o pedido para depois dela, e o limite de 3 pedidos em aberto vale também para dois pedidos enviados ao mesmo tempo (16/10/2026);
   - o pedido segura o horário até o prescritor confirmar ou recusar;
   - a recusa pode levar um motivo, que chega ao paciente no aviso, e libera o horário.
-- **Agenda do prescritor:** mostra os pedidos esperando resposta e as consultas da semana. O prescritor também marca consulta direto, com a duração padrão ou outra, remarca e cancela. Dois agendamentos do mesmo prescritor nunca ocupam o mesmo horário (RN08).
+- **Agenda do prescritor:** mostra os pedidos esperando resposta e as consultas da semana. O prescritor também marca consulta direto, com a duração padrão ou outra, remarca e cancela. Dois agendamentos do mesmo prescritor nunca ocupam o mesmo horário (RN08), nem quando a consulta da noite passa da meia-noite (16/10/2026). Pedido cujo horário passou sem resposta não é mais confirmado: o prescritor recusa, e o paciente escolhe outro horário (16/10/2026).
 - **Cancelamento:** o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. Depois disso, só o prescritor cancela.
 - **Avisos:** pedir, marcar, confirmar, recusar, remarcar e cancelar geram notificação no sistema para a outra parte. O lembrete antes da consulta (RF34) fica para o módulo de notificações.
 - **Registro clínico:** só a consulta confirmada na agenda recebe registro clínico e prescrição.

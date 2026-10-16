@@ -1,5 +1,10 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AgendaAppointmentDTO;
+import dev.uffs.doisag.dto.AnnulmentDTO;
+import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
+import dev.uffs.doisag.dto.AppointmentResponseDTO;
+import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.dto.PrescriptionComponentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
@@ -47,8 +52,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // os outros cadastros q liam e so dps gravavam, do mesmo jeito da agenda e da escala:
-// o acompanhamento ativo, o envio avulso de escala e a receita vigente
-// a trava eh a linha do prescritor nos dois primeiros e a da consulta na receita
+// o acompanhamento ativo, o envio avulso de escala, a receita vigente e a anulacao da consulta
+// a trava eh a linha do prescritor nos dois primeiros, a da consulta e a do paciente na receita
+// e a da consulta na anulacao, na correcao do registro e na remarcacao
 @SpringBootTest
 @ActiveProfiles("test")
 class ClinicalRecordRaceTest {
@@ -58,6 +64,8 @@ class ClinicalRecordRaceTest {
     @Autowired private TreatmentProtocolService protocolService;
     @Autowired private ScaleTaskService taskService;
     @Autowired private PrescriptionService prescriptionService;
+    @Autowired private ConsultationService consultationService;
+    @Autowired private AppointmentService appointmentService;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -142,15 +150,12 @@ class ClinicalRecordRaceTest {
 
     @Test
     void theSecondPrescriptionWaitsAndReplacesTheOneSavedMeanwhile() throws Exception {
-        Appointment appointment = saveAppointmentOfYesterday();
-        PrescriptionCreateDTO prescriptionData = new PrescriptionCreateDTO("Óleo novo", null, null,
-                Spectrum.ISOLADO, List.of(new PrescriptionComponentDTO(Cannabinoid.CBD, new BigDecimal("10"),
-                ConcentrationUnit.MG_POR_ML)), null, "2 gotas", null, List.of(), null, null, null, null, null, null);
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
 
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> savePrescriptionOf(appointment),
-                () -> prescriptionService.create(prescriptionData, appointment.getId()));
+                () -> prescriptionService.create(prescriptionData(), appointment.getId()));
 
         assertThat(outcome.error()).isNull();
         // a q foi gravada no meio tempo virou substituida e so a nova segue em uso
@@ -158,6 +163,86 @@ class ClinicalRecordRaceTest {
                 .findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patient.getId(), PrescriptionStatus.VIGENTE);
         assertThat(currentPrescriptions).hasSize(1);
         assertThat(currentPrescriptions.get(0).getId()).isEqualTo(outcome.value().id());
+    }
+
+    // a vigente eh do paciente: a receita lancada ao mesmo tempo numa consulta mais antiga dele
+    // espera a outra gravar e entra como substituida, em vez de ficarem duas em uso
+    @Test
+    void aPrescriptionOnAnotherConsultationWaitsForThePatientAndFindsTheCurrentOne() throws Exception {
+        Appointment older = saveAppointmentOn(TODAY.minusDays(3));
+        Appointment newer = saveAppointmentOn(TODAY.minusDays(1));
+
+        HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> savePrescriptionOf(newer),
+                () -> prescriptionService.create(prescriptionData(), older.getId()));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value().current()).isFalse();
+        List<Prescription> currentPrescriptions = prescriptionRepository
+                .findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patient.getId(), PrescriptionStatus.VIGENTE);
+        assertThat(currentPrescriptions).hasSize(1);
+        assertThat(currentPrescriptions.get(0).getId()).isNotEqualTo(outcome.value().id());
+    }
+
+    // a anulacao trava a consulta e le de novo: a receita gravada no meio tempo aparece
+    // e a consulta n fica anulada com uma receita em uso
+    @Test
+    void annullingWaitsForTheConsultationAndFindsThePrescriptionSavedMeanwhile() throws Exception {
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+
+        HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
+                () -> savePrescriptionOf(appointment),
+                () -> consultationService.annul(appointment.getId(), new AnnulmentDTO("Registrada por engano"),
+                        prescriber));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(ConsultationService.HAS_PRESCRIPTION_MESSAGE);
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().isAnnulled()).isFalse();
+    }
+
+    // a correcao do registro tbm trava a consulta: com a receita gravada no meio tempo a data fica
+    @Test
+    void correctingTheDateWaitsForTheConsultationAndFindsThePrescriptionSavedMeanwhile() throws Exception {
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+        ConsultationRecordDTO recordData = new ConsultationRecordDTO(TODAY.minusDays(10).atTime(10, 0),
+                AppointmentModality.PRESENCIAL, null, null, null, "Dor crônica", null, null, null, null, null);
+
+        HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
+                () -> savePrescriptionOf(appointment),
+                () -> consultationService.updateRecord(appointment.getId(), recordData));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE);
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getDateTime())
+                .isEqualTo(TODAY.minusDays(1).atTime(10, 0));
+    }
+
+    // a remarcacao pela agenda tbm trava a consulta: a receita gravada no meio tempo aparece
+    // e a consulta n vai pra outra data levando a receita junto
+    @Test
+    void reschedulingWaitsForTheConsultationAndFindsThePrescriptionSavedMeanwhile() throws Exception {
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+        AppointmentRescheduleDTO rescheduleData = new AppointmentRescheduleDTO(TODAY.plusDays(7).atTime(10, 0),
+                AppointmentModality.PRESENCIAL, null, null);
+
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldLock.run(
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
+                () -> savePrescriptionOf(appointment),
+                () -> appointmentService.reschedule(appointment.getId(), rescheduleData));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE);
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getDateTime())
+                .isEqualTo(TODAY.minusDays(1).atTime(10, 0));
+    }
+
+    private PrescriptionCreateDTO prescriptionData() {
+        return new PrescriptionCreateDTO("Óleo novo", null, null,
+                Spectrum.ISOLADO, List.of(new PrescriptionComponentDTO(Cannabinoid.CBD, new BigDecimal("10"),
+                ConcentrationUnit.MG_POR_ML)), null, "2 gotas", null, List.of(), null, null, null, null, null, null);
     }
 
     private void saveActiveProtocol() {
@@ -191,11 +276,11 @@ class ClinicalRecordRaceTest {
         prescriptionRepository.save(prescription);
     }
 
-    private Appointment saveAppointmentOfYesterday() {
+    private Appointment saveAppointmentOn(LocalDate day) {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
-        appointment.setDateTime(TODAY.minusDays(1).atTime(10, 0));
+        appointment.setDateTime(day.atTime(10, 0));
         appointment.setModality(AppointmentModality.PRESENCIAL);
         appointment.setDurationMinutes(60);
         appointment.setStatus(AppointmentStatus.AGENDADA);

@@ -2,6 +2,7 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.dto.AuditPageDTO;
 import dev.uffs.doisag.service.AuditService;
+import jakarta.validation.constraints.Max;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,9 @@ import java.time.LocalDate;
 @RestController
 public class AuditController {
 
+    // pagina gigante estourava a conta do deslocamento no banco e virava 500
+    private static final int MAX_PAGE = 100000;
+
     private final AuditService auditService;
 
     public AuditController(AuditService auditService) {
@@ -28,7 +32,7 @@ public class AuditController {
     public AuditPageDTO getPatientEvents(@PathVariable Long patientId,
                                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                         @RequestParam(defaultValue = "0") int page) {
+                                         @RequestParam(defaultValue = "0") @Max(MAX_PAGE) int page) {
         return auditService.getPatientEvents(patientId, from, to, page);
     }
 
@@ -37,7 +41,7 @@ public class AuditController {
     @GetMapping("/admin/audit-events")
     public AuditPageDTO getStaffEvents(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-                                       @RequestParam(defaultValue = "0") int page) {
+                                       @RequestParam(defaultValue = "0") @Max(MAX_PAGE) int page) {
         return auditService.getStaffEvents(from, to, page);
     }
 }

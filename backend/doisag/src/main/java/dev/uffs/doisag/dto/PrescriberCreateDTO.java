@@ -27,6 +27,7 @@ public record PrescriberCreateDTO(
         String cpf,
 
         @Past(message = "A data de nascimento deve ser uma data no passado")
+        @MinYear(value = 1900, message = "Confira o ano de nascimento")
         LocalDate birthDate,
 
         @Pattern(regexp = "^[0-9]{10,11}$", message = "Informe o telefone com DDD")
