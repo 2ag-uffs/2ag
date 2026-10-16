@@ -95,6 +95,59 @@ describe("Escala", () => {
         expect(router.state.location.search).toBe("?data=2026-09-25");
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
     });
+
+    // a anulada fica no historico e o paciente responde de novo no msm dia
+    it("dia so com resposta anulada abre em branco e salvar envia uma resposta nova", async () => {
+        const today = toIsoDate(new Date());
+        responses = [{...SAVED_RESPONSE, periodStart: today, periodEnd: today, annulled: true,
+            editableByPatient: false}];
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(
+            {...SAVED_RESPONSE, id: 8, periodStart: today, periodEnd: today, answers: {humorAnsioso: 1}});
+        const put = vi.spyOn(apiService, "put");
+        renderScale("/escalas/hamilton");
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/foi anulada pelo prescritor e continua no histórico/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Data da avaliação")).toBeEnabled();
+        expect(screen.getByLabelText("Data da avaliação")).toHaveValue(today);
+        expect(screen.getByLabelText("Humor ansioso")).toHaveValue(null);
+        expect(screen.queryByText("Resultado")).not.toBeInTheDocument();
+
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText(/Respostas salvas/)).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/scales/hamilton/responses",
+            {periodStart: today, periodEnd: today, answers: {humorAnsioso: 1}});
+        expect(put).not.toHaveBeenCalled();
+    });
+
+    it("na escala de periodo, o periodo com resposta anulada abre em branco pra responder de novo", async () => {
+        const periodStart = toIsoDate(addDays(new Date(), -6));
+        const today = toIsoDate(new Date());
+        const periodScale = {...HAMILTON, type: "ESCALA_PITTSBURGH", slug: "pittsburgh", fillMode: "PERIODO"};
+        responses = [{...SAVED_RESPONSE, slug: "pittsburgh", periodStart, periodEnd: today, annulled: true,
+            editableByPatient: false}];
+        vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/pittsburgh" ? periodScale : responses));
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(
+            {...SAVED_RESPONSE, id: 8, slug: "pittsburgh", periodStart, periodEnd: today});
+        renderScale("/escalas/pittsburgh");
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/foi anulada pelo prescritor e continua no histórico/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Início do período")).toBeEnabled();
+        expect(screen.getByLabelText("Início do período")).toHaveValue(periodStart);
+        expect(screen.getByLabelText("Fim do período")).toBeEnabled();
+        expect(screen.getByLabelText("Humor ansioso")).toHaveValue(null);
+        expect(screen.queryByText(/Período respondido/)).not.toBeInTheDocument();
+
+        await user.type(screen.getByLabelText("Humor ansioso"), "2");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith("/scales/pittsburgh/responses",
+            {periodStart, periodEnd: today, answers: {humorAnsioso: 2}}));
+    });
 });
 
 // diario com um item de nota, preenchido um dia por vez na grade
@@ -187,6 +240,43 @@ describe("Escala diaria", () => {
         expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(monday));
         expect(within(grid).getByRole("button", {pressed: true})).toHaveTextContent(formatWeekdayAndDate(oldDay));
         expect(screen.queryByText(/Esqueceu algum dia/)).not.toBeInTheDocument();
+    });
+
+    // o dia anulado n conta como preenchido e o paciente preenche ele de novo
+    it("dia do diario so com resposta anulada fica em branco e abre pra preencher", async () => {
+        const annulledDay = {
+            id: 5, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal", periodStart: taskStart,
+            periodEnd: taskStart, answers: {dor: 7}, result: null, reviewed: false, annulled: true,
+            editableByPatient: false,
+        };
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: pendingTasks, history: []});
+            }
+            return Promise.resolve([annulledDay]);
+        });
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({...annulledDay, id: 9, answers: {dor: 4},
+            annulled: false, editableByPatient: true});
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const firstDay = within(grid).getAllByRole("button")[0];
+        expect(firstDay).toHaveTextContent("em branco");
+        await user.click(firstDay);
+
+        expect(screen.getByText(/foi anulada pelo prescritor e continua no histórico/)).toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "7"})).not.toBeChecked();
+        expect(screen.getByRole("radio", {name: "4"})).toBeEnabled();
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText(/Respostas salvas/)).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/scales/acompanhamento-semanal/responses",
+            {periodStart: taskStart, periodEnd: taskStart, answers: {dor: 4}});
     });
 
     // a antiga q passou do prazo vem antes na lista, mas a grade eh da q cobre hoje

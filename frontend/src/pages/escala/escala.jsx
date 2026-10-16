@@ -145,12 +145,12 @@ export default function Escala() {
         return days;
     }, [selectedDay, today, openTask, insideOpenTask]);
 
-    // o dia pode ter uma resposta anulada e a valida q veio dps: a valida eh a q abre
+    // resposta anulada fica so no historico: o dia dela abre em branco pro paciente responder de novo
     const currentResponse = useMemo(
-        () => responses.find((response) => response.periodStart === selectedDay && !response.annulled)
-            || responses.find((response) => response.periodStart === selectedDay)
-            || null,
+        () => responses.find((response) => response.periodStart === selectedDay && !response.annulled) || null,
         [responses, selectedDay]);
+    const hasAnnulledResponse = currentResponse === null
+        && responses.some((response) => response.periodStart === selectedDay && response.annulled);
 
     // cada dia mostra o q ja foi respondido nele ou o q a paciente esta mexendo
     // dia em branco abre em branco e a tela nunca sugere valor (RN10)
@@ -289,7 +289,9 @@ export default function Escala() {
                         aria-label={insideOpenTask ? "Dias do período" : "Dias da semana"}
                     >
                         {gridDays.map((dayIso) => {
-                            const isFilled = responses.some((response) => response.periodStart === dayIso);
+                            // dia so com resposta anulada volta a ficar em branco
+                            const isFilled = responses.some((response) => response.periodStart === dayIso
+                                && !response.annulled);
                             return (
                                 <button
                                     key={dayIso}
@@ -344,10 +346,13 @@ export default function Escala() {
                 )}
 
                 {isReadOnly && (
+                    <p className="aviso">O prescritor já analisou esta resposta. Para corrigir, fale com ele.</p>
+                )}
+
+                {hasAnnulledResponse && (
                     <p className="aviso">
-                        {currentResponse.annulled
-                            ? "Esta resposta foi anulada pelo prescritor e fica no histórico como está."
-                            : "O prescritor já analisou esta resposta. Para corrigir, fale com ele."}
+                        A resposta desta data foi anulada pelo prescritor e continua no histórico. Você pode responder
+                        de novo.
                     </p>
                 )}
 
