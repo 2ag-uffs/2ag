@@ -94,8 +94,9 @@ api:
     # true troca a senha da conta q ja existe pela do ADMIN_PASSWORD, so pra quem esqueceu
     reset-password: ${ADMIN_PASSWORD_RESET:false}
   clinic:
-    # controladora dos dados e contato do encarregado (lgpd art. 41), entram no termo de consentimento
+    # controladora dos dados, cnpj e contato do encarregado (lgpd art. 41), entram no termo de consentimento
     name: ${CLINIC_NAME:}
+    cnpj: ${CLINIC_CNPJ:}
     dpo-contact: ${CLINIC_DPO_CONTACT:}
   seed:
     # cria usuarios de teste na subida e so pode ser true em desenvolvimento

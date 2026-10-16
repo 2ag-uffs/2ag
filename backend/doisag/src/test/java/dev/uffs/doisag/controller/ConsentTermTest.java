@@ -90,20 +90,22 @@ class ConsentTermTest {
 
     @Test
     void clinicDataFromTheServerReplacesTheMarkers() {
-        String text = new ConsentTermService(null, " Instituto Exemplo Ltda ", "dados@exemplo.com.br")
-                .getCurrentTerm().text();
+        String text = new ConsentTermService(null, " Instituto Exemplo Ltda ", " 00.000.000/0001-91 ",
+                "dados@exemplo.com.br").getCurrentTerm().text();
 
-        assertThat(text).contains("Instituto Exemplo Ltda, responsável pelo seu atendimento");
+        assertThat(text).contains("Instituto Exemplo Ltda, CNPJ 00.000.000/0001-91, responsável pelo seu atendimento");
         assertThat(text).contains("dados@exemplo.com.br");
-        assertThat(text).doesNotContain("[NOME DA CLÍNICA]").doesNotContain("[CONTATO DO ENCARREGADO");
+        assertThat(text).doesNotContain("[NOME DA CLÍNICA]").doesNotContain("[CNPJ DA CLÍNICA]")
+                .doesNotContain("[CONTATO DO ENCARREGADO");
     }
 
     // sem as variaveis a api sobe e o termo continua com os colchetes
     @Test
     void blankClinicDataKeepsTheMarkers() {
-        String text = new ConsentTermService(null, "", null).getCurrentTerm().text();
+        String text = new ConsentTermService(null, "", null, null).getCurrentTerm().text();
 
-        assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
+        assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CNPJ DA CLÍNICA]")
+                .contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
     }
 
     @Test

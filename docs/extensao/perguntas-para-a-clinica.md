@@ -126,13 +126,14 @@ A proposta é que o prescritor cadastre os horários disponíveis, o paciente so
 
 O cadastro já pede o aceite de um termo de consentimento e guarda a versão e a data de cada aceite. O texto atual é um **rascunho técnico** e precisa ser revisado e aprovado pela clínica, de preferência com apoio jurídico, antes de qualquer paciente real.
 
-**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra. Desde 14/10/2026 o sistema já tem esse consentimento (RF37): opcional, aceito no cadastro ou no perfil e retirado no perfil, e a exportação sem identificação só sai de quem aceitou. Em 15/10/2026 ela deixou de se chamar exportação anônima: sai sem nome e contato, mas a clínica sabe de quem é cada número e o texto das consultas sai como foi escrito, então pela LGPD o arquivo continua sendo dado pessoal de saúde (dados codificados, não anônimos). O texto do consentimento de pesquisa passou a dizer isso ao paciente, e o projeto no comitê de ética deve tratar o arquivo do mesmo jeito. O texto dele é um rascunho até o projeto passar no comitê de ética.
+**Já respondido (01/10/2026):** a clínica tem um termo próprio do tratamento com cannabis (o paciente sabe que não há promessa de resultado, que os efeitos adversos foram explicados e que se compromete a ajustar a dose), e a prescritora ofereceu mandar o modelo. Ele não substitui o termo de dados do cadastro: os dois tratam de coisas diferentes. O uso dos dados em pesquisa ainda não acontece, mas vai acontecer (coortes prospectivas e evidência do mundo real), então o consentimento de pesquisa separado entra. Desde 14/10/2026 o sistema já tem esse consentimento (RF37): opcional, aceito no cadastro ou no perfil e retirado no perfil, e a exportação sem identificação só sai de quem aceitou. O texto desse consentimento é um rascunho até o projeto passar no comitê de ética. Em 15/10/2026 a exportação deixou de se chamar anônima: sai sem nome e contato, mas a clínica sabe de quem é cada número e o texto das consultas sai como foi escrito, então pela LGPD o arquivo continua sendo dado pessoal de saúde (dados codificados, não anônimos). O consentimento de pesquisa passou a dizer isso ao paciente, e o projeto no comitê de ética deve tratar o arquivo do mesmo jeito.
+
+**Já respondido (16/10/2026):** a controladora é a BRUNNA VARELA DA SILVA LTDA, nome fantasia EDMA INTEGRA, CNPJ 66.169.639/0001-03, e a encarregada de dados é a própria Brunna. O advogado revisa o termo depois, e isso não trava o piloto. O CNPJ ganhou lugar no termo (`[CNPJ DA CLÍNICA]`, preenchido por `CLINIC_CNPJ`), e os três valores vão no `.env` do servidor, como diz o `docs/guia-de-deploy.md`.
 
 **Perguntar:**
 
-- Qual a razão social e o CNPJ do instituto, que aparecem no termo como responsável pelos dados?
-- Quem responde como encarregado de dados (LGPD, art. 41) e qual contato deve aparecer no termo?
-- O(a) advogado(a) que você citou é do instituto ou da plataforma? Pode revisar o nosso termo de dados?
+- Qual e-mail (ou telefone) da Brunna aparece no termo como contato da encarregada de dados?
+- Você leu o texto do termo de dados e aprova? Com o aval, sai a palavra RASCUNHO e quem aceitou o rascunho aceita de novo.
 - A pesquisa já tem projeto aprovado no comitê de ética, com o texto do consentimento?
 
 ---
@@ -231,3 +232,4 @@ A clínica já usa um sistema que emite a receita assinada, agenda, envia a fich
 | 01/10/2026 | O motivo da recusa de um pedido de consulta vai para o prontuário? | Ela nunca recusou um pedido no sistema atual, onde o paciente quase não se autoagenda. O motivo continua só no aviso |
 | 01/10/2026 | Pode apagar um paciente? *(comentário dela)* | Não. Aqui também não se apaga: arquiva |
 | 01/10/2026 | Telefone de responsável | Precisa: muitos pacientes têm cuidador. Ver item 11 |
+| 16/10/2026 | Razão social, CNPJ e encarregado de dados | BRUNNA VARELA DA SILVA LTDA (EDMA INTEGRA), CNPJ 66.169.639/0001-03. A encarregada é a própria Brunna. O advogado revisa depois, sem travar o piloto. Ver item 9 |

@@ -64,7 +64,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 | `SESSION_SECURE_COOKIE` | cookie da sessão só trafega em https. precisa combinar com o esquema do `PUBLIC_URL`: `https` com `false` ou `http` com `true` e a api não sobe | `true` |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | conta administrativa criada na primeira subida. a senha segue a mesma regra de senha forte das outras contas; fraca, a conta não é criada e o log diz por quê | nenhuma conta |
 | `ADMIN_PASSWORD_RESET` | `true` troca a senha da conta administrativa que já existe pela do `ADMIN_PASSWORD` na subida e derruba as sessões abertas. serve para quem esqueceu a senha num servidor sem e-mail; depois de entrar, tire a variável | `false` |
-| `CLINIC_NAME` e `CLINIC_DPO_CONTACT` | razão social da clínica e contato do encarregado de dados, que entram no termo de consentimento no lugar dos colchetes | vazias: o termo sai com os colchetes e a api avisa no log |
+| `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` | razão social da clínica, CNPJ e contato do encarregado de dados, que entram no termo de consentimento no lugar dos colchetes | vazias: o termo sai com os colchetes e a api avisa no log |
 | `SEED_DADOS_TESTE` | cria as contas de teste | `false` |
 | `JPA_SHOW_SQL` | mostra o sql no console | `false` |
 | `SERVER_PORT` | porta da api | `8080` |
@@ -176,7 +176,7 @@ o banco guarda só o hash do código que vai no link, então a lista não mostra
 | `POST /consent-term/research/accept` | o paciente aceita participar da pesquisa (`termVersion` no corpo) |
 | `POST /consent-term/research/revoke` | o paciente retira o consentimento de pesquisa. a linha fica com a data da retirada |
 
-o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. `[NOME DA CLÍNICA]` e `[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]` saem de `CLINIC_NAME` e `CLINIC_DPO_CONTACT`; vazias, a api sobe com os colchetes no texto e avisa no log. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data. o paciente cujo último aceite é de uma versão antiga recebe `termPending: true` no login e no `GET /auth/me`, e até aceitar a nova a api só deixa ele ler: qualquer outra requisição que grava, fora `/auth` e `/consent-term`, responde 403 com o cabeçalho `X-Term-Pending: true`, e o front abre o termo por cima da tela sem perder o que já foi preenchido.
+o texto fica em `src/main/resources/consent/termo-de-consentimento.txt` e ainda é um rascunho que a clínica precisa aprovar. `[NOME DA CLÍNICA]`, `[CNPJ DA CLÍNICA]` e `[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]` saem de `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`; vazias, a api sobe com os colchetes no texto e avisa no log. quando o texto mudar, troque também `ConsentTermService.CURRENT_VERSION`: cada aceite fica guardado com a versão e a data. o paciente cujo último aceite é de uma versão antiga recebe `termPending: true` no login e no `GET /auth/me`, e até aceitar a nova a api só deixa ele ler: qualquer outra requisição que grava, fora `/auth` e `/consent-term`, responde 403 com o cabeçalho `X-Term-Pending: true`, e o front abre o termo por cima da tela sem perder o que já foi preenchido.
 
 ## histórico clínico
 

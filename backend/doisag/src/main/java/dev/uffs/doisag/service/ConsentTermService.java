@@ -30,7 +30,7 @@ public class ConsentTermService {
     private static final Logger log = LoggerFactory.getLogger(ConsentTermService.class);
 
     // troque a versao junto com o texto do arquivo
-    public static final String CURRENT_VERSION = "2026-09-rascunho";
+    public static final String CURRENT_VERSION = "2026-10-rascunho";
     public static final String RESEARCH_VERSION = "2026-10-rascunho-2";
 
     public static final String OUTDATED_RESEARCH_MESSAGE =
@@ -39,6 +39,7 @@ public class ConsentTermService {
     private static final String TERM_FILE = "consent/termo-de-consentimento.txt";
     private static final String RESEARCH_FILE = "consent/termo-de-pesquisa.txt";
     private static final String CLINIC_NAME_MARKER = "[NOME DA CLÍNICA]";
+    private static final String CLINIC_CNPJ_MARKER = "[CNPJ DA CLÍNICA]";
     private static final String DPO_CONTACT_MARKER = "[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]";
 
     private final ConsentAcceptanceRepository consentAcceptanceRepository;
@@ -47,16 +48,20 @@ public class ConsentTermService {
 
     public ConsentTermService(ConsentAcceptanceRepository consentAcceptanceRepository,
                               @Value("${api.clinic.name:}") String clinicName,
+                              @Value("${api.clinic.cnpj:}") String clinicCnpj,
                               @Value("${api.clinic.dpo-contact:}") String dpoContact) {
         this.consentAcceptanceRepository = consentAcceptanceRepository;
         if (clinicName == null || clinicName.isBlank()) {
             log.warn("CLINIC_NAME vazio: os termos saem com {}", CLINIC_NAME_MARKER);
         }
+        if (clinicCnpj == null || clinicCnpj.isBlank()) {
+            log.warn("CLINIC_CNPJ vazio: os termos saem com {}", CLINIC_CNPJ_MARKER);
+        }
         if (dpoContact == null || dpoContact.isBlank()) {
             log.warn("CLINIC_DPO_CONTACT vazio: os termos saem com {}", DPO_CONTACT_MARKER);
         }
-        this.termText = fillClinicData(readFile(TERM_FILE), clinicName, dpoContact);
-        this.researchText = fillClinicData(readFile(RESEARCH_FILE), clinicName, dpoContact);
+        this.termText = fillClinicData(readFile(TERM_FILE), clinicName, clinicCnpj, dpoContact);
+        this.researchText = fillClinicData(readFile(RESEARCH_FILE), clinicName, clinicCnpj, dpoContact);
     }
 
     public ConsentTermDTO getCurrentTerm() {
@@ -149,9 +154,12 @@ public class ConsentTermService {
     }
 
     // sem a variavel o marcador fica no texto, pra teste e ambiente local subirem
-    private String fillClinicData(String text, String clinicName, String dpoContact) {
+    private String fillClinicData(String text, String clinicName, String clinicCnpj, String dpoContact) {
         if (clinicName != null && !clinicName.isBlank()) {
             text = text.replace(CLINIC_NAME_MARKER, clinicName.trim());
+        }
+        if (clinicCnpj != null && !clinicCnpj.isBlank()) {
+            text = text.replace(CLINIC_CNPJ_MARKER, clinicCnpj.trim());
         }
         if (dpoContact != null && !dpoContact.isBlank()) {
             text = text.replace(DPO_CONTACT_MARKER, dpoContact.trim());

@@ -5,7 +5,7 @@ TERMO DE CONSENTIMENTO PARA O USO DE DADOS PESSOAIS E DE SAÚDE
 Ao criar sua conta no 2AG, você autoriza o uso dos seus dados pessoais e de saúde no acompanhamento do seu tratamento, conforme a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018).
 
 1. Quem cuida dos seus dados
-[NOME DA CLÍNICA], responsável pelo seu atendimento, decide como os seus dados são usados no sistema.
+[NOME DA CLÍNICA], CNPJ [CNPJ DA CLÍNICA], responsável pelo seu atendimento, decide como os seus dados são usados no sistema.
 
 2. Quais dados são coletados
 - Identificação e contato: nome, CPF, data de nascimento, telefone, e-mail e endereço.
