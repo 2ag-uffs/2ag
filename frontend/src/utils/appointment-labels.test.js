@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {belongsToHistory, statusLabelOf} from "./appointment-labels.js";
+import {appointmentTypeLabelOf, belongsToHistory, statusLabelOf} from "./appointment-labels.js";
 
 const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -20,6 +20,18 @@ describe("belongsToHistory", () => {
 
     it("deixa de fora a consulta marcada pro futuro", () => {
         expect(belongsToHistory({dateTime: tomorrow, status: "AGENDADA"})).toBe(false);
+    });
+});
+
+describe("appointmentTypeLabelOf", () => {
+    it("mostra primeira consulta e retorno", () => {
+        expect(appointmentTypeLabelOf("PRIMEIRA_CONSULTA")).toBe("Primeira consulta");
+        expect(appointmentTypeLabelOf("RETORNO")).toBe("Retorno");
+    });
+
+    it("consulta antiga sem tipo fica sem texto", () => {
+        expect(appointmentTypeLabelOf(null)).toBe("");
+        expect(appointmentTypeLabelOf(undefined)).toBe("");
     });
 });
 

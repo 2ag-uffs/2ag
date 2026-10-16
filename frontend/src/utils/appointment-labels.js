@@ -7,6 +7,12 @@ export const MODALITY_OPTIONS = [
     {value: "REMOTA", label: "Remota"},
 ];
 
+// a primeira consulta dura mais q o retorno, cada uma com a sua duracao nos horarios de atendimento
+export const APPOINTMENT_TYPE_OPTIONS = [
+    {value: "PRIMEIRA_CONSULTA", label: "Primeira consulta"},
+    {value: "RETORNO", label: "Retorno"},
+];
+
 // duracoes q o prescritor escolhe pras consultas
 export const DURATION_OPTIONS = [15, 20, 30, 40, 45, 50, 60, 90, 120].map((minutes) => ({
     value: String(minutes),
@@ -37,6 +43,12 @@ const STATUS_LABELS = {
 export function modalityLabelOf(modality) {
     const option = MODALITY_OPTIONS.find((currentOption) => currentOption.value === modality);
     return option ? option.label : "Modalidade não informada";
+}
+
+// consulta marcada antes do tipo existir vem sem tipo e fica sem texto
+export function appointmentTypeLabelOf(appointmentType) {
+    const option = APPOINTMENT_TYPE_OPTIONS.find((currentOption) => currentOption.value === appointmentType);
+    return option ? option.label : "";
 }
 
 export function statusLabelOf(appointment) {

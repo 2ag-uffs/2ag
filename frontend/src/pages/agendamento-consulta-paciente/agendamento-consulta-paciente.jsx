@@ -9,7 +9,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import {MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
+import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {addDays, formatDateTime, formatTime, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
 import styles from "./agendamento-consulta-paciente.module.css";
 
@@ -175,6 +175,8 @@ export default function AgendamentoConsultaPaciente() {
     const currentDay = selectedDay !== null && slotsByDay[selectedDay] ? selectedDay : availableDays[0];
     const daySlots = currentDay ? slotsByDay[currentDay] : [];
     const currentSlot = daySlots.some((slot) => slot.start === selectedSlot) ? selectedSlot : null;
+    // a primeira consulta dura mais q o retorno, entao o fim do horario mostra quanto tempo reservar
+    const currentSlotEnd = currentSlot ? daySlots.find((slot) => slot.start === currentSlot).end : null;
 
     return (
         <section className={styles.page}>
@@ -279,7 +281,7 @@ export default function AgendamentoConsultaPaciente() {
                                     />
                                     <p className={styles.summary}>
                                         <FiCalendar aria-hidden="true"/>
-                                        Pedido para {formatDateTime(currentSlot)} com {patient.prescriberName}.
+                                        Pedido para {formatDateTime(currentSlot)} até {formatTime(currentSlotEnd)} com {patient.prescriberName}.
                                     </p>
                                     <div className={styles.actions}>
                                         <button
@@ -311,6 +313,7 @@ export default function AgendamentoConsultaPaciente() {
                                         <AppointmentStatusBadge appointment={appointment}/>
                                     </div>
                                     <p className={styles.meta}>
+                                        {appointment.appointmentType && appointmentTypeLabelOf(appointment.appointmentType) + " · "}
                                         {modalityLabelOf(appointment.modality)} com {appointment.prescriberName}
                                     </p>
                                     {appointment.patientNote && (

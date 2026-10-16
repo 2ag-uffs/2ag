@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -135,6 +136,34 @@ class ConsultationRecordTest {
 
         Long appointmentId = json.readTree(response).get("id").asLong();
         assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getEvolution()).hasSize(10000);
+    }
+
+    // o tipo sai das consultas atendidas antes dessa e a duracao segue o tipo
+    @Test
+    void registeredConsultationGetsTheTypeByTheConsultationsBeforeIt() throws Exception {
+        prescriber.setFirstAppointmentDurationMinutes(90);
+        prescriber.setAppointmentDurationMinutes(45);
+        prescriberRepository.save(prescriber);
+
+        Long firstId = registeredConsultationAt(LocalDateTime.now().minusDays(20));
+        assertThat(appointmentRepository.findById(firstId).orElseThrow().getAppointmentType())
+                .isEqualTo(AppointmentType.PRIMEIRA_CONSULTA);
+        assertThat(appointmentRepository.findById(firstId).orElseThrow().getDurationMinutes()).isEqualTo(90);
+
+        Long secondId = registeredConsultationAt(LocalDateTime.now().minusDays(5));
+        assertThat(appointmentRepository.findById(secondId).orElseThrow().getAppointmentType())
+                .isEqualTo(AppointmentType.RETORNO);
+        assertThat(appointmentRepository.findById(secondId).orElseThrow().getDurationMinutes()).isEqualTo(45);
+    }
+
+    // a consulta antiga lancada depois de uma mais nova continua sendo a primeira
+    @Test
+    void olderConsultationRegisteredLaterIsTheFirst() throws Exception {
+        registeredConsultationAt(LocalDateTime.now().minusDays(5));
+
+        Long olderId = registeredConsultationAt(LocalDateTime.now().minusDays(30));
+        assertThat(appointmentRepository.findById(olderId).orElseThrow().getAppointmentType())
+                .isEqualTo(AppointmentType.PRIMEIRA_CONSULTA);
     }
 
     @Test
@@ -285,6 +314,15 @@ class ConsultationRecordTest {
 
     private Long registeredConsultationId() throws Exception {
         String response = registerConsultation(clinicalRecord())
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).get("id").asLong();
+    }
+
+    private Long registeredConsultationAt(LocalDateTime dateTime) throws Exception {
+        Map<String, Object> record = clinicalRecord();
+        record.put("dateTime", dateTime.truncatedTo(ChronoUnit.SECONDS).toString());
+        String response = registerConsultation(record)
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(response).get("id").asLong();

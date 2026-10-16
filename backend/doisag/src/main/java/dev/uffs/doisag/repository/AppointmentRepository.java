@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -45,6 +46,20 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     // quantos pedidos o paciente ja deixou em aberto, pq cada um segura um horario
     long countByPatientIdAndStatusAndDateTimeAfter(Long patientId, AppointmentStatus status, LocalDateTime moment);
+
+    // se o paciente ja teve consulta atendida e valendo, pra separar primeira consulta de retorno
+    boolean existsByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(Long patientId, AppointmentStatus status);
+
+    // o mesmo so com as consultas antes de um momento, pra consulta registrada depois q aconteceu
+    boolean existsByPatientIdAndStatusAndDateTimeBeforeAndAnnulmentAnnulledAtIsNull(Long patientId,
+                                                                                    AppointmentStatus status,
+                                                                                    LocalDateTime moment);
+
+    // quantos pedidos e consultas em algumas situacoes num intervalo, pro aviso da folga
+    long countByPrescriberIdAndDateTimeBetweenAndStatusInAndAnnulmentAnnulledAtIsNull(Long prescriberId,
+                                                                                      LocalDateTime start,
+                                                                                      LocalDateTime end,
+                                                                                      Collection<AppointmentStatus> statuses);
 
     // consultas de um paciente num intervalo pro grafico de evolucao
     List<Appointment> findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(Long patientId, LocalDateTime start,

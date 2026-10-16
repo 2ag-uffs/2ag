@@ -186,14 +186,14 @@ public class DevDemoData {
         }
     }
 
-    // segunda a sexta de manha e de tarde com consultas de meia hora
+    // segunda a sexta de manha e de tarde, retorno de meia hora e primeira consulta de uma hora
     private void createAvailability(Prescriber prescriber) {
         List<AvailabilityPeriodDTO> periods = new ArrayList<>();
         for (int dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++) {
             periods.add(new AvailabilityPeriodDTO(dayOfWeek, LocalTime.of(8, 0), LocalTime.of(12, 0)));
             periods.add(new AvailabilityPeriodDTO(dayOfWeek, LocalTime.of(13, 30), LocalTime.of(17, 30)));
         }
-        availabilityService.replaceAvailability(prescriber.getId(), new AvailabilityDTO(30, periods));
+        availabilityService.replaceAvailability(prescriber.getId(), new AvailabilityDTO(30, 60, periods));
     }
 
     // a paciente principal da demonstracao com dor lombar e sono ruim
@@ -295,7 +295,7 @@ public class DevDemoData {
         scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, 7, false);
 
         appointmentService.schedule(new AppointmentScheduleDTO(maria.getId(),
-                nextWorkingDay(today.plusDays(7)).atTime(9, 0), AppointmentModality.PRESENCIAL, null),
+                nextWorkingDay(today.plusDays(7)).atTime(9, 0), AppointmentModality.PRESENCIAL, null, null),
                 prescriber.getId());
     }
 
@@ -371,7 +371,7 @@ public class DevDemoData {
         if (now.getHour() < 20) {
             LocalDateTime nextHour = now.withMinute(0).withSecond(0).withNano(0).plusHours(1);
             appointmentService.schedule(new AppointmentScheduleDTO(joao.getId(), nextHour,
-                    AppointmentModality.REMOTA, null), prescriber.getId());
+                    AppointmentModality.REMOTA, null, null), prescriber.getId());
         }
     }
 
@@ -425,7 +425,7 @@ public class DevDemoData {
         if (now.getHour() < 19) {
             LocalDateTime laterToday = now.withMinute(30).withSecond(0).withNano(0).plusHours(2);
             appointmentService.schedule(new AppointmentScheduleDTO(renata.getId(), laterToday,
-                    AppointmentModality.PRESENCIAL, null), prescriber.getId());
+                    AppointmentModality.PRESENCIAL, null, null), prescriber.getId());
         }
     }
 

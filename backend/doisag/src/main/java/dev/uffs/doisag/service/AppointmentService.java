@@ -9,6 +9,7 @@ import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.TimeSlotDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.infra.BusinessException;
@@ -23,6 +24,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberAvailabilityRepository;
+import dev.uffs.doisag.repository.PrescriberDayOffRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -84,18 +86,21 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
     private final PrescriberAvailabilityRepository availabilityRepository;
+    private final PrescriberDayOffRepository dayOffRepository;
     private final AuditService auditService;
     private final RowLock rowLock;
     private NotificationService notificationService;
 
     public AppointmentService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                               PrescriberRepository prescriberRepository,
-                              PrescriberAvailabilityRepository availabilityRepository, AuditService auditService,
+                              PrescriberAvailabilityRepository availabilityRepository,
+                              PrescriberDayOffRepository dayOffRepository, AuditService auditService,
                               RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.availabilityRepository = availabilityRepository;
+        this.dayOffRepository = dayOffRepository;
         this.auditService = auditService;
         this.rowLock = rowLock;
     }
@@ -107,12 +112,17 @@ public class AppointmentService {
     }
 
     // o prescritor marca direto pra paciente da carteira dele e a consulta ja nasce confirmada
+    // ele pode marcar fora dos periodos e em dia de folga, a agenda eh dele
     @Transactional
     public AgendaAppointmentDTO schedule(AppointmentScheduleDTO scheduleData, Long prescriberId) {
         Patient patient = findPatient(scheduleData.patientId());
         Prescriber prescriber = findPrescriber(prescriberId);
+        AppointmentType type = scheduleData.appointmentType() == null
+                ? typeFor(patient.getId())
+                : scheduleData.appointmentType();
+        // a duracao q o prescritor escolheu vale mais q a do tipo
         int durationMinutes = scheduleData.durationMinutes() == null
-                ? prescriber.getAppointmentDurationMinutes()
+                ? durationOf(prescriber, type)
                 : scheduleData.durationMinutes();
 
         checkNotInThePast(scheduleData.dateTime());
@@ -124,6 +134,7 @@ public class AppointmentService {
         appointment.setDateTime(scheduleData.dateTime());
         appointment.setModality(scheduleData.modality());
         appointment.setDurationMinutes(durationMinutes);
+        appointment.setAppointmentType(type);
         appointment.setStatus(AppointmentStatus.AGENDADA);
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -159,9 +170,13 @@ public class AppointmentService {
             throw new BusinessException(TOO_MANY_REQUESTS_MESSAGE);
         }
 
-        // so vale um dos horarios livres entao fora do atendimento ocupado ou passado n entra
+        // o paciente n escolhe o tipo, ele sai do historico dele
+        AppointmentType type = typeFor(patientId);
+        int durationMinutes = durationOf(prescriber, type);
+
+        // so vale um dos horarios livres entao fora do atendimento ocupado folga ou passado n entra
         lockAgendaOf(prescriber.getId());
-        boolean isFreeSlot = getFreeSlots(prescriber.getId(), requestData.dateTime().toLocalDate())
+        boolean isFreeSlot = getFreeSlots(prescriber, requestData.dateTime().toLocalDate(), durationMinutes)
                 .stream()
                 .anyMatch(slot -> slot.start().equals(requestData.dateTime()));
         if (!isFreeSlot) {
@@ -173,7 +188,8 @@ public class AppointmentService {
         appointment.setPrescriber(prescriber);
         appointment.setDateTime(requestData.dateTime());
         appointment.setModality(requestData.modality());
-        appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
+        appointment.setDurationMinutes(durationMinutes);
+        appointment.setAppointmentType(type);
         appointment.setStatus(AppointmentStatus.SOLICITADA);
         appointment.setPatientNote(InputCleaner.textOrNull(requestData.patientNote()));
 
@@ -256,9 +272,16 @@ public class AppointmentService {
             throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
         }
 
-        int durationMinutes = rescheduleData.durationMinutes() == null
-                ? appointment.getDurationMinutes()
-                : rescheduleData.durationMinutes();
+        // sem tipo novo fica o q era, e sem duracao fica a q era
+        // trocou o tipo sem dizer a duracao: vale a duracao do tipo novo
+        AppointmentType newType = rescheduleData.appointmentType();
+        boolean typeChanged = newType != null && newType != appointment.getAppointmentType();
+        int durationMinutes = appointment.getDurationMinutes();
+        if (rescheduleData.durationMinutes() != null) {
+            durationMinutes = rescheduleData.durationMinutes();
+        } else if (typeChanged) {
+            durationMinutes = durationOf(appointment.getPrescriber(), newType);
+        }
         checkNotInThePast(rescheduleData.dateTime());
         checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
                 appointment.getId());
@@ -266,6 +289,9 @@ public class AppointmentService {
         appointment.setDateTime(rescheduleData.dateTime());
         appointment.setModality(rescheduleData.modality());
         appointment.setDurationMinutes(durationMinutes);
+        if (newType != null) {
+            appointment.setAppointmentType(newType);
+        }
         appointment.setStatus(AppointmentStatus.AGENDADA);
         // o horario mudou entao o lembrete precisa sair de novo pro horario novo
         appointment.setReminderSentAt(null);
@@ -357,9 +383,11 @@ public class AppointmentService {
             return List.of();
         }
 
+        // o horario do paciente novo tem o tamanho da primeira consulta e o de quem ja foi atendido o do retorno
+        int durationMinutes = durationOf(prescriber, typeFor(patientId));
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
         for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
-            freeSlots.addAll(getFreeSlots(prescriber.getId(), day));
+            freeSlots.addAll(getFreeSlots(prescriber, day, durationMinutes));
         }
         return freeSlots;
     }
@@ -439,17 +467,20 @@ public class AppointmentService {
                 .toList();
     }
 
-    // os periodos de atendimento do dia divididos pela duracao da consulta
+    // os periodos de atendimento do dia divididos em horarios com a duracao da consulta do paciente
     // sai o q ja passou e o q encosta em pedido ou consulta q segura o horario
-    private List<TimeSlotDTO> getFreeSlots(Long prescriberId, LocalDate day) {
-        Prescriber prescriber = findPrescriber(prescriberId);
-        int durationMinutes = prescriber.getAppointmentDurationMinutes();
+    // dia de folga do prescritor n tem horario nenhum
+    private List<TimeSlotDTO> getFreeSlots(Prescriber prescriber, LocalDate day, int durationMinutes) {
+        Long prescriberId = prescriber.getId();
         List<PrescriberAvailability> periods = availabilityRepository
                 .findByPrescriberIdAndDayOfWeekOrderByStartTimeAsc(prescriberId, day.getDayOfWeek().getValue());
-        if (periods.isEmpty()) {
+        if (periods.isEmpty() || dayOffRepository.existsByPrescriberIdAndOffDate(prescriberId, day)) {
             return List.of();
         }
 
+        // anda no passo da consulta mais curta pra primeira e retorno se encaixarem
+        int stepMinutes = Math.min(prescriber.getFirstAppointmentDurationMinutes(),
+                prescriber.getAppointmentDurationMinutes());
         List<Appointment> takenAppointments = appointmentsHoldingTimeOn(prescriberId, day, null);
         LocalDateTime now = LocalDateTime.now();
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
@@ -461,10 +492,25 @@ public class AppointmentService {
                 if (slotStart.isAfter(now) && !overlapsAny(slotStart, slotEnd, takenAppointments)) {
                     freeSlots.add(new TimeSlotDTO(slotStart, slotEnd));
                 }
-                slotStart = slotEnd;
+                slotStart = slotStart.plusMinutes(stepMinutes);
             }
         }
         return freeSlots;
+    }
+
+    // primeira consulta eh qnd o paciente ainda n tem consulta atendida
+    // falta, cancelada e consulta anulada n contam como atendimento
+    private AppointmentType typeFor(Long patientId) {
+        boolean wasSeen = appointmentRepository.existsByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(
+                patientId, AppointmentStatus.CONCLUIDA);
+        return wasSeen ? AppointmentType.RETORNO : AppointmentType.PRIMEIRA_CONSULTA;
+    }
+
+    private int durationOf(Prescriber prescriber, AppointmentType type) {
+        if (type == AppointmentType.PRIMEIRA_CONSULTA) {
+            return prescriber.getFirstAppointmentDurationMinutes();
+        }
+        return prescriber.getAppointmentDurationMinutes();
     }
 
     private Appointment saveChange(Appointment appointment) {

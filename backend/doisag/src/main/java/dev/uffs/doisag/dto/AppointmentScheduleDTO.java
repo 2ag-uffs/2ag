@@ -1,6 +1,7 @@
 package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -19,9 +20,12 @@ public record AppointmentScheduleDTO(
         @NotNull(message = "Escolha se a consulta é presencial ou remota")
         AppointmentModality modality,
 
-        // vazio usa a duracao cadastrada nos horarios de atendimento do prescritor
+        // vazio usa a duracao do tipo cadastrada nos horarios de atendimento do prescritor
         @Min(value = 15, message = "A consulta precisa ter pelo menos 15 minutos")
         @Max(value = 240, message = "A consulta pode ter até 240 minutos")
-        Integer durationMinutes
+        Integer durationMinutes,
+
+        // vazio decide pelo historico: primeira se o paciente nunca foi atendido
+        AppointmentType appointmentType
 ) {
 }

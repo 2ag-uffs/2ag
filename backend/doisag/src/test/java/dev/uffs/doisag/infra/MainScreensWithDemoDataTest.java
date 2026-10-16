@@ -55,6 +55,7 @@ class MainScreensWithDemoDataTest {
                 "/appointments/requests",
                 "/appointments/" + lastAppointmentIdOf(maria),
                 "/availability",
+                "/availability/days-off",
                 "/patients",
                 "/patients?archived=true",
                 mariaPath,

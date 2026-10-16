@@ -7,7 +7,7 @@ import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
-import {modalityLabelOf} from "../../utils/appointment-labels.js";
+import {appointmentTypeLabelOf, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {
     addDays,
     formatDate,
@@ -28,6 +28,11 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 // data e hora do formulario no formato q a api espera
 function toApiDateTime(date, time) {
     return date + "T" + time + ":00";
+}
+
+// campo vazio do formulario vai como nulo pra api decidir
+function numberOrNull(text) {
+    return text === "" ? null : Number(text);
 }
 
 // os sete dias da semana a partir da segunda
@@ -71,10 +76,11 @@ export default function AgendamentoPrescritor() {
             apiService.get("/appointments/requests"),
             apiService.get("/availability"),
             apiService.get("/patients"),
+            apiService.get("/availability/days-off"),
         ])
-            .then(([weekAppointments, waitingRequests, availability, patients]) => {
+            .then(([weekAppointments, waitingRequests, availability, patients, daysOff]) => {
                 if (isCurrentRequest) {
-                    setAgenda({weekAppointments, waitingRequests, availability, patients});
+                    setAgenda({weekAppointments, waitingRequests, availability, patients, daysOff});
                     setLoadError(null);
                 }
             })
@@ -148,12 +154,14 @@ export default function AgendamentoPrescritor() {
     };
 
     // se a api recusar o erro volta pro modal mostrar
+    // tipo e duracao vazios vao nulos e a api decide pelo historico do paciente
     const createAppointment = async (values) => {
         await apiService.post("/appointments", {
             patientId: Number(values.patientId),
             dateTime: toApiDateTime(values.date, values.time),
             modality: values.modality,
-            durationMinutes: Number(values.durationMinutes),
+            durationMinutes: numberOrNull(values.durationMinutes),
+            appointmentType: values.appointmentType === "" ? null : values.appointmentType,
         });
         setIsCreating(false);
         setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
@@ -165,7 +173,8 @@ export default function AgendamentoPrescritor() {
         await apiService.put("/appointments/" + rescheduleTarget.id, {
             dateTime: toApiDateTime(values.date, values.time),
             modality: values.modality,
-            durationMinutes: Number(values.durationMinutes),
+            durationMinutes: numberOrNull(values.durationMinutes),
+            appointmentType: values.appointmentType === "" ? null : values.appointmentType,
         });
         setRescheduleTarget(null);
         setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
@@ -192,7 +201,13 @@ export default function AgendamentoPrescritor() {
         return <SkeletonPage cards={2}/>;
     }
 
-    const {weekAppointments, waitingRequests, availability, patients} = agenda;
+    const {weekAppointments, waitingRequests, availability, patients, daysOff} = agenda;
+    const daysOffDates = daysOff.map((dayOff) => dayOff.date);
+    // a duracao q o modal preenche qnd o prescritor escolhe o tipo
+    const durationsByType = {
+        PRIMEIRA_CONSULTA: availability.firstAppointmentDurationMinutes,
+        RETORNO: availability.appointmentDurationMinutes,
+    };
 
     // o botao de cada consulta depende da situacao dela
     const appointmentActions = (appointment) => {
@@ -296,7 +311,11 @@ export default function AgendamentoPrescritor() {
                     <span className={styles.patientName}>{appointment.patientName}</span>
                     <AppointmentStatusBadge appointment={appointment}/>
                 </div>
-                <p className={styles.meta}>{modalityLabelOf(appointment.modality)}</p>
+                <p className={styles.meta}>
+                    {[appointmentTypeLabelOf(appointment.appointmentType), modalityLabelOf(appointment.modality)]
+                        .filter((text) => text !== "")
+                        .join(" · ")}
+                </p>
                 {appointment.patientNote && <p className={styles.patientNote}>Motivo: {appointment.patientNote}</p>}
             </div>
             <div className={styles.appointmentActions}>{appointmentActions(appointment)}</div>
@@ -398,11 +417,15 @@ export default function AgendamentoPrescritor() {
                         const dayAppointments = weekAppointments.filter((appointment) =>
                             appointment.dateTime.slice(0, 10) === dayIso);
                         const isToday = dayIso === todayIso;
+                        const isDayOff = daysOffDates.includes(dayIso);
                         return (
                             <div key={dayIso} className={isToday ? styles.day + " " + styles.dayToday : styles.day}>
                                 <h3 className={styles.dayName}>
                                     {formatWeekdayAndDate(dayIso)}
-                                    {isToday && <span className={styles.todayTag}>hoje</span>}
+                                    <span className={styles.dayTags}>
+                                        {isToday && <span className={styles.todayTag}>hoje</span>}
+                                        {isDayOff && <span className={styles.dayOffTag}>sem atendimento</span>}
+                                    </span>
                                 </h3>
                                 {dayAppointments.length === 0 ? (
                                     <p className={styles.dayEmpty}>Nenhuma consulta.</p>
@@ -427,8 +450,12 @@ export default function AgendamentoPrescritor() {
                         date: toIsoDate(new Date()),
                         time: "",
                         modality: "PRESENCIAL",
-                        durationMinutes: String(availability.appointmentDurationMinutes),
+                        appointmentType: "",
+                        durationMinutes: "",
                     }}
+                    durationsByType={durationsByType}
+                    typePlaceholder="Pelo histórico do paciente"
+                    durationPlaceholder="Padrão do tipo"
                     onSubmit={createAppointment}
                     onClose={() => setIsCreating(false)}
                 />
@@ -442,8 +469,12 @@ export default function AgendamentoPrescritor() {
                         date: rescheduleTarget.dateTime.slice(0, 10),
                         time: rescheduleTarget.dateTime.slice(11, 16),
                         modality: rescheduleTarget.modality,
+                        appointmentType: rescheduleTarget.appointmentType || "",
                         durationMinutes: String(rescheduleTarget.durationMinutes),
                     }}
+                    durationsByType={durationsByType}
+                    typePlaceholder="Manter como está"
+                    durationPlaceholder="Manter como está"
                     onSubmit={rescheduleAppointment}
                     onClose={() => setRescheduleTarget(null)}
                 />

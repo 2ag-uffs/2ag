@@ -26,9 +26,12 @@ public class Prescriber extends Users {
     private String registryType;
     private String registryNumber;
 
-    // quanto tempo cada consulta ocupa na agenda (RF11)
-    // divide os periodos de atendimento nos horarios q o paciente pode pedir
+    // quanto tempo o retorno ocupa na agenda (RF11)
+    // o nome ficou o antigo de qnd era uma duracao so pra toda consulta
     private Integer appointmentDurationMinutes = 60;
+
+    // quanto tempo a primeira consulta ocupa na agenda
+    private Integer firstAppointmentDurationMinutes = 90;
 
     // anotacao pra serializar a lista de pacientes normalmente
     @JsonManagedReference
@@ -76,6 +79,14 @@ public class Prescriber extends Users {
 
     public void setAppointmentDurationMinutes(Integer appointmentDurationMinutes) {
         this.appointmentDurationMinutes = appointmentDurationMinutes;
+    }
+
+    public Integer getFirstAppointmentDurationMinutes() {
+        return firstAppointmentDurationMinutes;
+    }
+
+    public void setFirstAppointmentDurationMinutes(Integer firstAppointmentDurationMinutes) {
+        this.firstAppointmentDurationMinutes = firstAppointmentDurationMinutes;
     }
 
     @Override

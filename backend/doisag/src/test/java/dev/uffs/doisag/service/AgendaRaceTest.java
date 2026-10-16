@@ -4,6 +4,8 @@ import dev.uffs.doisag.dto.AgendaAppointmentDTO;
 import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
+import dev.uffs.doisag.dto.DayOffDTO;
+import dev.uffs.doisag.dto.DayOffResponseDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.infra.BusinessException;
@@ -56,6 +58,7 @@ class AgendaRaceTest {
     private static final LocalDateTime DISPUTED_SLOT = AGENDA_DAY.atTime(10, 0);
 
     @Autowired private AppointmentService appointmentService;
+    @Autowired private AvailabilityService availabilityService;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
@@ -80,6 +83,9 @@ class AgendaRaceTest {
         prescriber.setEmail("corrida-prescritora@email.com");
         prescriber.setPassword("hash");
         prescriber.setAppointmentDurationMinutes(60);
+        // primeira consulta e retorno do mesmo tamanho: o horario disputado eh o mesmo pros dois
+        // e o pedido n passa no teste so por causa do tamanho da consulta
+        prescriber.setFirstAppointmentDurationMinutes(60);
         prescriber = prescriberRepository.save(prescriber);
 
         // segunda das 8 ao meio dia, pro pedido do paciente ter horario livre
@@ -103,6 +109,7 @@ class AgendaRaceTest {
                 otherPatient.getId());
         jdbcTemplate.update("delete from appointment where prescriber_id = ?", prescriber.getId());
         jdbcTemplate.update("delete from prescriber_availability where prescriber_id = ?", prescriber.getId());
+        jdbcTemplate.update("delete from prescriber_day_off where prescriber_id = ?", prescriber.getId());
         patientRepository.delete(patient);
         patientRepository.delete(otherPatient);
         prescriberRepository.delete(prescriber);
@@ -111,7 +118,7 @@ class AgendaRaceTest {
     @Test
     void thePrescriberMarkingWaitsForTheAgendaAndFindsTheConsultationSavedMeanwhile() throws Exception {
         HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.schedule(
-                new AppointmentScheduleDTO(patient.getId(), DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null),
+                new AppointmentScheduleDTO(patient.getId(), DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null, null),
                 prescriber.getId()));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
@@ -149,13 +156,27 @@ class AgendaRaceTest {
         Appointment appointment = saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.AGENDADA);
 
         HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.reschedule(
-                appointment.getId(), new AppointmentRescheduleDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
+                appointment.getId(),
+                new AppointmentRescheduleDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null, null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(AppointmentService.SLOT_TAKEN_MESSAGE);
         assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getDateTime())
                 .isEqualTo(AGENDA_DAY.atTime(9, 0));
         assertThat(appointmentsAt(DISPUTED_SLOT)).hasSize(1);
+    }
+
+    // a folga espera a agenda e conta a consulta q entrou no dia enquanto isso,
+    // senao o aviso de quantos ficaram marcados saia com um a menos
+    @Test
+    void theDayOffWaitsForTheAgendaAndCountsTheConsultationSavedMeanwhile() throws Exception {
+        HeldLock.Outcome<DayOffResponseDTO> outcome = heldAgenda.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> saveAppointment(otherPatient, DISPUTED_SLOT, AppointmentStatus.AGENDADA),
+                () -> availabilityService.addDayOff(prescriber.getId(), new DayOffDTO(AGENDA_DAY)));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value().appointmentsOnTheDay()).isEqualTo(1);
     }
 
     // a consulta q vai mudar eh travada e lida de novo: o cancelamento do paciente gravado

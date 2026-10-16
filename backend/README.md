@@ -194,13 +194,16 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /availability` | horários de atendimento da semana e duração padrão das consultas do prescritor logado |
-| `PUT /availability` | troca os horários de atendimento e a duração padrão, de 15 a 240 minutos |
+| `GET /availability` | horários de atendimento da semana e duração da primeira consulta e do retorno do prescritor logado |
+| `PUT /availability` | troca os horários de atendimento e as durações, de 15 a 240 minutos. `appointmentDurationMinutes` é a do retorno; sem `firstAppointmentDurationMinutes`, a primeira consulta fica com a mesma duração do retorno |
+| `GET /availability/days-off` | dias sem atendimento do prescritor logado, de hoje em diante, cada um com quantos pedidos (`SOLICITADA`) e consultas (`AGENDADA`) não anulados ainda estão por vir nele |
+| `POST /availability/days-off` | marca um dia sem atendimento (`date`), de hoje em diante. a resposta conta os pedidos e consultas do dia que ainda estão por vir, do mesmo jeito |
+| `DELETE /availability/days-off?date=` | o dia volta a ter atendimento |
 | `GET /appointments?from=&to=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira |
 | `GET /appointments/requests` | pedidos esperando a resposta do prescritor logado |
-| `POST /appointments` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `durationMinutes`, vale a duração padrão |
+| `POST /appointments` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `appointmentType`, o tipo sai do histórico do paciente, e sem `durationMinutes`, vale a duração do tipo |
 | `GET /appointments/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |
-| `PUT /appointments/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo |
+| `PUT /appointments/{id}` | o prescritor remarca o pedido ou a consulta, que fica confirmada no horário novo. sem `appointmentType` e sem `durationMinutes`, os dois ficam como estavam; trocar o tipo sem `durationMinutes` usa a duração do tipo novo |
 | `PUT /appointments/{id}/confirm` | o prescritor confirma o pedido |
 | `PUT /appointments/{id}/decline` | o prescritor recusa o pedido. o motivo é opcional e vai no aviso para o paciente |
 | `PUT /appointments/{id}/cancel` | o paciente ou o prescritor cancela o pedido ou a consulta |
@@ -210,14 +213,16 @@ nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo pa
 | `GET /appointments/mine` | próximos pedidos e consultas do paciente logado, com a situação de cada um |
 
 - `inicio` e `fim` são datas no formato `aaaa-mm-dd`, as duas inclusive
-- os horários livres saem da divisão dos períodos de atendimento pela duração padrão, sem os que já passaram e sem os que se sobrepõem a um pedido ou consulta
+- cada consulta tem um tipo, `PRIMEIRA_CONSULTA` ou `RETORNO` (nulo nas marcadas antes de o tipo existir). é primeira consulta enquanto o paciente não tem nenhuma consulta `CONCLUIDA` e não anulada; falta e cancelamento não contam. a consulta registrada depois de acontecer (`POST /patients/{patientId}/appointments`) olha só as concluídas antes dela
+- os horários livres do paciente têm a duração do tipo dele. começam no início de cada período e andam no passo da consulta mais curta entre primeira e retorno, sem os que já passaram, sem os que se sobrepõem a um pedido ou consulta e sem nenhum em dia sem atendimento
+- o dia sem atendimento não cancela nada: pedido e consulta já marcados no dia continuam valendo, e o prescritor ainda marca consulta direto nele
 - o pedido do paciente segura o horário até a resposta. a recusa e o cancelamento liberam o horário
 - o paciente tem no máximo 3 pedidos esperando resposta ao mesmo tempo, porque cada um segura um horário que some da agenda dos outros pacientes
 - pedido que passou da data sem resposta é recusado pelo job diário, com aviso para o paciente, em vez de ficar aberto para sempre
 - o paciente cancela o pedido a qualquer hora e a consulta marcada até 24 horas antes. depois disso, só o prescritor cancela
 - a rota do paciente não aceita campo clínico. o motivo que ele escreve fica em `patientNote`
 - cada mudança gera uma notificação para a outra parte
-- a agenda de um prescritor recebe uma marcação de cada vez: marcar, pedir, confirmar e remarcar travam a linha do prescritor no banco até o fim da transação. dois pedidos do mesmo horário ao mesmo tempo não viram duas consultas: o segundo espera o primeiro gravar, lê a agenda já com a consulta nova e recebe horário ocupado (RN08)
+- a agenda de um prescritor recebe uma marcação de cada vez: marcar, pedir, confirmar, remarcar e marcar dia sem atendimento travam a linha do prescritor no banco até o fim da transação. dois pedidos do mesmo horário ao mesmo tempo não viram duas consultas: o segundo espera o primeiro gravar, lê a agenda já com a consulta nova e recebe horário ocupado (RN08)
 - confirmar, recusar, remarcar, cancelar e marcar falta travam a própria consulta e leem ela de novo antes de decidir (`RowLock`), então o que o outro lado acabou de gravar (um cancelamento no meio da confirmação) aparece em vez de ser sobrescrito
 - só consulta confirmada e que já aconteceu recebe registro clínico (`PUT /appointments/{id}/clinical-record`), prescrição (`POST /appointments/{id}/prescriptions`) e Mini-Exame. os três usam a mesma folga de 5 minutos para o relógio
 - a prescrição nova só vira a vigente quando a consulta dela não é mais antiga que a da vigente atual. receita lançada numa consulta anterior é gravada já como `SUBSTITUIDA`, só para o histórico, e a resposta vem com `current: false`
@@ -322,7 +327,7 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cart
 
 ## guarda do prontuário
 
-o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /patients/{patientId}/treatment-protocol/end` e só marca o protocolo como inativo. a única rota `DELETE` da api é a de notificação, que pertence à própria conta.
+o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma rota apaga dado clínico. encerrar o acompanhamento de 90 dias é `PUT /patients/{patientId}/treatment-protocol/end` e só marca o protocolo como inativo. as únicas rotas `DELETE` da api são a de notificação, que pertence à própria conta, e a de dia sem atendimento, que é só a agenda do prescritor.
 
 ## trilha de auditoria
 

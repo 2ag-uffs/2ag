@@ -82,11 +82,11 @@ requisitos RF10 e RF11.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
-| CT-12 | em *Horários de atendimento*, mudar a duração e adicionar e remover períodos | a agenda e os horários livres da paciente passam a seguir os períodos novos |
+| CT-12 | em *Horários de atendimento*, mudar a duração da primeira consulta e a do retorno e adicionar e remover períodos. depois, em *Dias sem atendimento*, marcar um dia que já tem consulta ou pedido e, por último, tirar esse dia da lista | a agenda e os horários livres seguem os períodos novos. Paulo, que nunca foi atendido, vê horários do tamanho da primeira consulta, e Maria, do retorno. o dia marcado some dos horários livres dos pacientes, a tela avisa quantas consultas e pedidos continuam nele, e a agenda mostra o dia como *sem atendimento* com as consultas no lugar. tirado da lista, o dia volta a ter horários livres |
 | CT-13 | como paciente, pedir um horário livre com motivo | o pedido fica aguardando e o horário deixa de aparecer como livre |
 | CT-14 | como prescritora, confirmar um pedido e recusar outro | quem foi confirmado recebe aviso. o horário recusado volta a ficar livre |
 | CT-15 | remarcar e cancelar uma consulta como prescritora. como paciente, cancelar uma consulta com mais e com menos de 24 horas. como prescritora, marcar falta numa consulta cujo horário já terminou | a prescritora remarca e cancela. a paciente só cancela até 24 horas antes. o botão de falta só aparece depois que o horário termina, a paciente recebe aviso e o horário volta para a agenda. registrar o atendimento depois desfaz a falta |
-| CT-16 | marcar consulta direto em *Nova consulta* | aparece na agenda como agendada e a paciente recebe aviso |
+| CT-16 | marcar consulta direto em *Nova consulta*, uma com o tipo *Pelo histórico do paciente* e outra escolhendo *Primeira consulta* ou *Retorno*. marcar também num dia sem atendimento | aparece na agenda como agendada, com o tipo ao lado da modalidade, e a paciente recebe aviso. pelo histórico, Paulo fica como primeira consulta e Maria como retorno, cada um com a duração do tipo. escolher o tipo preenche a duração dele, e a duração escolhida na mão vale. no dia sem atendimento a prescritora ainda consegue marcar |
 
 ## 4. atendimento
 

@@ -3,13 +3,25 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import {ApiError} from "../../services/api.js";
-import {DURATION_OPTIONS, MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
+import {APPOINTMENT_TYPE_OPTIONS, DURATION_OPTIONS, MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import styles from "./agendamento-consulta-prescritor.module.css";
 
 // formulario de marcar ou remarcar consulta dentro de um modal
 // quem usa diz o q fazer com os dados e o erro da api aparece aqui dentro
 // a lista de pacientes so vem quando eh consulta nova
-export default function AppointmentFormModal({title, submitLabel, patients, initialValues, onSubmit, onClose}) {
+// tipo e duracao vazios vao como nulo e quem decide eh a api: pelo historico na consulta nova
+// e mantendo o q era na remarcacao
+export default function AppointmentFormModal({
+    title,
+    submitLabel,
+    patients,
+    initialValues,
+    durationsByType,
+    typePlaceholder,
+    durationPlaceholder,
+    onSubmit,
+    onClose,
+}) {
     const [values, setValues] = useState(initialValues);
     const [fieldErrors, setFieldErrors] = useState({});
     const [formError, setFormError] = useState(null);
@@ -17,6 +29,12 @@ export default function AppointmentFormModal({title, submitLabel, patients, init
 
     const updateValue = (fieldName, value) => {
         setValues((currentValues) => ({...currentValues, [fieldName]: value}));
+    };
+
+    // escolher o tipo ja traz a duracao dele dos horarios de atendimento
+    const updateType = (appointmentType) => {
+        const typeDuration = appointmentType === "" ? "" : String(durationsByType[appointmentType]);
+        setValues((currentValues) => ({...currentValues, appointmentType, durationMinutes: typeDuration}));
     };
 
     const handleSubmit = async (event) => {
@@ -88,24 +106,35 @@ export default function AppointmentFormModal({title, submitLabel, patients, init
                 </div>
                 <div className={styles.formRow}>
                     <SelectField
-                        label="Modalidade"
-                        name="modality"
-                        options={MODALITY_OPTIONS}
-                        value={values.modality}
-                        onChange={(event) => updateValue("modality", event.target.value)}
-                        error={fieldErrors.modality}
+                        label="Tipo"
+                        name="appointmentType"
+                        options={APPOINTMENT_TYPE_OPTIONS}
+                        placeholder={typePlaceholder}
+                        value={values.appointmentType}
+                        onChange={(event) => updateType(event.target.value)}
+                        error={fieldErrors.appointmentType}
                         disabled={isSaving}
                     />
                     <SelectField
                         label="Duração"
                         name="durationMinutes"
                         options={DURATION_OPTIONS}
+                        placeholder={durationPlaceholder}
                         value={values.durationMinutes}
                         onChange={(event) => updateValue("durationMinutes", event.target.value)}
                         error={fieldErrors.durationMinutes}
                         disabled={isSaving}
                     />
                 </div>
+                <SelectField
+                    label="Modalidade"
+                    name="modality"
+                    options={MODALITY_OPTIONS}
+                    value={values.modality}
+                    onChange={(event) => updateValue("modality", event.target.value)}
+                    error={fieldErrors.modality}
+                    disabled={isSaving}
+                />
                 <div className={styles.modalActions}>
                     <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
                         Voltar

@@ -73,7 +73,7 @@ class ClinicalDataRetentionTest {
     }
 
     @Test
-    void onlyNotificationsHaveADeleteRoute() {
+    void onlyNotificationsAndDaysOffHaveADeleteRoute() {
         List<String> deleteRoutes = new ArrayList<>();
         for (RequestMappingInfo mapping : handlerMapping.getHandlerMethods().keySet()) {
             if (mapping.getMethodsCondition().getMethods().contains(RequestMethod.DELETE)) {
@@ -81,8 +81,9 @@ class ClinicalDataRetentionTest {
             }
         }
 
-        // o aviso eh do proprio usuario e n faz parte do prontuario
-        assertThat(deleteRoutes).containsExactly("/notifications/{id}");
+        // o aviso eh do proprio usuario e o dia sem atendimento eh so a agenda do prescritor,
+        // nenhum dos dois faz parte do prontuario
+        assertThat(deleteRoutes).containsExactlyInAnyOrder("/notifications/{id}", "/availability/days-off");
     }
 
     @Test

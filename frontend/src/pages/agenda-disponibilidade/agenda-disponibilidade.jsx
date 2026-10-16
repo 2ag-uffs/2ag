@@ -3,10 +3,12 @@ import {useNavigate} from "react-router";
 import {FiPlus, FiTrash2} from "react-icons/fi";
 import FormSection, {FormActions} from "../../components/form-section/form-section.jsx";
 import SelectField from "../../components/form/select-field.jsx";
+import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {DURATION_OPTIONS, WEEKDAYS} from "../../utils/appointment-labels.js";
+import {formatDate, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
 import styles from "./agenda-disponibilidade.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
@@ -24,27 +26,48 @@ function newPeriod(dayOfWeek, startTime, endTime) {
     return {key: lastPeriodKey, dayOfWeek, startTime, endTime};
 }
 
+// a folga n cancela nada, entao o prescritor precisa saber o q ficou marcado no dia
+function bookingsOnTheDayWarning(count) {
+    if (count === 1) {
+        return "Você tem 1 consulta ou pedido nesse dia. Ele continua marcado; remarque ou cancele na agenda.";
+    }
+    return "Você tem " + count + " consultas ou pedidos nesse dia. Eles continuam marcados; remarque ou cancele na agenda.";
+}
+
 // horarios de atendimento do prescritor (RF11)
-// os pacientes so pedem consulta nos periodos daqui divididos pela duracao da consulta
+// os pacientes so pedem consulta nos periodos daqui, em horarios do tamanho da primeira consulta ou do retorno,
+// e nunca num dia sem atendimento
 export default function AgendaDisponibilidade() {
     const navigate = useNavigate();
-    const [durationMinutes, setDurationMinutes] = useState("60");
+    const [firstDurationMinutes, setFirstDurationMinutes] = useState("90");
+    const [returnDurationMinutes, setReturnDurationMinutes] = useState("60");
     const [periods, setPeriods] = useState([]);
+    const [daysOff, setDaysOff] = useState([]);
+    const [newDayOff, setNewDayOff] = useState("");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSavingDayOff, setIsSavingDayOff] = useState(false);
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [notice, setNotice] = useState(null);
+    const [dayOffError, setDayOffError] = useState(null);
+    const [dayOffNotice, setDayOffNotice] = useState(null);
+    const [dayOffWarning, setDayOffWarning] = useState(null);
 
     useEffect(() => {
         let isCurrentRequest = true;
 
-        apiService.get("/availability")
-            .then((availability) => {
+        Promise.all([
+            apiService.get("/availability"),
+            apiService.get("/availability/days-off"),
+        ])
+            .then(([availability, savedDaysOff]) => {
                 if (isCurrentRequest) {
-                    setDurationMinutes(String(availability.appointmentDurationMinutes));
+                    setReturnDurationMinutes(String(availability.appointmentDurationMinutes));
+                    setFirstDurationMinutes(String(availability.firstAppointmentDurationMinutes));
                     setPeriods(availability.periods.map((period) =>
                         newPeriod(period.dayOfWeek, toInputTime(period.startTime), toInputTime(period.endTime))));
+                    setDaysOff(savedDaysOff);
                 }
             })
             .catch((requestError) => {
@@ -97,7 +120,8 @@ export default function AgendaDisponibilidade() {
         setIsSaving(true);
         try {
             await apiService.put("/availability", {
-                appointmentDurationMinutes: Number(durationMinutes),
+                appointmentDurationMinutes: Number(returnDurationMinutes),
+                firstAppointmentDurationMinutes: Number(firstDurationMinutes),
                 periods: periods.map((period) => ({
                     dayOfWeek: period.dayOfWeek,
                     startTime: period.startTime,
@@ -116,6 +140,52 @@ export default function AgendaDisponibilidade() {
         }
     };
 
+    const clearDayOffMessages = () => {
+        setDayOffError(null);
+        setDayOffNotice(null);
+        setDayOffWarning(null);
+    };
+
+    // a folga grava na hora, sem esperar o botao de salvar os horarios
+    const addDayOff = async (event) => {
+        event.preventDefault();
+        clearDayOffMessages();
+        if (newDayOff === "") {
+            setDayOffError("Escolha o dia.");
+            return;
+        }
+
+        setIsSavingDayOff(true);
+        try {
+            const dayOff = await apiService.post("/availability/days-off", {date: newDayOff});
+            setDaysOff((currentDaysOff) => [...currentDaysOff, dayOff]
+                .sort((first, second) => first.date.localeCompare(second.date)));
+            setNewDayOff("");
+            setDayOffNotice(formatDate(dayOff.date) + " ficou sem atendimento. Seus pacientes não veem horários nesse dia.");
+            if (dayOff.appointmentsOnTheDay > 0) {
+                setDayOffWarning(bookingsOnTheDayWarning(dayOff.appointmentsOnTheDay));
+            }
+        } catch (requestError) {
+            setDayOffError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        } finally {
+            setIsSavingDayOff(false);
+        }
+    };
+
+    const removeDayOff = async (date) => {
+        clearDayOffMessages();
+        setIsSavingDayOff(true);
+        try {
+            await apiService.delete("/availability/days-off?date=" + date);
+            setDaysOff((currentDaysOff) => currentDaysOff.filter((dayOff) => dayOff.date !== date));
+            setDayOffNotice(formatDate(date) + " voltou a ter atendimento.");
+        } catch (requestError) {
+            setDayOffError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        } finally {
+            setIsSavingDayOff(false);
+        }
+    };
+
     if (isLoading) {
         return <SkeletonPage cards={2}/>;
     }
@@ -128,7 +198,7 @@ export default function AgendaDisponibilidade() {
         <section className={styles.page}>
             <PageHeader
                 title="Horários de atendimento"
-                subtitle="Seus pacientes pedem consulta só nestes períodos. Cada período é dividido pela duração da consulta."
+                subtitle="Seus pacientes pedem consulta só nestes períodos. Quem ainda não foi atendido vê horários do tamanho da primeira consulta, e os outros, do retorno."
                 actions={(
                     <button type="button" className="button-secondary" onClick={() => navigate("/agendamento-prescritor")}>
                         Ver a agenda
@@ -141,15 +211,25 @@ export default function AgendaDisponibilidade() {
 
             <form className={styles.form} onSubmit={handleSubmit}>
                 <FormSection title="Duração das consultas" disabled={isSaving}>
-                    <div className={styles.durationField}>
+                    <div className={styles.durationFields}>
                         <SelectField
-                            label="Duração de cada consulta"
-                            name="appointmentDurationMinutes"
+                            label="Primeira consulta"
+                            name="firstAppointmentDurationMinutes"
                             options={DURATION_OPTIONS}
-                            value={durationMinutes}
+                            value={firstDurationMinutes}
                             onChange={(event) => {
                                 setNotice(null);
-                                setDurationMinutes(event.target.value);
+                                setFirstDurationMinutes(event.target.value);
+                            }}
+                        />
+                        <SelectField
+                            label="Retorno"
+                            name="appointmentDurationMinutes"
+                            options={DURATION_OPTIONS}
+                            value={returnDurationMinutes}
+                            onChange={(event) => {
+                                setNotice(null);
+                                setReturnDurationMinutes(event.target.value);
                             }}
                         />
                     </div>
@@ -221,6 +301,62 @@ export default function AgendaDisponibilidade() {
                         {isSaving ? "Salvando..." : "Salvar horários"}
                     </button>
                 </FormActions>
+            </form>
+
+            <form className={styles.form} onSubmit={addDayOff} noValidate>
+                <FormSection
+                    title="Dias sem atendimento"
+                    description="Feriado, folga ou viagem: o dia some dos horários livres dos seus pacientes. O que já estava marcado nele continua na agenda."
+                    disabled={isSavingDayOff}
+                >
+                    {dayOffNotice && <p className="aviso" role="status">{dayOffNotice}</p>}
+                    {dayOffWarning && <p className="aviso aviso--atencao" role="alert">{dayOffWarning}</p>}
+                    {dayOffError && <p className="aviso aviso--atencao" role="alert">{dayOffError}</p>}
+
+                    <div className={styles.dayOffForm}>
+                        <TextField
+                            label="Dia"
+                            name="dayOffDate"
+                            type="date"
+                            min={toIsoDate(new Date())}
+                            value={newDayOff}
+                            onChange={(event) => setNewDayOff(event.target.value)}
+                        />
+                        <button type="submit" className="button-secondary">
+                            Marcar folga
+                        </button>
+                    </div>
+
+                    {daysOff.length === 0 ? (
+                        <p className={styles.dayStatus}>Nenhum dia sem atendimento marcado.</p>
+                    ) : (
+                        <ul className={styles.daysOff}>
+                            {daysOff.map((dayOff) => (
+                                <li key={dayOff.date} className={styles.dayOff}>
+                                    <div className={styles.dayOffInfo}>
+                                        <span className={styles.dayOffDate}>{formatWeekdayAndDate(dayOff.date)}</span>
+                                        {dayOff.appointmentsOnTheDay > 0 && (
+                                            <span className={styles.dayOffBookings}>
+                                                {dayOff.appointmentsOnTheDay === 1
+                                                    ? "1 consulta ou pedido ainda marcado"
+                                                    : dayOff.appointmentsOnTheDay + " consultas ou pedidos ainda marcados"}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className={"button-tertiary button-small " + styles.removeButton}
+                                        onClick={() => removeDayOff(dayOff.date)}
+                                        aria-label={"Voltar a atender em " + formatDate(dayOff.date)}
+                                        title="Voltar a atender nesse dia"
+                                    >
+                                        <FiTrash2 aria-hidden="true"/>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </FormSection>
             </form>
         </section>
     );

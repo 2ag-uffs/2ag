@@ -83,7 +83,15 @@
     justify-content: space-between;
 }
 
-.todayTag {
+.dayTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    justify-content: flex-end;
+}
+
+.todayTag,
+.dayOffTag {
     background-color: var(--color-primary-soft);
     border-radius: var(--radius-pill);
     color: var(--color-primary);
@@ -91,6 +99,12 @@
     font-size: var(--text-xs);
     font-weight: 700;
     padding: 0 var(--space-2);
+}
+
+/* folga marcada nos horarios de atendimento: o paciente n pede, mas o q ja estava marcado fica */
+.dayOffTag {
+    background-color: var(--color-surface-alt);
+    color: var(--color-warning);
 }
 
 /* ---- consulta ---- */

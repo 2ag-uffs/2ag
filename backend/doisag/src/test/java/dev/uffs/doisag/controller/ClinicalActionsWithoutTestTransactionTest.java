@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -125,6 +126,7 @@ class ClinicalActionsWithoutTestTransactionTest {
         jdbcTemplate.update("delete from appointment where patient_id = ?", patientId);
         jdbcTemplate.update("delete from patient_invite where prescriber_id = ?", prescriberId);
         jdbcTemplate.update("delete from prescriber_availability where prescriber_id = ?", prescriberId);
+        jdbcTemplate.update("delete from prescriber_day_off where prescriber_id = ?", prescriberId);
         patientRepository.delete(patient);
         prescriberRepository.delete(prescriber);
         usersRepository.delete(admin);
@@ -155,8 +157,13 @@ class ClinicalActionsWithoutTestTransactionTest {
     @Test
     void theAgendaFlowsAnswerWithTheConsultationMounted() throws Exception {
         perform(put("/availability"), prescriberToken,
-                "{\"appointmentDurationMinutes\":60,\"periods\":[{\"dayOfWeek\":1,\"startTime\":\"08:00\",\"endTime\":\"12:00\"}]}",
+                "{\"appointmentDurationMinutes\":60,\"firstAppointmentDurationMinutes\":90,"
+                        + "\"periods\":[{\"dayOfWeek\":1,\"startTime\":\"08:00\",\"endTime\":\"12:00\"}]}",
                 200);
+        String dayOff = AGENDA_DAY.plusDays(1).toString();
+        perform(post("/availability/days-off"), prescriberToken, "{\"date\":\"" + dayOff + "\"}", 201);
+        expect(get("/availability/days-off"), prescriberToken, 200);
+        perform(delete("/availability/days-off?date=" + dayOff), prescriberToken, null, 204);
         LocalDateTime nine = AGENDA_DAY.atTime(9, 0);
         Long scheduledId = idOf(perform(post("/appointments"), prescriberToken,
                 "{\"patientId\":" + patient.getId() + ",\"dateTime\":\"" + nine + "\",\"modality\":\"PRESENCIAL\"}"), 201);

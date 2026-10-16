@@ -781,6 +781,14 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 
 A exportação sem identificação não leva nenhum dos dois. Nome social em branco ou igual ao nome civil não é guardado. A lista de pacientes do prescritor e a de contas desativadas da administração seguem a ordem alfabética do nome mostrado, e a busca do prescritor procura por ele. O prescritor e a administração não editam o nome social, e a troca não entra na trilha de auditoria, como os outros dados do perfil. Os avisos já criados continuam com o nome da época.
 
+**Primeira consulta, retorno e dias sem atendimento em 16/10/2026 (RF10 e RF11):** a clínica respondeu que atende de segunda a sexta, que não marca consulta nos dias em que não pode atender e que a primeira consulta dura de 60 a 90 minutos e o retorno, menos.
+
+- **Segunda a sexta:** já funcionava com os períodos da semana cadastrados de segunda a sexta. Nada mudou.
+- **Duração por tipo:** os horários de atendimento guardam a duração da primeira consulta (90 minutos por padrão) e a do retorno (60 minutos por padrão). Cada consulta guarda o tipo; as marcadas antes disso ficam sem tipo.
+- **Tipo pelo histórico:** é primeira consulta enquanto o paciente não tiver nenhuma consulta concluída e não anulada; falta e cancelamento não contam. O paciente não escolhe o tipo: os horários livres dele já têm a duração do tipo e andam no passo da consulta mais curta, para primeira consulta e retorno se encaixarem na mesma agenda. O prescritor escolhe o tipo ao marcar ou remarcar, ou deixa o sistema decidir pelo histórico, e a duração que ele escolher vale mais que a do tipo. A consulta registrada fora da agenda, depois de acontecer, também recebe um tipo, decidido pelas consultas concluídas antes dela, e a duração desse tipo.
+- **Dias sem atendimento:** o prescritor marca um dia, de hoje em diante, em que não vai atender, e o dia some dos horários livres dos pacientes. O que já estava marcado nele continua valendo, sem cancelamento e sem aviso automático: a tela mostra quantas consultas marcadas e pedidos ainda por vir ficaram no dia, para o prescritor remarcar ou cancelar. O prescritor ainda pode marcar consulta direto num dia sem atendimento.
+- **Pacientes do piloto:** quem já era paciente da clínica e não tem consulta concluída no sistema aparece como primeira consulta. O prescritor corrige o tipo e a duração ao remarcar o pedido, ou escolhe o tipo ao marcar a consulta direto.
+
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.

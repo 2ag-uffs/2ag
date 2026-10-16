@@ -1,6 +1,7 @@
 package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,9 @@ public record AppointmentRescheduleDTO(
         // vazio mantem a duracao q a consulta ja tinha
         @Min(value = 15, message = "A consulta precisa ter pelo menos 15 minutos")
         @Max(value = 240, message = "A consulta pode ter até 240 minutos")
-        Integer durationMinutes
+        Integer durationMinutes,
+
+        // vazio mantem o tipo
+        AppointmentType appointmentType
 ) {
 }

@@ -3,14 +3,17 @@ package dev.uffs.doisag.controller;
 import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.PrescriberDayOff;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.PrescriberDayOffRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AppointmentService;
@@ -37,6 +40,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -61,6 +65,7 @@ class AgendaTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private PrescriberDayOffRepository dayOffRepository;
     @Autowired private TokenService tokenService;
     @Autowired private AppointmentService appointmentService;
 
@@ -90,9 +95,11 @@ class AgendaTest {
         saveAvailability(45, List.of(period(1, "08:00", "12:00"), period(3, "14:00", "18:00")))
                 .andExpect(status().isOk());
 
+        // sem a duracao da primeira consulta ela fica igual a do retorno
         mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.appointmentDurationMinutes").value(45))
+                .andExpect(jsonPath("$.firstAppointmentDurationMinutes").value(45))
                 .andExpect(jsonPath("$.periods.length()").value(2))
                 .andExpect(jsonPath("$.periods[1].dayOfWeek").value(3))
                 .andExpect(jsonPath("$.periods[1].startTime", startsWith("14:00")));
@@ -502,6 +509,312 @@ class AgendaTest {
         assertThat(appointmentService.getById(yesterday.getId()).status().holdsTimeSlot()).isFalse();
     }
 
+    // ---------- primeira consulta e retorno ----------
+
+    @Test
+    void prescriberSavesTheFirstAndTheReturnDurations() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+
+        mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.appointmentDurationMinutes").value(60))
+                .andExpect(jsonPath("$.firstAppointmentDurationMinutes").value(90));
+    }
+
+    @Test
+    void firstDurationOutOfRangeIsRejected() throws Exception {
+        saveAvailability(60, 300, List.of(period(1, "08:00", "12:00")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("firstAppointmentDurationMinutes"));
+        saveAvailability(60, 10, List.of(period(1, "08:00", "12:00")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("firstAppointmentDurationMinutes"));
+    }
+
+    // paciente q nunca foi atendido ve horarios do tamanho da primeira consulta
+    // e o passo continua o da consulta mais curta
+    @Test
+    void theNewPatientSeesSlotsWithTheFirstConsultationDuration() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+
+        freeSlotsOf(patient)
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].start", startsWith(AGENDA_DAY + "T08:00")))
+                .andExpect(jsonPath("$[0].end", startsWith(AGENDA_DAY + "T09:30")))
+                .andExpect(jsonPath("$[2].start", startsWith(AGENDA_DAY + "T10:00")));
+
+        request(patient, AGENDA_DAY.atTime(10, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMinutes").value(90))
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"));
+    }
+
+    @Test
+    void thePatientAlreadySeenGetsReturnSlots() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        saveAppointment(patient, LocalDateTime.now().minusDays(10), AppointmentStatus.CONCLUIDA);
+
+        freeSlotsOf(patient)
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].end", startsWith(AGENDA_DAY + "T09:00")));
+
+        request(patient, AGENDA_DAY.atTime(11, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMinutes").value(60))
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"));
+    }
+
+    // falta, cancelada e consulta anulada n sao atendimento
+    @Test
+    void missedCanceledOrAnnulledConsultationsStillMeanFirst() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        saveAppointment(patient, LocalDateTime.now().minusDays(30), AppointmentStatus.NAO_COMPARECEU);
+        saveAppointment(patient, LocalDateTime.now().minusDays(20), AppointmentStatus.CANCELADA);
+        Appointment annulled = saveAppointment(patient, LocalDateTime.now().minusDays(10), AppointmentStatus.CONCLUIDA);
+        annulled.setAnnulment(new Annulment(prescriber, "registro no paciente errado"));
+        appointmentRepository.save(annulled);
+
+        freeSlotsOf(patient).andExpect(jsonPath("$.length()").value(3));
+        request(patient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"));
+    }
+
+    // o tipo escolhido decide a duracao, e a duracao escolhida vale mais q a do tipo
+    @Test
+    void prescriberChoosesTheTypeWhenBooking() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+
+        schedule(patient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"))
+                .andExpect(jsonPath("$.durationMinutes").value(90));
+        schedule(otherPatient, AGENDA_DAY.atTime(10, 0), null, "RETORNO")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"))
+                .andExpect(jsonPath("$.durationMinutes").value(60));
+        schedule(patient, AGENDA_DAY.plusDays(1).atTime(9, 0), 45, "PRIMEIRA_CONSULTA")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"))
+                .andExpect(jsonPath("$.durationMinutes").value(45));
+    }
+
+    @Test
+    void unknownTypeIsRejected() throws Exception {
+        schedule(patient, AGENDA_DAY.atTime(9, 0), null, "AVALIACAO").andExpect(status().isBadRequest());
+    }
+
+    // a primeira consulta de 90 minutos as 8 tira o horario das 9 do retorno
+    @Test
+    void firstAndReturnConsultationsDoNotOverlap() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        saveAppointment(patient, LocalDateTime.now().minusDays(10), AppointmentStatus.CONCLUIDA);
+        request(otherPatient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMinutes").value(90));
+
+        freeSlotsOf(patient)
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].start", startsWith(AGENDA_DAY + "T10:00")))
+                .andExpect(jsonPath("$[1].start", startsWith(AGENDA_DAY + "T11:00")));
+        request(patient, AGENDA_DAY.atTime(9, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_NOT_FREE_MESSAGE));
+    }
+
+    // remarcar sem tipo mantem o tipo e a duracao. trocar o tipo sem duracao usa a do tipo novo
+    @Test
+    void rescheduleKeepsOrChangesTheType() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "PRESENCIAL")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"))
+                .andExpect(jsonPath("$.durationMinutes").value(90));
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "PRESENCIAL", "RETORNO")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"))
+                .andExpect(jsonPath("$.durationMinutes").value(60));
+    }
+
+    // mandar o mesmo tipo de novo n eh troca, entao a duracao escolhida antes fica
+    @Test
+    void rescheduleWithTheSameTypeKeepsTheDuration() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(8, 0), 45, "PRIMEIRA_CONSULTA")
+                .andExpect(status().isCreated()));
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(10, 0), "PRESENCIAL", "PRIMEIRA_CONSULTA")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"))
+                .andExpect(jsonPath("$.durationMinutes").value(45));
+    }
+
+    // sem tipo a prescritora deixa o historico decidir: quem ja foi atendido marca retorno
+    @Test
+    void bookingWithoutTypeForAPatientAlreadySeenIsAReturn() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        saveAppointment(patient, LocalDateTime.now().minusDays(10), AppointmentStatus.CONCLUIDA);
+
+        schedule(patient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"))
+                .andExpect(jsonPath("$.durationMinutes").value(60));
+    }
+
+    // primeira de 60 e retorno de 30: o passo eh o da mais curta, 30 min
+    // paciente novo ve horarios de uma hora comecando das 8 as 11 de meia em meia hora, 7 horarios
+    // quem ja foi atendido ve horarios de meia hora das 8 as 11:30, 8 horarios
+    @Test
+    void slotsWalkInStepsOfTheShorterConsultation() throws Exception {
+        saveAvailability(30, 60, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        saveAppointment(patient, LocalDateTime.now().minusDays(10), AppointmentStatus.CONCLUIDA);
+
+        freeSlotsOf(otherPatient)
+                .andExpect(jsonPath("$.length()").value(7))
+                .andExpect(jsonPath("$[0].end", startsWith(AGENDA_DAY + "T09:00")))
+                .andExpect(jsonPath("$[1].start", startsWith(AGENDA_DAY + "T08:30")))
+                .andExpect(jsonPath("$[6].start", startsWith(AGENDA_DAY + "T11:00")))
+                .andExpect(jsonPath("$[6].end", startsWith(AGENDA_DAY + "T12:00")));
+        freeSlotsOf(patient)
+                .andExpect(jsonPath("$.length()").value(8))
+                .andExpect(jsonPath("$[0].end", startsWith(AGENDA_DAY + "T08:30")))
+                .andExpect(jsonPath("$[7].start", startsWith(AGENDA_DAY + "T11:30")));
+    }
+
+    // ---------- dias sem atendimento ----------
+
+    @Test
+    void dayOffClosesTheFreeSlotsOfThatDay() throws Exception {
+        addDayOff(AGENDA_DAY)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.date").value(AGENDA_DAY.toString()))
+                .andExpect(jsonPath("$.appointmentsOnTheDay").value(0));
+
+        freeSlotsOf(patient).andExpect(jsonPath("$.length()").value(0));
+        request(patient, AGENDA_DAY.atTime(9, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_NOT_FREE_MESSAGE));
+        daysOffOf(prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].date").value(AGENDA_DAY.toString()));
+
+        removeDayOff(AGENDA_DAY, prescriber).andExpect(status().isNoContent());
+        freeSlotsOf(patient).andExpect(jsonPath("$.length()").value(4));
+        daysOffOf(prescriber).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    // hoje ainda vale, pra fechar o resto do dia
+    @Test
+    void dayOffInThePastIsRejected() throws Exception {
+        addDayOff(LocalDate.now().minusDays(1))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AvailabilityService.PAST_DAY_OFF_MESSAGE));
+        addDayOff(LocalDate.now()).andExpect(status().isCreated());
+    }
+
+    @Test
+    void sameDayOffTwiceIsRejected() throws Exception {
+        addDayOff(AGENDA_DAY).andExpect(status().isCreated());
+
+        addDayOff(AGENDA_DAY)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AvailabilityService.DAY_OFF_TAKEN_MESSAGE));
+    }
+
+    @Test
+    void dayOffWithoutDateIsRejected() throws Exception {
+        mockMvc.perform(post("/availability/days-off")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("date"));
+    }
+
+    // a folga n cancela nada: o q ja estava marcado fica e a resposta conta pra tela avisar
+    @Test
+    void dayOffKeepsTheBookingsAndCountsThem() throws Exception {
+        Long scheduledId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        Long requestId = idOf(request(otherPatient, AGENDA_DAY.atTime(11, 0), null).andExpect(status().isCreated()));
+        saveAppointment(otherPatient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.CANCELADA);
+
+        addDayOff(AGENDA_DAY)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentsOnTheDay").value(2));
+        daysOffOf(prescriber).andExpect(jsonPath("$[0].appointmentsOnTheDay").value(2));
+
+        assertThat(appointmentRepository.findById(scheduledId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(appointmentRepository.findById(requestId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.SOLICITADA);
+    }
+
+    // a conta so pega o q ainda vai acontecer no dia
+    // consulta atendida ou q ja passou hoje e consulta anulada ficam de fora
+    @Test
+    void dayOffCountsOnlyTheBookingsStillAhead() throws Exception {
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        saveAppointment(patient, startOfToday, AppointmentStatus.CONCLUIDA);
+        saveAppointment(otherPatient, startOfToday, AppointmentStatus.AGENDADA);
+        addDayOff(LocalDate.now())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentsOnTheDay").value(0));
+
+        Appointment annulled = saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.AGENDADA);
+        annulled.setAnnulment(new Annulment(prescriber, "marcada no paciente errado"));
+        appointmentRepository.save(annulled);
+        addDayOff(AGENDA_DAY)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentsOnTheDay").value(0));
+    }
+
+    // folga q ja passou continua no banco mas sai da lista
+    @Test
+    void pastDaysOffLeaveTheList() throws Exception {
+        PrescriberDayOff pastDayOff = new PrescriberDayOff();
+        pastDayOff.setPrescriber(prescriber);
+        pastDayOff.setOffDate(LocalDate.now().minusDays(3));
+        dayOffRepository.save(pastDayOff);
+        addDayOff(AGENDA_DAY).andExpect(status().isCreated());
+
+        daysOffOf(prescriber)
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].date").value(AGENDA_DAY.toString()));
+    }
+
+    // a agenda eh dela: na folga o paciente n pede, mas a prescritora ainda marca
+    @Test
+    void prescriberStillBooksOnADayOff() throws Exception {
+        addDayOff(AGENDA_DAY).andExpect(status().isCreated());
+
+        schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated());
+    }
+
+    // a folga eh achada pela data e pela prescritora logada, entao uma n mexe na da outra
+    @Test
+    void eachPrescriberSeesAndRemovesOnlyTheirOwnDaysOff() throws Exception {
+        addDayOff(AGENDA_DAY).andExpect(status().isCreated());
+
+        daysOffOf(otherPrescriber).andExpect(jsonPath("$.length()").value(0));
+        removeDayOff(AGENDA_DAY, otherPrescriber)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(AvailabilityService.DAY_OFF_NOT_FOUND_MESSAGE));
+        daysOffOf(prescriber).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void patientCannotUseTheDaysOffRoutes() throws Exception {
+        daysOffOf(patient).andExpect(status().isForbidden());
+        mockMvc.perform(post("/availability/days-off")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("date", AGENDA_DAY.toString()))))
+                .andExpect(status().isForbidden());
+        removeDayOff(AGENDA_DAY, patient).andExpect(status().isForbidden());
+    }
+
     // ---------- listas ----------
 
     @Test
@@ -593,14 +906,40 @@ class AgendaTest {
                 .andExpect(status().isForbidden());
     }
 
+    // sem a duracao da primeira consulta, do jeito q a tela antiga mandava
     private ResultActions saveAvailability(int durationMinutes, List<Map<String, Object>> periods) throws Exception {
+        return saveAvailability(durationMinutes, null, periods);
+    }
+
+    private ResultActions saveAvailability(int returnMinutes, Integer firstMinutes, List<Map<String, Object>> periods)
+            throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("appointmentDurationMinutes", durationMinutes);
+        body.put("appointmentDurationMinutes", returnMinutes);
+        if (firstMinutes != null) {
+            body.put("firstAppointmentDurationMinutes", firstMinutes);
+        }
         body.put("periods", periods);
         return mockMvc.perform(put("/availability")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body)));
+    }
+
+    private ResultActions addDayOff(LocalDate date) throws Exception {
+        return mockMvc.perform(post("/availability/days-off")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("date", date.toString()))));
+    }
+
+    private ResultActions removeDayOff(LocalDate date, Users user) throws Exception {
+        return mockMvc.perform(delete("/availability/days-off")
+                .param("date", date.toString())
+                .header("Authorization", bearerTokenOf(user)));
+    }
+
+    private ResultActions daysOffOf(Users user) throws Exception {
+        return mockMvc.perform(get("/availability/days-off").header("Authorization", bearerTokenOf(user)));
     }
 
     private Map<String, Object> period(int dayOfWeek, String startTime, String endTime) {
@@ -630,10 +969,17 @@ class AgendaTest {
 
     private ResultActions schedule(Patient scheduledPatient, LocalDateTime dateTime, Integer durationMinutes)
             throws Exception {
+        return schedule(scheduledPatient, dateTime, durationMinutes, null);
+    }
+
+    private ResultActions schedule(Patient scheduledPatient, LocalDateTime dateTime, Integer durationMinutes,
+                                   String appointmentType) throws Exception {
+        Map<String, Object> body = scheduleBody(scheduledPatient, dateTime, durationMinutes);
+        body.put("appointmentType", appointmentType);
         return mockMvc.perform(post("/appointments")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(scheduleBody(scheduledPatient, dateTime, durationMinutes))));
+                .content(json.writeValueAsString(body)));
     }
 
     private Map<String, Object> requestBody(LocalDateTime dateTime, String patientNote) {
@@ -669,9 +1015,15 @@ class AgendaTest {
     }
 
     private ResultActions reschedule(Long appointmentId, LocalDateTime dateTime, String modality) throws Exception {
+        return reschedule(appointmentId, dateTime, modality, null);
+    }
+
+    private ResultActions reschedule(Long appointmentId, LocalDateTime dateTime, String modality,
+                                     String appointmentType) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("dateTime", dateTime.toString());
         body.put("modality", modality);
+        body.put("appointmentType", appointmentType);
         return mockMvc.perform(put("/appointments/" + appointmentId)
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)

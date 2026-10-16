@@ -6,6 +6,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AppointmentType;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,10 @@ public class Appointment {
     // quanto tempo a consulta ocupa na agenda, em minutos. a tela ja
     // perguntava isso e a resposta era descartada
     private Integer durationMinutes = 60;
+
+    // primeira consulta ou retorno. a consulta de antes disso fica sem tipo
+    @Enumerated(EnumType.STRING)
+    private AppointmentType appointmentType;
 
     // o q o paciente escreveu ao pedir o horario e nunca vai pros campos clinicos
     @Column(columnDefinition = "TEXT")
@@ -121,6 +126,14 @@ public class Appointment {
 
     public void setDurationMinutes(Integer durationMinutes) {
         this.durationMinutes = durationMinutes;
+    }
+
+    public AppointmentType getAppointmentType() {
+        return appointmentType;
+    }
+
+    public void setAppointmentType(AppointmentType appointmentType) {
+        this.appointmentType = appointmentType;
     }
 
     public String getPatientNote() {

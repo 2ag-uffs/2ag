@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
@@ -64,11 +65,22 @@ public class ConsultationService {
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
         checkRecordHasClinicalContent(recordData);
 
+        // o tipo segue a mesma regra da agenda: primeira se o paciente n tinha consulta atendida antes dessa
+        // olha so as anteriores pq a consulta antiga pode ser lancada depois de uma mais nova
+        boolean wasSeen = appointmentRepository.existsByPatientIdAndStatusAndDateTimeBeforeAndAnnulmentAnnulledAtIsNull(
+                patientId, AppointmentStatus.CONCLUIDA, dateTime);
+
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
         appointment.setDateTime(dateTime);
-        appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
+        if (wasSeen) {
+            appointment.setAppointmentType(AppointmentType.RETORNO);
+            appointment.setDurationMinutes(prescriber.getAppointmentDurationMinutes());
+        } else {
+            appointment.setAppointmentType(AppointmentType.PRIMEIRA_CONSULTA);
+            appointment.setDurationMinutes(prescriber.getFirstAppointmentDurationMinutes());
+        }
         appointment.setStatus(AppointmentStatus.CONCLUIDA);
         copyClinicalFields(recordData, appointment);
 
