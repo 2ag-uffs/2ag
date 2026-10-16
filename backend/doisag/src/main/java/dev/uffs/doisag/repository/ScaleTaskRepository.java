@@ -60,4 +60,7 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
                                            Pageable pageable);
 
     long countByPatientIdAndStatus(Long patientId, ScaleTaskStatus status);
+
+    // as tarefas com prazo no periodo dos indicadores, respondidas ou n (RF39)
+    List<ScaleTask> findByPrescriberIdAndPeriodEndBetween(Long prescriberId, LocalDate from, LocalDate to);
 }

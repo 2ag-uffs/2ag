@@ -1,0 +1,117 @@
+/* indicadores do piloto */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: var(--width-default);
+}
+
+/* o filtro de periodo fica num cartao em cima, como na trilha de auditoria */
+.filter {
+    align-items: flex-end;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+}
+
+.filter > div {
+    flex: 1 1 10rem;
+}
+
+.grid {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.bigNumber {
+    color: var(--color-text-headings);
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.explain {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.empty {
+    color: var(--color-text-secondary);
+}
+
+/* a meta vai escrita, n so na cor */
+.goalMet,
+.goalMissed {
+    align-self: flex-start;
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 0.15rem 0.7rem;
+}
+
+.goalMet {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.goalMissed {
+    background-color: var(--color-surface);
+    border-color: var(--color-warning);
+    color: var(--color-text-headings);
+}
+
+.bar {
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-pill);
+    height: 0.75rem;
+    margin-top: var(--space-2);
+    position: relative;
+}
+
+.barFill {
+    background-color: var(--color-primary);
+    border-radius: var(--radius-pill);
+    display: block;
+    height: 100%;
+}
+
+.goalMark {
+    background-color: var(--color-text-headings);
+    border-radius: 1px;
+    height: 1.25rem;
+    position: absolute;
+    top: -0.25rem;
+    width: 3px;
+}
+
+.barCaption {
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+}
+
+.rules {
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-direction: column;
+    font-size: var(--text-sm);
+    gap: var(--space-1);
+    padding-left: var(--space-5);
+}
+
+@media (max-width: 47.99rem) {
+    .grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .filter {
+        padding: var(--space-4);
+    }
+}

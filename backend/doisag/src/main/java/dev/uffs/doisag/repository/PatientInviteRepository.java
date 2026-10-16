@@ -20,6 +20,10 @@ public interface PatientInviteRepository extends JpaRepository<PatientInvite, Lo
     List<PatientInvite> findByPrescriberIdAndUsedAtIsNullAndCancelledAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
             Long prescriberId, LocalDateTime now);
 
+    // os convites criados no periodo dos indicadores (RF39)
+    List<PatientInvite> findByPrescriberIdAndCreatedAtBetween(Long prescriberId, LocalDateTime from,
+                                                              LocalDateTime to);
+
     // cancelar trava a linha tbm, senao um cancelamento no meio de um cadastro apagava o uso
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select invite from PatientInvite invite where invite.id = :id")

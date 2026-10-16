@@ -277,6 +277,8 @@ public class DevDemoData {
             }
             sleepDiaryNight(maria, firstSleepDay.plusDays(day), day);
         }
+        // a primeira semana vira uma tarefa ja vencida, com 5 de 7 noites, pros indicadores terem diario (RF39)
+        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, firstSleepDay, 7, false);
 
         treatmentProtocolService.create(maria.getId(), new TreatmentProtocolCreateDTO(today.minusDays(30), 90,
                 LocalTime.of(23, 0), LocalTime.of(7, 0), List.of(

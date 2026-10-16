@@ -208,6 +208,8 @@ class RouteRolesTest {
 
         mockMvc.perform(get("/patients").header("Authorization", patientToken))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/indicators").header("Authorization", patientToken))
+                .andExpect(status().isForbidden());
 
         // registrar e alterar consulta mesmo sendo a propria
         String appointmentBody = "{\"patientId\":" + patient.getId() + ",\"dateTime\":\"" + NEXT_MONTH

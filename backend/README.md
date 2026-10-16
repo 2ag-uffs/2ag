@@ -313,6 +313,24 @@ os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 
 
 cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cartão leva para a tela que tem a lista inteira. nada aparece aqui sem origem no resto do sistema.
 
+## indicadores do piloto
+
+| rota | o que faz |
+| :--- | :--- |
+| `GET /indicators?from=&to=` | só prescritor: pacientes no ciclo de acompanhamento e formulários respondidos no prazo (meta de 70%), somando os pacientes dele, sem nome nem id de paciente (RF39) |
+
+- sem datas vale os últimos 90 dias até ontem, e a resposta devolve o período usado
+- só uma das datas, a inicial depois da final ou o fim em hoje ou depois dão 400: o prazo de hoje ainda está correndo
+- pacientes no ciclo é a foto de hoje: acompanhamento automático valendo hoje (ativo e com o fim hoje ou depois, então o que terminou ontem sai antes do job das 8h), conta ativa e fora do arquivo. o total de pacientes ativos ao lado é do mesmo grupo: conta ativa e fora do arquivo
+- os convites do período, sem os cancelados, viram enviados, cadastrados, que entraram em um acompanhamento e com o link ainda válido. convite vencido sem uso conta como enviado e não como em aberto
+- o total são todas as tarefas do prescritor com o fim do prazo no período, avulsas ou do acompanhamento, seja qual for a situação delas: a regra olha as datas e as respostas ligadas, então não depende do job das 8h. o MEEM não vira tarefa e não entra
+- escala de período e avaliação inicial estão no prazo com `answeredAt` até o fim do prazo. a pendente com o prazo vencido e a avaliação inicial enviada depois do prazo contam como atrasadas
+- diário está no prazo com pelo menos um dia válido ligado à tarefa, a mesma regra que fecha a tarefa como respondida, mesmo pendente. o diário só com dias anulados fica fora do prazo. os dias preenchidos saem à parte, contra os dias do prazo
+- resposta anulada não conta, porque a tarefa reabre e perde o `answeredAt`. anular a avaliação inicial não reabre a tarefa e ela continua contando
+- nos formulários, paciente arquivado continua na conta. a tarefa cortada no arquivamento fica com o prazo encurtado e, sem resposta, conta como fora do prazo
+- a porcentagem é arredondada para baixo e vem `null` quando não há nada para contar
+- é número somado e não abre prontuário, então não entra na trilha de auditoria
+
 ## evolução
 
 | rota | o que faz |

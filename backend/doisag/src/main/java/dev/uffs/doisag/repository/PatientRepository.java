@@ -17,6 +17,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // quantos pacientes ativos o prescritor tem pro card do painel
     long countByPrescriberIdAndArchivedAtIsNull(Long prescriberId);
 
+    // os indicadores comparam com o msm grupo do ciclo: fora do arquivo e com a conta ativa (RF39)
+    long countByPrescriberIdAndArchivedAtIsNullAndActiveTrue(Long prescriberId);
+
     // carteira do prescritor em ordem alfabetica separada entre ativos e arquivados
     List<Patient> findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(Long prescriberId);
 

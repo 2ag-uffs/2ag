@@ -87,6 +87,10 @@ export default function DashboardPrescritor() {
                 subtitle="O que precisa de você hoje."
                 actions={(
                     <>
+                        {/* no celular a barra de baixo n tem Indicadores, entao o caminho eh por aqui */}
+                        <button type="button" className="button-tertiary" onClick={() => navigate("/indicadores")}>
+                            Indicadores
+                        </button>
                         <button type="button" className="button-secondary" onClick={() => navigate("/lista-paciente")}>
                             Nova consulta
                         </button>

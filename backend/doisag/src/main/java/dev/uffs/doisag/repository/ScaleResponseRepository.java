@@ -41,4 +41,13 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
 
     // resposta anulada n conta como respondida em lugar nenhum
     long countByTaskIdAndAnnulmentAnnulledAtIsNull(Long taskId);
+
+    // um id de tarefa por resposta valida ligada a ela, pros indicadores contarem os dias do diario (RF39)
+    @Query("select response.task.id from ScaleResponse response "
+            + "where response.task.prescriber.id = :prescriberId "
+            + "and response.task.periodEnd between :from and :to "
+            + "and response.annulment.annulledAt is null")
+    List<Long> findTaskIdsOfValidAnswers(@Param("prescriberId") Long prescriberId,
+                                         @Param("from") LocalDate from,
+                                         @Param("to") LocalDate to);
 }

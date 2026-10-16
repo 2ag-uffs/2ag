@@ -635,6 +635,7 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 | — | **novo** | RF32 Ciclo automático de 90 dias |
 | — | **novo** | RF33 Exportação de dados |
 | — | **novo** | RF34 Lembretes automáticos |
+| — | **novo** | RF39 Indicadores do piloto |
 | RNF10 WhatsApp | **descartado** | §3.1 |
 | Multilíngue pt/en/es | **rebaixado** | RNF12 — arquitetura preparada, só pt-BR |
 | — | **novo** | RNF13 Testabilidade |
@@ -711,6 +712,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF36 | Termo de consentimento (LGPD, art. 11) aceito no cadastro, com versão e data registradas. Paciente com menos de 16 anos: quem aceita é o responsável legal, em nome do paciente; com 16 e 17 anos, o paciente aceita junto com o responsável. O aceite de menor de 18 anos guarda o nome e o parentesco do responsável (LGPD, art. 14, e Código Civil; clínica, 16/10/2026) | E |
 | RF37 | Consentimento para pesquisa separado do termo do cadastro, opcional e revogável, com versão e data registradas. A exportação para pesquisa só inclui quem aceitou (clínica, 01/10/2026). Fechado para menores de 18 anos até o comitê de ética definir o assentimento do menor | I |
 | RF38 | Responsável ou cuidador do paciente: nome, parentesco e telefone, opcionais para adulto, fora da exportação sem identificação (clínica, 01/10/2026). Para menor de 18 anos, o nome e o parentesco do responsável legal são obrigatórios (clínica, 16/10/2026) | I |
+| RF39 | Indicadores do piloto para o prescritor: pacientes no ciclo de acompanhamento e formulários respondidos no prazo (meta de 70%), só com números somados dos pacientes dele (proposta de extensão) | I |
 | RNF16 | Operação: fuso horário único `America/Sao_Paulo`, verificação de saúde da API e integração contínua | E |
 
 O RNF07 (backup automático com restauração testada) permanece essencial e é pré-requisito do piloto.
@@ -818,7 +820,7 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Escalas validadas:** HAM-A com os 14 itens e escore de 0 a 56, PSQI calculado pelos 7 componentes de 0 a 21 e MEEM com as 11 seções, de 0 a 30. A faixa do MEEM usa o ponto de corte por escolaridade de Brucki 2003, registrada junto com a data da avaliação (decisão de 13/09/2026, a confirmar com a clínica na pergunta 10).
 - **Tarefa com prazo:** cada envio vale por um período. Sem resposta até o fim do prazo, a tarefa fica como não respondida, vira lacuna no gráfico (RN10) e o período seguinte é enviado, em vez de a mesma pendência arrastar para sempre.
 - **Diários:** a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. A tarefa mostra quantos dias já foram preenchidos e fecha no fim do período; a semana sem nenhum dia conta como não respondida. Na tarefa aberta a grade cobre o período inteiro até hoje, e o paciente preenche de uma vez os dias que esqueceu; dia futuro é recusado, e dia de outro período fica fora da contagem da tarefa aberta (16/10/2026).
-- **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição.
+- **Correção:** o paciente corrige a própria resposta enquanto o prescritor não marca como analisada. Depois disso, corrigir é anular com motivo, como já é na consulta e na prescrição. A resposta anulada fica só no histórico: a data dela abre em branco e o paciente responde de novo, inclusive no mesmo dia (16/10/2026).
 - **Resultado:** a central do paciente mostra o escore com a faixa interpretativa (RN14). Formulário da clínica sem faixa publicada mostra o item principal e nenhuma interpretação inventada (RN13).
 - **MEEM:** aplicado pelo prescritor dentro de consulta confirmada, nunca designado ao paciente (RN09), e aparece nos dois históricos.
 - **Avisos:** a escala enviada avisa o paciente e a resposta completa avisa o prescritor (RF15). Nos diários o prescritor recebe um aviso só, quando o período fecha, com a quantidade de dias preenchidos (02/10/2026), contando também os dias do período preenchidos com atraso antes do fechamento (16/10/2026). As pendências vencidas aparecem no painel do prescritor.
@@ -883,6 +885,18 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 - **Sair da conta:** encerra as sessões abertas da pessoa em qualquer aparelho, mesmo que alguém tenha guardado o cookie, e toda sessão termina 12 horas depois do login, mesmo sendo renovada durante o uso.
 - **Bloqueio de login:** saiu da conta. Antes, cinco senhas erradas travavam a conta por 15 minutos, e quem soubesse o e-mail de alguém conseguia impedir essa pessoa de entrar. Agora a contagem é por e-mail e endereço de origem, com um limite também por endereço, e e-mail sem cadastro é bloqueado do mesmo jeito, para a resposta não revelar quem tem conta.
 - **Origem das requisições:** requisição que muda dado usando o cookie da sessão só é aceita quando vem do endereço oficial do sistema, conferido pelo cabeçalho `Origin`. É uma segunda barreira além do cookie `SameSite=Strict`, para navegador antigo e para subdomínio vizinho, que o navegador trata como o mesmo site.
+
+**Indicadores do piloto em 16/10/2026 (RF39):** a tela *Indicadores* do prescritor mostra os dois números do piloto, calculados com o que o sistema já grava, sem tabela nova. Só aparecem números somados dos pacientes do próprio prescritor, sem nome nem linha por paciente, por isso abrir a tela não entra na trilha como abertura de prontuário.
+
+- **Período:** sem datas, vale os últimos 90 dias até ontem, um ciclo inteiro (RN01). O período termina no máximo ontem, porque o prazo de hoje ainda está correndo. Informar só uma das datas ou a inicial depois da final é recusado, como na agenda.
+- **Pacientes no ciclo:** quantos pacientes têm um acompanhamento automático valendo hoje, com a conta ativa e fora do arquivo, ao lado do total de pacientes ativos hoje, contado no mesmo grupo (conta ativa e fora do arquivo). Um acompanhamento que terminou ontem sai na hora, mesmo antes do job das 8h encerrá-lo. Junto vem quantos pacientes têm formulário com prazo no período.
+- **Convites:** os convites criados no período, sem os cancelados: quantos foram enviados, quantos viraram cadastro, quantos desses pacientes entraram em um acompanhamento e quantos estão com o link ainda válido e não contam como falha. O convite que venceu sem uso conta como enviado e não fica em aberto. A meta é todo convidado cadastrado e no ciclo. Um link vencido que é enviado de novo para a mesma pessoa conta duas vezes, porque o convite não guarda nome.
+- **Formulários no prazo:** entram todas as tarefas com o prazo dentro do período, avulsas ou do acompanhamento, respondidas ou não. O MEEM não vira tarefa e não entra. A regra olha as datas e as respostas ligadas, não a situação da tarefa, então não depende de o job das 8h já ter fechado o prazo. Escala de período e avaliação inicial estão no prazo quando foram respondidas até o último dia; a pendente com o prazo vencido conta como fora do prazo; a avaliação inicial enviada depois do prazo conta como atrasada. A meta é 70%.
+- **Diário:** conta como respondido com pelo menos um dia válido, a mesma regra que fecha a tarefa, mesmo que ela ainda esteja pendente. Um diário só com dias anulados fica fora do prazo. Os dias preenchidos aparecem à parte, contra os dias do prazo, para mostrar o quanto essa regra é generosa. Um dia preenchido entre a meia-noite e o job das 8h do dia seguinte ao prazo ainda conta, como na grade do paciente.
+- **Resposta anulada:** não conta. A escala volta a pendente e só conta de novo com outra resposta. A exceção é a avaliação inicial: anular a ficha não reabre a tarefa, que continua como respondida.
+- **Pacientes arquivados:** nos formulários, continuam na conta, senão a desistência sumiria do número. Em *Pacientes no ciclo* eles ficam de fora. Arquivar encurta o prazo das tarefas abertas para o dia do arquivamento, e a que ficou sem resposta conta como fora do prazo.
+- **Arredondamento:** a porcentagem é arredondada para baixo, para 69,6% não aparecer como meta batida.
+- **De fora por enquanto:** a separação entre envio avulso e acompanhamento e uma visão da clínica inteira para a administração. As duas saem das mesmas consultas, se forem pedidas.
 
 ---
 

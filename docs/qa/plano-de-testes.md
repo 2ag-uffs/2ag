@@ -70,7 +70,7 @@ requisitos RF29, RF30 e RF31.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
-| CT-07 | logado como paciente, digitar `/painel-prescritor` e `/lista-paciente` no endereço | volta para o painel da paciente |
+| CT-07 | logado como paciente, digitar `/painel-prescritor`, `/lista-paciente` e `/indicadores` no endereço | volta para o painel da paciente |
 | CT-08 | logado como prescritora, digitar `/administracao` | volta para o painel da prescritora |
 | CT-09 | logado como Carlos Pereira, abrir o histórico de uma paciente da Ana trocando o número em `/paciente/3/historico` | acesso negado, sem mostrar nenhum dado |
 | CT-10 | logado como Maria, trocar o número do endereço `/pacientes/3/escalas` pelo de outro paciente | acesso negado |
@@ -104,7 +104,7 @@ requisitos RF04, RF05, RF12, RF13 e RF19.
 
 ## 5. escalas
 
-requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RN09 e RN10.
+requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RF39, RN09 e RN10.
 
 | código | passos | o que deve acontecer |
 | :--- | :--- | :--- |
@@ -115,8 +115,9 @@ requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RN09 e RN10.
 | CT-26 | preencher o diário do sono | tempos calculados certos, também quando dormir passa da meia-noite. a programação da prescritora aparece no topo |
 | CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes. tentar salvar com uma seção e a escolaridade em branco | o corte muda com a escolaridade e o MEEM nunca aparece como tarefa da paciente. com item em branco o exame não é salvo, a tela lista o que falta e marca os itens |
 | CT-28 | criar e depois encerrar um acompanhamento automático | as escalas escolhidas e as frequências aparecem certas. encerrar para os envios |
-| CT-29 | anular uma resposta de escala | motivo obrigatório. a resposta fica marcada como anulada, com o motivo |
+| CT-29 | anular uma resposta de escala e, como o paciente, abrir a mesma escala na mesma data | motivo obrigatório. a resposta fica marcada como anulada, com o motivo. o paciente vê o formulário em branco, com o aviso de que a resposta foi anulada, e responde de novo no mesmo dia |
 | CT-30 | olhar o painel da prescritora | a escala vencida da Renata aparece em *Escalas vencidas* |
+| CT-47 | como Ana, abrir *Indicadores* pelo menu ou pelo botão do painel, primeiro com o período padrão e depois com os últimos 30 dias. depois, como Carlos Pereira, abrir a mesma tela. tentar escolher uma data depois de ontem | o padrão vai de 90 dias atrás até ontem. *Pacientes no ciclo*: 1, de 4 pacientes ativos hoje; 2 pacientes com formulário com prazo no período; convites: 0 enviados. *Formulários respondidos no prazo*: 50%, 1 de 2 formulários, com *Abaixo da meta de 70%* e *Diários: 5 de 7 dias preenchidos (71%)*. em *Por escala*: Diário do sono com 1 de 1 no prazo · 100% · 5 de 7 dias, e Escala de ansiedade de Hamilton com 0 de 1 no prazo · 0%. com os últimos 30 dias os números são os mesmos. nenhum nome de paciente aparece na tela. para o Carlos: 0 no ciclo, de 0 pacientes ativos hoje, — no lugar da porcentagem e *Nenhum formulário com prazo no período.* o calendário não deixa escolher hoje nem depois |
 
 ## 6. progresso
 

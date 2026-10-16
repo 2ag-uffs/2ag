@@ -3,6 +3,7 @@ import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation
 import {
     FiActivity,
     FiArrowLeft,
+    FiBarChart2,
     FiBell,
     FiCalendar,
     FiClipboard,
@@ -55,6 +56,7 @@ function menuFor(user) {
             {path: "/painel-prescritor", label: "Início", icon: FiHome, mobile: true},
             {path: "/lista-paciente", label: "Pacientes", icon: FiUsers, mobile: true, prefixes: ["/paciente/", "/consulta/"]},
             {path: "/progresso-pacientes", label: "Progresso", icon: FiTrendingUp, pattern: /^\/paciente\/[^/]+\/progresso$/},
+            {path: "/indicadores", label: "Indicadores", icon: FiBarChart2},
             {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar, mobile: true},
             {path: "/agenda/disponibilidade", label: "Horários de atendimento", icon: FiClock},
             {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},

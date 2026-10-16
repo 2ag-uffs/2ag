@@ -72,7 +72,8 @@ class MainScreensWithDemoDataTest {
                 mariaPath + "/audit-events?from=" + today.minusDays(30) + "&to=" + today,
                 "/scales/responses/" + lastResponseIdOf(maria),
                 "/scales/assignable",
-                "/progress/attributes");
+                "/progress/attributes",
+                "/indicators");
 
         assertThat(failedRequests(urls, prescriber)).isEmpty();
         assertThat(NarrowingProxyWatch.warnings()).isZero();

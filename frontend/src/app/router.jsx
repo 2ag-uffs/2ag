@@ -119,6 +119,10 @@ const routes = [
                                 lazy: lazyPage(() => import("../pages/progresso/progresso.jsx")),
                             },
                             {
+                                path: "/indicadores",
+                                lazy: lazyPage(() => import("../pages/indicadores/indicadores.jsx")),
+                            },
+                            {
                                 path: "/paciente/:patientId/consulta/nova",
                                 lazy: lazyPage(() => import("../pages/consultation-record/consultation-record.jsx")),
                             },

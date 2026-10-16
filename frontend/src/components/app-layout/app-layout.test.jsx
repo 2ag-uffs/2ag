@@ -169,6 +169,16 @@ describe("AppLayout", () => {
         expect(bottomMenu().getByRole("link", {name: "Pacientes"})).toHaveAttribute("aria-current", "page");
     });
 
+    // a barra do celular ja tem cinco itens, entao Indicadores fica so no menu lateral
+    it("os indicadores ficam no menu lateral do prescritor e n na barra do celular", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        openLayoutAt("/indicadores");
+
+        await screen.findByText("conteudo da tela");
+        expect(sideMenu().getByRole("link", {name: "Indicadores"})).toHaveAttribute("aria-current", "page");
+        expect(bottomMenu().queryByRole("link", {name: "Indicadores"})).not.toBeInTheDocument();
+    });
+
     it("tela dentro de um item continua marcando o item pelo prefixo", async () => {
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
         openLayoutAt("/escalas/diario-sono");
