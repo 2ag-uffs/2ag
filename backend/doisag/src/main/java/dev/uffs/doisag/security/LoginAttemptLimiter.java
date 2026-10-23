@@ -18,6 +18,7 @@ import java.util.Map;
 // e como e-mail sem cadastro conta igual a resposta n revela quem tem conta
 //
 // fica em memoria pq a api roda numa instancia so e reiniciar a api zera tudo
+// o e-mail entra na chave como hash, q tem sempre o mesmo tamanho: e-mail gigante n enche a memoria
 @Component
 public class LoginAttemptLimiter {
 
@@ -74,7 +75,8 @@ public class LoginAttemptLimiter {
 
     // senha nova pelo link de recuperacao libera o e-mail de qualquer endereco
     public synchronized void forgetEmail(String email) {
-        failures.keySet().removeIf(key -> key.startsWith("email:" + email + "|"));
+        String prefix = "email:" + hashOf(email) + "|";
+        failures.keySet().removeIf(key -> key.startsWith(prefix));
         failures.remove(emailTotalKey(email));
     }
 
@@ -158,7 +160,7 @@ public class LoginAttemptLimiter {
     }
 
     private String emailKey(String email, String address) {
-        return "email:" + email + "|" + address;
+        return "email:" + hashOf(email) + "|" + address;
     }
 
     private String addressKey(String address) {
@@ -166,7 +168,20 @@ public class LoginAttemptLimiter {
     }
 
     private String emailTotalKey(String email) {
-        return "email-total:" + email;
+        return "email-total:" + hashOf(email);
+    }
+
+    private String hashOf(String email) {
+        return SecureTokens.hashToken(String.valueOf(email));
+    }
+
+    // o teste confere q a chave n cresce junto com o e-mail
+    synchronized int longestKeyLength() {
+        int longest = 0;
+        for (String key : failures.keySet()) {
+            longest = Math.max(longest, key.length());
+        }
+        return longest;
     }
 
     private String resetKey(String address) {

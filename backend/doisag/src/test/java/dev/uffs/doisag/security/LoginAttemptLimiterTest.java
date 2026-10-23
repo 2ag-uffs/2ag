@@ -79,6 +79,17 @@ class LoginAttemptLimiterTest {
         assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
     }
 
+    // o e-mail entra na chave como hash, entao o tamanho dele n muda o q fica na memoria
+    @Test
+    void aHugeEmailBecomesAShortKeyAndStillCounts() {
+        String hugeEmail = "a".repeat(100_000) + "@email.com";
+        failTimes(hugeEmail, OTHER_ADDRESS, 5);
+
+        assertThat(limiter.isBlocked(hugeEmail, OTHER_ADDRESS)).isTrue();
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
+        assertThat(limiter.longestKeyLength()).isLessThan(200);
+    }
+
     // quem troca de endereco a cada chute escapa da conta por endereco, mas n do teto do e-mail
     @Test
     void manyAddressesAgainstOneEmailBlockThatEmailEverywhere() {

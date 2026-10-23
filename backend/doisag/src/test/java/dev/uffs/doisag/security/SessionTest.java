@@ -162,6 +162,31 @@ class SessionTest {
         login(PATIENT_EMAIL, "ã".repeat(40) + "Senha1!").andExpect(status().isUnauthorized());
     }
 
+    // o e-mail de qualquer tamanho ia pra contagem, q fica em memoria por 15 minutos,
+    // e corpo gigante atras de corpo gigante enchia a memoria da api
+    @Test
+    void emailLongerThanTheColumnIsRefusedAndNotCounted() throws Exception {
+        String longEmail = "a".repeat(246) + "@email.com";
+        for (int attempt = 1; attempt <= 20; attempt++) {
+            login(longEmail, WRONG_PASSWORD)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors[0].field").value("email"));
+        }
+
+        // 20 erros contados bloqueariam o endereco inteiro
+        assertThat(loginAttemptLimiter.longestKeyLength()).isZero();
+        login(PATIENT_EMAIL, PATIENT_PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    void passwordLongerThanTheLimitIsRefusedBeforeTheCount() throws Exception {
+        login(PATIENT_EMAIL, "a".repeat(256))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
+
+        assertThat(loginAttemptLimiter.longestKeyLength()).isZero();
+    }
+
     @Test
     void fiveWrongPasswordsBlockTheLoginEvenWithTheRightPassword() throws Exception {
         for (int attempt = 1; attempt <= 5; attempt++) {

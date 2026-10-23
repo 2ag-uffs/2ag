@@ -271,8 +271,10 @@ class AdminPatientsTest {
     @Test
     void deactivationShowsUpInBothAuditTrails() throws Exception {
         changeActive(false, adminToken()).andExpect(status().isOk());
-        // repetir o mesmo estado n gera outro evento
-        changeActive(false, adminToken()).andExpect(status().isOk());
+        // repetir o mesmo estado eh recusado e n gera outro evento
+        changeActive(false, adminToken())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientAccountService.ALREADY_INACTIVE_MESSAGE));
         String today = LocalDate.now().toString();
         String filter = "$.events[?(@.operation == 'DESATIVACAO' && @.recordType == 'CONTA_DE_PACIENTE' "
                 + "&& @.patientId == " + patient.getId() + ")]";
@@ -290,6 +292,42 @@ class AdminPatientsTest {
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(filter, hasSize(1)));
+    }
+
+    // ativar a conta q ja esta ativa devolvia nome e e-mail sem ir pra trilha, e o administrador
+    // descobria quem eh cada numero passando id por id
+    @Test
+    void askingForTheStateTheAccountAlreadyHasDoesNotShowWhoItIs() throws Exception {
+        String response = changeActive(true, adminToken())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientAccountService.ALREADY_ACTIVE_MESSAGE))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(response).doesNotContain("Paciente da Conta").doesNotContain(PATIENT_EMAIL);
+
+        String today = LocalDate.now().toString();
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", today).param("to", today)
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")]", hasSize(0)));
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().isActive()).isTrue();
+    }
+
+    // cada mudanca de verdade continua indo pra trilha
+    @Test
+    void everyRealChangeGoesToTheTrail() throws Exception {
+        changeActive(false, adminToken()).andExpect(status().isOk());
+        changeActive(true, adminToken()).andExpect(status().isOk());
+
+        String today = LocalDate.now().toString();
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", today).param("to", today)
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId()
+                        + " && @.recordType == 'CONTA_DE_PACIENTE')]", hasSize(2)))
+                .andExpect(jsonPath("$.events[?(@.operation == 'REATIVACAO' && @.patientId == "
+                        + patient.getId() + ")]", hasSize(1)));
     }
 
     @Test

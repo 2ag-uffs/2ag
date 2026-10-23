@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -80,7 +81,10 @@ public class PrescriberService {
 
     private Prescriber createAccount(PrescriberCreateDTO dados, String password) {
         // conselho e numero de registro identificam o profissional
-        if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(dados.registryType(), dados.registryNumber())) {
+        // "crbm" e "77777 " sao o mesmo registro q "CRBM" e "77777", senao a mesma pessoa ganhava outra conta
+        String registryType = dados.registryType().trim().toUpperCase(Locale.ROOT);
+        String registryNumber = dados.registryNumber().trim();
+        if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(registryType, registryNumber)) {
             throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
         }
 
@@ -102,8 +106,8 @@ public class PrescriberService {
         prescriber.setPhone(InputCleaner.keepOnlyDigits(dados.phone()));
         prescriber.setAddress(dados.address() == null ? null : dados.address().toAddress());
         prescriber.setProfession(dados.profession());
-        prescriber.setRegistryType(dados.registryType());
-        prescriber.setRegistryNumber(dados.registryNumber());
+        prescriber.setRegistryType(registryType);
+        prescriber.setRegistryNumber(registryNumber);
         prescriber.setPassword(passwordEncoder.encode(password));
         return prescriberRepository.save(prescriber);
     }

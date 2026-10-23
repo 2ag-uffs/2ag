@@ -283,6 +283,21 @@ class PasswordResetTest {
         verify(emailSender, never()).send(any());
     }
 
+    // nenhuma conta tem e-mail maior q a coluna, entao o pedido para antes de contar pro endereco
+    @Test
+    void emailLongerThanTheColumnIsRefused() throws Exception {
+        String domain = "a".repeat(61) + "." + "b".repeat(61) + "." + "c".repeat(61) + "." + "d".repeat(60) + ".com";
+        String longEmail = "maria@" + domain;
+        assertThat(longEmail).hasSize(256);
+
+        requestReset(longEmail)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.length()").value(1))
+                .andExpect(jsonPath("$.errors[0].field").value("email"))
+                .andExpect(jsonPath("$.errors[0].message").value("O e-mail pode ter até 255 caracteres"));
+        verify(emailSender, never()).send(any());
+    }
+
     // campo escondido na tela q so robo preenche
     @Test
     void requestWithTheHiddenFieldFilledGetsTheSameAnswerAndNoEmail() throws Exception {

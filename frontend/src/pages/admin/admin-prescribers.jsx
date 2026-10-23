@@ -165,6 +165,7 @@ export default function AdminPrescribers() {
 
         // a api espera cpf e telefone so com numeros
         // campo opcional vazio vai como null
+        // o numero do registro colado costuma vir com espaco no fim
         const requestBody = {
             name: formData.name,
             email: formData.email,
@@ -173,7 +174,7 @@ export default function AdminPrescribers() {
             phone: formData.phone.replace(/\D/g, "") || null,
             profession: formData.profession,
             registryType: formData.registryType,
-            registryNumber: formData.registryNumber,
+            registryNumber: formData.registryNumber.trim(),
         };
 
         try {

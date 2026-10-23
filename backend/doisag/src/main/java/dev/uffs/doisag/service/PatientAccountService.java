@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
@@ -21,6 +22,8 @@ import java.util.Locale;
 public class PatientAccountService {
 
     public static final String PATIENT_NOT_FOUND_MESSAGE = "Nenhuma conta de paciente com este e-mail";
+    public static final String ALREADY_ACTIVE_MESSAGE = "Esta conta já está ativa";
+    public static final String ALREADY_INACTIVE_MESSAGE = "Esta conta já está desativada";
 
     private final PatientRepository patientRepository;
     private final AuditService auditService;
@@ -56,8 +59,10 @@ public class PatientAccountService {
         patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+        // pedir o estado q a conta ja tem eh recusado: a resposta traz nome e e-mail, e sem isso
+        // a administracao descobria quem eh cada numero da trilha sem deixar rastro nenhum
         if (patient.isActive() == active) {
-            return patient;
+            throw new BusinessException(active ? ALREADY_ACTIVE_MESSAGE : ALREADY_INACTIVE_MESSAGE);
         }
         patient.setActive(active);
         if (!active) {

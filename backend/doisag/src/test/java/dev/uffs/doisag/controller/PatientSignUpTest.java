@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.EmailRules;
 import dev.uffs.doisag.dto.GuardianDTO;
 import dev.uffs.doisag.dto.PasswordRules;
 import dev.uffs.doisag.enums.ConsentType;
@@ -35,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -395,6 +397,29 @@ class PatientSignUpTest {
         signUp(signUpBody(newInviteToken(), "cpf-invalido@email.com", "12345678900", VALID_PASSWORD))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'cpf')]").exists());
+    }
+
+    // sem o ponto no dominio o link de senha nova e os lembretes nunca chegavam
+    @Test
+    void emailWithoutADotInTheDomainIsRefusedOnTheEmailField() throws Exception {
+        for (String email : new String[]{"maria@gmail", "maria@gmailcom"}) {
+            signUp(signUpBody(newInviteToken(), email, VALID_CPF, VALID_PASSWORD))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors", hasSize(1)))
+                    .andExpect(jsonPath("$.errors[0].field").value("email"))
+                    .andExpect(jsonPath("$.errors[0].message").value(EmailRules.DOMAIN_WITH_DOT_MESSAGE));
+
+            assertThat(usersRepository.findByEmail(email)).isEmpty();
+        }
+    }
+
+    // sem @ a mensagem eh so a do formato, e n duas no mesmo campo
+    @Test
+    void emailWithoutAtGetsOnlyOneMessage() throws Exception {
+        signUp(signUpBody(newInviteToken(), "maria.gmail.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors", hasSize(1)))
+                .andExpect(jsonPath("$.errors[0].message").value("E-mail inválido"));
     }
 
     @Test

@@ -47,6 +47,7 @@ public record RegisterDTO(
 
         @NotBlank(message = "Informe o e-mail")
         @Email(message = "E-mail inválido")
+        @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,
 

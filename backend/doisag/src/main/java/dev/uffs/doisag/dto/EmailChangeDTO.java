@@ -2,6 +2,7 @@ package dev.uffs.doisag.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 // troca do e-mail de acesso (RF18)
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Size;
 public record EmailChangeDTO(
         @NotBlank(message = "Informe o novo e-mail")
         @Email(message = "E-mail inválido")
+        @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String newEmail,
 

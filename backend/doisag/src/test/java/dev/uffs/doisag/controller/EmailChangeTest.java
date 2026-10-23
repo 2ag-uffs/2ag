@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.EmailRules;
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.email.EmailSender;
 import dev.uffs.doisag.model.Admin;
@@ -218,6 +219,18 @@ class EmailChangeTest {
                 .andExpect(jsonPath("$.errors[0].field").value("newEmail"))
                 .andExpect(jsonPath("$.errors[0].message").value(EmailChangeService.SAME_EMAIL_MESSAGE));
 
+        verify(emailSender, never()).send(any());
+    }
+
+    // dominio sem ponto nunca recebe o link, e o pedido nem chega a ser guardado
+    @Test
+    void anAddressWithoutADotInTheDomainIsRefused() throws Exception {
+        requestChange(patient, "novo@gmailcom", PASSWORD)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("newEmail"))
+                .andExpect(jsonPath("$.errors[0].message").value(EmailRules.DOMAIN_WITH_DOT_MESSAGE));
+
+        assertThat(emailChangeRepository.findPendingEmails(patient.getId(), LocalDateTime.now())).isEmpty();
         verify(emailSender, never()).send(any());
     }
 

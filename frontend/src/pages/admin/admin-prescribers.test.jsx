@@ -91,4 +91,27 @@ describe("AdminPrescribers", () => {
         expect(await screen.findByText("Este e-mail já tem conta no sistema")).toBeInTheDocument();
         expect(screen.getByLabelText("E-mail certo")).toHaveValue("ana@email.com");
     });
+
+    // o numero colado com espaco no fim virava outro registro na api
+    it("manda o numero do registro sem espaco nas pontas", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({
+            prescriberId: 3, prescriberName: "Carla Nova", resetLink: null, validMinutes: 2880,
+        });
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        await user.click(await screen.findByRole("button", {name: "Novo prescritor"}));
+        await user.type(screen.getByLabelText("Nome completo"), "Carla Nova");
+        await user.type(screen.getByLabelText("E-mail"), "carla@email.com");
+        await user.type(screen.getByLabelText("CPF"), "168.995.350-09");
+        await user.type(screen.getByLabelText("Profissão"), "Biomédica");
+        await user.type(screen.getByLabelText("Número do registro"), " 4321 ");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(post).toHaveBeenCalledWith("/admin/prescribers", expect.objectContaining({
+            registryType: "CRBM",
+            registryNumber: "4321",
+        }));
+    });
 });

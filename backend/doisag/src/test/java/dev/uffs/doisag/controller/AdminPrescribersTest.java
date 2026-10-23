@@ -2,6 +2,7 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.email.EmailSender;
+import dev.uffs.doisag.dto.EmailRules;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.Periodicity;
@@ -465,6 +466,49 @@ class AdminPrescribersTest {
         createPrescriber(body)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'name')]").exists());
+    }
+
+    // "77777 " e "crbm" passavam como outro registro e a mesma pessoa ganhava duas contas (RF02.2)
+    @Test
+    void theSameRegistryWithASpaceOrInLowerCaseIsRefused() throws Exception {
+        createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated());
+        String otherPerson = NEW_PRESCRIBER_JSON.replace("novo-prescritor@email.com", "outro-prescritor@email.com")
+                .replace("16899535009", "11144477735");
+
+        createPrescriber(otherPerson.replace("\"77777\"", "\"77777 \""))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("registryNumber"));
+        createPrescriber(otherPerson.replace("\"CRBM\"", "\" crbm\""))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("registryNumber"));
+    }
+
+    @Test
+    void theRegistryIsSavedWithoutSpacesAndWithTheCouncilInUpperCase() throws Exception {
+        String body = NEW_PRESCRIBER_JSON.replace("\"CRBM\"", "\" crm \"").replace("\"77777\"", "\" 12345 \"");
+        Long prescriberId = idOf(createPrescriber(body).andExpect(status().isCreated()));
+
+        Prescriber savedPrescriber = prescriberRepository.findById(prescriberId).orElseThrow();
+        assertThat(savedPrescriber.getRegistryType()).isEqualTo("CRM");
+        assertThat(savedPrescriber.getRegistryNumber()).isEqualTo("12345");
+    }
+
+    // dominio sem ponto nunca recebe o link de primeiro acesso
+    @Test
+    void anEmailWithoutADotInTheDomainIsRefusedOnTheCreationAndOnTheCorrection() throws Exception {
+        createPrescriber(NEW_PRESCRIBER_JSON.replace("novo-prescritor@email.com", "novo-prescritor@emailcom"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"))
+                .andExpect(jsonPath("$.errors[0].message").value(EmailRules.DOMAIN_WITH_DOT_MESSAGE));
+
+        Long prescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+        changeEmail(prescriberId, "certo@email", ADMIN_PASSWORD)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"))
+                .andExpect(jsonPath("$.errors[0].message").value(EmailRules.DOMAIN_WITH_DOT_MESSAGE));
+
+        assertThat(prescriberRepository.findById(prescriberId).orElseThrow().getEmail())
+                .isEqualTo("novo-prescritor@email.com");
     }
 
     @Test

@@ -19,6 +19,7 @@ public record PrescriberCreateDTO(
 
         @NotBlank(message = "O e-mail é obrigatório")
         @Email(message = "O formato do e-mail é inválido")
+        @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,
 
