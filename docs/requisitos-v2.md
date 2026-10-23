@@ -852,7 +852,7 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Paciente:** próximas consultas de verdade, lidas do banco, incluindo o pedido que ainda espera resposta; escalas esperando resposta com o prazo e o botão de preencher; a prescrição que está valendo, com a posologia; e os avisos que ele ainda não leu.
 - **Prescritor:** pacientes ativos, consultas de hoje com link direto para o registro do atendimento, pedidos de consulta esperando resposta e escalas que venceram sem resposta, cada uma com o paciente.
 - **Nada de fachada:** saíram os cartões que nunca tiveram dado por trás — alertas clínicos, fichas com prioridade, pacientes recentes — e os botões que não faziam nada. O painel mostra só o que o resto do sistema grava (RF30).
-- **Resumo, não lista:** cada cartão traz no máximo cinco itens e leva para a tela que tem a lista inteira.
+- **Resumo, não lista:** cada cartão traz no máximo cinco itens e leva para a tela que tem a lista inteira. Nos quatro cartões que vêm com total — esperando resposta e avisos não lidos no painel do paciente, pedidos esperando e escalas vencidas no do prescritor — o número é o total de verdade, contado no banco, e não o tamanho da lista: antes o prescritor com doze escalas vencidas via 5, e o paciente com oito avisos não lidos via 5 no cartão e 8 no menu. Quando há mais de cinco, esses cartões dizem "Mostrando 5 de N". As consultas de hoje não são cortadas, então o número é a lista mesma; as próximas consultas param em cinco sem número nem aviso. As escalas vencidas ainda não têm uma tela com a lista inteira, então o aviso é o que mostra que há mais (16/10/2026).
 
 **Notificações concluídas em 14/09/2026:** RF14, RF15 e RF34.
 

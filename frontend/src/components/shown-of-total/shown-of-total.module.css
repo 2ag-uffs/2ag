@@ -1,0 +1,6 @@
+/* aviso de q o cartao mostra so uma parte da lista */
+
+.shown {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}

@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
+import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
@@ -55,21 +56,22 @@ export default function DashboardPrescritor() {
 
     // os numeros do dia. o q leva pra alguma tela vira botao e o q pede
     // atencao ganha o destaque
+    // as listas vem com no maximo cinco, entao o numero eh sempre o total q a api manda
     const stats = [
         {label: "Pacientes ativos", value: panel.activePatients, icon: FiUsers, path: "/lista-paciente"},
         {label: "Consultas hoje", value: panel.todaysAppointments.length, icon: FiCalendar, path: "/agendamento-prescritor"},
         {
             label: "Pedidos esperando",
-            value: panel.waitingRequests.length,
+            value: panel.waitingRequestsTotal,
             icon: FiInbox,
             path: "/agendamento-prescritor",
-            needsAttention: panel.waitingRequests.length > 0,
+            needsAttention: panel.waitingRequestsTotal > 0,
         },
         {
             label: "Escalas vencidas",
-            value: panel.lateScales.length,
+            value: panel.lateScalesTotal,
             icon: FiAlertCircle,
-            needsAttention: panel.lateScales.length > 0,
+            needsAttention: panel.lateScalesTotal > 0,
         },
         {
             label: "Avisos não lidos",
@@ -172,7 +174,19 @@ export default function DashboardPrescritor() {
                     )}
                 </Card>
 
-                <Card title="Pedidos esperando resposta" count={panel.waitingRequests.length}>
+                <Card
+                    title="Pedidos esperando resposta"
+                    count={panel.waitingRequestsTotal}
+                    footer={(
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/agendamento-prescritor")}
+                        >
+                            Ver todos os pedidos
+                        </button>
+                    )}
+                >
                     {panel.waitingRequests.length === 0 ? (
                         <p className={styles.empty}>Nenhum pedido esperando resposta.</p>
                     ) : (
@@ -202,9 +216,11 @@ export default function DashboardPrescritor() {
                             ))}
                         </ItemList>
                     )}
+                    <ShownOfTotal shown={panel.waitingRequests.length} total={panel.waitingRequestsTotal}/>
                 </Card>
 
-                <Card title="Escalas vencidas" count={panel.lateScales.length}>
+                {/* n tem tela com todas as vencidas, entao o cartao diz qnd mostra so uma parte */}
+                <Card title="Escalas vencidas" count={panel.lateScalesTotal}>
                     {panel.lateScales.length === 0 ? (
                         <p className={styles.empty}>Nenhuma escala vencida sem resposta.</p>
                     ) : (
@@ -227,6 +243,7 @@ export default function DashboardPrescritor() {
                             ))}
                         </ItemList>
                     )}
+                    <ShownOfTotal shown={panel.lateScales.length} total={panel.lateScalesTotal}/>
                 </Card>
             </div>
 

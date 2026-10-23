@@ -16,7 +16,14 @@ const PANEL = {
         id: 9, title: "Consulta amanhã", message: "Sua consulta com Dra Ana é amanhã, 20/10/2026 às 10:00.",
         type: "APPOINTMENT", isRead: false, createdAt: "2026-10-19T08:00:00", link: "/agendamento-consulta",
     }],
+    pendingScalesTotal: 0,
+    unreadNotifications: 1,
 };
+
+// a api manda no maximo cinco itens por lista e o total separado
+function fiveItemsOf(makeItem) {
+    return [1, 2, 3, 4, 5].map(makeItem);
+}
 
 function renderPanel() {
     const router = createMemoryRouter([{path: "/painel", element: <DashboardPaciente/>}],
@@ -53,5 +60,34 @@ describe("DashboardPaciente", () => {
         expect(await screen.findByText("20/10/2026 às 10:00")).toBeInTheDocument();
         expect(screen.getByText("Sua consulta com Dra Ana é amanhã, 20/10/2026 às 10:00.")).toBeInTheDocument();
         expect(screen.queryByText(/horário de Brasília/)).not.toBeInTheDocument();
+    });
+
+    // antes o numero era o tamanho da lista, q para em cinco: com 8 avisos o cartao dizia 5 e o menu 8
+    it("o numero dos cartoes eh o total de vdd e o cartao diz q mostra so cinco", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: fiveItemsOf((number) => ({
+                taskId: number, name: "Registro de dor " + number, deadline: "2026-10-30", late: false, path: "/registro-dor",
+            })),
+            pendingScalesTotal: 7,
+            latestNotifications: fiveItemsOf((number) => ({
+                id: number, title: "Aviso " + number, message: "mensagem", type: "FORM", isRead: false,
+                createdAt: "2026-10-19T08:00:00", link: "/notificacoes",
+            })),
+            unreadNotifications: 8,
+        });
+        renderPanel();
+
+        expect(await screen.findByRole("heading", {name: /Avisos não lidos/})).toHaveTextContent("Avisos não lidos8");
+        expect(screen.getByRole("heading", {name: /Esperando resposta/})).toHaveTextContent("Esperando resposta7");
+        expect(screen.getByText("Mostrando 5 de 8.")).toBeInTheDocument();
+        expect(screen.getByText("Mostrando 5 de 7.")).toBeInTheDocument();
+    });
+
+    it("qnd a lista cabe inteira no cartao n aparece o mostrando", async () => {
+        renderPanel();
+
+        expect(await screen.findByRole("heading", {name: /Avisos não lidos/})).toHaveTextContent("Avisos não lidos1");
+        expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument();
     });
 });

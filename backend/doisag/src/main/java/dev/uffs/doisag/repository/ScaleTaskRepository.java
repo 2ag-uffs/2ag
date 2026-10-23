@@ -61,6 +61,16 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
                                            @Param("day") LocalDate day,
                                            Pageable pageable);
 
+    // o total das vencidas com a mesma regra da lista, pq o painel mostra so cinco
+    @Query("select count(task) from ScaleTask task "
+            + "where task.prescriber.id = :prescriberId and task.status in :statuses "
+            + "and task.periodEnd < :day and task.patient.archivedAt is null "
+            + "and not exists (select response.id from ScaleResponse response "
+            + "where response.task = task and response.annulment.annulledAt is null)")
+    long countLateWithoutAnswers(@Param("prescriberId") Long prescriberId,
+                                 @Param("statuses") Collection<ScaleTaskStatus> statuses,
+                                 @Param("day") LocalDate day);
+
     long countByPatientIdAndStatus(Long patientId, ScaleTaskStatus status);
 
     // as tarefas com prazo no periodo dos indicadores, respondidas ou n (RF39)

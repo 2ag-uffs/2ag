@@ -16,7 +16,10 @@ public record PatientDashboardDTO(
         List<UpcomingAppointmentDTO> upcomingAppointments,
         List<PendingScaleDTO> pendingScales,
         CurrentPrescriptionDTO currentPrescription,
-        List<NotificationDTO> latestNotifications
+        List<NotificationDTO> latestNotifications,
+        // as listas vem cortadas em cinco, entao o total de vdd vem separado
+        long pendingScalesTotal,
+        long unreadNotifications
 ) {
     public record UpcomingAppointmentDTO(
             Long appointmentId,

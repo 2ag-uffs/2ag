@@ -4,6 +4,7 @@ import AppointmentStatusBadge from "../../components/appointment-status-badge/ap
 import Card from "../../components/card/card.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
+import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
@@ -70,9 +71,10 @@ export default function DashboardPaciente() {
             {notice && <p className="aviso" role="status">{notice}</p>}
 
             <div className={styles.grid}>
+                {/* a lista vem com no maximo cinco, entao o numero eh o total q a api manda */}
                 <Card
                     title="Esperando resposta"
-                    count={panel.pendingScales.length}
+                    count={panel.pendingScalesTotal}
                     footer={(
                         <button
                             type="button"
@@ -107,6 +109,7 @@ export default function DashboardPaciente() {
                             ))}
                         </ItemList>
                     )}
+                    <ShownOfTotal shown={panel.pendingScales.length} total={panel.pendingScalesTotal}/>
                 </Card>
 
                 <Card
@@ -165,7 +168,7 @@ export default function DashboardPaciente() {
 
                 <Card
                     title="Avisos não lidos"
-                    count={panel.latestNotifications.length}
+                    count={panel.unreadNotifications}
                     footer={(
                         <button
                             type="button"
@@ -189,6 +192,7 @@ export default function DashboardPaciente() {
                             ))}
                         </ItemList>
                     )}
+                    <ShownOfTotal shown={panel.latestNotifications.length} total={panel.unreadNotifications}/>
                 </Card>
             </div>
         </section>

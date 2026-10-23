@@ -329,10 +329,10 @@ os lembretes automáticos saem no job diário, junto com o acompanhamento de 90 
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /dashboard/patient/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos. os avisos só vêm para o próprio paciente: o prescritor vê o painel sem a caixa pessoal dele |
-| `GET /dashboard/prescriber/{id}` | pacientes ativos, consultas de hoje, pedidos de consulta esperando resposta e escalas vencidas sem resposta. paciente arquivado não entra nas vencidas: o arquivamento fecha as escalas abertas no dia e elas viravam alerta de quem já saiu do acompanhamento |
+| `GET /dashboard/patient/{id}` | próximas consultas, escalas esperando resposta com o prazo, a prescrição vigente e os avisos não lidos, com o total de escalas esperando resposta (`pendingScalesTotal`) e de avisos não lidos (`unreadNotifications`). os avisos e o total deles só vêm para o próprio paciente: o prescritor vê o painel sem a caixa pessoal dele |
+| `GET /dashboard/prescriber/{id}` | pacientes ativos, avisos não lidos, consultas de hoje, pedidos de consulta esperando resposta e escalas vencidas sem resposta, com o total de pedidos (`waitingRequestsTotal`) e de vencidas (`lateScalesTotal`). paciente arquivado não entra nas vencidas: o arquivamento fecha as escalas abertas no dia e elas viravam alerta de quem já saiu do acompanhamento |
 
-cada lista traz no máximo cinco itens, porque o painel é um resumo e cada cartão leva para a tela que tem a lista inteira. nada aparece aqui sem origem no resto do sistema.
+cada lista traz no máximo cinco itens, porque o painel é um resumo, e o cartão leva para a tela que tem a lista inteira; as escalas vencidas ainda não têm uma tela com todas. nos quatro cartões que vêm com total (escalas esperando resposta, avisos não lidos, pedidos esperando resposta e escalas vencidas) o número é o total, contado no banco, e não o tamanho da lista, que para em cinco: quando a lista tem mais, o cartão diz "Mostrando 5 de N". as consultas de hoje não são cortadas, então o número delas é o tamanho da lista mesmo, e as próximas consultas param em cinco sem número e sem o aviso. nada aparece aqui sem origem no resto do sistema.
 
 ## indicadores do piloto
 

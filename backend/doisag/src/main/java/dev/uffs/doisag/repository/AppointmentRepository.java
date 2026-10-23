@@ -38,6 +38,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                                                     LocalDateTime moment,
                                                                                     Pageable pageable);
 
+    // o total dessa lista, pq o painel mostra so cinco mas o numero tem q ser o de vdd
+    long countByPrescriberIdAndStatusAndDateTimeAfter(Long prescriberId, AppointmentStatus status,
+                                                      LocalDateTime moment);
+
     // proximos pedidos e consultas do paciente
     List<Appointment> findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(Long patientId, LocalDateTime moment);
 

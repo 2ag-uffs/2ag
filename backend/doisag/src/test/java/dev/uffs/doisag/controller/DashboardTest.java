@@ -141,6 +141,53 @@ class DashboardTest {
                 .andExpect(jsonPath("$.lateScales[0].patientName").value("Paciente do painel"));
     }
 
+    // a lista para em cinco, mas o numero do cartao eh o total de vdd:
+    // antes o prescritor com sete escalas vencidas via 5
+    @Test
+    void oPainelDoPrescritorMostraOTotalDePedidosEEscalasVencidasAlemDosCinco() throws Exception {
+        for (int number = 0; number < 7; number = number + 1) {
+            saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2 + number * 7));
+            saveAppointment(TODAY.plusDays(2 + number).atTime(9, 0), AppointmentStatus.SOLICITADA);
+        }
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.waitingRequests.length()").value(5))
+                .andExpect(jsonPath("$.waitingRequestsTotal").value(7))
+                .andExpect(jsonPath("$.lateScales.length()").value(5))
+                .andExpect(jsonPath("$.lateScalesTotal").value(7));
+    }
+
+    // o mesmo do lado do paciente: o cartao de avisos dizia 5 e o menu dizia 8
+    @Test
+    void oPainelDoPacienteMostraOTotalDeAvisosEEscalasAlemDosCinco() throws Exception {
+        for (int number = 1; number <= 8; number = number + 1) {
+            notificationService.createNotification(patient, "Aviso " + number, "mensagem", "FORM", "/notificacoes");
+        }
+        for (int number = 0; number < 7; number = number + 1) {
+            ScaleTask task = new ScaleTask();
+            task.setPatient(patient);
+            task.setPrescriber(prescriber);
+            task.setScaleType(ScaleType.REGISTRO_DOR);
+            task.setPeriodStart(TODAY.plusDays(number * 7));
+            task.setPeriodEnd(TODAY.plusDays(6 + number * 7));
+            taskRepository.save(task);
+        }
+
+        mockMvc.perform(get("/notifications/unread-count").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.unread").value(8));
+        patientPanel()
+                .andExpect(jsonPath("$.latestNotifications.length()").value(5))
+                .andExpect(jsonPath("$.unreadNotifications").value(8))
+                .andExpect(jsonPath("$.pendingScales.length()").value(5))
+                .andExpect(jsonPath("$.pendingScalesTotal").value(7));
+
+        // a caixa eh pessoal, entao o prescritor tbm n ve quantos avisos o paciente tem
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadNotifications").value(0))
+                .andExpect(jsonPath("$.pendingScalesTotal").value(7));
+    }
+
     // o painel mostra o nome social qnd o paciente tem (RN15)
     @Test
     void oPainelDoPrescritorUsaONomeSocial() throws Exception {
@@ -169,12 +216,16 @@ class DashboardTest {
         response.setPeriodEnd(task.getPeriodEnd());
         responseRepository.save(response);
 
-        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(0));
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
 
         response.setAnnulment(new Annulment(prescriber, "respondeu a semana errada"));
         responseRepository.save(response);
 
-        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(1));
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(1))
+                .andExpect(jsonPath("$.lateScalesTotal").value(1));
     }
 
     // quem foi arquivado saiu do acompanhamento: o q venceu e o q o arquivamento fechou no dia
@@ -195,7 +246,9 @@ class DashboardTest {
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
 
-        prescriberPanel().andExpect(jsonPath("$.lateScales.length()").value(0));
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
         // a do arquivamento ficou com o prazo de hoje e amanha seria vencida
         List<ScaleTask> lateTomorrow = taskRepository.findLateWithoutAnswers(prescriber.getId(),
                 List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), TODAY.plusDays(1),
@@ -239,7 +292,8 @@ class DashboardTest {
 
         prescriberPanel()
                 .andExpect(jsonPath("$.activePatients").value(1))
-                .andExpect(jsonPath("$.waitingRequests.length()").value(0));
+                .andExpect(jsonPath("$.waitingRequests.length()").value(0))
+                .andExpect(jsonPath("$.waitingRequestsTotal").value(0));
     }
 
     private org.springframework.test.web.servlet.ResultActions patientPanel() throws Exception {

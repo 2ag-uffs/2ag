@@ -17,7 +17,10 @@ public record PrescriberDashboardDTO(
         long unreadNotifications,
         List<TodayAppointmentDTO> todaysAppointments,
         List<WaitingRequestDTO> waitingRequests,
-        List<LateScaleDTO> lateScales
+        List<LateScaleDTO> lateScales,
+        // as listas vem cortadas em cinco, entao o total de vdd vem separado
+        long waitingRequestsTotal,
+        long lateScalesTotal
 ) {
     public record TodayAppointmentDTO(
             Long appointmentId,
