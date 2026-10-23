@@ -149,6 +149,62 @@ describe("Escala", () => {
             {periodStart, periodEnd: today, answers: {humorAnsioso: 2}}));
     });
 
+    // o aviso da anulacao abre a tela ja na data anulada (?data=): com a rodada seguinte pendente, a data de
+    // hoje fechava a rodada nova e a reaberta ficava pendente
+    it("pela data do aviso da anulacao, a escala pontual abre na data anulada e salvar envia com ela", async () => {
+        const annulledDay = toIsoDate(addDays(new Date(), -8));
+        const annulled = {...SAVED_RESPONSE, periodStart: annulledDay, periodEnd: annulledDay, annulled: true,
+            editableByPatient: false};
+        const created = {...SAVED_RESPONSE, id: 8, periodStart: annulledDay, periodEnd: annulledDay,
+            answers: {humorAnsioso: 1}};
+        responses = [annulled];
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => {
+            responses = [created, annulled];
+            return Promise.resolve(created);
+        });
+        const put = vi.spyOn(apiService, "put");
+        renderScale("/escalas/hamilton?data=" + annulledDay);
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/foi anulada pelo prescritor e continua no histórico/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Data da avaliação")).toHaveValue(annulledDay);
+        expect(screen.getByLabelText("Humor ansioso")).toHaveValue(null);
+
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText(/Respostas salvas/)).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/scales/hamilton/responses",
+            {periodStart: annulledDay, periodEnd: annulledDay, answers: {humorAnsioso: 1}});
+        expect(put).not.toHaveBeenCalled();
+    });
+
+    // na escala de periodo o aviso chega pelo inicio, e o fim abre como na resposta anulada: com o fim em
+    // hoje a resposta nova caia na pendencia mais nova da escala em vez da reaberta
+    it("pela data do aviso da anulacao, a escala de periodo abre com o periodo da resposta anulada", async () => {
+        const periodStart = toIsoDate(addDays(new Date(), -13));
+        const periodEnd = toIsoDate(addDays(new Date(), -7));
+        const periodScale = {...HAMILTON, type: "REGISTRO_DOR", slug: "registro-dor", fillMode: "PERIODO"};
+        responses = [{...SAVED_RESPONSE, slug: "registro-dor", periodStart, periodEnd, annulled: true,
+            editableByPatient: false}];
+        vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-dor" ? periodScale : responses));
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(
+            {...SAVED_RESPONSE, id: 8, slug: "registro-dor", periodStart, periodEnd, answers: {humorAnsioso: 2}});
+        renderScale("/escalas/registro-dor?data=" + periodStart);
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/foi anulada pelo prescritor e continua no histórico/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Início do período")).toHaveValue(periodStart);
+        expect(screen.getByLabelText("Fim do período")).toHaveValue(periodEnd);
+
+        await user.type(screen.getByLabelText("Humor ansioso"), "2");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        await waitFor(() => expect(post).toHaveBeenCalledWith("/scales/registro-dor/responses",
+            {periodStart, periodEnd, answers: {humorAnsioso: 2}}));
+    });
+
     // RF25 a intensidade da dor eh a escala visual do papel, com as tres faixas nomeadas
     // e coloridas, e n onze botoes soltos. as faixas vem na definicao, como em qualquer escala
     it("o registro de dor mostra a escala visual com as faixas da definicao", async () => {
@@ -371,5 +427,27 @@ describe("Escala diaria", () => {
         const buttons = within(grid).getAllByRole("button");
         expect(buttons).toHaveLength(10);
         expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(taskStart));
+    });
+
+    // o aviso da anulacao abre a grade no dia anulado, da semana reaberta, e n na semana de hoje
+    it("pela data do aviso da anulacao a grade eh a da semana reaberta, e n a de hoje", async () => {
+        const annulledDay = dayFromToday(-5);
+        pendingTasks = [{
+            id: 2, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: taskStart, periodEnd: dayFromToday(-3), status: "PENDENTE", answeredDays: 0,
+            totalDays: 7, daily: true, late: true,
+        }, {
+            id: 3, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: dayFromToday(-2), periodEnd: dayFromToday(4), status: "PENDENTE", answeredDays: 0,
+            totalDays: 7, daily: true, late: false,
+        }];
+        renderScale("/escalas/acompanhamento-semanal?data=" + annulledDay);
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons).toHaveLength(7);
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(taskStart));
+        expect(within(grid).getByRole("button", {pressed: true})).toHaveTextContent(formatWeekdayAndDate(annulledDay));
+        expect(screen.getByText(/Esqueceu algum dia/)).toBeInTheDocument();
     });
 });

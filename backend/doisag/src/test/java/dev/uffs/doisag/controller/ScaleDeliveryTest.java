@@ -3,15 +3,18 @@ package dev.uffs.doisag.controller;
 import com.jayway.jsonpath.JsonPath;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ReminderService;
 import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
@@ -52,6 +55,8 @@ class ScaleDeliveryTest {
     @Autowired private ScaleTaskService scaleTaskService;
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
+    @Autowired private ReminderService reminderService;
+    @Autowired private NotificationRepository notificationRepository;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -207,6 +212,129 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.lateScales.length()").value(0));
     }
 
+    // a anulacao costuma vir dps do prazo: o paciente fica sabendo q precisa responder de novo e por que, e a
+    // tarefa ganha prazo ate depois de amanha, senao o job das 8h fechava ela no dia seguinte antes do lembrete
+    @Test
+    void annullingAfterTheDeadlineTellsThePatientAndGivesANewDeadline() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(9), 7,
+                false);
+        Number answerId = JsonPath.read(answerScale("hamilton", HAMILTON_ANSWERS,
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        ScaleTask reopened = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(reopened.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(reopened.getPeriodStart()).isEqualTo(today.minusDays(9));
+        assertThat(reopened.getPeriodEnd()).isEqualTo(today.plusDays(2));
+        Notification notice = noticeOf(patient, "Escala para responder de novo");
+        assertThat(notice.getMessage()).isEqualTo("Escala de ansiedade de Hamilton: sua resposta foi anulada pelo "
+                + "prescritor. Você tem até " + formatDate(today.plusDays(2)) + " para responder de novo. "
+                + "Motivo: Respondida errado, responda de novo");
+        assertThat(notice.getType()).isEqualTo("FORM");
+        // o aviso abre a tela ja na data anulada
+        assertThat(notice.getLink()).isEqualTo("/escalas/hamilton?data=" + today.minusDays(5));
+
+        // o job das 8h do dia seguinte, na ordem do DailyScheduler
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        reminderService.sendScaleReminders(today.plusDays(1));
+
+        reopened = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(reopened.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(reopened.getReminderSentAt()).isNotNull();
+        assertThat(noticeOf(patient, "Formulário para responder")).isNotNull();
+    }
+
+    // o prazo q ainda da tempo pro lembrete fica como estava
+    @Test
+    void annullingBeforeTheDeadlineKeepsTheDeadline() throws Exception {
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        LocalDate deadline = LocalDate.now().plusDays(6);
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(task.getPeriodEnd()).isEqualTo(deadline);
+        assertThat(noticeOf(patient, "Escala para responder de novo").getMessage())
+                .contains("Você tem até " + formatDate(deadline) + " para responder de novo.");
+    }
+
+    // no diario o periodo eh a semana da grade, entao a semana reaberta n muda e o job das 8h de amanha fecha
+    // ela: o aviso diz qual dia preencher e ate qnd, e abre a grade nesse dia
+    @Test
+    void annullingTheOnlyDiaryDayReopensTheWeekUntilTheNextMorning() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(9), 7, true);
+        String annulledDay = "\"periodStart\":\"" + today.minusDays(5) + "\",";
+        String patientToken = bearerTokenOf(patient);
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", annulledDay, patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        scaleTaskService.closeOverdue(today);
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        ScaleTask reopened = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(reopened.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(reopened.getPeriodEnd()).isEqualTo(today.minusDays(3));
+        Notification notice = noticeOf(patient, "Escala para responder de novo");
+        assertThat(notice.getMessage())
+                .contains("Preencha o dia " + formatDate(today.minusDays(5)) + " de novo até amanhã de manhã.");
+        assertThat(notice.getLink()).isEqualTo("/escalas/acompanhamento-semanal?data=" + today.minusDays(5));
+
+        // o dia preenchido de novo antes do job de amanha vale pela semana reaberta
+        answerScale("acompanhamento-semanal", "{\"dor\":2}", annulledDay, patientToken)
+                .andExpect(status().isCreated());
+        scaleTaskService.closeOverdue(today.plusDays(1));
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+    }
+
+    // sem o dia novo, o job das 8h de amanha fecha a semana reaberta como nao respondida (limite conhecido)
+    @Test
+    void theReopenedDiaryWeekClosesInTheNextMorningJob() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(9), 7, true);
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}",
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        scaleTaskService.closeOverdue(today);
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        reminderService.sendScaleReminders(today.plusDays(1));
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(noticeOf(patient, "Formulário para responder")).isNull();
+    }
+
+    // a tarefa q continua aberta n foi reaberta, entao a anulacao de um dia dela n vira aviso
+    @Test
+    void annullingADayOfTheOpenWeekSendsNoNotice() throws Exception {
+        sendScale("ACOMPANHAMENTO_SEMANAL").andExpect(status().isCreated());
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+    }
+
     // com uma rodada nova aberta, a resposta da data anulada vai pra tarefa daquela data
     @Test
     void theAnswerForTheAnnulledDateGoesToTheReopenedTaskAndNotToTheNewRound() throws Exception {
@@ -223,6 +351,76 @@ class ScaleDeliveryTest {
         annul(firstId.longValue()).andExpect(status().isOk());
 
         answerScale("hamilton", HAMILTON_ANSWERS, answeredDay, patientToken).andExpect(status().isCreated());
+
+        assertThat(taskRepository.findById(oldTask.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(taskRepository.findById(newRound.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+    }
+
+    // no acompanhamento de 90 dias a rodada seguinte costuma estar pendente na hora da anulacao e cobrir hoje:
+    // a tela sugere hoje, e a resposta de hoje fechava a rodada nova, a reaberta levava lembrete de uma escala
+    // ja respondida e virava nao respondida. o aviso abre a tela na data anulada e diz com qual data responder
+    @Test
+    void theAnnulmentNoticeLeadsToTheAnnulledDateWhenTheNextRoundIsOpen() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask oldTask = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(10),
+                7, true);
+        String patientToken = bearerTokenOf(patient);
+        String answeredDay = "\"periodStart\":\"" + today.minusDays(8) + "\",";
+        Number firstId = JsonPath.read(answerScale("hamilton", HAMILTON_ANSWERS, answeredDay, patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        // a rodada seguinte cobre hoje e so vence daqui a cinco dias, entao o lembrete de amanha n eh dela
+        ScaleTask newRound = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(1),
+                7, true);
+
+        annul(firstId.longValue()).andExpect(status().isOk());
+
+        Notification notice = noticeOf(patient, "Escala para responder de novo");
+        assertThat(notice.getLink()).isEqualTo("/escalas/hamilton?data=" + today.minusDays(8));
+        assertThat(notice.getMessage()).isEqualTo("Escala de ansiedade de Hamilton: sua resposta foi anulada pelo "
+                + "prescritor. Você tem até " + formatDate(today.plusDays(2)) + " para responder de novo. "
+                + "Responda com a data " + formatDate(today.minusDays(8)) + ", como na resposta anulada: a data de "
+                + "hoje vale pela pendência mais nova desta escala. Motivo: Respondida errado, responda de novo");
+
+        // o paciente responde pela data q o aviso abriu, e o job de amanha n cobra a escala ja respondida
+        answerScale("hamilton", HAMILTON_ANSWERS, answeredDay, patientToken).andExpect(status().isCreated());
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        reminderService.sendScaleReminders(today.plusDays(1));
+
+        ScaleTask reopened = taskRepository.findById(oldTask.getId()).orElseThrow();
+        assertThat(reopened.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(reopened.getReminderSentAt()).isNull();
+        assertThat(taskRepository.findById(newRound.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(noticeOf(patient, "Formulário para responder")).isNull();
+    }
+
+    // na escala de periodo o aviso diz o periodo inteiro, pq a tela pede o inicio e o fim
+    @Test
+    void theAnnulmentNoticeOfAPeriodScaleSaysThePeriodWhenTheNextRoundIsOpen() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask oldTask = scaleTaskService.assign(patient.getId(), ScaleType.REGISTRO_DOR, today.minusDays(13),
+                7, true);
+        String patientToken = bearerTokenOf(patient);
+        String answeredWeek = periodOf(today.minusDays(13), today.minusDays(7));
+        Number firstId = JsonPath.read(answerScale("registro-dor", "{\"intensidadeDor\":7}", answeredWeek,
+                patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        ScaleTask newRound = scaleTaskService.assign(patient.getId(), ScaleType.REGISTRO_DOR, today.minusDays(6),
+                7, true);
+
+        annul(firstId.longValue()).andExpect(status().isOk());
+
+        Notification notice = noticeOf(patient, "Escala para responder de novo");
+        assertThat(notice.getLink()).isEqualTo("/escalas/registro-dor?data=" + today.minusDays(13));
+        assertThat(notice.getMessage()).contains("Responda com o período de " + formatDate(today.minusDays(13))
+                + " a " + formatDate(today.minusDays(7)) + ", como na resposta anulada");
+
+        answerScale("registro-dor", "{\"intensidadeDor\":5}", answeredWeek, patientToken)
+                .andExpect(status().isCreated());
 
         assertThat(taskRepository.findById(oldTask.getId()).orElseThrow().getStatus())
                 .isEqualTo(ScaleTaskStatus.RESPONDIDA);
@@ -416,9 +614,13 @@ class ScaleDeliveryTest {
         mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.pendingScales.length()").value(0));
-        // o aviso do diario fecha so no caminho do diario, a anamnese n avisa ninguem
+        // RF15 a avaliacao inicial respondida avisa o prescritor como as outras escalas
         mockMvc.perform(get("/notifications").header("Authorization", bearerTokenOf(prescriber)))
-                .andExpect(jsonPath("$.notifications.length()").value(0));
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.notifications[0].title").value("Escala respondida"))
+                .andExpect(jsonPath("$.notifications[0].message")
+                        .value("Paciente do envio respondeu Avaliação inicial."))
+                .andExpect(jsonPath("$.notifications[0].link").value("/paciente/" + patient.getId() + "/historico"));
     }
 
     // RN10 escala pontuada pela metade fica sem escore, mas n pode contar como semana cumprida
@@ -746,6 +948,17 @@ class ScaleDeliveryTest {
     // o comeco do corpo q a tela manda na escala de periodo, com o inicio e o fim
     private String periodOf(LocalDate start, LocalDate end) {
         return "\"periodStart\":\"" + start + "\",\"periodEnd\":\"" + end + "\",";
+    }
+
+    private Notification noticeOf(Users owner, String title) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(owner.getId()).stream()
+                .filter(notification -> notification.getTitle().equals(title))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String formatDate(LocalDate date) {
+        return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
     }
 
     private String bearerTokenOf(Users user) {

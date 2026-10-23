@@ -1,5 +1,8 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.dto.AgendaAppointmentDTO;
+import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
+import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.email.EmailSender;
 import dev.uffs.doisag.enums.AppointmentModality;
@@ -7,6 +10,7 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
@@ -17,6 +21,7 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.ReminderService;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
@@ -67,6 +72,7 @@ class ReminderTest {
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private AppointmentService appointmentService;
 
     @MockitoBean private EmailSender emailSender;
 
@@ -255,6 +261,90 @@ class ReminderTest {
         assertThat(reminderService.sendScaleReminders(TODAY.plusDays(9))).isEqualTo(1);
     }
 
+    // remarcada pra outro horario de amanha dps do lembrete das 8h: o job de amanha ja olha o dia seguinte,
+    // entao o lembrete do horario novo sai na hora, senao o paciente ficava so com o e-mail do horario antigo
+    @Test
+    void aConsultaRemarcadaParaAmanhaDepoisDoLembreteGanhaOLembreteDoHorarioNovo() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(1).atTime(14, 0), AppointmentModality.PRESENCIAL, null, null));
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emails.capture());
+        assertThat(emails.getAllValues().get(0).text()).contains("às 09:00");
+        assertThat(emails.getAllValues().get(1).text()).contains("às 14:00");
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getReminderSentAt()).isNotNull();
+        // o job de amanha olha o dia seguinte, e o de hoje rodando de novo n repete
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isZero();
+    }
+
+    // a consulta marcada pra amanha dps do job de hoje n entra em job nenhum, entao o lembrete sai na hora,
+    // sem depender do ciclo do dia. o job q rodar depois trava a consulta, le ela de novo e n repete
+    @Test
+    void aConsultaMarcadaParaAmanhaGanhaOLembreteNaHoraEOJobNaoRepete() {
+        AgendaAppointmentDTO scheduled = appointmentService.schedule(new AppointmentScheduleDTO(patient.getId(),
+                TODAY.plusDays(1).atTime(15, 0), AppointmentModality.PRESENCIAL, null, null), prescriber.getId());
+        // a de depois de amanha fica com o job de amanha
+        appointmentService.schedule(new AppointmentScheduleDTO(patient.getId(),
+                TODAY.plusDays(2).atTime(15, 0), AppointmentModality.PRESENCIAL, null, null), prescriber.getId());
+
+        assertThat(remindersOf(patient)).hasSize(1);
+        ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(email.capture());
+        assertThat(email.getValue().text()).contains("às 15:00");
+        assertThat(appointmentRepository.findById(scheduled.id()).orElseThrow().getReminderSentAt()).isNotNull();
+
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isZero();
+        assertThat(remindersOf(patient)).hasSize(1);
+        verify(emailSender, times(1)).send(any());
+    }
+
+    // o pedido confirmado pra amanha tbm
+    @Test
+    void oPedidoConfirmadoParaAmanhaGanhaOLembreteNaHora() {
+        Appointment request = saveAppointment(TODAY.plusDays(1).atTime(10, 0), AppointmentStatus.SOLICITADA);
+
+        appointmentService.confirm(request.getId());
+
+        ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(email.capture());
+        assertThat(email.getValue().text()).contains("às 10:00");
+    }
+
+    // a tela de remarcar manda a mesma data qnd so troca a modalidade, a duracao ou o tipo: o lembrete q ja
+    // saiu continua valendo e n sai outro igual, nem no job
+    @Test
+    void aEdicaoNoMesmoHorarioDepoisDoLembreteNaoMandaOutro() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(1).atTime(9, 0), AppointmentModality.REMOTA, 30, null));
+
+        Appointment edited = appointmentRepository.findById(appointment.getId()).orElseThrow();
+        assertThat(edited.getModality()).isEqualTo(AppointmentModality.REMOTA);
+        assertThat(edited.getReminderSentAt()).isNotNull();
+        assertThat(remindersOf(patient)).hasSize(1);
+        verify(emailSender, times(1)).send(any());
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isZero();
+    }
+
+    // o lembrete na hora segue a mesma regra do job: so o aviso no sistema pra quem desligou o e-mail
+    @Test
+    void oLembreteNaHoraRespeitaAPreferenciaDeEmail() {
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+        Appointment appointment = saveAppointment(TODAY.plusDays(3).atTime(9, 0), AppointmentStatus.AGENDADA);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(1).atTime(16, 0), AppointmentModality.REMOTA, null, null));
+
+        assertThat(notificationsOf(patient)).extracting(Notification::getTitle).contains("Consulta amanhã");
+        verify(emailSender, never()).send(any());
+    }
+
     // conta desativada n consegue entrar pra desligar o e-mail no perfil
     @Test
     void contaDesativadaNaoRecebeEmailDeLembrete() {
@@ -267,8 +357,15 @@ class ReminderTest {
         verify(emailSender, never()).send(any());
     }
 
-    private List<dev.uffs.doisag.model.Notification> notificationsOf(Patient owner) {
+    private List<Notification> notificationsOf(Patient owner) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(owner.getId());
+    }
+
+    // so os lembretes de consulta, sem o aviso de marcada ou remarcada
+    private List<Notification> remindersOf(Patient owner) {
+        return notificationsOf(owner).stream()
+                .filter(notification -> notification.getTitle().equals("Consulta amanhã"))
+                .toList();
     }
 
     private Appointment saveAppointment(LocalDateTime dateTime, AppointmentStatus status) {

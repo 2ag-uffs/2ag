@@ -102,6 +102,7 @@ public class AppointmentService {
     private final PrescriberDayOffRepository dayOffRepository;
     private final AuditService auditService;
     private final ConsultationService consultationService;
+    private final ReminderService reminderService;
     private final RowLock rowLock;
     private final TransactionTemplate transactionTemplate;
     private NotificationService notificationService;
@@ -110,8 +111,8 @@ public class AppointmentService {
                               PrescriberRepository prescriberRepository,
                               PrescriberAvailabilityRepository availabilityRepository,
                               PrescriberDayOffRepository dayOffRepository, AuditService auditService,
-                              ConsultationService consultationService, RowLock rowLock,
-                              PlatformTransactionManager transactionManager) {
+                              ConsultationService consultationService, ReminderService reminderService,
+                              RowLock rowLock, PlatformTransactionManager transactionManager) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
@@ -119,6 +120,7 @@ public class AppointmentService {
         this.dayOffRepository = dayOffRepository;
         this.auditService = auditService;
         this.consultationService = consultationService;
+        this.reminderService = reminderService;
         this.rowLock = rowLock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
@@ -161,6 +163,7 @@ public class AppointmentService {
                 "Sua consulta com " + prescriber.getName() + " foi marcada para "
                         + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
+        reminderService.remindNowIfTomorrow(savedAppointment);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -245,6 +248,7 @@ public class AppointmentService {
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " em "
                         + formatDateTime(savedAppointment) + " foi confirmada.",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
+        reminderService.remindNowIfTomorrow(savedAppointment);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -342,6 +346,8 @@ public class AppointmentService {
         checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
                 appointment.getId());
 
+        // a tela de remarcar manda a mesma data qnd so troca modalidade, duracao ou tipo
+        boolean timeChanged = !appointment.getDateTime().equals(rescheduleData.dateTime());
         appointment.setDateTime(rescheduleData.dateTime());
         appointment.setModality(rescheduleData.modality());
         appointment.setDurationMinutes(durationMinutes);
@@ -349,13 +355,19 @@ public class AppointmentService {
             appointment.setAppointmentType(newType);
         }
         appointment.setStatus(AppointmentStatus.AGENDADA);
-        // o horario mudou entao o lembrete precisa sair de novo pro horario novo
-        appointment.setReminderSentAt(null);
+        // so o horario novo precisa de lembrete de novo: a edicao no mesmo horario repetia o "consulta amanha"
+        if (timeChanged) {
+            appointment.setReminderSentAt(null);
+        }
         Appointment savedAppointment = saveChange(appointment);
         notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada",
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "
                         + formatDateTime(savedAppointment) + ".",
                 "APPOINTMENT", PATIENT_AGENDA_LINK);
+        // remarcada pra amanha, o lembrete do horario novo sai agora: o job de amanha ja olha o dia seguinte,
+        // e quem recebeu o e-mail do horario antigo ficava so com ele. a q ja tem lembrete (mesmo horario) n
+        // ganha outro, e o pedido q vira consulta no mesmo horario ganha o primeiro
+        reminderService.remindNowIfTomorrow(savedAppointment);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 

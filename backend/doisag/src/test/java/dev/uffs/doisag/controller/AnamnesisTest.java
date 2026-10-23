@@ -4,7 +4,9 @@ import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.repository.AnamnesisRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +49,7 @@ class AnamnesisTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
     @Autowired private AnamnesisRepository anamnesisRepository;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -77,6 +81,31 @@ class AnamnesisTest {
                 .andExpect(jsonPath("$.treatmentAwareness").value("Sim"))
                 .andExpect(jsonPath("$.patientName").value("Paciente da anamnese"))
                 .andExpect(jsonPath("$.annulled").value(false));
+    }
+
+    // RF15 a avaliacao inicial respondida avisa o prescritor igual as outras escalas, e a correcao n avisa de novo
+    @Test
+    void sendingTheAnamnesisNotifiesThePrescriber() throws Exception {
+        Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        updateAnamnesis(anamnesisId, answers(), patient).andExpect(status().isOk());
+
+        List<Notification> notices = notificationRepository.findByUserIdOrderByCreatedAtDesc(prescriber.getId());
+        assertThat(notices).hasSize(1);
+        assertThat(notices.get(0).getTitle()).isEqualTo("Escala respondida");
+        assertThat(notices.get(0).getMessage()).isEqualTo("Paciente da anamnese respondeu Avaliação inicial.");
+        assertThat(notices.get(0).getType()).isEqualTo("FORM");
+        assertThat(notices.get(0).getLink()).isEqualTo("/paciente/" + patient.getId() + "/historico");
+    }
+
+    // sem prescritor n tem quem avisar, e a ficha eh gravada do mesmo jeito
+    @Test
+    void aPatientWithoutPrescriberSendsTheAnamnesisWithoutNotice() throws Exception {
+        patient.setPrescriber(null);
+        patientRepository.save(patient);
+
+        fillAnamnesis(answers()).andExpect(status().isCreated());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(prescriber.getId())).isEmpty();
     }
 
     @Test

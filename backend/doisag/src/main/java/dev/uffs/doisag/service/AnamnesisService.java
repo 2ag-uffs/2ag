@@ -65,8 +65,9 @@ public class AnamnesisService {
 
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), current.getId());
-        // preencher a anamnese da baixa na tarefa q o prescritor enviou igual as outras escalas
+        // preencher a anamnese da baixa na tarefa q o prescritor enviou e avisa ele, igual as outras escalas
         scaleTaskService.completeTask(current.getId(), ScaleType.ANAMNESE);
+        scaleTaskService.notifyPrescriberOfAnswer(current, ScaleType.ANAMNESE);
         return new AnamnesisResponseDTO(savedAnamnesis);
     }
 

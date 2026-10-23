@@ -53,6 +53,9 @@ public class ScaleTaskService {
 
     // quanto tempo o paciente tem pra responder uma escala avulsa
     private static final int DEFAULT_TASK_DAYS = 7;
+    // a tarefa reaberta pela anulacao vale pelo menos ate depois de amanha: o job de amanha n fecha ela
+    // e o lembrete, q sai faltando dois dias pro prazo, ainda cobra
+    private static final int REOPENED_TASK_DAYS = 2;
 
     private final ScaleTaskRepository taskRepository;
     private final ScaleResponseRepository responseRepository;
@@ -257,15 +260,86 @@ public class ScaleTaskService {
     }
 
     // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
+    // devolve se ela estava fechada e foi reaberta
     @Transactional
-    public void reopenIfWithoutAnswers(ScaleTask task) {
+    public boolean reopenIfWithoutAnswers(ScaleTask task) {
         if (task == null || validAnswersOf(task) > 0) {
-            return;
+            return false;
         }
+        boolean wasClosed = task.getStatus() != ScaleTaskStatus.PENDENTE;
         task.setStatus(ScaleTaskStatus.PENDENTE);
         task.setAnsweredAt(null);
         task.setReminderSentAt(null);
         taskRepository.save(task);
+        return wasClosed;
+    }
+
+    // a anulacao q reabre a tarefa avisa o paciente pra responder de novo, com o motivo
+    // a anulacao costuma vir dps do prazo, e o job das 8h fechava a tarefa como nao respondida no dia
+    // seguinte, antes de o lembrete sair. entao o prazo q acaba antes de depois de amanha passa pra
+    // depois de amanha. o inicio fica, e a resposta nova da data anulada continua caindo nela
+    // o aviso abre a tela ja na data anulada (?data=): a tela sugere hoje, e com a rodada seguinte ja
+    // pendente a resposta de hoje fechava a rodada nova e a reaberta ficava pendente ate virar nao respondida
+    // no diario o periodo eh a semana da grade e n muda, senao os dias da semana seguinte caiam nas duas,
+    // entao o job das 8h de amanha fecha a semana reaberta e o aviso diz isso
+    @Transactional
+    public void reopenAfterAnnulment(ScaleResponse annulledResponse) {
+        ScaleTask task = annulledResponse.getTask();
+        if (!reopenIfWithoutAnswers(task)) {
+            return;
+        }
+        ScaleType scaleType = task.getScaleType();
+        LocalDate annulledDay = annulledResponse.getPeriodStart();
+        LocalDate today = LocalDate.now();
+        String whatToDo;
+        if (isDaily(scaleType)) {
+            whatToDo = "Preencha o dia " + formatDate(annulledDay) + " de novo até amanhã de manhã.";
+        } else {
+            LocalDate lastDay = today.plusDays(REOPENED_TASK_DAYS);
+            if (task.getPeriodEnd().isBefore(lastDay)) {
+                task.setPeriodEnd(lastDay);
+                taskRepository.save(task);
+            }
+            whatToDo = "Você tem até " + formatDate(task.getPeriodEnd()) + " para responder de novo.";
+            // com outra pendente da mesma escala cobrindo hoje, a data de hoje eh dela e n da reaberta
+            if (anotherPendingCoversToday(task, today)) {
+                whatToDo = whatToDo + " Responda com " + periodTextOf(annulledResponse)
+                        + ", como na resposta anulada: a data de hoje vale pela pendência mais nova desta escala.";
+            }
+        }
+        Patient patient = task.getPatient();
+        notificationService.createNotification(patient, "Escala para responder de novo",
+                scaleType.getDisplayName() + ": sua resposta foi anulada pelo prescritor. " + whatToDo
+                        + " Motivo: " + annulledResponse.getAnnulment().getAnnulmentReason(),
+                "FORM", scaleType.getPath() + "?data=" + annulledDay);
+    }
+
+    // a pendente q cobre hoje eh outra q n a reaberta (a rodada seguinte, ou uma avulsa enviada depois)
+    private boolean anotherPendingCoversToday(ScaleTask reopened, LocalDate today) {
+        Optional<ScaleTask> taskOfToday = pendingTaskOfDay(reopened.getPatient().getId(), reopened.getScaleType(),
+                today);
+        return taskOfToday.isPresent() && !taskOfToday.get().getId().equals(reopened.getId());
+    }
+
+    // a data q a tela pede: na de periodo eh o inicio e o fim, nas outras a data da avaliacao
+    private String periodTextOf(ScaleResponse response) {
+        if (isPeriod(response.getScaleType())) {
+            return "o período de " + formatDate(response.getPeriodStart()) + " a "
+                    + formatDate(response.getPeriodEnd());
+        }
+        return "a data " + formatDate(response.getPeriodStart());
+    }
+
+    // RF15 a conclusao de uma escala avisa o prescritor, e a avaliacao inicial tbm
+    // o diario avisa no fechamento do periodo, no closeOverdue
+    public void notifyPrescriberOfAnswer(Patient patient, ScaleType scaleType) {
+        Prescriber prescriber = patient.getPrescriber();
+        if (prescriber == null) {
+            return;
+        }
+        notificationService.createNotification(prescriber, "Escala respondida",
+                patient.getDisplayName() + " respondeu " + scaleType.getDisplayName() + ".",
+                "FORM", "/paciente/" + patient.getId() + "/historico");
     }
 
     // resposta anulada n conta, entao a tarefa dela continua precisando de resposta

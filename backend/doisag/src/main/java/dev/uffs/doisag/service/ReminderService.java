@@ -112,11 +112,33 @@ public class ReminderService {
 
     private boolean remindAppointment(Long appointmentId, LocalDate tomorrow) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId).orElse(null);
-        if (appointment == null || appointment.getStatus() != AppointmentStatus.AGENDADA || appointment.isAnnulled()
-                || appointment.getReminderSentAt() != null
-                || !appointment.getDateTime().toLocalDate().equals(tomorrow)) {
+        if (appointment == null || !canBeReminded(appointment, tomorrow)) {
             return false;
         }
+        remind(appointment);
+        return true;
+    }
+
+    // a consulta marcada, confirmada ou remarcada pra amanha dps do job de hoje ficava sem lembrete, pq o job
+    // de amanha ja olha o dia seguinte. ela ganha o lembrete na hora, pelo mesmo caminho do job. sai uma vez
+    // so sem olhar o ciclo do dia: a data do lembrete fica gravada, e o job trava a consulta e le ela de novo
+    // antes de mandar, entao pula a q ja tem
+    // quem chama ja travou a consulta (ou acabou de criar) e gravou a mudanca, entao aqui n trava de novo
+    public boolean remindNowIfTomorrow(Appointment appointment) {
+        if (!canBeReminded(appointment, LocalDate.now().plusDays(1))) {
+            return false;
+        }
+        remind(appointment);
+        return true;
+    }
+
+    private boolean canBeReminded(Appointment appointment, LocalDate tomorrow) {
+        return appointment.getStatus() == AppointmentStatus.AGENDADA && !appointment.isAnnulled()
+                && appointment.getReminderSentAt() == null
+                && appointment.getDateTime().toLocalDate().equals(tomorrow);
+    }
+
+    private void remind(Appointment appointment) {
         Patient patient = appointment.getPatient();
         String when = formatDate(appointment.getDateTime().toLocalDate())
                 + " às " + formatTime(appointment.getDateTime());
@@ -129,7 +151,6 @@ public class ReminderService {
 
         appointment.setReminderSentAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
-        return true;
     }
 
     // o formulario q vence logo e ainda n teve resposta nenhuma

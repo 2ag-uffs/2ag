@@ -110,13 +110,16 @@ export default function Escala() {
     const isPeriod = definition ? definition.fillMode === "PERIODO" : false;
 
     // a tarefa aberta dessa escala, pq a grade do diario precisa seguir a janela dela
+    // com a data na url (o aviso da anulacao abre no dia anulado) vale a pendente q cobre esse dia, q eh a
+    // semana reaberta e n a de hoje
     useEffect(() => {
         if (!isDiary) {
             return;
         }
+        const gridDay = chosenDate && chosenDate <= today ? chosenDate : today;
         apiService.get("/patients/" + loggedUser.id + "/scales/overview")
             .then((page) => {
-                const task = openTaskOf(page.pending, slug, today);
+                const task = openTaskOf(page.pending, slug, gridDay);
                 setOpenTask(task);
                 // a pendente q ja venceu ainda aceita os dias dela (antes do job das 8h, ou qnd volta pela
                 // anulacao), entao a tela abre no ultimo dia dela e a grade mostra o periodo dela
@@ -162,15 +165,20 @@ export default function Escala() {
     const currentResponse = useMemo(
         () => responses.find((response) => response.periodStart === selectedDay && !response.annulled) || null,
         [responses, selectedDay]);
-    const hasAnnulledResponse = currentResponse === null
-        && responses.some((response) => response.periodStart === selectedDay && response.annulled);
+    const annulledResponse = currentResponse === null
+        ? responses.find((response) => response.periodStart === selectedDay && response.annulled) || null
+        : null;
+    const hasAnnulledResponse = annulledResponse !== null;
 
     // cada dia mostra o q ja foi respondido nele ou o q a paciente esta mexendo
     // dia em branco abre em branco e a tela nunca sugere valor (RN10)
     const savedValues = currentResponse ? answersToValues(currentResponse.answers) : {};
     const values = editsByDay[selectedDay] || savedValues;
-    // o periodo ja respondido abre com o fim q foi salvo e n com hoje
-    const periodEnd = periodEndByDay[selectedDay] || (currentResponse ? currentResponse.periodEnd : today);
+    // o periodo ja respondido abre com o fim q foi salvo e n com hoje. o so com resposta anulada abre com o
+    // fim dela: o aviso da anulacao chega pela data, e com o fim em hoje a resposta nova caia na pendencia
+    // mais nova da escala em vez da reaberta
+    const savedResponse = currentResponse || annulledResponse;
+    const periodEnd = periodEndByDay[selectedDay] || (savedResponse ? savedResponse.periodEnd : today);
 
     // o recado de um dia n vale pro outro entao trocar de dia limpa os avisos
     // salvar n passa por aqui e o recado de salvo continua na tela

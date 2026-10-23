@@ -23,8 +23,6 @@ import dev.uffs.doisag.scale.ScaleDefinition;
 import dev.uffs.doisag.scale.ScaleItem;
 import dev.uffs.doisag.scale.ScaleOption;
 import dev.uffs.doisag.scale.ScaleScorer;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,7 +76,6 @@ public class ScaleResponseService {
     private final ScaleScorer scorer;
     private final AuditService auditService;
     private final RowLock rowLock;
-    private NotificationService notificationService;
 
     public ScaleResponseService(ScaleResponseRepository responseRepository,
                                 PatientRepository patientRepository,
@@ -96,11 +93,6 @@ public class ScaleResponseService {
         this.scorer = scorer;
         this.auditService = auditService;
         this.rowLock = rowLock;
-    }
-
-    @Autowired
-    public void setNotificationService(@Lazy NotificationService notificationService) {
-        this.notificationService = notificationService;
     }
 
     // o paciente responde uma escala dele
@@ -149,7 +141,7 @@ public class ScaleResponseService {
         // o aviso sai qnd a escala fica completa, e o diario avisa uma vez so no fim do periodo
         boolean becameComplete = isComplete && (isNew || !wasComplete);
         if (becameComplete && definition.fillMode() != ScaleDefinition.FillMode.DIARIO) {
-            notifyPrescriber(savedResponse);
+            taskService.notifyPrescriberOfAnswer(savedResponse.getPatient(), savedResponse.getScaleType());
         }
         return new AnswerResult(dtoOf(savedResponse), isNew);
     }
@@ -247,7 +239,7 @@ public class ScaleResponseService {
         boolean isComplete = !definition.isIncomplete(savedResponse.getScore());
         linkOrUnlinkAfterCorrection(savedResponse, wasComplete, isComplete);
         if (!wasComplete && isComplete) {
-            notifyPrescriber(savedResponse);
+            taskService.notifyPrescriberOfAnswer(savedResponse.getPatient(), savedResponse.getScaleType());
         }
         return dtoOf(savedResponse);
     }
@@ -293,7 +285,7 @@ public class ScaleResponseService {
         responseRepository.save(response);
         // sem resposta valida a tarefa volta a ser cobrada, senao aquele periodo
         // fica sem ninguem preencher e vira buraco no grafico sem aviso nenhum
-        taskService.reopenIfWithoutAnswers(response.getTask());
+        taskService.reopenAfterAnnulment(response);
         auditService.recordAnnulment(response.getScaleType().getAuditRecordType(), response.getId(),
                 response.getPatient().getId());
         return dtoOf(response);
@@ -523,18 +515,6 @@ public class ScaleResponseService {
         if (response.isReviewed()) {
             throw new BusinessException(REVIEWED_MESSAGE);
         }
-    }
-
-    // RF15 a conclusao de uma escala avisa o prescritor
-    // o diario avisa no fechamento do periodo, no ScaleTaskService.closeOverdue
-    private void notifyPrescriber(ScaleResponse response) {
-        Prescriber prescriber = response.getPatient().getPrescriber();
-        if (prescriber == null) {
-            return;
-        }
-        notificationService.createNotification(prescriber, "Escala respondida",
-                response.getPatient().getDisplayName() + " respondeu " + response.getScaleType().getDisplayName() + ".",
-                "FORM", "/paciente/" + response.getPatient().getId() + "/historico");
     }
 
     private ScaleResponseDTO dtoOf(ScaleResponse response) {
