@@ -8,6 +8,7 @@ import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.AvailabilityDTO;
 import dev.uffs.doisag.dto.AvailabilityPeriodDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
+import dev.uffs.doisag.dto.CpfRules;
 import dev.uffs.doisag.dto.DoseEscalationStepDTO;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionComponentDTO;
@@ -566,18 +567,8 @@ public class DevDemoData {
         return result;
     }
 
-    // monta um cpf valido a partir de 9 numeros pra passar na conferencia do cadastro
+    // monta um cpf valido a partir de 9 numeros, com a mesma conta q o cadastro confere
     private String validCpf(String firstNineDigits) {
-        String digits = firstNineDigits;
-        for (int round = 0; round < 2; round++) {
-            int sum = 0;
-            int weight = digits.length() + 1;
-            for (int index = 0; index < digits.length(); index++) {
-                sum = sum + Character.getNumericValue(digits.charAt(index)) * (weight - index);
-            }
-            int rest = (sum * 10) % 11;
-            digits = digits + (rest == 10 ? 0 : rest);
-        }
-        return digits;
+        return CpfRules.withCheckDigits(firstNineDigits);
     }
 }

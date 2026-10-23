@@ -103,7 +103,7 @@ Autoatendimento. O paciente informa nome completo, CPF, e-mail, data de nascimen
 *Critérios de aceite:*
 - E-mail e CPF são únicos no sistema (ver RN04)
 - Senha com mínimo de 8 caracteres, uma maiúscula, um número e um caractere especial
-- CPF validado por dígito verificador
+- CPF validado pelos dois dígitos verificadores (módulo 11), conferidos pelo próprio sistema, sem biblioteca: o navegador avisa no campo antes de enviar e a API confere de novo. Sequência de um número só repetido (111.111.111-11) é recusada mesmo fechando a conta (23/10/2026)
 - E-mail sem ponto depois do @ (`maria@gmail`) é recusado no campo, porque o link de senha nova e os lembretes nunca chegariam. A mesma regra vale na troca de e-mail do perfil e na conta de prescritor criada ou corrigida pela administração (16/10/2026)
 - Código de prescritor inexistente rejeita o cadastro com **400** e mensagem clara
 - O vínculo paciente→prescritor é criado no cadastro e é imutável pelo próprio paciente (ver RN05)
@@ -118,6 +118,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, data de nascimento, telefone, e
 
 *Critérios de aceite:*
 - A combinação tipo + número de registro é única. *O conselho é comparado e guardado em maiúsculas e o número sem espaço nas pontas, então "crbm" e "77777 " são o mesmo registro que "CRBM" e "77777" (16/10/2026)*
+- O CPF passa pela mesma conferência dos dois dígitos verificadores do cadastro do paciente (RF02.1), feita pelo próprio sistema (23/10/2026)
 - O sistema gera um **código de vínculo** único por prescritor (ver RN06)
 - Requisição anônima a qualquer rota de criação de prescritor retorna **401/403**
 - O administrador **não escolhe nem conhece** a senha do prescritor: a conta nasce com um link de primeiro acesso de uso único (48 h), enviado por e-mail ou, sem SMTP, mostrado ao administrador para entregar. Quem cria a senha é o próprio prescritor

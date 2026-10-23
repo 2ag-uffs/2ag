@@ -11,6 +11,7 @@ import {isStrongPassword} from "../../components/form/password-rules.js";
 import Modal from "../../components/modal/modal.jsx";
 import {apiService, ApiError, getLoggedUser, logout, setLoggedUser} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
+import {isValidCpf} from "../../utils/cpf.js";
 import {ACCEPT_BUTTON_TEXT, ageBandOf, findGuardianErrors, guardianBody} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./sign-up.module.css";
@@ -45,6 +46,9 @@ function findFormErrors(formData, hasAcceptedConsent, ageBand) {
     const errors = findGuardianErrors(formData, ageBand !== "adult");
     if (onlyDigits(formData.cpf).length !== 11) {
         errors.cpf = "O CPF tem 11 números";
+    } else if (!isValidCpf(formData.cpf)) {
+        // a mesma mensagem q a api devolve, so q antes de mandar
+        errors.cpf = "CPF inválido. Confira os números";
     }
     if (onlyDigits(formData.phone).length < 10) {
         errors.phone = "Informe o telefone com DDD";

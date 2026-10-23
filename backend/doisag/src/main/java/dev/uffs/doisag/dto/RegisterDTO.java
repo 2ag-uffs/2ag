@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
@@ -26,7 +25,7 @@ public record RegisterDTO(
         String socialName,
 
         @NotBlank(message = "Informe o CPF")
-        @CPF(message = "CPF inválido. Confira os números")
+        @ValidCpf(message = "CPF inválido. Confira os números")
         String cpf,
 
         @NotNull(message = "Informe a data de nascimento")

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import org.hibernate.validator.constraints.br.CPF;
 
 import java.time.LocalDate;
 
@@ -24,7 +23,7 @@ public record PrescriberCreateDTO(
         String email,
 
         @NotBlank(message = "O CPF é obrigatório")
-        @CPF(message = "O CPF informado é inválido")
+        @ValidCpf(message = "O CPF informado é inválido")
         String cpf,
 
         @Past(message = "A data de nascimento deve ser uma data no passado")

@@ -184,6 +184,21 @@ describe("SignUp", () => {
         expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
     }, TYPING_TIMEOUT);
 
+    // o digito verificador eh conferido no navegador antes de mandar, com a mesma mensagem da api
+    it("cpf com digito verificador errado avisa no campo e n manda", async () => {
+        const post = mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        await user.clear(screen.getByLabelText("CPF"));
+        await user.type(screen.getByLabelText("CPF"), "52998224726");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("CPF inválido. Confira os números")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
+    }, TYPING_TIMEOUT);
+
     it("menor manda o responsavel legal e nunca a pesquisa, mesmo marcada antes", async () => {
         const post = mockApi();
         const user = userEvent.setup();
