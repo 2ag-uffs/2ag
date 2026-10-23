@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {useNavigate, useParams} from "react-router";
+import {useLocation, useNavigate, useParams} from "react-router";
 import {FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
@@ -74,14 +74,17 @@ function recordFromAppointment(appointment) {
 // abre vazio pra uma consulta nova ou com os dados de uma consulta q ja existe
 export default function ConsultationRecord() {
     const navigate = useNavigate();
+    const location = useLocation();
     const {patientId, appointmentId} = useParams();
     const isNewConsultation = appointmentId === undefined;
+    // consulta nova q acabou de ser salva, ja no endereco dela
+    const wasJustRegistered = Boolean(location.state && location.state.registered);
 
     const [patient, setPatient] = useState(null);
     const [record, setRecord] = useState(() => ({...EMPTY_RECORD, dateTime: nowForInput()}));
     // consulta anulada ou cancelada abre so pra leitura
     const [blockedMessage, setBlockedMessage] = useState(null);
-    const [savedAppointmentId, setSavedAppointmentId] = useState(null);
+    const [isUpdated, setIsUpdated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [loadError, setLoadError] = useState(null);
@@ -159,10 +162,15 @@ export default function ConsultationRecord() {
         };
 
         try {
-            const savedAppointment = isNewConsultation
-                ? await apiService.post("/patients/" + patientId + "/appointments", requestBody)
-                : await apiService.put("/appointments/" + appointmentId + "/clinical-record", requestBody);
-            setSavedAppointmentId(savedAppointment.id);
+            if (isNewConsultation) {
+                const savedAppointment = await apiService.post("/patients/" + patientId + "/appointments", requestBody);
+                // o endereco de consulta nova vira o da consulta salva
+                // senao voltar ou recarregar abre o formulario vazio e salvar de novo cria outra consulta
+                navigate("/consulta/" + savedAppointment.id + "/registro", {replace: true, state: {registered: true}});
+            } else {
+                await apiService.put("/appointments/" + appointmentId + "/clinical-record", requestBody);
+                setIsUpdated(true);
+            }
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
@@ -186,11 +194,11 @@ export default function ConsultationRecord() {
         return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
     }
 
-    if (savedAppointmentId !== null) {
+    if (isUpdated || wasJustRegistered) {
         return (
             <section className={styles.page}>
                 <PageHeader
-                    title={isNewConsultation ? "Consulta registrada" : "Registro atualizado"}
+                    title={wasJustRegistered ? "Consulta registrada" : "Registro atualizado"}
                     subtitle={patient.name}
                 />
                 <Card>
@@ -202,14 +210,14 @@ export default function ConsultationRecord() {
                         <button
                             type="button"
                             className="button"
-                            onClick={() => navigate("/consulta/" + savedAppointmentId + "/prescricao")}
+                            onClick={() => navigate("/consulta/" + appointmentId + "/prescricao")}
                         >
                             Emitir prescrição
                         </button>
                         <button
                             type="button"
                             className="button-secondary"
-                            onClick={() => navigate("/consulta/" + savedAppointmentId + "/mini-exame")}
+                            onClick={() => navigate("/consulta/" + appointmentId + "/mini-exame")}
                         >
                             Aplicar mini-exame
                         </button>

@@ -173,7 +173,9 @@
     width: 0.75rem;
 }
 
+/* comentario eh texto livre: link ou palavra comprida quebra em vez de alargar a tela */
 .commentText {
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
 

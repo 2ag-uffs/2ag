@@ -83,6 +83,11 @@
     font-weight: 600;
 }
 
+/* o motivo da recusa eh texto livre e pode trazer um link comprido, q quebra em vez de alargar a tela */
+.message {
+    overflow-wrap: anywhere;
+}
+
 .actions {
     align-self: center;
     display: flex;

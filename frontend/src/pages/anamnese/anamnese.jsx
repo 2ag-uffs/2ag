@@ -135,13 +135,18 @@ export default function Anamnese() {
             requestBody[fieldName] = answer === "" ? null : answer;
         });
 
+        // a ficha enviada sai do historico do navegador
+        // senao o voltar do celular reabre a ficha em branco e enviar de novo cria outra anamnese
         try {
             if (isCorrection) {
                 await apiService.put("/anamneses/" + anamnesisId, requestBody);
-                navigate(exitPath, {state: {notice: "Correção da anamnese salva. O seu prescritor já vê a ficha nova."}});
+                navigate(exitPath, {
+                    replace: true,
+                    state: {notice: "Correção da anamnese salva. O seu prescritor já vê a ficha nova."},
+                });
             } else {
                 await apiService.post("/anamneses", requestBody);
-                navigate(exitPath, {state: {notice: "Ficha de anamnese enviada. Obrigado por responder."}});
+                navigate(exitPath, {replace: true, state: {notice: "Ficha de anamnese enviada. Obrigado por responder."}});
             }
         } catch (requestError) {
             if (requestError instanceof ApiError) {

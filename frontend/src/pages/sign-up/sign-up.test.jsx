@@ -4,7 +4,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {redirectLoggedUserHomeUnlessInvite} from "../../app/route-guards.js";
-import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import SignUp from "./sign-up.jsx";
 
 const INVITE = {prescriberName: "Ana Lima", prescriberProfession: "Médica", expiresAt: "2026-12-01T10:00:00"};
@@ -243,12 +243,35 @@ describe("SignUp", () => {
         renderSignUp();
 
         expect(await screen.findByText(/Você está conectado como/)).toHaveTextContent("Lucas Souza");
-        expect(post).not.toHaveBeenCalled();
+        // o convite eh conferido antes de pedir pra sair da conta
+        expect(post).toHaveBeenCalledWith("/invites/lookup", {token: "abc"});
+        expect(fetchSpy).not.toHaveBeenCalled();
         await user.click(screen.getByRole("button", {name: "Sair e continuar o cadastro"}));
 
         expect(await screen.findByLabelText("Nome completo")).toBeInTheDocument();
         expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
-        expect(post).toHaveBeenCalledWith("/invites/lookup", {token: "abc"});
+    });
+
+    // paciente q ja se cadastrou abre de novo o link do whatsapp pra voltar pro app
+    it("convite ja usado com uma conta aberta n pede pra sair da conta", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({version: "termo-1", text: "Texto do termo"});
+        vi.spyOn(apiService, "post").mockImplementation((path) => path === "/invites/lookup"
+            ? Promise.reject(new ApiError(404, "Convite inválido ou vencido. Peça um novo link ao seu prescritor."))
+            : Promise.resolve(null));
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({status: 204, ok: true});
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        const user = userEvent.setup();
+        renderSignUp();
+
+        const message = await screen.findByText(/Este convite não vale mais/);
+        expect(message).toHaveTextContent("Você continua conectado como Maria Souza");
+        expect(screen.queryByText(/saia dessa conta/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Sair e continuar o cadastro"})).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("link", {name: "Voltar para a conta aberta"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(getLoggedUser()).toEqual(expect.objectContaining({name: "Maria Souza"}));
     });
 
     it("sem convite qm esta logado volta pra tela inicial", async () => {

@@ -64,9 +64,12 @@
     flex: 1 1 16rem;
 }
 
+/* resposta de texto livre com link ou palavra comprida quebra em vez de alargar a tela */
 .answer dd {
     color: var(--color-text-headings);
     font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
     text-align: right;
 }
 

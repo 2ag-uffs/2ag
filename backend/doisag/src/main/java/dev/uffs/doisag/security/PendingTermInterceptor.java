@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 // paciente q ainda n aceitou a versao nova do termo so le os proprios dados (#58)
-// entrar, sair e aceitar o termo continuam liberados
+// entrar, sair, aceitar o termo e conferir um convite continuam liberados
 @Component
 public class PendingTermInterceptor implements HandlerInterceptor {
 
@@ -28,7 +28,8 @@ public class PendingTermInterceptor implements HandlerInterceptor {
             return true;
         }
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        if (path.startsWith("/auth/") || path.startsWith("/consent-term")) {
+        // conferir o convite eh publico e a tela de cadastro chama com outra conta aberta (RF38)
+        if (path.startsWith("/auth/") || path.startsWith("/consent-term") || path.equals("/invites/lookup")) {
             return true;
         }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

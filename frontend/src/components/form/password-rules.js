@@ -6,11 +6,17 @@ export function fitsInBcrypt(password) {
     return new TextEncoder().encode(password).length <= 72;
 }
 
+// conta os caracteres como a api: o emoji eh um so, mesmo q o length do js conte 2
+function characterCount(password) {
+    return [...password].length;
+}
+
 export const PASSWORD_RULES = [
     {
         id: "length",
         label: "De 8 a 64 caracteres (acento e emoji contam mais)",
-        isMet: (password) => password.length >= 8 && password.length <= 64 && fitsInBcrypt(password),
+        isMet: (password) => characterCount(password) >= 8 && characterCount(password) <= 64
+            && fitsInBcrypt(password),
     },
     {
         id: "uppercase",

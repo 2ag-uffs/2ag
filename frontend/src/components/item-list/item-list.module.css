@@ -38,9 +38,11 @@
     overflow-wrap: anywhere;
 }
 
+/* aqui entra texto livre, tipo o motivo do pedido e o texto do aviso, q pode trazer um link comprido */
 .details {
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
+    overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
 

@@ -14,6 +14,7 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsentTermService;
+import dev.uffs.doisag.service.PatientInviteService;
 import dev.uffs.doisag.service.PatientService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ class ConsentTermTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
     @Autowired private ConsentTermService consentTermService;
+    @Autowired private PatientInviteService patientInviteService;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -181,6 +183,29 @@ class ConsentTermTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(jsonPath("$.termPending").value(false));
+    }
+
+    // o responsavel com o termo pendente na conta de um filho abre o convite do outro (RF38):
+    // a tela de cadastro confere o convite antes de pedir pra sair da conta, e isso n pode dar 403
+    @Test
+    void patientWithPendingTermStillChecksAnInvite() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        String token = patientInviteService.createInvite(prescriber.getId()).token();
+
+        mockMvc.perform(post("/invites/lookup")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + token + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist(PendingTermException.HEADER))
+                .andExpect(jsonPath("$.prescriberName").value("Prescritora do Termo"));
+        mockMvc.perform(post("/invites/lookup")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"convite-que-nao-existe\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist(PendingTermException.HEADER))
+                .andExpect(jsonPath("$.message").value(PatientInviteService.INVALID_INVITE_MESSAGE));
     }
 
     @Test

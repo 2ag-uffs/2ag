@@ -42,6 +42,12 @@
     width: 32px;
 }
 
+/* o all: unset de cima apaga o anel de foco dos botoes, entao ele volta aqui */
+.closeButton:focus-visible {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--focus-ring);
+}
+
 @media (max-width: 47.99rem) {
     .content {
         border-radius: 0;

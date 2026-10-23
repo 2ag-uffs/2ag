@@ -72,6 +72,15 @@ function focusFirstInvalidField() {
     }, 0);
 }
 
+// volta pra tela inicial da conta q ja estava aberta, sem sair dela
+function BackToOpenAccount({account}) {
+    return (
+        <Link to={homePathFor(account)} replace={true} className={"button button-secondary " + styles.linkButton}>
+            Voltar para a conta aberta
+        </Link>
+    );
+}
+
 // cadastro do paciente pelo link de convite (RF02.1) com aceite do termo (RF36)
 export default function SignUp() {
     const navigate = useNavigate();
@@ -126,8 +135,9 @@ export default function SignUp() {
     }, [tokenInUrl, otherAccount, navigate]);
 
     // confere o convite e busca o termo antes de mostrar o formulario
+    // com outra conta aberta tbm, pra so pedir pra sair dela se o convite ainda vale
     useEffect(() => {
-        if (!inviteToken || otherAccount) {
+        if (!inviteToken) {
             return;
         }
 
@@ -160,7 +170,7 @@ export default function SignUp() {
         return () => {
             isCurrentPage = false;
         };
-    }, [inviteToken, otherAccount]);
+    }, [inviteToken]);
 
     // sai da conta q estava aberta e segue o cadastro com o mesmo convite
     const logOutOtherAccount = async () => {
@@ -269,7 +279,15 @@ export default function SignUp() {
         }
     };
 
-    if (otherAccount) {
+    if (inviteStatus === "checking") {
+        return (
+            <AuthLayout title="Criar conta">
+                <p className={styles.statusText}>Conferindo o convite...</p>
+            </AuthLayout>
+        );
+    }
+
+    if (otherAccount && inviteStatus === "valid") {
         return (
             <AuthLayout title="Criar conta">
                 <p className={"aviso aviso--atencao " + styles.message}>
@@ -279,21 +297,22 @@ export default function SignUp() {
                 <button type="button" className="button" onClick={logOutOtherAccount}>
                     Sair e continuar o cadastro
                 </button>
-                <Link
-                    to={homePathFor(otherAccount)}
-                    replace={true}
-                    className={"button button-secondary " + styles.linkButton}
-                >
-                    Voltar para a conta aberta
-                </Link>
+                <BackToOpenAccount account={otherAccount}/>
             </AuthLayout>
         );
     }
 
-    if (inviteStatus === "checking") {
+    // convite q n vale mais com uma conta aberta, tipo o paciente q abre de novo o link q ja usou:
+    // ele continua logado e volta pra conta dele
+    if (otherAccount && inviteStatus === "invalid") {
         return (
             <AuthLayout title="Criar conta">
-                <p className={styles.statusText}>Conferindo o convite...</p>
+                <p className={"aviso aviso--atencao " + styles.message}>
+                    Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. Você continua conectado
+                    como <strong>{otherAccount.name}</strong>. Para criar outra conta, peça um novo link ao seu
+                    prescritor.
+                </p>
+                <BackToOpenAccount account={otherAccount}/>
             </AuthLayout>
         );
     }
@@ -312,9 +331,11 @@ export default function SignUp() {
         return (
             <AuthLayout title="Criar conta">
                 <p className={"aviso aviso--atencao " + styles.message}>{statusMessage}</p>
-                <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
-                    Já tenho conta
-                </Link>
+                {otherAccount ? <BackToOpenAccount account={otherAccount}/> : (
+                    <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
+                        Já tenho conta
+                    </Link>
+                )}
             </AuthLayout>
         );
     }

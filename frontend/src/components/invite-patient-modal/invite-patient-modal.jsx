@@ -2,19 +2,12 @@ import {useEffect, useState} from "react";
 import {FiCopy, FiMessageCircle, FiRefreshCw} from "react-icons/fi";
 import Modal from "../modal/modal.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {brasiliaTimeNote, formatDateTime} from "../../utils/date-format.js";
 import styles from "./invite-patient-modal.module.css";
 
 // link q o paciente abre pra criar a conta
 function buildInviteLink(token) {
     return window.location.origin + "/cadastro?convite=" + encodeURIComponent(token);
-}
-
-function formatDate(dateTimeText) {
-    return new Date(dateTimeText).toLocaleDateString("pt-BR");
-}
-
-function formatDateTime(dateTimeText) {
-    return new Date(dateTimeText).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"});
 }
 
 // janela do prescritor pra gerar o link de convite de um paciente novo (RN06)
@@ -134,7 +127,10 @@ export default function InvitePatientModal({show, onClose}) {
                             readOnly={true}
                             onFocus={(event) => event.target.select()}
                         />
-                        <p className={styles.hint}>Vale até {formatDate(invite.expiresAt)}.</p>
+                        {/* o link vence na hora em q foi gerado, 7 dias dps, e n no fim do dia */}
+                        <p className={styles.hint}>
+                            Vale até {formatDateTime(invite.expiresAt) + brasiliaTimeNote()}.
+                        </p>
 
                         <div className={styles.actions}>
                             <button type="button" className={styles.actionButton} onClick={handleCopy}>
@@ -168,7 +164,7 @@ export default function InvitePatientModal({show, onClose}) {
                                 <li key={openInvite.id} className={styles.openRow}>
                                     <span>
                                         Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
-                                        {formatDate(openInvite.expiresAt)}
+                                        {formatDateTime(openInvite.expiresAt) + brasiliaTimeNote()}
                                     </span>
                                     <button
                                         type="button"

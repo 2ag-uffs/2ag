@@ -12,6 +12,15 @@ describe("regras de senha", () => {
         expect(isStrongPassword("ã".repeat(33) + "Senha1!")).toBe(false);
     });
 
+    // a api conta o emoji como um caractere so, e o length do js conta 2
+    it("emoji conta como um caractere, igual na api", () => {
+        expect("Ab1!\u{1F600}xy".length).toBe(8);
+        expect(isStrongPassword("Ab1!\u{1F600}xy")).toBe(false);
+        expect(isStrongPassword("Ab1!\u{1F600}xyz")).toBe(true);
+        // 63 caracteres e 72 bytes: a api aceita
+        expect(isStrongPassword("Ab1!" + "a".repeat(56) + "\u{1F600}".repeat(3))).toBe(true);
+    });
+
     it("fitsInBcrypt conta byte e n caractere", () => {
         expect(fitsInBcrypt("a".repeat(72))).toBe(true);
         expect(fitsInBcrypt("a".repeat(73))).toBe(false);

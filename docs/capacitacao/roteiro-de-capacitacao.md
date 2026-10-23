@@ -176,7 +176,7 @@ Janela normal, prescritora de treino.
   4. **Gerar outro link para outro paciente**, copie e cole também. Este é o do paciente menor.
   5. **Gerar outro link para outro paciente** mais uma vez. Este terceiro faz de conta que foi para a pessoa errada: em **Convites em aberto**, clique em **Cancelar** na primeira linha, que é a do convite mais novo.
 - **Conferir:**
-  - Embaixo do link aparece *Vale até* com a data de daqui a 7 dias.
+  - Embaixo do link aparece *Vale até* com a data de daqui a 7 dias e a hora de agora: o link para de valer nessa hora.
   - Antes de cancelar, os três links aparecem em **Convites em aberto**, cada um com *Gerado em* e o botão **Cancelar**.
   - Depois de cancelar, o terceiro sai da lista e da tela, e na lista ficam só os dois guardados no bloco de notas. Quem abrir o link cancelado vê *Este convite não vale mais*.
   - **Enviar pelo WhatsApp** abre o WhatsApp com a mensagem pronta. Na capacitação, não envie para ninguém.
