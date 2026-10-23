@@ -90,6 +90,7 @@ export default function SignUp() {
     const [inviteToken] = useState(tokenInUrl);
     // o link de convite aberto com outra conta logada explica q precisa sair dela antes
     const [otherAccount, setOtherAccount] = useState(() => getLoggedUser());
+    const [logoutError, setLogoutError] = useState(null);
 
     const [inviteStatus, setInviteStatus] = useState(inviteToken ? "checking" : "missing");
     const [inviteInfo, setInviteInfo] = useState(null);
@@ -173,9 +174,15 @@ export default function SignUp() {
     }, [inviteToken]);
 
     // sai da conta q estava aberta e segue o cadastro com o mesmo convite
+    // se sair falhar a tela avisa e o convite fica na barra de endereco pra tentar de novo
     const logOutOtherAccount = async () => {
-        await logout();
-        setOtherAccount(null);
+        setLogoutError(null);
+        const isLoggedOut = await logout();
+        if (isLoggedOut) {
+            setOtherAccount(null);
+        } else {
+            setLogoutError("Não foi possível sair da conta. Confira sua internet e tente de novo.");
+        }
     };
 
     // se o termo mudou com a tela aberta a versao nova entra no lugar e o aceite desmarca pra ler de novo
@@ -294,6 +301,7 @@ export default function SignUp() {
                     Você está conectado como <strong>{otherAccount.name}</strong>. Este convite cria uma conta nova,
                     então saia dessa conta para continuar o cadastro.
                 </p>
+                {logoutError && <p className={"aviso aviso--atencao " + styles.message} role="alert">{logoutError}</p>}
                 <button type="button" className="button" onClick={logOutOtherAccount}>
                     Sair e continuar o cadastro
                 </button>

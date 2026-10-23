@@ -31,6 +31,7 @@ function renderSignUp(path = "/cadastro?convite=abc") {
         {path: "/painel-paciente", element: <p>painel do paciente</p>},
     ], {initialEntries: [path]});
     render(<RouterProvider router={router}/>);
+    return router;
 }
 
 // 1o de janeiro nunca vira data invalida (29/02) e a idade fica certa o ano todo
@@ -250,6 +251,24 @@ describe("SignUp", () => {
 
         expect(await screen.findByLabelText("Nome completo")).toBeInTheDocument();
         expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
+    });
+
+    // sem a api confirmar a saida o cookie continua valendo, entao a tela avisa e o convite fica na url
+    it("se sair falhar a tela avisa, o convite fica no link e a pessoa continua logada", async () => {
+        mockApi();
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: false, status: 502});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        const user = userEvent.setup();
+        const router = renderSignUp();
+
+        await user.click(await screen.findByRole("button", {name: "Sair e continuar o cadastro"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível sair da conta");
+        expect(screen.getByText(/Você está conectado como/)).toHaveTextContent("Lucas Souza");
+        expect(screen.getByRole("button", {name: "Sair e continuar o cadastro"})).toBeInTheDocument();
+        expect(screen.queryByLabelText("Nome completo")).not.toBeInTheDocument();
+        expect(router.state.location.search).toBe("?convite=abc");
+        expect(getLoggedUser()).toEqual(expect.objectContaining({name: "Lucas Souza"}));
     });
 
     // paciente q ja se cadastrou abre de novo o link do whatsapp pra voltar pro app
