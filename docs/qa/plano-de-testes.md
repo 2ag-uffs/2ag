@@ -137,7 +137,7 @@ requisitos RF14, RF15, RF33 e RF34.
 | :--- | :--- | :--- |
 | CT-34 | abrir *Avisos*, abrir um aviso, marcar todos como lidos e apagar um | cada aviso leva à tela certa e a contagem de não lidos atualiza |
 | CT-35 | exportar cada CSV do histórico e abrir no Excel ou LibreOffice. em *Progresso*, marcar a opção de baixar sem identificação. depois, com a sessão vencida (sair em outra aba), tentar baixar de novo | colunas certas, acentos legíveis e datas no formato brasileiro. no modo sem identificação não aparece nome nem CPF, nem do paciente nem da prescritora. o modo sem identificação só sai de quem aceitou a pesquisa: no histórico do João ele funciona, no da Maria a opção fica desligada com a explicação, e em *Progresso* marcar *sem identificação* para a Maria faz a tela recusar o download. com a sessão vencida a tela manda entrar de novo, em vez de salvar um arquivo com erro dentro |
-| CT-36 | abrir a impressão do histórico e salvar em PDF | o PDF sai sem menu, botões ou cortes no meio dos cartões |
+| CT-36 | abrir a impressão do histórico de um paciente com várias consultas, uma delas com pressão, peso e altura (*Todo o tratamento*), e salvar em PDF | o PDF sai sem menu nem botões. a primeira folha já traz *Consultas* e a primeira consulta, sem folha meio em branco antes de uma seção. cartão comprido continua na folha seguinte, mas o topo do cartão (data e situação) e as linhas da tabela de escalas não se partem, o topo fica na mesma folha que a linha de pressão, peso e altura e o começo do registro, e nenhum título fica sozinho no pé da folha |
 
 > os lembretes automáticos (RF34) rodam uma vez por dia e ficam desligados no ambiente de teste local. eles entram no teste do servidor.
 

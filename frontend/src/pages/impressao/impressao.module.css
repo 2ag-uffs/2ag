@@ -135,7 +135,23 @@
         display: none;
     }
 
-    .section {
+    /* segurar a secao ou o cartao inteiro joga ele pra proxima folha e deixa a
+       anterior em branco (a primeira so com o cabecalho). entao o texto corre e
+       so os pedacos pequenos n quebram: o topo do cartao e cada linha da tabela */
+    .section article > header,
+    .table tr {
         break-inside: avoid;
+    }
+
+    /* e titulo n fica sozinho no pe da folha, longe do q vem embaixo dele.
+       a linha de pressao, peso e altura (o p logo abaixo do topo do cartao)
+       tbm segura o q vem depois: senao o topo gruda nela e o registro
+       clinico cai sozinho na folha seguinte */
+    .section h2,
+    .section article > header,
+    .section article > header + p,
+    .section h4,
+    .section dt {
+        break-after: avoid;
     }
 }

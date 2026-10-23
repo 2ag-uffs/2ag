@@ -2,13 +2,17 @@ package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.Cannabinoid;
+import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Anamnesis;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
+import dev.uffs.doisag.model.PrescriptionComponent;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AnamnesisRepository;
@@ -21,6 +25,7 @@ import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.ExportService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +36,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,9 +71,11 @@ class ExportTest {
     @Autowired private TokenService tokenService;
     @Autowired private ConsentTermService consentTermService;
     @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
+    @Autowired private EntityManager entityManager;
 
     private Prescriber prescriber;
     private Patient patient;
+    private Appointment appointment;
 
     @BeforeEach
     void createClinicalRecords() {
@@ -87,7 +95,7 @@ class ExportTest {
         // o arquivo sem identificacao eh o de pesquisa e so sai de quem aceitou (RF37)
         consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
 
-        Appointment appointment = new Appointment();
+        appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
         appointment.setDateTime(TODAY.minusDays(10).atTime(9, 0));
@@ -311,6 +319,39 @@ class ExportTest {
         assertThat(csv).contains("\"Sono\";\"Durmo mal\"");
     }
 
+    // escala e anamnese anuladas levam o motivo, igual consulta e prescricao, pq eh ele
+    // q separa erro de digitacao de correcao clinica
+    @Test
+    void annulledScaleAndAnamnesisKeepTheReason() throws Exception {
+        ScaleResponse response = new ScaleResponse();
+        response.setPatient(patient);
+        response.setScaleType(ScaleType.ACOMPANHAMENTO_SEMANAL);
+        response.setPeriodStart(TODAY.minusDays(2));
+        response.setPeriodEnd(TODAY.minusDays(2));
+        response.setAnswers(new LinkedHashMap<>(Map.of("dor", 3)));
+        response.setAnnulment(new Annulment(prescriber, "Preenchida no dia errado"));
+        responseRepository.save(response);
+
+        Anamnesis anamnesis = new Anamnesis();
+        anamnesis.setPatient(patient);
+        anamnesis.setAssessmentDate(TODAY.minusDays(15));
+        anamnesis.setReasonForVisit("Ansiedade");
+        anamnesis.setAnnulment(new Annulment(prescriber, "Ficha de outra pessoa"));
+        anamnesisRepository.save(anamnesis);
+        entityManager.flush();
+        entityManager.clear();
+
+        String scales = download("scales.csv", "", patient);
+        assertThat(scales).contains("\"Código\";\"Anulada\";\"Motivo da anulação\"");
+        assertThat(scales).contains("\"Dor\";\"3\";\"3\";\"sim\";\"Preenchida no dia errado\"");
+        assertThat(scales).contains("\"Dor\";\"7\";\"7\";\"não\";\"\"");
+
+        String anamneses = download("anamneses.csv", "", patient);
+        assertThat(anamneses).contains("\"Resposta\";\"Anulada\";\"Motivo da anulação\"");
+        assertThat(anamneses).contains("\"Motivo principal\";\"Ansiedade\";\"sim\";\"Ficha de outra pessoa\"");
+        assertThat(anamneses).contains("\"Sono\";\"Durmo mal\";\"não\";\"\"");
+    }
+
     @Test
     void aEvolucaoSaiComDataEValor() throws Exception {
         String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
@@ -411,6 +452,34 @@ class ExportTest {
         assertThat(csv).contains("2 gotas pela manhã");
         assertThat(csv).contains("Observações");
         assertThat(csv).contains("Guardar o frasco longe da luz");
+    }
+
+    // a composicao sai como a tela mostra. o flush e o clear fazem o valor voltar do banco
+    // como no download de vdd, e o banco devolve 20.000, q no brasil eh vinte mil
+    @Test
+    void compositionComesOutLikeTheScreenShowsIt() throws Exception {
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(appointment);
+        prescription.setProductDescription("Óleo full spectrum");
+        prescription.setPosology("3 gotas à noite");
+        prescription.addComponent(new PrescriptionComponent(Cannabinoid.CBD, new BigDecimal("20"),
+                ConcentrationUnit.PERCENTUAL));
+        prescription.addComponent(new PrescriptionComponent(Cannabinoid.THC, new BigDecimal("0.3"),
+                ConcentrationUnit.PERCENTUAL));
+        prescription.addComponent(new PrescriptionComponent(Cannabinoid.CBG, new BigDecimal("25"),
+                ConcentrationUnit.MG_POR_ML));
+        prescription.addComponent(new PrescriptionComponent(Cannabinoid.OUTRO, new BigDecimal("2.5"),
+                ConcentrationUnit.MG_POR_ML));
+        prescriptionRepository.save(prescription);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("prescriptions.csv", "", patient);
+
+        assertThat(csv).contains("CBD 20%").contains("THC 0,3%").contains("CBG 25 mg/mL")
+                .contains("Outro 2,5 mg/mL");
+        assertThat(csv).doesNotContain("20.000").doesNotContain("0.300")
+                .doesNotContain("PERCENTUAL").doesNotContain("MG_POR_ML").doesNotContain("OUTRO");
     }
 
     // RF30 ninguem exporta paciente de outro prescritor

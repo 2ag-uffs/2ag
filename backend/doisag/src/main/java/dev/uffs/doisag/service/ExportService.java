@@ -1,5 +1,7 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.Cannabinoid;
+import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
 import dev.uffs.doisag.infra.BusinessException;
@@ -24,9 +26,11 @@ import dev.uffs.doisag.scale.ScaleOption;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -167,7 +171,7 @@ public class ExportService {
     public String scaleResponsesCsv(Long patientId, boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Início do período", "Fim do período",
-                "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada");
+                "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada", "Motivo da anulação");
 
         for (ScaleResponse response : responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)) {
             if (!catalog.hasDefinition(response.getScaleType())) {
@@ -187,7 +191,8 @@ public class ExportService {
                         item.label(),
                         answerText(item, answer),
                         answer,
-                        response.isAnnulled() ? "sim" : "não");
+                        response.isAnnulled() ? "sim" : "não",
+                        response.getAnnulment() == null ? null : response.getAnnulment().getAnnulmentReason());
             }
         }
         return csv.build();
@@ -261,7 +266,8 @@ public class ExportService {
     @Transactional
     public String anamnesisCsv(Long patientId, boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Pergunta", "Resposta", "Anulada");
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Pergunta", "Resposta", "Anulada",
+                "Motivo da anulação");
 
         for (Anamnesis anamnesis : anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId)) {
             for (AnamnesisField field : ANAMNESIS_FIELDS) {
@@ -273,7 +279,8 @@ public class ExportService {
                         date(anamnesis.getAssessmentDate()),
                         field.label(),
                         answer,
-                        anamnesis.isAnnulled() ? "sim" : "não");
+                        anamnesis.isAnnulled() ? "sim" : "não",
+                        anamnesis.getAnnulment() == null ? null : anamnesis.getAnnulment().getAnnulmentReason());
             }
         }
         return csv.build();
@@ -330,8 +337,15 @@ public class ExportService {
                 .collect(Collectors.joining(" + "));
     }
 
+    // do jeito q a tela mostra, tipo CBD 10% + THC 0,3%. o banco devolve 10.000
+    // e no brasil o ponto separa o milhar, entao sai com virgula e sem os zeros
     private String componentText(PrescriptionComponent component) {
-        return component.getCannabinoid() + " " + component.getConcentration() + " " + component.getUnit();
+        String amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR"))
+                .format(component.getConcentration());
+        String unit = component.getUnit() == ConcentrationUnit.PERCENTUAL ? "%" : " mg/mL";
+        String cannabinoid = component.getCannabinoid() == Cannabinoid.OUTRO
+                ? "Outro" : component.getCannabinoid().name();
+        return cannabinoid + " " + amount + unit;
     }
 
     private String date(LocalDate date) {
