@@ -1,9 +1,10 @@
-import {act, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import Profile from "../../pages/profile/profile.jsx";
+import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import AppLayout from "./app-layout.jsx";
 
 function openLayoutAt(path) {
@@ -11,6 +12,22 @@ function openLayoutAt(path) {
         {element: <AppLayout/>, children: [{path: "*", element: <p>conteudo da tela</p>}]},
     ], {initialEntries: [path]});
     render(<RouterProvider router={router}/>);
+}
+
+// o login fica fora do layout, como no router.jsx
+function openLayoutWithLoginAt(path) {
+    const router = createMemoryRouter([
+        {path: "/entrar", element: <p>tela de login</p>},
+        {
+            element: <AppLayout/>,
+            children: [
+                {path: "/perfil", element: <Profile/>},
+                {path: "*", element: <p>conteudo da tela</p>},
+            ],
+        },
+    ], {initialEntries: [path]});
+    render(<RouterProvider router={router}/>);
+    return router;
 }
 
 function sideMenu() {
@@ -183,6 +200,39 @@ describe("AppLayout", () => {
         expect(screen.getByText("conteudo da tela")).not.toBeVisible();
     });
 
+    // um deploy com o texto novo chega com o aceite aberto: a tela troca o texto em vez de mandar a versao velha sempre
+    it("o aceite busca o termo de novo qnd a versao mudou com a tela aberta", async () => {
+        let currentVersion = "v2";
+        vi.spyOn(apiService, "get").mockImplementation((path) => {
+            if (path === "/profile") {
+                return Promise.resolve({id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null});
+            }
+            return Promise.resolve({version: currentVersion, text: "texto do termo " + currentVersion});
+        });
+        const post = vi.spyOn(apiService, "post").mockImplementation((path, body) => {
+            if (body.termVersion !== currentVersion) {
+                return Promise.reject(new ApiError(400,
+                    "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar", null));
+            }
+            return Promise.resolve({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        });
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText("texto do termo v2")).toBeInTheDocument();
+        currentVersion = "v3";
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("O termo de consentimento foi atualizado");
+        expect(screen.getByText("texto do termo v3")).toBeInTheDocument();
+        expect(screen.queryByText("texto do termo v2")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenLastCalledWith("/consent-term/accept", {termVersion: "v3"});
+    });
+
     it("no progresso de um paciente o menu lateral marca Progresso e n Pacientes", async () => {
         setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
         openLayoutAt("/paciente/5/progresso");
@@ -235,5 +285,67 @@ describe("AppLayout", () => {
         await screen.findByText("conteudo da tela");
         expect(sideMenu().getByRole("link", {name: "Pacientes"})).toHaveAttribute("aria-current", "page");
         expect(sideMenu().getByRole("link", {name: "Prescritores"})).not.toHaveAttribute("aria-current");
+    });
+
+    // o cookie eh httponly e so a api apaga ele: com a api fora do ar a sessao continua valendo nesse computador
+    it("sair q falha na api avisa e continua logado, e o login so abre qnd a api confirma", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: false, status: 502});
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        const user = userEvent.setup();
+        const router = openLayoutWithLoginAt("/administracao");
+
+        await screen.findByText("conteudo da tela");
+        await user.click(screen.getAllByRole("button", {name: "Sair"})[0]);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível sair da conta");
+        expect(router.state.location.pathname).toBe("/administracao");
+        expect(getLoggedUser()).not.toBeNull();
+
+        fetchSpy.mockResolvedValue({ok: true, status: 204});
+        await user.click(screen.getAllByRole("button", {name: "Sair"})[0]);
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(getLoggedUser()).toBeNull();
+    });
+
+    // o Sair fica na barra q acompanha a rolagem e o aviso no alto da tela, entao a tela rola ate ele
+    // e o aviso eh daquela tela: o layout continua montado na proxima, mas o aviso n pode seguir junto
+    it("o aviso de sair q falhou rola ate aparecer e some ao trocar de tela", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: false, status: 502});
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        const user = userEvent.setup();
+        const router = openLayoutWithLoginAt("/administracao");
+
+        await screen.findByText("conteudo da tela");
+        await user.click(screen.getAllByRole("button", {name: "Sair"})[0]);
+
+        const alert = await screen.findByRole("alert");
+        expect(scrollIntoView).toHaveBeenCalledTimes(1);
+        expect(scrollIntoView.mock.contexts[0]).toBe(alert);
+
+        await user.click(sideMenu().getByRole("link", {name: "Pacientes"}));
+
+        await waitFor(() => expect(router.state.location.pathname).toBe("/administracao/pacientes"));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(getLoggedUser()).not.toBeNull();
+    });
+
+    it("o nome salvo no perfil aparece no menu lateral na hora", async () => {
+        const profile = {
+            id: 1, role: "ADMIN", name: "Administrador", email: "admin@clinica.com", pendingEmail: null, cpf: null,
+            birthDate: null, phone: null, address: null, emailNotificationsEnabled: true, prescriberName: null,
+            profession: null, registryType: null, registryNumber: null,
+        };
+        vi.spyOn(apiService, "get").mockResolvedValue(profile);
+        vi.spyOn(apiService, "put").mockResolvedValue({...profile, name: "Clara Administradora"});
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        openLayoutWithLoginAt("/perfil");
+
+        fireEvent.change(await screen.findByLabelText(/Nome completo/), {target: {value: "Clara Administradora"}});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar dados"}));
+
+        expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+        expect(within(screen.getByRole("complementary")).getByText("Clara Administradora")).toBeInTheDocument();
     });
 });

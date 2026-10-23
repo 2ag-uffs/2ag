@@ -207,6 +207,11 @@
     width: 100%;
 }
 
+/* aviso de q o sair falhou, em cima da tela */
+.logoutError {
+    margin: 0 0 var(--space-4);
+}
+
 .backLink {
     align-items: center;
     background-color: transparent;

@@ -458,6 +458,23 @@ class ProfileTest {
                 .andExpect(jsonPath("$.emailNotificationsEnabled").value(false));
     }
 
+    // so o paciente recebe lembrete por e-mail, entao a opcao n existe pro prescritor nem pro admin
+    @Test
+    void onlyThePatientChangesTheEmailNoticePreference() throws Exception {
+        Admin admin = saveAdmin();
+        mockMvc.perform(put("/profile/email-preference")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailNotificationsEnabled\":false}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/profile/email-preference")
+                        .header("Authorization", bearerTokenOf(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailNotificationsEnabled\":false}"))
+                .andExpect(status().isForbidden());
+        assertThat(usersRepository.findById(prescriber.getId()).orElseThrow().isEmailNotificationsEnabled()).isTrue();
+    }
+
     @Test
     void wrongCurrentPasswordDoesNotChangeThePassword() throws Exception {
         mockMvc.perform(put("/profile/password")

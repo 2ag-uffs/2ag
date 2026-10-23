@@ -665,27 +665,32 @@ export default function Profile() {
         return <SkeletonPage cards={2}/>;
     }
 
-    // a conta administrativa n troca de e-mail por aqui e n recebe lembrete
+    // a conta administrativa n troca de e-mail por aqui
     const isAdmin = profile.role === "ADMIN";
+    // so o paciente recebe lembrete por e-mail, os avisos do prescritor ficam so no sistema
+    const isPatient = profile.role === "PATIENT";
     // a pesquisa ainda n abre pra menor de 18, so aparece pra retirar um aceite q ja existe
     const showResearch = profile.researchConsent
         && (!isMinorPatient(profile.birthDate) || profile.researchConsent.active);
 
+    let subtitle = "Seus dados, o e-mail de acesso e a senha.";
+    if (isAdmin) {
+        subtitle = "O nome e a senha da conta administrativa.";
+    }
+    if (isPatient) {
+        subtitle = "Seus dados, o e-mail de acesso, a senha e os avisos.";
+    }
+
     return (
         <section className={styles.page}>
-            <PageHeader
-                title="Meu perfil"
-                subtitle={isAdmin
-                    ? "O nome e a senha da conta administrativa."
-                    : "Seus dados, o e-mail de acesso, a senha e os avisos."}
-            />
+            <PageHeader title="Meu perfil" subtitle={subtitle}/>
 
             <div className={styles.grid}>
                 <PersonalDataCard profile={profile} onSaved={handleSaved}/>
                 <div className={styles.column}>
                     {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
                     <PasswordCard onPasswordChanged={handlePasswordChanged}/>
-                    {!isAdmin && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
+                    {isPatient && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
                     {showResearch && <ResearchCard profile={profile} onChanged={handleResearchChanged}/>}
                 </div>
             </div>

@@ -138,7 +138,7 @@ o link de senha nova é a saída para o prescritor que esqueceu a senha antes de
 | `GET /profile` | dados da própria conta |
 | `PUT /profile` | nome, data de nascimento, telefone e endereço. o paciente também manda o `guardian` e o `socialName`: mandar sem o `guardian` apaga o que estava salvo, e o `socialName` em branco ou ausente apaga o nome social. paciente com menos de 18 anos não pode ficar sem o nome e o parentesco do responsável legal, e a `birthDate` de um menor retira o consentimento de pesquisa que estiver valendo. as outras contas ignoram o `socialName` |
 | `PUT /profile/email` | pede a troca do e-mail de acesso, com a senha atual. devolve o perfil com o endereço novo em `pendingEmail`; o e-mail só muda quando o link enviado para ele é aberto (`POST /auth/email-change/confirm`) |
-| `PUT /profile/email-preference` | liga ou desliga os avisos por e-mail |
+| `PUT /profile/email-preference` | liga ou desliga os lembretes por e-mail. só o paciente, que é o único que recebe esses e-mails; as outras contas recebem `403` |
 | `PUT /profile/password` | troca a senha pedindo a atual. as outras sessões caem e este aparelho continua logado |
 
 as rotas de perfil usam sempre a conta da sessão, então ninguém altera o perfil de outra pessoa.

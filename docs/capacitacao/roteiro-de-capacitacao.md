@@ -68,7 +68,7 @@ Cada conta precisa de um e-mail e de um CPF diferentes. O sistema confere os dí
 ### preparar o computador
 
 - **Duas janelas do navegador:** uma normal, para a equipe (administração e prescritor), e uma anônima, para o paciente. Assim as duas pessoas ficam logadas ao mesmo tempo.
-- **Links de primeiro acesso e de convite só abrem sem ninguém logado naquela janela.** Se a janela anônima já tiver alguém logado, clique em **Sair** antes de colar o link.
+- **Links de primeiro acesso e de convite abrem mesmo com alguém logado naquela janela.** A tela avisa *Você está conectado como* com o nome da conta aberta e oferece **Sair e continuar** (no convite, **Sair e continuar o cadastro**): sai dessa conta e segue com o mesmo link, sem precisar colar de novo. **Voltar para a conta aberta** desiste do link.
 - Para trocar de pessoa na mesma janela, use **Sair** (o ícone ao lado do nome, embaixo do menu; no celular, no alto da tela) e entre com a outra conta.
 - Se quiser mostrar o celular, abra as ferramentas de desenvolvedor do navegador e escolha uma largura de celular. No celular o menu vai para a barra de baixo.
 
@@ -139,7 +139,7 @@ Janela anônima, sem ninguém logado.
   - Volte à janela da administração e atualize: o botão **Corrigir e-mail** sumiu, porque a senha já foi criada.
 - **Se der errado:**
   - *Este link não vale mais*: ele venceu ou já foi usado. A administração gera outro em **Senha nova**.
-  - O link abriu o início de outra pessoa: aquela janela já tinha alguém logado. Clique em **Sair** e cole o link de novo.
+  - A tela diz *Você está conectado como* com o nome de outra pessoa: aquela janela já tinha alguém logado. Clique em **Sair e continuar** e a tela **Criar senha nova** segue com o mesmo link.
 
 A partir daqui, deixe a prescritora de treino logada na **janela normal** (a administração sai) e use a janela anônima para os pacientes.
 
@@ -222,7 +222,7 @@ Janela anônima, sem ninguém logado.
   - *Este convite não vale mais*: o link venceu, foi cancelado ou já foi usado. Gere outro.
   - *Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF*: o e-mail ou o CPF já tem conta. Use outros.
   - *CPF inválido. Confira os números*: use um CPF fictício com dígitos válidos.
-  - O link abriu o **Início** de outro paciente: a janela tinha alguém logado. **Sair** e cole o link de novo.
+  - A tela diz *Você está conectado como* com o nome de outro paciente: a janela tinha alguém logado. Clique em **Sair e continuar o cadastro** e a tela **Criar conta** segue com o mesmo convite.
 
 ## 7. consulta, prescrição e agenda (12 min)
 

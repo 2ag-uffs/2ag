@@ -75,6 +75,21 @@ describe("Profile", () => {
         expect(screen.getByRole("heading", {name: "Avisos por e-mail"})).toBeInTheDocument();
     });
 
+    // so o paciente recebe lembrete por e-mail, os avisos do prescritor ficam so no sistema
+    it("prescritor troca o e-mail de acesso mas n ve a opcao de lembrete por e-mail", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({
+            ...ADMIN_PROFILE, id: 2, role: "PRESCRIBER", name: "Ana Lima", email: "ana@clinica.com",
+            cpf: "52998224725", profession: "Médica", registryType: "CRM", registryNumber: "123",
+        });
+        render(<Profile/>);
+
+        expect(await screen.findByRole("heading", {name: "E-mail de acesso"})).toBeInTheDocument();
+        expect(screen.getByText("Seus dados, o e-mail de acesso e a senha.")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Avisos por e-mail"})).not.toBeInTheDocument();
+        expect(screen.queryByText("Receber por e-mail os lembretes de formulários e de consultas"))
+            .not.toBeInTheDocument();
+    });
+
     it("paciente pede a troca de e-mail e ve q precisa confirmar no endereco novo", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(PATIENT_PROFILE);
         const put = vi.spyOn(apiService, "put").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});

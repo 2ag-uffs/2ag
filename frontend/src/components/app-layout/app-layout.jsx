@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
 import {
     FiActivity,
@@ -107,7 +107,8 @@ export default function AppLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const navigation = useNavigation();
-    const loggedUser = getLoggedUser();
+    // fica num estado pra o nome salvo no perfil aparecer no menu na hora
+    const [loggedUser, setCurrentUser] = useState(() => getLoggedUser());
     const menuItems = menuFor(loggedUser);
     const mobileItems = menuItems.filter((item) => item.mobile);
     const homePath = homePathFor(loggedUser);
@@ -153,6 +154,17 @@ export default function AppLayout() {
         return () => window.removeEventListener("term-pending", openTerm);
     }, []);
 
+    useEffect(() => {
+        // sem ninguem logado a tela ja esta indo pro login, entao o menu fica como estava
+        const updateUser = () => {
+            if (getLoggedUser()) {
+                setCurrentUser(getLoggedUser());
+            }
+        };
+        window.addEventListener("logged-user-changed", updateUser);
+        return () => window.removeEventListener("logged-user-changed", updateUser);
+    }, []);
+
     // a barra do celular tem menos itens entao ela acha o item marcado dela
     // assim no progresso de um paciente o celular marca a lista de pacientes
     const activeSideItem = findActiveItem(menuItems, location.pathname);
@@ -167,10 +179,37 @@ export default function AppLayout() {
         }
     };
 
+    // so vai pro login qnd a api confirma q a sessao acabou
+    // senao a pessoa acharia q saiu com o cookie ainda valendo nesse computador
+    // o aviso guarda em qual tela o sair falhou, pq o layout continua montado qnd a pessoa troca de tela
+    const [logoutError, setLogoutError] = useState(null);
+    const logoutErrorRef = useRef(null);
+
+    // trocou de tela: o aviso era da tela anterior e some
+    // limpar no render (e n num efeito) eh como o react pede pra reagir a algo q mudou
+    if (logoutError && logoutError.pathname !== location.pathname) {
+        setLogoutError(null);
+    }
+
     const handleLogout = async () => {
-        await logout();
-        navigate("/entrar", {replace: true});
+        setLogoutError(null);
+        const isLoggedOut = await logout();
+        if (isLoggedOut) {
+            navigate("/entrar", {replace: true});
+        } else {
+            setLogoutError({
+                message: "Não foi possível sair da conta. Confira sua internet e tente de novo.",
+                pathname: location.pathname,
+            });
+        }
     };
+
+    // o botao Sair fica na barra q acompanha a rolagem, entao numa tela rolada o aviso la em cima ficaria escondido
+    useEffect(() => {
+        if (logoutError && logoutErrorRef.current) {
+            logoutErrorRef.current.scrollIntoView({block: "center"});
+        }
+    }, [logoutError]);
 
     // sem escolha o sistema segue o aparelho. o botao grava a escolha e ela passa a valer
     const [theme, setTheme] = useState(() => currentTheme());
@@ -253,6 +292,11 @@ export default function AppLayout() {
             </header>
 
             <main className={styles.content}>
+                {logoutError && (
+                    <p className={"aviso aviso--atencao " + styles.logoutError} role="alert" ref={logoutErrorRef}>
+                        {logoutError.message}
+                    </p>
+                )}
                 {!isHomePage && (
                     <button type="button" className={styles.backLink} onClick={handleBack}>
                         <FiArrowLeft/>

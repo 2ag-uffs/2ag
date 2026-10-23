@@ -59,6 +59,18 @@ export default function TermUpdate({onAccepted}) {
         setGuardianData((currentData) => ({...currentData, [fieldName]: value}));
     };
 
+    // se a versao mudou com a tela aberta o texto novo entra no lugar e o proximo aceite manda a versao nova
+    const reloadChangedTerm = async () => {
+        try {
+            const currentTerm = await apiService.get("/consent-term");
+            if (currentTerm.version !== term.version) {
+                setTerm(currentTerm);
+            }
+        } catch {
+            // o erro do aceite ja esta na tela
+        }
+    };
+
     const handleAccept = async () => {
         setErrorMessage(null);
         const requestBody = {termVersion: term.version};
@@ -81,7 +93,11 @@ export default function TermUpdate({onAccepted}) {
                 // erro de campo ja aparece embaixo do campo
                 const errorsByField = requestError.fieldErrors();
                 setFieldErrors(errorsByField);
-                setErrorMessage(Object.keys(errorsByField).length > 0 ? null : requestError.message);
+                if (Object.keys(errorsByField).length === 0) {
+                    // tipo o termo q mudou de novo: a mensagem so aparece com o texto novo ja na tela
+                    await reloadChangedTerm();
+                    setErrorMessage(requestError.message);
+                }
             } else {
                 setErrorMessage(CONNECTION_ERROR);
             }
@@ -122,7 +138,8 @@ export default function TermUpdate({onAccepted}) {
                             {guardianText}
                         </p>
                     )}
-                    <div className={styles.termText} tabIndex={0} aria-label="Texto do termo">
+                    {/* a chave faz o texto novo comecar do topo */}
+                    <div key={term.version} className={styles.termText} tabIndex={0} aria-label="Texto do termo">
                         {term.text}
                     </div>
                     {needsGuardian && (

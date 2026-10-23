@@ -62,6 +62,8 @@ public class ProfileController {
         return emailChangeService.request(loggedUser.getId(), emailData, request.getRemoteAddr());
     }
 
+    // so o paciente recebe lembrete por e-mail (RF34), os avisos do prescritor ficam so no sistema
+    @PreAuthorize("hasRole('PATIENT')")
     @PutMapping("/email-preference")
     public ProfileDTO changeEmailPreference(@AuthenticationPrincipal Users loggedUser,
                                             @RequestBody @Valid EmailPreferenceDTO preferenceData) {

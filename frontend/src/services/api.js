@@ -11,8 +11,10 @@ export function getLoggedUser() {
     return loggedUser;
 }
 
+// o layout escuta o aviso e mostra na hora o nome salvo no perfil
 export function setLoggedUser(user) {
     loggedUser = user;
+    window.dispatchEvent(new Event("logged-user-changed"));
 }
 
 // erro da api com o status a mensagem e os erros de cada campo
@@ -128,14 +130,21 @@ export async function download(path, fallbackName) {
     URL.revokeObjectURL(url);
 }
 
+// o cookie da sessao eh httponly e so a api apaga ele
+// entao a tela so esquece quem estava logado qnd a api confirma, senao a proxima pessoa no computador entraria logada
+// 401 tbm conta como saiu pq a sessao ja tinha acabado
+// devolve se saiu ou n
 export async function logout() {
     try {
-        await request("/auth/logout", {method: "POST"});
+        const response = await fetch(BASE_URL + "/auth/logout", {method: "POST"});
+        if (!response.ok && response.status !== 401) {
+            return false;
+        }
     } catch {
-        // mesmo se a api falhar a tela esquece quem estava logado
-    } finally {
-        loggedUser = null;
+        return false;
     }
+    loggedUser = null;
+    return true;
 }
 
 export const apiService = {

@@ -9,10 +9,12 @@ import {getLoggedUser} from "../services/api.js";
 // so abre a rota quem esta logado e tem um dos papeis permitidos
 // sem papel nenhum na lista basta estar logado
 export function requireRole(...allowedRoles) {
-    return () => {
+    return ({request}) => {
         const loggedUser = getLoggedUser();
         if (!loggedUser) {
-            return redirect("/entrar");
+            // o link do e-mail aberto sem sessao volta pra mesma tela dps do login
+            const url = new URL(request.url);
+            return redirect("/entrar?voltar=" + encodeURIComponent(url.pathname + url.search));
         }
         if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)) {
             return redirect(homePathFor(loggedUser));
@@ -34,6 +36,15 @@ export function redirectLoggedUserHome() {
 // a tela explica q precisa sair da conta aberta, em vez de o convite sumir sem aviso
 export function redirectLoggedUserHomeUnlessInvite({request}) {
     if (new URL(request.url).searchParams.get("convite")) {
+        return null;
+    }
+    return redirectLoggedUserHome();
+}
+
+// o link de senha nova e o de primeiro acesso do prescritor tbm abrem com alguem logado
+// a tela diz qual conta esta aberta e deixa sair e seguir com o mesmo link
+export function redirectLoggedUserHomeUnlessToken({request}) {
+    if (new URL(request.url).searchParams.get("token")) {
         return null;
     }
     return redirectLoggedUserHome();

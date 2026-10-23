@@ -916,6 +916,12 @@ Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto n
 - **Avisos:** apagar o único aviso da última página volta para a página anterior, em vez de mostrar a lista vazia sem os botões de página.
 - **Termo atualizado no cadastro (RF36):** se o termo mudar com o cadastro aberto, a tela busca o texto novo e desmarca o aceite, para a pessoa ler e aceitar a versão nova.
 - **Convite com outra conta aberta:** o link de convite aberto com alguém logado diz com qual conta o navegador está e oferece sair e continuar o cadastro com o mesmo convite. Antes o convite sumia e a pessoa caía na tela inicial da conta aberta, o que pega o responsável com dois filhos (RF38).
+- **Link de senha com outra conta aberta (RF35, RF02.2):** o link de senha nova e o link de primeiro acesso do prescritor, abertos com alguém logado, também dizem com qual conta o navegador está e oferecem sair e continuar com o mesmo link. Antes o link sumia e a pessoa caía na tela inicial da conta aberta, o que pega o administrador que entrega o link de primeiro acesso no computador da clínica.
+- **Link aberto sem sessão:** quem abre uma tela do sistema sem estar logado, como a do link do lembrete por e-mail, passa pelo login e volta para essa tela, em vez de cair na tela inicial.
+- **Termo atualizado com o aceite aberto (RF36):** se a versão do termo mudar de novo com a tela de aceite aberta, a tela busca o texto novo e o próximo aceite vai com a versão nova. Antes cada clique mandava a versão velha e era recusado até a pessoa sair da tela.
+- **Sair da conta:** a tela só volta ao login quando a API confirma que a sessão acabou. Sem resposta da API aparece "Não foi possível sair da conta" e a pessoa continua logada, porque o cookie continuaria valendo e a próxima pessoa no mesmo computador entraria na conta dela. Uma sessão que já tinha acabado conta como saída.
+- **Nome no menu:** o nome, ou o nome social, salvo no perfil aparece no menu lateral na hora, sem esperar a próxima tela.
+- **Lembrete por e-mail só para o paciente (RF18, RF34):** a opção de avisos por e-mail aparece só no perfil do paciente, o único que recebe lembrete por e-mail, e a API recusa a troca vinda de outra conta com `403`. Antes o prescritor ligava a opção e lia que receberia os avisos por e-mail, mas nenhum e-mail sai para ele.
 
 ---
 

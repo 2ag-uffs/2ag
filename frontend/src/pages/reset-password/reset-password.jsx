@@ -4,16 +4,20 @@ import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
-import {apiService, ApiError} from "../../services/api.js";
+import {homePathFor} from "../../app/role-home.js";
+import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
 import styles from "./reset-password.module.css";
 
-// senha nova pelo link q chegou por e-mail (RF35)
+// senha nova pelo link q chegou por e-mail (RF35), tbm o link de primeiro acesso do prescritor
 export default function ResetPassword() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const tokenInUrl = searchParams.get("token");
     // o codigo fica guardado na tela depois de sair da barra de endereco
     const [token] = useState(tokenInUrl);
+    // o link aberto com outra conta logada explica q precisa sair dela antes
+    const [otherAccount, setOtherAccount] = useState(() => getLoggedUser());
+    const [logoutError, setLogoutError] = useState(null);
 
     const [newPassword, setNewPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -22,11 +26,23 @@ export default function ResetPassword() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // tira o codigo da barra de endereco e do historico do navegador
+    // com outra conta aberta ele fica, pq sem o codigo a rota manda pra tela inicial dessa conta
     useEffect(() => {
-        if (tokenInUrl) {
+        if (tokenInUrl && !otherAccount) {
             navigate("/redefinir-senha", {replace: true});
         }
-    }, [tokenInUrl, navigate]);
+    }, [tokenInUrl, otherAccount, navigate]);
+
+    // sai da conta q estava aberta e segue com o mesmo link
+    const logOutOtherAccount = async () => {
+        setLogoutError(null);
+        const isLoggedOut = await logout();
+        if (isLoggedOut) {
+            setOtherAccount(null);
+        } else {
+            setLogoutError("Não foi possível sair da conta. Confira sua internet e tente de novo.");
+        }
+    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -70,6 +86,28 @@ export default function ResetPassword() {
                 </p>
                 <Link to="/esqueci-senha" className={"button button-secondary " + styles.linkButton}>
                     Pedir um novo link
+                </Link>
+            </AuthLayout>
+        );
+    }
+
+    if (otherAccount) {
+        return (
+            <AuthLayout title="Criar senha nova">
+                <p className={"aviso aviso--atencao " + styles.message}>
+                    Você está conectado como <strong>{otherAccount.name}</strong> neste navegador. Para criar a senha
+                    com este link, saia dessa conta antes.
+                </p>
+                {logoutError && <p className={"aviso aviso--atencao " + styles.message} role="alert">{logoutError}</p>}
+                <button type="button" className="button" onClick={logOutOtherAccount}>
+                    Sair e continuar
+                </button>
+                <Link
+                    to={homePathFor(otherAccount)}
+                    replace={true}
+                    className={"button button-secondary " + styles.linkButton}
+                >
+                    Voltar para a conta aberta
                 </Link>
             </AuthLayout>
         );

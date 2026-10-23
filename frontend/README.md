@@ -55,14 +55,14 @@ src/
 ## navegação
 
 - **layout por perfil:** paciente, prescritor e administrador têm menu próprio. no celular o menu vira uma barra inferior
-- **rotas protegidas:** as regras ficam em `app/route-guards.js` e rodam antes da tela abrir. quem não tem acesso volta para a própria tela inicial. a api confere tudo de novo, porque esconder rota não protege dado
+- **rotas protegidas:** as regras ficam em `app/route-guards.js` e rodam antes da tela abrir. quem não tem acesso volta para a própria tela inicial, e quem não está logado vai para o login com `?voltar=` e, depois de entrar, volta para a tela que pediu. a api confere tudo de novo, porque esconder rota não protege dado
 - **carregamento sob demanda:** cada tela é um arquivo separado. enquanto a próxima tela baixa, a atual continua visível e uma barra fina aparece no topo
 - **transição:** cada tela nova entra com um fade curto, desligado para quem pede menos movimento no sistema operacional
 - **rota inexistente e erro inesperado:** caem numa página própria, com caminho de volta ao início
 
 ## sessão
 
-a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login. o paciente cujo aceite do termo de consentimento é de uma versão antiga vê o termo novo no lugar de qualquer tela até aceitar, e um `403` com `X-Term-Pending` abre esse aceite por cima da tela aberta.
+a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx` pergunta à api quem está logado antes de montar as rotas, e `getLoggedUser()` devolve esse usuário para qualquer tela. um `401` com alguém logado manda de volta ao login. o paciente cujo aceite do termo de consentimento é de uma versão antiga vê o termo novo no lugar de qualquer tela até aceitar, e um `403` com `X-Term-Pending` abre esse aceite por cima da tela aberta. `setLoggedUser()` avisa o layout com o evento `logged-user-changed`, então o nome salvo no perfil aparece no menu na hora. como só a api apaga o cookie, `logout()` só esquece quem estava logado quando a api confirma a saída (um `401` também conta) e devolve se deu certo: se falhar, a tela avisa e a pessoa continua logada.
 
 ## datas
 
