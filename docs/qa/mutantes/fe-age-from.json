@@ -1,0 +1,436 @@
+{
+  "metodo": "ageFrom",
+  "arquivo": "frontend/src/utils/date-format.js",
+  "classesDeTeste": [
+    "date-format.test.js",
+    "guardian.test.js"
+  ],
+  "mutantes": [
+    {
+      "id": "e0-M01",
+      "outrosIds": [
+        "e1-M01",
+        "e2-M02"
+      ],
+      "frente": "behavior-model",
+      "linha": 163,
+      "antes": "        return null;",
+      "depois": "        return 0;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M02",
+      "outrosIds": [
+        "e1-M03",
+        "e2-M13"
+      ],
+      "frente": "behavior-model",
+      "linha": 165,
+      "antes": "    const today = toLocalDate(calendarDayOf(new Date()));",
+      "depois": "    const today = new Date();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M03",
+      "outrosIds": [
+        "e1-M04"
+      ],
+      "frente": "behavior-model",
+      "linha": 170,
+      "antes": "    if (!hadBirthdayThisYear) {",
+      "depois": "    if (hadBirthdayThisYear) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getUTCDate() >= birth.getUTCDate());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M05",
+      "outrosIds": [
+        "e1-M15",
+        "e2-M14"
+      ],
+      "frente": "rip",
+      "linha": 166,
+      "antes": "    const birth = toLocalDate(birthDate);",
+      "depois": "    const birth = new Date(birthDate);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 167,
+      "antes": "    let age = today.getFullYear() - birth.getFullYear();",
+      "depois": "    let age = new Date().getFullYear() - birth.getFullYear();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M07",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    const hadBirthdayThisYear = today.getMonth() * 30 + today.getDate()\n        >= birth.getMonth() * 30 + birth.getDate();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M08",
+      "outrosIds": [
+        "e2-M08"
+      ],
+      "frente": "semantically-similar",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    const hadBirthdayThisYear = today.getMonth() >= birth.getMonth()\n        && today.getDate() >= birth.getDate();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M09",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 167,
+      "antes": "    let age = today.getFullYear() - birth.getFullYear();\n    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    let age = Math.floor((today - birth) / (365.25 * 24 * 60 * 60 * 1000));\n    const hadBirthdayThisYear = true;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M10",
+      "outrosIds": [
+        "e1-M10"
+      ],
+      "frente": "fault-localization",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() !== birth.getMonth() && today.getDate() >= birth.getDate());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M11",
+      "outrosIds": [
+        "e1-M12"
+      ],
+      "frente": "fault-localization",
+      "linha": 171,
+      "antes": "        age = age - 1;",
+      "depois": "        age = age - 2;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M12",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 165,
+      "antes": "    const today = toLocalDate(calendarDayOf(new Date()));",
+      "depois": "    const today = new Date(calendarDayOf(new Date()));",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M13",
+      "outrosIds": [
+        "e2-M12"
+      ],
+      "frente": "method-invocation",
+      "linha": 167,
+      "antes": "    let age = today.getFullYear() - birth.getFullYear();",
+      "depois": "    let age = birth.getFullYear() - today.getFullYear();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M14",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDay());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M15",
+      "outrosIds": [
+        "e1-M09",
+        "e2-M16"
+      ],
+      "frente": "method-invocation",
+      "linha": 165,
+      "antes": "    const today = toLocalDate(calendarDayOf(new Date()));",
+      "depois": "    const today = toLocalDate(nowInBrasilia());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "janela de 1 ms na meia-noite do fuso do navegador; o mutante é mais certo (#178)"
+    },
+    {
+      "id": "e0-M16",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 162,
+      "antes": "    if (!birthDate) {",
+      "depois": "    if (birthDate == null) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M17",
+      "outrosIds": [
+        "e1-M19",
+        "e2-M17"
+      ],
+      "frente": "boundary",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getDate() > birth.getDate());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M18",
+      "outrosIds": [
+        "e1-M18",
+        "e2-M05"
+      ],
+      "frente": "boundary",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()",
+      "depois": "    const hadBirthdayThisYear = today.getMonth() >= birth.getMonth()",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M19",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 171,
+      "antes": "        age = age - 1;",
+      "depois": "        age = Math.max(age - 1, 0);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "nascimento no futuro, que a api recusa; o mutante é mais certo (#178)"
+    },
+    {
+      "id": "e0-M20",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 166,
+      "antes": "    const birth = toLocalDate(birthDate);",
+      "depois": "    const birth = toLocalDate(birthDate.slice(0, 10));",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "a data de nascimento já chega como AAAA-MM-DD"
+    },
+    {
+      "id": "e1-M02",
+      "outrosIds": [
+        "e2-M04"
+      ],
+      "frente": "behavior-model",
+      "linha": 162,
+      "antes": "    if (!birthDate) {",
+      "depois": "    if (birthDate === null) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getUTCDate() >= birth.getDate());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getUTCDate());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M07",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    const hadBirthdayThisYear = (today.getMonth() * 30 + today.getDate())\n        >= (birth.getMonth() * 30 + birth.getDate());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M08",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    const hadBirthdayThisYear = today.getDate() >= birth.getDate();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M11",
+      "outrosIds": [
+        "e2-M10"
+      ],
+      "frente": "fault-localization",
+      "linha": 169,
+      "antes": "        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "        || (today.getMonth() === birth.getMonth() && today.getDate() <= birth.getDate());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M13",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 171,
+      "antes": "    if (!hadBirthdayThisYear) {\n        age = age - 1;\n    }",
+      "depois": "    if (!hadBirthdayThisYear) {\n    }",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M14",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 163,
+      "antes": "        return null;",
+      "depois": "        return undefined;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()",
+      "depois": "    const hadBirthdayThisYear = birth.getMonth() > today.getMonth()",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M17",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 165,
+      "antes": "    const today = toLocalDate(calendarDayOf(new Date()));",
+      "depois": "    const today = calendarDayOf(new Date());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M01",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 162,
+      "antes": "    if (!birthDate) {",
+      "depois": "    if (birthDate) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 171,
+      "antes": "        age = age - 1;",
+      "depois": "        age = age + 1;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 173,
+      "antes": "    return age;",
+      "depois": "    return age || 0;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "idade NaN só com data impossível"
+    },
+    {
+      "id": "e2-M07",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 167,
+      "antes": "    let age = today.getFullYear() - birth.getFullYear();\n    if (!hadBirthdayThisYear) {",
+      "depois": "    let age = Math.floor((today - birth) / (365.25 * 86400000));\n    if (false) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M09",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()\n        || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());",
+      "depois": "    const hadBirthdayThisYear = today.getUTCMonth() > birth.getUTCMonth()\n        || (today.getUTCMonth() === birth.getUTCMonth() && today.getUTCDate() >= birth.getUTCDate());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()",
+      "depois": "    const hadBirthdayThisYear = today.getMonth() < birth.getMonth()",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M15",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 167,
+      "antes": "    let age = today.getFullYear() - birth.getFullYear();",
+      "depois": "    let age = today.getFullYear() - birth.getUTCFullYear();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M18",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 162,
+      "antes": "    if (!birthDate) {",
+      "depois": "    if (birthDate === \"\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M19",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 168,
+      "antes": "    const hadBirthdayThisYear = today.getMonth() > birth.getMonth()",
+      "depois": "    const hadBirthdayThisYear = today.getMonth() + 1 > birth.getMonth()",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    }
+  ]
+}

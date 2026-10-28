@@ -1,0 +1,91 @@
+{
+  "metodo": "AppointmentService.cancel",
+  "arquivo": "backend/doisag/src/main/java/dev/uffs/doisag/service/AppointmentService.java",
+  "classesDeTeste": [
+    "AgendaTest",
+    "AuditTrailTest"
+  ],
+  "mutantes": [
+    {
+      "id": "M1",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 386,
+      "antes": "if (appointment.isAnnulled() || !isOpen(appointment.getStatus())) {",
+      "depois": "if (!isOpen(appointment.getStatus())) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M2",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 391,
+      "antes": "boolean isLateForThePatient = appointment.getStatus() != AppointmentStatus.SOLICITADA",
+      "depois": "boolean isLateForThePatient = true",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M3",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 392,
+      "antes": "now().plusHours(PATIENT_CANCELLATION_HOURS)",
+      "depois": "now().plusHours(PATIENT_CANCELLATION_HOURS - 1)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M4",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 403,
+      "antes": "\"ALERT\", PRESCRIBER_AGENDA_LINK);",
+      "depois": "\"APPOINTMENT\", PRESCRIBER_AGENDA_LINK);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M5",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 391,
+      "antes": "appointment.getStatus() != AppointmentStatus.SOLICITADA",
+      "depois": "appointment.getStatus() == AppointmentStatus.AGENDADA",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para EM_ANDAMENTO, status que nenhum código grava"
+    },
+    {
+      "id": "M6",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 393,
+      "antes": "if (canceledByPatient && isLateForThePatient) {",
+      "depois": "if (canceledByPatient || isLateForThePatient) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M7",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 398,
+      "antes": "Appointment savedAppointment = saveChange(appointment);",
+      "depois": "Appointment savedAppointment = appointmentRepository.save(appointment);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M8",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 405,
+      "antes": "createNotification(savedAppointment.getPatient(), \"Consulta cancelada\",",
+      "depois": "createNotification(savedAppointment.getPrescriber(), \"Consulta cancelada\",",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    }
+  ]
+}

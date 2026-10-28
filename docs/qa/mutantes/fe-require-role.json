@@ -1,0 +1,453 @@
+{
+  "metodo": "requireRole",
+  "arquivo": "frontend/src/app/route-guards.js",
+  "classesDeTeste": [
+    "route-guards.test.jsx"
+  ],
+  "mutantes": [
+    {
+      "id": "e0-M01",
+      "outrosIds": [
+        "e1-M01",
+        "e2-M01"
+      ],
+      "frente": "behavior-model",
+      "linha": 14,
+      "antes": "if (!loggedUser) {",
+      "depois": "if (loggedUser) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M02",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 19,
+      "antes": "allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles.length === 0 || !allowedRoles.includes(loggedUser.role)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M03",
+      "outrosIds": [
+        "e1-M02",
+        "e2-M02"
+      ],
+      "frente": "behavior-model",
+      "linha": 22,
+      "antes": "return null;",
+      "depois": "return redirect(homePathFor(loggedUser));",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M04",
+      "outrosIds": [
+        "e1-M04"
+      ],
+      "frente": "behavior-model",
+      "linha": 20,
+      "antes": "return redirect(homePathFor(loggedUser));",
+      "depois": "return null;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 17,
+      "antes": "encodeURIComponent(url.pathname + url.search)",
+      "depois": "encodeURIComponent(url.pathname + url.search + url.hash)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "o react-router monta a requisição do loader sem o hash"
+    },
+    {
+      "id": "e0-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 19,
+      "antes": "!allowedRoles.includes(loggedUser.role)",
+      "depois": "!allowedRoles.includes(loggedUser.role) && !allowedRoles.includes(\"ADMIN\")",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M07",
+      "outrosIds": [
+        "e1-M09",
+        "e2-M14"
+      ],
+      "frente": "rip",
+      "linha": 17,
+      "antes": "encodeURIComponent(url.pathname + url.search)",
+      "depois": "encodeURI(url.pathname + url.search)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M08",
+      "outrosIds": [
+        "e1-M18"
+      ],
+      "frente": "semantically-similar",
+      "linha": 19,
+      "antes": "!allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles.indexOf(loggedUser.role) < 1",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M09",
+      "outrosIds": [
+        "e2-M10"
+      ],
+      "frente": "semantically-similar",
+      "linha": 17,
+      "antes": "encodeURIComponent(url.pathname + url.search)",
+      "depois": "encodeURIComponent(url.pathname) + url.search",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M10",
+      "outrosIds": [
+        "e1-M10",
+        "e2-M09"
+      ],
+      "frente": "semantically-similar",
+      "linha": 14,
+      "antes": "if (!loggedUser) {",
+      "depois": "if (!loggedUser || !loggedUser.role) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "a api nunca devolve sessão sem papel (#179)"
+    },
+    {
+      "id": "e0-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 14,
+      "antes": "if (!loggedUser) {",
+      "depois": "if (loggedUser === undefined) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M12",
+      "outrosIds": [
+        "e1-M03"
+      ],
+      "frente": "fault-localization",
+      "linha": 19,
+      "antes": "allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)",
+      "depois": "!allowedRoles.includes(loggedUser.role)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M13",
+      "outrosIds": [
+        "e1-M13"
+      ],
+      "frente": "fault-localization",
+      "linha": 19,
+      "antes": "!allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles.includes(loggedUser.role)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M14",
+      "outrosIds": [
+        "e1-M06"
+      ],
+      "frente": "fault-localization",
+      "linha": 17,
+      "antes": "url.pathname + url.search",
+      "depois": "url.pathname",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M15",
+      "outrosIds": [
+        "e1-M15"
+      ],
+      "frente": "method-invocation",
+      "linha": 13,
+      "antes": "getLoggedUser();",
+      "depois": "getLoggedUser() || {};",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 17,
+      "antes": "encodeURIComponent(url.pathname + url.search)",
+      "depois": "(url.pathname + url.search)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M17",
+      "outrosIds": [
+        "e1-M19",
+        "e2-M12"
+      ],
+      "frente": "method-invocation",
+      "linha": 20,
+      "antes": "homePathFor(loggedUser)",
+      "depois": "homePathFor(null)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M18",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 19,
+      "antes": "allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles.includes(loggedUser)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M19",
+      "outrosIds": [
+        "e1-M16",
+        "e2-M17"
+      ],
+      "frente": "boundary",
+      "linha": 19,
+      "antes": "allowedRoles.length > 0",
+      "depois": "allowedRoles.length > 1",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M20",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 17,
+      "antes": "url.pathname + url.search",
+      "depois": "url.pathname.slice(1) + url.search",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M21",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 14,
+      "antes": "if (!loggedUser) {",
+      "depois": "if (!loggedUser || allowedRoles.length === 0) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M22",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 19,
+      "antes": "loggedUser.role",
+      "depois": "loggedUser?.role",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "loggedUser já foi conferido na linha de cima"
+    },
+    {
+      "id": "e0-M23",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "new URL(request.url)",
+      "depois": "new URL(request.url, \"http://localhost\")",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "request.url é sempre absoluta"
+    },
+    {
+      "id": "e1-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 20,
+      "antes": "return redirect(homePathFor(loggedUser));",
+      "depois": "return redirect(homePathFor(loggedUser), 307);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "o status do redirect do loader não chega ao navegador; o roteador segue 301, 302 e 307 do mesmo jeito"
+    },
+    {
+      "id": "e1-M07",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 19,
+      "antes": "if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)) {",
+      "depois": "if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role) && loggedUser.role !== \"ADMIN\") {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M08",
+      "outrosIds": [
+        "e2-M07"
+      ],
+      "frente": "semantically-similar",
+      "linha": 19,
+      "antes": "!allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles[0] !== loggedUser.role",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 17,
+      "antes": "encodeURIComponent(url.pathname + url.search)",
+      "depois": "encodeURIComponent(url.search + url.pathname)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M12",
+      "outrosIds": [
+        "e2-M11"
+      ],
+      "frente": "fault-localization",
+      "linha": 19,
+      "antes": "allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)",
+      "depois": "allowedRoles.length > 0 || !allowedRoles.includes(loggedUser.role)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M14",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 14,
+      "antes": "if (!loggedUser) {",
+      "depois": "if (!loggedUser && allowedRoles.length > 0) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M17",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 17,
+      "antes": "url.pathname + url.search",
+      "depois": "url.pathname + url.search.slice(1)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M20",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 17,
+      "antes": "redirect(\"/entrar?voltar=\" + encodeURIComponent(url.pathname + url.search))",
+      "depois": "redirect(\"/entrar?voltar=\" + url.pathname + url.search)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 20,
+      "antes": "return redirect(homePathFor(loggedUser));",
+      "depois": "return redirect(\"/entrar\");",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 17,
+      "antes": "return redirect(\"/entrar?voltar=\" + encodeURIComponent(url.pathname + url.search));",
+      "depois": "return redirect(\"/entrar?voltar=\" + encodeURIComponent(url.pathname.toLowerCase() + url.search));",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "todo caminho que o app monta é minúsculo"
+    },
+    {
+      "id": "e2-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 22,
+      "antes": "return null;",
+      "depois": "return loggedUser;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 16,
+      "antes": "const url = new URL(request.url);",
+      "depois": "const url = new URL(request.url);\nurl.searchParams.sort();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "as telas protegidas usam no máximo um parâmetro na busca"
+    },
+    {
+      "id": "e2-M08",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 19,
+      "antes": "if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)) {",
+      "depois": "if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.name)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M13",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 13,
+      "antes": "const loggedUser = getLoggedUser();",
+      "depois": "const loggedUser = getLoggedUser;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M15",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 20,
+      "antes": "return redirect(homePathFor(loggedUser));",
+      "depois": "return redirect(homePathFor(loggedUser), 301);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "o status do redirect do loader não chega ao navegador; o roteador segue 301, 302 e 307 do mesmo jeito"
+    },
+    {
+      "id": "e2-M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "const url = new URL(request.url);",
+      "depois": "const url = new URL(window.location.href);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M18",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 19,
+      "antes": "if (allowedRoles.length > 0 && !allowedRoles.includes(loggedUser.role)) {",
+      "depois": "if (allowedRoles.length >= 0 && !allowedRoles.includes(loggedUser.role)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    }
+  ]
+}

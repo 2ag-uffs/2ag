@@ -118,6 +118,20 @@ class DailyStepIsolationTest {
         assertThat(notificationsOf(healthyPatient)).isEqualTo(1);
     }
 
+    // a mensagem conta os q falharam e os q sairam, pra quem le o log saber o tamanho do problema
+    @Test
+    void theFailureMessageCountsTheFailedAndTheSentAppointmentReminders() {
+        saveAppointment(brokenPatient, TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        saveAppointment(brokenPatient, TODAY.plusDays(1).atTime(11, 0), AppointmentStatus.AGENDADA);
+        saveAppointment(healthyPatient, TODAY.plusDays(1).atTime(10, 0), AppointmentStatus.AGENDADA);
+        breakNotificationsOf(brokenPatient);
+
+        assertThatThrownBy(() -> reminderService.sendAppointmentReminders(TODAY))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("2 lembrete(s) de consulta com falha")
+                .hasMessageContaining("1 enviados");
+    }
+
     @Test
     void oneBrokenScaleReminderDoesNotStopTheOthers() {
         ScaleTask broken = saveTask(brokenPatient, TODAY.plusDays(1));

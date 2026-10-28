@@ -591,6 +591,58 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.ALREADY_CANCELED_MESSAGE));
     }
 
+    // a consulta anulada ja saiu da agenda e n volta como cancelada
+    @Test
+    void annulledAppointmentCannotBeCanceled() throws Exception {
+        Appointment annulled = saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.AGENDADA);
+        annulled.setAnnulment(new Annulment(prescriber, "marcada no paciente errado"));
+        appointmentRepository.save(annulled);
+
+        cancel(annulled.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CLOSED_APPOINTMENT_MESSAGE));
+        assertThat(appointmentRepository.findById(annulled.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+    }
+
+    // o pedido ainda sem resposta n segue a regra das 24 horas
+    @Test
+    void patientCancelsARequestEvenCloseToItsTime() throws Exception {
+        LocalDateTime inThreeHours = LocalDateTime.now().plusHours(3).truncatedTo(ChronoUnit.MINUTES);
+        Appointment soonRequest = saveAppointment(patient, inThreeHours, AppointmentStatus.SOLICITADA);
+
+        cancel(soonRequest.getId(), patient)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"));
+    }
+
+    // meia hora antes ou dps da beirada das 24 horas ja muda a resposta
+    @Test
+    void patientCancellationStops24HoursBefore() throws Exception {
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        Appointment almostADay = saveAppointment(patient, now.plusHours(23).plusMinutes(30), AppointmentStatus.AGENDADA);
+        Appointment moreThanADay = saveAppointment(patient, now.plusHours(24).plusMinutes(30), AppointmentStatus.AGENDADA);
+
+        cancel(almostADay.getId(), patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.LATE_CANCELLATION_MESSAGE));
+        cancel(moreThanADay.getId(), patient).andExpect(status().isOk());
+    }
+
+    // o aviso do cancelamento eh alerta pros dois lados, igual recusa e falta
+    @Test
+    void cancelNoticesAreAlerts() throws Exception {
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+        Long appointmentId = idOf(schedule(otherPatient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated()));
+
+        cancel(requestId, patient).andExpect(status().isOk());
+        cancel(appointmentId, prescriber).andExpect(status().isOk());
+
+        assertThat(notificationTypeOf(prescriber, "Consulta cancelada pelo paciente")).isEqualTo("ALERT");
+        assertThat(notificationTypeOf(otherPatient, "Consulta cancelada")).isEqualTo("ALERT");
+    }
+
     // ---------- falta ----------
 
     // sem isso a consulta em q ninguem apareceu ficava AGENDADA pra sempre
@@ -1208,6 +1260,15 @@ class AgendaTest {
                 .stream()
                 .filter(notification -> notification.getTitle().equals(title))
                 .map(Notification::getMessage)
+                .findFirst()
+                .orElse("");
+    }
+
+    private String notificationTypeOf(Users user, String title) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .filter(notification -> notification.getTitle().equals(title))
+                .map(Notification::getType)
                 .findFirst()
                 .orElse("");
     }

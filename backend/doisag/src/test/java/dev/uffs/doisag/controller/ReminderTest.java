@@ -9,6 +9,7 @@ import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +75,7 @@ class ReminderTest {
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private AppointmentService appointmentService;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     @MockitoBean private EmailSender emailSender;
 
@@ -354,6 +357,53 @@ class ReminderTest {
 
         reminderService.sendAppointmentReminders(TODAY);
 
+        verify(emailSender, never()).send(any());
+    }
+
+    // o job pega o dia de amanha inteiro, ate a consulta do fim da noite
+    @Test
+    void aConsultaDaTardeEDaNoiteDeAmanhaTambemGanhaLembrete() {
+        saveAppointment(TODAY.plusDays(1).atTime(14, 0), AppointmentStatus.AGENDADA);
+        saveAppointment(TODAY.plusDays(1).atTime(23, 30), AppointmentStatus.AGENDADA);
+
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isEqualTo(2);
+        assertThat(remindersOf(patient)).hasSize(2);
+    }
+
+    // o dia vem de quem chama, entao o ciclo de outro dia olha o dia seguinte a ele e n o de amanha
+    @Test
+    void oCicloDeOutroDiaLembraAConsultaDoDiaSeguinteAEle() {
+        Appointment tomorrowAppointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        Appointment laterAppointment = saveAppointment(TODAY.plusDays(3).atTime(9, 0), AppointmentStatus.AGENDADA);
+
+        assertThat(reminderService.sendAppointmentReminders(TODAY.plusDays(2))).isEqualTo(1);
+        assertThat(appointmentRepository.findById(laterAppointment.getId()).orElseThrow().getReminderSentAt())
+                .isNotNull();
+        assertThat(appointmentRepository.findById(tomorrowAppointment.getId()).orElseThrow().getReminderSentAt())
+                .isNull();
+    }
+
+    // a consulta anulada foi marcada por engano e n vira lembrete
+    @Test
+    void aConsultaAnuladaNaoGeraLembrete() {
+        Appointment annulled = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        annulled.setAnnulment(new Annulment(prescriber, "marcada no paciente errado"));
+        appointmentRepository.save(annulled);
+
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isZero();
+        assertThat(notificationsOf(patient)).isEmpty();
+        verify(emailSender, never()).send(any());
+    }
+
+    // cancelada por outra rota dps da lista do job e antes da trava: eh pulada e n conta como enviada
+    @Test
+    void aConsultaCanceladaAntesDaTravaNaoContaComoEnviada() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        // direto no banco, entao a copia da sessao fica velha como a da lista do job
+        jdbcTemplate.update("update appointment set status = 'CANCELADA' where id = ?", appointment.getId());
+
+        assertThat(reminderService.sendAppointmentReminders(TODAY)).isZero();
+        assertThat(notificationsOf(patient)).isEmpty();
         verify(emailSender, never()).send(any());
     }
 

@@ -376,6 +376,27 @@ class ConsentTermTest {
                 .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
     }
 
+    // cuidador de adulto pode ficar sem parentesco, e um aceite com so o telefone n apaga ele
+    @Test
+    void adultCaregiverWithoutRelationshipStaysAfterTheAcceptance() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        patient.setGuardianName("Carlos Lima");
+        patient.setGuardianPhone("49988776655");
+        patientRepository.save(patient);
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"guardian\":{\"phone\":\"49911112222\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+
+        Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
+        assertThat(savedPatient.getGuardianName()).isEqualTo("Carlos Lima");
+        assertThat(savedPatient.getGuardianPhone()).isEqualTo("49988776655");
+    }
+
     // conta so com o aceite de pesquisa n fica presa no aceite do termo do cadastro
     @Test
     void researchConsentAloneDoesNotBlockThePatient() throws Exception {

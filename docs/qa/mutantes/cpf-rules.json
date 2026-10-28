@@ -1,0 +1,191 @@
+{
+  "metodo": "CpfRules.isValid",
+  "arquivo": "backend/doisag/src/main/java/dev/uffs/doisag/dto/CpfRules.java",
+  "classesDeTeste": [
+    "CpfRulesTest"
+  ],
+  "mutantes": [
+    {
+      "id": "M01",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 13,
+      "antes": "if (cpf == null || cpf.isBlank()) { return true;",
+      "depois": "if (cpf == null || cpf.isBlank()) { return false;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M02",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 16,
+      "antes": "if (digits == null || isSameDigitRepeated(digits)) {",
+      "depois": "if (digits == null) { return true; } if (isSameDigitRepeated(digits)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 15,
+      "antes": "String digits = digitsOf(cpf);",
+      "depois": "String digits = cpf.matches(\"[0-9]{11}\") ? cpf : null;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 16,
+      "antes": "isSameDigitRepeated(digits)) {",
+      "depois": "isSameDigitRepeated(cpf)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 16,
+      "antes": "isSameDigitRepeated(digits)) {",
+      "depois": "isSameDigitRepeated(digits.substring(0, 10))) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "nove dígitos iguais sempre geram verificadores iguais a eles, então olhar só os dez primeiros dá o mesmo resultado"
+    },
+    {
+      "id": "M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 15,
+      "antes": "String digits = digitsOf(cpf);",
+      "depois": "String digits = digitsOf(cpf.strip());",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M07",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 12,
+      "antes": "cpf == null || cpf.isBlank()",
+      "depois": "cpf == null || cpf.isEmpty()",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M08",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 12,
+      "antes": "cpf == null || cpf.isBlank()",
+      "depois": "cpf == null || cpf.trim().isEmpty()",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda com espaço unicode sozinho no campo; a máscara da tela tira tudo que não é dígito"
+    },
+    {
+      "id": "M09",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 19,
+      "antes": "return digits.equals(withCheckDigits(digits.substring(0, 9)));",
+      "depois": "return digits.endsWith(withCheckDigits(digits.substring(0, 9)).substring(10));",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M10",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 19,
+      "antes": "return digits.equals(withCheckDigits(digits.substring(0, 9)));",
+      "depois": "return digits.substring(0, 10).equals(withCheckDigits(digits.substring(0, 9)).substring(0, 10));",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 19,
+      "antes": "return digits.equals(",
+      "depois": "return !digits.equals(",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M12",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 16,
+      "antes": "if (digits == null || isSameDigitRepeated(digits)) {",
+      "depois": "if (isSameDigitRepeated(digits) || digits == null) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M13",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 16,
+      "antes": "if (digits == null || isSameDigitRepeated(digits)) {",
+      "depois": "if (digits == null && isSameDigitRepeated(digits)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M14",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 15,
+      "antes": "String digits = digitsOf(cpf);",
+      "depois": "String digits = cpf;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M15",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 19,
+      "antes": "return digits.equals(withCheckDigits(",
+      "depois": "return cpf.equals(withCheckDigits(",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "if (digits == null || isSameDigitRepeated(digits)) {",
+      "depois": "if (digits == null) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M17",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 19,
+      "antes": "withCheckDigits(digits.substring(0, 9))",
+      "depois": "withCheckDigits(digits.substring(0, 10))",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M18",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 12,
+      "antes": "cpf == null || cpf.isBlank()",
+      "depois": "cpf == null || cpf.strip().length() < 2",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    }
+  ]
+}

@@ -1,0 +1,431 @@
+{
+  "metodo": "answersPayload",
+  "arquivo": "frontend/src/utils/scale-answers.js",
+  "classesDeTeste": [
+    "scale-answers.test.js",
+    "scale-form.test.jsx"
+  ],
+  "mutantes": [
+    {
+      "id": "e0-M01",
+      "outrosIds": [
+        "e1-M01",
+        "e2-M01"
+      ],
+      "frente": "behavior-model",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (value === undefined || value === null || value === \"\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M02",
+      "outrosIds": [
+        "e1-M02",
+        "e2-M09"
+      ],
+      "frente": "behavior-model",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (item.type === \"CALCULADO\" || value === undefined || value === null) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 22,
+      "antes": "if (item.type === \"HORA\") {",
+      "depois": "if (item.type === \"HORA\" || item.type === \"NUMERO\") {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M04",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 27,
+      "antes": "payload[item.key] = value === \"true\";",
+      "depois": "payload[item.key] = value !== \"true\";",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M05",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 32,
+      "antes": "return payload;",
+      "depois": "return values;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 30,
+      "antes": "payload[item.key] = Number(value);",
+      "depois": "payload[item.key] = parseInt(value, 10);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M07",
+      "outrosIds": [
+        "e1-M07"
+      ],
+      "frente": "rip",
+      "linha": 11,
+      "antes": "const value = values[item.key];",
+      "depois": "const value = values[item.key] ?? \"\";",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "valor ausente e valor vazio já ficam fora do envio do mesmo jeito"
+    },
+    {
+      "id": "e0-M08",
+      "outrosIds": [
+        "e2-M07"
+      ],
+      "frente": "rip",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (item.type === \"CALCULADO\" || value === null || value === \"\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M09",
+      "outrosIds": [
+        "e2-M04"
+      ],
+      "frente": "semantically-similar",
+      "linha": 23,
+      "antes": "payload[item.key] = value;",
+      "depois": "payload[item.key] = String(value).trim();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "HORA vem de input type=time, que nunca tem espaço; o mutante é mais certo (#177)"
+    },
+    {
+      "id": "e0-M10",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 27,
+      "antes": "payload[item.key] = value === \"true\";",
+      "depois": "payload[item.key] = String(value) === \"true\";",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para valor que não é texto, e a tela sempre guarda texto"
+    },
+    {
+      "id": "e0-M11",
+      "outrosIds": [
+        "e1-M05",
+        "e2-M06"
+      ],
+      "frente": "semantically-similar",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (item.type === \"CALCULADO\" || value === undefined || value === null || String(value).trim() === \"\") {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "valor só de espaço em item numérico vira 0 no original; o mutante é mais certo (#177)"
+    },
+    {
+      "id": "e0-M12",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 30,
+      "antes": "payload[item.key] = Number(value);",
+      "depois": "payload[item.key] = String(value);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M13",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 30,
+      "antes": "payload[item.key] = Number(value);",
+      "depois": "payload[item.key] = Math.trunc(Number(value));",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M14",
+      "outrosIds": [
+        "e1-M06",
+        "e2-M12"
+      ],
+      "frente": "fault-localization",
+      "linha": 30,
+      "antes": "payload[item.key] = Number(value);",
+      "depois": "payload[item.key] = Number(value) || 0;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para texto que não é número, e o campo é type=number"
+    },
+    {
+      "id": "e0-M15",
+      "outrosIds": [
+        "e1-M16"
+      ],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "const text = String(value).trim();",
+      "depois": "const text = String(value);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 11,
+      "antes": "const value = values[item.key];",
+      "depois": "const value = values[item.type];",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M17",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "const text = String(value).trim();",
+      "depois": "const text = String(value.trim());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para valor que não é texto, e a tela sempre guarda texto"
+    },
+    {
+      "id": "e0-M18",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\" || value === \"0\") {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M19",
+      "outrosIds": [
+        "e1-M18",
+        "e2-M18"
+      ],
+      "frente": "boundary",
+      "linha": 17,
+      "antes": "if (text !== \"\") {",
+      "depois": "if (text.length > 1) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M20",
+      "outrosIds": [
+        "e1-M19",
+        "e2-M17"
+      ],
+      "frente": "boundary",
+      "linha": 10,
+      "antes": "items.forEach((item) => {",
+      "depois": "items.slice(0, -1).forEach((item) => {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 20,
+      "antes": "                payload[item.key] = text;\n            }\n            return;",
+      "depois": "                payload[item.key] = text;\n            }",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M04",
+      "outrosIds": [
+        "e2-M02"
+      ],
+      "frente": "behavior-model",
+      "linha": 22,
+      "antes": "        if (item.type === \"HORA\") {",
+      "depois": "        if (item.type === \"HORARIO\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M08",
+      "outrosIds": [
+        "e2-M05"
+      ],
+      "frente": "semantically-similar",
+      "linha": 27,
+      "antes": "            payload[item.key] = value === \"true\";",
+      "depois": "            payload[item.key] = value !== \"false\";",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para valor que não é true nem false, e o campo é de marcar"
+    },
+    {
+      "id": "e1-M09",
+      "outrosIds": [
+        "e2-M15"
+      ],
+      "frente": "semantically-similar",
+      "linha": 16,
+      "antes": "            const text = String(value).trim();",
+      "depois": "            const text = String(value).trimStart();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M10",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 30,
+      "antes": "        payload[item.key] = Number(value);",
+      "depois": "        payload[item.key] = Math.round(Number(value));",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 27,
+      "antes": "            payload[item.key] = value === \"true\";",
+      "depois": "            payload[item.key] = value === true;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M12",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 27,
+      "antes": "            payload[item.key] = value === \"true\";",
+      "depois": "            payload[item.key] = Boolean(value);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M13",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 27,
+      "antes": "            payload[item.key] = value === \"true\";",
+      "depois": "            payload[item.key] = String(value === \"true\");",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M14",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 12,
+      "antes": "        if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "        if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"0\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M15",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 10,
+      "antes": "    items.forEach((item) => {",
+      "depois": "    items.reverse().forEach((item) => {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M17",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 30,
+      "antes": "        payload[item.key] = Number(value);",
+      "depois": "        payload[item.key] = parseFloat(value);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para texto que não é número, e o campo é type=number"
+    },
+    {
+      "id": "e2-M03",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 13,
+      "antes": "            return;",
+      "depois": "            payload[item.key] = undefined;\n            return;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M08",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 12,
+      "antes": "if (item.type === \"CALCULADO\" || value === undefined || value === null || value === \"\") {",
+      "depois": "if (item.type === \"CALCULADO\" || value === undefined || value === \"\") {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M10",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 30,
+      "antes": "        payload[item.key] = Number(value);",
+      "depois": "        payload[item.key] = parseInt(value);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 30,
+      "antes": "        payload[item.key] = Number(value);",
+      "depois": "        payload[item.key] = value;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M13",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 11,
+      "antes": "        const value = values[item.key];",
+      "depois": "        const value = values[item.label];",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M14",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 16,
+      "antes": "            const text = String(value).trim();",
+      "depois": "            const text = value.trim();",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda para valor que não é texto, e a tela sempre guarda texto"
+    },
+    {
+      "id": "e2-M16",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 10,
+      "antes": "    items.forEach((item) => {",
+      "depois": "    items.slice(1).forEach((item) => {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    }
+  ]
+}

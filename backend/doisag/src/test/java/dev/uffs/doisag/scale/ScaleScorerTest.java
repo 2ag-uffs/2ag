@@ -212,6 +212,64 @@ class ScaleScorerTest {
         assertThat(completed).doesNotContainKey("tempoTotalSono");
     }
 
+    // sem os horarios ainda da pra somar o total acordado, so o tempo na cama e o de sono ficam de fora
+    @Test
+    void diarioDoSonoSomaOTotalAcordadoMesmoSemHorario() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("tempoAteDormir", 20);
+        answers.put("tempoAcordadoNoite", 25);
+
+        Map<String, Object> completed = scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers);
+
+        assertThat(completed.get("totalAcordado")).isEqualTo(45);
+        assertThat(completed).doesNotContainKey("tempoNaCama");
+        assertThat(completed).doesNotContainKey("tempoTotalSono");
+    }
+
+    // com os dois horarios e sem um dos minutos so sai o tempo na cama
+    @Test
+    void diarioDoSonoSemOsMinutosCalculaSoOTempoNaCama() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "23:00");
+        answers.put("horarioLevantar", "07:00");
+        answers.put("tempoAteDormir", 20);
+
+        Map<String, Object> completed = scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers);
+
+        assertThat(completed.get("tempoNaCama")).isEqualTo(480);
+        assertThat(completed).doesNotContainKey("totalAcordado");
+        assertThat(completed).doesNotContainKey("tempoTotalSono");
+    }
+
+    // a noite inteira acordado na cama da sono zero e ainda vale
+    @Test
+    void diarioDoSonoAceitaNoiteSemDormir() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "23:00");
+        answers.put("horarioLevantar", "07:00");
+        answers.put("tempoAteDormir", 480);
+        answers.put("tempoAcordadoNoite", 0);
+
+        Map<String, Object> completed = scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers);
+
+        assertThat(completed.get("totalAcordado")).isEqualTo(480);
+        assertThat(completed.get("tempoTotalSono")).isEqualTo(0);
+    }
+
+    // um minuto acordado a mais q o tempo na cama ja eh minuto digitado errado
+    @Test
+    void diarioDoSonoRecusaUmMinutoAcordadoAMais() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "23:00");
+        answers.put("horarioLevantar", "07:00");
+        answers.put("tempoAteDormir", 60);
+        answers.put("tempoAcordadoNoite", 421);
+
+        assertThatThrownBy(() -> scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(ScaleScorer.AWAKE_LONGER_THAN_BED_MESSAGE);
+    }
+
     private String hamiltonBandOf(int valuePerItem) {
         return scorer.score(ScaleType.ESCALA_HAMILTON, allHamiltonItemsWith(valuePerItem)).band();
     }

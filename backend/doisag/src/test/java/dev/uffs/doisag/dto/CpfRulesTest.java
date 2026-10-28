@@ -43,6 +43,16 @@ class CpfRulesTest {
         }
     }
 
+    // com a mascara a repeticao tbm n passa
+    @Test
+    void theSameDigitElevenTimesWithTheMaskIsRefused() {
+        for (char digit = '0'; digit <= '9'; digit++) {
+            String three = String.valueOf(digit).repeat(3);
+            String masked = three + "." + three + "." + three + "-" + digit + digit;
+            assertThat(CpfRules.isValid(masked)).isFalse();
+        }
+    }
+
     @Test
     void tenOrTwelveDigitsAreRefused() {
         assertThat(CpfRules.isValid("5299822472")).isFalse();
@@ -73,5 +83,11 @@ class CpfRulesTest {
         assertThat(CpfRules.isValid(null)).isTrue();
         assertThat(CpfRules.isValid("")).isTrue();
         assertThat(CpfRules.isValid("   ")).isTrue();
+    }
+
+    @Test
+    void aSingleCharIsRefused() {
+        assertThat(CpfRules.isValid("5")).isFalse();
+        assertThat(CpfRules.isValid("a")).isFalse();
     }
 }

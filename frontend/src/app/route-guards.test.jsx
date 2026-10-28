@@ -52,6 +52,45 @@ describe("regras de acesso das rotas", () => {
         expect(response.headers.get("Location")).toBe("/painel-prescritor");
     });
 
+    it("o admin tbm volta pra propria tela qnd a rota eh de outro papel", () => {
+        setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+        const response = requireRole("PATIENT")(requestTo("/pacientes/5/escalas"));
+
+        expect(response.headers.get("Location")).toBe("/administracao");
+    });
+
+    // a area do admin eh a unica com ADMIN sozinho na lista
+    it("paciente ou prescritor q abre a area do admin volta pra propria tela inicial", () => {
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+        expect(requireRole("ADMIN")(requestTo("/administracao/pacientes")).headers.get("Location"))
+            .toBe("/painel-paciente");
+
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        expect(requireRole("ADMIN")(requestTo("/administracao")).headers.get("Location"))
+            .toBe("/painel-prescritor");
+    });
+
+    it("a regra com varios papeis deixa entrar qualquer um deles, n so o primeiro", () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+
+        expect(requireRole("PATIENT", "PRESCRIBER")(requestTo("/notificacoes"))).toBeNull();
+        expect(requireRole("PATIENT", "PRESCRIBER", "ADMIN")(requestTo("/perfil"))).toBeNull();
+    });
+
+    // o layout logado usa a regra sem papel nenhum: so pede sessao aberta
+    it("sem papel na lista basta estar logado, seja qual for o perfil", () => {
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+
+        expect(requireRole()(requestTo("/perfil"))).toBeNull();
+    });
+
+    it("sem sessao a regra sem papel tbm manda pro login guardando a tela", () => {
+        const response = requireRole()(requestTo("/perfil"));
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get("Location")).toBe("/entrar?voltar=" + encodeURIComponent("/perfil"));
+    });
+
     it("o link de senha nova abre com alguem logado, mas sem o codigo vai pra tela inicial", () => {
         setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
 

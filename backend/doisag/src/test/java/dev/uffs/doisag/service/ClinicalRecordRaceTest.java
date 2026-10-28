@@ -315,6 +315,23 @@ class ClinicalRecordRaceTest {
         assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
     }
 
+    // o cadastro espera o prescritor sem segurar o paciente, entao quem segura o prescritor ainda trava o paciente,
+    // como o job faz. na ordem trocada o cadastro pegava o paciente e esperava o prescritor, e um esperava o outro
+    @Test
+    void theProtocolWaitsForThePrescriberWithoutHoldingThePatient() throws Exception {
+        TreatmentProtocolCreateDTO protocolData = new TreatmentProtocolCreateDTO(null, null, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.SEMANAL)));
+
+        HeldLock.Outcome<TreatmentProtocolResponseDTO> outcome = heldLock.run(
+                () -> prescriberRepository.lockById(prescriber.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> protocolService.create(patient.getId(), protocolData, prescriber));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(TreatmentProtocolService.ARCHIVED_PATIENT_MESSAGE);
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
+    }
+
     // a rodada trava o prescritor e o paciente antes de ler o acompanhamento: o arquivamento gravado enquanto
     // ela esperava encerra o acompanhamento e a rodada n manda tarefa nova pro paciente arquivado
     @Test

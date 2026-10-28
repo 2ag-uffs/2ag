@@ -266,6 +266,55 @@ class ScaleDeliveryTest {
                 .contains("Você tem até " + formatDate(deadline) + " para responder de novo.");
     }
 
+    // o prazo q acaba hoje tbm passa pra depois de amanha, senao o job das 8h de amanha fechava a tarefa
+    // reaberta como nao respondida
+    @Test
+    void annullingOnTheLastDayGivesANewDeadline() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(6), 7,
+                false);
+        Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        ScaleTask reopened = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(reopened.getPeriodEnd()).isEqualTo(today.plusDays(2));
+        assertThat(noticeOf(patient, "Escala para responder de novo").getMessage())
+                .contains("Você tem até " + formatDate(today.plusDays(2)) + " para responder de novo.");
+
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        reminderService.sendScaleReminders(today.plusDays(1));
+
+        reopened = taskRepository.findById(task.getId()).orElseThrow();
+        assertThat(reopened.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(reopened.getReminderSentAt()).isNotNull();
+    }
+
+    // o prazo q acaba amanha tbm vai pra depois de amanha, e o job desse dia ainda n fecha a tarefa
+    @Test
+    void annullingTheDayBeforeTheDeadlineMovesItToTheDayAfterTomorrow() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(5), 7,
+                false);
+        Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getPeriodEnd())
+                .isEqualTo(today.plusDays(2));
+        assertThat(noticeOf(patient, "Escala para responder de novo").getMessage())
+                .contains("Você tem até " + formatDate(today.plusDays(2)) + " para responder de novo.");
+
+        scaleTaskService.closeOverdue(today.plusDays(2));
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+    }
+
     // no diario o periodo eh a semana da grade, entao a semana reaberta n muda e o job das 8h de amanha fecha
     // ela: o aviso diz qual dia preencher e ate qnd, e abre a grade nesse dia
     @Test

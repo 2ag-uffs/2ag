@@ -37,6 +37,7 @@ class PasswordServiceTest {
     private static final String CURRENT_PASSWORD = "SenhaAntiga@1";
     private static final String NEW_PASSWORD = "SenhaNova@2026";
     private static final String ADDRESS = "127.0.0.1";
+    private static final String EMAIL = "maria@email.com";
 
     @Mock
     private UsersRepository usersRepository;
@@ -56,6 +57,7 @@ class PasswordServiceTest {
         passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter, emailChangeRepository);
         user = new Patient();
         user.setId(1L);
+        user.setEmail(EMAIL);
         user.setPassword(encoder.encode(CURRENT_PASSWORD));
     }
 
@@ -105,7 +107,7 @@ class PasswordServiceTest {
                 .hasMessageContaining("senha atual");
 
         verify(usersRepository, never()).save(any(Users.class));
-        verify(loginAttemptLimiter).registerFailure(any(), eq(ADDRESS));
+        verify(loginAttemptLimiter).registerFailure(EMAIL, ADDRESS);
     }
 
     @Test
@@ -141,7 +143,8 @@ class PasswordServiceTest {
         assertThatThrownBy(() ->
                 passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, CURRENT_PASSWORD), ADDRESS))
                 .isInstanceOf(InvalidFieldException.class)
-                .hasMessageContaining("diferente da atual");
+                .hasMessageContaining("diferente da atual")
+                .hasFieldOrPropertyWithValue("field", "newPassword");
 
         verify(usersRepository, never()).save(any(Users.class));
     }
@@ -155,6 +158,53 @@ class PasswordServiceTest {
         assertThatThrownBy(() ->
                 passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD), ADDRESS))
                 .isInstanceOf(NotFoundException.class);
+
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    // com a contagem de verdade: cinco chutes errados da senha atual travam ate a senha certa, igual no login
+    @Test
+    void blocksAfterFiveWrongGuessesOfTheCurrentPassword() {
+        repositoryFindsTheUser();
+        LoginAttemptLimiter realLimiter = new LoginAttemptLimiter(5, 20, 100, 10, 15);
+        PasswordService serviceWithRealLimiter =
+                new PasswordService(usersRepository, encoder, realLimiter, emailChangeRepository);
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThatThrownBy(() ->
+                    serviceWithRealLimiter.changePassword(1L, new ChangePasswordDTO("ChuteErrado@1", NEW_PASSWORD), ADDRESS))
+                    .isInstanceOf(InvalidFieldException.class);
+        }
+
+        assertThatThrownBy(() ->
+                serviceWithRealLimiter.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD), ADDRESS))
+                .isInstanceOf(LoginBlockedException.class);
+        verify(usersRepository, never()).save(any(Users.class));
+    }
+
+    @Test
+    void clearsTheCountWhenTheCurrentPasswordMatches() {
+        repositoryFindsTheUser();
+
+        passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD), ADDRESS);
+
+        verify(loginAttemptLimiter).registerSuccess(EMAIL, ADDRESS);
+        verify(loginAttemptLimiter, never()).registerFailure(any(), any());
+    }
+
+    // senha de 40 letras q a api aceita e ocupa os 72 bytes por causa do acento
+    // o teste conta com o matches do bcrypt lendo so os primeiros 72 bytes, entao a atual com letra a mais ainda confere
+    // a nova eh comparada com a senha guardada e n com o q foi digitado na atual
+    @Test
+    void refusesTheStoredPasswordAsNewEvenIfTheCurrentWasTypedLonger() {
+        String storedPassword = "Senha1!" + "ã".repeat(32) + "a";
+        user.setPassword(encoder.encode(storedPassword));
+        repositoryFindsTheUser();
+
+        assertThatThrownBy(() ->
+                passwordService.changePassword(1L, new ChangePasswordDTO(storedPassword + "b", storedPassword), ADDRESS))
+                .isInstanceOf(InvalidFieldException.class)
+                .hasMessageContaining("diferente da atual");
 
         verify(usersRepository, never()).save(any(Users.class));
     }

@@ -1,0 +1,172 @@
+{
+  "metodo": "LoginAttemptLimiter.registerFailure e isBlocked",
+  "arquivo": "backend/doisag/src/main/java/dev/uffs/doisag/security/LoginAttemptLimiter.java",
+  "classesDeTeste": [
+    "LoginAttemptLimiterTest"
+  ],
+  "mutantes": [
+    {
+      "id": "M01",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 152,
+      "antes": "if (count.total >= limit) {",
+      "depois": "if (count.total == limit) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "a conta só passa do limite durante um bloqueio, e todo caminho confere o bloqueio antes de registrar a falha"
+    },
+    {
+      "id": "M02",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 215,
+      "antes": "if (blockedUntil != null) { return !blockedUntil.isAfter(now); }",
+      "depois": "(removed: hasFinished only looks at firstFailureAt + blockTime)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M03",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 147,
+      "antes": "if (count == null || count.hasFinished(now, blockTime)) {",
+      "depois": "if (count == null) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "quem chama addFailure limpa as falhas vencidas com o mesmo instante logo antes"
+    },
+    {
+      "id": "M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 64,
+      "antes": "removeFinished(now);",
+      "depois": "(call dropped in registerFailure)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M05",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 153,
+      "antes": "count.blockedUntil = now.plus(blockTime);",
+      "depois": "count.blockedUntil = count.firstFailureAt.plus(blockTime);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M06",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 142,
+      "antes": "return count != null && count.blockedUntil != null && count.blockedUntil.isAfter(now);",
+      "depois": "return count != null && count.blockedUntil != null;",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M07",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 142,
+      "antes": "count != null && count.blockedUntil != null && count.blockedUntil.isAfter(now)",
+      "depois": "count != null && count.blockedUntil.isAfter(now)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M08",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 175,
+      "antes": "return SecureTokens.hashToken(String.valueOf(email));",
+      "depois": "return SecureTokens.hashToken(String.valueOf(email).toLowerCase());",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "todo e-mail chega normalizado em minúsculas"
+    },
+    {
+      "id": "M09",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 65,
+      "antes": "addFailure(emailKey(email, address), maxFailures, now);",
+      "depois": "addFailure(emailKey(address, email), maxFailures, now);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M10",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 66,
+      "antes": "addFailure(addressKey(address), maxFailuresPerAddress, now);",
+      "depois": "addFailure(addressKey(address), maxFailures, now);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M11",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 68,
+      "antes": "addFailure(emailTotalKey(email), maxFailuresPerEmail, now);",
+      "depois": "addFailure(emailTotalKey(email), maxFailuresPerAddress, now);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M12",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 59,
+      "antes": "|| isBlocked(addressKey(address), now) || isBlocked(emailTotalKey(email), now);",
+      "depois": "|| isBlocked(addressKey(address), now);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M13",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 152,
+      "antes": "if (count.total >= limit) {",
+      "depois": "if (count.total > limit) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M14",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 152,
+      "antes": "if (count.total >= limit) {",
+      "depois": "if (count.total >= limit - 1) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M15",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 142,
+      "antes": "count.blockedUntil.isAfter(now)",
+      "depois": "!count.blockedUntil.isBefore(now)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M16",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 218,
+      "antes": "return !firstFailureAt.plus(blockTime).isAfter(now);",
+      "depois": "return firstFailureAt.plus(blockTime).isBefore(now);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    }
+  ]
+}

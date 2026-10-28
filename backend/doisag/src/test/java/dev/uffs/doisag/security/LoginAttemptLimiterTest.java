@@ -50,6 +50,53 @@ class LoginAttemptLimiterTest {
     }
 
     @Test
+    void theBlockEndsRightAtTheBlockTime() {
+        failTimes(EMAIL, OTHER_ADDRESS, 5);
+
+        clock.moveMinutes(15);
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
+    }
+
+    @Test
+    void oldFailuresStopCountingRightAtTheBlockTime() {
+        failTimes(EMAIL, OTHER_ADDRESS, 4);
+
+        clock.moveMinutes(15);
+        failTimes(EMAIL, OTHER_ADDRESS, 1);
+
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
+    }
+
+    // o bloqueio conta do erro q bateu o limite e n do primeiro erro
+    @Test
+    void theBlockCountsFromTheFailureThatReachedTheLimit() {
+        failTimes(EMAIL, OTHER_ADDRESS, 4);
+
+        clock.moveMinutes(10);
+        failTimes(EMAIL, OTHER_ADDRESS, 1);
+
+        clock.moveMinutes(14);
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isTrue();
+
+        clock.moveMinutes(2);
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isFalse();
+    }
+
+    // o erro de outra pessoa limpa a memoria mas n pode levar junto um bloqueio q ainda vale
+    @Test
+    void aLateBlockSurvivesTheCleanupOfOldFailures() {
+        failTimes(EMAIL, OTHER_ADDRESS, 4);
+
+        clock.moveMinutes(10);
+        failTimes(EMAIL, OTHER_ADDRESS, 1);
+
+        clock.moveMinutes(6);
+        limiter.registerFailure("outra@email.com", MARIA_ADDRESS);
+
+        assertThat(limiter.isBlocked(EMAIL, OTHER_ADDRESS)).isTrue();
+    }
+
+    @Test
     void manyEmailsFromTheSameAddressBlockTheAddress() {
         for (int index = 0; index < 20; index++) {
             limiter.registerFailure("pessoa" + index + "@email.com", OTHER_ADDRESS);
@@ -90,6 +137,19 @@ class LoginAttemptLimiterTest {
         assertThat(limiter.longestKeyLength()).isLessThan(200);
     }
 
+    // so da pra olhar a memoria pelo tamanho da maior chave, por isso o endereco antigo eh mais comprido
+    // conta com o endereco entrando cru na chave, se um dia virar hash esse teste precisa de outro jeito de olhar
+    @Test
+    void finishedFailuresLeaveTheMemoryOnTheNextFailure() {
+        limiter.registerFailure(EMAIL, "2804:14c:5b80:8000:1234:5678:9abc:def0");
+        int longestWithTheOldAddress = limiter.longestKeyLength();
+
+        clock.moveMinutes(16);
+        limiter.registerFailure(EMAIL, MARIA_ADDRESS);
+
+        assertThat(limiter.longestKeyLength()).isLessThan(longestWithTheOldAddress);
+    }
+
     // quem troca de endereco a cada chute escapa da conta por endereco, mas n do teto do e-mail
     @Test
     void manyAddressesAgainstOneEmailBlockThatEmailEverywhere() {
@@ -101,6 +161,18 @@ class LoginAttemptLimiterTest {
 
         limiter.forgetEmail(EMAIL);
         assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isFalse();
+    }
+
+    @Test
+    void lessThanAHundredFailuresFromManyAddressesLeaveTheEmailFree() {
+        for (int index = 0; index < 99; index++) {
+            limiter.registerFailure(EMAIL, "10.0.0." + index);
+        }
+
+        assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isFalse();
+
+        limiter.registerFailure(EMAIL, OTHER_ADDRESS);
+        assertThat(limiter.isBlocked(EMAIL, MARIA_ADDRESS)).isTrue();
     }
 
     @Test

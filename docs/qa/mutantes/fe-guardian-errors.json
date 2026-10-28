@@ -1,0 +1,380 @@
+{
+  "metodo": "findGuardianErrors",
+  "arquivo": "frontend/src/utils/guardian.js",
+  "classesDeTeste": [
+    "guardian.test.js"
+  ],
+  "mutantes": [
+    {
+      "id": "e0-M01",
+      "outrosIds": [
+        "e1-M01",
+        "e2-M03"
+      ],
+      "frente": "behavior-model",
+      "linha": 60,
+      "antes": "if (phone && phone.length < 10) {",
+      "depois": "if (phone.length < 10) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M02",
+      "outrosIds": [
+        "e1-M02",
+        "e2-M01"
+      ],
+      "frente": "behavior-model",
+      "linha": 63,
+      "antes": "if (isMinor) {",
+      "depois": "if (!isMinor) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M03",
+      "outrosIds": [
+        "e2-M02"
+      ],
+      "frente": "behavior-model",
+      "linha": 70,
+      "antes": "        return errors;",
+      "depois": "",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 72,
+      "antes": "(formData.guardianRelationship.trim() || phone)",
+      "depois": "(formData.guardianRelationship.trim())",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 72,
+      "antes": "(formData.guardianRelationship.trim() || phone)",
+      "depois": "(phone)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M06",
+      "outrosIds": [
+        "e2-M18"
+      ],
+      "frente": "rip",
+      "linha": 60,
+      "antes": "if (phone && phone.length < 10) {",
+      "depois": "if (phone && phone.length < 9) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M07",
+      "outrosIds": [
+        "e1-M07",
+        "e2-M13"
+      ],
+      "frente": "semantically-similar",
+      "linha": 72,
+      "antes": "if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || phone)) {",
+      "depois": "if (!formData.guardianName.trim() || (formData.guardianRelationship.trim() || phone)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M08",
+      "outrosIds": [
+        "e1-M08",
+        "e2-M07"
+      ],
+      "frente": "semantically-similar",
+      "linha": 72,
+      "antes": "(formData.guardianRelationship.trim() || phone)",
+      "depois": "(formData.guardianRelationship.trim() && phone)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M09",
+      "outrosIds": [
+        "e2-M10"
+      ],
+      "frente": "semantically-similar",
+      "linha": 60,
+      "antes": "if (phone && phone.length < 10) {",
+      "depois": "if (phone && phone.length !== 11) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M10",
+      "outrosIds": [
+        "e1-M05",
+        "e2-M04"
+      ],
+      "frente": "fault-localization",
+      "linha": 64,
+      "antes": "        if (!formData.guardianName.trim()) {",
+      "depois": "        if (!formData.guardianName) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M11",
+      "outrosIds": [
+        "e2-M12"
+      ],
+      "frente": "fault-localization",
+      "linha": 64,
+      "antes": "        if (!formData.guardianName.trim()) {",
+      "depois": "        if (formData.guardianName.trim()) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M12",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 67,
+      "antes": "        if (!formData.guardianRelationship.trim()) {",
+      "depois": "        if (!formData.guardianName.trim()) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M13",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 67,
+      "antes": "        if (!formData.guardianRelationship.trim()) {",
+      "depois": "        if (!formData.guardianRelationship.trim() && !phone) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M14",
+      "outrosIds": [
+        "e1-M16",
+        "e2-M14"
+      ],
+      "frente": "method-invocation",
+      "linha": 59,
+      "antes": "    const phone = onlyDigits(formData.guardianPhone);",
+      "depois": "    const phone = onlyDigits(formData.guardianName);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M15",
+      "outrosIds": [
+        "e1-M15",
+        "e2-M15"
+      ],
+      "frente": "method-invocation",
+      "linha": 59,
+      "antes": "    const phone = onlyDigits(formData.guardianPhone);",
+      "depois": "    const phone = formData.guardianPhone;",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M16",
+      "outrosIds": [
+        "e1-M12",
+        "e2-M06"
+      ],
+      "frente": "method-invocation",
+      "linha": 72,
+      "antes": "(formData.guardianRelationship.trim() || phone)",
+      "depois": "(formData.guardianRelationship || phone)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M17",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 72,
+      "antes": "if (!formData.guardianName.trim() && (",
+      "depois": "if (!formData.guardianName.trimStart() && (",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "trim e trimStart só dão vazio para o mesmo texto"
+    },
+    {
+      "id": "e0-M18",
+      "outrosIds": [
+        "e1-M18"
+      ],
+      "frente": "boundary",
+      "linha": 60,
+      "antes": "if (phone && phone.length < 10) {",
+      "depois": "if (phone && phone.length <= 10) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e0-M19",
+      "outrosIds": [
+        "e1-M19",
+        "e2-M19"
+      ],
+      "frente": "boundary",
+      "linha": 57,
+      "antes": "export function findGuardianErrors(formData, isMinor = false) {",
+      "depois": "export function findGuardianErrors(formData, isMinor = true) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 70,
+      "antes": "        return errors;\n    }\n    if (",
+      "depois": "    }\n    if (",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 72,
+      "antes": "(formData.guardianRelationship.trim() || phone)) {",
+      "depois": "(formData.guardianRelationship.trim() || phone.length >= 10)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M06",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 59,
+      "antes": "    const phone = onlyDigits(formData.guardianPhone);\n    ...\n    if (isMinor) {",
+      "depois": "    let phone = onlyDigits(formData.guardianPhone);\n    ...\n    if (isMinor) {\n        phone = \"\";",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M09",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 60,
+      "antes": "    if (phone && phone.length < 10) {",
+      "depois": "    if (phone && phone.length > 11) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M10",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 60,
+      "antes": "    if (phone && phone.length < 10) {",
+      "depois": "    if (phone || phone.length < 10) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 61,
+      "antes": "        errors[\"guardian.phone\"] = \"Informe o telefone com DDD\";",
+      "depois": "        errors[\"guardianPhone\"] = \"Informe o telefone com DDD\";",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M13",
+      "outrosIds": [
+        "e2-M08"
+      ],
+      "frente": "fault-localization",
+      "linha": 72,
+      "antes": "    if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || phone)) {",
+      "depois": "    if (!formData.guardianName.trim() && phone) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M14",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 72,
+      "antes": "    if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || phone)) {",
+      "depois": "    if (!formData.guardianName.trim() && formData.guardianRelationship.trim()) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e1-M17",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 64,
+      "antes": "        if (!formData.guardianName.trim()) {",
+      "depois": "        if (!formData.guardianRelationship.trim()) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 72,
+      "antes": "    if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || phone)) {",
+      "depois": "    if (!formData.guardianName && (formData.guardianRelationship.trim() || phone)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M09",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 65,
+      "antes": "            errors[\"guardian.name\"] = \"Informe o nome do responsável legal\";",
+      "depois": "            errors[\"guardian.name\"] = \"Informe o nome de quem acompanha\";",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M11",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 60,
+      "antes": "    if (phone && phone.length < 10) {",
+      "depois": "    if (phone && phone.length > 10) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "e2-M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 72,
+      "antes": "    if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || phone)) {",
+      "depois": "    if (!formData.guardianName.trim() && (formData.guardianRelationship.trim() || formData.guardianPhone)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "o telefone passa pela máscara, que devolve vazio quando não há dígito"
+    },
+    {
+      "id": "e2-M17",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 60,
+      "antes": "    if (phone && phone.length < 10) {",
+      "depois": "    if (phone && phone.length < 11) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    }
+  ]
+}

@@ -55,12 +55,22 @@ describe("ScaleForm", () => {
         render(<FormWithValues initialValues={{dor: "0"}}/>);
 
         expect(screen.getAllByRole("button", {name: /Limpar resposta/})).toHaveLength(1);
+        expect(screen.getByText("envio: {\"dor\":0}")).toBeInTheDocument();
     });
 
     it("resposta so de leitura n mostra o botao de limpar", () => {
         render(<FormWithValues initialValues={{dor: "7"}} disabled={true}/>);
 
         expect(screen.queryByRole("button", {name: /Limpar resposta/})).not.toBeInTheDocument();
+    });
+
+    it("a opcao marcada no ultimo item tbm entra no envio", async () => {
+        const user = userEvent.setup();
+        render(<FormWithValues initialValues={{}}/>);
+
+        await user.click(screen.getByRole("radio", {name: "Às vezes"}));
+
+        expect(screen.getByText("envio: {\"frequencia\":1}")).toBeInTheDocument();
     });
 });
 

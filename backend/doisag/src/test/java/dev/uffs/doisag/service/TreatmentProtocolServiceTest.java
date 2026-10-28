@@ -2,16 +2,21 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
+import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
+import dev.uffs.doisag.enums.AuditOperation;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
+import dev.uffs.doisag.repository.AuditEventRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
@@ -20,10 +25,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +54,7 @@ class TreatmentProtocolServiceTest {
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private TreatmentProtocolRepository protocolRepository;
     @Autowired private ReminderService reminderService;
+    @Autowired private AuditEventRepository auditEventRepository;
 
     private static final LocalDate INICIO = LocalDate.of(2026, 9, 1);
 
@@ -220,7 +229,8 @@ class TreatmentProtocolServiceTest {
     void naoDeixaColocarOMiniExameNoAcompanhamento() {
         assertThatThrownBy(() -> criaProtocolo(List.of(
                 item(ScaleType.MINI_EXAME_ESTADO_MENTAL, Periodicity.MENSAL))))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
     }
 
     private ScaleTask enviaAvulsa(ScaleType escala, LocalDate dia) {
@@ -460,6 +470,67 @@ class TreatmentProtocolServiceTest {
         assertThat(treatmentProtocolService.designarEscalasVencidas(hoje)).isZero();
         assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId()).orElseThrow().endDate())
                 .isEqualTo(hoje.plusDays(89));
+    }
+
+    // a conta desativada ganha o acompanhamento, mas a rodada de hoje so sai qnd ela voltar
+    @Test
+    void contaDesativadaGanhaOAcompanhamentoSemARodadaDeHoje() {
+        paciente.setActive(false);
+        patientRepository.save(paciente);
+
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())).isPresent();
+        assertThat(quantasEnviadas(ScaleType.ACOMPANHAMENTO_SEMANAL)).isZero();
+    }
+
+    @Test
+    void usaADuracaoEscolhidaPeloPrescritor() {
+        TreatmentProtocolResponseDTO criado = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 30, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(criado.endDate()).isEqualTo(INICIO.plusDays(29));
+    }
+
+    // o de 30 dias encerra no dia 31 e n espera os 90 do padrao
+    @Test
+    void acompanhamentoDeTrintaDiasEncerraNoDiaSeguinteAoFim() {
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 30, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(30))).isZero();
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId())).isEmpty();
+    }
+
+    // os horarios q aparecem no topo do diario do sono (RF22)
+    @Test
+    void guardaOsHorariosDeDeitarEDeAcordar() {
+        TreatmentProtocolResponseDTO criado = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 90, LocalTime.of(22, 30), LocalTime.of(6, 45),
+                        List.of(item(ScaleType.REGISTRO_SONO, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(criado.sleepBedTime()).isEqualTo(LocalTime.of(22, 30));
+        assertThat(criado.sleepWakeTime()).isEqualTo(LocalTime.of(6, 45));
+    }
+
+    // RF31 a criacao do acompanhamento fica na trilha do paciente
+    @Test
+    void registraACriacaoNaTrilhaDoPaciente() {
+        TreatmentProtocolResponseDTO criado = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        LocalDateTime agora = LocalDateTime.now();
+        List<AuditEvent> eventos = auditEventRepository.findPatientEvents(paciente.getId(), agora.minusDays(1),
+                agora.plusDays(1), PageRequest.of(0, 10)).getContent();
+        assertThat(eventos).hasSize(1);
+        assertThat(eventos.get(0).getOperation()).isEqualTo(AuditOperation.CRIACAO);
+        assertThat(eventos.get(0).getRecordType()).isEqualTo(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO);
+        assertThat(eventos.get(0).getRecordId()).isEqualTo(criado.id());
     }
 
     @Test

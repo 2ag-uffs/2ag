@@ -40,6 +40,52 @@ describe("findGuardianErrors", () => {
         expect(findGuardianErrors({...EMPTY, guardianName: "Joana", guardianRelationship: "mãe"}, true))
             .toEqual({});
     });
+
+    it("telefone com mascara conta so os numeros pro ddd", () => {
+        expect(findGuardianErrors({...EMPTY, guardianName: "Joana", guardianPhone: "(49) 3322-11"}))
+            .toEqual({"guardian.phone": "Informe o telefone com DDD"});
+    });
+
+    it("telefone fixo com 10 numeros ja tem ddd", () => {
+        expect(findGuardianErrors({...EMPTY, guardianName: "Joana", guardianPhone: "(49) 3322-1100"}))
+            .toEqual({});
+    });
+
+    it("celular sem ddd e sem nome pede o ddd e o nome", () => {
+        expect(findGuardianErrors({...EMPTY, guardianPhone: "98877-6655"})).toEqual({
+            "guardian.phone": "Informe o telefone com DDD",
+            "guardian.name": "Informe o nome de quem acompanha",
+        });
+    });
+
+    it("nome so de espaco com telefone pede o nome", () => {
+        expect(findGuardianErrors({...EMPTY, guardianName: " ", guardianPhone: "(49) 98877-6655"}))
+            .toEqual({"guardian.name": "Informe o nome de quem acompanha"});
+    });
+
+    it("parentesco sem nome pede o nome", () => {
+        expect(findGuardianErrors({...EMPTY, guardianRelationship: "mãe"}))
+            .toEqual({"guardian.name": "Informe o nome de quem acompanha"});
+    });
+
+    it("parentesco so de espaco conta como vazio", () => {
+        expect(findGuardianErrors({...EMPTY, guardianRelationship: " "})).toEqual({});
+    });
+
+    it("menor de 18 com nome so de espaco pede o nome do responsavel legal", () => {
+        expect(findGuardianErrors({...EMPTY, guardianName: " ", guardianRelationship: "mãe"}, true))
+            .toEqual({"guardian.name": "Informe o nome do responsável legal"});
+    });
+
+    it("menor de 18 so com parentesco pede o nome do responsavel legal", () => {
+        expect(findGuardianErrors({...EMPTY, guardianRelationship: "mãe"}, true))
+            .toEqual({"guardian.name": "Informe o nome do responsável legal"});
+    });
+
+    it("menor de 18 com nome e telefone mas sem parentesco pede o parentesco", () => {
+        expect(findGuardianErrors({...EMPTY, guardianName: "Joana", guardianPhone: "(49) 98877-6655"}, true))
+            .toEqual({"guardian.relationship": "Informe o parentesco do responsável legal"});
+    });
 });
 
 describe("isMinorPatient", () => {

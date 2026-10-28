@@ -1,0 +1,111 @@
+{
+  "metodo": "ScaleTaskService.reopenAfterAnnulment",
+  "arquivo": "backend/doisag/src/main/java/dev/uffs/doisag/service/ScaleTaskService.java",
+  "classesDeTeste": [
+    "ScaleDeliveryTest"
+  ],
+  "mutantes": [
+    {
+      "id": "M1",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 288,
+      "antes": "if (!reopenIfWithoutAnswers(task)) {",
+      "depois": "if (!reopenIfWithoutAnswers(task) && task == null) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M2",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 299,
+      "antes": "if (task.getPeriodEnd().isBefore(lastDay)) {",
+      "depois": "if (!task.getPeriodEnd().equals(lastDay)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M3",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 301,
+      "antes": "task.setPeriodEnd(lastDay);\ntaskRepository.save(task);",
+      "depois": "task.setPeriodEnd(lastDay);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "o único caminho que chama já está numa transação, e o prazo novo é gravado mesmo sem o save"
+    },
+    {
+      "id": "M4",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 299,
+      "antes": "if (task.getPeriodEnd().isBefore(lastDay)) {",
+      "depois": "if (task.getPeriodEnd().isBefore(today)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M5",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 292,
+      "antes": "LocalDate annulledDay = annulledResponse.getPeriodStart();",
+      "depois": "LocalDate annulledDay = annulledResponse.getPeriodEnd();",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M6",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 303,
+      "antes": "\"Você tem até \" + formatDate(task.getPeriodEnd())",
+      "depois": "\"Você tem até \" + formatDate(lastDay)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M7",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 305,
+      "antes": "if (anotherPendingCoversToday(task, today)) {",
+      "depois": "if (anotherPendingCoversToday(task, lastDay)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M8",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 295,
+      "antes": "if (isDaily(scaleType)) {",
+      "depois": "if (isPeriod(scaleType)) {",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M9",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 298,
+      "antes": "today.plusDays(REOPENED_TASK_DAYS);",
+      "depois": "today.plusDays(REOPENED_TASK_DAYS - 1);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M10",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 299,
+      "antes": "if (task.getPeriodEnd().isBefore(lastDay)) {",
+      "depois": "if (!task.getPeriodEnd().isAfter(lastDay)) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "equivalente": "quando o prazo já é o último dia, trocar pelo mesmo dia não muda nada"
+    }
+  ]
+}

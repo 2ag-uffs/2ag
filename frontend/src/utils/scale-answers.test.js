@@ -28,8 +28,47 @@ describe("answersPayload", () => {
         expect(payload).toEqual({});
     });
 
+    it("zero eh resposta e vai como 0, n como em branco (RN10)", () => {
+        const payload = answersPayload(ITEMS, {dor: "0", gotasManha: "0"});
+
+        expect(payload).toEqual({dor: 0, gotasManha: 0});
+    });
+
     it("item calculado nunca vai pra api", () => {
         expect(answersPayload(ITEMS, {tempoNaCama: "480"})).toEqual({});
+    });
+
+    it("o ultimo item da lista tbm vai", () => {
+        expect(answersPayload(ITEMS, {gotasManha: "2"})).toEqual({gotasManha: 2});
+    });
+
+    it("texto de uma letra so n se perde", () => {
+        expect(answersPayload(ITEMS, {comentario: " s "})).toEqual({comentario: "s"});
+    });
+
+    it("sim/nao so vira sim qnd a pessoa marca sim", () => {
+        expect(answersPayload(ITEMS, {diaComum: "true"})).toEqual({diaComum: true});
+    });
+
+    it("horas de sono com meia hora vao como decimal", () => {
+        const sleepItems = [{key: "horasSono", type: "HORAS"}];
+
+        expect(answersPayload(sleepItems, {horasSono: "7.5"})).toEqual({horasSono: 7.5});
+    });
+
+    it("item em branco fica fora do envio, sem nem a chave (RN10)", () => {
+        const payload = answersPayload(ITEMS, {dor: "", tempoNaCama: "480", diaComum: "true"});
+
+        expect(Object.keys(payload)).toEqual(["diaComum"]);
+    });
+
+    // a tela continua mostrando a escala qnd o envio falha
+    it("montar o envio n muda a ordem das perguntas da escala", () => {
+        const items = [{key: "dor", type: "NOTA"}, {key: "diaComum", type: "SIM_NAO"}];
+
+        answersPayload(items, {dor: "3", diaComum: "true"});
+
+        expect(items.map((item) => item.key)).toEqual(["dor", "diaComum"]);
     });
 });
 

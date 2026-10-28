@@ -1,0 +1,175 @@
+{
+  "metodo": "ScaleScorer.withComputedAnswers",
+  "arquivo": "backend/doisag/src/main/java/dev/uffs/doisag/scale/ScaleScorer.java",
+  "classesDeTeste": [
+    "ScaleScorerTest"
+  ],
+  "mutantes": [
+    {
+      "id": "M01",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 210,
+      "antes": "completed.remove(\"tempoNaCama\");",
+      "depois": "(line removed)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda quando os campos calculados chegam preenchidos, e o serviço recusa campo calculado antes da conta"
+    },
+    {
+      "id": "M02",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 222,
+      "antes": "if (totalAwake != null) {",
+      "depois": "if (totalAwake != null && timeInBed != null) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M03",
+      "outrosIds": [],
+      "frente": "behavior-model",
+      "linha": 206,
+      "antes": "if (type != ScaleType.REGISTRO_SONO) {",
+      "depois": "if (type == ScaleType.ESCALA_PITTSBURGH) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "nas outras escalas só muda se o mapa devolvido é o mesmo objeto, e ninguém compara isso"
+    },
+    {
+      "id": "M04",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 209,
+      "antes": "new LinkedHashMap<>(answers)",
+      "depois": "new java.util.HashMap<>(answers)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda a ordem das chaves, e nada lê essa ordem"
+    },
+    {
+      "id": "M05",
+      "outrosIds": [],
+      "frente": "rip",
+      "linha": 211,
+      "antes": "completed.remove(\"totalAcordado\");",
+      "depois": "completed.remove(\"totalAcordada\");",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda quando os campos calculados chegam preenchidos, e o serviço recusa campo calculado antes da conta"
+    },
+    {
+      "id": "M06",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 207,
+      "antes": "return answers;",
+      "depois": "return new LinkedHashMap<>(answers);",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "nas outras escalas só muda se o mapa devolvido é o mesmo objeto, e ninguém compara isso"
+    },
+    {
+      "id": "M07",
+      "outrosIds": [],
+      "frente": "semantically-similar",
+      "linha": 216,
+      "antes": "bedTime == null || wakeUpTime == null ? null",
+      "depois": "bedTime == null && wakeUpTime == null ? null",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M08",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 225,
+      "antes": "if (timeInBed != null && totalAwake != null) {",
+      "depois": "if (timeInBed != null) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M09",
+      "outrosIds": [],
+      "frente": "fault-localization",
+      "linha": 230,
+      "antes": "timeInBed - totalAwake",
+      "depois": "totalAwake - timeInBed",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M10",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 216,
+      "antes": "minutesBetween(bedTime, wakeUpTime)",
+      "depois": "minutesBetween(wakeUpTime, bedTime)",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M11",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 217,
+      "antes": "sumOrNull(answers, List.of(\"tempoAteDormir\", \"tempoAcordadoNoite\"))",
+      "depois": "intOf(answers, \"tempoAcordadoNoite\")",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M12",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 212,
+      "antes": "completed.remove(\"tempoTotalSono\");",
+      "depois": "(line removed)",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "sobreviveu",
+      "porQueFicouVivo": "só muda quando os campos calculados chegam preenchidos, e o serviço recusa campo calculado antes da conta"
+    },
+    {
+      "id": "M13",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 214,
+      "antes": "timeOf(answers, \"horarioDormir\")",
+      "depois": "timeOf(answers, \"horaDeitar\")",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M14",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 227,
+      "antes": "if (totalAwake > timeInBed) {",
+      "depois": "if (totalAwake >= timeInBed) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M15",
+      "outrosIds": [],
+      "frente": "boundary",
+      "linha": 227,
+      "antes": "if (totalAwake > timeInBed) {",
+      "depois": "if (totalAwake > timeInBed + 1) {",
+      "testesAntigos": "sobreviveu",
+      "testesNovos": "morto"
+    },
+    {
+      "id": "M16",
+      "outrosIds": [],
+      "frente": "method-invocation",
+      "linha": 228,
+      "antes": "throw new BusinessException(AWAKE_LONGER_THAN_BED_MESSAGE);",
+      "depois": "throw new IllegalArgumentException(AWAKE_LONGER_THAN_BED_MESSAGE);",
+      "testesAntigos": "morto",
+      "testesNovos": "morto"
+    }
+  ]
+}

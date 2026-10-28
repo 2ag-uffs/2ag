@@ -85,6 +85,63 @@ describe("datas", () => {
         expect(ageFrom("2008-10-17")).toBe(17);
     });
 
+    // na lista de pacientes a idade nula vira "idade nao informada", NaN ou undefined sairia escrito na tela
+    it("ageFrom sem data de nascimento devolve nulo", () => {
+        expect(ageFrom("")).toBeNull();
+        expect(ageFrom(null)).toBeNull();
+        expect(ageFrom(undefined)).toBeNull();
+    });
+
+    // em toquio a meia noite local ainda eh o dia anterior no utc, entao a idade n pode ler a data pelo utc
+    it("ageFrom com o navegador a leste do utc n le a data pelo utc", () => {
+        useBrowserTimeZone("Asia/Tokyo");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-17T10:00:00-03:00"));
+
+        expect(ageFrom("2008-10-17")).toBe(18);
+        expect(ageFrom("2008-10-18")).toBe(17);
+        // 1o de janeiro a meia noite em toquio ainda eh 2007 no utc, e o ano n pode vir dali
+        expect(ageFrom("2008-01-01")).toBe(18);
+    });
+
+    // em toquio a meia noite do dia 1o ainda eh o fim do mes anterior no utc
+    it("ageFrom em toquio na virada do mes n le o dia pelo utc", () => {
+        useBrowserTimeZone("Asia/Tokyo");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-11-01T10:00:00-03:00"));
+        // so faz 18 no dia 20
+        expect(ageFrom("2008-11-20")).toBe(17);
+
+        vi.setSystemTime(new Date("2026-11-20T10:00:00-03:00"));
+        // fez 18 no dia 1o
+        expect(ageFrom("2008-11-01")).toBe(18);
+    });
+
+    // 23h30 de 31/12 em brasilia ja eh ano novo em lisboa, e 00h30 de 01/01 em brasilia ainda eh 31/12 em manaus
+    it("ageFrom na virada do ano conta o ano de brasilia e n o do navegador", () => {
+        useBrowserTimeZone("Europe/Lisbon");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-12-31T23:30:00-03:00"));
+        // faz 18 amanha em brasilia
+        expect(ageFrom("2009-01-01")).toBe(17);
+
+        useBrowserTimeZone("America/Manaus");
+        vi.setSystemTime(new Date("2027-01-01T00:30:00-03:00"));
+        // faz 18 hj em brasilia
+        expect(ageFrom("2009-01-01")).toBe(18);
+    });
+
+    // na vespera de um aniversario no dia 1o o mes ainda n virou
+    it("ageFrom na virada do mes so conta o ano no dia do aniversario", () => {
+        useBrowserTimeZone("America/Sao_Paulo");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-31T10:00:00-03:00"));
+        expect(ageFrom("2008-11-01")).toBe(17);
+
+        vi.setSystemTime(new Date("2026-11-01T10:00:00-03:00"));
+        expect(ageFrom("2008-11-01")).toBe(18);
+    });
+
     // em cuiaba eh uma hora a menos, e a consulta das 10h de brasilia comeca as 9h de la
     it("a consulta das 10h de brasilia ja comecou as 10h30 de brasilia em outro fuso", () => {
         useBrowserTimeZone("America/Cuiaba");
