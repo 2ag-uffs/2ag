@@ -20,6 +20,7 @@ const ATTRIBUTES = [
 ];
 
 let series = [];
+let appointments = [];
 
 function renderProgress(attribute) {
     const router = createMemoryRouter([{path: "/progresso", element: <Progresso/>}], {
@@ -32,9 +33,13 @@ describe("Progresso", () => {
     beforeEach(() => {
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
         series = [{date: "2026-10-01", value: 3, band: null, cutoff: null}];
+        appointments = [];
         vi.spyOn(apiService, "get").mockImplementation((path) => {
             if (path === "/progress/attributes") {
                 return Promise.resolve(ATTRIBUTES);
+            }
+            if (path.startsWith("/patients/3/progress/appointments?")) {
+                return Promise.resolve(appointments);
             }
             if (path.startsWith("/patients/3/progress?")) {
                 return Promise.resolve(series);
@@ -84,6 +89,7 @@ describe("Progresso", () => {
             .toBeInTheDocument();
         expect(screen.getByText("27 · Dentro do esperado para a escolaridade (corte 25)")).toBeInTheDocument();
         expect(screen.getByText("Maior é melhor")).toBeInTheDocument();
+        expect(screen.getByText("Corte 25")).toBeInTheDocument();
     });
 
     // com escolaridade diferente entre os exames uma linha so ficaria errada pra algum deles
@@ -97,6 +103,7 @@ describe("Progresso", () => {
         expect(await screen.findByText(/A escolaridade registrada mudou no período/)).toBeInTheDocument();
         expect(screen.queryByText(/ponto de corte para a escolaridade registrada no exame/)).not.toBeInTheDocument();
         expect(screen.getByText("26 · Abaixo do esperado para a escolaridade (corte 26,5)")).toBeInTheDocument();
+        expect(screen.queryByText(/^Corte /)).not.toBeInTheDocument();
     });
 
     // exame antigo sem escolaridade vem sem corte e sem faixa, e isso n eh escolaridade mudada
@@ -135,5 +142,29 @@ describe("Progresso", () => {
         expect(await screen.findByRole("button", {name: /Baixar esta série em CSV/})).toBeInTheDocument();
         expect(screen.queryByText(/sem escolaridade/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Último registro/)).not.toBeInTheDocument();
+    });
+
+    // o grafico desenha no jsdom tbm
+    it("o grafico aparece com uma bolinha por registro", async () => {
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-02", value: 6, band: null, cutoff: null},
+        ];
+        renderProgress("ANSIEDADE");
+
+        const chart = await screen.findByRole("application", {name: /Gráfico de Ansiedade com 2 registros, de 01\/10 a 02\/10/});
+        expect(chart.querySelectorAll("circle")).toHaveLength(2);
+    });
+
+    it("so a consulta num dia com ponto vira linha no grafico", async () => {
+        appointments = [
+            {id: 1, data: "2026-10-01", diagnosis: null, geraPrescricao: true},
+            {id: 2, data: "2026-10-05", diagnosis: null, geraPrescricao: false},
+        ];
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
+        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
+        expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
     });
 });

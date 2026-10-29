@@ -142,7 +142,7 @@ O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006
 
 ### gráfico de progresso
 
-A tela de progresso lê `--color-chart-line` e `--color-chart-grid` do CSS em tempo de execução, porque o Recharts precisa da cor como valor e não aceita `var()`.
+O gráfico de evolução é um SVG feito à mão, e as cores vêm direto dos tokens do CSS por `var()` (`--color-chart-line`, `--color-chart-grid`, `--color-secondary` e `--color-error`, em `line-chart.module.css`). Por isso o tema escuro vale no gráfico sem nenhum JavaScript.
 
 ---
 

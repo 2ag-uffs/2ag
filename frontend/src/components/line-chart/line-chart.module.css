@@ -1,0 +1,182 @@
+/* grafico de evolucao em svg com toda cor dos tokens entao o tema escuro vale sozinho */
+
+.chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.plot {
+    position: relative;
+}
+
+.svg {
+    display: block;
+    /* o dedo de lado le os pontos e o de cima pra baixo e o zoom de dois dedos ficam com a tela */
+    touch-action: pan-y pinch-zoom;
+}
+
+.svg:focus-visible {
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.grid {
+    stroke: var(--color-chart-grid);
+    stroke-dasharray: 3 3;
+}
+
+.axis {
+    stroke: var(--color-neutral);
+}
+
+.tick,
+.label,
+.appointmentText {
+    font-size: 12px;
+}
+
+.tick {
+    fill: var(--color-text-secondary);
+}
+
+/* o contorno da cor do cartao deixa o texto legivel qnd a linha passa por baixo */
+.label,
+.appointmentText {
+    paint-order: stroke;
+    stroke: var(--color-surface);
+    stroke-linejoin: round;
+    stroke-width: 3px;
+}
+
+.label {
+    fill: var(--color-text-secondary);
+}
+
+.band {
+    stroke: var(--color-chart-grid);
+    stroke-dasharray: 6 3;
+}
+
+.cutoff {
+    stroke: var(--color-text-secondary);
+    stroke-dasharray: 6 3;
+}
+
+.appointment {
+    stroke: var(--color-error);
+    stroke-dasharray: 4 4;
+}
+
+.appointmentText {
+    fill: var(--color-error);
+}
+
+.cursor {
+    stroke: var(--color-neutral);
+}
+
+.scoreLine,
+.doseLine {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.scoreLine {
+    stroke: var(--color-chart-line);
+}
+
+.doseLine {
+    stroke: var(--color-secondary);
+    stroke-dasharray: 5 3;
+}
+
+.scoreDot,
+.activeScoreDot {
+    fill: var(--color-chart-line);
+}
+
+.doseDot,
+.activeDoseDot {
+    fill: var(--color-secondary);
+}
+
+.activeScoreDot,
+.activeDoseDot {
+    stroke: var(--color-surface);
+    stroke-width: 2;
+}
+
+.tooltip {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+    padding: var(--space-2) var(--space-3);
+    pointer-events: none;
+    position: absolute;
+}
+
+.tooltipLabel {
+    font-weight: 700;
+}
+
+.tooltipItem .scoreSwatch,
+.tooltipItem .doseSwatch {
+    margin-right: var(--space-2);
+    vertical-align: middle;
+}
+
+.legend {
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    gap: var(--space-1) var(--space-4);
+    justify-content: center;
+    list-style: none;
+}
+
+.legend li {
+    align-items: center;
+    display: flex;
+    gap: var(--space-2);
+}
+
+/* amostra da linha com a bolinha no meio igual ao desenho */
+.scoreSwatch,
+.doseSwatch {
+    border-top: 2px solid var(--color-chart-line);
+    display: inline-block;
+    flex-shrink: 0;
+    height: 0;
+    position: relative;
+    width: 1.25rem;
+}
+
+.doseSwatch {
+    border-top: 2px dashed var(--color-secondary);
+}
+
+.scoreSwatch::after,
+.doseSwatch::after {
+    background-color: var(--color-chart-line);
+    border-radius: var(--radius-pill);
+    content: "";
+    height: 0.5rem;
+    left: calc(50% - 0.25rem);
+    position: absolute;
+    top: calc(-0.25rem - 1px);
+    width: 0.5rem;
+}
+
+.doseSwatch::after {
+    background-color: var(--color-secondary);
+}

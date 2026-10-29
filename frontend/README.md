@@ -6,7 +6,7 @@ interface web do 2ag, pensada primeiro para o celular. consome a api do [`backen
 
 - react 19 e vite 8
 - react router 8, com cada tela carregada sob demanda
-- recharts no gráfico de evolução
+- gráfico de evolução em svg feito à mão, sem biblioteca
 - react-icons nos ícones do menu
 - css puro, com css modules nos componentes novos
 

@@ -1,19 +1,9 @@
 import {useEffect, useMemo, useState} from "react";
 import {Link, useLocation, useNavigate, useParams} from "react-router";
 import {FiArrowDown, FiArrowUp, FiDownload, FiFileText, FiTrendingUp, FiUsers} from "react-icons/fi";
-import {
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
 import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import LineChart from "../../components/line-chart/line-chart.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, download, errorMessageOf, getLoggedUser} from "../../services/api.js";
@@ -29,34 +19,10 @@ import {
     sharedCutoffOf,
     valueWithBand,
 } from "../../utils/progress-reading.js";
-import {onThemeChange} from "../../utils/theme.js";
 import styles from "./progresso.module.css";
-
-// o recharts precisa das cores como valor e n como var do css
-// entao a gente le o token no momento de montar a tela
-const colorOf = (name, fallback) =>
-    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-
-// lidas na hora de desenhar e de novo qnd o tema muda, senao o grafico fica
-// com a paleta clara depois de a pessoa trocar pro tema escuro
-const chartColorsNow = () => ({
-    line: colorOf("--color-chart-line", "#006633"),
-    grid: colorOf("--color-chart-grid", "#dbe1dd"),
-    appointment: colorOf("--color-error", "#a44819"),
-    dose: colorOf("--color-secondary", "#77954f"),
-    text: colorOf("--color-text-secondary", "#575e59"),
-});
 
 // aaaa-mm-dd vira dd/mm q eh como o eixo do grafico mostra
 const dayAndMonth = (isoDate) => isoDate.slice(8, 10) + "/" + isoDate.slice(5, 7);
-
-// o ponto do escore mostra a faixa junto do valor, como em todo lugar q o escore aparece (RN14)
-const tooltipText = (value, name, entry) => {
-    if (entry && entry.dataKey === "valor" && entry.payload && entry.payload.faixa) {
-        return [valueWithBand(value, entry.payload.faixa), name];
-    }
-    return [value, name];
-};
 
 const PERIODS = [
     {value: "DIAS_15", label: "Últimos 15 dias"},
@@ -113,11 +79,6 @@ export default function Progresso() {
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
     const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
     const [seriesError, setSeriesError] = useState(null);
-
-    // o grafico desenha com a cor em javascript, entao ele precisa ser avisado
-    // qnd o tema muda pra n continuar com a paleta antiga
-    const [chartColors, setChartColors] = useState(chartColorsNow);
-    useEffect(() => onThemeChange(() => setChartColors(chartColorsNow())), []);
 
     const periods = isPrescriber ? [...PERIODS, ALL_TIME_PERIOD] : PERIODS;
 
@@ -493,93 +454,17 @@ export default function Progresso() {
 
                 {!isLoading && chartRows.length > 0 && (
                     <div className={styles.chart}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <LineChart data={chartRows} margin={{top: 16, right: 24, bottom: 8, left: 0}}>
-                                {/* as cores saem da paleta da marca e n do padrao do recharts */}
-                                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid}/>
-                                <XAxis dataKey="label" tick={{fontSize: 12, fill: chartColors.text}}/>
-                                {/* a faixa vem do backend pq 0 a 10 e 0 a 56 n podem
-                                    dividir o mesmo eixo */}
-                                <YAxis
-                                    domain={[
-                                        currentAttribute && currentAttribute.minValue !== null
-                                            ? currentAttribute.minValue : 0,
-                                        currentAttribute && currentAttribute.maxValue !== null
-                                            ? currentAttribute.maxValue : "auto",
-                                    ]}
-                                    allowDecimals={false}
-                                    tick={{fontSize: 12, fill: chartColors.text}}
-                                />
-                                <Tooltip formatter={tooltipText}/>
-                                <Legend/>
-
-                                {/* cada faixa do instrumento vira uma linha de corte */}
-                                {bandLines.map((band) => (
-                                    <ReferenceLine
-                                        key={band.label}
-                                        y={band.minScore}
-                                        stroke={chartColors.grid}
-                                        strokeDasharray="6 3"
-                                        label={{value: band.label, position: "insideTopRight", fontSize: 11}}
-                                    />
-                                ))}
-
-                                {sharedCutoff !== null && (
-                                    <ReferenceLine
-                                        y={sharedCutoff}
-                                        stroke={chartColors.text}
-                                        strokeDasharray="6 3"
-                                        label={{
-                                            value: "Corte " + formatCutoff(sharedCutoff),
-                                            position: "insideBottomRight",
-                                            fontSize: 11,
-                                            fill: chartColors.text,
-                                        }}
-                                    />
-                                )}
-
-                                {/* a consulta vira uma linha vertical no dia em q
-                                    aconteceu pra dar pra ler a curva junto com a
-                                    conduta do atendimento */}
-                                {appointmentMarks.map((appointment) => (
-                                    <ReferenceLine
-                                        key={appointment.id}
-                                        x={appointment.label}
-                                        stroke={chartColors.appointment}
-                                        strokeDasharray="4 4"
-                                        label={{
-                                            value: appointment.geraPrescricao ? "consulta + receita" : "consulta",
-                                            position: "top",
-                                            fontSize: 11,
-                                            fill: chartColors.appointment,
-                                        }}
-                                    />
-                                ))}
-
-                                <Line
-                                    type="monotone"
-                                    dataKey="valor"
-                                    name={currentAttribute ? currentAttribute.displayName : "valor"}
-                                    stroke={chartColors.line}
-                                    strokeWidth={2}
-                                    dot={{r: 4, fill: chartColors.line}}
-                                    activeDot={{r: 6}}
-                                />
-
-                                {showDose && isFollowUpScale && (
-                                    <Line
-                                        type="monotone"
-                                        dataKey="gotas"
-                                        name="Gotas no dia"
-                                        stroke={chartColors.dose}
-                                        strokeWidth={2}
-                                        strokeDasharray="5 3"
-                                        dot={{r: 3, fill: chartColors.dose}}
-                                        connectNulls={true}
-                                    />
-                                )}
-                            </LineChart>
-                        </ResponsiveContainer>
+                        {/* a faixa vem do backend pq 0 a 10 e 0 a 56 n podem dividir o mesmo eixo */}
+                        <LineChart
+                            rows={chartRows}
+                            minValue={currentAttribute ? currentAttribute.minValue : null}
+                            maxValue={currentAttribute ? currentAttribute.maxValue : null}
+                            valueName={currentAttribute ? currentAttribute.displayName : "valor"}
+                            showDose={showDose && isFollowUpScale}
+                            bandLines={bandLines}
+                            cutoff={sharedCutoff}
+                            appointmentMarks={appointmentMarks}
+                        />
                     </div>
                 )}
 
@@ -758,7 +643,7 @@ function sumByDate(morningPoints, afternoonPoints) {
 }
 
 // o eixo x eh categorico entao so da pra marcar consulta em dia q tem ponto no grafico
-// senao o recharts n sabe onde por a linha e duas consultas no msm dia viram uma marca so
+// senao o grafico n sabe onde por a linha e duas consultas no msm dia viram uma marca so
 function appointmentMarksOf(appointments, chartRows) {
     const daysWithPoint = new Set(chartRows.map((row) => row.label));
     const markedDays = new Set();
