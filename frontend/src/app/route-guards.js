@@ -1,6 +1,6 @@
 import {redirect} from "react-router";
-import {homePathFor} from "./role-home.js";
-import {getLoggedUser} from "../services/api.js";
+import {hasKnownRole, homePathFor} from "./role-home.js";
+import {getLoggedUser, logout} from "../services/api.js";
 
 // regras de acesso das rotas
 // rodam antes da tela abrir entao quem n pode entrar nem chega a ver a tela
@@ -24,17 +24,22 @@ export function requireRole(...allowedRoles) {
 }
 
 // quem ja esta logado n precisa ver o login nem o cadastro de novo
-export function redirectLoggedUserHome() {
+export async function redirectLoggedUserHome() {
     const loggedUser = getLoggedUser();
-    if (loggedUser) {
-        return redirect(homePathFor(loggedUser));
+    if (!loggedUser) {
+        return null;
     }
-    return null;
+    // papel desconhecido teria o proprio login como tela inicial e ficaria em laco, entao sai e ve o login
+    if (!hasKnownRole(loggedUser)) {
+        await logout();
+        return null;
+    }
+    return redirect(homePathFor(loggedUser));
 }
 
 // o cadastro abre com o link de convite mesmo com alguem logado
 // a tela explica q precisa sair da conta aberta, em vez de o convite sumir sem aviso
-export function redirectLoggedUserHomeUnlessInvite({request}) {
+export async function redirectLoggedUserHomeUnlessInvite({request}) {
     if (new URL(request.url).searchParams.get("convite")) {
         return null;
     }
@@ -43,7 +48,7 @@ export function redirectLoggedUserHomeUnlessInvite({request}) {
 
 // o link de senha nova e o de primeiro acesso do prescritor tbm abrem com alguem logado
 // a tela diz qual conta esta aberta e deixa sair e seguir com o mesmo link
-export function redirectLoggedUserHomeUnlessToken({request}) {
+export async function redirectLoggedUserHomeUnlessToken({request}) {
     if (new URL(request.url).searchParams.get("token")) {
         return null;
     }

@@ -76,6 +76,7 @@ export default function Impressao() {
     }
 
     const {patient, appointments, prescriptions, anamneses, scales} = history;
+    const age = ageFrom(patient.birthDate);
     // consulta marcada pro futuro e pedido recusado ou cancelado n entram na impressao
     const appointmentsInPeriod = appointments.filter(
         (appointment) => belongsToHistory(appointment) && insidePeriod(appointment.dateTime));
@@ -119,7 +120,7 @@ export default function Impressao() {
                         <dd>
                             {patient.name}
                             {patient.civilName ? " (nome civil: " + patient.civilName + ")" : ""}
-                            {patient.birthDate ? " · " + ageFrom(patient.birthDate) + " anos" : ""}
+                            {age !== null ? " · " + age + " anos" : ""}
                         </dd>
                     </div>
                     <div>

@@ -4,8 +4,8 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import Login from "../pages/login/login.jsx";
-import {apiService, setLoggedUser} from "../services/api.js";
-import {redirectLoggedUserHomeUnlessToken, requireRole} from "./route-guards.js";
+import {apiService, getLoggedUser, setLoggedUser} from "../services/api.js";
+import {redirectHome, redirectLoggedUserHome, redirectLoggedUserHomeUnlessToken, requireRole} from "./route-guards.js";
 
 function requestTo(path) {
     return {request: new Request("http://localhost" + path)};
@@ -91,11 +91,46 @@ describe("regras de acesso das rotas", () => {
         expect(response.headers.get("Location")).toBe("/entrar?voltar=" + encodeURIComponent("/perfil"));
     });
 
-    it("o link de senha nova abre com alguem logado, mas sem o codigo vai pra tela inicial", () => {
+    it("o link de senha nova abre com alguem logado, mas sem o codigo vai pra tela inicial", async () => {
         setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
 
-        expect(redirectLoggedUserHomeUnlessToken(requestTo("/redefinir-senha?token=abc"))).toBeNull();
-        expect(redirectLoggedUserHomeUnlessToken(requestTo("/redefinir-senha")).headers.get("Location"))
+        expect(await redirectLoggedUserHomeUnlessToken(requestTo("/redefinir-senha?token=abc"))).toBeNull();
+        expect((await redirectLoggedUserHomeUnlessToken(requestTo("/redefinir-senha"))).headers.get("Location"))
             .toBe("/administracao");
+    });
+
+    // a api pode ganhar um papel novo antes do front, e a tela inicial dele era o proprio login
+    it("sessao c/ papel q o front n conhece abre o login uma vez, sem ficar em laco", async () => {
+        setLoggedUser({id: 9, name: "Conta Nova", role: "OUTRO"});
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: true, status: 204});
+        const router = createMemoryRouter([
+            {path: "/", loader: redirectHome},
+            {path: "/entrar", loader: redirectLoggedUserHome, element: <p>tela de login</p>},
+        ], {initialEntries: ["/"]});
+        render(<RouterProvider router={router}/>);
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
+        expect(getLoggedUser()).toBeNull();
+    });
+
+    it("conta c/ papel q o front n conhece n fica aberta dps do login", async () => {
+        vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 9, name: "Conta Nova", role: "OUTRO", termPending: false});
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: true, status: 204});
+        const user = userEvent.setup();
+        const router = createMemoryRouter([
+            {path: "/entrar", loader: redirectLoggedUserHome, element: <Login/>},
+        ], {initialEntries: ["/entrar"]});
+        render(<RouterProvider router={router}/>);
+
+        await user.type(await screen.findByLabelText("E-mail"), "conta@email.com");
+        await user.type(screen.getByLabelText("Senha"), "Senha@123");
+        await user.click(screen.getByRole("button", {name: "Entrar"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Esta conta ainda não tem uma tela neste sistema");
+        expect(screen.getByRole("button", {name: "Entrar"})).toBeEnabled();
+        expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
+        expect(getLoggedUser()).toBeNull();
     });
 });

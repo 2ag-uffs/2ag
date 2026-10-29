@@ -12,3 +12,8 @@ export function homePathFor(user) {
     }
     return HOME_BY_ROLE[user.role] || "/entrar";
 }
+
+// papel q a api criou e o front ainda n conhece n tem tela inicial
+export function hasKnownRole(user) {
+    return Boolean(user && HOME_BY_ROLE[user.role]);
+}

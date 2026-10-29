@@ -162,13 +162,17 @@ export function ageFrom(birthDate) {
     if (!birthDate) {
         return null;
     }
-    const today = toLocalDate(calendarDayOf(new Date()));
+    const today = toLocalDate(nowInBrasilia().slice(0, 10));
     const birth = toLocalDate(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const hadBirthdayThisYear = today.getMonth() > birth.getMonth()
         || (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
     if (!hadBirthdayThisYear) {
         age = age - 1;
+    }
+    // nascimento no futuro so aparece c/ o relogio do aparelho atrasado e fica como sem data
+    if (age < 0) {
+        return null;
     }
     return age;
 }

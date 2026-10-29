@@ -3,31 +3,33 @@
 // o formulario de cada escala vem do servidor, entao aqui n tem nome de
 // campo de escala nenhuma: o tipo do item eh q manda
 
+// campo vazio ou so de espaco conta como em branco, tanto no envio qnt na conferencia
+function isBlank(value) {
+    return value === undefined || value === null || String(value).trim() === "";
+}
+
 // o q o usuario digitou vira o valor q a api espera
-// campo vazio simplesmente n vai, pq em branco n vale zero (RN10)
+// campo em branco simplesmente n vai, pq em branco n vale zero (RN10)
 export function answersPayload(items, values) {
     const payload = {};
     items.forEach((item) => {
         const value = values[item.key];
-        if (item.type === "CALCULADO" || value === undefined || value === null || value === "") {
+        if (item.type === "CALCULADO" || isBlank(value)) {
             return;
         }
-        if (item.type === "TEXTO") {
-            const text = String(value).trim();
-            if (text !== "") {
-                payload[item.key] = text;
-            }
-            return;
-        }
-        if (item.type === "HORA") {
-            payload[item.key] = value;
+        const text = String(value).trim();
+        if (item.type === "TEXTO" || item.type === "HORA") {
+            payload[item.key] = text;
             return;
         }
         if (item.type === "SIM_NAO") {
-            payload[item.key] = value === "true";
+            // valor q n eh sim nem nao fica de fora em vez de virar Não
+            if (text === "true" || text === "false") {
+                payload[item.key] = text === "true";
+            }
             return;
         }
-        payload[item.key] = Number(value);
+        payload[item.key] = Number(text);
     });
     return payload;
 }
@@ -39,7 +41,7 @@ export function missingItemsOf(items, values) {
         if (item.type === "CALCULADO") {
             return false;
         }
-        return value === undefined || value === null || String(value).trim() === "";
+        return isBlank(value);
     });
 }
 

@@ -92,6 +92,26 @@ describe("datas", () => {
         expect(ageFrom(undefined)).toBeNull();
     });
 
+    // a api recusa nascimento no futuro, entao isso so aparece c/ o relogio do aparelho atrasado
+    it("ageFrom c/ nascimento no futuro devolve nulo e n idade negativa", () => {
+        useBrowserTimeZone("America/Sao_Paulo");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-16T10:00:00-03:00"));
+
+        expect(ageFrom("2026-10-17")).toBeNull();
+        expect(ageFrom("2030-01-01")).toBeNull();
+        expect(ageFrom("2026-10-16")).toBe(0);
+    });
+
+    // a meia noite de lisboa ainda sao 20h do dia anterior em brasilia
+    it("ageFrom na meia noite do navegador conta o dia de brasilia", () => {
+        useBrowserTimeZone("Europe/Lisbon");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-17T00:00:00+01:00"));
+        // faz 18 amanha em brasilia
+        expect(ageFrom("2008-10-17")).toBe(17);
+    });
+
     // em toquio a meia noite local ainda eh o dia anterior no utc, entao a idade n pode ler a data pelo utc
     it("ageFrom com o navegador a leste do utc n le a data pelo utc", () => {
         useBrowserTimeZone("Asia/Tokyo");

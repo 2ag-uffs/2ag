@@ -3,8 +3,8 @@ import {Link, useLocation, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
-import {homePathFor} from "../../app/role-home.js";
-import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {hasKnownRole, homePathFor} from "../../app/role-home.js";
+import {apiService, ApiError, logout, setLoggedUser} from "../../services/api.js";
 import styles from "./login.module.css";
 
 // aviso q outra tela pediu pro login mostrar
@@ -47,6 +47,13 @@ export default function Login() {
 
         try {
             const user = await apiService.post("/auth/login", {email: email, password: password});
+            // papel q o front ainda n conhece n tem tela pra abrir, entao a conta n fica aberta
+            if (!hasKnownRole(user)) {
+                await logout();
+                setErrorMessage("Esta conta ainda não tem uma tela neste sistema. Fale com a clínica.");
+                setIsSubmitting(false);
+                return;
+            }
             setLoggedUser(user);
             // quem caiu aqui pq a sessao acabou volta pra tela onde estava
             const returnPath = findReturnPath(searchParams);

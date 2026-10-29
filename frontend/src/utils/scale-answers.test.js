@@ -50,6 +50,23 @@ describe("answersPayload", () => {
         expect(answersPayload(ITEMS, {diaComum: "true"})).toEqual({diaComum: true});
     });
 
+    // a conferencia ja via o so de espaco como em branco, e o envio mandava 0 no lugar
+    it("item numerico so de espaco fica fora do envio e n vira 0 (RN10)", () => {
+        const numberItems = [{key: "dor", type: "NOTA"}, {key: "gotasManha", type: "NUMERO"}, {key: "horasSono", type: "HORAS"}];
+        const values = {dor: "   ", gotasManha: " ", horasSono: "  "};
+
+        expect(answersPayload(numberItems, values)).toEqual({});
+        expect(missingItemsOf(numberItems, values).map((item) => item.key)).toEqual(["dor", "gotasManha", "horasSono"]);
+    });
+
+    it("hora com espaco em volta vai sem o espaco", () => {
+        expect(answersPayload(ITEMS, {horarioDormir: " 23:10 "})).toEqual({horarioDormir: "23:10"});
+    });
+
+    it("sim/nao q n eh sim nem nao fica fora do envio em vez de virar Não", () => {
+        expect(answersPayload(ITEMS, {diaComum: "talvez"})).toEqual({});
+    });
+
     it("horas de sono com meia hora vao como decimal", () => {
         const sleepItems = [{key: "horasSono", type: "HORAS"}];
 
