@@ -10,6 +10,7 @@ import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.Prescriber;
@@ -70,7 +71,7 @@ public class PatientService {
     @Transactional
     public PatientResponseDTO getById(Long id) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + id));
+                .orElseThrow(() -> NotFoundException.patient(id));
         auditService.recordChartView(patient.getId());
         return PatientResponseDTO.forChart(patient, consentTermService.hasResearchConsent(patient));
     }
@@ -123,7 +124,8 @@ public class PatientService {
         }
 
         notificationService.createNotification(prescriber, "Novo paciente vinculado",
-                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
+                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", Notification.TYPE_ALERT,
+                Notification.PRESCRIBER_PATIENT_LIST_LINK);
         return savedPatient;
     }
 

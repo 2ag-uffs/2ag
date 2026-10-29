@@ -8,9 +8,10 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
 import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
+import {numberOrNull, textOrNull} from "../../utils/form-values.js";
 import styles from "./consultation-record.module.css";
 
 const EMPTY_RECORD = {
@@ -30,15 +31,6 @@ const EMPTY_RECORD = {
 // agora em brasilia no formato do input datetime-local, q eh o agora da api
 function nowForInput() {
     return nowInBrasilia().slice(0, 16);
-}
-
-// o formulario guarda texto vazio e a api espera null
-function textOrNull(text) {
-    return text.trim() === "" ? null : text;
-}
-
-function numberOrNull(text) {
-    return text === "" ? null : Number(text);
 }
 
 function textOf(value) {
@@ -144,9 +136,8 @@ export default function ConsultationRecord() {
         loadPage
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar os dados. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar os dados. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {
@@ -182,14 +173,10 @@ export default function ConsultationRecord() {
                 setIsUpdated(true);
             }
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setFormError(requestError.message);
-                }
-            } else {
-                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            const errorInfo = readRequestError(requestError);
+            setFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setFormError(errorInfo.message);
             }
         } finally {
             setIsSaving(false);

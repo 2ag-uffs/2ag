@@ -5,8 +5,9 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
 import {toIsoDate} from "../../utils/date-format.js";
+import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./anamnese.module.css";
 
 const SMOKING_OPTIONS = [
@@ -75,8 +76,7 @@ function answersFrom(savedAnamnesis) {
 function requestBodyOf(answers) {
     const requestBody = {};
     Object.keys(answers).forEach((fieldName) => {
-        const answer = answers[fieldName].trim();
-        requestBody[fieldName] = answer === "" ? null : answer;
+        requestBody[fieldName] = emptyToNull(answers[fieldName].trim());
     });
     return requestBody;
 }
@@ -117,9 +117,8 @@ export default function Anamnese() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível abrir a ficha. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível abrir a ficha. Confira sua internet e tente de novo."));
                     setIsLoading(false);
                 }
             });
@@ -160,15 +159,9 @@ export default function Anamnese() {
                 : "Ficha de anamnese enviada. Obrigado por responder.";
             navigate(exitPath, {replace: true, state: {notice}});
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                setFormError(Object.keys(errorsByField).length === 0
-                    ? requestError.message
-                    : "Confira as respostas destacadas.");
-            } else {
-                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
-            }
+            const errorInfo = readRequestError(requestError);
+            setFieldErrors(errorInfo.fieldErrors);
+            setFormError(errorInfo.message || "Confira as respostas destacadas.");
             setIsSaving(false);
         }
     };

@@ -1,7 +1,9 @@
 package dev.uffs.doisag.scale;
 
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.scale.ScaleDefinition.FillMode;
 import org.springframework.stereotype.Component;
 
@@ -95,15 +97,16 @@ public class ScaleCatalog {
             return ANSWERED_RESULT;
         }
         if (item.type() == ScaleItemType.MINUTOS || item.type() == ScaleItemType.CALCULADO) {
-            return item.label() + " " + formatMinutes(number.intValue());
+            return item.label() + " " + BrazilianFormat.minutes(number.intValue());
         }
         return item.maxValue() == null
                 ? item.label() + " " + number.intValue()
                 : item.label() + " " + number.intValue() + " de " + item.maxValue();
     }
 
-    private String formatMinutes(int minutes) {
-        return minutes < 60 ? minutes + " min" : (minutes / 60) + "h" + String.format("%02d", minutes % 60);
+    public String resultTextOf(ScaleResponse response) {
+        return resultTextOf(response.getScaleType(), response.getScore(), response.getScoreBand(),
+                response.getAnswers());
     }
 
     // ficha de acompanhamento semanal (RF06 e RF20)

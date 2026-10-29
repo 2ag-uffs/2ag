@@ -5,8 +5,8 @@ import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {formatDate} from "../../utils/date-format.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
+import {formatDate, formatPeriod} from "../../utils/date-format.js";
 import styles from "./escala-clinica-paciente.module.css";
 
 // 90 dias pra resposta de mais de um mes ainda aparecer no grafico
@@ -82,9 +82,8 @@ export default function CentralEscalas() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar suas avaliações. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar suas avaliações. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -148,7 +147,7 @@ export default function CentralEscalas() {
                                 <li key={response.id} className={styles.row}>
                                     <div className={styles.rowText}>
                                         <h3 className={styles.cardTitle}>{response.scaleName}</h3>
-                                        <p className={styles.period}>{periodTextOf(response)}</p>
+                                        <p className={styles.period}>{formatPeriod(response.periodStart, response.periodEnd)}</p>
                                         <p className={styles.result}>{response.result}</p>
                                         {response.annulled && <span className={styles.tagAnnulled}>Anulada pelo prescritor</span>}
                                         {response.reviewed && !response.annulled && (
@@ -184,11 +183,4 @@ export default function CentralEscalas() {
             </Card>
         </section>
     );
-}
-
-// o diario fala de um dia e os acompanhamentos de um periodo
-function periodTextOf(response) {
-    return response.periodStart === response.periodEnd
-        ? formatDate(response.periodStart)
-        : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
 }

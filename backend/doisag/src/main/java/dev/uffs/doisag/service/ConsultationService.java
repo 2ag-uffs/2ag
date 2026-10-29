@@ -76,7 +76,7 @@ public class ConsultationService {
         // prescritor passam um de cada vez e o segundo ja conta o primeiro na hora de decidir o tipo
         prescriberRepository.lockById(prescriber.getId());
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
 
         LocalDateTime dateTime = recordData.dateTime() == null ? LocalDateTime.now() : recordData.dateTime();
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
@@ -183,7 +183,7 @@ public class ConsultationService {
     // consulta anulada, e a anulacao e a correcao n sobrescrevem uma a outra
     private Appointment findAppointmentForUpdate(Long appointmentId) {
         return rowLock.reload(Appointment.class, appointmentId)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> NotFoundException.appointment(appointmentId));
     }
 
     private void checkRecordHasClinicalContent(ConsultationRecordDTO recordData) {

@@ -17,6 +17,6 @@ public record AdminPatientDTO(
 
     public AdminPatientDTO(Patient patient) {
         this(patient.getId(), patient.getDisplayName(), patient.getEmail(), patient.isActive(),
-                patient.getSocialName() == null ? null : patient.getName());
+                patient.civilNameWhenSocial());
     }
 }

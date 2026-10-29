@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, errorMessageOf} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
 import accountStyles from "./admin-prescribers.module.css";
 import styles from "./admin-patients.module.css";
@@ -61,11 +61,7 @@ export default function AdminPatients() {
                 setPageError(null);
             })
             .catch((requestError) => {
-                if (requestError instanceof ApiError) {
-                    setPageError(requestError.message);
-                } else {
-                    setPageError("Não foi possível carregar as contas desativadas.");
-                }
+                setPageError(errorMessageOf(requestError, "Não foi possível carregar as contas desativadas."));
             });
     }, []);
 
@@ -111,11 +107,7 @@ export default function AdminPatients() {
             await loadDeactivated();
         } catch (requestError) {
             setNotice(null);
-            if (requestError instanceof ApiError) {
-                setPageError(requestError.message);
-            } else {
-                setPageError("Não foi possível alterar a conta.");
-            }
+            setPageError(errorMessageOf(requestError, "Não foi possível alterar a conta."));
         }
     };
 

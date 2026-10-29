@@ -16,7 +16,7 @@ import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, download, getLoggedUser} from "../../services/api.js";
+import {apiService, download, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import {
     anchorsTextOf,
@@ -163,7 +163,7 @@ export default function Progresso() {
                 });
             })
             .catch((requestError) => {
-                setLoadError(errorTextOf(requestError, "Não foi possível carregar as escalas."));
+                setLoadError(errorMessageOf(requestError, "Não foi possível carregar as escalas."));
             });
     }, [patientId]);
 
@@ -208,7 +208,7 @@ export default function Progresso() {
                     setPoints([]);
                     setSeriesError({
                         key: requestKey,
-                        message: errorTextOf(requestError, "Não foi possível carregar o progresso."),
+                        message: errorMessageOf(requestError, "Não foi possível carregar o progresso."),
                     });
                 }
             })
@@ -372,7 +372,7 @@ export default function Progresso() {
             await download("/patients/" + patientId + "/export/progress.csv?attribute="
                 + chosenAttribute + "&period=" + period + deidentifiedParam, "progresso.csv");
         } catch (requestError) {
-            setDownloadError(errorTextOf(requestError,
+            setDownloadError(errorMessageOf(requestError,
                 "Não foi possível baixar o arquivo. Confira sua internet e tente de novo."));
         } finally {
             setIsDownloading(false);
@@ -776,8 +776,4 @@ function appointmentMarksOf(appointments, chartRows) {
 // cada serie eh de um paciente atributo e periodo
 function seriesKeyOf(patientId, attribute, period) {
     return patientId + "|" + attribute + "|" + period;
-}
-
-function errorTextOf(requestError, fallback) {
-    return requestError instanceof ApiError ? requestError.message : fallback;
 }

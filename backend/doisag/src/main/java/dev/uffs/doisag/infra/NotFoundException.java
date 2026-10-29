@@ -24,6 +24,23 @@ public class NotFoundException extends RuntimeException {
         return new NotFoundException(message, true);
     }
 
+    // as buscas q se repetem nos servicos ficam c/ a msm mensagem
+    public static NotFoundException patient(Long patientId) {
+        return new NotFoundException("Paciente não encontrado com o id: " + patientId);
+    }
+
+    public static NotFoundException appointment(Long appointmentId) {
+        return new NotFoundException("Consulta não encontrada com o id: " + appointmentId);
+    }
+
+    public static NotFoundException prescriber(Long prescriberId) {
+        return new NotFoundException("Prescritor não encontrado com o id: " + prescriberId);
+    }
+
+    public static NotFoundException account() {
+        return new NotFoundException("Conta não encontrada");
+    }
+
     public boolean hasMessageForUser() {
         return messageForUser;
     }

@@ -66,22 +66,9 @@ public record AnamnesisResponseDTO(
                 anamnesis.getPatient().getId(),
                 anamnesis.getPatient().getDisplayName(),
                 anamnesis.isAnnulled(),
-                annulledAtOf(anamnesis.getAnnulment()),
-                reasonOf(anamnesis.getAnnulment()),
-                annulledByNameOf(anamnesis.getAnnulment())
+                Annulment.annulledAtOf(anamnesis.getAnnulment()),
+                Annulment.reasonOf(anamnesis.getAnnulment()),
+                Annulment.annulledByNameOf(anamnesis.getAnnulment())
         );
-    }
-
-    // a anulacao pode ser nula entao cada campo sai de um metodo pra n poluir o construtor
-    private static LocalDateTime annulledAtOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulledAt();
-    }
-
-    private static String reasonOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulmentReason();
-    }
-
-    private static String annulledByNameOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulledBy().getName();
     }
 }

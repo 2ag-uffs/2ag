@@ -3,8 +3,8 @@ import {useNavigate, useParams} from "react-router";
 import Card from "../../components/card/card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import {formatDate, formatDateTime} from "../../utils/date-format.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {formatDateTime, formatPeriod} from "../../utils/date-format.js";
 import {formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./resposta-escala.module.css";
 
@@ -40,9 +40,8 @@ export default function RespostaEscala() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível abrir a resposta. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível abrir a resposta. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -59,9 +58,7 @@ export default function RespostaEscala() {
         return <SkeletonPage cards={1}/>;
     }
 
-    const periodText = response.periodStart === response.periodEnd
-        ? formatDate(response.periodStart)
-        : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
+    const periodText = formatPeriod(response.periodStart, response.periodEnd);
 
     // o paciente corrige enquanto o prescritor n analisou e a tela de responder ja abre no dia certo
     const canCorrect = loggedUser.role === "PATIENT" && response.editableByPatient;

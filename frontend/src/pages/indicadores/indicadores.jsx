@@ -4,8 +4,8 @@ import TextField from "../../components/form/text-field.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {addDays, toIsoDate} from "../../utils/date-format.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
+import {addDays, periodErrorOf, toIsoDate} from "../../utils/date-format.js";
 import styles from "./indicadores.module.css";
 
 // "1 paciente" e "2 pacientes"
@@ -20,19 +20,6 @@ function hasPercent(percent) {
 
 function percentText(percent) {
     return hasPercent(percent) ? percent + "%" : "—";
-}
-
-function periodErrorOf(fromDate, toDate, yesterday) {
-    if (!fromDate || !toDate) {
-        return "Escolha as duas datas do período.";
-    }
-    if (fromDate > toDate) {
-        return "A data inicial precisa ser igual ou anterior à data final.";
-    }
-    if (toDate > yesterday) {
-        return "Escolha um período que termine até ontem.";
-    }
-    return null;
 }
 
 // "1 de 2 no prazo · 50%" e no diario tbm os dias preenchidos
@@ -74,9 +61,8 @@ export default function Indicadores() {
             .catch((requestError) => {
                 if (isCurrentRequest) {
                     setIndicators(null);
-                    setErrorMessage(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar os indicadores. Confira sua internet e tente de novo.");
+                    setErrorMessage(errorMessageOf(requestError,
+                        "Não foi possível carregar os indicadores. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {
@@ -92,7 +78,10 @@ export default function Indicadores() {
 
     const handleFilter = (event) => {
         event.preventDefault();
-        const periodError = periodErrorOf(fromDate, toDate, yesterday);
+        let periodError = periodErrorOf(fromDate, toDate);
+        if (!periodError && toDate > yesterday) {
+            periodError = "Escolha um período que termine até ontem.";
+        }
         if (periodError) {
             setErrorMessage(periodError);
             return;

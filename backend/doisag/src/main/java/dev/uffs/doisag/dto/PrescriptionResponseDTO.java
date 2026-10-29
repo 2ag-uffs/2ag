@@ -65,22 +65,9 @@ public record PrescriptionResponseDTO(
                 prescription.getAppointment().getPatient().getDisplayName(),
                 prescription.getAppointment().getPrescriber().getName(),
                 prescription.isAnnulled(),
-                annulledAtOf(prescription.getAnnulment()),
-                reasonOf(prescription.getAnnulment()),
-                annulledByNameOf(prescription.getAnnulment())
+                Annulment.annulledAtOf(prescription.getAnnulment()),
+                Annulment.reasonOf(prescription.getAnnulment()),
+                Annulment.annulledByNameOf(prescription.getAnnulment())
         );
-    }
-
-    // a anulacao pode ser nula entao cada campo sai de um metodo pra n poluir o construtor
-    private static LocalDateTime annulledAtOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulledAt();
-    }
-
-    private static String reasonOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulmentReason();
-    }
-
-    private static String annulledByNameOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulledBy().getName();
     }
 }

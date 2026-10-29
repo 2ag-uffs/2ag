@@ -5,7 +5,7 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, errorMessageOf, readRequestError} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
 import {onlyDigits} from "../../utils/masks.js";
 import styles from "./admin-prescribers.module.css";
@@ -201,11 +201,7 @@ export default function AdminPrescribers() {
                 setPageError(null);
             })
             .catch((requestError) => {
-                if (requestError instanceof ApiError) {
-                    setPageError(requestError.message);
-                } else {
-                    setPageError("Não foi possível carregar os prescritores.");
-                }
+                setPageError(errorMessageOf(requestError, "Não foi possível carregar os prescritores."));
             })
             .finally(() => setIsLoading(false));
     }, []);
@@ -259,14 +255,10 @@ export default function AdminPrescribers() {
             setFirstAccess({...createdAccount, email: formData.email.trim()});
             await loadPrescribers();
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setFormError(requestError.message);
-                }
-            } else {
-                setFormError(CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            setFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setFormError(errorInfo.message);
             }
         } finally {
             setIsSaving(false);
@@ -286,11 +278,7 @@ export default function AdminPrescribers() {
             await loadPrescribers();
         } catch (requestError) {
             setNotice(null);
-            if (requestError instanceof ApiError) {
-                setPageError(requestError.message);
-            } else {
-                setPageError("Não foi possível alterar a conta.");
-            }
+            setPageError(errorMessageOf(requestError, "Não foi possível alterar a conta."));
         }
     };
 

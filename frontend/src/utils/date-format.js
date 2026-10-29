@@ -93,6 +93,14 @@ export function formatDate(isoText) {
     return toLocalDate(isoText).toLocaleDateString("pt-BR");
 }
 
+// o diario fala de um dia e os acompanhamentos de um periodo
+export function formatPeriod(startIso, endIso) {
+    if (startIso === endIso) {
+        return formatDate(startIso);
+    }
+    return formatDate(startIso) + " a " + formatDate(endIso);
+}
+
 export function formatDateTime(isoText) {
     if (!isoText) {
         return "";
@@ -102,11 +110,26 @@ export function formatDateTime(isoText) {
     return dateTime.toLocaleDateString("pt-BR") + " às " + time;
 }
 
+// data e hora com o aviso de brasilia qnd o navegador esta em outro fuso
+export function formatDateTimeWithZone(isoText) {
+    return formatDateTime(isoText) + brasiliaTimeNote();
+}
+
 export function formatTime(isoText) {
     if (!isoText) {
         return "";
     }
     return toLocalDate(isoText).toLocaleTimeString("pt-BR", HOUR_AND_MINUTE);
+}
+
+// a api manda hh:mm:ss e a tela so usa hh:mm
+export function shortTime(apiTime) {
+    return apiTime ? apiTime.slice(0, 5) : "";
+}
+
+// data e hora do formulario no formato q a api espera
+export function toApiDateTime(date, time) {
+    return date + "T" + time + ":00";
 }
 
 // dia da semana por extenso junto com o dia e o mes
@@ -138,6 +161,17 @@ export function minutesUntil(isoText) {
 
 export function isSameOrAfter(isoText, otherIsoText) {
     return toLocalDate(isoText) >= toLocalDate(otherIsoText);
+}
+
+// o filtro de periodo confere o msm q a api so q antes de mandar
+export function periodErrorOf(fromDate, toDate) {
+    if (!fromDate || !toDate) {
+        return "Escolha as duas datas do período.";
+    }
+    if (fromDate > toDate) {
+        return "A data inicial precisa ser igual ou anterior à data final.";
+    }
+    return null;
 }
 
 // true quando a hora da consulta ja acabou em brasilia, contando a duracao dela

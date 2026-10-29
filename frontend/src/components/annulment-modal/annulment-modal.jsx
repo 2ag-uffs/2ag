@@ -1,7 +1,7 @@
 import {useState} from "react";
 import TextAreaField from "../form/text-area-field.jsx";
 import Modal from "../modal/modal.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE} from "../../services/api.js";
 import styles from "./annulment-modal.module.css";
 
 // pede o motivo e anula um registro clinico feito por engano
@@ -37,7 +37,7 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
                     setFormError(requestError.message);
                 }
             } else {
-                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+                setFormError(CONNECTION_ERROR_MESSAGE);
             }
             setIsSaving(false);
         }

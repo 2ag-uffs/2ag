@@ -163,7 +163,7 @@ public class ScaleResponseService {
         // a consulta fica travada ate o fim, senao dois cliques em aplicar passavam os dois
         // pela conferencia de exame repetido e gravavam dois exames validos no mesmo atendimento
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> NotFoundException.appointment(appointmentId));
         checkAppointmentCanReceiveExam(appointment);
         // dps da consulta vem o prescritor e so dps o paciente: no postgres o insert do exame toma o paciente e
         // dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
@@ -529,16 +529,11 @@ public class ScaleResponseService {
     }
 
     private ScaleResponseDTO dtoOf(ScaleResponse response) {
-        return new ScaleResponseDTO(response, resultTextOf(response));
+        return new ScaleResponseDTO(response, catalog.resultTextOf(response));
     }
 
     private ScaleResponseSummaryDTO summaryOf(ScaleResponse response) {
-        return new ScaleResponseSummaryDTO(response, resultTextOf(response));
-    }
-
-    private String resultTextOf(ScaleResponse response) {
-        return catalog.resultTextOf(response.getScaleType(), response.getScore(), response.getScoreBand(),
-                response.getAnswers());
+        return new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response));
     }
 
     private ScaleResponse findResponse(Long responseId) {
@@ -562,6 +557,6 @@ public class ScaleResponseService {
 
     private Patient findPatient(Long patientId) {
         return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
     }
 }

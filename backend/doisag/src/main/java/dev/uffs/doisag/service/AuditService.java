@@ -6,6 +6,7 @@ import dev.uffs.doisag.enums.AuditOperation;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -188,7 +189,7 @@ public class AuditService {
 
     private void checkPeriod(LocalDate from, LocalDate to) {
         if (from.isAfter(to)) {
-            throw new BusinessException("A data inicial precisa ser igual ou anterior à data final");
+            throw new BusinessException(DateCheck.INVALID_RANGE_MESSAGE);
         }
     }
 

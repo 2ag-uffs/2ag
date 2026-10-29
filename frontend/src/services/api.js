@@ -38,6 +38,29 @@ export class ApiError extends Error {
     }
 }
 
+// aviso padrao qnd a api nem chegou a responder
+export const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
+
+// mensagem da api ou o aviso de sem conexao
+export function errorMessageOf(requestError, offlineText = CONNECTION_ERROR_MESSAGE) {
+    if (requestError instanceof ApiError) {
+        return requestError.message;
+    }
+    return offlineText;
+}
+
+// separa o erro da api em erros de campo e mensagem geral
+export function readRequestError(requestError, offlineText = CONNECTION_ERROR_MESSAGE) {
+    if (!(requestError instanceof ApiError)) {
+        return {fieldErrors: {}, message: offlineText};
+    }
+    const errorsByField = requestError.fieldErrors();
+    if (Object.keys(errorsByField).length > 0) {
+        return {fieldErrors: errorsByField, message: null};
+    }
+    return {fieldErrors: {}, message: requestError.message};
+}
+
 async function readBody(response) {
     if (response.status === 204) {
         return null;

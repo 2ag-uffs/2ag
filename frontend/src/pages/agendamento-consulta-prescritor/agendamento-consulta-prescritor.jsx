@@ -6,7 +6,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {appointmentTypeLabelOf, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {
     addDays,
@@ -17,23 +17,13 @@ import {
     hasEnded,
     isInTheFuture,
     mondayOf,
+    toApiDateTime,
     toIsoDate,
 } from "../../utils/date-format.js";
+import {emptyToNull, numberOrNull} from "../../utils/form-values.js";
 import AppointmentFormModal from "./appointment-form-modal.jsx";
 import DeclineRequestModal from "./decline-request-modal.jsx";
 import styles from "./agendamento-consulta-prescritor.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
-
-// data e hora do formulario no formato q a api espera
-function toApiDateTime(date, time) {
-    return date + "T" + time + ":00";
-}
-
-// campo vazio do formulario vai como nulo pra api decidir
-function numberOrNull(text) {
-    return text === "" ? null : Number(text);
-}
 
 // tipo e duracao vazios vao nulos e a api decide pelo historico na nova e mantendo o q era na remarcacao
 function scheduleFieldsOf(values) {
@@ -41,7 +31,7 @@ function scheduleFieldsOf(values) {
         dateTime: toApiDateTime(values.date, values.time),
         modality: values.modality,
         durationMinutes: numberOrNull(values.durationMinutes),
-        appointmentType: values.appointmentType === "" ? null : values.appointmentType,
+        appointmentType: emptyToNull(values.appointmentType),
     };
 }
 
@@ -101,9 +91,8 @@ export default function AgendamentoPrescritor() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar a agenda. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar a agenda. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -119,7 +108,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const showActionError = (requestError) => {
-        setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        setActionError(errorMessageOf(requestError));
     };
 
     const clearMessages = () => {

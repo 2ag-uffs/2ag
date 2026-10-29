@@ -4,6 +4,7 @@ import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.CsvBuilder;
 import dev.uffs.doisag.infra.NotFoundException;
@@ -29,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
@@ -116,8 +116,8 @@ public class ExportService {
 
         for (Appointment appointment : appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)) {
             csv.line(patientCell(patient, deidentified),
-                    date(appointment.getDateTime().toLocalDate()),
-                    time(appointment.getDateTime()),
+                    BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
+                    BrazilianFormat.time(appointment.getDateTime()),
                     appointment.getModality(),
                     appointment.getStatus(),
                     prescriberCell(appointment.getPrescriber(), deidentified),
@@ -131,7 +131,7 @@ public class ExportService {
                     appointment.getWeight(),
                     appointment.getHeight(),
                     yesOrNo(appointment.isAnnulled()),
-                    annulmentReasonOf(appointment.getAnnulment()));
+                    Annulment.reasonOf(appointment.getAnnulment()));
         }
         return csv.build();
     }
@@ -147,7 +147,7 @@ public class ExportService {
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
                         patientId)) {
             csv.line(patientCell(patient, deidentified),
-                    date(prescription.getAppointment().getDateTime().toLocalDate()),
+                    BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()),
                     prescription.getStatus(),
                     prescription.getProductDescription(),
                     prescription.getSpectrum(),
@@ -158,10 +158,10 @@ public class ExportService {
                     prescription.getPosology(),
                     prescription.getAdministrationRoute(),
                     prescription.getTreatmentDurationDays(),
-                    date(prescription.getNextConsultationDate()),
+                    BrazilianFormat.date(prescription.getNextConsultationDate()),
                     prescription.getObservation(),
                     yesOrNo(prescription.isAnnulled()),
-                    annulmentReasonOf(prescription.getAnnulment()));
+                    Annulment.reasonOf(prescription.getAnnulment()));
         }
         return csv.build();
     }
@@ -185,15 +185,15 @@ public class ExportService {
                 }
                 csv.line(patientCell(patient, deidentified),
                         response.getScaleType().getDisplayName(),
-                        date(response.getPeriodStart()),
-                        date(response.getPeriodEnd()),
+                        BrazilianFormat.date(response.getPeriodStart()),
+                        BrazilianFormat.date(response.getPeriodEnd()),
                         response.getScore(),
                         response.getScoreBand(),
                         item.label(),
                         answerText(item, answer),
                         answer,
                         yesOrNo(response.isAnnulled()),
-                        annulmentReasonOf(response.getAnnulment()));
+                        Annulment.reasonOf(response.getAnnulment()));
             }
         }
         return csv.build();
@@ -229,10 +229,7 @@ public class ExportService {
         if (minutes == null) {
             return String.valueOf(answer);
         }
-        if (minutes < 60) {
-            return minutes + " min";
-        }
-        return minutes / 60 + "h" + String.format("%02d", minutes % 60);
+        return BrazilianFormat.minutes(minutes);
     }
 
     // o json do banco devolve o numero as vezes inteiro e as vezes decimal
@@ -260,7 +257,7 @@ public class ExportService {
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
                         attribute.name(),
-                        date(point.date()),
+                        BrazilianFormat.date(point.date()),
                         point.value(),
                         point.band()));
         return csv.build();
@@ -279,11 +276,11 @@ public class ExportService {
                     continue;
                 }
                 csv.line(patientCell(patient, deidentified),
-                        date(anamnesis.getAssessmentDate()),
+                        BrazilianFormat.date(anamnesis.getAssessmentDate()),
                         field.label(),
                         answer,
                         yesOrNo(anamnesis.isAnnulled()),
-                        annulmentReasonOf(anamnesis.getAnnulment()));
+                        Annulment.reasonOf(anamnesis.getAnnulment()));
             }
         }
         return csv.build();
@@ -300,7 +297,7 @@ public class ExportService {
             throw new BusinessException(DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE);
         }
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
         // o arquivo sem identificacao eh o de pesquisa e so sai de quem aceitou participar (RF37)
         if (deidentified && !consentTermService.hasResearchConsent(patient)) {
             throw new BusinessException(NO_RESEARCH_CONSENT_MESSAGE);
@@ -311,10 +308,6 @@ public class ExportService {
 
     private String yesOrNo(boolean value) {
         return value ? "sim" : "não";
-    }
-
-    private String annulmentReasonOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulmentReason();
     }
 
     private String patientColumn(boolean deidentified) {
@@ -356,14 +349,5 @@ public class ExportService {
         String cannabinoid = component.getCannabinoid() == Cannabinoid.OUTRO
                 ? "Outro" : component.getCannabinoid().name();
         return cannabinoid + " " + amount + unit;
-    }
-
-    private String date(LocalDate date) {
-        return date == null ? null : String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(),
-                date.getYear());
-    }
-
-    private String time(LocalDateTime dateTime) {
-        return String.format("%02d:%02d", dateTime.getHour(), dateTime.getMinute());
     }
 }

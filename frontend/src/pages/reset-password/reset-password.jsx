@@ -5,7 +5,7 @@ import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
 import {homePathFor} from "../../app/role-home.js";
-import {apiService, ApiError, getLoggedUser, logout} from "../../services/api.js";
+import {apiService, getLoggedUser, logout, readRequestError} from "../../services/api.js";
 import styles from "./reset-password.module.css";
 
 // senha nova pelo link q chegou por e-mail (RF35), tbm o link de primeiro acesso do prescritor
@@ -65,14 +65,10 @@ export default function ResetPassword() {
             await apiService.post("/auth/password-reset/confirm", {token: token, newPassword: newPassword});
             navigate("/entrar", {replace: true, state: {notice: "Senha nova criada. Entre com ela."}});
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setErrorMessage(requestError.message);
-                }
-            } else {
-                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            const errorInfo = readRequestError(requestError);
+            setFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setErrorMessage(errorInfo.message);
             }
             setIsSubmitting(false);
         }

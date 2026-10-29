@@ -6,13 +6,11 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
 import {initialsOf} from "../../utils/initials.js";
 import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./lista-paciente.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 function patientDetailsOf(patient) {
     const age = ageFrom(patient.birthDate);
@@ -55,9 +53,8 @@ export default function ListaPacientes() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar seus pacientes. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar seus pacientes. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {
@@ -89,7 +86,7 @@ export default function ListaPacientes() {
             setNotice(successMessage);
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
-            setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setActionError(errorMessageOf(requestError));
         } finally {
             setBusyPatientId(null);
         }

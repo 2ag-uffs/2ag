@@ -22,14 +22,12 @@ import PrescriptionCard from "../../components/prescription-card/prescription-ca
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {belongsToHistory} from "../../utils/appointment-labels.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
+import {belongsToHistory, isConfirmed} from "../../utils/appointment-labels.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {formatPhone} from "../../utils/masks.js";
+import {currentFirst} from "../../utils/prescription-labels.js";
 import styles from "./historico-clinico-prescritor.module.css";
-
-// so a consulta confirmada e n anulada recebe registro prescricao e anulacao
-const CONFIRMED_STATUSES = ["AGENDADA", "EM_ANDAMENTO", "CONCLUIDA"];
 
 // historico clinico de um paciente do prescritor (RF13)
 // o registro feito por engano eh anulado com motivo e continua aparecendo aqui
@@ -68,9 +66,8 @@ export default function HistoricoClinicoPrescritor() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar o histórico. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar o histórico. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -87,9 +84,7 @@ export default function HistoricoClinicoPrescritor() {
             setNotice("Escala marcada como analisada. O paciente não corrige mais essa resposta.");
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
-            setActionError(requestError instanceof ApiError
-                ? requestError.message
-                : "Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            setActionError(errorMessageOf(requestError));
         }
     };
 
@@ -115,12 +110,12 @@ export default function HistoricoClinicoPrescritor() {
     const nextAppointment = nextAppointmentOf(appointments);
 
     // a vigente aparece primeiro e as outras seguem da mais nova pra mais antiga
-    const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
-        .concat(prescriptions.filter((prescription) => !prescription.current));
+    const orderedPrescriptions = currentFirst(prescriptions);
     const currentPrescription = prescriptions.find((prescription) => prescription.current) || null;
 
     const consultationActions = (appointment) => {
-        if (appointment.annulled || !CONFIRMED_STATUSES.includes(appointment.status)) {
+        // so a consulta confirmada e n anulada recebe registro prescricao e anulacao
+        if (appointment.annulled || !isConfirmed(appointment)) {
             return null;
         }
         // receita em consulta mais antiga q a da vigente entra so no historico

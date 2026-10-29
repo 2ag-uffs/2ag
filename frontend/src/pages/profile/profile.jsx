@@ -9,28 +9,20 @@ import TextField from "../../components/form/text-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {
+    apiService,
+    CONNECTION_ERROR_MESSAGE,
+    getLoggedUser,
+    readRequestError,
+    setLoggedUser,
+} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {formatDate} from "../../utils/date-format.js";
 import {guardianBody, guardianFieldsFrom, isMinorPatient} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./profile.module.css";
 
-const CONNECTION_ERROR = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
-
 const EMPTY_PASSWORD_FORM = {currentPassword: "", newPassword: "", newPasswordConfirmation: ""};
-
-// separa o erro da api em erros de campo e mensagem geral
-function readRequestError(requestError) {
-    if (!(requestError instanceof ApiError)) {
-        return {fieldErrors: {}, message: CONNECTION_ERROR};
-    }
-    const errorsByField = requestError.fieldErrors();
-    if (Object.keys(errorsByField).length > 0) {
-        return {fieldErrors: errorsByField, message: null};
-    }
-    return {fieldErrors: {}, message: requestError.message};
-}
 
 // erro de campo fica no campo e o resto vira o aviso do cartao
 function showRequestError(requestError, setFieldErrors, setMessage) {
@@ -43,7 +35,7 @@ function showRequestError(requestError, setFieldErrors, setMessage) {
 
 // onde n tem campo pra marcar o erro todo vira aviso
 function generalErrorText(requestError) {
-    return readRequestError(requestError).message || CONNECTION_ERROR;
+    return readRequestError(requestError).message || CONNECTION_ERROR_MESSAGE;
 }
 
 // campos do formulario a partir do perfil q veio da api

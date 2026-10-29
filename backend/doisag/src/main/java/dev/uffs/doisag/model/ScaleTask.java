@@ -20,6 +20,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 // a escala q o prescritor mandou o paciente responder, com o periodo
 // q ela cobre
@@ -146,6 +147,11 @@ public class ScaleTask {
     // a tarefa aceita resposta enquanto o periodo dela n acabou
     public boolean coversDay(LocalDate day) {
         return !day.isBefore(periodStart) && !day.isAfter(periodEnd);
+    }
+
+    // o primeiro e o ultimo dia contam
+    public long totalDays() {
+        return ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
     }
 
     // quando o aviso de lembrete desta tarefa foi criado, pra ele n sair duas vezes (RF34)

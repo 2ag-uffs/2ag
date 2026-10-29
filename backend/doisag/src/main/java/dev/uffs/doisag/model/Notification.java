@@ -6,6 +6,15 @@ import java.time.LocalDateTime;
 @Entity
 public class Notification {
 
+    // as msm chaves do front pq tipo digitado errado ficava sem icone e sem rotulo
+    public static final String TYPE_APPOINTMENT = "APPOINTMENT";
+    public static final String TYPE_ALERT = "ALERT";
+    public static final String TYPE_FORM = "FORM";
+
+    public static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
+    public static final String PRESCRIBER_AGENDA_LINK = "/agendamento-prescritor";
+    public static final String PRESCRIBER_PATIENT_LIST_LINK = "/lista-paciente";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -36,6 +45,15 @@ public class Notification {
 
     public Notification() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public static String patientScalesLink(Long patientId) {
+        return "/pacientes/" + patientId + "/escalas";
+    }
+
+    // o historico do paciente na tela do prescritor
+    public static String patientHistoryLink(Long patientId) {
+        return "/paciente/" + patientId + "/historico";
     }
 
     public LocalDateTime getCreatedAt() {

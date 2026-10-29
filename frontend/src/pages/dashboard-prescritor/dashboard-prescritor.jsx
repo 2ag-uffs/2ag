@@ -7,9 +7,10 @@ import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {formatDate, formatDateTime, formatTime, isInTheFuture} from "../../utils/date-format.js";
+import {firstNameOf} from "../../utils/initials.js";
 import styles from "./dashboard-prescritor.module.css";
 
 // painel do prescritor (RF03)
@@ -35,9 +36,8 @@ export default function DashboardPrescritor() {
         apiService.get("/dashboard/prescriber/" + loggedUser.id)
             .then(setPanel)
             .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar o painel. Confira sua internet e tente de novo.");
+                setLoadError(errorMessageOf(requestError,
+                    "Não foi possível carregar o painel. Confira sua internet e tente de novo."));
             });
     }, [loggedUser, navigate]);
 
@@ -49,8 +49,7 @@ export default function DashboardPrescritor() {
         return <SkeletonPage cards={3} stats={4}/>;
     }
 
-    // o painel chama a pessoa pelo primeiro nome e pula titulo tipo dra.
-    const firstName = loggedUser.name.split(" ").find((word) => !word.endsWith(".")) || loggedUser.name;
+    const firstName = firstNameOf(loggedUser.name);
 
     return (
         <section className={styles.page}>

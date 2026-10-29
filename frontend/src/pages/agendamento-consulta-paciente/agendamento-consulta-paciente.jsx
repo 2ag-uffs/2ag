@@ -8,20 +8,20 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {
     addDays,
     brasiliaTimeNote,
     formatDateTime,
+    formatDateTimeWithZone,
     formatTime,
     formatWeekdayAndDate,
     minutesUntil,
     toIsoDate,
 } from "../../utils/date-format.js";
+import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./agendamento-consulta-paciente.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // quantos dias pra frente o paciente ve horario livre
 const DAYS_AHEAD = 30;
@@ -106,9 +106,8 @@ export default function AgendamentoConsultaPaciente() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar suas consultas. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar suas consultas. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -122,7 +121,7 @@ export default function AgendamentoConsultaPaciente() {
     };
 
     const showActionError = (requestError) => {
-        setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        setActionError(errorMessageOf(requestError));
     };
 
     const clearMessages = () => {
@@ -148,7 +147,7 @@ export default function AgendamentoConsultaPaciente() {
             await apiService.post("/appointments/requests", {
                 dateTime: slotStart,
                 modality,
-                patientNote: patientNote.trim() === "" ? null : patientNote.trim(),
+                patientNote: emptyToNull(patientNote.trim()),
             });
             setNotice("Pedido enviado para " + page.patient.prescriberName
                 + ". O horário fica reservado e você recebe um aviso quando o pedido for respondido.");
@@ -329,7 +328,7 @@ export default function AgendamentoConsultaPaciente() {
                             <li key={appointment.id} className={styles.appointment}>
                                 <div className={styles.appointmentInfo}>
                                     <div className={styles.appointmentTitle}>
-                                        <strong>{formatDateTime(appointment.dateTime) + brasiliaTimeNote()}</strong>
+                                        <strong>{formatDateTimeWithZone(appointment.dateTime)}</strong>
                                         <AppointmentStatusBadge appointment={appointment}/>
                                     </div>
                                     <p className={styles.meta}>
@@ -365,7 +364,7 @@ export default function AgendamentoConsultaPaciente() {
                 show={cancelTarget !== null}
                 title={cancelTarget !== null ? cancelLabelOf(cancelTarget) : "Cancelar consulta"}
                 message={cancelTarget !== null
-                    ? "O horário de " + formatDateTime(cancelTarget.dateTime) + brasiliaTimeNote()
+                    ? "O horário de " + formatDateTimeWithZone(cancelTarget.dateTime)
                         + " volta a ficar livre na agenda. Quer cancelar?"
                     : ""}
                 confirmText="Sim, cancelar"

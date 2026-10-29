@@ -58,10 +58,17 @@ export function statusLabelOf(appointment) {
     return STATUS_LABELS[appointment.status] || appointment.status;
 }
 
+// igual o isConfirmed do AppointmentStatus da api
+const CONFIRMED_STATUSES = ["AGENDADA", "EM_ANDAMENTO", "CONCLUIDA"];
+
+export function isConfirmed(appointment) {
+    return CONFIRMED_STATUSES.includes(appointment.status);
+}
+
 // o q o historico e a impressao contam como consulta: a q ja passou e foi atendida,
 // estava marcada ou virou falta. pedido recusado, cancelada e pedido sem resposta
 // n sao atendimento, e so por data eles entravam na conta
-const HISTORY_STATUSES = ["AGENDADA", "EM_ANDAMENTO", "CONCLUIDA", "NAO_COMPARECEU"];
+const HISTORY_STATUSES = [...CONFIRMED_STATUSES, "NAO_COMPARECEU"];
 
 export function belongsToHistory(appointment) {
     return !isInTheFuture(appointment.dateTime) && HISTORY_STATUSES.includes(appointment.status);

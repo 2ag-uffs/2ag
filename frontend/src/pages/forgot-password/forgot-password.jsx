@@ -3,7 +3,7 @@ import {Link} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import TrapField from "../../components/form/trap-field.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, readRequestError} from "../../services/api.js";
 import styles from "./forgot-password.module.css";
 
 // pedido do link pra criar uma senha nova (RF35)
@@ -25,14 +25,10 @@ export default function ForgotPassword() {
             await apiService.post("/auth/password-reset/request", {email: email, site: site});
             setWasSent(true);
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setErrorMessage(requestError.message);
-                }
-            } else {
-                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            const errorInfo = readRequestError(requestError);
+            setFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setErrorMessage(errorInfo.message);
             }
         } finally {
             setIsSubmitting(false);

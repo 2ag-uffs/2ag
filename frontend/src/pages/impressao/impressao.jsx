@@ -5,9 +5,9 @@ import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
-import {addDays, ageFrom, formatDate, formatNow, toIsoDate} from "../../utils/date-format.js";
+import {addDays, ageFrom, formatNow, formatPeriod, toIsoDate} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
 
 // o tratamento todo n tem data de corte
@@ -55,9 +55,8 @@ export default function Impressao() {
                 setLoadError(null);
             })
             .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar o histórico. Confira sua internet e tente de novo.");
+                setLoadError(errorMessageOf(requestError,
+                    "Não foi possível carregar o histórico. Confira sua internet e tente de novo."));
             });
     }, [patientId]);
 
@@ -176,7 +175,7 @@ export default function Impressao() {
                         {scalesInPeriod.map((scale) => (
                             <tr key={scale.id}>
                                 <td>{scale.scaleName}</td>
-                                <td>{periodTextOf(scale)}</td>
+                                <td>{formatPeriod(scale.periodStart, scale.periodEnd)}</td>
                                 <td>{scale.annulled ? "anulada" : scale.result}</td>
                             </tr>
                         ))}
@@ -201,10 +200,4 @@ function PrintSection({title, count, emptyText, children}) {
             {count === 0 ? <p className={styles.empty}>{emptyText}</p> : children}
         </section>
     );
-}
-
-function periodTextOf(scale) {
-    return scale.periodStart === scale.periodEnd
-        ? formatDate(scale.periodStart)
-        : formatDate(scale.periodStart) + " a " + formatDate(scale.periodEnd);
 }

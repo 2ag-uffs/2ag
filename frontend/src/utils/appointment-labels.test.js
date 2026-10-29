@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {appointmentTypeLabelOf, belongsToHistory, statusLabelOf} from "./appointment-labels.js";
+import {appointmentTypeLabelOf, belongsToHistory, isConfirmed, statusLabelOf} from "./appointment-labels.js";
 
 const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -20,6 +20,18 @@ describe("belongsToHistory", () => {
 
     it("deixa de fora a consulta marcada pro futuro", () => {
         expect(belongsToHistory({dateTime: tomorrow, status: "AGENDADA"})).toBe(false);
+    });
+});
+
+describe("isConfirmed", () => {
+    it("so agendada, em andamento e concluida contam como confirmada", () => {
+        expect(isConfirmed({status: "AGENDADA"})).toBe(true);
+        expect(isConfirmed({status: "EM_ANDAMENTO"})).toBe(true);
+        expect(isConfirmed({status: "CONCLUIDA"})).toBe(true);
+        expect(isConfirmed({status: "SOLICITADA"})).toBe(false);
+        expect(isConfirmed({status: "CANCELADA"})).toBe(false);
+        expect(isConfirmed({status: "RECUSADA"})).toBe(false);
+        expect(isConfirmed({status: "NAO_COMPARECEU"})).toBe(false);
     });
 });
 

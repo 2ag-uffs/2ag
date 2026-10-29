@@ -42,17 +42,10 @@ public class PasswordService {
         // gravou no mesmo instante aparece e a atual eh conferida com ela, em vez de a troca gravar por cima
         usersRepository.lockById(userId);
         Users user = usersRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+                .orElseThrow(() -> NotFoundException.account());
 
-        // mesma contagem do login: sessao esquecida aberta n vira chute livre da senha atual
-        if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)) {
-            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
-        }
-        if (!passwordEncoder.matches(passwordData.currentPassword(), user.getPassword())) {
-            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
-            throw new InvalidFieldException("currentPassword", "A senha atual está incorreta");
-        }
-        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
+        checkCurrentPassword(user, passwordData.currentPassword(), clientAddress,
+                "currentPassword", "A senha atual está incorreta");
 
         if (passwordEncoder.matches(passwordData.newPassword(), user.getPassword())) {
             throw new InvalidFieldException("newPassword", "A nova senha precisa ser diferente da atual");
@@ -62,6 +55,19 @@ public class PasswordService {
         return usersRepository.save(user);
     }
 
+    // mesma contagem do login: sessao esquecida aberta n vira chute livre da senha atual
+    public void checkCurrentPassword(Users user, String typedPassword, String clientAddress,
+                                     String field, String message) {
+        if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)) {
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
+        }
+        if (!passwordEncoder.matches(typedPassword, user.getPassword())) {
+            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
+            throw new InvalidFieldException(field, message);
+        }
+        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
+    }
+
     // grava a senha nova e derruba as sessoes abertas antes da troca
     // quem chama ja esta numa transacao, por causa da trava do pedido de e-mail novo
     public void applyNewPassword(Users user, String newPassword) {
@@ -69,8 +75,7 @@ public class PasswordService {
             throw new InvalidFieldException("newPassword", PasswordRules.TOO_LONG_MESSAGE);
         }
         user.setPassword(passwordEncoder.encode(newPassword));
-        // o token guarda a emissao em milissegundos, entao a troca tbm fica em milissegundos
-        // senao a sessao emitida no mesmo segundo da troca continuava valendo
+        // a troca e o fim do pedido de e-mail novo saem do msm instante
         LocalDateTime now = LocalDateTime.now();
         user.setPasswordChangedAt(now.truncatedTo(ChronoUnit.MILLIS));
         // trocar a senha eh como a dona da conta retoma ela, entao o pedido de e-mail novo

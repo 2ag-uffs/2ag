@@ -6,9 +6,11 @@ import dev.uffs.doisag.dto.ScaleTaskDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
@@ -29,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,8 +51,6 @@ public class ScaleTaskService {
             "Paciente arquivado não preenche a avaliação inicial. Reative o paciente antes de enviar";
     public static final String ANSWERED_TODAY_MESSAGE =
             "Esta escala já foi respondida hoje. Veja a resposta no histórico do paciente";
-
-    private static final String FORM_NOTIFICATION = "FORM";
 
     // quanto tempo o paciente tem pra responder uma escala avulsa
     private static final int DEFAULT_TASK_DAYS = 7;
@@ -173,9 +172,9 @@ public class ScaleTaskService {
 
     private void notifyNewTask(Patient patient, ScaleTask task) {
         notificationService.createNotification(patient, "Nova escala para responder",
-                task.getScaleType().getDisplayName() + ". Você tem até " + formatDate(task.getPeriodEnd())
+                task.getScaleType().getDisplayName() + ". Você tem até " + BrazilianFormat.date(task.getPeriodEnd())
                         + " para responder.",
-                FORM_NOTIFICATION, "/pacientes/" + patient.getId() + "/escalas");
+                Notification.TYPE_FORM, Notification.patientScalesLink(patient.getId()));
     }
 
     // liga a resposta na tarefa aberta daquela escala
@@ -303,14 +302,14 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         String whatToDo;
         if (isDaily(scaleType)) {
-            whatToDo = "Preencha o dia " + formatDate(annulledDay) + " de novo até amanhã de manhã.";
+            whatToDo = "Preencha o dia " + BrazilianFormat.date(annulledDay) + " de novo até amanhã de manhã.";
         } else {
             LocalDate lastDay = today.plusDays(REOPENED_TASK_DAYS);
             if (task.getPeriodEnd().isBefore(lastDay)) {
                 task.setPeriodEnd(lastDay);
                 taskRepository.save(task);
             }
-            whatToDo = "Você tem até " + formatDate(task.getPeriodEnd()) + " para responder de novo.";
+            whatToDo = "Você tem até " + BrazilianFormat.date(task.getPeriodEnd()) + " para responder de novo.";
             // com outra pendente da mesma escala cobrindo hoje, a data de hoje eh dela e n da reaberta
             if (anotherPendingCoversToday(task, today)) {
                 whatToDo = whatToDo + " Responda com " + periodTextOf(annulledResponse)
@@ -321,7 +320,7 @@ public class ScaleTaskService {
         notificationService.createNotification(patient, "Escala para responder de novo",
                 scaleType.getDisplayName() + ": sua resposta foi anulada pelo prescritor. " + whatToDo
                         + " Motivo: " + annulledResponse.getAnnulment().getAnnulmentReason(),
-                FORM_NOTIFICATION, scaleType.getPath() + "?data=" + annulledDay);
+                Notification.TYPE_FORM, scaleType.getPath() + "?data=" + annulledDay);
     }
 
     // a pendente q cobre hoje eh outra q n a reaberta (a rodada seguinte, ou uma avulsa enviada depois)
@@ -334,10 +333,10 @@ public class ScaleTaskService {
     // a data q a tela pede: na de periodo eh o inicio e o fim, nas outras a data da avaliacao
     private String periodTextOf(ScaleResponse response) {
         if (isPeriod(response.getScaleType())) {
-            return "o período de " + formatDate(response.getPeriodStart()) + " a "
-                    + formatDate(response.getPeriodEnd());
+            return "o período de " + BrazilianFormat.date(response.getPeriodStart()) + " a "
+                    + BrazilianFormat.date(response.getPeriodEnd());
         }
-        return "a data " + formatDate(response.getPeriodStart());
+        return "a data " + BrazilianFormat.date(response.getPeriodStart());
     }
 
     // RF15 a conclusao de uma escala avisa o prescritor, e a avaliacao inicial tbm
@@ -349,12 +348,7 @@ public class ScaleTaskService {
         }
         notificationService.createNotification(prescriber, "Escala respondida",
                 patient.getDisplayName() + " respondeu " + scaleType.getDisplayName() + ".",
-                FORM_NOTIFICATION, historyLinkOf(patient));
-    }
-
-    // o historico do paciente na tela do prescritor
-    private String historyLinkOf(Patient patient) {
-        return "/paciente/" + patient.getId() + "/historico";
+                Notification.TYPE_FORM, Notification.patientHistoryLink(patient.getId()));
     }
 
     // resposta anulada n conta, entao a tarefa dela continua precisando de resposta
@@ -468,12 +462,12 @@ public class ScaleTaskService {
         if (filledDays == 0) {
             return;
         }
-        long totalDays = ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1;
+        long totalDays = task.totalDays();
         notificationService.createNotification(task.getPrescriber(), "Escala diária concluída",
-                task.getScaleType().getDisplayName() + " de " + formatDate(task.getPeriodStart()) + " a "
-                        + formatDate(task.getPeriodEnd()) + ": " + patient.getDisplayName() + " preencheu "
+                task.getScaleType().getDisplayName() + " de " + BrazilianFormat.date(task.getPeriodStart()) + " a "
+                        + BrazilianFormat.date(task.getPeriodEnd()) + ": " + patient.getDisplayName() + " preencheu "
                         + filledDays + " de " + totalDays + " dias.",
-                FORM_NOTIFICATION, historyLinkOf(patient));
+                Notification.TYPE_FORM, Notification.patientHistoryLink(patient.getId()));
     }
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
@@ -492,7 +486,7 @@ public class ScaleTaskService {
         List<ScaleResponseSummaryDTO> history = responseRepository
                 .findByPatientIdOrderByPeriodStartDesc(patientId)
                 .stream()
-                .map(this::summaryOf)
+                .map(response -> new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response)))
                 .toList();
 
         return new PatientScalesPageDTO(patient.getDisplayName(), pending, history);
@@ -523,11 +517,6 @@ public class ScaleTaskService {
             task.setReminderSentAt(null);
         }
         taskRepository.save(task);
-    }
-
-    private ScaleResponseSummaryDTO summaryOf(ScaleResponse response) {
-        return new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response.getScaleType(),
-                response.getScore(), response.getScoreBand(), response.getAnswers()));
     }
 
     private void closeAsAnswered(ScaleTask task, LocalDate day) {
@@ -569,10 +558,6 @@ public class ScaleTaskService {
 
     private Patient findPatient(Long patientId) {
         return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
-    }
-
-    private String formatDate(LocalDate date) {
-        return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
+                .orElseThrow(() -> NotFoundException.patient(patientId));
     }
 }

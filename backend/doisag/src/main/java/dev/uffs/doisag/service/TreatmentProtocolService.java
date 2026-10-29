@@ -83,7 +83,7 @@ public class TreatmentProtocolService {
         prescriberRepository.lockById(prescriber.getId());
         patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
         // paciente arquivado n recebe envio automatico ate o prescritor reativar
         if (patient.isArchived()) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);

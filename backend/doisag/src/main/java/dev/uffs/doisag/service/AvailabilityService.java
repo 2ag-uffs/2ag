@@ -170,6 +170,6 @@ public class AvailabilityService {
 
     private Prescriber findPrescriber(Long prescriberId) {
         return prescriberRepository.findById(prescriberId)
-                .orElseThrow(() -> new NotFoundException("Prescritor não encontrado com o id: " + prescriberId));
+                .orElseThrow(() -> NotFoundException.prescriber(prescriberId));
     }
 }

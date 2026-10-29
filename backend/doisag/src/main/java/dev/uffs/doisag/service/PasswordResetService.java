@@ -53,11 +53,7 @@ public class PasswordResetService {
         this.emailSender = emailSender;
         this.backgroundEmailSender = backgroundEmailSender;
         this.loginAttemptLimiter = loginAttemptLimiter;
-        // tira a barra do fim pra o link n sair com barra dupla
-        if (publicUrl.endsWith("/")) {
-            publicUrl = publicUrl.substring(0, publicUrl.length() - 1);
-        }
-        this.publicUrl = publicUrl;
+        this.publicUrl = InputCleaner.withoutTrailingSlash(publicUrl);
     }
 
     // manda o link se o e-mail for de uma conta ativa

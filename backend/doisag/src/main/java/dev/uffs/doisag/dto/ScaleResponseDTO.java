@@ -55,25 +55,13 @@ public record ScaleResponseDTO(
                 isEditableByPatient(response),
                 response.getCreatedAt(),
                 response.isAnnulled(),
-                annulledAtOf(response.getAnnulment()),
-                reasonOf(response.getAnnulment()),
-                annulledByNameOf(response.getAnnulment())
+                Annulment.annulledAtOf(response.getAnnulment()),
+                Annulment.reasonOf(response.getAnnulment()),
+                Annulment.annulledByNameOf(response.getAnnulment())
         );
     }
 
     private static boolean isEditableByPatient(ScaleResponse response) {
         return response.getScaleType().isFilledByPatient() && !response.isReviewed() && !response.isAnnulled();
-    }
-
-    private static LocalDateTime annulledAtOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulledAt();
-    }
-
-    private static String reasonOf(Annulment annulment) {
-        return annulment == null ? null : annulment.getAnnulmentReason();
-    }
-
-    private static String annulledByNameOf(Annulment annulment) {
-        return annulment == null || annulment.getAnnulledBy() == null ? null : annulment.getAnnulledBy().getName();
     }
 }

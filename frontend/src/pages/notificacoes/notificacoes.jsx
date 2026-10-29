@@ -4,11 +4,9 @@ import {FiAlertCircle, FiBell, FiCalendar, FiClipboard} from "react-icons/fi";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
 import styles from "./notificacoes.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // o tipo vem do backend e vira uma etiqueta curta e um icone na lista
 const TYPE_LABELS = {
@@ -87,16 +85,15 @@ export default function Notificacoes() {
                 window.dispatchEvent(new CustomEvent("notifications-changed", {detail: loadedPage.unread}));
             })
             .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar os avisos. Confira sua internet e tente de novo.");
+                setLoadError(errorMessageOf(requestError,
+                    "Não foi possível carregar os avisos. Confira sua internet e tente de novo."));
             });
     }, [pageNumber]);
 
     useEffect(loadPage, [loadPage]);
 
     const showActionError = (requestError) => {
-        setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+        setActionError(errorMessageOf(requestError));
     };
 
     // abrir o aviso marca como lido e leva pra tela de onde ele veio

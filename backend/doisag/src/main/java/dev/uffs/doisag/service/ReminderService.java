@@ -4,8 +4,11 @@ import dev.uffs.doisag.email.BackgroundEmailSender;
 import dev.uffs.doisag.email.EmailMessage;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.infra.BrazilianFormat;
+import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.AppointmentRepository;
@@ -44,7 +47,6 @@ public class ReminderService {
 
     // o formulario avisa faltando dois dias pro prazo
     private static final int SCALE_REMINDER_DAYS = 2;
-    private static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
 
     private final AppointmentRepository appointmentRepository;
     private final ScaleTaskRepository taskRepository;
@@ -73,9 +75,7 @@ public class ReminderService {
         this.backgroundEmailSender = backgroundEmailSender;
         this.rowLock = rowLock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
-        this.publicUrl = publicUrl.endsWith("/")
-                ? publicUrl.substring(0, publicUrl.length() - 1)
-                : publicUrl;
+        this.publicUrl = InputCleaner.withoutTrailingSlash(publicUrl);
     }
 
     // a consulta de amanha, avisada de manha pra ainda dar tempo de remarcar
@@ -141,14 +141,13 @@ public class ReminderService {
 
     private void sendAppointmentReminder(Appointment appointment) {
         Patient patient = appointment.getPatient();
-        String when = formatDate(appointment.getDateTime().toLocalDate())
-                + " às " + formatTime(appointment.getDateTime());
+        String when = BrazilianFormat.dateTime(appointment.getDateTime());
         String message = "Sua consulta com " + appointment.getPrescriber().getName() + " é amanhã, "
                 + when + ".";
 
         notificationService.createNotification(patient, "Consulta amanhã", message,
-                "APPOINTMENT", PATIENT_AGENDA_LINK);
-        sendEmail(patient, "Sua consulta no 2AG é amanhã", message, PATIENT_AGENDA_LINK);
+                Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
+        sendEmail(patient, "Sua consulta no 2AG é amanhã", message, Notification.PATIENT_AGENDA_LINK);
 
         appointment.setReminderSentAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
@@ -204,13 +203,14 @@ public class ReminderService {
     private void sendTaskReminder(ScaleTask task) {
         Patient patient = task.getPatient();
         String scaleName = task.getScaleType().getDisplayName();
-        String message = scaleName + " esperando resposta até " + formatDate(task.getPeriodEnd()) + ".";
-        String link = "/pacientes/" + patient.getId() + "/escalas";
+        String message = scaleName + " esperando resposta até " + BrazilianFormat.date(task.getPeriodEnd()) + ".";
+        String link = Notification.patientScalesLink(patient.getId());
 
-        notificationService.createNotification(patient, "Formulário para responder", message, "FORM", link);
+        notificationService.createNotification(patient, "Formulário para responder", message,
+                Notification.TYPE_FORM, link);
         // o nome da escala eh dado clinico e fica so dentro do sistema
         sendEmail(patient, "Você tem formulário para responder no 2AG",
-                "Você tem um formulário esperando resposta até " + formatDate(task.getPeriodEnd())
+                "Você tem um formulário esperando resposta até " + BrazilianFormat.date(task.getPeriodEnd())
                         + ". Entre no sistema para ver qual.", link);
 
         task.setReminderSentAt(LocalDateTime.now());
@@ -226,13 +226,5 @@ public class ReminderService {
                 + "\n\nAcesse o sistema em " + publicUrl + path
                 + "\n\nSe não quiser mais receber estes e-mails, desligue os avisos por e-mail no seu perfil.";
         backgroundEmailSender.sendLater(new EmailMessage(patient.getEmail(), subject, text), patient.getId());
-    }
-
-    private String formatDate(LocalDate date) {
-        return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
-    }
-
-    private String formatTime(LocalDateTime dateTime) {
-        return String.format("%02d:%02d", dateTime.getHour(), dateTime.getMinute());
     }
 }

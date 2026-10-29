@@ -1,4 +1,4 @@
-import {formatDate} from "../../utils/date-format.js";
+import {formatDate, formatPeriod} from "../../utils/date-format.js";
 import styles from "./scale-summary.module.css";
 
 // resumo das escalas de um paciente com o q espera resposta e o q ja
@@ -44,7 +44,7 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                                     <span>{response.scaleName}</span>
                                     {/* data resultado e situacao numa linha so embaixo do nome */}
                                     <span className={styles.responseMeta}>
-                                        <span className={styles.date}>{periodTextOf(response)}</span>
+                                        <span className={styles.date}>{formatPeriod(response.periodStart, response.periodEnd)}</span>
                                         <span className={styles.result}>{response.result}</span>
                                         {response.annulled && <span className={styles.annulled}>anulada</span>}
                                         {response.reviewed && !response.annulled && (
@@ -86,11 +86,4 @@ function deadlineTextOf(task) {
         return "prazo em " + formatDate(task.periodEnd) + ", atrasada";
     }
     return "até " + formatDate(task.periodEnd);
-}
-
-// o diario fala de um dia e os acompanhamentos de um periodo
-function periodTextOf(response) {
-    return response.periodStart === response.periodEnd
-        ? formatDate(response.periodStart)
-        : formatDate(response.periodStart) + " a " + formatDate(response.periodEnd);
 }

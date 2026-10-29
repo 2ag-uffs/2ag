@@ -6,12 +6,10 @@ import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 function ExamResult({exam, maxScore}) {
     // exame salvo antes da trava q ficou sem escore ou sem faixa
@@ -80,9 +78,8 @@ export default function MiniExame() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível abrir o exame. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível abrir o exame. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -113,7 +110,7 @@ export default function MiniExame() {
             });
             setSavedExam(exam);
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setFormError(errorMessageOf(requestError));
         } finally {
             setIsSaving(false);
         }

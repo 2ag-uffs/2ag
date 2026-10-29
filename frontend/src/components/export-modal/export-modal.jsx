@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router";
 import Modal from "../modal/modal.jsx";
-import {ApiError, download} from "../../services/api.js";
+import {download, errorMessageOf} from "../../services/api.js";
 import styles from "./export-modal.module.css";
 
 // o q da pra levar, um arquivo por tipo
@@ -31,9 +31,8 @@ export default function ExportModal({patientId, printPath, canDeidentify, hasRes
             const deidentifiedParam = isDeidentified && hasResearchConsent ? "?deidentified=true" : "";
             await download("/patients/" + patientId + "/export/" + file + deidentifiedParam, file);
         } catch (requestError) {
-            setDownloadError(requestError instanceof ApiError
-                ? requestError.message
-                : "Não foi possível baixar o arquivo. Confira sua internet e tente de novo.");
+            setDownloadError(errorMessageOf(requestError,
+                "Não foi possível baixar o arquivo. Confira sua internet e tente de novo."));
         } finally {
             setDownloadingFile(null);
         }

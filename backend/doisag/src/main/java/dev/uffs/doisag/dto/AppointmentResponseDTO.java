@@ -2,6 +2,7 @@ package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 
 import java.time.LocalDateTime;
@@ -55,9 +56,9 @@ public record AppointmentResponseDTO(
                 appointment.getPrescriber().getId(),
                 appointment.getPrescriber().getName(),
                 appointment.isAnnulled(),
-                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulledAt() : null,
-                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulmentReason() : null,
-                appointment.isAnnulled() ? appointment.getAnnulment().getAnnulledBy().getName() : null
+                Annulment.annulledAtOf(appointment.getAnnulment()),
+                Annulment.reasonOf(appointment.getAnnulment()),
+                Annulment.annulledByNameOf(appointment.getAnnulment())
         );
     }
 }

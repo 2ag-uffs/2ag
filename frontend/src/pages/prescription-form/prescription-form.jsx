@@ -8,8 +8,10 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
+import {isConfirmed} from "../../utils/appointment-labels.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
+import {emptyToNull, numberOrNull, textOrNull} from "../../utils/form-values.js";
 import {
     ADMINISTRATION_ROUTE_OPTIONS,
     CANNABINOID_OPTIONS,
@@ -42,20 +44,6 @@ function newComponent() {
 
 function newEscalationStep() {
     return {dosage: "", note: ""};
-}
-
-// o formulario guarda texto vazio e a api espera null
-function textOrNull(text) {
-    return text.trim() === "" ? null : text;
-}
-
-function numberOrNull(text) {
-    return text === "" ? null : Number(text);
-}
-
-// lista e data sem escolha vao nulas sem trim pq n tem texto livre
-function emptyToNull(value) {
-    return value === "" ? null : value;
 }
 
 // o erro de um canabinoide chega com o nome tipo components[0].concentration
@@ -142,8 +130,8 @@ function blockedMessageOf(appointment) {
     if (appointment.status === "CANCELADA") {
         return "Esta consulta foi cancelada e não gera prescrição.";
     }
-    if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA"
-        || appointment.status === "NAO_COMPARECEU") {
+    // aqui a cancelada ja saiu entao sobra pedido sem resposta recusado e falta
+    if (!isConfirmed(appointment)) {
         return "Só consulta confirmada na agenda gera prescrição.";
     }
     if (isInTheFuture(appointment.dateTime)) {
@@ -186,9 +174,8 @@ export default function PrescriptionForm() {
         loadPage()
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar a consulta. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar a consulta. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {
@@ -238,13 +225,10 @@ export default function PrescriptionForm() {
             const savedPrescription = await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
             setIssuedPrescription(savedPrescription);
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = stepErrorsOnRows(requestError.fieldErrors(), requestBody.escalationSteps);
-                setFieldErrors(errorsByField);
-                setFormError(formErrorOf(requestError.message, errorsByField));
-            } else {
-                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
-            }
+            const errorInfo = readRequestError(requestError);
+            const errorsByField = stepErrorsOnRows(errorInfo.fieldErrors, requestBody.escalationSteps);
+            setFieldErrors(errorsByField);
+            setFormError(formErrorOf(errorInfo.message, errorsByField));
         } finally {
             setIsSaving(false);
         }

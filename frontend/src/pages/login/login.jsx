@@ -4,7 +4,7 @@ import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import {hasKnownRole, homePathFor} from "../../app/role-home.js";
-import {apiService, ApiError, logout, setLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, logout, setLoggedUser} from "../../services/api.js";
 import styles from "./login.module.css";
 
 // aviso q outra tela pediu pro login mostrar
@@ -64,11 +64,7 @@ export default function Login() {
             const returnPath = findReturnPath(searchParams);
             navigate(returnPath || homePathFor(user), {replace: true});
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setErrorMessage(requestError.message);
-            } else {
-                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
-            }
+            setErrorMessage(errorMessageOf(requestError));
             setIsSubmitting(false);
         }
     };

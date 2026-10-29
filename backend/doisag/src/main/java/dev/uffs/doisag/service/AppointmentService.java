@@ -12,11 +12,14 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.PrescriberAvailability;
@@ -38,7 +41,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,8 +72,8 @@ public class AppointmentService {
     public static final String NOT_SCHEDULED_MESSAGE = "Só dá para marcar falta em consulta que estava agendada";
     public static final String APPOINTMENT_NOT_OVER_MESSAGE =
             "Espere o horário da consulta terminar para marcar falta";
-    public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
-    public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
+    public static final String INVALID_RANGE_MESSAGE = DateCheck.INVALID_RANGE_MESSAGE;
+    public static final String INCOMPLETE_RANGE_MESSAGE = DateCheck.INCOMPLETE_RANGE_MESSAGE;
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
     // pedido em aberto segura o horario entao poucos por vez p/ agenda n travar
@@ -90,10 +92,6 @@ public class AppointmentService {
     public static final int MAX_DAYS_AHEAD = 30;
     public static final String TOO_FAR_AHEAD_MESSAGE =
             "Escolha um horário dos próximos " + MAX_DAYS_AHEAD + " dias";
-
-    private static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
-    private static final String PRESCRIBER_AGENDA_LINK = "/agendamento-prescritor";
-    private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
@@ -162,7 +160,7 @@ public class AppointmentService {
         notificationService.createNotification(patient, "Consulta marcada",
                 "Sua consulta com " + prescriber.getName() + " foi marcada para "
                         + formatDateTime(savedAppointment) + ".",
-                "APPOINTMENT", PATIENT_AGENDA_LINK);
+                Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
         reminderService.remindNowIfTomorrow(savedAppointment);
         return new AgendaAppointmentDTO(savedAppointment);
     }
@@ -202,7 +200,7 @@ public class AppointmentService {
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
         notificationService.createNotification(prescriber, "Pedido de consulta",
                 patient.getDisplayName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
-                "APPOINTMENT", PRESCRIBER_AGENDA_LINK);
+                Notification.TYPE_APPOINTMENT, Notification.PRESCRIBER_AGENDA_LINK);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -226,7 +224,7 @@ public class AppointmentService {
         notificationService.createNotification(savedAppointment.getPatient(), "Consulta confirmada",
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " em "
                         + formatDateTime(savedAppointment) + " foi confirmada.",
-                "APPOINTMENT", PATIENT_AGENDA_LINK);
+                Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
         reminderService.remindNowIfTomorrow(savedAppointment);
         return new AgendaAppointmentDTO(savedAppointment);
     }
@@ -277,7 +275,7 @@ public class AppointmentService {
         notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta sem resposta",
                 "Seu pedido de consulta para " + formatDateTime(savedAppointment)
                         + " passou da data sem resposta. Escolha outro horário na agenda.",
-                "ALERT", PATIENT_AGENDA_LINK);
+                Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
         return true;
     }
 
@@ -297,7 +295,7 @@ public class AppointmentService {
             message = message + " Motivo: " + reason;
         }
         notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta recusado",
-                message, "ALERT", PATIENT_AGENDA_LINK);
+                message, Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -338,7 +336,7 @@ public class AppointmentService {
         notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada",
                 "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "
                         + formatDateTime(savedAppointment) + ".",
-                "APPOINTMENT", PATIENT_AGENDA_LINK);
+                Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
         // remarcada pra amanha, o lembrete do horario novo sai agora: o job de amanha ja olha o dia seguinte,
         // e quem recebeu o e-mail do horario antigo ficava so com ele. a q ja tem lembrete (mesmo horario) n
         // ganha outro, e o pedido q vira consulta no mesmo horario ganha o primeiro
@@ -375,12 +373,12 @@ public class AppointmentService {
             notificationService.createNotification(savedAppointment.getPrescriber(), "Consulta cancelada pelo paciente",
                     savedAppointment.getPatient().getDisplayName() + " cancelou a consulta de "
                             + formatDateTime(savedAppointment) + ".",
-                    "ALERT", PRESCRIBER_AGENDA_LINK);
+                    Notification.TYPE_ALERT, Notification.PRESCRIBER_AGENDA_LINK);
         } else {
             notificationService.createNotification(savedAppointment.getPatient(), "Consulta cancelada",
                     "Sua consulta com " + savedAppointment.getPrescriber().getName() + " de "
                             + formatDateTime(savedAppointment) + " foi cancelada.",
-                    "ALERT", PATIENT_AGENDA_LINK);
+                    Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
         }
         return new AgendaAppointmentDTO(savedAppointment);
     }
@@ -406,7 +404,7 @@ public class AppointmentService {
         notificationService.createNotification(savedAppointment.getPatient(), "Falta registrada",
                 "A consulta de " + formatDateTime(savedAppointment)
                         + " foi marcada como falta. Fale com a clínica para remarcar.",
-                "ALERT", PATIENT_AGENDA_LINK);
+                Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -454,12 +452,7 @@ public class AppointmentService {
             return agendaOf(appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriberId));
         }
         // so um lado do periodo ficava sem filtro nenhum e devolvia a agenda inteira
-        if (from == null || to == null) {
-            throw new BusinessException(INCOMPLETE_RANGE_MESSAGE);
-        }
-        if (from.isAfter(to)) {
-            throw new BusinessException(INVALID_RANGE_MESSAGE);
-        }
+        DateCheck.checkRange(from, to);
         return agendaOf(appointmentRepository.findByPrescriberIdAndDateTimeBetweenOrderByDateTimeAsc(
                 prescriberId, from.atStartOfDay(), to.atTime(LocalTime.MAX)));
     }
@@ -701,12 +694,12 @@ public class AppointmentService {
     }
 
     private String formatDateTime(Appointment appointment) {
-        return appointment.getDateTime().format(DATE_TIME_FORMAT);
+        return BrazilianFormat.dateTime(appointment.getDateTime());
     }
 
     private Appointment findAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> NotFoundException.appointment(appointmentId));
     }
 
     // a consulta q vai mudar fica travada e eh lida de novo antes de qualquer decisao: o q outro
@@ -715,16 +708,16 @@ public class AppointmentService {
     // pra ninguem ficar esperando o outro
     private Appointment findAppointmentForUpdate(Long appointmentId) {
         return rowLock.reload(Appointment.class, appointmentId)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> NotFoundException.appointment(appointmentId));
     }
 
     private Patient findPatient(Long patientId) {
         return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
     }
 
     private Prescriber findPrescriber(Long prescriberId) {
         return prescriberRepository.findById(prescriberId)
-                .orElseThrow(() -> new NotFoundException("Prescritor não encontrado com o id: " + prescriberId));
+                .orElseThrow(() -> NotFoundException.prescriber(prescriberId));
     }
 }

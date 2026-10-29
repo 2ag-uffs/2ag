@@ -5,12 +5,17 @@ import {
     brasiliaTimeNote,
     formatDate,
     formatDateTime,
+    formatDateTimeWithZone,
     formatNow,
+    formatPeriod,
     hasEnded,
     isInTheFuture,
     isSameOrAfter,
     minutesUntil,
     mondayOf,
+    periodErrorOf,
+    shortTime,
+    toApiDateTime,
     toIsoDate,
     withBrasiliaTimeNote,
 } from "./date-format.js";
@@ -29,6 +34,11 @@ describe("datas", () => {
     it("data sem hora da api sai no formato brasileiro sem voltar um dia", () => {
         expect(formatDate("2026-09-14")).toBe("14/09/2026");
         expect(formatDate("")).toBe("");
+    });
+
+    it("formatPeriod mostra um dia so qnd comeca e termina no msm dia", () => {
+        expect(formatPeriod("2026-09-14", "2026-09-14")).toBe("14/09/2026");
+        expect(formatPeriod("2026-09-14", "2026-09-20")).toBe("14/09/2026 a 20/09/2026");
     });
 
     // 23h30 em brasilia ja eh o dia seguinte no utc
@@ -64,6 +74,22 @@ describe("datas", () => {
         expect(isSameOrAfter("2026-09-14T09:00:00", "2026-09-14T09:00:00")).toBe(true);
         expect(isSameOrAfter("2026-09-14T09:00:00.123456", "2026-09-14T09:00:00")).toBe(true);
         expect(isSameOrAfter("2026-09-13T09:00:00", "2026-09-14T09:00:00")).toBe(false);
+    });
+
+    it("shortTime corta os segundos e hora vazia fica vazia", () => {
+        expect(shortTime("22:30:00")).toBe("22:30");
+        expect(shortTime(null)).toBe("");
+    });
+
+    it("toApiDateTime junta a data e a hora do formulario com os segundos", () => {
+        expect(toApiDateTime("2026-10-20", "10:30")).toBe("2026-10-20T10:30:00");
+    });
+
+    it("periodErrorOf pede as duas datas e o inicio antes do fim", () => {
+        expect(periodErrorOf("", "2026-09-14")).toBe("Escolha as duas datas do período.");
+        expect(periodErrorOf("2026-09-15", "2026-09-14"))
+            .toBe("A data inicial precisa ser igual ou anterior à data final.");
+        expect(periodErrorOf("2026-09-14", "2026-09-14")).toBeNull();
     });
 
     it("mondayOf de um domingo volta pra segunda anterior", () => {
@@ -186,6 +212,14 @@ describe("datas", () => {
         expect(withBrasiliaTimeNote("Sua consulta com Dra Ana é amanhã, 20/10/2026 às 10:00."))
             .toBe("Sua consulta com Dra Ana é amanhã, 20/10/2026 às 10:00 (horário de Brasília).");
         expect(withBrasiliaTimeNote("Nova escala para responder.")).toBe("Nova escala para responder.");
+    });
+
+    it("formatDateTimeWithZone so leva o aviso fora do fuso de brasilia", () => {
+        useBrowserTimeZone("America/Cuiaba");
+        expect(formatDateTimeWithZone("2026-10-20T10:00:00")).toBe("20/10/2026 às 10:00 (horário de Brasília)");
+
+        useBrowserTimeZone("America/Sao_Paulo");
+        expect(formatDateTimeWithZone("2026-10-20T10:00:00")).toBe("20/10/2026 às 10:00");
     });
 
     it("no fuso de brasilia o horario fica sem o aviso", () => {

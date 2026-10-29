@@ -2,7 +2,7 @@ import {useState} from "react";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
-import {ApiError} from "../../services/api.js";
+import {readRequestError} from "../../services/api.js";
 import {APPOINTMENT_TYPE_OPTIONS, DURATION_OPTIONS, MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import styles from "./agendamento-consulta-prescritor.module.css";
 
@@ -55,14 +55,10 @@ export default function AppointmentFormModal({
         try {
             await onSubmit(values);
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                const errorsByField = requestError.fieldErrors();
-                setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setFormError(requestError.message);
-                }
-            } else {
-                setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            const errorInfo = readRequestError(requestError);
+            setFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setFormError(errorInfo.message);
             }
             setIsSaving(false);
         }

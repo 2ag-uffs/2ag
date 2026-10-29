@@ -9,7 +9,14 @@ import TextField from "../../components/form/text-field.jsx";
 import TrapField from "../../components/form/trap-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
 import Modal from "../../components/modal/modal.jsx";
-import {apiService, ApiError, getLoggedUser, logout, setLoggedUser} from "../../services/api.js";
+import {
+    apiService,
+    ApiError,
+    CONNECTION_ERROR_MESSAGE,
+    getLoggedUser,
+    logout,
+    setLoggedUser,
+} from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {isValidCpf} from "../../utils/cpf.js";
 import {ACCEPT_BUTTON_TEXT, ageBandOf, findGuardianErrors, guardianBody} from "../../utils/guardian.js";
@@ -326,7 +333,7 @@ export default function SignUp() {
                     setErrorMessage(requestError.message);
                 }
             } else {
-                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+                setErrorMessage(CONNECTION_ERROR_MESSAGE);
             }
             setIsSubmitting(false);
         }

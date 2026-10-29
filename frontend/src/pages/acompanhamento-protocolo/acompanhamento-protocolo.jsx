@@ -8,11 +8,10 @@ import FormSection, {FieldRow, FormActions} from "../../components/form-section/
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {formatDate, toIsoDate} from "../../utils/date-format.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
+import {formatDate, shortTime, toIsoDate} from "../../utils/date-format.js";
+import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./acompanhamento-protocolo.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // a api aceita de 7 a 365 dias (TreatmentProtocolCreateDTO)
 const MIN_DURATION_DAYS = 7;
@@ -37,15 +36,6 @@ function periodicityLabelOf(periodicity) {
         return null;
     }
     return option.label;
-}
-
-// a api manda hh:mm:ss e aqui so interessa hh:mm
-function hourAndMinuteOf(time) {
-    return time ? time.slice(0, 5) : "—";
-}
-
-function errorMessageOf(requestError) {
-    return requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
 }
 
 // o acompanhamento automatico de 90 dias (RF32)
@@ -126,8 +116,8 @@ export default function AcompanhamentoProtocolo() {
             await apiService.post("/patients/" + patientId + "/treatment-protocol", {
                 startDate,
                 durationDays: Number(durationDays),
-                sleepBedTime: sleepBedTime === "" ? null : sleepBedTime,
-                sleepWakeTime: sleepWakeTime === "" ? null : sleepWakeTime,
+                sleepBedTime: emptyToNull(sleepBedTime),
+                sleepWakeTime: emptyToNull(sleepWakeTime),
                 items,
             });
             setNotice("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
@@ -202,8 +192,8 @@ export default function AcompanhamentoProtocolo() {
                         {protocol.sleepBedTime && (
                             <span className={styles.fact}>
                                 <FiMoon aria-hidden="true"/>
-                                Dormir às {hourAndMinuteOf(protocol.sleepBedTime)} e
-                                levantar às {hourAndMinuteOf(protocol.sleepWakeTime)}
+                                Dormir às {shortTime(protocol.sleepBedTime) || "—"} e
+                                levantar às {shortTime(protocol.sleepWakeTime) || "—"}
                             </span>
                         )}
                     </div>

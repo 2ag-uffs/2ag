@@ -6,25 +6,14 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {DURATION_OPTIONS, WEEKDAYS} from "../../utils/appointment-labels.js";
-import {formatDate, formatWeekdayAndDate, toIsoDate} from "../../utils/date-format.js";
+import {formatDate, formatWeekdayAndDate, shortTime, toIsoDate} from "../../utils/date-format.js";
 import styles from "./agenda-disponibilidade.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // periodo novo ja vem com a manha toda
 const NEW_PERIOD_START = "08:00";
 const NEW_PERIOD_END = "12:00";
-
-function errorMessageOf(requestError) {
-    return requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
-}
-
-// a api manda a hora com segundos e o input de hora usa so hora e minuto
-function toInputTime(apiTime) {
-    return apiTime ? apiTime.slice(0, 5) : "";
-}
 
 // cada periodo ganha uma chave so da tela pro react saber qual linha eh qual
 let lastPeriodKey = 0;
@@ -81,15 +70,14 @@ export default function AgendaDisponibilidade() {
                     setReturnDurationMinutes(String(availability.appointmentDurationMinutes));
                     setFirstDurationMinutes(String(availability.firstAppointmentDurationMinutes));
                     setPeriods(availability.periods.map((period) =>
-                        newPeriod(period.dayOfWeek, toInputTime(period.startTime), toInputTime(period.endTime))));
+                        newPeriod(period.dayOfWeek, shortTime(period.startTime), shortTime(period.endTime))));
                     setDaysOff(savedDaysOff);
                 }
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar seus horários. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar seus horários. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {

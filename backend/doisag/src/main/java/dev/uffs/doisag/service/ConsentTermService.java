@@ -136,7 +136,7 @@ public class ConsentTermService {
         // o aceite e o responsavel gravam na conta antes do paciente
         patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+                .orElseThrow(() -> NotFoundException.account());
         // conta de menor sem responsavel salvo, ou com ele sem o parentesco (de antes da regra),
         // informa ele aqui pq com o termo pendente o PUT /profile fica travado
         if (patient.isMinor() && !hasLegalGuardian(patient)) {

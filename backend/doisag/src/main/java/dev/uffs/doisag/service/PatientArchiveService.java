@@ -71,6 +71,6 @@ public class PatientArchiveService {
     private Patient lockAndFindPatient(Long patientId) {
         patientRepository.lockById(patientId);
         return patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
     }
 }

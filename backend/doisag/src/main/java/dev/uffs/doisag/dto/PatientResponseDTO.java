@@ -47,7 +47,7 @@ public record PatientResponseDTO(
     }
 
     public static PatientResponseDTO forChart(Patient patient, boolean researchConsent) {
-        String civilName = patient.getSocialName() == null ? null : patient.getName();
+        String civilName = patient.civilNameWhenSocial();
         return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent, civilName);
     }
 

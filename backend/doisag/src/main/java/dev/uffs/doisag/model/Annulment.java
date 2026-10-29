@@ -45,4 +45,17 @@ public class Annulment {
     public String getAnnulmentReason() {
         return annulmentReason;
     }
+
+    // registro q n foi anulado tem a anulacao nula entao cada campo sai daqui sem estourar
+    public static LocalDateTime annulledAtOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulledAt();
+    }
+
+    public static String reasonOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulmentReason();
+    }
+
+    public static String annulledByNameOf(Annulment annulment) {
+        return annulment == null || annulment.getAnnulledBy() == null ? null : annulment.getAnnulledBy().getName();
+    }
 }

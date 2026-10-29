@@ -10,8 +10,9 @@ import PrescriptionCard from "../../components/prescription-card/prescription-ca
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
+import {currentFirst} from "../../utils/prescription-labels.js";
 import styles from "./historico-clinico-paciente.module.css";
 
 // historico clinico do proprio paciente (RF12)
@@ -44,9 +45,8 @@ export default function HistoricoClinicoPaciente() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar seu histórico. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar seu histórico. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -66,9 +66,7 @@ export default function HistoricoClinicoPaciente() {
     const {appointments, prescriptions, anamneses, scalesPage} = history;
     // so a consulta q ja passou e foi atendida, estava marcada ou virou falta
     const pastAppointments = appointments.filter(belongsToHistory);
-    // a vigente aparece primeiro
-    const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
-        .concat(prescriptions.filter((prescription) => !prescription.current));
+    const orderedPrescriptions = currentFirst(prescriptions);
 
     return (
         <section className={styles.page}>

@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Collator;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -58,7 +56,7 @@ public class PatientAccountService {
         // na ordem da escala e da confirmacao do e-mail (paciente, dps conta)
         patientRepository.lockById(patientId);
         Patient patient = patientRepository.findById(patientId)
-                .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));
+                .orElseThrow(() -> NotFoundException.patient(patientId));
         // pedir o estado q a conta ja tem eh recusado: a resposta traz nome e e-mail, e sem isso
         // a administracao descobria quem eh cada numero da trilha sem deixar rastro nenhum
         if (patient.isActive() == active) {
@@ -67,7 +65,7 @@ public class PatientAccountService {
         patient.setActive(active);
         if (!active) {
             // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
-            patient.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+            patient.endSessionsNow();
         }
         auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId, active);
         return patientRepository.save(patient);

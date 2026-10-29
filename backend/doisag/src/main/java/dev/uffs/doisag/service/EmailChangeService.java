@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 // troca do e-mail de acesso confirmada no endereco novo (RF18, issue 130)
 // o e-mail so muda qnd a pessoa abre o link q foi pro endereco novo: assim um erro de digitacao
@@ -73,11 +72,7 @@ public class EmailChangeService {
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
         this.consentTermService = consentTermService;
-        // tira a barra do fim pra o link n sair com barra dupla
-        if (publicUrl.endsWith("/")) {
-            publicUrl = publicUrl.substring(0, publicUrl.length() - 1);
-        }
-        this.publicUrl = publicUrl;
+        this.publicUrl = InputCleaner.withoutTrailingSlash(publicUrl);
     }
 
     // guarda o pedido e manda o link pro endereco novo
@@ -175,8 +170,7 @@ public class EmailChangeService {
         String oldEmail = user.getEmail();
         emailChange.setUsedAt(now);
         user.setEmail(newEmail);
-        // o token guarda a emissao em milissegundos, entao o fim das sessoes tbm fica em milissegundos
-        user.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        user.endSessionsNow();
         usersRepository.save(user);
         auditService.recordEmailChange(user);
         backgroundEmailSender.sendLater(changedMessage(user, oldEmail, newEmail), user.getId());
@@ -232,6 +226,6 @@ public class EmailChangeService {
 
     private Users findUser(Long userId) {
         return usersRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+                .orElseThrow(() -> NotFoundException.account());
     }
 }

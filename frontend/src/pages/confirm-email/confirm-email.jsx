@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
-import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, setLoggedUser} from "../../services/api.js";
 import styles from "./confirm-email.module.css";
 
 // confirmacao do e-mail de acesso novo pelo link q chegou nele (issue 130)
@@ -32,11 +32,7 @@ export default function ConfirmEmail() {
             setLoggedUser(null);
             navigate("/entrar", {replace: true, state: {notice: "E-mail confirmado. Entre com o e-mail novo."}});
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setErrorMessage(requestError.message);
-            } else {
-                setErrorMessage("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
-            }
+            setErrorMessage(errorMessageOf(requestError));
             setIsSubmitting(false);
         }
     };

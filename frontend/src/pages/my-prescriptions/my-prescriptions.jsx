@@ -4,7 +4,7 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import styles from "./my-prescriptions.module.css";
 
 // prescricoes do proprio paciente (RF05 e RF12)
@@ -26,9 +26,8 @@ export default function MyPrescriptions() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setErrorMessage(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar suas prescrições. Confira sua internet e tente de novo.");
+                    setErrorMessage(errorMessageOf(requestError,
+                        "Não foi possível carregar suas prescrições. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {

@@ -6,11 +6,9 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
 import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./selecao-escalas.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // escala ja enviada ou recusada mostra o motivo no lugar da descricao
 function descriptionOf(scale, alreadySent, refusal) {
@@ -62,9 +60,8 @@ export default function SelecaoEscalas() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar as escalas. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível carregar as escalas. Confira sua internet e tente de novo."));
                 }
             });
 

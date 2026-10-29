@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
-import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, setLoggedUser} from "../../services/api.js";
 import {
     ACCEPT_BUTTON_TEXT,
     ageBandOf,
@@ -10,8 +10,6 @@ import {
     guardianFieldsFrom,
 } from "../../utils/guardian.js";
 import styles from "./term-update.module.css";
-
-const CONNECTION_ERROR = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 const EMPTY_GUARDIAN = {guardianName: "", guardianRelationship: "", guardianPhone: ""};
 
@@ -82,7 +80,7 @@ export default function TermUpdate({onAccepted}) {
             })
             .catch(() => {
                 if (isCurrentPage) {
-                    setLoadError(CONNECTION_ERROR);
+                    setLoadError(CONNECTION_ERROR_MESSAGE);
                 }
             });
         return () => {
@@ -141,7 +139,7 @@ export default function TermUpdate({onAccepted}) {
                     setErrorMessage(requestError.message);
                 }
             } else {
-                setErrorMessage(CONNECTION_ERROR);
+                setErrorMessage(CONNECTION_ERROR_MESSAGE);
             }
             setIsSaving(false);
         }

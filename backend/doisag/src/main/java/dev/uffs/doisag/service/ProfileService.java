@@ -107,6 +107,6 @@ public class ProfileService {
 
     private Users findUser(Long userId) {
         return usersRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Conta não encontrada"));
+                .orElseThrow(() -> NotFoundException.account());
     }
 }

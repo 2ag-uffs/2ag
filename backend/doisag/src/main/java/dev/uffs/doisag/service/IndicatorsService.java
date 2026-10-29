@@ -3,6 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.PilotIndicatorsDTO;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.model.PatientInvite;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.PatientInviteRepository;
@@ -16,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -34,8 +34,8 @@ public class IndicatorsService {
     // um ciclo inteiro de acompanhamento (RN01)
     public static final int DEFAULT_DAYS = 90;
 
-    public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
-    public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
+    public static final String INCOMPLETE_RANGE_MESSAGE = DateCheck.INCOMPLETE_RANGE_MESSAGE;
+    public static final String INVALID_RANGE_MESSAGE = DateCheck.INVALID_RANGE_MESSAGE;
     public static final String OPEN_DEADLINE_MESSAGE =
             "O período precisa terminar até ontem, porque o prazo de hoje ainda está correndo";
 
@@ -102,12 +102,7 @@ public class IndicatorsService {
     }
 
     private void checkRange(LocalDate from, LocalDate to, LocalDate today) {
-        if (from == null || to == null) {
-            throw new BusinessException(INCOMPLETE_RANGE_MESSAGE);
-        }
-        if (from.isAfter(to)) {
-            throw new BusinessException(INVALID_RANGE_MESSAGE);
-        }
+        DateCheck.checkRange(from, to);
         if (!to.isBefore(today)) {
             throw new BusinessException(OPEN_DEADLINE_MESSAGE);
         }
@@ -157,7 +152,7 @@ public class IndicatorsService {
             if (scaleTaskService.isDaily(task.getScaleType())) {
                 // no diario basta um dia, a msm regra q fecha a tarefa como respondida
                 onTime = validDays > 0;
-                count.daysExpected += ChronoUnit.DAYS.between(task.getPeriodStart(), task.getPeriodEnd()) + 1;
+                count.daysExpected += task.totalDays();
                 count.daysFilled += validDays;
             } else {
                 // reabrir apaga o answeredAt, entao resposta anulada sem outra no lugar n conta

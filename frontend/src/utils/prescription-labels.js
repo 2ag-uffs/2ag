@@ -53,3 +53,9 @@ export function prescriptionStatusLabel(prescription) {
     }
     return prescription.status === "VIGENTE" ? "Vigente" : "Substituída";
 }
+
+// a vigente aparece primeiro e as outras seguem na ordem da api
+export function currentFirst(prescriptions) {
+    return prescriptions.filter((prescription) => prescription.current)
+        .concat(prescriptions.filter((prescription) => !prescription.current));
+}

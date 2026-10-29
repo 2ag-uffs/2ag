@@ -56,7 +56,7 @@ public class PrescriptionService {
     @Transactional
     public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
-                .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
+                .orElseThrow(() -> NotFoundException.appointment(appointmentId));
         checkAppointmentCanPrescribe(appointment);
 
         Long patientId = appointment.getPatient().getId();

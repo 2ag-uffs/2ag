@@ -3,8 +3,8 @@ import {FiShield} from "react-icons/fi";
 import EmptyState from "../empty-state/empty-state.jsx";
 import TextField from "../form/text-field.jsx";
 import {SkeletonBlock} from "../skeleton/skeleton.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {addDays, toIsoDate} from "../../utils/date-format.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
+import {addDays, periodErrorOf, toIsoDate} from "../../utils/date-format.js";
 import styles from "./audit-trail.module.css";
 
 // a trilha abre mostrando os ultimos 30 dias
@@ -81,9 +81,8 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
             .catch((requestError) => {
                 if (isCurrentRequest) {
                     setTrail(null);
-                    setErrorMessage(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível carregar a trilha. Confira sua internet e tente de novo.");
+                    setErrorMessage(errorMessageOf(requestError,
+                        "Não foi possível carregar a trilha. Confira sua internet e tente de novo."));
                 }
             })
             .finally(() => {
@@ -99,12 +98,9 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
 
     const handleFilter = (event) => {
         event.preventDefault();
-        if (!fromDate || !toDate) {
-            setErrorMessage("Escolha as duas datas do período.");
-            return;
-        }
-        if (fromDate > toDate) {
-            setErrorMessage("A data inicial precisa ser igual ou anterior à data final.");
+        const periodError = periodErrorOf(fromDate, toDate);
+        if (periodError) {
+            setErrorMessage(periodError);
             return;
         }
         setErrorMessage(null);

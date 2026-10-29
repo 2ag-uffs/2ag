@@ -119,6 +119,11 @@ public class Patient extends Users {
         return getName();
     }
 
+    // o nome civil so aparece qnd o social toma o lugar dele (RN15)
+    public String civilNameWhenSocial() {
+        return socialName == null ? null : getName();
+    }
+
     @JsonIgnore
     public boolean isArchived() {
         return archivedAt != null;

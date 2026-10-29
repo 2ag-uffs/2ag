@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
 import {FiCopy, FiMessageCircle, FiRefreshCw} from "react-icons/fi";
 import Modal from "../modal/modal.jsx";
-import {apiService, ApiError} from "../../services/api.js";
-import {brasiliaTimeNote, formatDateTime} from "../../utils/date-format.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
+import {formatDateTime, formatDateTimeWithZone} from "../../utils/date-format.js";
 import styles from "./invite-patient-modal.module.css";
 
 // link q o paciente abre pra criar a conta
@@ -24,7 +24,7 @@ function OpenInviteList({openInvites, onCancel}) {
                     <li key={openInvite.id} className={styles.openRow}>
                         <span>
                             Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
-                            {formatDateTime(openInvite.expiresAt) + brasiliaTimeNote()}
+                            {formatDateTimeWithZone(openInvite.expiresAt)}
                         </span>
                         <button
                             type="button"
@@ -74,11 +74,8 @@ export default function InvitePatientModal({show, onClose}) {
                 setInvite(null);
             }
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setCancelError(requestError.message);
-            } else {
-                setCancelError("Não foi possível cancelar o convite. Confira sua internet e tente de novo.");
-            }
+            setCancelError(errorMessageOf(requestError,
+                "Não foi possível cancelar o convite. Confira sua internet e tente de novo."));
             loadOpenInvites();
         }
     };
@@ -92,11 +89,8 @@ export default function InvitePatientModal({show, onClose}) {
             setInvite(createdInvite);
             loadOpenInvites();
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setErrorMessage(requestError.message);
-            } else {
-                setErrorMessage("Não foi possível gerar o convite. Confira sua internet e tente de novo.");
-            }
+            setErrorMessage(errorMessageOf(requestError,
+                "Não foi possível gerar o convite. Confira sua internet e tente de novo."));
         } finally {
             setIsCreating(false);
         }
@@ -159,7 +153,7 @@ export default function InvitePatientModal({show, onClose}) {
                         />
                         {/* o link vence na hora em q foi gerado, 7 dias dps, e n no fim do dia */}
                         <p className={styles.hint}>
-                            Vale até {formatDateTime(invite.expiresAt) + brasiliaTimeNote()}.
+                            Vale até {formatDateTimeWithZone(invite.expiresAt)}.
                         </p>
 
                         <div className={styles.actions}>

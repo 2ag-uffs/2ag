@@ -43,4 +43,12 @@ public class InputCleaner {
         }
         return cleanSocialName;
     }
+
+    // tira a barra do fim pra o link n sair com barra dupla
+    public static String withoutTrailingSlash(String url) {
+        if (url.endsWith("/")) {
+            return url.substring(0, url.length() - 1);
+        }
+        return url;
+    }
 }

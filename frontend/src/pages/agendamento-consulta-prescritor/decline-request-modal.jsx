@@ -1,8 +1,9 @@
 import {useState} from "react";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, errorMessageOf} from "../../services/api.js";
 import {formatDateTime} from "../../utils/date-format.js";
+import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./agendamento-consulta-prescritor.module.css";
 
 // recusa de um pedido de consulta com o motivo opcional q vai no aviso pro paciente
@@ -17,13 +18,11 @@ export default function DeclineRequestModal({request, onClose, onDeclined}) {
         setIsSaving(true);
         try {
             await apiService.put("/appointments/" + request.id + "/decline", {
-                reason: reason.trim() === "" ? null : reason.trim(),
+                reason: emptyToNull(reason.trim()),
             });
             onDeclined();
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError
-                ? requestError.message
-                : "Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
+            setFormError(errorMessageOf(requestError));
             setIsSaving(false);
         }
     };

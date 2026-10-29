@@ -5,12 +5,10 @@ import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
-import {addDays, formatDate, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "../../utils/scale-answers.js";
 import styles from "./escala.module.css";
-
-const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
 // os acompanhamentos semanais falam da ultima semana
 const PERIOD_DAYS = 7;
@@ -52,11 +50,6 @@ function daysBetween(firstDay, lastDay) {
         dayIso = nextDay;
     }
     return days;
-}
-
-// a api manda hh:mm:ss e aqui so interessa hh:mm
-function hourAndMinuteOf(time) {
-    return time ? time.slice(0, 5) : "—";
 }
 
 function DayGrid({days, responses, selectedDay, isInsideTask, onChooseDay}) {
@@ -152,9 +145,8 @@ export default function Escala() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(requestError instanceof ApiError
-                        ? requestError.message
-                        : "Não foi possível abrir a escala. Confira sua internet e tente de novo.");
+                    setLoadError(errorMessageOf(requestError,
+                        "Não foi possível abrir a escala. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -308,7 +300,7 @@ export default function Escala() {
                 setReloadCount((currentCount) => currentCount + 1);
             }
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setFormError(errorMessageOf(requestError));
         } finally {
             setIsSaving(false);
         }
@@ -344,8 +336,8 @@ export default function Escala() {
             {sleepSchedule && (sleepSchedule.sleepBedTime || sleepSchedule.sleepWakeTime) && (
                 <p className={styles.schedule}>
                     <FiMoon aria-hidden="true"/>
-                    Programação do seu prescritor: dormir às {hourAndMinuteOf(sleepSchedule.sleepBedTime)} e
-                    levantar às {hourAndMinuteOf(sleepSchedule.sleepWakeTime)}.
+                    Programação do seu prescritor: dormir às {shortTime(sleepSchedule.sleepBedTime) || "—"} e
+                    levantar às {shortTime(sleepSchedule.sleepWakeTime) || "—"}.
                 </p>
             )}
 

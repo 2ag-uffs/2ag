@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import dev.uffs.doisag.enums.UserRole;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.List;
 
@@ -168,6 +169,17 @@ public abstract class Users implements UserDetails {
 
     public void setSessionsEndedAt(LocalDateTime sessionsEndedAt) {
         this.sessionsEndedAt = sessionsEndedAt;
+    }
+
+    // o token guarda a emissao em milissegundos entao o fim das sessoes tbm fica em milissegundos
+    public void endSessionsNow() {
+        this.sessionsEndedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
+    }
+
+    // o token guarda a emissao em milissegundos entao a troca tbm fica em milissegundos
+    // senao a sessao emitida no mesmo segundo da troca continuava valendo
+    public void markPasswordChangedNow() {
+        this.passwordChangedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
     // cada tipo de conta diz o proprio papel

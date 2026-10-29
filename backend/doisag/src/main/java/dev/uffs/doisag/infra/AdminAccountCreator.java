@@ -12,8 +12,6 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
 // cria a conta administrativa na primeira subida da api
@@ -102,7 +100,7 @@ public class AdminAccountCreator implements ApplicationRunner {
             return;
         }
         account.setPassword(passwordEncoder.encode(adminPassword));
-        account.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        account.markPasswordChangedNow();
         usersRepository.save(account);
         log.warn("senha da conta administrativa trocada pela do ADMIN_PASSWORD. tire o ADMIN_PASSWORD_RESET do .env"
                 + " e suba a api de novo, senao a senha volta pra essa a cada subida");

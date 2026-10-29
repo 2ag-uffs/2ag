@@ -6,22 +6,17 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
-import dev.uffs.doisag.infra.InvalidFieldException;
-import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
-import dev.uffs.doisag.security.LoginAttemptLimiter;
 import dev.uffs.doisag.security.SecureTokens;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 
@@ -42,19 +37,19 @@ public class PrescriberService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
-    private final LoginAttemptLimiter loginAttemptLimiter;
+    private final PasswordService passwordService;
     private final TreatmentProtocolService treatmentProtocolService;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-                             AuditService auditService, LoginAttemptLimiter loginAttemptLimiter,
+                             AuditService auditService, PasswordService passwordService,
                              TreatmentProtocolService treatmentProtocolService) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
-        this.loginAttemptLimiter = loginAttemptLimiter;
+        this.passwordService = passwordService;
         this.treatmentProtocolService = treatmentProtocolService;
     }
 
@@ -73,7 +68,7 @@ public class PrescriberService {
     @Transactional
     public Prescriber create(PrescriberCreateDTO prescriberData, String password) {
         Prescriber prescriber = createAccount(prescriberData, password);
-        prescriber.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        prescriber.markPasswordChangedNow();
         return prescriberRepository.save(prescriber);
     }
 
@@ -126,7 +121,7 @@ public class PrescriberService {
         prescriber.setActive(active);
         if (!active) {
             // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
-            prescriber.setSessionsEndedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+            prescriber.endSessionsNow();
             // sem o prescritor ninguem le as escalas, entao o envio automatico dos pacientes dele para
             treatmentProtocolService.endActiveProtocolsOfPrescriber(prescriberId);
         }
@@ -192,18 +187,12 @@ public class PrescriberService {
 
     // a sessao aberta n basta pq essas acoes tomam a conta de outra pessoa
     private void checkAdminPassword(String adminPassword, Users admin, String clientAddress) {
-        if (loginAttemptLimiter.isBlocked(admin.getEmail(), clientAddress)) {
-            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
-        }
-        if (!passwordEncoder.matches(adminPassword, admin.getPassword())) {
-            loginAttemptLimiter.registerFailure(admin.getEmail(), clientAddress);
-            throw new InvalidFieldException("adminPassword", "A sua senha está incorreta");
-        }
-        loginAttemptLimiter.registerSuccess(admin.getEmail(), clientAddress);
+        passwordService.checkCurrentPassword(admin, adminPassword, clientAddress,
+                "adminPassword", "A sua senha está incorreta");
     }
 
     public Prescriber getById(Long id) {
         return prescriberRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Prescritor não encontrado com o id: " + id));
+                .orElseThrow(() -> NotFoundException.prescriber(id));
     }
 }

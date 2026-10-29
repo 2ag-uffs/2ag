@@ -6,9 +6,10 @@ import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
-import {brasiliaTimeNote, formatDate, formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
+import {formatDate, formatDateTimeWithZone, withBrasiliaTimeNote} from "../../utils/date-format.js";
+import {firstNameOf} from "../../utils/initials.js";
 import styles from "./dashboard-paciente.module.css";
 
 // painel do paciente (RF03)
@@ -34,9 +35,8 @@ export default function DashboardPaciente() {
         apiService.get("/dashboard/patient/" + loggedUser.id)
             .then(setPanel)
             .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar o painel. Confira sua internet e tente de novo.");
+                setLoadError(errorMessageOf(requestError,
+                    "Não foi possível carregar o painel. Confira sua internet e tente de novo."));
             });
     }, [loggedUser, navigate]);
 
@@ -48,8 +48,7 @@ export default function DashboardPaciente() {
         return <SkeletonPage cards={4}/>;
     }
 
-    // o painel chama a pessoa pelo primeiro nome e pula titulo tipo dr.
-    const firstName = loggedUser.name.split(" ").find((word) => !word.endsWith(".")) || loggedUser.name;
+    const firstName = firstNameOf(loggedUser.name);
 
     return (
         <section className={styles.page}>
@@ -119,7 +118,7 @@ export default function DashboardPaciente() {
                             {panel.upcomingAppointments.map((appointment) => (
                                 <ListItem
                                     key={appointment.appointmentId}
-                                    title={formatDateTime(appointment.dateTime) + brasiliaTimeNote()}
+                                    title={formatDateTimeWithZone(appointment.dateTime)}
                                     details={modalityLabelOf(appointment.modality)
                                         + (appointment.prescriberName ? " com " + appointment.prescriberName : "")}
                                     aside={<AppointmentStatusBadge appointment={appointment}/>}
