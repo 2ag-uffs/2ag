@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 // cuida do acompanhamento automatico dos 90 dias (RF32)
@@ -39,7 +41,7 @@ public class TreatmentProtocolService {
     private static final Logger log = LoggerFactory.getLogger(TreatmentProtocolService.class);
 
     // o acompanhamento dura 90 dias por padrao (RN01)
-    private static final int DURACAO_PADRAO_EM_DIAS = 90;
+    private static final int DEFAULT_DURATION_DAYS = 90;
 
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Paciente arquivado não recebe acompanhamento automático. Reative o paciente antes";
@@ -72,7 +74,8 @@ public class TreatmentProtocolService {
     }
 
     @Transactional
-    public TreatmentProtocolResponseDTO create(Long patientId, TreatmentProtocolCreateDTO dados, Prescriber prescriber) {
+    public TreatmentProtocolResponseDTO create(Long patientId, TreatmentProtocolCreateDTO protocolData,
+                                               Prescriber prescriber) {
         // a linha do prescritor fica travada ate o fim: dois cadastros ao mesmo tempo passavam
         // os dois pela busca vazia e o segundo acompanhamento seguia invisivel por 90 dias
         // o paciente vem logo dps, antes de ler ele: o arquivamento gravado enquanto o cadastro esperava aparece,
@@ -87,49 +90,52 @@ public class TreatmentProtocolService {
         }
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
-        protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(anterior -> {
+        if (protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).isPresent()) {
             throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
-        });
+        }
 
-        LocalDate inicio = dados.startDate() != null ? dados.startDate() : LocalDate.now();
-        int duracao = dados.durationDays() != null ? dados.durationDays() : DURACAO_PADRAO_EM_DIAS;
+        LocalDate startDate = protocolData.startDate() != null ? protocolData.startDate() : LocalDate.now();
+        int durationDays = protocolData.durationDays() != null ? protocolData.durationDays() : DEFAULT_DURATION_DAYS;
 
         TreatmentProtocol protocol = new TreatmentProtocol();
         protocol.setPatient(patient);
         protocol.setPrescriber(prescriber);
-        protocol.setStartDate(inicio);
+        protocol.setStartDate(startDate);
         // o primeiro dia conta, entao 90 dias terminam no dia 90 e n no 91
-        protocol.setEndDate(inicio.plusDays(duracao - 1L));
+        protocol.setEndDate(startDate.plusDays(durationDays - 1L));
         protocol.setActive(true);
         // a programacao de horarios q aparece no topo do diario do sono (RF22)
-        protocol.setSleepBedTime(dados.sleepBedTime());
-        protocol.setSleepWakeTime(dados.sleepWakeTime());
-
-        dados.items().forEach(itemDto -> {
-            // o MEEM eh aplicado pelo prescritor na consulta, n entra no
-            // acompanhamento automatico do paciente (RN09)
-            if (!itemDto.scaleType().isFilledByPatient()) {
-                throw new BusinessException(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
-            }
-            // a avaliacao inicial eh da triagem: no acompanhamento ela voltaria
-            // a cada periodicidade e o paciente refaria a ficha inteira (RF19)
-            if (!itemDto.scaleType().isAssignablePeriodically()) {
-                throw new BusinessException(SINGLE_SCALE_MESSAGE);
-            }
-            ProtocolItem item = new ProtocolItem();
-            item.setScaleType(itemDto.scaleType());
-            item.setPeriodicity(itemDto.periodicity());
-            protocol.addItem(item);
-        });
+        protocol.setSleepBedTime(protocolData.sleepBedTime());
+        protocol.setSleepWakeTime(protocolData.sleepWakeTime());
+        addItems(protocol, protocolData.items());
 
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);
         auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
         // acompanhamento q comeca hoje manda a primeira rodada agora, sem esperar o job de amanha
         // conta desativada n recebe, igual no job
-        if (inicio.equals(LocalDate.now()) && patient.isActive()) {
-            designarRodada(savedProtocol, inicio);
+        if (startDate.equals(LocalDate.now()) && patient.isActive()) {
+            assignRound(savedProtocol, startDate);
         }
         return new TreatmentProtocolResponseDTO(savedProtocol);
+    }
+
+    private void addItems(TreatmentProtocol protocol, List<ProtocolItemDTO> itemsData) {
+        for (ProtocolItemDTO itemData : itemsData) {
+            // o MEEM eh aplicado pelo prescritor na consulta, n entra no
+            // acompanhamento automatico do paciente (RN09)
+            if (!itemData.scaleType().isFilledByPatient()) {
+                throw new BusinessException(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
+            }
+            // a avaliacao inicial eh da triagem: no acompanhamento ela voltaria
+            // a cada periodicidade e o paciente refaria a ficha inteira (RF19)
+            if (!itemData.scaleType().isAssignablePeriodically()) {
+                throw new BusinessException(SINGLE_SCALE_MESSAGE);
+            }
+            ProtocolItem item = new ProtocolItem();
+            item.setScaleType(itemData.scaleType());
+            item.setPeriodicity(itemData.periodicity());
+            protocol.addItem(item);
+        }
     }
 
     // abrir a pagina do acompanhamento conta como abrir o prontuario, mesmo sem acompanhamento
@@ -180,13 +186,13 @@ public class TreatmentProtocolService {
     // roda uma vez por dia. recebe a data de fora em vez de chamar
     // LocalDate.now() aqui dentro, senao n daria pra testar
     // cada protocolo na propria transacao: um com problema n desfaz nem trava o dos outros (#110)
-    public int designarEscalasVencidas(LocalDate hoje) {
-        int designadas = 0;
+    public int designarEscalasVencidas(LocalDate today) {
+        int assignedCount = 0;
         int failures = 0;
         for (Long protocolId : protocolRepository.findActiveIds()) {
             try {
-                Integer sent = transactionTemplate.execute(status -> assignDueRound(protocolId, hoje));
-                designadas += sent == null ? 0 : sent;
+                Integer sent = transactionTemplate.execute(status -> assignDueRound(protocolId, today));
+                assignedCount += sent == null ? 0 : sent;
             } catch (RuntimeException exception) {
                 failures++;
                 log.error("Tarefas do dia: falha no acompanhamento {}", protocolId, exception);
@@ -195,12 +201,12 @@ public class TreatmentProtocolService {
         // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
         if (failures > 0) {
             throw new IllegalStateException(failures + " acompanhamento(s) com falha, "
-                    + designadas + " escalas enviadas nos outros");
+                    + assignedCount + " escalas enviadas nos outros");
         }
-        return designadas;
+        return assignedCount;
     }
 
-    private int assignDueRound(Long protocolId, LocalDate hoje) {
+    private int assignDueRound(Long protocolId, LocalDate today) {
         Long patientId = protocolRepository.findPatientIdById(protocolId).orElse(null);
         if (patientId == null) {
             return 0;
@@ -217,21 +223,22 @@ public class TreatmentProtocolService {
         patientRepository.lockById(patientId);
         TreatmentProtocol protocol = protocolRepository.findById(protocolId).orElse(null);
         // pode ter sido encerrado entre a busca dos ids e agora
-        if (protocol == null || !protocol.isActive() || hoje.isBefore(protocol.getStartDate())) {
+        if (protocol == null || !protocol.isActive() || today.isBefore(protocol.getStartDate())) {
             return 0;
         }
         // passou dos 90 dias: encerra e n designa mais nada
-        if (hoje.isAfter(protocol.getEndDate())) {
+        if (today.isAfter(protocol.getEndDate())) {
             endProtocol(protocol);
             return 0;
         }
         // conta desativada n recebe escala nova. se a do paciente for reativada o envio continua
         Patient patient = protocol.getPatient();
         Prescriber prescriber = patient.getPrescriber();
-        if (!patient.isActive() || prescriber == null || !prescriber.isActive()) {
+        boolean bothAccountsActive = patient.isActive() && prescriber != null && prescriber.isActive();
+        if (!bothAccountsActive) {
             return 0;
         }
-        return designarRodada(protocol, hoje);
+        return assignRound(protocol, today);
     }
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram
@@ -239,26 +246,27 @@ public class TreatmentProtocolService {
     // a trava do paciente vem antes de ler as tarefas dele, igual na resposta da escala, senao o job lia a
     // tarefa enquanto o paciente respondia ela e um gravava por cima do outro: a rodada voltava a tarefa
     // respondida pra pendente, ou a resposta desfazia o prazo novo da rodada
-    private int designarRodada(TreatmentProtocol protocol, LocalDate hoje) {
+    private int assignRound(TreatmentProtocol protocol, LocalDate today) {
         Long patientId = protocol.getPatient().getId();
-        int designadas = 0;
+        int assignedCount = 0;
         for (ProtocolItem item : protocol.getItems()) {
-            if (estaNaHora(item, hoje)) {
-                LocalDate fimDaRodada = hoje.plusDays(item.getPeriodicity().getDays() - 1L);
-                ScaleTask task = scaleTaskService.assign(patientId, item.getScaleType(), hoje,
-                        item.getPeriodicity().getDays(), true);
-                // a tarefa q ja existia vira a rodada: a avulsa aberta ou respondida no dia, e a do
-                // acompanhamento anterior ainda pendente ou respondida no dia. ela fica com o fim da rodada,
-                // senao a tarefa q o paciente tem acabava antes do lastRoundEnd e os dias entre os dois
-                // ficavam sem tarefa nenhuma
-                if (!task.isFromProtocol() || !task.getPeriodEnd().equals(fimDaRodada)) {
-                    scaleTaskService.adoptAsProtocolRound(task, fimDaRodada);
-                }
-                item.setLastRoundEnd(fimDaRodada);
-                designadas++;
+            if (!isRoundDue(item, today)) {
+                continue;
             }
+            int periodDays = item.getPeriodicity().getDays();
+            LocalDate roundEnd = today.plusDays(periodDays - 1L);
+            ScaleTask task = scaleTaskService.assign(patientId, item.getScaleType(), today, periodDays, true);
+            // a tarefa q ja existia vira a rodada: a avulsa aberta ou respondida no dia, e a do
+            // acompanhamento anterior ainda pendente ou respondida no dia. ela fica com o fim da rodada,
+            // senao a tarefa q o paciente tem acabava antes do lastRoundEnd e os dias entre os dois
+            // ficavam sem tarefa nenhuma
+            if (!task.isFromProtocol() || !task.getPeriodEnd().equals(roundEnd)) {
+                scaleTaskService.adoptAsProtocolRound(task, roundEnd);
+            }
+            item.setLastRoundEnd(roundEnd);
+            assignedCount++;
         }
-        return designadas;
+        return assignedCount;
     }
 
     // olha quando a ultima rodada desse acompanhamento acaba em vez de
@@ -267,14 +275,14 @@ public class TreatmentProtocolService {
     // pular a rodada
     // a rodada fica no item, entao o acompanhamento q substitui outro comeca o proprio ciclo com a
     // periodicidade nova, em vez de esperar o prazo da rodada mensal do anterior
-    private boolean estaNaHora(ProtocolItem item, LocalDate hoje) {
-        // primeira vez: envia assim que o acompanhamento comeca
+    private boolean isRoundDue(ProtocolItem item, LocalDate today) {
+        // primeira vez envia assim q o acompanhamento comeca
         if (item.getLastRoundEnd() == null) {
             return true;
         }
         // a rodada anterior so eh substituida quando o periodo dela acaba,
         // entao a mesma escala nunca fica pendente duas vezes
-        return hoje.isAfter(item.getLastRoundEnd());
+        return today.isAfter(item.getLastRoundEnd());
     }
 
     // escalas q venceram sem resposta. o prescritor ve isso no painel dele

@@ -13,6 +13,14 @@ import styles from "./agenda-disponibilidade.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
+// periodo novo ja vem com a manha toda
+const NEW_PERIOD_START = "08:00";
+const NEW_PERIOD_END = "12:00";
+
+function errorMessageOf(requestError) {
+    return requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
+}
+
 // a api manda a hora com segundos e o input de hora usa so hora e minuto
 function toInputTime(apiTime) {
     return apiTime ? apiTime.slice(0, 5) : "";
@@ -32,6 +40,13 @@ function bookingsOnTheDayWarning(count) {
         return "Você tem 1 consulta ou pedido nesse dia. Ele continua marcado; remarque ou cancele na agenda.";
     }
     return "Você tem " + count + " consultas ou pedidos nesse dia. Eles continuam marcados; remarque ou cancele na agenda.";
+}
+
+function bookingsStillOnTheDayText(count) {
+    if (count === 1) {
+        return "1 consulta ou pedido ainda marcado";
+    }
+    return count + " consultas ou pedidos ainda marcados";
 }
 
 // horarios de atendimento do prescritor (RF11)
@@ -90,7 +105,7 @@ export default function AgendaDisponibilidade() {
 
     const addPeriod = (dayOfWeek) => {
         setNotice(null);
-        setPeriods((currentPeriods) => [...currentPeriods, newPeriod(dayOfWeek, "08:00", "12:00")]);
+        setPeriods((currentPeriods) => [...currentPeriods, newPeriod(dayOfWeek, NEW_PERIOD_START, NEW_PERIOD_END)]);
     };
 
     const updatePeriod = (periodKey, fieldName, value) => {
@@ -128,13 +143,12 @@ export default function AgendaDisponibilidade() {
                     endTime: period.endTime,
                 })),
             });
-            // salvar sem periodo nenhum eh permitido de proposito, mas a pessoa
-            // precisa saber q isso fecha a agenda dela pros pacientes
+            // salvar sem periodo eh permitido de proposito mas a pessoa precisa saber q fecha a agenda pros pacientes
             setNotice(periods.length === 0
                 ? "Horários salvos. Sem nenhum período, seus pacientes não conseguem pedir consulta."
                 : "Horários salvos. Seus pacientes já podem pedir consulta nesses períodos.");
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setFormError(errorMessageOf(requestError));
         } finally {
             setIsSaving(false);
         }
@@ -166,7 +180,7 @@ export default function AgendaDisponibilidade() {
                 setDayOffWarning(bookingsOnTheDayWarning(dayOff.appointmentsOnTheDay));
             }
         } catch (requestError) {
-            setDayOffError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setDayOffError(errorMessageOf(requestError));
         } finally {
             setIsSavingDayOff(false);
         }
@@ -180,7 +194,7 @@ export default function AgendaDisponibilidade() {
             setDaysOff((currentDaysOff) => currentDaysOff.filter((dayOff) => dayOff.date !== date));
             setDayOffNotice(formatDate(date) + " voltou a ter atendimento.");
         } catch (requestError) {
-            setDayOffError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setDayOffError(errorMessageOf(requestError));
         } finally {
             setIsSavingDayOff(false);
         }
@@ -337,9 +351,7 @@ export default function AgendaDisponibilidade() {
                                         <span className={styles.dayOffDate}>{formatWeekdayAndDate(dayOff.date)}</span>
                                         {dayOff.appointmentsOnTheDay > 0 && (
                                             <span className={styles.dayOffBookings}>
-                                                {dayOff.appointmentsOnTheDay === 1
-                                                    ? "1 consulta ou pedido ainda marcado"
-                                                    : dayOff.appointmentsOnTheDay + " consultas ou pedidos ainda marcados"}
+                                                {bookingsStillOnTheDayText(dayOff.appointmentsOnTheDay)}
                                             </span>
                                         )}
                                     </div>

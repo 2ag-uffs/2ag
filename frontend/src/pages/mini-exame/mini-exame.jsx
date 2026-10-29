@@ -13,6 +13,35 @@ import styles from "./mini-exame.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
+function ExamResult({exam, maxScore}) {
+    // exame salvo antes da trava q ficou sem escore ou sem faixa
+    const isScoreMissing = exam.score === null || exam.score === undefined;
+    if (isScoreMissing) {
+        return (
+            <div className={styles.result}>
+                <FiAlertCircle className={styles.resultIconWarning} aria-hidden="true"/>
+                <div>
+                    <p className={styles.score}>Exame incompleto: sem escore</p>
+                    <p className={styles.hint}>
+                        Para refazer, anule este exame no histórico do paciente e aplique de novo.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+    return (
+        <div className={styles.result}>
+            <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
+            <div>
+                <p className={styles.score}>{exam.score} de {maxScore}</p>
+                <p className={styles.hint}>
+                    {exam.scoreBand || "Sem faixa: a escolaridade não foi registrada."}
+                </p>
+            </div>
+        </div>
+    );
+}
+
 // Mini-Exame do Estado Mental (RF26)
 //
 // eh o prescritor q aplica, durante a consulta, entao a tela nasce
@@ -111,28 +140,7 @@ export default function MiniExame() {
 
             {savedExam ? (
                 <Card>
-                    {/* exame salvo antes da trava, q ficou sem escore ou sem faixa */}
-                    {savedExam.score === null || savedExam.score === undefined ? (
-                        <div className={styles.result}>
-                            <FiAlertCircle className={styles.resultIconWarning} aria-hidden="true"/>
-                            <div>
-                                <p className={styles.score}>Exame incompleto: sem escore</p>
-                                <p className={styles.hint}>
-                                    Para refazer, anule este exame no histórico do paciente e aplique de novo.
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className={styles.result}>
-                            <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
-                            <div>
-                                <p className={styles.score}>{savedExam.score} de {definition.maxScore}</p>
-                                <p className={styles.hint}>
-                                    {savedExam.scoreBand || "Sem faixa: a escolaridade não foi registrada."}
-                                </p>
-                            </div>
-                        </div>
-                    )}
+                    <ExamResult exam={savedExam} maxScore={definition.maxScore}/>
                     <p className={styles.hint}>O resultado fica no histórico do paciente junto com a consulta.</p>
                     <div className={styles.nextSteps}>
                         <button

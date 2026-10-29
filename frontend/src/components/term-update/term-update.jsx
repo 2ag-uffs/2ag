@@ -15,6 +15,48 @@ const CONNECTION_ERROR = "Não foi possível falar com o servidor. Confira sua i
 
 const EMPTY_GUARDIAN = {guardianName: "", guardianRelationship: "", guardianPhone: ""};
 
+// nome e parentesco do responsavel q vao no fim do aviso da idade
+function guardianTextOf(guardian) {
+    if (!guardian) {
+        return "";
+    }
+    return " Responsável informado: " + guardian.name
+        + (guardian.relationship ? " (" + guardian.relationship + ")" : "") + ".";
+}
+
+// conta de menor sem o responsavel completo preenche o nome e o parentesco aqui
+function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChange}) {
+    return (
+        <fieldset className={styles.guardianFields}>
+            <legend className={styles.guardianTitle}>Responsável legal</legend>
+            <p className={styles.statusText}>
+                {guardian
+                    ? "Falta o parentesco do responsável legal. Confira o nome e preencha o parentesco "
+                    + "para aceitar o termo."
+                    : "O responsável legal ainda não foi informado. Preencha o nome e o parentesco "
+                    + "dele para aceitar o termo."}
+            </p>
+            <TextField
+                label="Nome"
+                name="guardian.name"
+                value={guardianData.guardianName}
+                onChange={(event) => onFieldChange("guardianName", event.target.value)}
+                error={fieldErrors["guardian.name"]}
+                required={true}
+            />
+            <TextField
+                label="Parentesco"
+                name="guardian.relationship"
+                placeholder="Mãe, pai, avó, tutor..."
+                value={guardianData.guardianRelationship}
+                onChange={(event) => onFieldChange("guardianRelationship", event.target.value)}
+                error={fieldErrors["guardian.relationship"]}
+                required={true}
+            />
+        </fieldset>
+    );
+}
+
 // paciente q aceitou uma versao antiga do termo le e aceita a nova antes de seguir (#58)
 export default function TermUpdate({onAccepted}) {
     const [term, setTerm] = useState(null);
@@ -105,11 +147,7 @@ export default function TermUpdate({onAccepted}) {
         }
     };
 
-    let guardianText = "";
-    if (guardian) {
-        guardianText = " Responsável informado: " + guardian.name
-            + (guardian.relationship ? " (" + guardian.relationship + ")" : "") + ".";
-    }
+    const guardianText = guardianTextOf(guardian);
 
     return (
         <section className={styles.page}>
@@ -143,33 +181,12 @@ export default function TermUpdate({onAccepted}) {
                         {term.text}
                     </div>
                     {needsGuardian && (
-                        <fieldset className={styles.guardianFields}>
-                            <legend className={styles.guardianTitle}>Responsável legal</legend>
-                            <p className={styles.statusText}>
-                                {guardian
-                                    ? "Falta o parentesco do responsável legal. Confira o nome e preencha o parentesco "
-                                    + "para aceitar o termo."
-                                    : "O responsável legal ainda não foi informado. Preencha o nome e o parentesco "
-                                    + "dele para aceitar o termo."}
-                            </p>
-                            <TextField
-                                label="Nome"
-                                name="guardian.name"
-                                value={guardianData.guardianName}
-                                onChange={(event) => updateGuardianField("guardianName", event.target.value)}
-                                error={fieldErrors["guardian.name"]}
-                                required={true}
-                            />
-                            <TextField
-                                label="Parentesco"
-                                name="guardian.relationship"
-                                placeholder="Mãe, pai, avó, tutor..."
-                                value={guardianData.guardianRelationship}
-                                onChange={(event) => updateGuardianField("guardianRelationship", event.target.value)}
-                                error={fieldErrors["guardian.relationship"]}
-                                required={true}
-                            />
-                        </fieldset>
+                        <MissingGuardianFields
+                            guardian={guardian}
+                            guardianData={guardianData}
+                            fieldErrors={fieldErrors}
+                            onFieldChange={updateGuardianField}
+                        />
                     )}
                     {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
                     <div className={styles.actions}>

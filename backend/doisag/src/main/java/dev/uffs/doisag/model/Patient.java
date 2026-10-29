@@ -22,11 +22,10 @@ public class Patient extends Users {
     // menor de 16 eh representado, ele aceita em nome do paciente. com 16 e 17 o paciente aceita junto com ele
     public static final int ADULT_AGE = 18;
 
-    // adicionei essa anotacao desse lado gerenciado para evitar a referencia infinita
+    // lado de volta da lista do Prescriber pq sem isso o json entra em loop
     @JsonBackReference
-    // muitos pacientes pertencem a um prescritor
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prescriber_id") // nome da coluna da chave estrangeira no banco
+    @JoinColumn(name = "prescriber_id")
     private Prescriber prescriber;
 
     // preenchidos so enquanto o prescritor deixar o paciente no arquivo

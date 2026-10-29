@@ -57,6 +57,19 @@ function canPatientCancel(appointment) {
     return minutesUntil(appointment.dateTime) >= PATIENT_CANCELLATION_HOURS * 60;
 }
 
+// consulta marcada q ja passou do prazo e so o prescritor cancela
+function isTooLateToCancel(appointment) {
+    return appointment.status === "AGENDADA" && !appointment.annulled && !canPatientCancel(appointment);
+}
+
+function cancelLabelOf(appointment) {
+    return appointment.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta";
+}
+
+function slotCountText(count) {
+    return count === 1 ? "1 horário" : count + " horários";
+}
+
 // consultas do paciente (RF10)
 // o paciente pede um horario livre na agenda do prescritor e acompanha os pedidos e as consultas marcadas
 export default function AgendamentoConsultaPaciente() {
@@ -112,23 +125,25 @@ export default function AgendamentoConsultaPaciente() {
         setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
     };
 
+    const clearMessages = () => {
+        setNotice(null);
+        setActionError(null);
+    };
+
     const chooseDay = (dayIso) => {
         setSelectedDay(dayIso);
         setSelectedSlot(null);
-        setNotice(null);
-        setActionError(null);
+        clearMessages();
     };
 
     const chooseSlot = (slotStart) => {
         setSelectedSlot(slotStart);
-        setNotice(null);
-        setActionError(null);
+        clearMessages();
     };
 
     const sendRequest = async (slotStart) => {
         setIsSending(true);
-        setNotice(null);
-        setActionError(null);
+        clearMessages();
         try {
             await apiService.post("/appointments/requests", {
                 dateTime: slotStart,
@@ -151,8 +166,7 @@ export default function AgendamentoConsultaPaciente() {
     const cancelAppointment = async () => {
         const appointment = cancelTarget;
         setCancelTarget(null);
-        setNotice(null);
-        setActionError(null);
+        clearMessages();
         setBusyAppointmentId(appointment.id);
         try {
             await apiService.put("/appointments/" + appointment.id + "/cancel");
@@ -232,9 +246,7 @@ export default function AgendamentoConsultaPaciente() {
                                         >
                                             <span className={styles.weekday}>{formatWeekdayAndDate(dayIso)}</span>
                                             <span className={styles.slotCount}>
-                                                {slotsByDay[dayIso].length === 1
-                                                    ? "1 horário"
-                                                    : slotsByDay[dayIso].length + " horários"}
+                                                {slotCountText(slotsByDay[dayIso].length)}
                                             </span>
                                         </button>
                                     ))}
@@ -327,8 +339,7 @@ export default function AgendamentoConsultaPaciente() {
                                     {appointment.patientNote && (
                                         <p className={styles.meta}>Motivo: {appointment.patientNote}</p>
                                     )}
-                                    {appointment.status === "AGENDADA" && !appointment.annulled
-                                        && !canPatientCancel(appointment) && (
+                                    {isTooLateToCancel(appointment) && (
                                         <p className={styles.meta}>
                                             Faltam menos de 24 horas. Para cancelar, fale com o seu prescritor.
                                         </p>
@@ -341,7 +352,7 @@ export default function AgendamentoConsultaPaciente() {
                                         onClick={() => setCancelTarget(appointment)}
                                         disabled={busyAppointmentId === appointment.id}
                                     >
-                                        {appointment.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
+                                        {cancelLabelOf(appointment)}
                                     </button>
                                 )}
                             </li>
@@ -352,7 +363,7 @@ export default function AgendamentoConsultaPaciente() {
 
             <ConfirmModal
                 show={cancelTarget !== null}
-                title={cancelTarget !== null && cancelTarget.status === "SOLICITADA" ? "Cancelar pedido" : "Cancelar consulta"}
+                title={cancelTarget !== null ? cancelLabelOf(cancelTarget) : "Cancelar consulta"}
                 message={cancelTarget !== null
                     ? "O horário de " + formatDateTime(cancelTarget.dateTime) + brasiliaTimeNote()
                         + " volta a ficar livre na agenda. Quer cancelar?"

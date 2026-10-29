@@ -37,6 +37,8 @@ public class ErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
+    private static final String INVALID_REQUEST_MESSAGE = "Requisição inválida. Confira os dados enviados";
+
     // registro q n existe
     // a mensagem tecnica traz id interno, entao ela fica no log e a tela recebe
     // uma generica. so a q foi escrita pra pessoa ler vai direto pra resposta
@@ -66,7 +68,7 @@ public class ErrorHandler {
     @ExceptionHandler(PendingTermException.class)
     public ResponseEntity<ErrorResponseDTO> handlePendingTerm(PendingTermException exception,
                                                               HttpServletRequest request) {
-        ErrorResponseDTO body = buildResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request).getBody();
+        ErrorResponseDTO body = buildBody(HttpStatus.FORBIDDEN, exception.getMessage(), request);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).header(PendingTermException.HEADER, "true").body(body);
     }
 
@@ -82,7 +84,7 @@ public class ErrorHandler {
     public ResponseEntity<ErrorResponseDTO> handleInvalidArgument(RuntimeException exception,
                                                                  HttpServletRequest request) {
         log.warn("argumento invalido em {}", request.getRequestURI(), exception);
-        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida. Confira os dados enviados", request);
+        return buildResponse(HttpStatus.BAD_REQUEST, INVALID_REQUEST_MESSAGE, request);
     }
 
     // requisicao mal montada como json quebrado tipo errado ou parametro faltando
@@ -93,7 +95,7 @@ public class ErrorHandler {
             HandlerMethodValidationException.class
     })
     public ResponseEntity<ErrorResponseDTO> handleBadRequest(Exception exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida. Confira os dados enviados", request);
+        return buildResponse(HttpStatus.BAD_REQUEST, INVALID_REQUEST_MESSAGE, request);
     }
 
     // campos do dto q n passaram na validacao
@@ -103,16 +105,7 @@ public class ErrorHandler {
         List<ValidationErrorDetail> fieldErrors = exception.getFieldErrors().stream()
                 .map(fieldError -> new ValidationErrorDetail(fieldError.getField(), fieldError.getDefaultMessage()))
                 .toList();
-
-        ValidationResponseDTO body = new ValidationResponseDTO(
-                LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                "Confira os campos destacados",
-                request.getRequestURI(),
-                fieldErrors
-        );
-        return ResponseEntity.badRequest().body(body);
+        return buildValidationResponse(HttpStatus.BAD_REQUEST, "Confira os campos destacados", fieldErrors, request);
     }
 
     // campo recusado por regra q so o servico confere como a senha atual errada
@@ -185,25 +178,34 @@ public class ErrorHandler {
 
     private ResponseEntity<ValidationResponseDTO> buildFieldResponse(HttpStatus status, String field, String message,
                                                                      HttpServletRequest request) {
+        return buildValidationResponse(status, message, List.of(new ValidationErrorDetail(field, message)), request);
+    }
+
+    private ResponseEntity<ValidationResponseDTO> buildValidationResponse(HttpStatus status, String message,
+                                                                          List<ValidationErrorDetail> fieldErrors,
+                                                                          HttpServletRequest request) {
         ValidationResponseDTO body = new ValidationResponseDTO(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,
                 request.getRequestURI(),
-                List.of(new ValidationErrorDetail(field, message))
+                fieldErrors
         );
         return ResponseEntity.status(status).body(body);
     }
 
     private ResponseEntity<ErrorResponseDTO> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
-        ErrorResponseDTO body = new ErrorResponseDTO(
+        return ResponseEntity.status(status).body(buildBody(status, message, request));
+    }
+
+    private ErrorResponseDTO buildBody(HttpStatus status, String message, HttpServletRequest request) {
+        return new ErrorResponseDTO(
                 LocalDateTime.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,
                 request.getRequestURI()
         );
-        return ResponseEntity.status(status).body(body);
     }
 }

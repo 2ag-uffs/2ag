@@ -8,6 +8,8 @@ import {formatPhone, onlyDigits} from "./masks.js";
 const ADULT_AGE = 18;
 // menor de 16: o responsavel aceita em nome do paciente. com 16 e 17 o paciente aceita junto com ele
 const ASSISTED_AGE = 16;
+// ddd + os 8 numeros do fixo
+const MIN_PHONE_DIGITS = 10;
 
 // so muda o q a tela mostra, qm decide de vdd eh a api pela data de nascimento
 // ageFrom conta anos completos igual a api: qm nasceu em 29/02 faz anos em 01/03
@@ -57,7 +59,7 @@ export function guardianBody(formData) {
 export function findGuardianErrors(formData, isMinor = false) {
     const errors = {};
     const phone = onlyDigits(formData.guardianPhone);
-    if (phone && phone.length < 10) {
+    if (phone && phone.length < MIN_PHONE_DIGITS) {
         errors["guardian.phone"] = "Informe o telefone com DDD";
     }
     if (isMinor) {

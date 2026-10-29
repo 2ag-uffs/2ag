@@ -36,7 +36,7 @@ public class Prescriber extends Users {
     // quanto tempo a primeira consulta ocupa na agenda
     private Integer firstAppointmentDurationMinutes = 90;
 
-    // anotacao pra serializar a lista de pacientes normalmente
+    // a lista sai no json e o Patient.prescriber eh o lado de volta q fica de fora
     @JsonManagedReference
     @OneToMany(mappedBy = "prescriber")
     private List<Patient> patients = new ArrayList<>();

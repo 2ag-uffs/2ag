@@ -58,6 +58,29 @@ function emptyAnswers() {
     };
 }
 
+// resposta q ficou em branco volta vazia e as de escolha voltam no padrao
+function answersFrom(savedAnamnesis) {
+    const defaultAnswers = emptyAnswers();
+    const savedAnswers = {};
+    Object.keys(defaultAnswers).forEach((fieldName) => {
+        const savedValue = savedAnamnesis[fieldName];
+        savedAnswers[fieldName] = savedValue === null || savedValue === undefined
+            ? defaultAnswers[fieldName]
+            : String(savedValue);
+    });
+    return savedAnswers;
+}
+
+// resposta em branco vai como null pra api
+function requestBodyOf(answers) {
+    const requestBody = {};
+    Object.keys(answers).forEach((fieldName) => {
+        const answer = answers[fieldName].trim();
+        requestBody[fieldName] = answer === "" ? null : answer;
+    });
+    return requestBody;
+}
+
 // ficha de anamnese preenchida pelo proprio paciente (RF19)
 // com id na url a mesma tela corrige uma ficha q ja foi enviada
 export default function Anamnese() {
@@ -88,16 +111,7 @@ export default function Anamnese() {
                 if (savedAnamnesis.annulled) {
                     setLoadError("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
                 } else {
-                    // resposta q ficou em branco volta vazia e as de escolha voltam no padrao
-                    const defaultAnswers = emptyAnswers();
-                    const savedAnswers = {};
-                    Object.keys(defaultAnswers).forEach((fieldName) => {
-                        const savedValue = savedAnamnesis[fieldName];
-                        savedAnswers[fieldName] = savedValue === null || savedValue === undefined
-                            ? defaultAnswers[fieldName]
-                            : String(savedValue);
-                    });
-                    setAnswers(savedAnswers);
+                    setAnswers(answersFrom(savedAnamnesis));
                 }
                 setIsLoading(false);
             })
@@ -118,7 +132,10 @@ export default function Anamnese() {
     // quem desiste volta pra tela de onde veio a ficha
     const exitPath = isCorrection ? "/historico-paciente" : "/painel-paciente";
 
-    const updateAnswer = (fieldName, value) => {
+    // o name de cada campo eh a chave da resposta
+    const updateAnswer = (event) => {
+        const fieldName = event.target.name;
+        const value = event.target.value;
         setAnswers((currentAnswers) => ({...currentAnswers, [fieldName]: value}));
     };
 
@@ -128,26 +145,20 @@ export default function Anamnese() {
         setFormError(null);
         setFieldErrors({});
 
-        // resposta em branco vai como null pra api
-        const requestBody = {};
-        Object.keys(answers).forEach((fieldName) => {
-            const answer = answers[fieldName].trim();
-            requestBody[fieldName] = answer === "" ? null : answer;
-        });
+        const requestBody = requestBodyOf(answers);
 
         // a ficha enviada sai do historico do navegador
         // senao o voltar do celular reabre a ficha em branco e enviar de novo cria outra anamnese
         try {
             if (isCorrection) {
                 await apiService.put("/anamneses/" + anamnesisId, requestBody);
-                navigate(exitPath, {
-                    replace: true,
-                    state: {notice: "Correção da anamnese salva. O seu prescritor já vê a ficha nova."},
-                });
             } else {
                 await apiService.post("/anamneses", requestBody);
-                navigate(exitPath, {replace: true, state: {notice: "Ficha de anamnese enviada. Obrigado por responder."}});
             }
+            const notice = isCorrection
+                ? "Correção da anamnese salva. O seu prescritor já vê a ficha nova."
+                : "Ficha de anamnese enviada. Obrigado por responder.";
+            navigate(exitPath, {replace: true, state: {notice}});
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = requestError.fieldErrors();
@@ -168,6 +179,11 @@ export default function Anamnese() {
 
     if (isLoading) {
         return <SkeletonPage cards={2}/>;
+    }
+
+    let submitText = isSaving ? "Enviando..." : "Enviar anamnese";
+    if (isCorrection) {
+        submitText = isSaving ? "Salvando..." : "Salvar correção";
     }
 
     return (
@@ -199,14 +215,14 @@ export default function Anamnese() {
                             type="date"
                             max={todayForInput()}
                             value={answers.assessmentDate}
-                            onChange={(event) => updateAnswer("assessmentDate", event.target.value)}
+                            onChange={updateAnswer}
                             error={fieldErrors.assessmentDate}
                         />
                         <TextField
                             label="Ocupação"
                             name="profession"
                             value={answers.profession}
-                            onChange={(event) => updateAnswer("profession", event.target.value)}
+                            onChange={updateAnswer}
                             error={fieldErrors.profession}
                         />
                     </div>
@@ -215,7 +231,7 @@ export default function Anamnese() {
                         name="reasonForVisit"
                         rows={3}
                         value={answers.reasonForVisit}
-                        onChange={(event) => updateAnswer("reasonForVisit", event.target.value)}
+                        onChange={updateAnswer}
                         error={fieldErrors.reasonForVisit}
                         required={true}
                     />
@@ -228,42 +244,42 @@ export default function Anamnese() {
                         name="previousDiagnosis"
                         rows={2}
                         value={answers.previousDiagnosis}
-                        onChange={(event) => updateAnswer("previousDiagnosis", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Tratamentos anteriores"
                         name="previousTreatment"
                         rows={3}
                         value={answers.previousTreatment}
-                        onChange={(event) => updateAnswer("previousTreatment", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Medicações em uso"
                         name="currentMedication"
                         rows={3}
                         value={answers.currentMedication}
-                        onChange={(event) => updateAnswer("currentMedication", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Doenças importantes na família"
                         name="familyHistory"
                         rows={2}
                         value={answers.familyHistory}
-                        onChange={(event) => updateAnswer("familyHistory", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Reações ruins a medicamentos"
                         name="adverseReaction"
                         rows={2}
                         value={answers.adverseReaction}
-                        onChange={(event) => updateAnswer("adverseReaction", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Condições genéticas conhecidas"
                         name="geneticCondition"
                         rows={2}
                         value={answers.geneticCondition}
-                        onChange={(event) => updateAnswer("geneticCondition", event.target.value)}
+                        onChange={updateAnswer}
                     />
                 </fieldset>
 
@@ -274,7 +290,7 @@ export default function Anamnese() {
                         name="diet"
                         placeholder="Ex: onívora, vegetariana ou vegana"
                         value={answers.diet}
-                        onChange={(event) => updateAnswer("diet", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <div className={styles.row}>
                         <SelectField
@@ -282,14 +298,14 @@ export default function Anamnese() {
                             name="smokingHabits"
                             options={SMOKING_OPTIONS}
                             value={answers.smokingHabits}
-                            onChange={(event) => updateAnswer("smokingHabits", event.target.value)}
+                            onChange={updateAnswer}
                         />
                         <SelectField
                             label="Bebe álcool?"
                             name="alcoholConsumption"
                             options={ALCOHOL_OPTIONS}
                             value={answers.alcoholConsumption}
-                            onChange={(event) => updateAnswer("alcoholConsumption", event.target.value)}
+                            onChange={updateAnswer}
                         />
                     </div>
                     <div className={styles.row}>
@@ -300,7 +316,7 @@ export default function Anamnese() {
                             inputMode="decimal"
                             step="0.1"
                             value={answers.weight}
-                            onChange={(event) => updateAnswer("weight", event.target.value)}
+                            onChange={updateAnswer}
                             error={fieldErrors.weight}
                         />
                         <TextField
@@ -309,7 +325,7 @@ export default function Anamnese() {
                             type="number"
                             inputMode="numeric"
                             value={answers.height}
-                            onChange={(event) => updateAnswer("height", event.target.value)}
+                            onChange={updateAnswer}
                             error={fieldErrors.height}
                         />
                     </div>
@@ -318,7 +334,7 @@ export default function Anamnese() {
                         name="substanceUse"
                         rows={2}
                         value={answers.substanceUse}
-                        onChange={(event) => updateAnswer("substanceUse", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Exercícios físicos"
@@ -326,7 +342,7 @@ export default function Anamnese() {
                         hint="Conte qual exercício e quantas vezes por semana."
                         rows={2}
                         value={answers.physicalActivity}
-                        onChange={(event) => updateAnswer("physicalActivity", event.target.value)}
+                        onChange={updateAnswer}
                     />
                 </fieldset>
 
@@ -338,7 +354,7 @@ export default function Anamnese() {
                         placeholder="Ex: durmo bem, tenho insônia ou acordo várias vezes"
                         rows={2}
                         value={answers.sleepHabits}
-                        onChange={(event) => updateAnswer("sleepHabits", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Ansiedade"
@@ -346,7 +362,7 @@ export default function Anamnese() {
                         hint="Com que frequência aparece e com que intensidade."
                         rows={2}
                         value={answers.anxiety}
-                        onChange={(event) => updateAnswer("anxiety", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <TextAreaField
                         label="Dor"
@@ -354,7 +370,7 @@ export default function Anamnese() {
                         hint="Onde dói, com que frequência e com que intensidade."
                         rows={2}
                         value={answers.pain}
-                        onChange={(event) => updateAnswer("pain", event.target.value)}
+                        onChange={updateAnswer}
                     />
                 </fieldset>
 
@@ -365,7 +381,7 @@ export default function Anamnese() {
                         name="expectations"
                         rows={3}
                         value={answers.expectations}
-                        onChange={(event) => updateAnswer("expectations", event.target.value)}
+                        onChange={updateAnswer}
                     />
                     <SelectField
                         label="Você sabe que o tratamento precisa de acompanhamento regular?"
@@ -373,7 +389,7 @@ export default function Anamnese() {
                         options={AWARENESS_OPTIONS}
                         placeholder="Escolha uma resposta"
                         value={answers.treatmentAwareness}
-                        onChange={(event) => updateAnswer("treatmentAwareness", event.target.value)}
+                        onChange={updateAnswer}
                         error={fieldErrors.treatmentAwareness}
                         required={true}
                     />
@@ -382,7 +398,7 @@ export default function Anamnese() {
                         name="observation"
                         rows={3}
                         value={answers.observation}
-                        onChange={(event) => updateAnswer("observation", event.target.value)}
+                        onChange={updateAnswer}
                     />
                 </fieldset>
 
@@ -396,8 +412,7 @@ export default function Anamnese() {
                         Cancelar
                     </button>
                     <button type="submit" className={styles.primaryButton} disabled={isSaving}>
-                        {isCorrection && (isSaving ? "Salvando..." : "Salvar correção")}
-                        {!isCorrection && (isSaving ? "Enviando..." : "Enviar anamnese")}
+                        {submitText}
                     </button>
                 </div>
             </form>

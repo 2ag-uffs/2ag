@@ -51,7 +51,7 @@ public class ExportController {
     public ResponseEntity<byte[]> appointments(@PathVariable Long patientId,
                                                @RequestParam(name = "deidentified", defaultValue = "false") boolean deidentified,
                                                @AuthenticationPrincipal Users loggedUser) {
-        return csv(exportService.appointmentsCsv(patientId, deidentified, loggedUser),
+        return csvDownload(exportService.appointmentsCsv(patientId, deidentified, loggedUser),
                 exportService.fileName("consultas", patientId, deidentified));
     }
 
@@ -60,7 +60,7 @@ public class ExportController {
     public ResponseEntity<byte[]> prescriptions(@PathVariable Long patientId,
                                                 @RequestParam(name = "deidentified", defaultValue = "false") boolean deidentified,
                                                 @AuthenticationPrincipal Users loggedUser) {
-        return csv(exportService.prescriptionsCsv(patientId, deidentified, loggedUser),
+        return csvDownload(exportService.prescriptionsCsv(patientId, deidentified, loggedUser),
                 exportService.fileName("prescricoes", patientId, deidentified));
     }
 
@@ -69,7 +69,7 @@ public class ExportController {
     public ResponseEntity<byte[]> scales(@PathVariable Long patientId,
                                          @RequestParam(name = "deidentified", defaultValue = "false") boolean deidentified,
                                          @AuthenticationPrincipal Users loggedUser) {
-        return csv(exportService.scaleResponsesCsv(patientId, deidentified, loggedUser),
+        return csvDownload(exportService.scaleResponsesCsv(patientId, deidentified, loggedUser),
                 exportService.fileName("escalas", patientId, deidentified));
     }
 
@@ -80,7 +80,7 @@ public class ExportController {
                                            @RequestParam("period") TimePeriod period,
                                            @RequestParam(name = "deidentified", defaultValue = "false") boolean deidentified,
                                            @AuthenticationPrincipal Users loggedUser) {
-        return csv(exportService.progressCsv(patientId, attribute, period, deidentified, loggedUser),
+        return csvDownload(exportService.progressCsv(patientId, attribute, period, deidentified, loggedUser),
                 exportService.fileName("evolucao", patientId, deidentified));
     }
 
@@ -89,12 +89,12 @@ public class ExportController {
     public ResponseEntity<byte[]> anamnesis(@PathVariable Long patientId,
                                             @RequestParam(name = "deidentified", defaultValue = "false") boolean deidentified,
                                             @AuthenticationPrincipal Users loggedUser) {
-        return csv(exportService.anamnesisCsv(patientId, deidentified, loggedUser),
+        return csvDownload(exportService.anamnesisCsv(patientId, deidentified, loggedUser),
                 exportService.fileName("anamnese", patientId, deidentified));
     }
 
     // o arquivo vai como anexo, entao o navegador baixa em vez de abrir
-    private ResponseEntity<byte[]> csv(String content, String fileName) {
+    private ResponseEntity<byte[]> csvDownload(String content, String fileName) {
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));

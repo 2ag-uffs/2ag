@@ -13,8 +13,35 @@ function countOf(count, singular, plural) {
     return count + " " + (count === 1 ? singular : plural);
 }
 
+// sem formulario com prazo n tem conta e a api manda o percentual vazio
+function hasPercent(percent) {
+    return percent !== null && percent !== undefined;
+}
+
 function percentText(percent) {
-    return percent === null || percent === undefined ? "—" : percent + "%";
+    return hasPercent(percent) ? percent + "%" : "—";
+}
+
+function periodErrorOf(fromDate, toDate, yesterday) {
+    if (!fromDate || !toDate) {
+        return "Escolha as duas datas do período.";
+    }
+    if (fromDate > toDate) {
+        return "A data inicial precisa ser igual ou anterior à data final.";
+    }
+    if (toDate > yesterday) {
+        return "Escolha um período que termine até ontem.";
+    }
+    return null;
+}
+
+// "1 de 2 no prazo · 50%" e no diario tbm os dias preenchidos
+function scaleDetailsOf(scale) {
+    const details = scale.formsOnTime + " de " + scale.formsDue + " no prazo · " + percentText(scale.onTimePercent);
+    if (!scale.daily) {
+        return details;
+    }
+    return details + " · " + scale.daysFilled + " de " + scale.daysExpected + " dias";
 }
 
 // indicadores do piloto (RF39)
@@ -65,16 +92,9 @@ export default function Indicadores() {
 
     const handleFilter = (event) => {
         event.preventDefault();
-        if (!fromDate || !toDate) {
-            setErrorMessage("Escolha as duas datas do período.");
-            return;
-        }
-        if (fromDate > toDate) {
-            setErrorMessage("A data inicial precisa ser igual ou anterior à data final.");
-            return;
-        }
-        if (toDate > yesterday) {
-            setErrorMessage("Escolha um período que termine até ontem.");
+        const periodError = periodErrorOf(fromDate, toDate, yesterday);
+        if (periodError) {
+            setErrorMessage(periodError);
             return;
         }
         setErrorMessage(null);
@@ -133,83 +153,95 @@ export default function Indicadores() {
 }
 
 function IndicatorCards({indicators}) {
-    const goal = indicators.goalPercent;
-    const percent = indicators.onTimePercent;
-    const hasPercent = percent !== null && percent !== undefined;
-    const invitesGoalMet = indicators.invitesInCycle === indicators.invitesSent;
-
     return (
         <>
             <div className={styles.grid}>
-                <Card title="Pacientes no ciclo de acompanhamento">
-                    <p className={styles.bigNumber}>{indicators.patientsInCycle}</p>
-                    <p className={styles.explain}>
-                        de {countOf(indicators.activePatients, "paciente ativo", "pacientes ativos")} hoje,
-                        com acompanhamento automático valendo hoje.
-                    </p>
-                    <p>
-                        {countOf(indicators.patientsWithForms, "paciente", "pacientes")} com formulário com prazo
-                        no período.
-                    </p>
-                    <p>
-                        Convites do período: {countOf(indicators.invitesSent, "enviado", "enviados")}
-                        {" · "}{countOf(indicators.invitesRegistered, "cadastrado", "cadastrados")}
-                        {" · "}{countOf(indicators.invitesInCycle, "entrou", "entraram")} em um acompanhamento
-                        {" · "}{indicators.invitesStillOpen} com o link ainda válido
-                    </p>
-                    <p className={styles.explain}>Meta: todo paciente convidado cadastrado e no ciclo.</p>
-                    {indicators.invitesSent > 0 && (
-                        <p className={invitesGoalMet ? styles.goalMet : styles.goalMissed}>
-                            {invitesGoalMet ? "Meta atingida" : "Meta ainda não atingida"}
-                        </p>
-                    )}
-                </Card>
-
-                <Card title="Formulários respondidos no prazo">
-                    <p className={styles.bigNumber}>{percentText(percent)}</p>
-                    <p className={styles.explain}>
-                        {indicators.formsOnTime} de {countOf(indicators.formsDue, "formulário", "formulários")} com
-                        prazo no período foram respondidos até o último dia.
-                    </p>
-                    {hasPercent && (
-                        <>
-                            <p className={percent >= goal ? styles.goalMet : styles.goalMissed}>
-                                {percent >= goal ? "Meta de " + goal + "% atingida" : "Abaixo da meta de " + goal + "%"}
-                            </p>
-                            {/* o numero e a etiqueta ja dizem tudo, a barra eh so o desenho */}
-                            <div className={styles.bar} aria-hidden="true">
-                                <span className={styles.barFill} style={{width: Math.min(percent, 100) + "%"}}/>
-                                <span className={styles.goalMark} style={{left: goal + "%"}}/>
-                            </div>
-                            <p className={styles.barCaption} aria-hidden="true">O traço marca a meta de {goal}%.</p>
-                        </>
-                    )}
-                    {indicators.diaryDaysExpected > 0 && (
-                        <p>
-                            Diários: {indicators.diaryDaysFilled} de {indicators.diaryDaysExpected} dias
-                            preenchidos ({percentText(indicators.diaryDaysPercent)})
-                        </p>
-                    )}
-                </Card>
+                <PatientsInCycleCard indicators={indicators}/>
+                <FormsOnTimeCard indicators={indicators}/>
             </div>
 
-            <Card title="Por escala">
-                {indicators.scales.length === 0 ? (
-                    <p className={styles.empty}>Nenhum formulário com prazo no período.</p>
-                ) : (
-                    <ItemList>
-                        {indicators.scales.map((scale) => (
-                            <ListItem
-                                key={scale.scaleType}
-                                title={scale.scaleName}
-                                details={scale.formsOnTime + " de " + scale.formsDue + " no prazo · "
-                                    + percentText(scale.onTimePercent)
-                                    + (scale.daily ? " · " + scale.daysFilled + " de " + scale.daysExpected + " dias" : "")}
-                            />
-                        ))}
-                    </ItemList>
-                )}
-            </Card>
+            <ScalesCard scales={indicators.scales}/>
         </>
+    );
+}
+
+function PatientsInCycleCard({indicators}) {
+    const invitesGoalMet = indicators.invitesInCycle === indicators.invitesSent;
+
+    return (
+        <Card title="Pacientes no ciclo de acompanhamento">
+            <p className={styles.bigNumber}>{indicators.patientsInCycle}</p>
+            <p className={styles.explain}>
+                de {countOf(indicators.activePatients, "paciente ativo", "pacientes ativos")} hoje,
+                com acompanhamento automático valendo hoje.
+            </p>
+            <p>
+                {countOf(indicators.patientsWithForms, "paciente", "pacientes")} com formulário com prazo
+                no período.
+            </p>
+            <p>
+                Convites do período: {countOf(indicators.invitesSent, "enviado", "enviados")}
+                {" · "}{countOf(indicators.invitesRegistered, "cadastrado", "cadastrados")}
+                {" · "}{countOf(indicators.invitesInCycle, "entrou", "entraram")} em um acompanhamento
+                {" · "}{indicators.invitesStillOpen} com o link ainda válido
+            </p>
+            <p className={styles.explain}>Meta: todo paciente convidado cadastrado e no ciclo.</p>
+            {indicators.invitesSent > 0 && (
+                <p className={invitesGoalMet ? styles.goalMet : styles.goalMissed}>
+                    {invitesGoalMet ? "Meta atingida" : "Meta ainda não atingida"}
+                </p>
+            )}
+        </Card>
+    );
+}
+
+function FormsOnTimeCard({indicators}) {
+    const goal = indicators.goalPercent;
+    const percent = indicators.onTimePercent;
+    const isGoalMet = percent >= goal;
+
+    return (
+        <Card title="Formulários respondidos no prazo">
+            <p className={styles.bigNumber}>{percentText(percent)}</p>
+            <p className={styles.explain}>
+                {indicators.formsOnTime} de {countOf(indicators.formsDue, "formulário", "formulários")} com
+                prazo no período foram respondidos até o último dia.
+            </p>
+            {hasPercent(percent) && (
+                <>
+                    <p className={isGoalMet ? styles.goalMet : styles.goalMissed}>
+                        {isGoalMet ? "Meta de " + goal + "% atingida" : "Abaixo da meta de " + goal + "%"}
+                    </p>
+                    {/* o numero e a etiqueta ja dizem tudo e a barra eh so o desenho */}
+                    <div className={styles.bar} aria-hidden="true">
+                        <span className={styles.barFill} style={{width: Math.min(percent, 100) + "%"}}/>
+                        <span className={styles.goalMark} style={{left: goal + "%"}}/>
+                    </div>
+                    <p className={styles.barCaption} aria-hidden="true">O traço marca a meta de {goal}%.</p>
+                </>
+            )}
+            {indicators.diaryDaysExpected > 0 && (
+                <p>
+                    Diários: {indicators.diaryDaysFilled} de {indicators.diaryDaysExpected} dias
+                    preenchidos ({percentText(indicators.diaryDaysPercent)})
+                </p>
+            )}
+        </Card>
+    );
+}
+
+function ScalesCard({scales}) {
+    return (
+        <Card title="Por escala">
+            {scales.length === 0 ? (
+                <p className={styles.empty}>Nenhum formulário com prazo no período.</p>
+            ) : (
+                <ItemList>
+                    {scales.map((scale) => (
+                        <ListItem key={scale.scaleType} title={scale.scaleName} details={scaleDetailsOf(scale)}/>
+                    ))}
+                </ItemList>
+            )}
+        </Card>
     );
 }

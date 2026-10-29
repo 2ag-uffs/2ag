@@ -147,8 +147,8 @@ public class ConsultationService {
         if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
             throw new BusinessException(HAS_PRESCRIPTION_MESSAGE);
         }
-        // mesmo tratamento da prescricao: o exame tem motivo proprio de anulacao
-        // e a trilha precisa registrar cada um, entao n da pra anular em cascata
+        // mesmo tratamento da prescricao pq o exame tem motivo proprio de anulacao
+        // e a trilha precisa registrar cada um entao n da pra anular em cascata
         if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
             throw new BusinessException(HAS_EXAM_MESSAGE);
         }
@@ -160,14 +160,14 @@ public class ConsultationService {
         return new AppointmentResponseDTO(savedAppointment);
     }
 
-    // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta,
+    // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta
     // entao mudar a data com eles deixava a receita de uma consulta antiga valendo (RF05)
     // vale pra correcao do registro e pra remarcacao na agenda
-    // a tela manda a hora sem os segundos, por isso a comparacao eh no minuto
+    // a tela manda a hora sem os segundos por isso a comparacao eh no minuto
     public void checkDateCanChange(Appointment appointment, LocalDateTime newDateTime) {
-        boolean dateChanged = !newDateTime.truncatedTo(ChronoUnit.MINUTES)
+        boolean sameMinute = newDateTime.truncatedTo(ChronoUnit.MINUTES)
                 .equals(appointment.getDateTime().truncatedTo(ChronoUnit.MINUTES));
-        if (!dateChanged) {
+        if (sameMinute) {
             return;
         }
         if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {

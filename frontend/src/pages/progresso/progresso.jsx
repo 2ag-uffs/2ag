@@ -65,6 +65,8 @@ const PERIODS = [
     {value: "DIAS_90", label: "Últimos 90 dias"},
 ];
 
+const DEFAULT_PERIOD = "DIAS_30";
+
 // o periodo todo o tempo eh so do prescritor (RF28)
 const ALL_TIME_PERIOD = {value: "TUDO", label: "Todo o tempo"};
 
@@ -96,7 +98,7 @@ export default function Progresso() {
 
     const [attributes, setAttributes] = useState([]);
     const [chosenAttribute, setChosenAttribute] = useState(keptFilters.attribute || "");
-    const [period, setPeriod] = useState(keptFilters.period || "DIAS_30");
+    const [period, setPeriod] = useState(keptFilters.period || DEFAULT_PERIOD);
 
     const [points, setPoints] = useState([]);
     const [dosePoints, setDosePoints] = useState([]);
@@ -161,17 +163,15 @@ export default function Progresso() {
                 });
             })
             .catch((requestError) => {
-                setLoadError(requestError instanceof ApiError
-                    ? requestError.message
-                    : "Não foi possível carregar as escalas.");
+                setLoadError(errorTextOf(requestError, "Não foi possível carregar as escalas."));
             });
     }, [patientId]);
 
     // as escalas q aparecem no seletor sem repetir
     const scales = useMemo(() => {
-        const seen = new Map();
-        attributes.forEach((attribute) => seen.set(attribute.scaleType, attribute.scaleName));
-        return Array.from(seen, ([value, label]) => ({value, label}));
+        const nameByScaleType = new Map();
+        attributes.forEach((attribute) => nameByScaleType.set(attribute.scaleType, attribute.scaleName));
+        return Array.from(nameByScaleType, ([value, label]) => ({value, label}));
     }, [attributes]);
 
     // a escala sai do atributo escolhido entao as duas nunca ficam desencontradas
@@ -182,9 +182,8 @@ export default function Progresso() {
 
     const attributesOfScale = attributes.filter((attribute) => attribute.scaleType === chosenScale);
 
-    // cada serie eh de um paciente atributo e periodo
     // enquanto a serie da chave atual n chega a tela mostra o esqueleto
-    const seriesKey = patientId + "|" + chosenAttribute + "|" + period;
+    const seriesKey = seriesKeyOf(patientId, chosenAttribute, period);
     const isLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
     const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
 
@@ -192,7 +191,7 @@ export default function Progresso() {
         if (!patientId || !chosenAttribute) {
             return;
         }
-        const requestKey = patientId + "|" + chosenAttribute + "|" + period;
+        const requestKey = seriesKeyOf(patientId, chosenAttribute, period);
         // resposta de um filtro antigo q chega atrasada n pode passar por cima da atual
         let isCurrentRequest = true;
 
@@ -209,9 +208,7 @@ export default function Progresso() {
                     setPoints([]);
                     setSeriesError({
                         key: requestKey,
-                        message: requestError instanceof ApiError
-                            ? requestError.message
-                            : "Não foi possível carregar o progresso.",
+                        message: errorTextOf(requestError, "Não foi possível carregar o progresso."),
                     });
                 }
             })
@@ -265,19 +262,7 @@ export default function Progresso() {
         gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
     }));
 
-    // o eixo x eh categorico entao so da pra marcar consulta em dia q tem
-    // ponto no grafico senao o recharts n sabe onde por a linha
-    const daysWithPoint = new Set(chartRows.map((row) => row.label));
-    const markedDays = new Set();
-    const appointmentMarks = !showAppointments ? [] : appointments
-        .map((appointment) => ({...appointment, label: dayAndMonth(appointment.data)}))
-        .filter((appointment) => {
-            if (!daysWithPoint.has(appointment.label) || markedDays.has(appointment.label)) {
-                return false;
-            }
-            markedDays.add(appointment.label);
-            return true;
-        });
+    const appointmentMarks = showAppointments ? appointmentMarksOf(appointments, chartRows) : [];
 
     // a faixa interpretativa vira linha de corte no grafico pq escore
     // sem faixa n quer dizer nada (RN14)
@@ -292,16 +277,9 @@ export default function Progresso() {
     const directionText = currentAttribute ? directionTextOf(currentAttribute) : null;
     const DirectionIcon = currentAttribute && currentAttribute.higherIsBetter ? FiArrowUp : FiArrowDown;
 
-    // o MEEM n tem faixa fixa: o corte vem da escolaridade de cada exame (RN14)
-    // qnd todos tem o mesmo corte ele vira uma linha, senao a faixa fica em cada ponto.
-    // exame antigo sem escolaridade n tem corte e eh contado a parte
+    // o MEEM n tem faixa fixa e o corte vem da escolaridade de cada exame (RN14)
+    // qnd todos tem o msm corte ele vira uma linha senao a faixa fica em cada ponto
     const sharedCutoff = sharedCutoffOf(points);
-    const hasSchoolingChanged = hasVaryingCutoff(points);
-    const examsWithoutSchooling = isMentalStateExam ? countWithoutCutoff(points) : 0;
-
-    // o ultimo escore escrito com a faixa, pq o tooltip so aparece passando o mouse ou tocando no ponto
-    const lastPoint = points.length > 0 ? points[points.length - 1] : null;
-    const lastBand = lastPoint ? bandTextOf(lastPoint, isMentalStateExam) : null;
 
     // trocar a escala abre o primeiro atributo dela
     const changeScale = (newScale) => {
@@ -325,31 +303,13 @@ export default function Progresso() {
         });
     };
 
-    // paciente arquivado n vem na lista mas pode ter sido aberto pelo historico
-    const patientList = patients || [];
-    const isCurrentInList = patientList.some((patient) => String(patient.id) === String(patientId));
-    const patientOptions = currentPatient && !isCurrentInList ? [...patientList, currentPatient] : patientList;
-
     const patientFilter = (
-        <div className={styles.filter + " " + styles.patientFilter}>
-            <label htmlFor="paciente">Paciente</label>
-            <select
-                id="paciente"
-                className={styles.select}
-                value={patientId || ""}
-                onChange={(event) => changePatient(event.target.value)}
-                disabled={patients === null}
-            >
-                <option value="" disabled={Boolean(patientId)}>
-                    {patients === null ? "Carregando pacientes…" : "Escolha um paciente"}
-                </option>
-                {patientOptions.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                        {patient.archived ? patient.name + " (no arquivo)" : patient.name}
-                    </option>
-                ))}
-            </select>
-        </div>
+        <PatientFilter
+            patients={patients}
+            currentPatient={currentPatient}
+            patientId={patientId}
+            onChange={changePatient}
+        />
     );
 
     // o prescritor abriu o progresso pelo menu e ainda n escolheu ninguem
@@ -412,9 +372,8 @@ export default function Progresso() {
             await download("/patients/" + patientId + "/export/progress.csv?attribute="
                 + chosenAttribute + "&period=" + period + deidentifiedParam, "progresso.csv");
         } catch (requestError) {
-            setDownloadError(requestError instanceof ApiError
-                ? requestError.message
-                : "Não foi possível baixar o arquivo. Confira sua internet e tente de novo.");
+            setDownloadError(errorTextOf(requestError,
+                "Não foi possível baixar o arquivo. Confira sua internet e tente de novo."));
         } finally {
             setIsDownloading(false);
         }
@@ -501,25 +460,11 @@ export default function Progresso() {
                         </label>
                     )}
                     {isPrescriber && chartRows.length > 0 && (
-                        <label className={styles.check}>
-                            <input
-                                type="checkbox"
-                                checked={isDeidentified}
-                                onChange={(event) => setIsDeidentified(event.target.checked)}
-                            />
-                            Baixar o CSV sem identificação, para pesquisa
-                        </label>
-                    )}
-                    {isPrescriber && chartRows.length > 0 && lacksResearchConsent && (
-                        <p className={styles.checkHint}>
-                            O paciente não aceitou participar da pesquisa, então o CSV sem identificação não sai.
-                        </p>
-                    )}
-                    {isPrescriber && chartRows.length > 0 && isDeidentified && !lacksResearchConsent && (
-                        <p className={styles.checkHint}>
-                            O paciente aparece só por um número, mas a clínica sabe de quem é. Guarde o arquivo com
-                            o mesmo cuidado do prontuário.
-                        </p>
+                        <DeidentifiedChoice
+                            isDeidentified={isDeidentified}
+                            lacksResearchConsent={lacksResearchConsent}
+                            onChange={setIsDeidentified}
+                        />
                     )}
                 </div>
             </div>
@@ -638,79 +583,166 @@ export default function Progresso() {
                     </div>
                 )}
 
-                {!isLoading && sharedCutoff !== null && (
-                    <p className={styles.note}>
-                        A linha tracejada é o ponto de corte para a escolaridade registrada no exame
-                        ({formatCutoff(sharedCutoff)} pontos). Na linha ou acima dela, o resultado está dentro do
-                        esperado; abaixo dela, está abaixo do esperado.
-                    </p>
-                )}
-
-                {!isLoading && hasSchoolingChanged && (
-                    <p className={styles.note}>
-                        A escolaridade registrada mudou no período, então cada exame tem o próprio ponto de corte.
-                        A faixa de cada um aparece no ponto do gráfico.
-                    </p>
-                )}
-
-                {!isLoading && examsWithoutSchooling > 0 && (
-                    <p className={styles.note}>
-                        {NO_SCHOOLING_TEXT}.{" "}
-                        {examsWithoutSchooling === points.length
-                            ? "Sem a escolaridade não há ponto de corte para dizer se o escore está dentro do esperado."
-                            : "Isso vale para " + examsWithoutSchooling + " de " + points.length
-                            + " exames do período; a faixa dos outros aparece no ponto do gráfico."}
-                    </p>
-                )}
-
-                {!isLoading && lastBand && (
-                    <p className={styles.lastReading}>
-                        Último registro, em {formatDate(lastPoint.date)}:{" "}
-                        <strong>{valueWithBand(lastPoint.value, lastBand)}</strong>
-                    </p>
+                {!isLoading && (
+                    <ReadingNotes points={points} isMentalStateExam={isMentalStateExam} sharedCutoff={sharedCutoff}/>
                 )}
             </Card>
 
             {showAppointments && appointments.length > 0 && (
-                <Card title="Consultas no período" count={appointments.length}>
-                    <ul className={styles.list}>
-                        {appointments.map((appointment) => (
-                            <li key={appointment.id}>
-                                <strong>{formatDate(appointment.data)}</strong>
-                                {appointment.diagnosis ? " — " + appointment.diagnosis : ""}
-                                {appointment.geraPrescricao && (
-                                    <span className={styles.mark}>receita emitida</span>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                    {/* so vira linha no grafico a consulta q caiu num dia
-                        com preenchimento entao a lista avisa */}
-                    {chartRows.length > 0 && appointmentMarks.length < appointments.length && (
-                        <p className={styles.note}>
-                            Consulta em dia sem preenchimento aparece aqui, mas não no gráfico: não há ponto onde marcar.
-                        </p>
-                    )}
-                </Card>
+                <AppointmentsCard
+                    appointments={appointments}
+                    hasUnmarkedAppointments={chartRows.length > 0 && appointmentMarks.length < appointments.length}
+                />
             )}
 
-            <Card title="O que o paciente escreveu" count={comments.length}>
-                {comments.length === 0 ? (
-                    <p className={styles.empty}>Nenhum comentário nas escalas deste período.</p>
-                ) : (
-                    <ul className={styles.comments}>
-                        {comments.map((comment) => (
-                            <li key={comment.responseId + "-" + comment.itemLabel} className={styles.comment}>
-                                <p className={styles.commentMeta}>
-                                    {formatDate(comment.date)} · {comment.scaleName}
-                                </p>
-                                <p className={styles.commentText}>{comment.text}</p>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </Card>
+            <CommentsCard comments={comments}/>
         </section>
+    );
+}
+
+// paciente arquivado n vem na lista mas pode ter sido aberto pelo historico
+function PatientFilter({patients, currentPatient, patientId, onChange}) {
+    const patientList = patients || [];
+    const isCurrentInList = patientList.some((patient) => String(patient.id) === String(patientId));
+    const patientOptions = currentPatient && !isCurrentInList ? [...patientList, currentPatient] : patientList;
+
+    return (
+        <div className={styles.filter + " " + styles.patientFilter}>
+            <label htmlFor="paciente">Paciente</label>
+            <select
+                id="paciente"
+                className={styles.select}
+                value={patientId || ""}
+                onChange={(event) => onChange(event.target.value)}
+                disabled={patients === null}
+            >
+                <option value="" disabled={Boolean(patientId)}>
+                    {patients === null ? "Carregando pacientes…" : "Escolha um paciente"}
+                </option>
+                {patientOptions.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
+                        {patient.archived ? patient.name + " (no arquivo)" : patient.name}
+                    </option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
+function DeidentifiedChoice({isDeidentified, lacksResearchConsent, onChange}) {
+    return (
+        <>
+            <label className={styles.check}>
+                <input
+                    type="checkbox"
+                    checked={isDeidentified}
+                    onChange={(event) => onChange(event.target.checked)}
+                />
+                Baixar o CSV sem identificação, para pesquisa
+            </label>
+            {lacksResearchConsent && (
+                <p className={styles.checkHint}>
+                    O paciente não aceitou participar da pesquisa, então o CSV sem identificação não sai.
+                </p>
+            )}
+            {isDeidentified && !lacksResearchConsent && (
+                <p className={styles.checkHint}>
+                    O paciente aparece só por um número, mas a clínica sabe de quem é. Guarde o arquivo com
+                    o mesmo cuidado do prontuário.
+                </p>
+            )}
+        </>
+    );
+}
+
+// o q ajuda a ler o escore embaixo do grafico (RN14)
+// exame antigo sem escolaridade n tem corte e eh contado a parte
+function ReadingNotes({points, isMentalStateExam, sharedCutoff}) {
+    const hasSchoolingChanged = hasVaryingCutoff(points);
+    const examsWithoutSchooling = isMentalStateExam ? countWithoutCutoff(points) : 0;
+    // o ultimo escore vai escrito com a faixa pq o tooltip so aparece passando o mouse ou tocando no ponto
+    const lastPoint = points.length > 0 ? points[points.length - 1] : null;
+    const lastBand = lastPoint ? bandTextOf(lastPoint, isMentalStateExam) : null;
+
+    return (
+        <>
+            {sharedCutoff !== null && (
+                <p className={styles.note}>
+                    A linha tracejada é o ponto de corte para a escolaridade registrada no exame
+                    ({formatCutoff(sharedCutoff)} pontos). Na linha ou acima dela, o resultado está dentro do
+                    esperado; abaixo dela, está abaixo do esperado.
+                </p>
+            )}
+
+            {hasSchoolingChanged && (
+                <p className={styles.note}>
+                    A escolaridade registrada mudou no período, então cada exame tem o próprio ponto de corte.
+                    A faixa de cada um aparece no ponto do gráfico.
+                </p>
+            )}
+
+            {examsWithoutSchooling > 0 && (
+                <p className={styles.note}>
+                    {NO_SCHOOLING_TEXT}.{" "}
+                    {examsWithoutSchooling === points.length
+                        ? "Sem a escolaridade não há ponto de corte para dizer se o escore está dentro do esperado."
+                        : "Isso vale para " + examsWithoutSchooling + " de " + points.length
+                        + " exames do período; a faixa dos outros aparece no ponto do gráfico."}
+                </p>
+            )}
+
+            {lastBand && (
+                <p className={styles.lastReading}>
+                    Último registro, em {formatDate(lastPoint.date)}:{" "}
+                    <strong>{valueWithBand(lastPoint.value, lastBand)}</strong>
+                </p>
+            )}
+        </>
+    );
+}
+
+// so vira linha no grafico a consulta q caiu num dia com preenchimento entao a lista avisa
+function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
+    return (
+        <Card title="Consultas no período" count={appointments.length}>
+            <ul className={styles.list}>
+                {appointments.map((appointment) => (
+                    <li key={appointment.id}>
+                        <strong>{formatDate(appointment.data)}</strong>
+                        {appointment.diagnosis ? " — " + appointment.diagnosis : ""}
+                        {appointment.geraPrescricao && (
+                            <span className={styles.mark}>receita emitida</span>
+                        )}
+                    </li>
+                ))}
+            </ul>
+            {hasUnmarkedAppointments && (
+                <p className={styles.note}>
+                    Consulta em dia sem preenchimento aparece aqui, mas não no gráfico: não há ponto onde marcar.
+                </p>
+            )}
+        </Card>
+    );
+}
+
+function CommentsCard({comments}) {
+    return (
+        <Card title="O que o paciente escreveu" count={comments.length}>
+            {comments.length === 0 ? (
+                <p className={styles.empty}>Nenhum comentário nas escalas deste período.</p>
+            ) : (
+                <ul className={styles.comments}>
+                    {comments.map((comment) => (
+                        <li key={comment.responseId + "-" + comment.itemLabel} className={styles.comment}>
+                            <p className={styles.commentMeta}>
+                                {formatDate(comment.date)} · {comment.scaleName}
+                            </p>
+                            <p className={styles.commentText}>{comment.text}</p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </Card>
     );
 }
 
@@ -723,4 +755,29 @@ function sumByDate(morningPoints, afternoonPoints) {
         totalByDate.set(point.date, current === undefined ? point.value : current + point.value);
     });
     return Array.from(totalByDate, ([date, value]) => ({date, value}));
+}
+
+// o eixo x eh categorico entao so da pra marcar consulta em dia q tem ponto no grafico
+// senao o recharts n sabe onde por a linha e duas consultas no msm dia viram uma marca so
+function appointmentMarksOf(appointments, chartRows) {
+    const daysWithPoint = new Set(chartRows.map((row) => row.label));
+    const markedDays = new Set();
+    return appointments
+        .map((appointment) => ({...appointment, label: dayAndMonth(appointment.data)}))
+        .filter((appointment) => {
+            if (!daysWithPoint.has(appointment.label) || markedDays.has(appointment.label)) {
+                return false;
+            }
+            markedDays.add(appointment.label);
+            return true;
+        });
+}
+
+// cada serie eh de um paciente atributo e periodo
+function seriesKeyOf(patientId, attribute, period) {
+    return patientId + "|" + attribute + "|" + period;
+}
+
+function errorTextOf(requestError, fallback) {
+    return requestError instanceof ApiError ? requestError.message : fallback;
 }

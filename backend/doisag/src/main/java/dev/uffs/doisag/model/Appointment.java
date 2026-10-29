@@ -36,9 +36,8 @@ public class Appointment {
     @Column(columnDefinition = "TEXT")
     private String evolution;
 
-    // o que a prescritora registra durante o exame do paciente.
-    // peso e altura ficam numericos de proposito: sao os unicos dados da
-    // consulta que fazem sentido acompanhar ao longo do tratamento
+    // o q a prescritora registra no exame do paciente
+    // peso e altura ficam numericos de proposito pq sao os unicos da consulta q da pra acompanhar no tratamento
     @Column(columnDefinition = "TEXT")
     private String physicalExam;
 
@@ -49,8 +48,6 @@ public class Appointment {
     private Float weight;
     private Integer height;
 
-    // quanto tempo a consulta ocupa na agenda, em minutos. a tela ja
-    // perguntava isso e a resposta era descartada
     private Integer durationMinutes = 60;
 
     // primeira consulta ou retorno. a consulta de antes disso fica sem tipo
@@ -143,22 +140,19 @@ public class Appointment {
     public void setPatientNote(String patientNote) {
         this.patientNote = patientNote;
     }
-    // relacionamento n:1, muitas consultas podem ser de um paciente
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "patient_id", nullable = false) // fk pro paciente
+    @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
-    // relacionamento n:1, muitas consultas podem ser de um prescritor
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prescriber_id", nullable = false) // fk pro prescritor
+    @JoinColumn(name = "prescriber_id", nullable = false)
     private Prescriber prescriber;
 
-    // uma consulta pode ter varias prescricoes
-    //
-    // sem cascade de remocao de proposito: prescricao eh dado clinico e so sai
-    // por anulacao, com motivo e autor. apagar junto com a consulta, ou por tirar
-    // da lista, contraria a guarda de prontuario da lei 13.787/2018
+    // sem cascade de remocao de proposito pq prescricao eh dado clinico e so sai por anulacao c/ motivo e autor
+    // apagar junto c/ a consulta ou por tirar da lista contraria a guarda de prontuario da lei 13.787/2018
     @OneToMany(
-            mappedBy = "appointment", // o lado Prescription gerencia a relação
+            mappedBy = "appointment",
             cascade = {CascadeType.PERSIST, CascadeType.MERGE}
     )
     private List<Prescription> prescriptions = new ArrayList<>();
@@ -252,8 +246,8 @@ public class Appointment {
         return prescriptions;
     }
 
-    // quando o registro nasceu e quando foi mexido pela ultima vez.
-    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    // qnd o registro nasceu e qnd foi mexido pela ultima vez
+    // o spring preenche sozinho e ninguem seta na mao (RF31)
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

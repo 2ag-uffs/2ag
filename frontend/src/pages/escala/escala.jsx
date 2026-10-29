@@ -15,13 +15,15 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 // os acompanhamentos semanais falam da ultima semana
 const PERIOD_DAYS = 7;
 
+const SLEEP_DIARY_SLUG = "diario-sono";
+
 // pode ter duas pendentes da mesma escala (a antiga q voltou pra pendente e a atual)
-// vale a q cobre hoje, pq o servidor liga cada dia na tarefa q cobre ele, e sem nenhuma a q comecou por ultimo
-function openTaskOf(pendingTasks, slug, today) {
+// vale a q cobre o dia pq o servidor liga cada dia na tarefa q cobre ele e sem nenhuma a q comecou por ultimo
+function openTaskOf(pendingTasks, slug, dayIso) {
     const tasksOfScale = pendingTasks.filter((task) => task.path === "/escalas/" + slug);
-    const taskOfToday = tasksOfScale.find((task) => task.periodStart <= today && task.periodEnd >= today);
-    if (taskOfToday) {
-        return taskOfToday;
+    const taskOfDay = tasksOfScale.find((task) => task.periodStart <= dayIso && task.periodEnd >= dayIso);
+    if (taskOfDay) {
+        return taskOfDay;
     }
     let latestTask = null;
     for (const task of tasksOfScale) {
@@ -30,6 +32,70 @@ function openTaskOf(pendingTasks, slug, today) {
         }
     }
     return latestTask;
+}
+
+// c/ a hora no texto a data eh lida no fuso local e n volta um dia
+function localDateOf(dayIso) {
+    return new Date(dayIso + "T00:00:00");
+}
+
+function daysBetween(firstDay, lastDay) {
+    const days = [];
+    let dayIso = firstDay;
+    while (dayIso <= lastDay) {
+        days.push(dayIso);
+        const nextDay = toIsoDate(addDays(localDateOf(dayIso), 1));
+        // se a conta do dia seguinte n andar a grade para aqui em vez de travar a tela
+        if (nextDay <= dayIso) {
+            break;
+        }
+        dayIso = nextDay;
+    }
+    return days;
+}
+
+// a api manda hh:mm:ss e aqui so interessa hh:mm
+function hourAndMinuteOf(time) {
+    return time ? time.slice(0, 5) : "—";
+}
+
+function DayGrid({days, responses, selectedDay, isInsideTask, onChooseDay}) {
+    return (
+        <section className={styles.daysSection}>
+            <h2 className={styles.sectionTitle}>{isInsideTask ? "Dias do período" : "Dia da semana"}</h2>
+            {isInsideTask && (
+                <p className={styles.daysHint}>
+                    Esqueceu algum dia? Escolha o dia na grade e preencha agora.
+                </p>
+            )}
+            <div
+                className={styles.days}
+                role="group"
+                aria-label={isInsideTask ? "Dias do período" : "Dias da semana"}
+            >
+                {days.map((dayIso) => {
+                    // dia so com resposta anulada volta a ficar em branco
+                    const isFilled = responses.some((response) => response.periodStart === dayIso
+                        && !response.annulled);
+                    return (
+                        <button
+                            key={dayIso}
+                            type="button"
+                            className={dayIso === selectedDay ? styles.day + " " + styles.dayChosen : styles.day}
+                            aria-pressed={dayIso === selectedDay}
+                            onClick={() => onChooseDay(dayIso)}
+                        >
+                            <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
+                            <span className={isFilled ? styles.dayMark + " " + styles.dayFilled : styles.dayMark}>
+                                {isFilled && <FiCheck aria-hidden="true"/>}
+                                {isFilled ? "preenchido" : "em branco"}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+        </section>
+    );
 }
 
 // tela unica de preenchimento de escala (RF08 e RF21 a RF26)
@@ -44,6 +110,8 @@ export default function Escala() {
 
     const today = toIsoDate(new Date());
     const chosenDate = searchParams.get("data");
+    // a data da url so vale se o dia ja chegou
+    const startingDay = chosenDate && chosenDate <= today ? chosenDate : today;
 
     const [definition, setDefinition] = useState(null);
     const [responses, setResponses] = useState([]);
@@ -52,7 +120,7 @@ export default function Escala() {
     const [loadError, setLoadError] = useState(null);
     // o q a paciente mexeu fica guardado por dia ate salvar
     const [editsByDay, setEditsByDay] = useState({});
-    const [selectedDay, setSelectedDay] = useState(chosenDate && chosenDate <= today ? chosenDate : today);
+    const [selectedDay, setSelectedDay] = useState(startingDay);
     const [periodEndByDay, setPeriodEndByDay] = useState({});
     // o inicio do periodo q a paciente mexeu na correcao, antes de salvar
     const [periodStartByDay, setPeriodStartByDay] = useState({});
@@ -98,7 +166,7 @@ export default function Escala() {
     // a programacao de horarios do diario do sono, q o prescritor define
     // no acompanhamento. paciente sem acompanhamento n tem programacao
     useEffect(() => {
-        if (slug !== "diario-sono") {
+        if (slug !== SLEEP_DIARY_SLUG) {
             return;
         }
         apiService.get("/patients/" + loggedUser.id + "/treatment-protocol")
@@ -116,10 +184,9 @@ export default function Escala() {
         if (!isDiary) {
             return;
         }
-        const gridDay = chosenDate && chosenDate <= today ? chosenDate : today;
         apiService.get("/patients/" + loggedUser.id + "/scales/overview")
             .then((page) => {
-                const task = openTaskOf(page.pending, slug, gridDay);
+                const task = openTaskOf(page.pending, slug, startingDay);
                 setOpenTask(task);
                 // a pendente q ja venceu ainda aceita os dias dela (antes do job das 8h, ou qnd volta pela
                 // anulacao), entao a tela abre no ultimo dia dela e a grade mostra o periodo dela
@@ -128,7 +195,7 @@ export default function Escala() {
                 }
             })
             .catch(() => setOpenTask(null));
-    }, [isDiary, slug, loggedUser.id, today, chosenDate]);
+    }, [isDiary, slug, loggedUser.id, today, chosenDate, startingDay]);
 
     const insideOpenTask = openTask !== null
         && selectedDay >= openTask.periodStart
@@ -141,24 +208,12 @@ export default function Escala() {
     const gridDays = useMemo(() => {
         const firstDay = insideOpenTask
             ? openTask.periodStart
-            : toIsoDate(mondayOf(new Date(selectedDay + "T00:00:00")));
+            : toIsoDate(mondayOf(localDateOf(selectedDay)));
         const periodLastDay = insideOpenTask
             ? openTask.periodEnd
-            : toIsoDate(addDays(new Date(firstDay + "T00:00:00"), 6));
+            : toIsoDate(addDays(localDateOf(firstDay), 6));
         const lastDay = periodLastDay < today ? periodLastDay : today;
-
-        const days = [];
-        let dayIso = firstDay;
-        while (dayIso <= lastDay) {
-            days.push(dayIso);
-            const nextDay = toIsoDate(addDays(new Date(dayIso + "T00:00:00"), 1));
-            // se a conta do dia seguinte n andar a grade para aqui em vez de travar a tela
-            if (nextDay <= dayIso) {
-                break;
-            }
-            dayIso = nextDay;
-        }
-        return days;
+        return daysBetween(firstDay, lastDay);
     }, [selectedDay, today, openTask, insideOpenTask]);
 
     // resposta anulada fica so no historico: o dia dela abre em branco pro paciente responder de novo
@@ -289,48 +344,19 @@ export default function Escala() {
             {sleepSchedule && (sleepSchedule.sleepBedTime || sleepSchedule.sleepWakeTime) && (
                 <p className={styles.schedule}>
                     <FiMoon aria-hidden="true"/>
-                    {/* a api manda hh:mm:ss e aqui so interessa hh:mm */}
-                    Programação do seu prescritor: dormir às {sleepSchedule.sleepBedTime
-                        ? sleepSchedule.sleepBedTime.slice(0, 5) : "—"} e
-                    levantar às {sleepSchedule.sleepWakeTime ? sleepSchedule.sleepWakeTime.slice(0, 5) : "—"}.
+                    Programação do seu prescritor: dormir às {hourAndMinuteOf(sleepSchedule.sleepBedTime)} e
+                    levantar às {hourAndMinuteOf(sleepSchedule.sleepWakeTime)}.
                 </p>
             )}
 
             {isDiary && (
-                <section className={styles.daysSection}>
-                    <h2 className={styles.sectionTitle}>{insideOpenTask ? "Dias do período" : "Dia da semana"}</h2>
-                    {insideOpenTask && (
-                        <p className={styles.daysHint}>
-                            Esqueceu algum dia? Escolha o dia na grade e preencha agora.
-                        </p>
-                    )}
-                    <div
-                        className={styles.days}
-                        role="group"
-                        aria-label={insideOpenTask ? "Dias do período" : "Dias da semana"}
-                    >
-                        {gridDays.map((dayIso) => {
-                            // dia so com resposta anulada volta a ficar em branco
-                            const isFilled = responses.some((response) => response.periodStart === dayIso
-                                && !response.annulled);
-                            return (
-                                <button
-                                    key={dayIso}
-                                    type="button"
-                                    className={dayIso === selectedDay ? styles.day + " " + styles.dayChosen : styles.day}
-                                    aria-pressed={dayIso === selectedDay}
-                                    onClick={() => changeDay(dayIso)}
-                                >
-                                    <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
-                                    <span className={isFilled ? styles.dayMark + " " + styles.dayFilled : styles.dayMark}>
-                                        {isFilled && <FiCheck aria-hidden="true"/>}
-                                        {isFilled ? "preenchido" : "em branco"}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
+                <DayGrid
+                    days={gridDays}
+                    responses={responses}
+                    selectedDay={selectedDay}
+                    isInsideTask={insideOpenTask}
+                    onChooseDay={changeDay}
+                />
             )}
 
             <form className={styles.form} onSubmit={save}>

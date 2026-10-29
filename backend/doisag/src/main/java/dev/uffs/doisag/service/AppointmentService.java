@@ -74,7 +74,7 @@ public class AppointmentService {
     public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
-    // pedido em aberto segura o horario, entao poucos por vez pra agenda n travar
+    // pedido em aberto segura o horario entao poucos por vez p/ agenda n travar
     private static final int MAX_OPEN_REQUESTS = 3;
     public static final String TOO_MANY_REQUESTS_MESSAGE =
             "Você já tem " + MAX_OPEN_REQUESTS + " pedidos esperando resposta. "
@@ -171,43 +171,22 @@ public class AppointmentService {
     @Transactional
     public AgendaAppointmentDTO request(Long patientId, AppointmentRequestDTO requestData) {
         Patient patient = findPatient(patientId);
-        // arquivado saiu do acompanhamento: o pedido dele seguraria horario de quem esta em tratamento
-        if (patient.isArchived()) {
-            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
-        }
+        checkPatientCanRequest(patient);
         Prescriber prescriber = patient.getPrescriber();
-        if (prescriber == null) {
-            throw new BusinessException(NO_PRESCRIBER_MESSAGE);
-        }
-        // prescritor desativado n consegue mais entrar, entao ninguem responderia esse pedido
-        if (!prescriber.isActive()) {
-            throw new BusinessException(INACTIVE_PRESCRIBER_MESSAGE);
-        }
         if (requestData.dateTime().toLocalDate().isAfter(lastDayToRequest())) {
             throw new BusinessException(TOO_FAR_AHEAD_MESSAGE);
         }
 
         // cada pedido em aberto segura um horario q some da agenda dos outros pacientes
-        // a conta eh feita ja com a agenda travada, senao dois pedidos do mesmo paciente
+        // a conta eh feita ja com a agenda travada senao dois pedidos do mesmo paciente
         // ao mesmo tempo contavam os dois 2 em aberto e ele ficava com 4
         lockAgendaOf(prescriber.getId());
-        long openRequests = appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
-                patientId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
-        if (openRequests >= MAX_OPEN_REQUESTS) {
-            throw new BusinessException(TOO_MANY_REQUESTS_MESSAGE);
-        }
+        checkOpenRequestsLimit(patientId);
 
-        // o paciente n escolhe o tipo, ele sai do historico dele
+        // o paciente n escolhe o tipo pq ele sai do historico dele
         AppointmentType type = typeFor(patientId);
         int durationMinutes = durationOf(prescriber, type);
-
-        // so vale um dos horarios livres entao fora do atendimento ocupado folga ou passado n entra
-        boolean isFreeSlot = getFreeSlots(prescriber, requestData.dateTime().toLocalDate(), durationMinutes)
-                .stream()
-                .anyMatch(slot -> slot.start().equals(requestData.dateTime()));
-        if (!isFreeSlot) {
-            throw new BusinessException(SLOT_NOT_FREE_MESSAGE);
-        }
+        checkIsOfferedSlot(prescriber, requestData.dateTime(), durationMinutes);
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
@@ -275,7 +254,7 @@ public class AppointmentService {
                 log.error("Tarefas do dia: falha no pedido de consulta vencido {}", expired.getId(), exception);
             }
         }
-        // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
+        // o dia n conta como feito e a proxima rodada tenta de novo sem repetir o q ja saiu
         if (failures > 0) {
             throw new IllegalStateException(failures + " pedido(s) de consulta vencido(s) com falha, "
                     + declined + " recusados nos outros");
@@ -285,8 +264,12 @@ public class AppointmentService {
 
     private boolean declineIfStillExpired(Long appointmentId, LocalDateTime moment) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId).orElse(null);
-        if (appointment == null || appointment.isAnnulled() || appointment.getStatus() != AppointmentStatus.SOLICITADA
-                || !appointment.getDateTime().isBefore(moment)) {
+        if (appointment == null) {
+            return false;
+        }
+        boolean stillExpired = !appointment.isAnnulled() && appointment.getStatus() == AppointmentStatus.SOLICITADA
+                && appointment.getDateTime().isBefore(moment);
+        if (!stillExpired) {
             return false;
         }
         appointment.setStatus(AppointmentStatus.RECUSADA);
@@ -329,16 +312,8 @@ public class AppointmentService {
             throw new BusinessException(CLOSED_APPOINTMENT_MESSAGE);
         }
 
-        // sem tipo novo fica o q era, e sem duracao fica a q era
-        // trocou o tipo sem dizer a duracao: vale a duracao do tipo novo
         AppointmentType newType = rescheduleData.appointmentType();
-        boolean typeChanged = newType != null && newType != appointment.getAppointmentType();
-        int durationMinutes = appointment.getDurationMinutes();
-        if (rescheduleData.durationMinutes() != null) {
-            durationMinutes = rescheduleData.durationMinutes();
-        } else if (typeChanged) {
-            durationMinutes = durationOf(appointment.getPrescriber(), newType);
-        }
+        int durationMinutes = durationAfterReschedule(appointment, rescheduleData);
         checkNotInThePast(rescheduleData.dateTime());
         // consulta q ja passou pode ter receita ou meem, e a data dela segue a mesma regra da correcao
         // vem dps do passado pra n mandar anular a receita por uma remarcacao q ia ser recusada de qq jeito
@@ -346,7 +321,7 @@ public class AppointmentService {
         checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
                 appointment.getId());
 
-        // a tela de remarcar manda a mesma data qnd so troca modalidade, duracao ou tipo
+        // a tela de remarcar manda a mesma data qnd so troca modalidade duracao ou tipo
         boolean timeChanged = !appointment.getDateTime().equals(rescheduleData.dateTime());
         appointment.setDateTime(rescheduleData.dateTime());
         appointment.setModality(rescheduleData.modality());
@@ -355,7 +330,7 @@ public class AppointmentService {
             appointment.setAppointmentType(newType);
         }
         appointment.setStatus(AppointmentStatus.AGENDADA);
-        // so o horario novo precisa de lembrete de novo: a edicao no mesmo horario repetia o "consulta amanha"
+        // so o horario novo precisa de lembrete de novo pq a edicao no msm horario repetia o lembrete de consulta amanha
         if (timeChanged) {
             appointment.setReminderSentAt(null);
         }
@@ -411,8 +386,7 @@ public class AppointmentService {
     }
 
     // o paciente n apareceu na consulta marcada (RF10)
-    //
-    // sem isso a consulta ficava AGENDADA pra sempre, pq o unico jeito de fechar
+    // sem isso a consulta ficava AGENDADA pra sempre pq o unico jeito de fechar
     // era digitar o registro clinico de um atendimento q n aconteceu
     @Transactional
     public AgendaAppointmentDTO markNoShow(Long appointmentId) {
@@ -447,7 +421,7 @@ public class AppointmentService {
             throw new BusinessException(RANGE_TOO_LONG_MESSAGE);
         }
 
-        // agenda vazia pra paciente arquivado e pra prescritor desativado: oferecer
+        // agenda vazia pra paciente arquivado e pra prescritor desativado pq oferecer
         // horario q ninguem vai atender so gera pedido parado na fila
         Patient patient = findPatient(patientId);
         Prescriber prescriber = patient.getPrescriber();
@@ -455,7 +429,7 @@ public class AppointmentService {
             return List.of();
         }
 
-        // so de hoje ate o limite do pedido: o resto n tem horario q o paciente possa pedir,
+        // so de hoje ate o limite do pedido pq o resto n tem horario q o paciente possa pedir
         // e data no fim do calendario nem chega no laco dos dias
         LocalDate today = LocalDate.now();
         LocalDate firstDay = from.isBefore(today) ? today : from;
@@ -540,7 +514,7 @@ public class AppointmentService {
                 .findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(
                         patientId, start.atStartOfDay(), today.atTime(LocalTime.MAX))
                 .stream()
-                // marcada n eh o mesmo q aconteceu: consulta q o paciente faltou fica
+                // marcada n eh o mesmo q aconteceu pq consulta q o paciente faltou fica
                 // AGENDADA pra sempre e viraria marcador de atendimento no grafico
                 .filter(appointment -> appointment.getStatus() == AppointmentStatus.CONCLUIDA)
                 .filter(appointment -> !appointment.isAnnulled())
@@ -621,9 +595,56 @@ public class AppointmentService {
         }
     }
 
-    // 30 dias contando hoje, igual a tela do paciente
+    // 30 dias contando hoje igual a tela do paciente
     private LocalDate lastDayToRequest() {
         return LocalDate.now().plusDays(MAX_DAYS_AHEAD - 1);
+    }
+
+    private void checkPatientCanRequest(Patient patient) {
+        // arquivado saiu do acompanhamento e o pedido dele seguraria horario de quem ta em tratamento
+        if (patient.isArchived()) {
+            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
+        }
+        Prescriber prescriber = patient.getPrescriber();
+        if (prescriber == null) {
+            throw new BusinessException(NO_PRESCRIBER_MESSAGE);
+        }
+        // prescritor desativado n entra mais entao ninguem responderia esse pedido
+        if (!prescriber.isActive()) {
+            throw new BusinessException(INACTIVE_PRESCRIBER_MESSAGE);
+        }
+    }
+
+    private void checkOpenRequestsLimit(Long patientId) {
+        long openRequests = appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
+                patientId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
+        if (openRequests >= MAX_OPEN_REQUESTS) {
+            throw new BusinessException(TOO_MANY_REQUESTS_MESSAGE);
+        }
+    }
+
+    // so vale um dos horarios livres entao fora do atendimento ocupado folga ou passado n entra
+    private void checkIsOfferedSlot(Prescriber prescriber, LocalDateTime dateTime, int durationMinutes) {
+        boolean isFreeSlot = getFreeSlots(prescriber, dateTime.toLocalDate(), durationMinutes)
+                .stream()
+                .anyMatch(slot -> slot.start().equals(dateTime));
+        if (!isFreeSlot) {
+            throw new BusinessException(SLOT_NOT_FREE_MESSAGE);
+        }
+    }
+
+    // sem tipo novo fica o q era e sem duracao fica a q era
+    // trocou o tipo sem dizer a duracao entao vale a duracao do tipo novo
+    private int durationAfterReschedule(Appointment appointment, AppointmentRescheduleDTO rescheduleData) {
+        AppointmentType newType = rescheduleData.appointmentType();
+        boolean typeChanged = newType != null && newType != appointment.getAppointmentType();
+        int durationMinutes = appointment.getDurationMinutes();
+        if (rescheduleData.durationMinutes() != null) {
+            durationMinutes = rescheduleData.durationMinutes();
+        } else if (typeChanged) {
+            durationMinutes = durationOf(appointment.getPrescriber(), newType);
+        }
+        return durationMinutes;
     }
 
     // RN08 dois horarios do mesmo prescritor n se sobrepoem

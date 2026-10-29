@@ -2,11 +2,8 @@ package dev.uffs.doisag.model;
 
 import jakarta.persistence.*;
 
-// um degrau do escalonamento de dose. a conduta da clinica eh comecar
-// baixo e subir devagar (RN02), entao a prescricao n tem uma dose so:
-// tem um plano de semana a semana.
-// guardar isso estruturado eh o que permite montar o historico de
-// ajustes de dose que a prescritora pediu
+// degrau do escalonamento de dose pq a clinica comeca baixo e sobe devagar (RN02)
+// fica estruturado pra montar o historico de ajustes de dose q a prescritora pediu
 @Entity
 public class DoseEscalationStep {
 

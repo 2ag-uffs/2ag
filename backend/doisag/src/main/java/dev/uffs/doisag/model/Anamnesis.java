@@ -77,7 +77,8 @@ public class Anamnesis extends BaseAssessment {
         this.substanceUse = substanceUse;
         this.physicalActivity = physicalActivity;
     }
-    // torna opcional alguns atributos, posso pedir que deixe o campo em branco caso não se aplique
+
+    // so os campos basicos e o resto fica em branco qnd n se aplica
     public Anamnesis(Long id, LocalDate assessmentDate, Patient patient, String diet, String profession, String reasonForVisit, String treatmentAwareness, String height, String weight, String sleepHabits, String physicalActivity) {
         super(id, assessmentDate, patient);
         this.diet = diet;
@@ -89,6 +90,7 @@ public class Anamnesis extends BaseAssessment {
         this.sleepHabits = sleepHabits;
         this.physicalActivity = physicalActivity;
     }
+
     public Anamnesis() {
     }
 

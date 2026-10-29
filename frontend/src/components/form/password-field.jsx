@@ -7,6 +7,7 @@ import styles from "./form.module.css";
 export default function PasswordField({label, name, error, ...inputProps}) {
     const [isVisible, setIsVisible] = useState(false);
     const errorId = name + "-error";
+    const visibilityLabel = isVisible ? "Esconder senha" : "Mostrar senha";
 
     return (
         <div className={styles.field}>
@@ -24,8 +25,8 @@ export default function PasswordField({label, name, error, ...inputProps}) {
                     type="button"
                     className={styles.visibilityButton}
                     onClick={() => setIsVisible(!isVisible)}
-                    aria-label={isVisible ? "Esconder senha" : "Mostrar senha"}
-                    title={isVisible ? "Esconder senha" : "Mostrar senha"}
+                    aria-label={visibilityLabel}
+                    title={visibilityLabel}
                 >
                     {isVisible ? <FiEyeOff/> : <FiEye/>}
                 </button>

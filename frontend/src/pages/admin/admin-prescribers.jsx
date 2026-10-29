@@ -7,10 +7,15 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
+import {onlyDigits} from "../../utils/masks.js";
 import styles from "./admin-prescribers.module.css";
 
 // conselhos profissionais aceitos no cadastro
 const REGISTRY_TYPES = ["CRBM", "CRM", "COREN", "CRP", "CRF", "CRN"];
+
+const CONNECTION_ERROR = "Não foi possível falar com o servidor.";
+
+const MINUTES_PER_HOUR = 60;
 
 const EMPTY_FORM = {
     name: "",
@@ -24,9 +29,10 @@ const EMPTY_FORM = {
 };
 
 // 30 vira 30 minutos e 2880 vira 48 horas
+// 60 continua 60 minutos pra n virar 1 horas
 function validityText(minutes) {
-    if (minutes >= 120 && minutes % 60 === 0) {
-        return minutes / 60 + " horas";
+    if (minutes >= 2 * MINUTES_PER_HOUR && minutes % MINUTES_PER_HOUR === 0) {
+        return minutes / MINUTES_PER_HOUR + " horas";
     }
     return minutes + " minutos";
 }
@@ -81,6 +87,74 @@ function FormField({
             />
             {error && <span className={styles.fieldError}>{error}</span>}
         </div>
+    );
+}
+
+function LoadingList() {
+    return (
+        <ul className={styles.list} role="status" aria-label="Carregando prescritores">
+            {[0, 1, 2].map((index) => (
+                <li key={index} className={styles.row}>
+                    <SkeletonBlock width="2.75rem" height="2.75rem" isRound={true}/>
+                    <div className={styles.rowText}>
+                        <SkeletonBlock width="12rem" height="1rem"/>
+                        <SkeletonBlock width="9rem" height="0.875rem"/>
+                    </div>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+// uma conta de prescritor c/ os botoes de senha nova e-mail e acesso
+function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onToggle}) {
+    return (
+        <li className={styles.row}>
+            <span
+                className={prescriber.active ? styles.avatar : styles.avatar + " " + styles.avatarInactive}
+                aria-hidden="true"
+            >
+                {initialsOf(prescriber.name)}
+            </span>
+            <div className={styles.rowText}>
+                <strong className={styles.name}>{prescriber.name}</strong>
+                <span className={styles.details}>{prescriber.email}</span>
+                <span className={styles.details}>
+                    {prescriber.registryType} {prescriber.registryNumber} · {prescriber.profession}
+                </span>
+            </div>
+            <div className={styles.rowActions}>
+                <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
+                    {prescriber.active ? "Ativo" : "Desativado"}
+                </span>
+                {prescriber.active && (
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => onResetPassword(prescriber)}
+                    >
+                        Senha nova
+                    </button>
+                )}
+                {/* enquanto a pessoa n cria a senha o e-mail errado ainda pode ser corrigido */}
+                {prescriber.active && !prescriber.passwordCreated && (
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => onChangeEmail(prescriber)}
+                    >
+                        Corrigir e-mail
+                    </button>
+                )}
+                <button
+                    type="button"
+                    className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
+                    onClick={() => onToggle(prescriber)}
+                >
+                    {prescriber.active ? "Desativar" : "Reativar"}
+                </button>
+            </div>
+        </li>
     );
 }
 
@@ -169,9 +243,9 @@ export default function AdminPrescribers() {
         const requestBody = {
             name: formData.name,
             email: formData.email,
-            cpf: formData.cpf.replace(/\D/g, ""),
+            cpf: onlyDigits(formData.cpf),
             birthDate: formData.birthDate || null,
-            phone: formData.phone.replace(/\D/g, "") || null,
+            phone: onlyDigits(formData.phone) || null,
             profession: formData.profession,
             registryType: formData.registryType,
             registryNumber: formData.registryNumber.trim(),
@@ -192,7 +266,7 @@ export default function AdminPrescribers() {
                     setFormError(requestError.message);
                 }
             } else {
-                setFormError("Não foi possível falar com o servidor.");
+                setFormError(CONNECTION_ERROR);
             }
         } finally {
             setIsSaving(false);
@@ -250,7 +324,7 @@ export default function AdminPrescribers() {
             if (requestError instanceof ApiError) {
                 setResetError(requestError.fieldErrors().adminPassword || requestError.message);
             } else {
-                setResetError("Não foi possível falar com o servidor.");
+                setResetError(CONNECTION_ERROR);
             }
         } finally {
             setIsResetting(false);
@@ -294,7 +368,7 @@ export default function AdminPrescribers() {
                 // a pessoa pode ter criado a senha nesse meio tempo, e ai o botao some da linha
                 loadPrescribers();
             } else {
-                setEmailError("Não foi possível falar com o servidor.");
+                setEmailError(CONNECTION_ERROR);
             }
         } finally {
             setIsChangingEmail(false);
@@ -329,19 +403,7 @@ export default function AdminPrescribers() {
             {notice && <p className="aviso" role="status">{notice}</p>}
             {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
 
-            {isLoading && (
-                <ul className={styles.list} role="status" aria-label="Carregando prescritores">
-                    {[0, 1, 2].map((index) => (
-                        <li key={index} className={styles.row}>
-                            <SkeletonBlock width="2.75rem" height="2.75rem" isRound={true}/>
-                            <div className={styles.rowText}>
-                                <SkeletonBlock width="12rem" height="1rem"/>
-                                <SkeletonBlock width="9rem" height="0.875rem"/>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {isLoading && <LoadingList/>}
 
             {!isLoading && !pageError && prescribers.length === 0 && (
                 <EmptyState
@@ -358,52 +420,13 @@ export default function AdminPrescribers() {
             {!isLoading && prescribers.length > 0 && (
                 <ul className={styles.list}>
                     {prescribers.map((prescriber) => (
-                        <li key={prescriber.id} className={styles.row}>
-                            <span
-                                className={prescriber.active ? styles.avatar : styles.avatar + " " + styles.avatarInactive}
-                                aria-hidden="true"
-                            >
-                                {initialsOf(prescriber.name)}
-                            </span>
-                            <div className={styles.rowText}>
-                                <strong className={styles.name}>{prescriber.name}</strong>
-                                <span className={styles.details}>{prescriber.email}</span>
-                                <span className={styles.details}>
-                                    {prescriber.registryType} {prescriber.registryNumber} · {prescriber.profession}
-                                </span>
-                            </div>
-                            <div className={styles.rowActions}>
-                                <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
-                                    {prescriber.active ? "Ativo" : "Desativado"}
-                                </span>
-                                {prescriber.active && (
-                                    <button
-                                        type="button"
-                                        className="button-secondary button-small"
-                                        onClick={() => openReset(prescriber)}
-                                    >
-                                        Senha nova
-                                    </button>
-                                )}
-                                {/* enquanto a pessoa n cria a senha, o e-mail errado ainda pode ser corrigido */}
-                                {prescriber.active && !prescriber.passwordCreated && (
-                                    <button
-                                        type="button"
-                                        className="button-secondary button-small"
-                                        onClick={() => openEmailChange(prescriber)}
-                                    >
-                                        Corrigir e-mail
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
-                                    onClick={() => setPrescriberToToggle(prescriber)}
-                                >
-                                    {prescriber.active ? "Desativar" : "Reativar"}
-                                </button>
-                            </div>
-                        </li>
+                        <PrescriberRow
+                            key={prescriber.id}
+                            prescriber={prescriber}
+                            onResetPassword={openReset}
+                            onChangeEmail={openEmailChange}
+                            onToggle={setPrescriberToToggle}
+                        />
                     ))}
                 </ul>
             )}

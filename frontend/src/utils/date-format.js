@@ -45,21 +45,30 @@ export function withBrasiliaTimeNote(text) {
     return text.replace(/(\d{2}:\d{2})/g, "$1" + brasiliaTimeNote());
 }
 
+// tamanho da data so tipo 2026-10-16 e da data c/ hora tipo 2026-10-16T22:30:00
+const DATE_LENGTH = 10;
+const DATE_TIME_LENGTH = 19;
+const MILLISECONDS_PER_MINUTE = 60000;
+const HOUR_AND_MINUTE = {hour: "2-digit", minute: "2-digit"};
+
 // a api manda data sem fuso e as vezes com microssegundos
-// data sem hora vira meia noite local pra n voltar um dia no fuso de brasilia
+// data sem hora vira meia noite pra n voltar um dia no fuso de brasilia
 // e cortar no segundo faz todo navegador ler a data do mesmo jeito
-function toLocalDate(isoText) {
-    if (isoText.length === 10) {
-        return new Date(isoText + "T00:00:00");
+function fullDateTimeOf(isoText) {
+    if (isoText.length === DATE_LENGTH) {
+        return isoText + "T00:00:00";
     }
-    return new Date(isoText.slice(0, 19));
+    return isoText.slice(0, DATE_TIME_LENGTH);
+}
+
+function toLocalDate(isoText) {
+    return new Date(fullDateTimeOf(isoText));
 }
 
 // data e hora sem fuso viram um numero, com as duas lidas no mesmo relogio
 // assim o fuso do navegador n entra na conta
 function wallClockTime(isoText) {
-    const dateTime = isoText.length === 10 ? isoText + "T00:00:00" : isoText.slice(0, 19);
-    return Date.parse(dateTime + "Z");
+    return Date.parse(fullDateTimeOf(isoText) + "Z");
 }
 
 // dia do calendario de uma data no formato ano mes dia
@@ -70,7 +79,7 @@ function wallClockTime(isoText) {
 function calendarDayOf(date) {
     const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     if (date.getTime() !== startOfDay.getTime()) {
-        return brasiliaDateTimeOf(date).slice(0, 10);
+        return brasiliaDateTimeOf(date).slice(0, DATE_LENGTH);
     }
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
@@ -89,7 +98,7 @@ export function formatDateTime(isoText) {
         return "";
     }
     const dateTime = toLocalDate(isoText);
-    const time = dateTime.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+    const time = dateTime.toLocaleTimeString("pt-BR", HOUR_AND_MINUTE);
     return dateTime.toLocaleDateString("pt-BR") + " às " + time;
 }
 
@@ -97,7 +106,7 @@ export function formatTime(isoText) {
     if (!isoText) {
         return "";
     }
-    return toLocalDate(isoText).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+    return toLocalDate(isoText).toLocaleTimeString("pt-BR", HOUR_AND_MINUTE);
 }
 
 // dia da semana por extenso junto com o dia e o mes
@@ -124,7 +133,7 @@ export function isInTheFuture(isoText) {
 
 // minutos q faltam pra data e hora chegar em brasilia, negativo se ja passou
 export function minutesUntil(isoText) {
-    return (wallClockTime(isoText) - wallClockTime(nowInBrasilia())) / 60000;
+    return (wallClockTime(isoText) - wallClockTime(nowInBrasilia())) / MILLISECONDS_PER_MINUTE;
 }
 
 export function isSameOrAfter(isoText, otherIsoText) {
@@ -133,7 +142,7 @@ export function isSameOrAfter(isoText, otherIsoText) {
 
 // true quando a hora da consulta ja acabou em brasilia, contando a duracao dela
 export function hasEnded(isoText, durationMinutes) {
-    const end = wallClockTime(isoText) + (durationMinutes || 0) * 60000;
+    const end = wallClockTime(isoText) + (durationMinutes || 0) * MILLISECONDS_PER_MINUTE;
     return end <= wallClockTime(nowInBrasilia());
 }
 
@@ -162,7 +171,7 @@ export function ageFrom(birthDate) {
     if (!birthDate) {
         return null;
     }
-    const today = toLocalDate(nowInBrasilia().slice(0, 10));
+    const today = toLocalDate(nowInBrasilia().slice(0, DATE_LENGTH));
     const birth = toLocalDate(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const hadBirthdayThisYear = today.getMonth() > birth.getMonth()

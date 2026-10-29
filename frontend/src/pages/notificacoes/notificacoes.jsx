@@ -23,6 +23,44 @@ const TYPE_ICONS = {
     ALERT: FiAlertCircle,
 };
 
+function unreadTextOf(unread) {
+    if (unread === 0) {
+        return "Você está em dia, nenhum aviso novo.";
+    }
+    if (unread === 1) {
+        return "1 aviso não lido.";
+    }
+    return unread + " avisos não lidos.";
+}
+
+function NotificationItem({notification, onOpen, onRemove}) {
+    const Icon = TYPE_ICONS[notification.type] || FiBell;
+    return (
+        <li className={notification.isRead ? styles.item : styles.item + " " + styles.itemUnread}>
+            <span className={styles.icon} aria-hidden="true"><Icon/></span>
+            <div className={styles.content}>
+                <p className={styles.meta}>
+                    <span className={styles.tag}>
+                        {TYPE_LABELS[notification.type] || "Aviso"}
+                    </span>
+                    {formatDateTime(notification.createdAt)}
+                    {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
+                </p>
+                <h2 className={styles.title}>{notification.title}</h2>
+                <p className={styles.message}>{withBrasiliaTimeNote(notification.message)}</p>
+            </div>
+            <div className={styles.actions}>
+                <button type="button" className="button-secondary button-small" onClick={onOpen}>
+                    {notification.link ? "Abrir" : "Marcar como lido"}
+                </button>
+                <button type="button" className="button-tertiary button-small" onClick={onRemove}>
+                    Apagar
+                </button>
+            </div>
+        </li>
+    );
+}
+
 // avisos da propria conta (RF14 e RF15)
 //
 // serve pros dois perfis: a lista eh sempre a da pessoa logada. vem
@@ -106,18 +144,11 @@ export default function Notificacoes() {
         return <SkeletonPage cards={1}/>;
     }
 
-    let unreadText = page.unread + " avisos não lidos.";
-    if (page.unread === 0) {
-        unreadText = "Você está em dia, nenhum aviso novo.";
-    } else if (page.unread === 1) {
-        unreadText = "1 aviso não lido.";
-    }
-
     return (
         <section className={styles.page}>
             <PageHeader
                 title="Avisos"
-                subtitle={unreadText}
+                subtitle={unreadTextOf(page.unread)}
                 actions={page.unread > 0 ? (
                     <button type="button" className="button-secondary" onClick={markAllAsRead}>
                         Marcar todos como lidos
@@ -131,44 +162,14 @@ export default function Notificacoes() {
                 <EmptyState icon={FiBell} message="Nenhum aviso por aqui."/>
             ) : (
                 <ul className={styles.list}>
-                    {page.notifications.map((notification) => {
-                        const Icon = TYPE_ICONS[notification.type] || FiBell;
-                        return (
-                            <li
-                                key={notification.id}
-                                className={notification.isRead ? styles.item : styles.item + " " + styles.itemUnread}
-                            >
-                                <span className={styles.icon} aria-hidden="true"><Icon/></span>
-                                <div className={styles.content}>
-                                    <p className={styles.meta}>
-                                        <span className={styles.tag}>
-                                            {TYPE_LABELS[notification.type] || "Aviso"}
-                                        </span>
-                                        {formatDateTime(notification.createdAt)}
-                                        {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
-                                    </p>
-                                    <h2 className={styles.title}>{notification.title}</h2>
-                                    <p className={styles.message}>{withBrasiliaTimeNote(notification.message)}</p>
-                                </div>
-                                <div className={styles.actions}>
-                                    <button
-                                        type="button"
-                                        className="button-secondary button-small"
-                                        onClick={() => openNotification(notification)}
-                                    >
-                                        {notification.link ? "Abrir" : "Marcar como lido"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="button-tertiary button-small"
-                                        onClick={() => removeNotification(notification.id)}
-                                    >
-                                        Apagar
-                                    </button>
-                                </div>
-                            </li>
-                        );
-                    })}
+                    {page.notifications.map((notification) => (
+                        <NotificationItem
+                            key={notification.id}
+                            notification={notification}
+                            onOpen={() => openNotification(notification)}
+                            onRemove={() => removeNotification(notification.id)}
+                        />
+                    ))}
                 </ul>
             )}
 

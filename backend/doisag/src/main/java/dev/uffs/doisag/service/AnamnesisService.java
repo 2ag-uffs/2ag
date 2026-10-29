@@ -52,22 +52,22 @@ public class AnamnesisService {
         patientRepository.lockById(patient.getId());
         // o paciente da sessao eh do login: lido de novo dps da trava, o arquivamento gravado enquanto
         // a anamnese esperava aparece
-        Patient current = patientRepository.findById(patient.getId())
+        Patient lockedPatient = patientRepository.findById(patient.getId())
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patient.getId()));
         // prontuario de quem foi arquivado n recebe registro novo, o acompanhamento acabou
-        if (current.isArchived()) {
+        if (lockedPatient.isArchived()) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
         }
         Anamnesis anamnesis = new Anamnesis();
-        anamnesis.setPatient(current);
+        anamnesis.setPatient(lockedPatient);
         anamnesis.setAssessmentDate(anamnesisData.assessmentDate() == null ? LocalDate.now() : anamnesisData.assessmentDate());
         copyAnswers(anamnesisData, anamnesis);
 
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
-        auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), current.getId());
+        auditService.recordCreation(AuditRecordType.ANAMNESE, savedAnamnesis.getId(), lockedPatient.getId());
         // preencher a anamnese da baixa na tarefa q o prescritor enviou e avisa ele, igual as outras escalas
-        scaleTaskService.completeTask(current.getId(), ScaleType.ANAMNESE);
-        scaleTaskService.notifyPrescriberOfAnswer(current, ScaleType.ANAMNESE);
+        scaleTaskService.completeTask(lockedPatient.getId(), ScaleType.ANAMNESE);
+        scaleTaskService.notifyPrescriberOfAnswer(lockedPatient, ScaleType.ANAMNESE);
         return new AnamnesisResponseDTO(savedAnamnesis);
     }
 

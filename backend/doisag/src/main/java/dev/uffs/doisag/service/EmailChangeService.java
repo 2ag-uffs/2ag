@@ -89,22 +89,12 @@ public class EmailChangeService {
         // de senha espera e confere a senha nova
         usersRepository.lockById(userId);
         Users user = findUser(userId);
-        // se o admin trocasse aqui, a proxima subida criava outra conta com o ADMIN_EMAIL e a senha inicial
+        // se o admin trocasse aqui a proxima subida criava outra conta c/ o ADMIN_EMAIL e a senha inicial
         if (user instanceof Admin) {
             throw new BusinessException(ADMIN_EMAIL_MESSAGE);
         }
-        // o e-mail novo eh pra onde vai o link de senha nova, entao o chute da senha atual tem limite
-        if (loginAttemptLimiter.isBlocked(user.getEmail(), clientAddress)) {
-            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
-        }
-        if (loginAttemptLimiter.isEmailChangeBlocked(userId)) {
-            throw new LoginBlockedException(TOO_MANY_REQUESTS_MESSAGE + loginAttemptLimiter.getBlockMinutes() + " minutos");
-        }
-        if (!passwordEncoder.matches(emailData.currentPassword(), user.getPassword())) {
-            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
-            throw new InvalidFieldException("currentPassword", "A senha atual está incorreta");
-        }
-        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
+        checkNotBlocked(userId, user.getEmail(), clientAddress);
+        checkCurrentPassword(user, emailData.currentPassword(), clientAddress);
 
         String newEmail = InputCleaner.normalizeEmail(emailData.newEmail());
         if (newEmail.equals(user.getEmail())) {
@@ -123,11 +113,32 @@ public class EmailChangeService {
         if (addressIsFree) {
             backgroundEmailSender.sendLater(linkMessage(user, newEmail, token), userId);
         }
-        ResearchConsentDTO researchConsent = null;
-        if (user instanceof Patient) {
-            researchConsent = consentTermService.researchConsentOf(userId);
+        return ProfileDTO.from(user, newEmail, profileResearchConsent(user));
+    }
+
+    // o e-mail novo eh pra onde vai o link de senha nova entao o chute da senha atual tem limite
+    private void checkNotBlocked(Long userId, String email, String clientAddress) {
+        if (loginAttemptLimiter.isBlocked(email, clientAddress)) {
+            throw new LoginBlockedException(loginAttemptLimiter.blockedMessage());
         }
-        return ProfileDTO.from(user, newEmail, researchConsent);
+        if (loginAttemptLimiter.isEmailChangeBlocked(userId)) {
+            throw new LoginBlockedException(TOO_MANY_REQUESTS_MESSAGE + loginAttemptLimiter.getBlockMinutes() + " minutos");
+        }
+    }
+
+    private void checkCurrentPassword(Users user, String currentPassword, String clientAddress) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            loginAttemptLimiter.registerFailure(user.getEmail(), clientAddress);
+            throw new InvalidFieldException("currentPassword", "A senha atual está incorreta");
+        }
+        loginAttemptLimiter.registerSuccess(user.getEmail(), clientAddress);
+    }
+
+    private ResearchConsentDTO profileResearchConsent(Users user) {
+        if (user instanceof Patient) {
+            return consentTermService.researchConsentOf(user.getId());
+        }
+        return null;
     }
 
     // o link foi aberto no endereco novo: o e-mail muda, o link de senha nova q foi pro endereco

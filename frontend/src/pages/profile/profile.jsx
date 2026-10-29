@@ -32,6 +32,20 @@ function readRequestError(requestError) {
     return {fieldErrors: {}, message: requestError.message};
 }
 
+// erro de campo fica no campo e o resto vira o aviso do cartao
+function showRequestError(requestError, setFieldErrors, setMessage) {
+    const errorInfo = readRequestError(requestError);
+    setFieldErrors(errorInfo.fieldErrors);
+    if (errorInfo.message) {
+        setMessage({isError: true, text: errorInfo.message});
+    }
+}
+
+// onde n tem campo pra marcar o erro todo vira aviso
+function generalErrorText(requestError) {
+    return readRequestError(requestError).message || CONNECTION_ERROR;
+}
+
 // campos do formulario a partir do perfil q veio da api
 function personalDataFrom(profile) {
     const address = profile.address || {};
@@ -45,6 +59,22 @@ function personalDataFrom(profile) {
         city: address.city || "",
         state: address.state || "",
         ...guardianFieldsFrom(profile.guardian),
+    };
+}
+
+function profileRequestBody(formData, isPatient) {
+    // endereco todo em branco vai como sem endereco
+    const hasAddress = Boolean(formData.street || formData.number || formData.city || formData.state);
+    return {
+        name: formData.name,
+        // nome social so existe na conta do paciente
+        socialName: isPatient ? (formData.socialName.trim() || null) : null,
+        birthDate: formData.birthDate || null,
+        phone: onlyDigits(formData.phone) || null,
+        address: hasAddress
+            ? {street: formData.street, number: formData.number, city: formData.city, state: formData.state}
+            : null,
+        guardian: isPatient ? guardianBody(formData) : null,
     };
 }
 
@@ -69,59 +99,10 @@ function cardTitle(Icon, text) {
     );
 }
 
-// dados pessoais e endereco
-// a conta administrativa so tem nome e o e-mail dela vem do servidor
-function PersonalDataCard({profile, onSaved}) {
-    const [formData, setFormData] = useState(() => personalDataFrom(profile));
-    const [fieldErrors, setFieldErrors] = useState({});
-    const [message, setMessage] = useState(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const isPatient = profile.role === "PATIENT";
-    const isAdmin = profile.role === "ADMIN";
-    // menor de 18 n fica sem o responsavel legal q aceitou o termo por ele (LGPD art. 14)
-    const isMinor = isPatient && isMinorPatient(formData.birthDate);
-
-    const updateField = (fieldName, value) => {
-        setFormData((currentData) => ({...currentData, [fieldName]: value}));
-    };
-
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        setIsSaving(true);
-        setFieldErrors({});
-        setMessage(null);
-
-        // endereco todo em branco vai como sem endereco
-        const hasAddress = Boolean(formData.street || formData.number || formData.city || formData.state);
-        const requestBody = {
-            name: formData.name,
-            // nome social so existe na conta do paciente
-            socialName: isPatient ? (formData.socialName.trim() || null) : null,
-            birthDate: formData.birthDate || null,
-            phone: onlyDigits(formData.phone) || null,
-            address: hasAddress
-                ? {street: formData.street, number: formData.number, city: formData.city, state: formData.state}
-                : null,
-            guardian: isPatient ? guardianBody(formData) : null,
-        };
-
-        try {
-            const savedProfile = await apiService.put("/profile", requestBody);
-            onSaved(savedProfile);
-            setMessage({isError: false, text: "Dados salvos."});
-        } catch (requestError) {
-            const errorInfo = readRequestError(requestError);
-            setFieldErrors(errorInfo.fieldErrors);
-            if (errorInfo.message) {
-                setMessage({isError: true, text: errorInfo.message});
-            }
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
+// o q so a clinica corrige fica fora do formulario
+function AccountInfo({profile, isPatient, isAdmin}) {
     return (
-        <Card title={cardTitle(FiUser, isAdmin ? "Dados da conta" : "Dados pessoais")}>
+        <>
             <dl className={styles.readOnlyInfo}>
                 {isAdmin && (
                     <>
@@ -156,6 +137,162 @@ function PersonalDataCard({profile, onSaved}) {
                     ? "O e-mail da conta administrativa é definido no servidor."
                     : "Para corrigir esses dados, fale com a clínica."}
             </p>
+        </>
+    );
+}
+
+// nascimento telefone e endereco obrigatorios so pro paciente
+function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
+    return (
+        <>
+            <div className={styles.row}>
+                <TextField
+                    label="Data de nascimento"
+                    name="birthDate"
+                    type="date"
+                    autoComplete="bday"
+                    value={formData.birthDate}
+                    onChange={(event) => onFieldChange("birthDate", event.target.value)}
+                    error={fieldErrors.birthDate}
+                    required={isPatient}
+                />
+                <TextField
+                    label="Telefone com DDD"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel-national"
+                    placeholder="(49) 99999-9999"
+                    value={formData.phone}
+                    onChange={(event) => onFieldChange("phone", formatPhone(event.target.value))}
+                    error={fieldErrors.phone}
+                    required={isPatient}
+                />
+            </div>
+            <div className={styles.rowWide}>
+                <TextField
+                    label="Rua"
+                    name="address.street"
+                    autoComplete="address-line1"
+                    value={formData.street}
+                    onChange={(event) => onFieldChange("street", event.target.value)}
+                    error={fieldErrors["address.street"]}
+                    required={isPatient}
+                />
+                <TextField
+                    label="Número"
+                    name="address.number"
+                    value={formData.number}
+                    onChange={(event) => onFieldChange("number", event.target.value)}
+                    error={fieldErrors["address.number"]}
+                    required={isPatient}
+                />
+            </div>
+            <div className={styles.rowWide}>
+                <TextField
+                    label="Cidade"
+                    name="address.city"
+                    autoComplete="address-level2"
+                    value={formData.city}
+                    onChange={(event) => onFieldChange("city", event.target.value)}
+                    error={fieldErrors["address.city"]}
+                    required={isPatient}
+                />
+                <SelectField
+                    label="Estado"
+                    name="address.state"
+                    options={BRAZIL_STATE_OPTIONS}
+                    placeholder="Escolha"
+                    value={formData.state}
+                    onChange={(event) => onFieldChange("state", event.target.value)}
+                    error={fieldErrors["address.state"]}
+                    required={isPatient}
+                />
+            </div>
+        </>
+    );
+}
+
+// familiar ou cuidador q vira obrigatorio qnd o paciente eh menor
+function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
+    return (
+        <fieldset className={styles.formSection}>
+            <legend className={styles.formSubtitle}>
+                {isMinor ? "Responsável legal" : "Familiar ou cuidador (opcional)"}
+            </legend>
+            {isMinor && (
+                <p className={styles.hint}>
+                    O paciente tem menos de 18 anos e o responsável legal participa do aceite do termo, por
+                    isso o nome e o parentesco não podem ficar em branco.
+                </p>
+            )}
+            <TextField
+                label="Nome"
+                name="guardian.name"
+                value={formData.guardianName}
+                onChange={(event) => onFieldChange("guardianName", event.target.value)}
+                error={fieldErrors["guardian.name"]}
+                required={isMinor}
+            />
+            <div className={styles.row}>
+                <TextField
+                    label="Parentesco"
+                    name="guardian.relationship"
+                    placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
+                    value={formData.guardianRelationship}
+                    onChange={(event) => onFieldChange("guardianRelationship", event.target.value)}
+                    error={fieldErrors["guardian.relationship"]}
+                    required={isMinor}
+                />
+                <TextField
+                    label="Telefone com DDD"
+                    name="guardian.phone"
+                    type="tel"
+                    placeholder="(49) 99999-9999"
+                    value={formData.guardianPhone}
+                    onChange={(event) => onFieldChange("guardianPhone", formatPhone(event.target.value))}
+                    error={fieldErrors["guardian.phone"]}
+                />
+            </div>
+        </fieldset>
+    );
+}
+
+// dados pessoais e endereco
+// a conta administrativa so tem nome e o e-mail dela vem do servidor
+function PersonalDataCard({profile, onSaved}) {
+    const [formData, setFormData] = useState(() => personalDataFrom(profile));
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [message, setMessage] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const isPatient = profile.role === "PATIENT";
+    const isAdmin = profile.role === "ADMIN";
+    // menor de 18 n fica sem o responsavel legal q aceitou o termo por ele (LGPD art. 14)
+    const isMinor = isPatient && isMinorPatient(formData.birthDate);
+
+    const updateField = (fieldName, value) => {
+        setFormData((currentData) => ({...currentData, [fieldName]: value}));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setIsSaving(true);
+        setFieldErrors({});
+        setMessage(null);
+
+        try {
+            const savedProfile = await apiService.put("/profile", profileRequestBody(formData, isPatient));
+            onSaved(savedProfile);
+            setMessage({isError: false, text: "Dados salvos."});
+        } catch (requestError) {
+            showRequestError(requestError, setFieldErrors, setMessage);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Card title={cardTitle(FiUser, isAdmin ? "Dados da conta" : "Dados pessoais")}>
+            <AccountInfo profile={profile} isPatient={isPatient} isAdmin={isAdmin}/>
 
             <CardMessage message={message}/>
 
@@ -181,112 +318,20 @@ function PersonalDataCard({profile, onSaved}) {
                     />
                 )}
                 {!isAdmin && (
-                <>
-                <div className={styles.row}>
-                    <TextField
-                        label="Data de nascimento"
-                        name="birthDate"
-                        type="date"
-                        autoComplete="bday"
-                        value={formData.birthDate}
-                        onChange={(event) => updateField("birthDate", event.target.value)}
-                        error={fieldErrors.birthDate}
-                        required={isPatient}
+                    <ContactFields
+                        formData={formData}
+                        fieldErrors={fieldErrors}
+                        isPatient={isPatient}
+                        onFieldChange={updateField}
                     />
-                    <TextField
-                        label="Telefone com DDD"
-                        name="phone"
-                        type="tel"
-                        autoComplete="tel-national"
-                        placeholder="(49) 99999-9999"
-                        value={formData.phone}
-                        onChange={(event) => updateField("phone", formatPhone(event.target.value))}
-                        error={fieldErrors.phone}
-                        required={isPatient}
-                    />
-                </div>
-                <div className={styles.rowWide}>
-                    <TextField
-                        label="Rua"
-                        name="address.street"
-                        autoComplete="address-line1"
-                        value={formData.street}
-                        onChange={(event) => updateField("street", event.target.value)}
-                        error={fieldErrors["address.street"]}
-                        required={isPatient}
-                    />
-                    <TextField
-                        label="Número"
-                        name="address.number"
-                        value={formData.number}
-                        onChange={(event) => updateField("number", event.target.value)}
-                        error={fieldErrors["address.number"]}
-                        required={isPatient}
-                    />
-                </div>
-                <div className={styles.rowWide}>
-                    <TextField
-                        label="Cidade"
-                        name="address.city"
-                        autoComplete="address-level2"
-                        value={formData.city}
-                        onChange={(event) => updateField("city", event.target.value)}
-                        error={fieldErrors["address.city"]}
-                        required={isPatient}
-                    />
-                    <SelectField
-                        label="Estado"
-                        name="address.state"
-                        options={BRAZIL_STATE_OPTIONS}
-                        placeholder="Escolha"
-                        value={formData.state}
-                        onChange={(event) => updateField("state", event.target.value)}
-                        error={fieldErrors["address.state"]}
-                        required={isPatient}
-                    />
-                </div>
-                </>
                 )}
                 {isPatient && (
-                <fieldset className={styles.formSection}>
-                <legend className={styles.formSubtitle}>
-                    {isMinor ? "Responsável legal" : "Familiar ou cuidador (opcional)"}
-                </legend>
-                {isMinor && (
-                    <p className={styles.hint}>
-                        O paciente tem menos de 18 anos e o responsável legal participa do aceite do termo, por
-                        isso o nome e o parentesco não podem ficar em branco.
-                    </p>
-                )}
-                <TextField
-                    label="Nome"
-                    name="guardian.name"
-                    value={formData.guardianName}
-                    onChange={(event) => updateField("guardianName", event.target.value)}
-                    error={fieldErrors["guardian.name"]}
-                    required={isMinor}
-                />
-                <div className={styles.row}>
-                    <TextField
-                        label="Parentesco"
-                        name="guardian.relationship"
-                        placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
-                        value={formData.guardianRelationship}
-                        onChange={(event) => updateField("guardianRelationship", event.target.value)}
-                        error={fieldErrors["guardian.relationship"]}
-                        required={isMinor}
+                    <GuardianFieldset
+                        formData={formData}
+                        fieldErrors={fieldErrors}
+                        isMinor={isMinor}
+                        onFieldChange={updateField}
                     />
-                    <TextField
-                        label="Telefone com DDD"
-                        name="guardian.phone"
-                        type="tel"
-                        placeholder="(49) 99999-9999"
-                        value={formData.guardianPhone}
-                        onChange={(event) => updateField("guardianPhone", formatPhone(event.target.value))}
-                        error={fieldErrors["guardian.phone"]}
-                    />
-                </div>
-                </fieldset>
                 )}
                 <div className={styles.actions}>
                     <button type="submit" className="button" disabled={isSaving}>
@@ -327,11 +372,7 @@ function EmailCard({profile, onSaved}) {
             setMessage({isError: false, text: "Enviamos um link para " + savedProfile.pendingEmail
                 + ". O e-mail de acesso só muda depois que você abrir esse link. Ele vale por 30 minutos."});
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError);
-            setFieldErrors(errorInfo.fieldErrors);
-            if (errorInfo.message) {
-                setMessage({isError: true, text: errorInfo.message});
-            }
+            showRequestError(requestError, setFieldErrors, setMessage);
         } finally {
             setIsSaving(false);
         }
@@ -381,6 +422,18 @@ function EmailCard({profile, onSaved}) {
     );
 }
 
+// confere a senha nova antes de mandar pra api
+function findPasswordErrors(formData) {
+    const errors = {};
+    if (!isStrongPassword(formData.newPassword)) {
+        errors.newPassword = "A nova senha ainda não cumpre todas as regras";
+    }
+    if (formData.newPassword !== formData.newPasswordConfirmation) {
+        errors.newPasswordConfirmation = "As senhas não são iguais";
+    }
+    return errors;
+}
+
 // troca de senha pedindo a senha atual
 function PasswordCard({onPasswordChanged}) {
     const [formData, setFormData] = useState(EMPTY_PASSWORD_FORM);
@@ -396,13 +449,7 @@ function PasswordCard({onPasswordChanged}) {
         event.preventDefault();
         setMessage(null);
 
-        const formErrors = {};
-        if (!isStrongPassword(formData.newPassword)) {
-            formErrors.newPassword = "A nova senha ainda não cumpre todas as regras";
-        }
-        if (formData.newPassword !== formData.newPasswordConfirmation) {
-            formErrors.newPasswordConfirmation = "As senhas não são iguais";
-        }
+        const formErrors = findPasswordErrors(formData);
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
             return;
@@ -423,11 +470,7 @@ function PasswordCard({onPasswordChanged}) {
                 onPasswordChanged();
             }
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError);
-            setFieldErrors(errorInfo.fieldErrors);
-            if (errorInfo.message) {
-                setMessage({isError: true, text: errorInfo.message});
-            }
+            showRequestError(requestError, setFieldErrors, setMessage);
         } finally {
             setIsSaving(false);
         }
@@ -497,7 +540,7 @@ function EmailPreferenceCard({profile, onSaved}) {
                 setMessage({isError: false, text: "Avisos por e-mail desligados. Eles continuam aparecendo no sistema."});
             }
         } catch (requestError) {
-            setMessage({isError: true, text: readRequestError(requestError).message || CONNECTION_ERROR});
+            setMessage({isError: true, text: generalErrorText(requestError)});
         } finally {
             setIsSaving(false);
         }
@@ -520,6 +563,17 @@ function EmailPreferenceCard({profile, onSaved}) {
     );
 }
 
+function researchStatusText(consent) {
+    if (consent.active) {
+        return "Você aceitou participar da pesquisa em " + formatDate(consent.acceptedAt)
+            + ". Pode retirar quando quiser.";
+    }
+    if (consent.termChanged) {
+        return "O termo de pesquisa mudou desde o seu aceite. Para continuar participando, leia e aceite a versão nova.";
+    }
+    return "Você não participa da pesquisa. Participar é opcional e não muda o seu atendimento.";
+}
+
 // consentimento de pesquisa, opcional e q pode ser retirado a qq hora (RF37)
 function ResearchCard({profile, onChanged}) {
     const [term, setTerm] = useState(null);
@@ -534,7 +588,7 @@ function ResearchCard({profile, onChanged}) {
             setTerm(await apiService.get("/consent-term/research"));
             setIsTermOpen(true);
         } catch (requestError) {
-            setMessage({isError: true, text: readRequestError(requestError).message || CONNECTION_ERROR});
+            setMessage({isError: true, text: generalErrorText(requestError)});
         }
     };
 
@@ -548,7 +602,7 @@ function ResearchCard({profile, onChanged}) {
             setMessage({isError: false, text: successText});
             return true;
         } catch (requestError) {
-            setMessage({isError: true, text: readRequestError(requestError).message || CONNECTION_ERROR});
+            setMessage({isError: true, text: generalErrorText(requestError)});
             return false;
         } finally {
             setIsSaving(false);
@@ -571,17 +625,9 @@ function ResearchCard({profile, onChanged}) {
     const revoke = () => saveChoice("/consent-term/research/revoke", undefined,
         "Consentimento retirado. Seus dados não entram em novas exportações para pesquisa.");
 
-    let statusText = "Você não participa da pesquisa. Participar é opcional e não muda o seu atendimento.";
-    if (consent.active) {
-        statusText = "Você aceitou participar da pesquisa em " + formatDate(consent.acceptedAt)
-            + ". Pode retirar quando quiser.";
-    } else if (consent.termChanged) {
-        statusText = "O termo de pesquisa mudou desde o seu aceite. Para continuar participando, leia e aceite a versão nova.";
-    }
-
     return (
         <Card title={cardTitle(FiBookOpen, "Pesquisa")}>
-            <p className={styles.cardText}>{statusText}</p>
+            <p className={styles.cardText}>{researchStatusText(consent)}</p>
             {!isTermOpen && <CardMessage message={message}/>}
             <div className={styles.actions}>
                 <button type="button" className="button-secondary" onClick={openTerm} disabled={isSaving}>
@@ -624,7 +670,7 @@ export default function Profile() {
             })
             .catch((requestError) => {
                 if (isCurrentPage) {
-                    setLoadError(readRequestError(requestError).message || CONNECTION_ERROR);
+                    setLoadError(generalErrorText(requestError));
                 }
             });
 

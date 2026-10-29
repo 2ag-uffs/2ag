@@ -24,6 +24,10 @@ public class ScaleScorer {
 
     // pontos de corte do MEEM por anos de estudo (Brucki 2003)
     private static final double[] MEEM_CUTOFFS = {20, 25, 26.5, 28, 29};
+    // a escolaridade so escolhe o corte e n soma no escore do meem
+    private static final String SCHOOLING_KEY = "escolaridade";
+    // o horario chega como hh:mm ou hh:mm:ss e os segundos caem fora
+    private static final int HOUR_MINUTE_LENGTH = 5;
 
     private final ScaleCatalog catalog;
 
@@ -62,18 +66,18 @@ public class ScaleScorer {
 
     // PSQI soma de 7 componentes derivados, cada um de 0 a 3 (Anexo A.2)
     private Integer pittsburghScore(Map<String, Object> answers) {
-        Integer qualidadeSubjetiva = intOf(answers, "qualidadeGeral");
-        Integer latencia = pittsburghLatency(answers);
-        Integer duracao = pittsburghDuration(answers);
-        Integer eficiencia = pittsburghEfficiency(answers);
-        Integer disturbios = pittsburghDisturbances(answers);
-        Integer medicacao = intOf(answers, "freqMedicacao");
-        Integer disfuncaoDiurna = pittsburghDaytime(answers);
+        Integer subjectiveQuality = intOf(answers, "qualidadeGeral");
+        Integer latency = pittsburghLatency(answers);
+        Integer duration = pittsburghDuration(answers);
+        Integer efficiency = pittsburghEfficiency(answers);
+        Integer disturbances = pittsburghDisturbances(answers);
+        Integer medication = intOf(answers, "freqMedicacao");
+        Integer daytimeDysfunction = pittsburghDaytime(answers);
 
         // Arrays.asList aceita nulo e o List.of n, e componente sem
         // resposta chega aqui como nulo
-        return sumOrNull(Arrays.asList(qualidadeSubjetiva, latencia, duracao, eficiencia, disturbios,
-                medicacao, disfuncaoDiurna));
+        return sumOrNull(Arrays.asList(subjectiveQuality, latency, duration, efficiency, disturbances,
+                medication, daytimeDysfunction));
     }
 
     // C2 minutos ate dormir junto com a frequencia de n adormecer em 30 min
@@ -171,7 +175,7 @@ public class ScaleScorer {
     private ScoreResult mentalStateExamResult(Map<String, Object> answers) {
         List<String> sections = catalog.definitionOf(ScaleType.MINI_EXAME_ESTADO_MENTAL).items().stream()
                 .map(ScaleItem::key)
-                .filter(key -> !key.equals("escolaridade"))
+                .filter(key -> !key.equals(SCHOOLING_KEY))
                 .toList();
         Integer score = sumOrNull(answers, sections);
         Double cutoff = mentalStateExamCutoff(answers);
@@ -193,7 +197,7 @@ public class ScaleScorer {
     }
 
     private Double mentalStateExamCutoff(Map<String, Object> answers) {
-        Integer schooling = intOf(answers, "escolaridade");
+        Integer schooling = intOf(answers, SCHOOLING_KEY);
         if (schooling == null || schooling < 0 || schooling >= MEEM_CUTOFFS.length) {
             return null;
         }
@@ -271,6 +275,7 @@ public class ScaleScorer {
         if (!(value instanceof String text) || text.isBlank()) {
             return null;
         }
-        return LocalTime.parse(text.length() > 5 ? text.substring(0, 5) : text);
+        String hourAndMinute = text.length() > HOUR_MINUTE_LENGTH ? text.substring(0, HOUR_MINUTE_LENGTH) : text;
+        return LocalTime.parse(hourAndMinute);
     }
 }

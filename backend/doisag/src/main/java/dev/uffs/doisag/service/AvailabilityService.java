@@ -71,11 +71,11 @@ public class AvailabilityService {
         Prescriber prescriber = findPrescriber(prescriberId);
         prescriber.setAppointmentDurationMinutes(availabilityData.appointmentDurationMinutes());
         // sem a duracao da primeira consulta ela fica igual a do retorno
-        if (availabilityData.firstAppointmentDurationMinutes() == null) {
-            prescriber.setFirstAppointmentDurationMinutes(availabilityData.appointmentDurationMinutes());
-        } else {
-            prescriber.setFirstAppointmentDurationMinutes(availabilityData.firstAppointmentDurationMinutes());
+        Integer firstDurationMinutes = availabilityData.firstAppointmentDurationMinutes();
+        if (firstDurationMinutes == null) {
+            firstDurationMinutes = availabilityData.appointmentDurationMinutes();
         }
+        prescriber.setFirstAppointmentDurationMinutes(firstDurationMinutes);
         prescriberRepository.save(prescriber);
 
         availabilityRepository.deleteByPrescriberId(prescriberId);
@@ -112,7 +112,7 @@ public class AvailabilityService {
             throw new BusinessException(PAST_DAY_OFF_MESSAGE);
         }
         Prescriber prescriber = findPrescriber(prescriberId);
-        // a mesma trava da agenda: o pedido do paciente pro mesmo dia espera a folga gravar,
+        // a mesma trava da agenda pq o pedido do paciente pro mesmo dia espera a folga gravar
         // entao a conta dos marcados n deixa ninguem de fora
         prescriberRepository.lockById(prescriberId);
         if (dayOffRepository.existsByPrescriberIdAndOffDate(prescriberId, date)) {

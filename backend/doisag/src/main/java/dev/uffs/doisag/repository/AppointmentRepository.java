@@ -14,10 +14,10 @@ import java.util.List;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    // consultas de um prescritor num intervalo pro painel e pra conta de horario ocupado
     // as consultas de um dia inteiro, q o lembrete do dia seguinte usa (RF34)
     List<Appointment> findByDateTimeBetween(LocalDateTime start, LocalDateTime end);
 
+    // consultas de um prescritor num intervalo pro painel e pra conta de horario ocupado
     List<Appointment> findByPrescriberIdAndDateTimeBetween(Long prescriberId, LocalDateTime start, LocalDateTime end);
 
     // agenda de um prescritor num intervalo em ordem de horario

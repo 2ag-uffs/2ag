@@ -10,35 +10,30 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // pra quem eh a notificacao
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    // titulo e mensagem
     @Column(nullable = false)
     private String title;
 
-    // TEXT em vez de length 512: mensagem de alerta clinico pode ser longa
+    // TEXT e n length 512 pq alerta clinico pode ser longo
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    // pra saber se ja foi lida
     @Column(nullable = false)
     private boolean isRead = false;
 
-    // quando foi criada
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    // tipo da notificacao, pra gente poder filtrar e por icones diferentes no front
+    // o front escolhe o icone e o rotulo por ele ex FORM APPOINTMENT ALERT
     @Column(nullable = false)
-    private String type; // ex: "FORM", "APPOINTMENT", "ALERT"
+    private String type;
 
-    // um link pra onde o usuario deve ir quando clicar na notificacao
-    private String link; // ex: "/diario-sono"
+    // pra onde o aviso leva qnd a pessoa clica ex /diario-sono
+    private String link;
 
-    // construtor, getters e setters
     public Notification() {
         this.createdAt = LocalDateTime.now();
     }

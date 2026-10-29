@@ -9,7 +9,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/patients/{patientId}/treatment-protocol")
@@ -26,13 +32,14 @@ public class TreatmentProtocolController {
     @PostMapping
     public ResponseEntity<TreatmentProtocolResponseDTO> create(
             @PathVariable Long patientId,
-            @RequestBody @Valid TreatmentProtocolCreateDTO dados,
+            @RequestBody @Valid TreatmentProtocolCreateDTO protocolData,
             @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        TreatmentProtocolResponseDTO protocol = treatmentProtocolService.create(patientId, dados, loggedPrescriber);
+        TreatmentProtocolResponseDTO protocol = treatmentProtocolService.create(patientId, protocolData,
+                loggedPrescriber);
         return ResponseEntity.status(HttpStatus.CREATED).body(protocol);
     }
 
-    // o paciente tambem pode ver o proprio acompanhamento
+    // o paciente tbm pode ver o proprio acompanhamento
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping
     public ResponseEntity<TreatmentProtocolResponseDTO> getActive(@PathVariable Long patientId) {

@@ -41,6 +41,31 @@ const CONSENT_ERRORS = {
     "under-16": "Para criar a conta, o responsável legal precisa ler e aceitar o termo de consentimento",
 };
 
+const GUARDIAN_HINTS = {
+    "adult": "Se alguém ajuda você no tratamento, deixe o contato. A clínica pode ligar para essa pessoa "
+        + "quando precisar.",
+    "16-17": "O paciente tem 16 ou 17 anos. Ele preenche o cadastro e aceita o termo junto com o pai, a "
+        + "mãe ou o responsável legal.",
+    "under-16": "O paciente tem menos de 16 anos. O pai, a mãe ou o responsável legal preenche o cadastro "
+        + "e aceita o termo em nome dele.",
+};
+
+// texto do aceite antes e depois do botao q abre o termo
+const CONSENT_LABELS = {
+    "adult": {
+        before: "Li e aceito o",
+        after: "para o uso dos meus dados de saúde no acompanhamento.",
+    },
+    "16-17": {
+        before: "Eu, paciente, e meu responsável legal lemos e aceitamos o",
+        after: "para o uso dos meus dados de saúde no acompanhamento.",
+    },
+    "under-16": {
+        before: "Sou o responsável legal pelo paciente e aceito, em nome dele, o",
+        after: "para o uso dos dados de saúde dele no acompanhamento.",
+    },
+};
+
 // confere no navegador o q da pra conferir antes de mandar pra api
 function findFormErrors(formData, hasAcceptedConsent, ageBand) {
     const errors = findGuardianErrors(formData, ageBand !== "adult");
@@ -65,15 +90,28 @@ function findFormErrors(formData, hasAcceptedConsent, ageBand) {
     return errors;
 }
 
-// leva a pessoa ate o primeiro campo com erro
+// leva a pessoa ate o primeiro campo com erro e diz se achou algum
 // no celular o formulario eh comprido e o erro pode estar fora da tela
 function focusFirstInvalidField() {
-    setTimeout(() => {
-        const firstInvalidField = document.querySelector("[aria-invalid='true']");
-        if (firstInvalidField) {
-            firstInvalidField.focus();
-        }
-    }, 0);
+    const firstInvalidField = document.querySelector("[aria-invalid='true']");
+    if (!firstInvalidField) {
+        return false;
+    }
+    firstInvalidField.focus();
+    return true;
+}
+
+// convite q falta q n vale mais ou q n deu pra conferir
+function inviteProblemText(inviteStatus) {
+    if (inviteStatus === "invalid") {
+        return "Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. "
+            + "Peça um novo link ao seu prescritor.";
+    }
+    if (inviteStatus === "offline") {
+        return "Não foi possível conferir o convite agora. Confira sua internet e abra o link de novo.";
+    }
+    return "O cadastro de paciente é feito pelo link de convite que o seu prescritor envia. "
+        + "Peça o link a ele.";
 }
 
 // volta pra tela inicial da conta q ja estava aberta, sem sair dela
@@ -123,10 +161,8 @@ export default function SignUp() {
         if (!errorMessage) {
             return;
         }
-        const firstInvalidField = document.querySelector("[aria-invalid='true']");
-        if (firstInvalidField) {
-            firstInvalidField.focus();
-        } else if (messageRef.current) {
+        const hasFocusedField = focusFirstInvalidField();
+        if (!hasFocusedField && messageRef.current) {
             messageRef.current.scrollIntoView({block: "center"});
         }
     }, [errorMessage]);
@@ -235,6 +271,11 @@ export default function SignUp() {
         setIsTermOpen(false);
     };
 
+    const acceptResearch = () => {
+        setAcceptsResearch(true);
+        setIsResearchOpen(false);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setErrorMessage(null);
@@ -242,7 +283,8 @@ export default function SignUp() {
         const formErrors = findFormErrors(formData, hasAcceptedConsent, ageBand);
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
-            focusFirstInvalidField();
+            // espera a tela desenhar os erros antes de procurar o campo
+            setTimeout(focusFirstInvalidField, 0);
             return;
         }
 
@@ -279,7 +321,7 @@ export default function SignUp() {
                 if (Object.keys(errorsByField).length > 0) {
                     setErrorMessage("Confira os campos destacados.");
                 } else {
-                    // tipo o termo q foi atualizado: a mensagem so aparece com o texto novo ja na tela
+                    // erro geral tipo termo atualizado a msg so aparece dps q o texto novo ja esta na tela
                     await reloadChangedTerms();
                     setErrorMessage(requestError.message);
                 }
@@ -330,19 +372,9 @@ export default function SignUp() {
     }
 
     if (inviteStatus !== "valid") {
-        let statusMessage = "O cadastro de paciente é feito pelo link de convite que o seu prescritor envia. "
-            + "Peça o link a ele.";
-        if (inviteStatus === "invalid") {
-            statusMessage = "Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. "
-                + "Peça um novo link ao seu prescritor.";
-        }
-        if (inviteStatus === "offline") {
-            statusMessage = "Não foi possível conferir o convite agora. Confira sua internet e abra o link de novo.";
-        }
-
         return (
             <AuthLayout title="Criar conta">
-                <p className={"aviso aviso--atencao " + styles.message}>{statusMessage}</p>
+                <p className={"aviso aviso--atencao " + styles.message}>{inviteProblemText(inviteStatus)}</p>
                 {otherAccount ? <BackToOpenAccount account={otherAccount}/> : (
                     <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
                         Já tenho conta
@@ -471,24 +503,7 @@ export default function SignUp() {
                     <legend className={styles.sectionTitle}>
                         {isMinor ? "Responsável legal" : "Familiar ou cuidador (opcional)"}
                     </legend>
-                    {ageBand === "adult" && (
-                        <p className={styles.sectionHint}>
-                            Se alguém ajuda você no tratamento, deixe o contato. A clínica pode ligar para essa pessoa
-                            quando precisar.
-                        </p>
-                    )}
-                    {ageBand === "16-17" && (
-                        <p className={styles.sectionHint}>
-                            O paciente tem 16 ou 17 anos. Ele preenche o cadastro e aceita o termo junto com o pai, a
-                            mãe ou o responsável legal.
-                        </p>
-                    )}
-                    {ageBand === "under-16" && (
-                        <p className={styles.sectionHint}>
-                            O paciente tem menos de 16 anos. O pai, a mãe ou o responsável legal preenche o cadastro
-                            e aceita o termo em nome dele.
-                        </p>
-                    )}
+                    <p className={styles.sectionHint}>{GUARDIAN_HINTS[ageBand]}</p>
                     <TextField
                         label="Nome"
                         name="guardian.name"
@@ -563,33 +578,13 @@ export default function SignUp() {
                             onChange={(event) => changeConsent(event.target.checked)}
                             aria-invalid={fieldErrors.consentTermVersion ? "true" : undefined}
                         />
-                        {ageBand === "adult" && (
-                            <span>
-                                Li e aceito o{" "}
-                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
-                                    termo de consentimento
-                                </button>
-                                {" "}para o uso dos meus dados de saúde no acompanhamento.
-                            </span>
-                        )}
-                        {ageBand === "16-17" && (
-                            <span>
-                                Eu, paciente, e meu responsável legal lemos e aceitamos o{" "}
-                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
-                                    termo de consentimento
-                                </button>
-                                {" "}para o uso dos meus dados de saúde no acompanhamento.
-                            </span>
-                        )}
-                        {ageBand === "under-16" && (
-                            <span>
-                                Sou o responsável legal pelo paciente e aceito, em nome dele, o{" "}
-                                <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
-                                    termo de consentimento
-                                </button>
-                                {" "}para o uso dos dados de saúde dele no acompanhamento.
-                            </span>
-                        )}
+                        <span>
+                            {CONSENT_LABELS[ageBand].before}{" "}
+                            <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
+                                termo de consentimento
+                            </button>
+                            {" "}{CONSENT_LABELS[ageBand].after}
+                        </span>
                     </label>
                     {fieldErrors.consentTermVersion && (
                         <span className={styles.consentError}>{fieldErrors.consentTermVersion}</span>
@@ -636,14 +631,7 @@ export default function SignUp() {
             <Modal show={isResearchOpen} title="Termo de pesquisa" onClickClose={() => setIsResearchOpen(false)}>
                 <div className={styles.termText}>{researchTerm.text}</div>
                 <div className={styles.termActions}>
-                    <button
-                        type="button"
-                        className={styles.termAcceptButton}
-                        onClick={() => {
-                            setAcceptsResearch(true);
-                            setIsResearchOpen(false);
-                        }}
-                    >
+                    <button type="button" className={styles.termAcceptButton} onClick={acceptResearch}>
                         Aceito participar
                     </button>
                 </div>

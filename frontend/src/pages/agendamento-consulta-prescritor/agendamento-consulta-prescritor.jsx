@@ -35,6 +35,21 @@ function numberOrNull(text) {
     return text === "" ? null : Number(text);
 }
 
+// tipo e duracao vazios vao nulos e a api decide pelo historico na nova e mantendo o q era na remarcacao
+function scheduleFieldsOf(values) {
+    return {
+        dateTime: toApiDateTime(values.date, values.time),
+        modality: values.modality,
+        durationMinutes: numberOrNull(values.durationMinutes),
+        appointmentType: values.appointmentType === "" ? null : values.appointmentType,
+    };
+}
+
+// T00:00:00 p/ ler o dia no horario local e n em utc
+function mondayOfDay(dayIso) {
+    return mondayOf(new Date(dayIso + "T00:00:00"));
+}
+
 // os sete dias da semana a partir da segunda
 function weekDaysFrom(monday) {
     const days = [];
@@ -107,77 +122,57 @@ export default function AgendamentoPrescritor() {
         setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
     };
 
-    const confirmRequest = async (request) => {
+    const clearMessages = () => {
         setNotice(null);
         setActionError(null);
-        setBusyAppointmentId(request.id);
+    };
+
+    // confirmar cancelar e marcar falta so mudam o fim do endereco e o aviso
+    const runAppointmentAction = async (appointment, action, successMessage) => {
+        clearMessages();
+        setBusyAppointmentId(appointment.id);
         try {
-            await apiService.put("/appointments/" + request.id + "/confirm");
-            finishAction("Consulta de " + request.patientName + " confirmada. O paciente recebeu o aviso.");
+            await apiService.put("/appointments/" + appointment.id + "/" + action);
+            finishAction(successMessage);
         } catch (requestError) {
             showActionError(requestError);
         } finally {
             setBusyAppointmentId(null);
         }
+    };
+
+    const confirmRequest = async (request) => {
+        await runAppointmentAction(request, "confirm",
+            "Consulta de " + request.patientName + " confirmada. O paciente recebeu o aviso.");
     };
 
     const cancelAppointment = async () => {
         const appointment = cancelTarget;
         setCancelTarget(null);
-        setNotice(null);
-        setActionError(null);
-        setBusyAppointmentId(appointment.id);
-        try {
-            await apiService.put("/appointments/" + appointment.id + "/cancel");
-            finishAction("Consulta de " + appointment.patientName + " cancelada. O paciente recebeu o aviso.");
-        } catch (requestError) {
-            showActionError(requestError);
-        } finally {
-            setBusyAppointmentId(null);
-        }
+        await runAppointmentAction(appointment, "cancel",
+            "Consulta de " + appointment.patientName + " cancelada. O paciente recebeu o aviso.");
     };
 
     const markNoShow = async () => {
         const appointment = noShowTarget;
         setNoShowTarget(null);
-        setNotice(null);
-        setActionError(null);
-        setBusyAppointmentId(appointment.id);
-        try {
-            await apiService.put("/appointments/" + appointment.id + "/no-show");
-            finishAction("Falta de " + appointment.patientName + " registrada. O paciente recebeu o aviso.");
-        } catch (requestError) {
-            showActionError(requestError);
-        } finally {
-            setBusyAppointmentId(null);
-        }
+        await runAppointmentAction(appointment, "no-show",
+            "Falta de " + appointment.patientName + " registrada. O paciente recebeu o aviso.");
     };
 
-    // se a api recusar o erro volta pro modal mostrar
-    // tipo e duracao vazios vao nulos e a api decide pelo historico do paciente
+    // sem try pq se a api recusar o erro volta pro modal mostrar
     const createAppointment = async (values) => {
-        await apiService.post("/appointments", {
-            patientId: Number(values.patientId),
-            dateTime: toApiDateTime(values.date, values.time),
-            modality: values.modality,
-            durationMinutes: numberOrNull(values.durationMinutes),
-            appointmentType: values.appointmentType === "" ? null : values.appointmentType,
-        });
+        await apiService.post("/appointments", {patientId: Number(values.patientId), ...scheduleFieldsOf(values)});
         setIsCreating(false);
-        setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
+        setWeekStart(mondayOfDay(values.date));
         finishAction("Consulta marcada. O paciente recebeu o aviso.");
     };
 
     const rescheduleAppointment = async (values) => {
         const patientName = rescheduleTarget.patientName;
-        await apiService.put("/appointments/" + rescheduleTarget.id, {
-            dateTime: toApiDateTime(values.date, values.time),
-            modality: values.modality,
-            durationMinutes: numberOrNull(values.durationMinutes),
-            appointmentType: values.appointmentType === "" ? null : values.appointmentType,
-        });
+        await apiService.put("/appointments/" + rescheduleTarget.id, scheduleFieldsOf(values));
         setRescheduleTarget(null);
-        setWeekStart(mondayOf(new Date(values.date + "T00:00:00")));
+        setWeekStart(mondayOfDay(values.date));
         finishAction("Consulta de " + patientName + " remarcada. O paciente recebeu o aviso.");
     };
 
@@ -188,8 +183,7 @@ export default function AgendamentoPrescritor() {
     };
 
     const openForm = (setTarget, target) => {
-        setNotice(null);
-        setActionError(null);
+        clearMessages();
         setTarget(target);
     };
 
@@ -209,6 +203,76 @@ export default function AgendamentoPrescritor() {
         RETORNO: availability.appointmentDurationMinutes,
     };
 
+    const requestActions = (request, isBusy) => (
+        <>
+            {isInTheFuture(request.dateTime) && (
+                <button
+                    type="button"
+                    className="button button-small"
+                    onClick={() => confirmRequest(request)}
+                    disabled={isBusy}
+                >
+                    Confirmar
+                </button>
+            )}
+            <button
+                type="button"
+                className="button-secondary button-small"
+                onClick={() => openForm(setDeclineTarget, request)}
+                disabled={isBusy}
+            >
+                Recusar
+            </button>
+        </>
+    );
+
+    const scheduledActions = (appointment, isBusy) => {
+        const hasStarted = !isInTheFuture(appointment.dateTime);
+        // a falta so depois q a hora marcada terminou, igual a api pede
+        const isOverAndScheduled = appointment.status === "AGENDADA"
+            && hasEnded(appointment.dateTime, appointment.durationMinutes);
+        return (
+            <>
+                {hasStarted ? (
+                    <button
+                        type="button"
+                        className="button button-small"
+                        onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
+                    >
+                        Registrar atendimento
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => openForm(setRescheduleTarget, appointment)}
+                        disabled={isBusy}
+                    >
+                        Remarcar
+                    </button>
+                )}
+                {isOverAndScheduled && (
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => openForm(setNoShowTarget, appointment)}
+                        disabled={isBusy}
+                    >
+                        Marcar falta
+                    </button>
+                )}
+                <button
+                    type="button"
+                    className="button-danger button-small"
+                    onClick={() => openForm(setCancelTarget, appointment)}
+                    disabled={isBusy}
+                >
+                    Cancelar
+                </button>
+            </>
+        );
+    };
+
     // o botao de cada consulta depende da situacao dela
     const appointmentActions = (appointment) => {
         const isBusy = busyAppointmentId === appointment.id;
@@ -216,74 +280,10 @@ export default function AgendamentoPrescritor() {
             return null;
         }
         if (appointment.status === "SOLICITADA") {
-            return (
-                <>
-                    {isInTheFuture(appointment.dateTime) && (
-                        <button
-                            type="button"
-                            className="button button-small"
-                            onClick={() => confirmRequest(appointment)}
-                            disabled={isBusy}
-                        >
-                            Confirmar
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        className="button-secondary button-small"
-                        onClick={() => openForm(setDeclineTarget, appointment)}
-                        disabled={isBusy}
-                    >
-                        Recusar
-                    </button>
-                </>
-            );
+            return requestActions(appointment, isBusy);
         }
         if (appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO") {
-            const hasStarted = !isInTheFuture(appointment.dateTime);
-            // a falta so depois q a hora marcada terminou, igual a api pede
-            const isOverAndScheduled = appointment.status === "AGENDADA"
-                && hasEnded(appointment.dateTime, appointment.durationMinutes);
-            return (
-                <>
-                    {hasStarted ? (
-                        <button
-                            type="button"
-                            className="button button-small"
-                            onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
-                        >
-                            Registrar atendimento
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => openForm(setRescheduleTarget, appointment)}
-                            disabled={isBusy}
-                        >
-                            Remarcar
-                        </button>
-                    )}
-                    {isOverAndScheduled && (
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => openForm(setNoShowTarget, appointment)}
-                            disabled={isBusy}
-                        >
-                            Marcar falta
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        className="button-danger button-small"
-                        onClick={() => openForm(setCancelTarget, appointment)}
-                        disabled={isBusy}
-                    >
-                        Cancelar
-                    </button>
-                </>
-            );
+            return scheduledActions(appointment, isBusy);
         }
         if (appointment.status === "CONCLUIDA") {
             return (
@@ -321,6 +321,30 @@ export default function AgendamentoPrescritor() {
             <div className={styles.appointmentActions}>{appointmentActions(appointment)}</div>
         </li>
     );
+
+    const renderDay = (dayIso) => {
+        const dayAppointments = weekAppointments.filter((appointment) => appointment.dateTime.slice(0, 10) === dayIso);
+        const isToday = dayIso === todayIso;
+        const isDayOff = daysOffDates.includes(dayIso);
+        return (
+            <div key={dayIso} className={isToday ? styles.day + " " + styles.dayToday : styles.day}>
+                <h3 className={styles.dayName}>
+                    {formatWeekdayAndDate(dayIso)}
+                    <span className={styles.dayTags}>
+                        {isToday && <span className={styles.todayTag}>hoje</span>}
+                        {isDayOff && <span className={styles.dayOffTag}>sem atendimento</span>}
+                    </span>
+                </h3>
+                {dayAppointments.length === 0 ? (
+                    <p className={styles.dayEmpty}>Nenhuma consulta.</p>
+                ) : (
+                    <ul className={styles.list}>
+                        {dayAppointments.map((appointment) => renderAppointment(appointment, false))}
+                    </ul>
+                )}
+            </div>
+        );
+    };
 
     return (
         <section className={styles.page}>
@@ -413,30 +437,7 @@ export default function AgendamentoPrescritor() {
                     </div>
                 </div>
                 <div className={styles.days}>
-                    {weekDaysFrom(weekStart).map((dayIso) => {
-                        const dayAppointments = weekAppointments.filter((appointment) =>
-                            appointment.dateTime.slice(0, 10) === dayIso);
-                        const isToday = dayIso === todayIso;
-                        const isDayOff = daysOffDates.includes(dayIso);
-                        return (
-                            <div key={dayIso} className={isToday ? styles.day + " " + styles.dayToday : styles.day}>
-                                <h3 className={styles.dayName}>
-                                    {formatWeekdayAndDate(dayIso)}
-                                    <span className={styles.dayTags}>
-                                        {isToday && <span className={styles.todayTag}>hoje</span>}
-                                        {isDayOff && <span className={styles.dayOffTag}>sem atendimento</span>}
-                                    </span>
-                                </h3>
-                                {dayAppointments.length === 0 ? (
-                                    <p className={styles.dayEmpty}>Nenhuma consulta.</p>
-                                ) : (
-                                    <ul className={styles.list}>
-                                        {dayAppointments.map((appointment) => renderAppointment(appointment, false))}
-                                    </ul>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {weekDaysFrom(weekStart).map((dayIso) => renderDay(dayIso))}
                 </div>
             </section>
 

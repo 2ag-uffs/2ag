@@ -123,7 +123,7 @@ public class AppointmentsController {
         return appointmentService.decline(id, declineData);
     }
 
-    // o prescritor anota q o paciente n apareceu, depois q a hora da consulta passou
+    // o prescritor anota q o paciente n apareceu dps q a hora da consulta passou
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/no-show")
     public AgendaAppointmentDTO markNoShow(@PathVariable Long id) {

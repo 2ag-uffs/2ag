@@ -49,7 +49,7 @@ public class AvailabilityController {
     }
 
     // dias sem atendimento de hoje em diante
-    // a folga eh achada pela data e pelo prescritor logado, sem id no caminho
+    // a folga eh achada pela data e pelo prescritor logado sem id no caminho
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping("/days-off")
     public List<DayOffResponseDTO> getMyDaysOff(@AuthenticationPrincipal Prescriber loggedPrescriber) {

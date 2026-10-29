@@ -12,6 +12,17 @@ import styles from "./selecao-escalas.module.css";
 
 const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
 
+// escala ja enviada ou recusada mostra o motivo no lugar da descricao
+function descriptionOf(scale, alreadySent, refusal) {
+    if (alreadySent) {
+        return "Já enviada. Esperando o paciente responder.";
+    }
+    if (refusal) {
+        return refusal.endsWith(".") ? refusal : refusal + ".";
+    }
+    return scale.description;
+}
+
 // envio avulso de escalas pro paciente (RF09)
 //
 // a lista do q da pra enviar vem do servidor, entao o mini-exame nem
@@ -141,17 +152,11 @@ export default function SelecaoEscalas() {
                     {visibleScales.map((scale) => {
                         const alreadySent = page.waiting.includes(scale.type);
                         const refusal = refused[scale.type];
-                        let description = scale.description;
-                        if (alreadySent) {
-                            description = "Já enviada. Esperando o paciente responder.";
-                        } else if (refusal) {
-                            description = refusal.endsWith(".") ? refusal : refusal + ".";
-                        }
                         return (
                             <li key={scale.type}>
                                 <ChoiceCard
                                     title={scale.name}
-                                    description={description}
+                                    description={descriptionOf(scale, alreadySent, refusal)}
                                     checked={alreadySent || (!refusal && Boolean(chosen[scale.type]))}
                                     disabled={alreadySent || Boolean(refusal) || isSending}
                                     onChange={() => toggleScale(scale.type)}

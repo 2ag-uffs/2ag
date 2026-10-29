@@ -36,13 +36,7 @@ export function answersPayload(items, values) {
 
 // quem chama decide se a escala exige tudo, pq a maioria aceita item em branco (RN10)
 export function missingItemsOf(items, values) {
-    return items.filter((item) => {
-        const value = values[item.key];
-        if (item.type === "CALCULADO") {
-            return false;
-        }
-        return isBlank(value);
-    });
+    return items.filter((item) => item.type !== "CALCULADO" && isBlank(values[item.key]));
 }
 
 // escala pontuada sem um item fica sem escore (RN10), entao ali so o texto livre pode ficar em branco
@@ -57,7 +51,7 @@ export function requiredItemsOf(definition) {
 export function answersToValues(answers) {
     const values = {};
     Object.entries(answers || {}).forEach(([key, value]) => {
-        values[key] = typeof value === "boolean" ? String(value) : String(value);
+        values[key] = String(value);
     });
     return values;
 }
@@ -83,14 +77,16 @@ export function formatAnswer(item, value) {
     return String(value);
 }
 
+const MINUTES_PER_HOUR = 60;
+
 // minutos em horas e minutos, q eh como a pessoa pensa o tempo de sono
 export function formatMinutes(minutes) {
     if (Number.isNaN(minutes)) {
         return "";
     }
-    if (minutes < 60) {
+    if (minutes < MINUTES_PER_HOUR) {
         return minutes + " min";
     }
-    const rest = minutes % 60;
-    return Math.floor(minutes / 60) + "h" + String(rest).padStart(2, "0");
+    const rest = minutes % MINUTES_PER_HOUR;
+    return Math.floor(minutes / MINUTES_PER_HOUR) + "h" + String(rest).padStart(2, "0");
 }

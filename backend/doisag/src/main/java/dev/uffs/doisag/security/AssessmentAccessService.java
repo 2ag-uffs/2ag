@@ -1,5 +1,6 @@
 package dev.uffs.doisag.security;
 
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,10 @@ public class AssessmentAccessService {
 
     // o tipo vem como texto do PreAuthorize e so a anamnese eh aceita aqui
     public boolean canAccess(String scaleType, Long assessmentId, Authentication authentication) {
-        if (assessmentId == null || !"ANAMNESE".equals(scaleType)) {
+        if (assessmentId == null || !ScaleType.ANAMNESE.name().equals(scaleType)) {
             return false;
         }
-        // registro q n existe da 403 e n 404, de propósito: assim ninguem
+        // registro q n existe da 403 e n 404, de proposito: assim ninguem
         // descobre quais ids existem chutando
         return anamnesisRepository.findById(assessmentId)
                 .map(anamnesis -> anamnesis.getPatient() != null

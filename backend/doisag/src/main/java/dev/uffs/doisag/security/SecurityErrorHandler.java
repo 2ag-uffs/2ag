@@ -15,10 +15,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-// erro que acontece dentro da cadeia de filtros, antes do controller.
-// o @RestControllerAdvice n enxerga esse trecho, entao sem isso aqui
-// o spring devolvia 403 com corpo vazio pra quem n mandou token, e a
-// excecao do jjwt virava 500
+// erro q acontece na cadeia de filtros antes do controller
+// o RestControllerAdvice n enxerga esse trecho entao sem isso aqui
+// o spring devolvia 403 c/ corpo vazio pra quem n mandou token e a excecao do jjwt virava 500
 @Component
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
@@ -28,34 +27,34 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
         this.objectMapper = objectMapper;
     }
 
-    // sem credencial, ou com token invalido ou expirado: 401.
-    // 401 diz "faz login de novo", q eh diferente de 403
+    // sem credencial ou c/ token invalido ou vencido responde 401
+    // 401 diz p/ fazer login de novo q eh diferente de 403
     @Override
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        escreveErro(request, response, HttpStatus.UNAUTHORIZED,
+        writeError(request, response, HttpStatus.UNAUTHORIZED,
                 "Sessão inválida ou expirada. Faça login novamente!");
     }
 
-    // logado, mas sem permissao pra esse recurso: 403
+    // logado mas sem permissao pra esse recurso responde 403
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        escreveErro(request, response, HttpStatus.FORBIDDEN, "Acesso negado!");
+        writeError(request, response, HttpStatus.FORBIDDEN, "Acesso negado!");
     }
 
     // requisicao barrada por um filtro nosso antes da autorizacao como a vinda de outro endereco
     public void writeForbidden(HttpServletRequest request, HttpServletResponse response, String message)
             throws IOException {
-        escreveErro(request, response, HttpStatus.FORBIDDEN, message);
+        writeError(request, response, HttpStatus.FORBIDDEN, message);
     }
 
-    private void escreveErro(HttpServletRequest request,
-                             HttpServletResponse response,
-                             HttpStatus status,
-                             String message) throws IOException {
+    private void writeError(HttpServletRequest request,
+                            HttpServletResponse response,
+                            HttpStatus status,
+                            String message) throws IOException {
         var body = new ErrorResponseDTO(
                 LocalDateTime.now(),
                 status.value(),

@@ -26,6 +26,7 @@ public class SecurityFilter extends OncePerRequestFilter {
     // token mais velho q isso eh trocado por um novo na resposta
     // assim quem esta usando o sistema n eh derrubado no meio de um formulario
     private static final Duration RENEW_AFTER = Duration.ofMinutes(10);
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final TokenService tokenService;
     private final SessionCookieService sessionCookieService;
@@ -58,27 +59,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         try {
             SessionToken sessionToken = tokenService.readToken(token);
             Users user = usersRepository.findById(sessionToken.userId()).orElse(null);
-
-            // conta apagada ou desativada perde a sessao na hora
-            if (user == null || !user.isActive()) {
-                return;
-            }
-
-            // a sessao emitida antes da ultima troca de senha deixa de valer
-            // a troca grava um cookie novo logo em seguida e esse precisa continuar valendo
-            if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())) {
-                return;
-            }
-
-            // sair da conta derruba toda sessao emitida ate aquele momento
-            // o mesmo milissegundo tbm cai pq o relogio anda de poucos em poucos ms
-            // e um login seguido de saida podia marcar a mesma hora e a sessao continuava valendo
-            if (wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())) {
-                return;
-            }
-
-            // mesmo renovada a cada uso a sessao acaba no prazo maximo contado do login
-            if (sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now())) {
+            if (!isSessionStillValid(sessionToken, user)) {
                 return;
             }
 
@@ -95,6 +76,32 @@ public class SecurityFilter extends OncePerRequestFilter {
             // a requisicao segue sem login e o SecurityErrorHandler responde 401
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private boolean isSessionStillValid(SessionToken sessionToken, Users user) {
+        // conta apagada ou desativada perde a sessao na hora
+        if (user == null || !user.isActive()) {
+            return false;
+        }
+
+        // a sessao emitida antes da ultima troca de senha deixa de valer
+        // a troca grava um cookie novo logo em seguida e esse precisa continuar valendo
+        if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())) {
+            return false;
+        }
+
+        // sair da conta derruba toda sessao emitida ate aquele momento
+        // o mesmo milissegundo tbm cai pq o relogio anda de poucos em poucos ms
+        // e um login seguido de saida podia marcar a mesma hora e a sessao continuava valendo
+        if (wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())) {
+            return false;
+        }
+
+        // mesmo renovada a cada uso a sessao acaba no prazo maximo contado do login
+        if (sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now())) {
+            return false;
+        }
+        return true;
     }
 
     private boolean wasIssuedBefore(SessionToken sessionToken, LocalDateTime moment) {
@@ -118,8 +125,8 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     private String readBearerToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            return header.substring("Bearer ".length());
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            return header.substring(BEARER_PREFIX.length());
         }
         return null;
     }

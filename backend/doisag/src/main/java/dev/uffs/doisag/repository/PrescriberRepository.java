@@ -13,10 +13,10 @@ import java.util.Optional;
 @Repository
 public interface PrescriberRepository extends JpaRepository<Prescriber, Long> {
 
-    // checa se a combinação de tipo e número de registro já existe no banco
+    // o msm registro profissional n entra duas vezes no msm conselho
     boolean existsByRegistryTypeAndRegistryNumber(String registryType, String registryNumber);
 
-    // achar o prescritor pelo email dele que vem da autenticacao
+    // o e-mail vem da autenticacao
     Optional<Prescriber> findByEmail(String email);
 
     // trava a linha do prescritor ate o fim da transacao: a agenda dele recebe uma marcacao de cada vez

@@ -44,6 +44,7 @@ public class ReminderService {
 
     // o formulario avisa faltando dois dias pro prazo
     private static final int SCALE_REMINDER_DAYS = 2;
+    private static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
 
     private final AppointmentRepository appointmentRepository;
     private final ScaleTaskRepository taskRepository;
@@ -112,10 +113,10 @@ public class ReminderService {
 
     private boolean remindAppointment(Long appointmentId, LocalDate tomorrow) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId).orElse(null);
-        if (appointment == null || !canBeReminded(appointment, tomorrow)) {
+        if (appointment == null || !canAppointmentBeReminded(appointment, tomorrow)) {
             return false;
         }
-        remind(appointment);
+        sendAppointmentReminder(appointment);
         return true;
     }
 
@@ -125,20 +126,20 @@ public class ReminderService {
     // antes de mandar, entao pula a q ja tem
     // quem chama ja travou a consulta (ou acabou de criar) e gravou a mudanca, entao aqui n trava de novo
     public boolean remindNowIfTomorrow(Appointment appointment) {
-        if (!canBeReminded(appointment, LocalDate.now().plusDays(1))) {
+        if (!canAppointmentBeReminded(appointment, LocalDate.now().plusDays(1))) {
             return false;
         }
-        remind(appointment);
+        sendAppointmentReminder(appointment);
         return true;
     }
 
-    private boolean canBeReminded(Appointment appointment, LocalDate tomorrow) {
+    private boolean canAppointmentBeReminded(Appointment appointment, LocalDate tomorrow) {
         return appointment.getStatus() == AppointmentStatus.AGENDADA && !appointment.isAnnulled()
                 && appointment.getReminderSentAt() == null
                 && appointment.getDateTime().toLocalDate().equals(tomorrow);
     }
 
-    private void remind(Appointment appointment) {
+    private void sendAppointmentReminder(Appointment appointment) {
         Patient patient = appointment.getPatient();
         String when = formatDate(appointment.getDateTime().toLocalDate())
                 + " às " + formatTime(appointment.getDateTime());
@@ -146,8 +147,8 @@ public class ReminderService {
                 + when + ".";
 
         notificationService.createNotification(patient, "Consulta amanhã", message,
-                "APPOINTMENT", "/agendamento-consulta");
-        sendEmail(patient, "Sua consulta no 2AG é amanhã", message, "/agendamento-consulta");
+                "APPOINTMENT", PATIENT_AGENDA_LINK);
+        sendEmail(patient, "Sua consulta no 2AG é amanhã", message, PATIENT_AGENDA_LINK);
 
         appointment.setReminderSentAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
@@ -184,14 +185,23 @@ public class ReminderService {
         }
         patientRepository.lockById(patientId);
         ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
-        if (task == null || task.getStatus() != ScaleTaskStatus.PENDENTE || task.getReminderSentAt() != null
-                || task.getPeriodEnd().isAfter(lastDay)) {
+        if (task == null || !canTaskBeReminded(task, lastDay)) {
             return false;
         }
         // quem ja comecou a responder n precisa de cobranca
         if (responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(taskId) > 0) {
             return false;
         }
+        sendTaskReminder(task);
+        return true;
+    }
+
+    private boolean canTaskBeReminded(ScaleTask task, LocalDate lastDay) {
+        return task.getStatus() == ScaleTaskStatus.PENDENTE && task.getReminderSentAt() == null
+                && !task.getPeriodEnd().isAfter(lastDay);
+    }
+
+    private void sendTaskReminder(ScaleTask task) {
         Patient patient = task.getPatient();
         String scaleName = task.getScaleType().getDisplayName();
         String message = scaleName + " esperando resposta até " + formatDate(task.getPeriodEnd()) + ".";
@@ -205,7 +215,6 @@ public class ReminderService {
 
         task.setReminderSentAt(LocalDateTime.now());
         taskRepository.save(task);
-        return true;
     }
 
     // o e-mail so sai pra conta ativa q deixou ligado no perfil (RF18)

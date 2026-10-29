@@ -10,7 +10,10 @@ import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.ProgressReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -35,7 +38,7 @@ public class ProgressReportController {
         return progressReportService.getTrackableAttributes();
     }
 
-    // endpoint que o front chama pra montar os graficos
+    // a serie de um atributo p/ o grafico de evolucao
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/patients/{patientId}/progress")
     public ResponseEntity<List<ProgressDataPointDTO>> getProgress(
@@ -43,9 +46,7 @@ public class ProgressReportController {
             @RequestParam("attribute") TrackableAttribute attribute,
             @RequestParam("period") TimePeriod period
     ) {
-        List<ProgressDataPointDTO> progressData =
-                progressReportService.getPatientProgress(patientId, attribute, period);
-        return ResponseEntity.ok(progressData);
+        return ResponseEntity.ok(progressReportService.getPatientProgress(patientId, attribute, period));
     }
 
     // o q o paciente escreveu nas escalas do periodo (RF07)

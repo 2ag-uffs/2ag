@@ -47,9 +47,9 @@ public class DailyScheduler {
     }
 
     // todo dia as 8 da manha, pra pessoa receber a notificacao num
-    // horario que faz sentido e n de madrugada
+    // horario q faz sentido e n de madrugada
     @Scheduled(cron = CRON)
-    public void rodarTarefasDoDia() {
+    public void runScheduledCycle() {
         runCycle(LocalDateTime.now());
     }
 
@@ -81,40 +81,40 @@ public class DailyScheduler {
     // cada etapa no proprio try pra uma falha n levar as outras junto
     // synchronized pq o agendamento e a subida da api podem cair no mesmo segundo
     public synchronized void runCycle(LocalDateTime now) {
-        LocalDate hoje = now.toLocalDate();
-        int fechadas = 0;
-        int designadas = 0;
-        int pedidosVencidos = 0;
-        int lembretesDeConsulta = 0;
-        int lembretesDeEscala = 0;
+        LocalDate today = now.toLocalDate();
+        int closedTasks = 0;
+        int assignedScales = 0;
+        int expiredRequests = 0;
+        int appointmentReminders = 0;
+        int scaleReminders = 0;
         boolean failed = false;
 
         try {
-            fechadas = scaleTaskService.closeOverdue(hoje);
+            closedTasks = scaleTaskService.closeOverdue(today);
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao fechar as escalas vencidas", exception);
         }
         try {
-            designadas = treatmentProtocolService.designarEscalasVencidas(hoje);
+            assignedScales = treatmentProtocolService.designarEscalasVencidas(today);
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao enviar as escalas do acompanhamento", exception);
         }
         try {
-            pedidosVencidos = appointmentService.declineExpiredRequests(now);
+            expiredRequests = appointmentService.declineExpiredRequests(now);
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao recusar os pedidos de consulta vencidos", exception);
         }
         try {
-            lembretesDeConsulta = reminderService.sendAppointmentReminders(hoje);
+            appointmentReminders = reminderService.sendAppointmentReminders(today);
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao enviar os lembretes de consulta", exception);
         }
         try {
-            lembretesDeEscala = reminderService.sendScaleReminders(hoje);
+            scaleReminders = reminderService.sendScaleReminders(today);
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao enviar os lembretes de formulário", exception);
@@ -122,11 +122,11 @@ public class DailyScheduler {
 
         // so o ciclo q terminou inteiro conta como dia processado
         if (!failed) {
-            saveCompletedDay(hoje);
+            saveCompletedDay(today);
         }
         log.info("Tarefas do dia: {} tarefas fechadas, {} escalas enviadas, {} pedidos de consulta vencidos, "
                         + "{} lembretes de consulta e {} lembretes de formulário",
-                fechadas, designadas, pedidosVencidos, lembretesDeConsulta, lembretesDeEscala);
+                closedTasks, assignedScales, expiredRequests, appointmentReminders, scaleReminders);
     }
 
     private boolean isCompleted(LocalDate day) {

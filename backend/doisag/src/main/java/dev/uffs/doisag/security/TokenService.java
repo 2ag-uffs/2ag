@@ -71,17 +71,17 @@ public class TokenService {
         Long userId = Long.valueOf(claims.getSubject());
 
         // token de antes desses campos usa o iat nos dois
-        Instant issuedAt = claims.getIssuedAt().toInstant();
-        Long issuedAtMillis = claims.get(ISSUED_AT_MILLIS, Long.class);
-        if (issuedAtMillis != null) {
-            issuedAt = Instant.ofEpochMilli(issuedAtMillis);
-        }
-        Instant loginAt = issuedAt;
-        Long loginAtMillis = claims.get(LOGIN_AT_MILLIS, Long.class);
-        if (loginAtMillis != null) {
-            loginAt = Instant.ofEpochMilli(loginAtMillis);
-        }
+        Instant issuedAt = readMillisClaim(claims, ISSUED_AT_MILLIS, claims.getIssuedAt().toInstant());
+        Instant loginAt = readMillisClaim(claims, LOGIN_AT_MILLIS, issuedAt);
         return new SessionToken(userId, issuedAt, loginAt);
+    }
+
+    private Instant readMillisClaim(Claims claims, String claimName, Instant fallback) {
+        Long millis = claims.get(claimName, Long.class);
+        if (millis == null) {
+            return fallback;
+        }
+        return Instant.ofEpochMilli(millis);
     }
 
     public Duration getSessionDuration() {

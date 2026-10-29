@@ -7,7 +7,6 @@ import dev.uffs.doisag.service.PatientArchiveService;
 import dev.uffs.doisag.service.PatientService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/patients")
 public class PatientsController {
+
     private final PatientService patientService;
     private final PatientArchiveService patientArchiveService;
 
@@ -29,15 +29,13 @@ public class PatientsController {
         this.patientArchiveService = patientArchiveService;
     }
 
-    // lista os pacientes do prescritor logado
-    // antes esse endpoint devolvia todos os pacientes do sistema e um prescritor via a carteira dos outros
-    // os arquivados so vem quando a tela pede a aba deles
+    // so os pacientes do prescritor logado pq ele n ve a carteira dos outros
+    // os arquivados so vem qnd a tela pede a aba deles
     @PreAuthorize("hasRole('PRESCRIBER')")
     @GetMapping
     public List<PatientResponseDTO> getMyPatients(@RequestParam(name = "archived", defaultValue = "false") boolean archived,
-                                                  Authentication authentication) {
-        Long prescriberId = ((Users) authentication.getPrincipal()).getId();
-        return patientService.getPatientsByPrescriberId(prescriberId, archived);
+                                                  @AuthenticationPrincipal Users loggedUser) {
+        return patientService.getPatientsByPrescriberId(loggedUser.getId(), archived);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#id, authentication)")

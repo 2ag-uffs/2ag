@@ -52,19 +52,12 @@ public class ProfileService {
         Users user = findUser(userId);
         if (user instanceof Patient) {
             checkPatientRequiredData(profileData);
-            // menor de 18 n pode ficar sem o responsavel legal q aceitou o termo
-            GuardianDTO.checkLegalGuardian(profileData.guardian(), profileData.birthDate());
-            GuardianDTO.checkName(profileData.guardian());
         }
 
         user.setName(profileData.name().trim());
         user.setBirthDate(profileData.birthDate());
         user.setPhone(profileData.phone());
-        if (profileData.address() == null) {
-            user.setAddress(null);
-        } else {
-            user.setAddress(profileData.address().toAddress());
-        }
+        user.setAddress(profileData.address() == null ? null : profileData.address().toAddress());
         // nome social so vale pra paciente, as outras contas ignoram o campo
         if (user instanceof Patient patient) {
             GuardianDTO.applyTo(patient, profileData.guardian());
@@ -107,6 +100,9 @@ public class ProfileService {
         if (profileData.address() == null) {
             throw new InvalidFieldException("address.street", "Informe o endereço");
         }
+        // menor de 18 n pode ficar sem o responsavel legal q aceitou o termo
+        GuardianDTO.checkLegalGuardian(profileData.guardian(), profileData.birthDate());
+        GuardianDTO.checkName(profileData.guardian());
     }
 
     private Users findUser(Long userId) {

@@ -57,17 +57,7 @@ public class PrescriptionService {
     public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
-        if (appointment.isAnnulled()) {
-            throw new BusinessException(ANNULLED_CONSULTATION_MESSAGE);
-        }
-        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
-            throw new BusinessException(CANCELED_CONSULTATION_MESSAGE);
-        }
-        // pedido sem resposta ou recusado n virou consulta
-        if (!appointment.getStatus().isConfirmed()) {
-            throw new BusinessException(NOT_CONFIRMED_CONSULTATION_MESSAGE);
-        }
-        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_CONSULTATION_MESSAGE);
+        checkAppointmentCanPrescribe(appointment);
 
         Long patientId = appointment.getPatient().getId();
         patientRepository.lockById(patientId);
@@ -78,35 +68,7 @@ public class PrescriptionService {
         if (!becomesCurrent) {
             prescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
         }
-        prescription.setProductDescription(prescriptionData.productDescription());
-        prescription.setBrand(prescriptionData.brand());
-        prescription.setBatch(prescriptionData.batch());
-        prescription.setSpectrum(prescriptionData.spectrum());
-        prescription.setVolume(prescriptionData.volume());
-        prescription.setPosology(prescriptionData.posology());
-        prescription.setAdministrationRoute(prescriptionData.administrationRoute());
-        prescription.setInstructions(prescriptionData.instructions());
-        prescription.setPrecautions(prescriptionData.precautions());
-        prescription.setExpectedEffects(prescriptionData.expectedEffects());
-        prescription.setObservation(prescriptionData.observation());
-        prescription.setTreatmentDurationDays(prescriptionData.treatmentDurationDays());
-        prescription.setNextConsultationDate(prescriptionData.nextConsultationDate());
-
-        for (PrescriptionComponentDTO componentData : prescriptionData.components()) {
-            prescription.addComponent(new PrescriptionComponent(
-                    componentData.cannabinoid(), componentData.concentration(), componentData.unit()));
-        }
-
-        // cada degrau do escalonamento vira uma linha propria
-        if (prescriptionData.escalationSteps() != null) {
-            for (DoseEscalationStepDTO stepData : prescriptionData.escalationSteps()) {
-                DoseEscalationStep step = new DoseEscalationStep();
-                step.setWeek(stepData.week());
-                step.setDosage(stepData.dosage());
-                step.setNote(stepData.note());
-                prescription.addEscalationStep(step);
-            }
-        }
+        copyPrescriptionData(prescriptionData, prescription);
 
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(), patientId);
@@ -140,6 +102,52 @@ public class PrescriptionService {
                 .stream()
                 .map(PrescriptionResponseDTO::new)
                 .toList();
+    }
+
+    private void checkAppointmentCanPrescribe(Appointment appointment) {
+        if (appointment.isAnnulled()) {
+            throw new BusinessException(ANNULLED_CONSULTATION_MESSAGE);
+        }
+        if (appointment.getStatus() == AppointmentStatus.CANCELADA) {
+            throw new BusinessException(CANCELED_CONSULTATION_MESSAGE);
+        }
+        // pedido sem resposta ou recusado n virou consulta
+        if (!appointment.getStatus().isConfirmed()) {
+            throw new BusinessException(NOT_CONFIRMED_CONSULTATION_MESSAGE);
+        }
+        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_CONSULTATION_MESSAGE);
+    }
+
+    private void copyPrescriptionData(PrescriptionCreateDTO prescriptionData, Prescription prescription) {
+        prescription.setProductDescription(prescriptionData.productDescription());
+        prescription.setBrand(prescriptionData.brand());
+        prescription.setBatch(prescriptionData.batch());
+        prescription.setSpectrum(prescriptionData.spectrum());
+        prescription.setVolume(prescriptionData.volume());
+        prescription.setPosology(prescriptionData.posology());
+        prescription.setAdministrationRoute(prescriptionData.administrationRoute());
+        prescription.setInstructions(prescriptionData.instructions());
+        prescription.setPrecautions(prescriptionData.precautions());
+        prescription.setExpectedEffects(prescriptionData.expectedEffects());
+        prescription.setObservation(prescriptionData.observation());
+        prescription.setTreatmentDurationDays(prescriptionData.treatmentDurationDays());
+        prescription.setNextConsultationDate(prescriptionData.nextConsultationDate());
+
+        for (PrescriptionComponentDTO componentData : prescriptionData.components()) {
+            prescription.addComponent(new PrescriptionComponent(
+                    componentData.cannabinoid(), componentData.concentration(), componentData.unit()));
+        }
+
+        // cada degrau do escalonamento vira uma linha propria
+        if (prescriptionData.escalationSteps() != null) {
+            for (DoseEscalationStepDTO stepData : prescriptionData.escalationSteps()) {
+                DoseEscalationStep step = new DoseEscalationStep();
+                step.setWeek(stepData.week());
+                step.setDosage(stepData.dosage());
+                step.setNote(stepData.note());
+                prescription.addEscalationStep(step);
+            }
+        }
     }
 
     // receita lancada numa consulta mais antiga q a da vigente n derruba a q o paciente usa hoje

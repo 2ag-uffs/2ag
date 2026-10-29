@@ -3,18 +3,19 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.NotificationDTO;
 import dev.uffs.doisag.dto.PatientDashboardDTO;
 import dev.uffs.doisag.dto.PrescriberDashboardDTO;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
-import dev.uffs.doisag.model.Patient;
-import dev.uffs.doisag.model.Users;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class DashboardService {
 
     // o painel eh um resumo, entao cada lista mostra so o comeco
     private static final int PANEL_LIMIT = 5;
+    private static final PageRequest PANEL_PAGE = PageRequest.of(0, PANEL_LIMIT);
 
     private final PatientRepository patientRepository;
     private final AppointmentRepository appointmentRepository;
@@ -67,31 +69,25 @@ public class DashboardService {
                 // pedido sem resposta e consulta cancelada recusada ou anulada n contam como consulta do dia
                 .filter(appointment -> appointment.getStatus().isConfirmed() && !appointment.isAnnulled())
                 .sorted((first, second) -> first.getDateTime().compareTo(second.getDateTime()))
-                .map(appointment -> new PrescriberDashboardDTO.TodayAppointmentDTO(
-                        appointment.getId(),
-                        appointment.getPatient().getId(),
-                        appointment.getPatient().getDisplayName(),
-                        appointment.getDateTime(),
-                        appointment.getModality()))
+                .map(this::todayAppointmentOf)
                 .toList();
 
         // os pedidos q vieram da agenda e ainda esperam resposta (RF11)
         LocalDateTime now = LocalDateTime.now();
         List<PrescriberDashboardDTO.WaitingRequestDTO> waitingRequests = appointmentRepository
                 .findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
-                        prescriberId, dev.uffs.doisag.enums.AppointmentStatus.SOLICITADA, now,
-                        PageRequest.of(0, PANEL_LIMIT))
+                        prescriberId, AppointmentStatus.SOLICITADA, now, PANEL_PAGE)
                 .stream()
                 .map(this::waitingRequestOf)
                 .toList();
         // a lista para em cinco, o numero do cartao n
         long waitingRequestsTotal = appointmentRepository.countByPrescriberIdAndStatusAndDateTimeAfter(
-                prescriberId, dev.uffs.doisag.enums.AppointmentStatus.SOLICITADA, now);
+                prescriberId, AppointmentStatus.SOLICITADA, now);
 
         // as escalas q passaram do prazo e ninguem respondeu (RF32)
         List<ScaleTaskStatus> lateStatuses = List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA);
         List<PrescriberDashboardDTO.LateScaleDTO> lateScales = taskRepository
-                .findLateWithoutAnswers(prescriberId, lateStatuses, today, PageRequest.of(0, PANEL_LIMIT))
+                .findLateWithoutAnswers(prescriberId, lateStatuses, today, PANEL_PAGE)
                 .stream()
                 .map(this::lateScaleOf)
                 .toList();
@@ -116,24 +112,13 @@ public class DashboardService {
                 .stream()
                 .filter(appointment -> appointment.getStatus().holdsTimeSlot() && !appointment.isAnnulled())
                 .limit(PANEL_LIMIT)
-                .map(appointment -> new PatientDashboardDTO.UpcomingAppointmentDTO(
-                        appointment.getId(),
-                        appointment.getDateTime(),
-                        appointment.getPrescriber() == null ? null : appointment.getPrescriber().getName(),
-                        appointment.getModality(),
-                        appointment.getStatus()))
+                .map(this::upcomingAppointmentOf)
                 .toList();
 
         List<PatientDashboardDTO.PendingScaleDTO> pendingScales = taskRepository
-                .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE,
-                        PageRequest.of(0, PANEL_LIMIT))
+                .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE, PANEL_PAGE)
                 .stream()
-                .map(task -> new PatientDashboardDTO.PendingScaleDTO(
-                        task.getId(),
-                        task.getScaleType().getDisplayName(),
-                        task.getPeriodEnd(),
-                        task.getPeriodEnd().isBefore(today),
-                        task.getScaleType().getPath()))
+                .map(task -> pendingScaleOf(task, today))
                 .toList();
         long pendingScalesTotal = taskRepository.countByPatientIdAndStatus(patientId, ScaleTaskStatus.PENDENTE);
 
@@ -149,7 +134,7 @@ public class DashboardService {
         long unreadNotifications = 0;
         if (loggedUser instanceof Patient) {
             latestNotifications = notificationRepository
-                    .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(patientId, PageRequest.of(0, PANEL_LIMIT))
+                    .findByUserIdAndIsReadFalseOrderByCreatedAtDesc(patientId, PANEL_PAGE)
                     .stream()
                     .map(NotificationDTO::new)
                     .toList();
@@ -158,6 +143,15 @@ public class DashboardService {
 
         return new PatientDashboardDTO(upcomingAppointments, pendingScales, currentPrescription, latestNotifications,
                 pendingScalesTotal, unreadNotifications);
+    }
+
+    private PrescriberDashboardDTO.TodayAppointmentDTO todayAppointmentOf(Appointment appointment) {
+        return new PrescriberDashboardDTO.TodayAppointmentDTO(
+                appointment.getId(),
+                appointment.getPatient().getId(),
+                appointment.getPatient().getDisplayName(),
+                appointment.getDateTime(),
+                appointment.getModality());
     }
 
     private PrescriberDashboardDTO.WaitingRequestDTO waitingRequestOf(Appointment appointment) {
@@ -177,6 +171,24 @@ public class DashboardService {
                 task.getPatient().getDisplayName(),
                 task.getScaleType().getDisplayName(),
                 task.getPeriodEnd());
+    }
+
+    private PatientDashboardDTO.UpcomingAppointmentDTO upcomingAppointmentOf(Appointment appointment) {
+        return new PatientDashboardDTO.UpcomingAppointmentDTO(
+                appointment.getId(),
+                appointment.getDateTime(),
+                appointment.getPrescriber() == null ? null : appointment.getPrescriber().getName(),
+                appointment.getModality(),
+                appointment.getStatus());
+    }
+
+    private PatientDashboardDTO.PendingScaleDTO pendingScaleOf(ScaleTask task, LocalDate today) {
+        return new PatientDashboardDTO.PendingScaleDTO(
+                task.getId(),
+                task.getScaleType().getDisplayName(),
+                task.getPeriodEnd(),
+                task.getPeriodEnd().isBefore(today),
+                task.getScaleType().getPath());
     }
 
     private PatientDashboardDTO.CurrentPrescriptionDTO currentPrescriptionOf(Prescription prescription) {

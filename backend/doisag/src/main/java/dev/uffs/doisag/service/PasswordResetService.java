@@ -112,32 +112,7 @@ public class PasswordResetService {
     // errado n pode ser usado no meio da correcao, nem a correcao desfazer uma senha ja criada
     @Transactional
     public void cancelPendingLinksOf(Long userId) {
-        LocalDateTime now = LocalDateTime.now();
-        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
-            pendingReset.setUsedAt(now);
-        }
-    }
-
-    // um link novo cancela os anteriores
-    private String createLink(Users user, LocalDateTime now, int validMinutes) {
-        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(user.getId())) {
-            pendingReset.setUsedAt(now);
-        }
-
-        String token = SecureTokens.createRandomToken();
-        PasswordReset passwordReset = new PasswordReset();
-        passwordReset.setUser(user);
-        passwordReset.setTokenHash(SecureTokens.hashToken(token));
-        passwordReset.setCreatedAt(now);
-        passwordReset.setExpiresAt(now.plusMinutes(validMinutes));
-        passwordResetRepository.save(passwordReset);
-
-        return publicUrl + "/redefinir-senha?token=" + token;
-    }
-
-    private EmailMessage linkMessage(Users user, String resetLink) {
-        return new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
-                buildEmailText(user.getDisplayName(), resetLink));
+        markPendingLinksUsed(userId, LocalDateTime.now());
     }
 
     // grava a senha nova pelo link e derruba as sessoes abertas
@@ -157,7 +132,33 @@ public class PasswordResetService {
         loginAttemptLimiter.forgetEmail(passwordReset.getUser().getEmail());
     }
 
-    private String buildEmailText(String name, String resetLink) {
+    private void markPendingLinksUsed(Long userId, LocalDateTime now) {
+        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
+            pendingReset.setUsedAt(now);
+        }
+    }
+
+    // um link novo cancela os anteriores
+    private String createLink(Users user, LocalDateTime now, int validMinutes) {
+        markPendingLinksUsed(user.getId(), now);
+
+        String token = SecureTokens.createRandomToken();
+        PasswordReset passwordReset = new PasswordReset();
+        passwordReset.setUser(user);
+        passwordReset.setTokenHash(SecureTokens.hashToken(token));
+        passwordReset.setCreatedAt(now);
+        passwordReset.setExpiresAt(now.plusMinutes(validMinutes));
+        passwordResetRepository.save(passwordReset);
+
+        return publicUrl + "/redefinir-senha?token=" + token;
+    }
+
+    private EmailMessage linkMessage(Users user, String resetLink) {
+        return new EmailMessage(user.getEmail(), "Criar uma senha nova no 2AG",
+                buildResetText(user.getDisplayName(), resetLink));
+    }
+
+    private String buildResetText(String name, String resetLink) {
         return "Olá, " + name + ".\n\n"
                 + "Recebemos um pedido para criar uma senha nova para a sua conta no 2AG. "
                 + "Abra o link abaixo em até " + VALID_MINUTES + " minutos:\n\n"

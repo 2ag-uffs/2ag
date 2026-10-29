@@ -65,7 +65,7 @@ public record GuardianDTO(
             return;
         }
         patient.setGuardianName(guardian.name().trim());
-        patient.setGuardianRelationship(isBlank(guardian.relationship()) ? null : guardian.relationship().trim());
+        patient.setGuardianRelationship(InputCleaner.textOrNull(guardian.relationship()));
         patient.setGuardianPhone(isBlank(guardian.phone()) ? null : InputCleaner.keepOnlyDigits(guardian.phone()));
     }
 

@@ -5,12 +5,14 @@ const HOME_BY_ROLE = {
     ADMIN: "/administracao",
 };
 
+const LOGIN_PATH = "/entrar";
+
 // sem ninguem logado a tela inicial eh o login
 export function homePathFor(user) {
     if (!user) {
-        return "/entrar";
+        return LOGIN_PATH;
     }
-    return HOME_BY_ROLE[user.role] || "/entrar";
+    return HOME_BY_ROLE[user.role] || LOGIN_PATH;
 }
 
 // papel q a api criou e o front ainda n conhece n tem tela inicial

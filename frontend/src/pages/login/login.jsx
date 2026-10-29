@@ -22,7 +22,12 @@ function findNotice(searchParams, location) {
 // senao alguem podia montar um link de login q manda a pessoa pra outro site
 function findReturnPath(searchParams) {
     const returnPath = searchParams.get("voltar");
-    if (!returnPath || !returnPath.startsWith("/") || returnPath.startsWith("//") || returnPath.includes("\\")) {
+    if (!returnPath) {
+        return null;
+    }
+    // o navegador le //site e /\site como outro site
+    const isOwnPath = returnPath.startsWith("/") && !returnPath.startsWith("//") && !returnPath.includes("\\");
+    if (!isOwnPath) {
         return null;
     }
     return returnPath;

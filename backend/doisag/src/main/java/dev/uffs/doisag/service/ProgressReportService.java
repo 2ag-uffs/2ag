@@ -87,29 +87,35 @@ public class ProgressReportService {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();
 
+        List<ScaleResponse> responses = responseRepository.findByPatientIdAndPeriodStartBetweenOrderByPeriodStartAsc(
+                patientId, startOf(period, today), today);
         List<ProgressCommentDTO> comments = new ArrayList<>();
-        responseRepository
-                .findByPatientIdAndPeriodStartBetweenOrderByPeriodStartAsc(
-                        patientId, startOf(period, today), today)
-                .stream()
-                .filter(response -> !response.isAnnulled())
-                .filter(response -> catalog.hasDefinition(response.getScaleType()))
-                .forEach(response -> comments.addAll(commentsOf(response)));
+        for (ScaleResponse response : responses) {
+            if (response.isAnnulled() || !catalog.hasDefinition(response.getScaleType())) {
+                continue;
+            }
+            comments.addAll(commentsOf(response));
+        }
         return comments;
     }
 
     private List<ProgressCommentDTO> commentsOf(ScaleResponse response) {
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
-        return definition.items().stream()
-                .filter(item -> item.type() == ScaleItemType.TEXTO)
-                .filter(item -> response.getAnswers().get(item.key()) instanceof String)
-                .map(item -> new ProgressCommentDTO(
+        List<ProgressCommentDTO> comments = new ArrayList<>();
+        for (ScaleItem item : definition.items()) {
+            if (item.type() != ScaleItemType.TEXTO) {
+                continue;
+            }
+            if (response.getAnswers().get(item.key()) instanceof String text) {
+                comments.add(new ProgressCommentDTO(
                         response.getId(),
                         response.getPeriodStart(),
                         response.getScaleType().getDisplayName(),
                         item.label(),
-                        String.valueOf(response.getAnswers().get(item.key()))))
-                .toList();
+                        text));
+            }
+        }
+        return comments;
     }
 
     private LocalDate startOf(TimePeriod period, LocalDate today) {

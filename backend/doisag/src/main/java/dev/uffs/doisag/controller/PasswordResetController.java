@@ -26,8 +26,9 @@ public class PasswordResetController {
     @PostMapping("/request")
     public ResponseEntity<Void> requestReset(@RequestBody @Valid PasswordResetRequestDTO requestData,
                                              HttpServletRequest request) {
-        // campo escondido q so robo preenche: recebe a mesma resposta e nada acontece
-        if (requestData.site() == null || requestData.site().isBlank()) {
+        // campo escondido q so robo preenche entao o robo recebe a mesma resposta e nada acontece
+        boolean filledByRobot = requestData.site() != null && !requestData.site().isBlank();
+        if (!filledByRobot) {
             passwordResetService.requestReset(requestData.email(), request.getRemoteAddr());
         }
         return ResponseEntity.noContent().build();

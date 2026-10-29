@@ -9,9 +9,17 @@
 const STORAGE_KEY = "2ag-theme";
 const THEME_EVENT = "2ag:theme";
 
+// preferencia de tema do aparelho ou null qnd o navegador n tem matchMedia
+function darkSchemeMedia() {
+    if (typeof window.matchMedia !== "function") {
+        return null;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)");
+}
+
 function prefersDark() {
-    return typeof window.matchMedia === "function"
-        && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const media = darkSchemeMedia();
+    return media !== null && media.matches;
 }
 
 // o tema q esta na tela agora, escolhido ou herdado do aparelho
@@ -36,10 +44,7 @@ export function applyTheme(theme) {
 // pra quem desenha com a cor em javascript e n em css, como o grafico
 // devolve a funcao de parar de ouvir, q o efeito do react usa na limpeza
 export function onThemeChange(listener) {
-    const media = typeof window.matchMedia === "function"
-        ? window.matchMedia("(prefers-color-scheme: dark)")
-        : null;
-
+    const media = darkSchemeMedia();
     if (media) {
         media.addEventListener("change", listener);
     }

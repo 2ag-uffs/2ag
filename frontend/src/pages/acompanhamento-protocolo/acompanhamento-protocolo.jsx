@@ -17,12 +17,36 @@ const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confi
 // a api aceita de 7 a 365 dias (TreatmentProtocolCreateDTO)
 const MIN_DURATION_DAYS = 7;
 const MAX_DURATION_DAYS = 365;
+const DEFAULT_DURATION_DAYS = 90;
 
 const PERIODICITIES = [
     {value: "SEMANAL", label: "Toda semana"},
     {value: "QUINZENAL", label: "A cada 14 dias"},
     {value: "MENSAL", label: "Uma vez por mês"},
 ];
+
+// escala marcada agora comeca toda semana
+const DEFAULT_PERIODICITY = "SEMANAL";
+
+// so esses campos mostram o proprio erro no formulario
+const FIELDS_THAT_SHOW_ERROR = ["startDate", "durationDays"];
+
+function periodicityLabelOf(periodicity) {
+    const option = PERIODICITIES.find((current) => current.value === periodicity);
+    if (!option) {
+        return null;
+    }
+    return option.label;
+}
+
+// a api manda hh:mm:ss e aqui so interessa hh:mm
+function hourAndMinuteOf(time) {
+    return time ? time.slice(0, 5) : "—";
+}
+
+function errorMessageOf(requestError) {
+    return requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE;
+}
 
 // o acompanhamento automatico de 90 dias (RF32)
 //
@@ -37,7 +61,7 @@ export default function AcompanhamentoProtocolo() {
     const [scales, setScales] = useState([]);
     const [chosen, setChosen] = useState({});
     const [startDate, setStartDate] = useState(toIsoDate(new Date()));
-    const [durationDays, setDurationDays] = useState(90);
+    const [durationDays, setDurationDays] = useState(DEFAULT_DURATION_DAYS);
     const [sleepBedTime, setSleepBedTime] = useState("");
     const [sleepWakeTime, setSleepWakeTime] = useState("");
 
@@ -62,7 +86,7 @@ export default function AcompanhamentoProtocolo() {
                 if (requestError instanceof ApiError && requestError.status === 404) {
                     setProtocol(null);
                 } else {
-                    setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+                    setFormError(errorMessageOf(requestError));
                 }
             })
             .finally(() => setIsLoading(false));
@@ -76,7 +100,7 @@ export default function AcompanhamentoProtocolo() {
             if (copy[type]) {
                 delete copy[type];
             } else {
-                copy[type] = "SEMANAL";
+                copy[type] = DEFAULT_PERIODICITY;
             }
             return copy;
         });
@@ -114,7 +138,7 @@ export default function AcompanhamentoProtocolo() {
                 setFieldErrors(errorsByField);
                 // erro de campo q n aparece no formulario, tipo o limite de escalas, vai pro aviso de cima
                 const hiddenErrors = Object.keys(errorsByField)
-                    .filter((field) => field !== "startDate" && field !== "durationDays")
+                    .filter((field) => !FIELDS_THAT_SHOW_ERROR.includes(field))
                     .map((field) => errorsByField[field]);
                 setFormError(hiddenErrors.length > 0 ? hiddenErrors.join(". ") + "." : requestError.message);
             } else {
@@ -133,7 +157,7 @@ export default function AcompanhamentoProtocolo() {
             setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente.");
             load();
         } catch (requestError) {
-            setFormError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
+            setFormError(errorMessageOf(requestError));
         }
     };
 
@@ -178,9 +202,8 @@ export default function AcompanhamentoProtocolo() {
                         {protocol.sleepBedTime && (
                             <span className={styles.fact}>
                                 <FiMoon aria-hidden="true"/>
-                                {/* a api manda hh:mm:ss e aqui so interessa hh:mm */}
-                                Dormir às {protocol.sleepBedTime.slice(0, 5)} e levantar às {protocol.sleepWakeTime
-                                    ? protocol.sleepWakeTime.slice(0, 5) : "—"}
+                                Dormir às {hourAndMinuteOf(protocol.sleepBedTime)} e
+                                levantar às {hourAndMinuteOf(protocol.sleepWakeTime)}
                             </span>
                         )}
                     </div>
@@ -197,9 +220,7 @@ export default function AcompanhamentoProtocolo() {
                             {protocol.items.map((item) => (
                                 <tr key={item.scaleType}>
                                     <td>{item.scaleName}</td>
-                                    <td>
-                                        {(PERIODICITIES.find((option) => option.value === item.periodicity) || {}).label}
-                                    </td>
+                                    <td>{periodicityLabelOf(item.periodicity)}</td>
                                 </tr>
                             ))}
                             </tbody>

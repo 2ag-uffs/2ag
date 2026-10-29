@@ -27,7 +27,9 @@ public record AuditEventDTO(
     // evento de conta continua com o tipo, ele n diz nada clinico
     public static AuditEventDTO forAdmin(AuditEvent auditEvent) {
         AuditRecordType recordType = auditEvent.getRecordType();
-        if (recordType != AuditRecordType.CONTA_DE_PACIENTE && recordType != AuditRecordType.CONTA_DE_PRESCRITOR) {
+        boolean accountEvent = recordType == AuditRecordType.CONTA_DE_PACIENTE
+                || recordType == AuditRecordType.CONTA_DE_PRESCRITOR;
+        if (!accountEvent) {
             recordType = AuditRecordType.PRONTUARIO;
         }
         return from(auditEvent, recordType);

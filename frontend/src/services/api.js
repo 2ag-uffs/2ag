@@ -53,6 +53,14 @@ async function readBody(response) {
     }
 }
 
+const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
+
+// o login avisa q a sessao acabou e depois volta pra tela onde a pessoa estava
+function goToLoginWithExpiredSession() {
+    const currentPath = window.location.pathname + window.location.search;
+    window.location.href = "/entrar?sessao=expirada&voltar=" + encodeURIComponent(currentPath);
+}
+
 async function request(path, options = {}) {
     const headers = {"Content-Type": "application/json", ...(options.headers || {})};
     const response = await fetch(BASE_URL + path, {...options, headers});
@@ -64,12 +72,10 @@ async function request(path, options = {}) {
         const hadSession = loggedUser !== null;
         loggedUser = null;
         if (hadSession && !window.location.pathname.startsWith("/entrar")) {
-            // o login avisa q a sessao acabou e depois volta pra tela onde a pessoa estava
-            const currentPath = window.location.pathname + window.location.search;
-            window.location.href = "/entrar?sessao=expirada&voltar=" + encodeURIComponent(currentPath);
+            goToLoginWithExpiredSession();
         }
         const message = hadSession
-            ? "Sua sessão expirou. Faça login novamente."
+            ? SESSION_EXPIRED_MESSAGE
             : (body && body.message) || "E-mail ou senha inválidos.";
         throw new ApiError(401, message);
     }
@@ -105,6 +111,18 @@ function fileNameOf(response, fallback) {
     return match ? match[1] : fallback;
 }
 
+// um link temporario com o arquivo faz o navegador salvar ele
+function saveFile(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 // baixa um arquivo pela api em vez de deixar o navegador navegar ate ele
 // assim sessao vencida e erro viram mensagem na tela, e n um arquivo com o json do erro dentro
 export async function download(path, fallbackName) {
@@ -113,21 +131,13 @@ export async function download(path, fallbackName) {
         const body = await readBody(response);
         if (response.status === 401) {
             loggedUser = null;
-            window.location.href = "/entrar?sessao=expirada&voltar="
-                + encodeURIComponent(window.location.pathname + window.location.search);
-            throw new ApiError(401, "Sua sessão expirou. Faça login novamente.");
+            goToLoginWithExpiredSession();
+            throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
         }
         throw new ApiError(response.status, body && body.message, body && body.errors);
     }
     const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileNameOf(response, fallbackName);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    saveFile(blob, fileNameOf(response, fallbackName));
 }
 
 // o cookie da sessao eh httponly e so a api apaga ele

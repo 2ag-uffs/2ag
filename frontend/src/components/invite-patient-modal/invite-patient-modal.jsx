@@ -10,13 +10,43 @@ function buildInviteLink(token) {
     return window.location.origin + "/cadastro?convite=" + encodeURIComponent(token);
 }
 
+// os convites q ainda estao na rua, pra cancelar o q foi pro numero errado
+function OpenInviteList({openInvites, onCancel}) {
+    return (
+        <div className={styles.openInvites}>
+            <h3 className={styles.openTitle}>Convites em aberto</h3>
+            <p className={styles.hint}>
+                Link que foi para a pessoa errada? Cancele antes que alguém use. O link que já virou conta
+                não aparece aqui.
+            </p>
+            <ul className={styles.openList}>
+                {openInvites.map((openInvite) => (
+                    <li key={openInvite.id} className={styles.openRow}>
+                        <span>
+                            Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
+                            {formatDateTime(openInvite.expiresAt) + brasiliaTimeNote()}
+                        </span>
+                        <button
+                            type="button"
+                            className="button-danger button-small"
+                            aria-label={"Cancelar convite gerado em " + formatDateTime(openInvite.createdAt)}
+                            onClick={() => onCancel(openInvite.id)}
+                        >
+                            Cancelar
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 // janela do prescritor pra gerar o link de convite de um paciente novo (RN06)
 export default function InvitePatientModal({show, onClose}) {
     const [invite, setInvite] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
     const [isCopied, setIsCopied] = useState(false);
-    // os convites q ainda estao na rua, pra cancelar o q foi pro numero errado
     const [openInvites, setOpenInvites] = useState([]);
     const [cancelError, setCancelError] = useState(null);
 
@@ -152,33 +182,7 @@ export default function InvitePatientModal({show, onClose}) {
                     </>
                 )}
 
-                {openInvites.length > 0 && (
-                    <div className={styles.openInvites}>
-                        <h3 className={styles.openTitle}>Convites em aberto</h3>
-                        <p className={styles.hint}>
-                            Link que foi para a pessoa errada? Cancele antes que alguém use. O link que já virou conta
-                            não aparece aqui.
-                        </p>
-                        <ul className={styles.openList}>
-                            {openInvites.map((openInvite) => (
-                                <li key={openInvite.id} className={styles.openRow}>
-                                    <span>
-                                        Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
-                                        {formatDateTime(openInvite.expiresAt) + brasiliaTimeNote()}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className="button-danger button-small"
-                                        aria-label={"Cancelar convite gerado em " + formatDateTime(openInvite.createdAt)}
-                                        onClick={() => cancelInvite(openInvite.id)}
-                                    >
-                                        Cancelar
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
+                {openInvites.length > 0 && <OpenInviteList openInvites={openInvites} onCancel={cancelInvite}/>}
             </div>
         </Modal>
     );

@@ -22,8 +22,7 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                             <li key={task.id}>
                                 <span>{task.scaleName}</span>
                                 <span className={styles.date}>
-                                    {task.late ? "prazo em " + formatDate(task.periodEnd) + ", atrasada"
-                                        : "até " + formatDate(task.periodEnd)}
+                                    {deadlineTextOf(task)}
                                     {task.daily ? " · " + task.answeredDays + " de " + task.totalDays + " dias" : ""}
                                 </span>
                             </li>
@@ -80,6 +79,13 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
             </div>
         </div>
     );
+}
+
+function deadlineTextOf(task) {
+    if (task.late) {
+        return "prazo em " + formatDate(task.periodEnd) + ", atrasada";
+    }
+    return "até " + formatDate(task.periodEnd);
 }
 
 // o diario fala de um dia e os acompanhamentos de um periodo

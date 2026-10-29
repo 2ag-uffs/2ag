@@ -67,6 +67,41 @@ public class IndicatorsService {
             to = today.minusDays(1);
             from = to.minusDays(DEFAULT_DAYS - 1L);
         }
+        checkRange(from, to, today);
+
+        // foto de hoje
+        long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNullAndActiveTrue(prescriberId);
+        long patientsInCycle = protocolRepository.countPatientsInCycle(prescriberId, today);
+
+        InviteCount invites = countInvites(prescriberId, from, to);
+
+        Map<Long, Integer> validDaysByTask = countValidDaysByTask(prescriberId, from, to);
+        List<ScaleTask> tasksDue = taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to);
+        Map<ScaleType, ScaleCount> countsByScale = countFormsByScale(tasksDue, validDaysByTask);
+
+        long formsDue = 0;
+        long formsOnTime = 0;
+        long diaryDaysExpected = 0;
+        long diaryDaysFilled = 0;
+        List<PilotIndicatorsDTO.ScaleRowDTO> scales = new ArrayList<>();
+        for (Map.Entry<ScaleType, ScaleCount> entry : countsByScale.entrySet()) {
+            ScaleCount count = entry.getValue();
+            formsDue += count.formsDue;
+            formsOnTime += count.formsOnTime;
+            diaryDaysExpected += count.daysExpected;
+            diaryDaysFilled += count.daysFilled;
+            scales.add(scaleRowOf(entry.getKey(), count));
+        }
+
+        return new PilotIndicatorsDTO(from, to, GOAL_PERCENT,
+                activePatients, patientsInCycle, countPatients(tasksDue),
+                invites.sent, invites.registered, invites.inCycle, invites.stillOpen,
+                formsDue, formsOnTime, percentOf(formsOnTime, formsDue),
+                diaryDaysExpected, diaryDaysFilled, percentOf(diaryDaysFilled, diaryDaysExpected),
+                scales);
+    }
+
+    private void checkRange(LocalDate from, LocalDate to, LocalDate today) {
         if (from == null || to == null) {
             throw new BusinessException(INCOMPLETE_RANGE_MESSAGE);
         }
@@ -76,45 +111,45 @@ public class IndicatorsService {
         if (!to.isBefore(today)) {
             throw new BusinessException(OPEN_DEADLINE_MESSAGE);
         }
+    }
 
-        // foto de hoje
-        long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNullAndActiveTrue(prescriberId);
-        long patientsInCycle = protocolRepository.countPatientsInCycle(prescriberId, today);
-
-        // convites do periodo, sem os cancelados
+    // convites do periodo, sem os cancelados
+    private InviteCount countInvites(Long prescriberId, LocalDate from, LocalDate to) {
         Set<Long> patientsWithProtocol = new HashSet<>(protocolRepository.findPatientIdsWithProtocol(prescriberId));
         List<PatientInvite> invites = inviteRepository.findByPrescriberIdAndCreatedAtBetween(prescriberId,
                 from.atStartOfDay(), to.atTime(LocalTime.MAX));
         LocalDateTime now = LocalDateTime.now();
-        long invitesSent = 0;
-        long invitesRegistered = 0;
-        long invitesInCycle = 0;
-        long invitesStillOpen = 0;
+        InviteCount count = new InviteCount();
         for (PatientInvite invite : invites) {
             if (invite.getCancelledAt() != null) {
                 continue;
             }
-            invitesSent++;
+            count.sent++;
             if (invite.getPatient() != null) {
-                invitesRegistered++;
+                count.registered++;
                 if (patientsWithProtocol.contains(invite.getPatient().getId())) {
-                    invitesInCycle++;
+                    count.inCycle++;
                 }
             } else if (invite.isUsableAt(now)) {
-                invitesStillOpen++;
+                count.stillOpen++;
             }
         }
+        return count;
+    }
 
-        // quantos dias validos cada tarefa tem ligados nela
+    // quantos dias validos cada tarefa tem ligados nela
+    private Map<Long, Integer> countValidDaysByTask(Long prescriberId, LocalDate from, LocalDate to) {
         Map<Long, Integer> validDaysByTask = new HashMap<>();
         for (Long taskId : responseRepository.findTaskIdsOfValidAnswers(prescriberId, from, to)) {
             validDaysByTask.merge(taskId, 1, Integer::sum);
         }
+        return validDaysByTask;
+    }
 
+    private Map<ScaleType, ScaleCount> countFormsByScale(List<ScaleTask> tasksDue,
+                                                         Map<Long, Integer> validDaysByTask) {
         Map<ScaleType, ScaleCount> countsByScale = new EnumMap<>(ScaleType.class);
-        Set<Long> patientsWithForms = new HashSet<>();
-        for (ScaleTask task : taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to)) {
-            patientsWithForms.add(task.getPatient().getId());
+        for (ScaleTask task : tasksDue) {
             ScaleCount count = countsByScale.computeIfAbsent(task.getScaleType(), scaleType -> new ScaleCount());
             count.formsDue++;
             int validDays = validDaysByTask.getOrDefault(task.getId(), 0);
@@ -132,36 +167,27 @@ public class IndicatorsService {
                 count.formsOnTime++;
             }
         }
+        return countsByScale;
+    }
 
-        long formsDue = 0;
-        long formsOnTime = 0;
-        long diaryDaysExpected = 0;
-        long diaryDaysFilled = 0;
-        List<PilotIndicatorsDTO.ScaleRowDTO> scales = new ArrayList<>();
-        for (Map.Entry<ScaleType, ScaleCount> entry : countsByScale.entrySet()) {
-            ScaleType scaleType = entry.getKey();
-            ScaleCount count = entry.getValue();
-            formsDue += count.formsDue;
-            formsOnTime += count.formsOnTime;
-            diaryDaysExpected += count.daysExpected;
-            diaryDaysFilled += count.daysFilled;
-            scales.add(new PilotIndicatorsDTO.ScaleRowDTO(
-                    scaleType,
-                    scaleType.getDisplayName(),
-                    scaleTaskService.isDaily(scaleType),
-                    count.formsDue,
-                    count.formsOnTime,
-                    percentOf(count.formsOnTime, count.formsDue),
-                    count.daysExpected,
-                    count.daysFilled));
+    private int countPatients(List<ScaleTask> tasks) {
+        Set<Long> patientIds = new HashSet<>();
+        for (ScaleTask task : tasks) {
+            patientIds.add(task.getPatient().getId());
         }
+        return patientIds.size();
+    }
 
-        return new PilotIndicatorsDTO(from, to, GOAL_PERCENT,
-                activePatients, patientsInCycle, patientsWithForms.size(),
-                invitesSent, invitesRegistered, invitesInCycle, invitesStillOpen,
-                formsDue, formsOnTime, percentOf(formsOnTime, formsDue),
-                diaryDaysExpected, diaryDaysFilled, percentOf(diaryDaysFilled, diaryDaysExpected),
-                scales);
+    private PilotIndicatorsDTO.ScaleRowDTO scaleRowOf(ScaleType scaleType, ScaleCount count) {
+        return new PilotIndicatorsDTO.ScaleRowDTO(
+                scaleType,
+                scaleType.getDisplayName(),
+                scaleTaskService.isDaily(scaleType),
+                count.formsDue,
+                count.formsOnTime,
+                percentOf(count.formsOnTime, count.formsDue),
+                count.daysExpected,
+                count.daysFilled);
     }
 
     // arredonda pra baixo pra 69,6 n aparecer como meta batida
@@ -170,6 +196,13 @@ public class IndicatorsService {
             return null;
         }
         return (int) (part * 100 / total);
+    }
+
+    private static class InviteCount {
+        long sent;
+        long registered;
+        long inCycle;
+        long stillOpen;
     }
 
     private static class ScaleCount {

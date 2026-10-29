@@ -79,15 +79,14 @@ export default function ListaPacientes() {
         setShowArchived(archived);
     };
 
-    const archivePatient = async () => {
-        const patient = patientToArchive;
-        setPatientToArchive(null);
+    // arquivar e reativar so mudam o fim do endereco e o aviso
+    const runPatientAction = async (patient, action, successMessage) => {
         setNotice(null);
         setActionError(null);
         setBusyPatientId(patient.id);
         try {
-            await apiService.put("/patients/" + patient.id + "/archive");
-            setNotice(patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.");
+            await apiService.put("/patients/" + patient.id + "/" + action);
+            setNotice(successMessage);
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
             setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
@@ -96,19 +95,73 @@ export default function ListaPacientes() {
         }
     };
 
+    const archivePatient = async () => {
+        const patient = patientToArchive;
+        setPatientToArchive(null);
+        await runPatientAction(patient, "archive",
+            patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.");
+    };
+
     const reactivatePatient = async (patient) => {
-        setNotice(null);
-        setActionError(null);
-        setBusyPatientId(patient.id);
-        try {
-            await apiService.put("/patients/" + patient.id + "/reactivate");
-            setNotice(patient.name + " voltou para a lista de ativos.");
-            setReloadCount((currentCount) => currentCount + 1);
-        } catch (requestError) {
-            setActionError(requestError instanceof ApiError ? requestError.message : CONNECTION_ERROR_MESSAGE);
-        } finally {
-            setBusyPatientId(null);
-        }
+        await runPatientAction(patient, "reactivate", patient.name + " voltou para a lista de ativos.");
+    };
+
+    const renderPatientRow = (patient) => {
+        const isBusy = busyPatientId === patient.id;
+        return (
+            <li key={patient.id} className={styles.row}>
+                <div className={styles.patient}>
+                    <span
+                        className={patient.archived ? styles.avatar + " " + styles.avatarArchived : styles.avatar}
+                        aria-hidden="true"
+                    >
+                        {initialsOf(patient.name)}
+                    </span>
+                    <div className={styles.patientText}>
+                        <h2 className={styles.patientName}>{patient.name}</h2>
+                        <p className={styles.details}>{patientDetailsOf(patient)}</p>
+                    </div>
+                </div>
+                <div className={styles.actions}>
+                    <button
+                        type="button"
+                        className="button button-small"
+                        onClick={() => navigate("/paciente/" + patient.id + "/historico")}
+                    >
+                        Abrir histórico
+                    </button>
+                    {!patient.archived && (
+                        <>
+                            <button
+                                type="button"
+                                className="button-secondary button-small"
+                                onClick={() => navigate("/paciente/" + patient.id + "/consulta/nova")}
+                            >
+                                Nova consulta
+                            </button>
+                            <button
+                                type="button"
+                                className="button-tertiary button-small"
+                                onClick={() => setPatientToArchive(patient)}
+                                disabled={isBusy}
+                            >
+                                {isBusy ? "Arquivando..." : "Arquivar"}
+                            </button>
+                        </>
+                    )}
+                    {patient.archived && (
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => reactivatePatient(patient)}
+                            disabled={isBusy}
+                        >
+                            {isBusy ? "Reativando..." : "Reativar"}
+                        </button>
+                    )}
+                </div>
+            </li>
+        );
     };
 
     const visiblePatients = patients.filter((patient) => matchesSearch(patient.name, searchTerm));
@@ -199,60 +252,7 @@ export default function ListaPacientes() {
 
             {!isLoading && !loadError && visiblePatients.length > 0 && (
                 <ul className={styles.list}>
-                    {visiblePatients.map((patient) => (
-                        <li key={patient.id} className={styles.row}>
-                            <div className={styles.patient}>
-                                <span
-                                    className={patient.archived ? styles.avatar + " " + styles.avatarArchived : styles.avatar}
-                                    aria-hidden="true"
-                                >
-                                    {initialsOf(patient.name)}
-                                </span>
-                                <div className={styles.patientText}>
-                                    <h2 className={styles.patientName}>{patient.name}</h2>
-                                    <p className={styles.details}>{patientDetailsOf(patient)}</p>
-                                </div>
-                            </div>
-                            <div className={styles.actions}>
-                                <button
-                                    type="button"
-                                    className="button button-small"
-                                    onClick={() => navigate("/paciente/" + patient.id + "/historico")}
-                                >
-                                    Abrir histórico
-                                </button>
-                                {!patient.archived && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            className="button-secondary button-small"
-                                            onClick={() => navigate("/paciente/" + patient.id + "/consulta/nova")}
-                                        >
-                                            Nova consulta
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="button-tertiary button-small"
-                                            onClick={() => setPatientToArchive(patient)}
-                                            disabled={busyPatientId === patient.id}
-                                        >
-                                            {busyPatientId === patient.id ? "Arquivando..." : "Arquivar"}
-                                        </button>
-                                    </>
-                                )}
-                                {patient.archived && (
-                                    <button
-                                        type="button"
-                                        className="button-secondary button-small"
-                                        onClick={() => reactivatePatient(patient)}
-                                        disabled={busyPatientId === patient.id}
-                                    >
-                                        {busyPatientId === patient.id ? "Reativando..." : "Reativar"}
-                                    </button>
-                                )}
-                            </div>
-                        </li>
-                    ))}
+                    {visiblePatients.map((patient) => renderPatientRow(patient))}
                 </ul>
             )}
 

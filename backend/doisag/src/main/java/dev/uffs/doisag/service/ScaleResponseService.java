@@ -65,6 +65,11 @@ public class ScaleResponseService {
     public static final String EMPTY_ANSWERS_MESSAGE = "Responda ao menos um item da escala";
 
     private static final int MAX_TEXT_LENGTH = 2000;
+    // teto das contagens e dos minutos so p/ barrar numero absurdo
+    private static final int MAX_COUNT_VALUE = 10000;
+    private static final int HOURS_IN_DAY = 24;
+    // o horario chega como hh:mm ou hh:mm:ss e os segundos caem fora
+    private static final int HOUR_MINUTE_LENGTH = 5;
     // os acompanhamentos de dor e de TEA falam da ultima semana
     private static final int DEFAULT_PERIOD_DAYS = 7;
 
@@ -139,7 +144,8 @@ public class ScaleResponseService {
             auditService.recordChange(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         }
         // o aviso sai qnd a escala fica completa, e o diario avisa uma vez so no fim do periodo
-        boolean becameComplete = isComplete && (isNew || !wasComplete);
+        // resposta nova sempre tem wasComplete falso
+        boolean becameComplete = isComplete && !wasComplete;
         if (becameComplete && definition.fillMode() != ScaleDefinition.FillMode.DIARIO) {
             taskService.notifyPrescriberOfAnswer(savedResponse.getPatient(), savedResponse.getScaleType());
         }
@@ -158,15 +164,7 @@ public class ScaleResponseService {
         // pela conferencia de exame repetido e gravavam dois exames validos no mesmo atendimento
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> new NotFoundException("Consulta não encontrada com o id: " + appointmentId));
-        if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
-            throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);
-        }
-        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_APPOINTMENT_MESSAGE);
-        // dois exame valido no mesmo atendimento ninguem sabe qual vale, e o meem
-        // n tem correcao: pra refazer, o anterior precisa ser anulado com motivo
-        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
-            throw new BusinessException(EXAM_ALREADY_APPLIED_MESSAGE);
-        }
+        checkAppointmentCanReceiveExam(appointment);
         // dps da consulta vem o prescritor e so dps o paciente: no postgres o insert do exame toma o paciente e
         // dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
         // paciente. com o prescritor travado antes os dois n ficam esperando um pelo outro
@@ -189,6 +187,18 @@ public class ScaleResponseService {
         auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(),
                 appointment.getPatient().getId());
         return dtoOf(savedResponse);
+    }
+
+    private void checkAppointmentCanReceiveExam(Appointment appointment) {
+        if (!appointment.getStatus().isConfirmed() || appointment.isAnnulled()) {
+            throw new BusinessException(NOT_CONFIRMED_APPOINTMENT_MESSAGE);
+        }
+        DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_APPOINTMENT_MESSAGE);
+        // dois exame valido no mesmo atendimento ninguem sabe qual vale, e o meem
+        // n tem correcao: pra refazer, o anterior precisa ser anulado com motivo
+        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            throw new BusinessException(EXAM_ALREADY_APPLIED_MESSAGE);
+        }
     }
 
     // excecao a RN10 pq o meem n tem correcao e incompleto fica sem escore ou sem faixa (RN14)
@@ -356,18 +366,18 @@ public class ScaleResponseService {
             case CALCULADO -> throw new BusinessException(COMPUTED_ITEM_MESSAGE + ": " + item.label());
             case NOTA -> wholeNumberInRange(item, value, item.minValue(), item.maxValue());
             case ESCOLHA -> optionValue(item, value);
-            case NUMERO, MINUTOS -> wholeNumberInRange(item, value, 0, 10000);
+            case NUMERO, MINUTOS -> wholeNumberInRange(item, value, 0, MAX_COUNT_VALUE);
             case HORAS -> decimalHours(item, value);
-            case HORA -> time(item, value);
-            case SIM_NAO -> value instanceof Boolean flag ? flag : invalid(item);
-            case TEXTO -> text(item, value);
+            case HORA -> timeValue(item, value);
+            case SIM_NAO -> value instanceof Boolean flag ? flag : throwInvalidValue(item);
+            case TEXTO -> textValue(item, value);
         };
     }
 
     private Object wholeNumberInRange(ScaleItem item, Object value, Integer minValue, Integer maxValue) {
         Long wholeNumber = wholeNumberOf(value);
         if (wholeNumber == null || wholeNumber < minValue || wholeNumber > maxValue) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
         return wholeNumber.intValue();
     }
@@ -375,10 +385,10 @@ public class ScaleResponseService {
     private Object optionValue(ScaleItem item, Object value) {
         Long chosen = wholeNumberOf(value);
         if (chosen == null) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
         boolean exists = item.options().stream().anyMatch(option -> option.value() == chosen);
-        return exists ? chosen.intValue() : invalid(item);
+        return exists ? chosen.intValue() : throwInvalidValue(item);
     }
 
     // so numero inteiro de vdd: o 2.9 virava 2 e o numero gigante dava a volta no int
@@ -396,46 +406,47 @@ public class ScaleResponseService {
 
     private Object decimalHours(ScaleItem item, Object value) {
         if (!(value instanceof Number number)) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
         double hours = number.doubleValue();
-        if (hours < 0 || hours > 24) {
-            return invalid(item);
+        if (hours < 0 || hours > HOURS_IN_DAY) {
+            return throwInvalidValue(item);
         }
         return hours;
     }
 
-    private Object time(ScaleItem item, Object value) {
+    private Object timeValue(ScaleItem item, Object value) {
         // horario q chega como numero era jogado fora calado e o pittsburgh ficava sem escore
         if (!(value instanceof String text)) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
         if (text.isBlank()) {
             return null;
         }
         try {
-            String shortText = text.length() > 5 ? text.substring(0, 5) : text;
-            return LocalTime.parse(shortText).toString();
+            String hourAndMinute = text.length() > HOUR_MINUTE_LENGTH ? text.substring(0, HOUR_MINUTE_LENGTH) : text;
+            return LocalTime.parse(hourAndMinute).toString();
         } catch (DateTimeParseException error) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
     }
 
-    private Object text(ScaleItem item, Object value) {
+    private Object textValue(ScaleItem item, Object value) {
         if (!(value instanceof String text)) {
-            return invalid(item);
+            return throwInvalidValue(item);
         }
-        String cleanText = text.trim();
-        if (cleanText.isEmpty()) {
+        String trimmedText = text.trim();
+        if (trimmedText.isEmpty()) {
             return null;
         }
-        if (cleanText.length() > MAX_TEXT_LENGTH) {
+        if (trimmedText.length() > MAX_TEXT_LENGTH) {
             throw new BusinessException(INVALID_TEXT_MESSAGE + ": " + item.label());
         }
-        return cleanText;
+        return trimmedText;
     }
 
-    private Object invalid(ScaleItem item) {
+    // sempre lanca e o retorno Object eh so p/ caber no switch
+    private Object throwInvalidValue(ScaleItem item) {
         String expected = item.options().isEmpty()
                 ? ""
                 : " Valores aceitos: " + item.options().stream().map(ScaleOption::label).toList();
@@ -474,29 +485,29 @@ public class ScaleResponseService {
     // do envio. no diario a data eh o dia da grade e n muda por aqui
     private void changePeriod(ScaleResponse response, ScaleDefinition definition,
                               ScaleResponseCreateDTO answerData) {
-        LocalDate periodStart = answerData.periodStart() != null ? answerData.periodStart() : response.getPeriodStart();
-        boolean startChanged = !periodStart.equals(response.getPeriodStart());
-        LocalDate periodEnd = answerData.periodEnd();
-        if (periodEnd == null) {
-            periodEnd = startChanged ? endOfDefaultPeriod(definition, periodStart) : response.getPeriodEnd();
+        LocalDate newStart = answerData.periodStart() != null ? answerData.periodStart() : response.getPeriodStart();
+        boolean startChanged = !newStart.equals(response.getPeriodStart());
+        LocalDate newEnd = answerData.periodEnd();
+        if (newEnd == null) {
+            newEnd = startChanged ? endOfDefaultPeriod(definition, newStart) : response.getPeriodEnd();
         }
-        if (!startChanged && periodEnd.equals(response.getPeriodEnd())) {
+        if (!startChanged && newEnd.equals(response.getPeriodEnd())) {
             return;
         }
         if (definition.fillMode() == ScaleDefinition.FillMode.DIARIO) {
             throw new BusinessException(DIARY_DAY_MESSAGE);
         }
-        checkPeriod(periodStart, periodEnd);
+        checkPeriod(newStart, newEnd);
         // o dia de inicio identifica a resposta na tela e no envio, entao n pode ter duas no mesmo
         boolean dayTaken = startChanged && responseRepository
                 .findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
-                        response.getPatient().getId(), response.getScaleType(), periodStart)
+                        response.getPatient().getId(), response.getScaleType(), newStart)
                 .isPresent();
         if (dayTaken) {
             throw new BusinessException(PERIOD_START_TAKEN_MESSAGE);
         }
-        response.setPeriodStart(periodStart);
-        response.setPeriodEnd(periodEnd);
+        response.setPeriodStart(newStart);
+        response.setPeriodEnd(newEnd);
     }
 
     // a semana q comeca ha menos de 7 dias termina hoje, e n num dia q ainda n chegou

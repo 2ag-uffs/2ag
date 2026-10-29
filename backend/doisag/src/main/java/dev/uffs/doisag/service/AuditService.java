@@ -50,33 +50,28 @@ public class AuditService {
 
     @Transactional
     public void recordCreation(AuditRecordType recordType, Long recordId, Long patientId) {
-        auditEventRepository.save(
-                new AuditEvent(findLoggedUser(), AuditOperation.CRIACAO, recordType, recordId, patientId));
+        saveLoggedUserEvent(AuditOperation.CRIACAO, recordType, recordId, patientId);
     }
 
     @Transactional
     public void recordChange(AuditRecordType recordType, Long recordId, Long patientId) {
-        auditEventRepository.save(
-                new AuditEvent(findLoggedUser(), AuditOperation.ALTERACAO, recordType, recordId, patientId));
+        saveLoggedUserEvent(AuditOperation.ALTERACAO, recordType, recordId, patientId);
     }
 
     @Transactional
     public void recordAnnulment(AuditRecordType recordType, Long recordId, Long patientId) {
-        auditEventRepository.save(
-                new AuditEvent(findLoggedUser(), AuditOperation.ANULACAO, recordType, recordId, patientId));
+        saveLoggedUserEvent(AuditOperation.ANULACAO, recordType, recordId, patientId);
     }
 
     // arquivar e reativar valem pro prontuario inteiro do paciente
     @Transactional
     public void recordArchiving(Long patientId) {
-        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.ARQUIVAMENTO,
-                AuditRecordType.PRONTUARIO, null, patientId));
+        saveLoggedUserEvent(AuditOperation.ARQUIVAMENTO, AuditRecordType.PRONTUARIO, null, patientId);
     }
 
     @Transactional
     public void recordReactivation(Long patientId) {
-        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.REATIVACAO,
-                AuditRecordType.PRONTUARIO, null, patientId));
+        saveLoggedUserEvent(AuditOperation.REATIVACAO, AuditRecordType.PRONTUARIO, null, patientId);
     }
 
     // o administrador gerando senha nova pra um prescritor
@@ -84,8 +79,8 @@ public class AuditService {
     // e aparece so na lista da administracao
     @Transactional
     public void recordPasswordReset(Long prescriberId) {
-        auditEventRepository.save(new AuditEvent(findLoggedUser(), AuditOperation.REDEFINICAO_DE_SENHA,
-                AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null));
+        saveLoggedUserEvent(AuditOperation.REDEFINICAO_DE_SENHA, AuditRecordType.CONTA_DE_PRESCRITOR,
+                prescriberId, null);
     }
 
     // a propria pessoa confirmou um e-mail de acesso novo pelo link, sem sessao,
@@ -106,7 +101,7 @@ public class AuditService {
     public void recordAccountActiveChange(AuditRecordType accountType, Long accountId, Long patientId,
                                           boolean active) {
         AuditOperation operation = active ? AuditOperation.REATIVACAO : AuditOperation.DESATIVACAO;
-        auditEventRepository.save(new AuditEvent(findLoggedUser(), operation, accountType, accountId, patientId));
+        saveLoggedUserEvent(operation, accountType, accountId, patientId);
     }
 
     // o prescritor abrindo dado clinico de um paciente
@@ -128,7 +123,7 @@ public class AuditService {
         }
         forgetChartViewIfRolledBack(viewKey);
 
-        // depois de reiniciar a api a memoria comeca vazia mas o banco ainda lembra do acesso
+        // dps de reiniciar a api a memoria comeca vazia mas o banco ainda lembra do acesso
         boolean alreadyRecorded = auditEventRepository.existsByActorIdAndPatientIdAndOperationAndOccurredAtAfter(
                 loggedUser.getId(), patientId, AuditOperation.VISUALIZACAO, windowStart);
         if (alreadyRecorded) {
@@ -199,6 +194,11 @@ public class AuditService {
 
     private PageRequest pageRequest(int page) {
         return PageRequest.of(Math.max(page, 0), PAGE_SIZE);
+    }
+
+    private void saveLoggedUserEvent(AuditOperation operation, AuditRecordType recordType, Long recordId,
+                                     Long patientId) {
+        auditEventRepository.save(new AuditEvent(findLoggedUser(), operation, recordType, recordId, patientId));
     }
 
     private Users findLoggedUser() {

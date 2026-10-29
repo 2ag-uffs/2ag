@@ -9,7 +9,7 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 
 @MappedSuperclass
-// dados que se repetem em todos os formulários
+// dados q se repetem em toda ficha
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseAssessment {
     @Id
@@ -19,7 +19,6 @@ public abstract class BaseAssessment {
     @Column(nullable = false)
     private LocalDate assessmentDate;
 
-    // relacionamento (1:n)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
@@ -57,8 +56,8 @@ public abstract class BaseAssessment {
         this.patient = patient;
     }
 
-    // quando o registro nasceu e quando foi mexido pela ultima vez.
-    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    // qnd o registro nasceu e qnd foi mexido pela ultima vez
+    // o spring preenche sozinho e ninguem seta na mao (RF31)
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

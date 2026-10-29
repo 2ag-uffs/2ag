@@ -7,7 +7,7 @@ package dev.uffs.doisag.infra;
 public class CsvBuilder {
 
     private static final String SEPARATOR = ";";
-    private static final String UTF8_MARK = "﻿";
+    private static final String UTF8_MARK = "\uFEFF";
 
     private final StringBuilder content = new StringBuilder();
 

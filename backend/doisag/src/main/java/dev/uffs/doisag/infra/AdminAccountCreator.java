@@ -64,7 +64,10 @@ public class AdminAccountCreator implements ApplicationRunner {
             resetAdminPassword(existingAccount.get());
             return;
         }
+        createAdminAccount();
+    }
 
+    private void createAdminAccount() {
         Admin admin = new Admin();
         admin.setName("Administrador");
         admin.setEmail(adminEmail);

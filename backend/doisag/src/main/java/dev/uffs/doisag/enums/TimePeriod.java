@@ -1,6 +1,6 @@
 package dev.uffs.doisag.enums;
 
-// os periodos que o usuário pode escolher no filtro de evolução
+// os periodos q a pessoa escolhe no filtro do grafico de evolucao
 public enum TimePeriod {
 
     DIAS_15(15),

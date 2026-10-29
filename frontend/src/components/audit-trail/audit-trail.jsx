@@ -20,6 +20,42 @@ function formatMoment(isoDateTime) {
     return new Date(isoDateTime).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"});
 }
 
+function TrailSkeleton() {
+    return (
+        <ul className={styles.list} role="status" aria-label="Carregando a trilha">
+            {[0, 1, 2].map((index) => (
+                <li key={index} className={styles.item}>
+                    <SkeletonBlock width="6rem" height="0.875rem"/>
+                    <div className={styles.details}>
+                        <SkeletonBlock width="14rem" height="1rem"/>
+                        <SkeletonBlock width="9rem" height="0.875rem"/>
+                    </div>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+function AuditEventItem({auditEvent, showPatientNumber}) {
+    return (
+        <li className={styles.item}>
+            <time className={styles.moment} dateTime={auditEvent.occurredAt}>
+                {formatMoment(auditEvent.occurredAt)}
+            </time>
+            <div className={styles.details}>
+                <strong>{auditEvent.operationLabel} · {auditEvent.recordLabel}</strong>
+                <span>
+                    {auditEvent.actorName}
+                    {auditEvent.actorRole && " (" + ROLE_LABELS[auditEvent.actorRole] + ")"}
+                    {/* evento de conta n tem paciente, entao n sai numero nenhum */}
+                    {showPatientNumber && auditEvent.patientId
+                        && " · paciente nº " + auditEvent.patientId}
+                </span>
+            </div>
+        </li>
+    );
+}
+
 // lista da trilha de auditoria com filtro de periodo e paginas
 // quem usa passa o endereco da api e diz se cada linha mostra o numero do paciente
 export default function AuditTrail({endpoint, showPatientNumber}) {
@@ -111,19 +147,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
 
-            {isLoading && (
-                <ul className={styles.list} role="status" aria-label="Carregando a trilha">
-                    {[0, 1, 2].map((index) => (
-                        <li key={index} className={styles.item}>
-                            <SkeletonBlock width="6rem" height="0.875rem"/>
-                            <div className={styles.details}>
-                                <SkeletonBlock width="14rem" height="1rem"/>
-                                <SkeletonBlock width="9rem" height="0.875rem"/>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {isLoading && <TrailSkeleton/>}
 
             {!isLoading && trail && events.length === 0 && (
                 <EmptyState icon={FiShield} message="Nenhum registro nesse período." isCompact={true}/>
@@ -132,21 +156,11 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
             {!isLoading && events.length > 0 && (
                 <ul className={styles.list}>
                     {events.map((auditEvent, index) => (
-                        <li key={auditEvent.occurredAt + "-" + index} className={styles.item}>
-                            <time className={styles.moment} dateTime={auditEvent.occurredAt}>
-                                {formatMoment(auditEvent.occurredAt)}
-                            </time>
-                            <div className={styles.details}>
-                                <strong>{auditEvent.operationLabel} · {auditEvent.recordLabel}</strong>
-                                <span>
-                                    {auditEvent.actorName}
-                                    {auditEvent.actorRole && " (" + ROLE_LABELS[auditEvent.actorRole] + ")"}
-                                    {/* evento de conta n tem paciente, entao n sai numero nenhum */}
-                                    {showPatientNumber && auditEvent.patientId
-                                        && " · paciente nº " + auditEvent.patientId}
-                                </span>
-                            </div>
-                        </li>
+                        <AuditEventItem
+                            key={auditEvent.occurredAt + "-" + index}
+                            auditEvent={auditEvent}
+                            showPatientNumber={showPatientNumber}
+                        />
                     ))}
                 </ul>
             )}

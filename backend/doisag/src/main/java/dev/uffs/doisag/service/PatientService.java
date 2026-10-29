@@ -94,28 +94,7 @@ public class PatientService {
     // o prescritor sai do convite e o convite so vale uma vez
     @Transactional
     public Patient registerPatient(RegisterDTO registerData, String clientAddress) {
-        // robo recebe a mesma resposta de convite invalido, sem gastar o convite
-        if (registerData.site() != null && !registerData.site().isBlank()) {
-            throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
-        }
-        if (!PasswordRules.fitsInBcrypt(registerData.password())) {
-            throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
-        }
-        // o termo aceito precisa ser o q esta valendo agora (RF36)
-        if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
-            throw new BusinessException(OUTDATED_TERM_MESSAGE);
-        }
-        // menor de 18 so cria a conta com o responsavel legal, antes de gastar o convite
-        GuardianDTO.checkLegalGuardian(registerData.guardian(), registerData.birthDate());
-        GuardianDTO.checkName(registerData.guardian());
-        boolean acceptsResearch = registerData.researchTermVersion() != null
-                && !registerData.researchTermVersion().isBlank();
-        if (acceptsResearch && !ConsentTermService.RESEARCH_VERSION.equals(registerData.researchTermVersion())) {
-            throw new BusinessException(ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
-        }
-        if (acceptsResearch && Patient.isMinor(registerData.birthDate())) {
-            throw new BusinessException(ConsentTermService.MINOR_RESEARCH_MESSAGE);
-        }
+        checkFormBeforeInvite(registerData);
 
         String inviteHash = SecureTokens.hashToken(registerData.inviteToken());
         if (loginAttemptLimiter.isSignUpBlocked(inviteHash, clientAddress)) {
@@ -129,17 +108,66 @@ public class PatientService {
         }
         loginAttemptLimiter.registerSignUpAttempt(inviteHash);
 
-        // as duas consultas rodam sempre e a resposta eh uma so, sem nome de campo
         String email = InputCleaner.normalizeEmail(registerData.email());
         String cpf = InputCleaner.keepOnlyDigits(registerData.cpf());
+        refuseIfAccountExists(email, cpf, clientAddress);
+
+        Prescriber prescriber = invite.getPrescriber();
+        Patient savedPatient = patientRepository.save(buildPatient(registerData, email, cpf, prescriber));
+
+        patientInviteService.markAsUsed(invite, savedPatient);
+        consentTermService.registerAcceptance(savedPatient, registerData.consentTermVersion());
+        if (acceptsResearch(registerData)) {
+            consentTermService.registerAcceptance(savedPatient, ConsentType.RESEARCH,
+                    registerData.researchTermVersion());
+        }
+
+        notificationService.createNotification(prescriber, "Novo paciente vinculado",
+                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
+        return savedPatient;
+    }
+
+    // tudo q da pra recusar so c/ o formulario antes de gastar o convite
+    private void checkFormBeforeInvite(RegisterDTO registerData) {
+        // robo recebe a mesma resposta de convite invalido, sem gastar o convite
+        boolean filledByBot = registerData.site() != null && !registerData.site().isBlank();
+        if (filledByBot) {
+            throw new BusinessException(PatientInviteService.INVALID_INVITE_MESSAGE);
+        }
+        if (!PasswordRules.fitsInBcrypt(registerData.password())) {
+            throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
+        }
+        // o termo aceito precisa ser o q esta valendo agora (RF36)
+        if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
+            throw new BusinessException(OUTDATED_TERM_MESSAGE);
+        }
+        // menor de 18 so cria a conta com o responsavel legal
+        GuardianDTO.checkLegalGuardian(registerData.guardian(), registerData.birthDate());
+        GuardianDTO.checkName(registerData.guardian());
+        if (acceptsResearch(registerData)
+                && !ConsentTermService.RESEARCH_VERSION.equals(registerData.researchTermVersion())) {
+            throw new BusinessException(ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
+        }
+        if (acceptsResearch(registerData) && Patient.isMinor(registerData.birthDate())) {
+            throw new BusinessException(ConsentTermService.MINOR_RESEARCH_MESSAGE);
+        }
+    }
+
+    private boolean acceptsResearch(RegisterDTO registerData) {
+        return registerData.researchTermVersion() != null && !registerData.researchTermVersion().isBlank();
+    }
+
+    // as duas consultas rodam sempre e a resposta eh uma so, sem nome de campo
+    private void refuseIfAccountExists(String email, String cpf, String clientAddress) {
         boolean emailHasAccount = usersRepository.existsByEmail(email);
         boolean cpfHasAccount = usersRepository.existsByCpf(cpf);
         if (emailHasAccount || cpfHasAccount) {
             loginAttemptLimiter.registerSignUpRefusal(clientAddress);
             throw new BusinessException(SIGN_UP_REFUSED_MESSAGE);
         }
+    }
 
-        Prescriber prescriber = invite.getPrescriber();
+    private Patient buildPatient(RegisterDTO registerData, String email, String cpf, Prescriber prescriber) {
         Patient patient = new Patient();
         patient.setName(registerData.name().trim());
         patient.setSocialName(InputCleaner.socialNameOrNull(registerData.socialName(), registerData.name()));
@@ -151,17 +179,6 @@ public class PatientService {
         GuardianDTO.applyTo(patient, registerData.guardian());
         patient.setPassword(passwordEncoder.encode(registerData.password()));
         patient.setPrescriber(prescriber);
-        Patient savedPatient = patientRepository.save(patient);
-
-        patientInviteService.markAsUsed(invite, savedPatient);
-        consentTermService.registerAcceptance(savedPatient, registerData.consentTermVersion());
-        if (acceptsResearch) {
-            consentTermService.registerAcceptance(savedPatient, ConsentType.RESEARCH,
-                    registerData.researchTermVersion());
-        }
-
-        notificationService.createNotification(prescriber, "Novo paciente vinculado",
-                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", "ALERT", "/lista-paciente");
-        return savedPatient;
+        return patient;
     }
 }

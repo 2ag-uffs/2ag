@@ -31,6 +31,11 @@ const ROLE_LABELS = {
     ADMIN: "Administração",
 };
 
+// o item Avisos eh o unico q leva o numero de n lidos
+const NOTICES_PATH = "/notificacoes";
+// acima disso o circulo mostra 99+ pra caber
+const MAX_BADGE_COUNT = 99;
+
 // itens do menu de cada perfil
 // o menu lateral mostra todos e a barra de baixo do celular so os com mobile
 // prefixes deixa o item marcado tbm nas telas q ficam dentro dele
@@ -47,7 +52,7 @@ function menuFor(user) {
             {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar, mobile: true},
             {path: "/minhas-prescricoes", label: "Prescrições", icon: FiFileText},
             {path: "/historico-paciente", label: "Histórico", icon: FiActivity, prefixes: ["/anamnese", "/impressao"]},
-            {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},
+            {path: NOTICES_PATH, label: "Avisos", icon: FiBell, mobile: true},
             {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
         ];
     }
@@ -59,7 +64,7 @@ function menuFor(user) {
             {path: "/indicadores", label: "Indicadores", icon: FiBarChart2},
             {path: "/agendamento-prescritor", label: "Agenda", icon: FiCalendar, mobile: true},
             {path: "/agenda/disponibilidade", label: "Horários de atendimento", icon: FiClock},
-            {path: "/notificacoes", label: "Avisos", icon: FiBell, mobile: true},
+            {path: NOTICES_PATH, label: "Avisos", icon: FiBell, mobile: true},
             {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
         ];
     }
@@ -89,15 +94,120 @@ function UnreadBadge({count}) {
     if (count <= 0) {
         return null;
     }
-    return <span className={styles.unreadBadge} aria-hidden="true">{count > 99 ? "99+" : count}</span>;
+    return (
+        <span className={styles.unreadBadge} aria-hidden="true">
+            {count > MAX_BADGE_COUNT ? MAX_BADGE_COUNT + "+" : count}
+        </span>
+    );
 }
 
 // "Avisos, 3 não lidos" pro leitor de tela qnd tem aviso novo
 function menuLabelOf(item, unreadCount) {
-    if (item.path === "/notificacoes" && unreadCount > 0) {
+    if (item.path === NOTICES_PATH && unreadCount > 0) {
         return item.label + ", " + unreadCount + " não lidos";
     }
     return undefined;
+}
+
+function SideMenu({items, activeItem, unreadCount}) {
+    return (
+        <nav className={styles.sideMenu} aria-label="Menu principal">
+            {items.map((item) => {
+                const Icon = item.icon;
+                const active = item === activeItem;
+                return (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        title={item.label}
+                        aria-label={menuLabelOf(item, unreadCount)}
+                        className={active ? styles.sideLink + " " + styles.sideLinkActive : styles.sideLink}
+                        aria-current={active ? "page" : undefined}
+                    >
+                        <Icon className={styles.sideIcon}/>
+                        <span className={styles.sideLabel}>{item.label}</span>
+                        {item.path === NOTICES_PATH && <UnreadBadge count={unreadCount}/>}
+                    </Link>
+                );
+            })}
+        </nav>
+    );
+}
+
+function BottomMenu({items, activeItem, unreadCount}) {
+    return (
+        <nav className={styles.bottomMenu} aria-label="Menu">
+            {items.map((item) => {
+                const Icon = item.icon;
+                const active = item === activeItem;
+                return (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        className={active ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink}
+                        aria-label={menuLabelOf(item, unreadCount)}
+                        aria-current={active ? "page" : undefined}
+                    >
+                        <span className={styles.bottomIcon}>
+                            <Icon/>
+                            {item.path === NOTICES_PATH && <UnreadBadge count={unreadCount}/>}
+                        </span>
+                        <span>{item.label}</span>
+                    </Link>
+                );
+            })}
+        </nav>
+    );
+}
+
+// os msm dois botoes aparecem na lateral e no topo do celular
+function ThemeAndLogoutButtons({theme, onToggleTheme, onLogout}) {
+    const themeLabel = theme === "dark" ? "Usar tema claro" : "Usar tema escuro";
+    return (
+        <>
+            <button type="button" className={styles.iconButton} onClick={onToggleTheme}
+                    aria-label={themeLabel} title={themeLabel}>
+                {theme === "dark" ? <FiSun/> : <FiMoon/>}
+            </button>
+            <button type="button" className={styles.iconButton} onClick={onLogout}
+                    aria-label="Sair" title="Sair">
+                <FiLogOut/>
+            </button>
+        </>
+    );
+}
+
+// numero de avisos n lidos ao lado do item Avisos (#92)
+// busca so a contagem a cada troca de tela, e a tela de avisos manda o numero novo qnd muda
+function useUnreadCount(hasNotices, pathname) {
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        if (!hasNotices) {
+            return;
+        }
+        let isCurrentPage = true;
+        apiService.get("/notifications/unread-count")
+            .then((count) => {
+                if (isCurrentPage) {
+                    setUnreadCount(Number(count && count.unread) || 0);
+                }
+            })
+            .catch(() => {
+                // sem o numero o menu continua funcionando
+            });
+        return () => {
+            isCurrentPage = false;
+        };
+    }, [pathname, hasNotices]);
+
+    useEffect(() => {
+        const updateCount = (event) => setUnreadCount(Number(event.detail) || 0);
+        window.addEventListener("notifications-changed", updateCount);
+        return () => window.removeEventListener("notifications-changed", updateCount);
+    }, []);
+
+    return unreadCount;
 }
 
 // moldura de todas as telas de quem esta logado
@@ -118,35 +228,8 @@ export default function AppLayout() {
     const [isTermPending, setIsTermPending] = useState(
         Boolean(loggedUser && loggedUser.role === "PATIENT" && loggedUser.termPending));
 
-    // numero de avisos n lidos ao lado do item Avisos (#92)
-    // busca so a contagem a cada troca de tela, e a tela de avisos manda o numero novo qnd muda
-    const [unreadCount, setUnreadCount] = useState(0);
     const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
-
-    useEffect(() => {
-        if (!hasNotices) {
-            return;
-        }
-        let isCurrentPage = true;
-        apiService.get("/notifications/unread-count")
-            .then((count) => {
-                if (isCurrentPage) {
-                    setUnreadCount(Number(count && count.unread) || 0);
-                }
-            })
-            .catch(() => {
-                // sem o numero o menu continua funcionando
-            });
-        return () => {
-            isCurrentPage = false;
-        };
-    }, [location.pathname, hasNotices]);
-
-    useEffect(() => {
-        const updateCount = (event) => setUnreadCount(Number(event.detail) || 0);
-        window.addEventListener("notifications-changed", updateCount);
-        return () => window.removeEventListener("notifications-changed", updateCount);
-    }, []);
+    const unreadCount = useUnreadCount(hasNotices, location.pathname);
 
     useEffect(() => {
         const openTerm = () => setIsTermPending(true);
@@ -213,7 +296,6 @@ export default function AppLayout() {
 
     // sem escolha o sistema segue o aparelho. o botao grava a escolha e ela passa a valer
     const [theme, setTheme] = useState(() => currentTheme());
-    const themeLabel = theme === "dark" ? "Usar tema claro" : "Usar tema escuro";
 
     const toggleTheme = () => {
         const nextTheme = theme === "dark" ? "light" : "dark";
@@ -232,40 +314,14 @@ export default function AppLayout() {
                     <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon}/>
                 </Link>
 
-                <nav className={styles.sideMenu} aria-label="Menu principal">
-                    {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        const active = item === activeSideItem;
-                        return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                title={item.label}
-                                aria-label={menuLabelOf(item, unreadCount)}
-                                className={active ? styles.sideLink + " " + styles.sideLinkActive : styles.sideLink}
-                                aria-current={active ? "page" : undefined}
-                            >
-                                <Icon className={styles.sideIcon}/>
-                                <span className={styles.sideLabel}>{item.label}</span>
-                                {item.path === "/notificacoes" && <UnreadBadge count={unreadCount}/>}
-                            </Link>
-                        );
-                    })}
-                </nav>
+                <SideMenu items={menuItems} activeItem={activeSideItem} unreadCount={unreadCount}/>
 
                 <div className={styles.account}>
                     <div className={styles.accountText}>
                         <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
                         <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
                     </div>
-                    <button type="button" className={styles.iconButton} onClick={toggleTheme}
-                            aria-label={themeLabel} title={themeLabel}>
-                        {theme === "dark" ? <FiSun/> : <FiMoon/>}
-                    </button>
-                    <button type="button" className={styles.iconButton} onClick={handleLogout}
-                            aria-label="Sair" title="Sair">
-                        <FiLogOut/>
-                    </button>
+                    <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
                 </div>
             </aside>
 
@@ -280,14 +336,7 @@ export default function AppLayout() {
                 )}
                 <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
                 <div className={styles.headerActions}>
-                    <button type="button" className={styles.iconButton} onClick={toggleTheme}
-                            aria-label={themeLabel} title={themeLabel}>
-                        {theme === "dark" ? <FiSun/> : <FiMoon/>}
-                    </button>
-                    <button type="button" className={styles.iconButton} onClick={handleLogout}
-                            aria-label="Sair" title="Sair">
-                        <FiLogOut/>
-                    </button>
+                    <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
                 </div>
             </header>
 
@@ -313,27 +362,7 @@ export default function AppLayout() {
                 </div>
             </main>
 
-            <nav className={styles.bottomMenu} aria-label="Menu">
-                {mobileItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = item === activeBottomItem;
-                    return (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={active ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink}
-                            aria-label={menuLabelOf(item, unreadCount)}
-                            aria-current={active ? "page" : undefined}
-                        >
-                            <span className={styles.bottomIcon}>
-                                <Icon/>
-                                {item.path === "/notificacoes" && <UnreadBadge count={unreadCount}/>}
-                            </span>
-                            <span>{item.label}</span>
-                        </Link>
-                    );
-                })}
-            </nav>
+            <BottomMenu items={mobileItems} activeItem={activeBottomItem} unreadCount={unreadCount}/>
 
             <ScrollRestoration/>
         </div>

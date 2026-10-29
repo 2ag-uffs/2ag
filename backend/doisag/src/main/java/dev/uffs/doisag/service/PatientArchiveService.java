@@ -37,7 +37,7 @@ public class PatientArchiveService {
 
     @Transactional
     public PatientResponseDTO archive(Long patientId, Prescriber loggedPrescriber) {
-        Patient patient = findPatient(patientId);
+        Patient patient = lockAndFindPatient(patientId);
         if (patient.isArchived()) {
             throw new BusinessException(ALREADY_ARCHIVED_MESSAGE);
         }
@@ -54,7 +54,7 @@ public class PatientArchiveService {
     // reativar n recria o acompanhamento automatico e o prescritor monta um novo se quiser
     @Transactional
     public PatientResponseDTO reactivate(Long patientId) {
-        Patient patient = findPatient(patientId);
+        Patient patient = lockAndFindPatient(patientId);
         if (!patient.isArchived()) {
             throw new BusinessException(NOT_ARCHIVED_MESSAGE);
         }
@@ -68,7 +68,7 @@ public class PatientArchiveService {
 
     // gravar o paciente grava a conta antes (o updated_at), entao o paciente eh travado primeiro,
     // na ordem da escala e da confirmacao do e-mail (paciente, dps conta)
-    private Patient findPatient(Long patientId) {
+    private Patient lockAndFindPatient(Long patientId) {
         patientRepository.lockById(patientId);
         return patientRepository.findById(patientId)
                 .orElseThrow(() -> new NotFoundException("Paciente não encontrado com o id: " + patientId));

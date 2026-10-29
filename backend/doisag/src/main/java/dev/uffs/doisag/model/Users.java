@@ -16,8 +16,10 @@ import dev.uffs.doisag.enums.UserRole;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED) // respeitar minha definição de especialização total em BD
+// especializacao total do banco c/ cada tipo de conta na propria tabela ligada a users
+@Inheritance(strategy = InheritanceType.JOINED)
 @EntityListeners(AuditingEntityListener.class)
 // quem anulou um registro eh um usuario lazy, e numa lista eles vem em lote em vez de um por linha
 @BatchSize(size = 50)
@@ -25,7 +27,7 @@ import java.util.List;
 // e cada um gravando a linha inteira q tinha lido apagava o q o outro gravou no meio
 // a anotacao n passa pra subclasse, entao Patient, Prescriber e Admin repetem ela
 @DynamicUpdate
-public abstract class Users implements UserDetails { // implementa a interface do spring security
+public abstract class Users implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,7 +36,7 @@ public abstract class Users implements UserDetails { // implementa a interface d
     // e o historico dele fica partido em duas fichas
     @Column(unique = true)
     private String cpf;
-    @Column(unique = true) // garantir email único no banco
+    @Column(unique = true)
     private String email;
     private String password;
     private LocalDate birthDate;
@@ -53,7 +55,6 @@ public abstract class Users implements UserDetails { // implementa a interface d
 
     // sair da conta encerra as sessoes emitidas antes desse momento
     private LocalDateTime sessionsEndedAt;
-
 
     public Users() {
     }
@@ -180,22 +181,21 @@ public abstract class Users implements UserDetails { // implementa a interface d
         return List.of(new SimpleGrantedAuthority("ROLE_" + getRole().name()));
     }
 
-    // retorna a senha criptografada do banco.
-    // o JsonIgnore eh o que impede o hash de sair em resposta da api
+    // o JsonIgnore eh o q impede o hash da senha de sair na resposta da api
     @JsonIgnore
     @Override
     public String getPassword() {
         return this.password;
     }
 
-    // username vai ser o e-mail
+    // o login eh pelo e-mail
     @JsonIgnore
     @Override
     public String getUsername() {
         return this.email;
     }
 
-    // vamos dizer q as contas nunca expiram
+    // expirar e travar a conta n se usa aqui entao do UserDetails so o isEnabled vale
     @JsonIgnore
     @Override
     public boolean isAccountNonExpired() {
@@ -220,8 +220,8 @@ public abstract class Users implements UserDetails { // implementa a interface d
         return active;
     }
 
-    // quando o registro nasceu e quando foi mexido pela ultima vez.
-    // o spring preenche sozinho, ninguem seta na mao (RF31)
+    // qnd o registro nasceu e qnd foi mexido pela ultima vez
+    // o spring preenche sozinho e ninguem seta na mao (RF31)
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

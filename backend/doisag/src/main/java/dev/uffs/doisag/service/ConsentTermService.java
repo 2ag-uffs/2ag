@@ -65,13 +65,13 @@ public class ConsentTermService {
                               @Value("${api.clinic.dpo-contact:}") String dpoContact) {
         this.consentAcceptanceRepository = consentAcceptanceRepository;
         this.patientRepository = patientRepository;
-        if (clinicName == null || clinicName.isBlank()) {
+        if (!hasText(clinicName)) {
             log.warn("CLINIC_NAME vazio: os termos saem com {}", CLINIC_NAME_MARKER);
         }
-        if (clinicCnpj == null || clinicCnpj.isBlank()) {
+        if (!hasText(clinicCnpj)) {
             log.warn("CLINIC_CNPJ vazio: os termos saem com {}", CLINIC_CNPJ_MARKER);
         }
-        if (dpoContact == null || dpoContact.isBlank()) {
+        if (!hasText(dpoContact)) {
             log.warn("CLINIC_DPO_CONTACT vazio: os termos saem com {}", DPO_CONTACT_MARKER);
         }
         this.termText = fillClinicData(readFile(TERM_FILE), clinicName, clinicCnpj, dpoContact);
@@ -155,8 +155,7 @@ public class ConsentTermService {
 
     // o aceite do menor guarda o nome e o parentesco do responsavel, entao precisa dos dois salvos
     private boolean hasLegalGuardian(Patient patient) {
-        return patient.getGuardianName() != null && !patient.getGuardianName().isBlank()
-                && patient.getGuardianRelationship() != null && !patient.getGuardianRelationship().isBlank();
+        return hasText(patient.getGuardianName()) && hasText(patient.getGuardianRelationship());
     }
 
     // so vale o aceite da versao atual do texto de pesquisa q n foi retirado
@@ -206,18 +205,23 @@ public class ConsentTermService {
         }
     }
 
-    // sem a variavel o marcador fica no texto, pra teste e ambiente local subirem
     private String fillClinicData(String text, String clinicName, String clinicCnpj, String dpoContact) {
-        if (clinicName != null && !clinicName.isBlank()) {
-            text = text.replace(CLINIC_NAME_MARKER, clinicName.trim());
-        }
-        if (clinicCnpj != null && !clinicCnpj.isBlank()) {
-            text = text.replace(CLINIC_CNPJ_MARKER, clinicCnpj.trim());
-        }
-        if (dpoContact != null && !dpoContact.isBlank()) {
-            text = text.replace(DPO_CONTACT_MARKER, dpoContact.trim());
-        }
+        text = fillMarker(text, CLINIC_NAME_MARKER, clinicName);
+        text = fillMarker(text, CLINIC_CNPJ_MARKER, clinicCnpj);
+        text = fillMarker(text, DPO_CONTACT_MARKER, dpoContact);
         return text;
+    }
+
+    // sem a variavel o marcador fica no texto, pra teste e ambiente local subirem
+    private String fillMarker(String text, String marker, String value) {
+        if (!hasText(value)) {
+            return text;
+        }
+        return text.replace(marker, value.trim());
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     // sem o arquivo do termo a api nem sobe pq n da pra cadastrar ninguem sem ele

@@ -9,6 +9,54 @@ import {apiService, ApiError} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import styles from "./escala-clinica-paciente.module.css";
 
+// 90 dias pra resposta de mais de um mes ainda aparecer no grafico
+const PROGRESS_PERIOD = "DIAS_90";
+
+function PendingTaskCard({task, onAnswer}) {
+    // quanto do periodo ja foi preenchido, nos diarios de varios dias
+    const filledPercent = task.daily
+        ? Math.round((task.answeredDays / task.totalDays) * 100)
+        : 0;
+    return (
+        <li className={task.late ? styles.card + " " + styles.cardLate : styles.card}>
+            <h3 className={styles.cardTitle}>{task.scaleName}</h3>
+            <p className={task.late ? styles.deadlineLate : styles.deadline}>
+                {task.late
+                    ? "O prazo era " + formatDate(task.periodEnd)
+                    : "Responda até " + formatDate(task.periodEnd)}
+            </p>
+            {task.daily && (
+                <div className={styles.progress}>
+                    <div
+                        className={styles.progressBar}
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={task.totalDays}
+                        aria-valuenow={task.answeredDays}
+                    >
+                        <span className={styles.progressFill} style={{width: filledPercent + "%"}}/>
+                    </div>
+                    <span className={styles.progressText}>
+                        {task.answeredDays} de {task.totalDays} dias preenchidos
+                    </span>
+                </div>
+            )}
+            <button type="button" className="button button-small" onClick={onAnswer}>
+                Responder
+            </button>
+        </li>
+    );
+}
+
+// o q ainda da pra corrigir abre o formulario e o resto so a leitura
+// o MEEM cai sempre na leitura pq quem aplica eh o prescritor
+function answersPathOf(response) {
+    if (response.editableByPatient) {
+        return "/escalas/" + response.slug + "?data=" + response.periodStart;
+    }
+    return "/escalas/resposta/" + response.id;
+}
+
 // central de escalas do paciente (RF08)
 //
 // mostra o q esta esperando resposta, com o prazo de cada tarefa, e o
@@ -82,41 +130,9 @@ export default function CentralEscalas() {
                     />
                 ) : (
                     <ul className={styles.cards}>
-                        {page.pending.map((task) => {
-                            // quanto do periodo ja foi preenchido, nos diarios de varios dias
-                            const filledPercent = task.daily
-                                ? Math.round((task.answeredDays / task.totalDays) * 100)
-                                : 0;
-                            return (
-                                <li key={task.id} className={task.late ? styles.card + " " + styles.cardLate : styles.card}>
-                                    <h3 className={styles.cardTitle}>{task.scaleName}</h3>
-                                    <p className={task.late ? styles.deadlineLate : styles.deadline}>
-                                        {task.late
-                                            ? "O prazo era " + formatDate(task.periodEnd)
-                                            : "Responda até " + formatDate(task.periodEnd)}
-                                    </p>
-                                    {task.daily && (
-                                        <div className={styles.progress}>
-                                            <div
-                                                className={styles.progressBar}
-                                                role="progressbar"
-                                                aria-valuemin={0}
-                                                aria-valuemax={task.totalDays}
-                                                aria-valuenow={task.answeredDays}
-                                            >
-                                                <span className={styles.progressFill} style={{width: filledPercent + "%"}}/>
-                                            </div>
-                                            <span className={styles.progressText}>
-                                                {task.answeredDays} de {task.totalDays} dias preenchidos
-                                            </span>
-                                        </div>
-                                    )}
-                                    <button type="button" className="button button-small" onClick={() => navigate(task.path)}>
-                                        Responder
-                                    </button>
-                                </li>
-                            );
-                        })}
+                        {page.pending.map((task) => (
+                            <PendingTaskCard key={task.id} task={task} onAnswer={() => navigate(task.path)}/>
+                        ))}
                     </ul>
                 )}
             </section>
@@ -140,24 +156,19 @@ export default function CentralEscalas() {
                                         )}
                                     </div>
                                     <div className={styles.rowActions}>
-                                        {/* o q ainda da pra corrigir abre o formulario e o resto so a leitura */}
-                                        {/* o MEEM cai sempre na leitura pq quem aplica eh o prescritor */}
                                         <button
                                             type="button"
                                             className="button-secondary button-small"
-                                            onClick={() => navigate(response.editableByPatient
-                                                ? "/escalas/" + response.slug + "?data=" + response.periodStart
-                                                : "/escalas/resposta/" + response.id)}
+                                            onClick={() => navigate(answersPathOf(response))}
                                         >
                                             {response.editableByPatient ? "Ver e corrigir" : "Ver respostas"}
                                         </button>
-                                        {/* 90 dias pra resposta de mais de um mes ainda aparecer no grafico */}
                                         {progressAttribute && (
                                             <button
                                                 type="button"
                                                 className="button-secondary button-small"
                                                 onClick={() => navigate("/progresso", {
-                                                    state: {attribute: progressAttribute.name, period: "DIAS_90"},
+                                                    state: {attribute: progressAttribute.name, period: PROGRESS_PERIOD},
                                                 })}
                                             >
                                                 <FiTrendingUp aria-hidden="true"/>

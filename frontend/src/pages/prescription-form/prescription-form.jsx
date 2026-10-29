@@ -53,6 +53,11 @@ function numberOrNull(text) {
     return text === "" ? null : Number(text);
 }
 
+// lista e data sem escolha vao nulas sem trim pq n tem texto livre
+function emptyToNull(value) {
+    return value === "" ? null : value;
+}
+
 // o erro de um canabinoide chega com o nome tipo components[0].concentration
 function compositionErrorOf(fieldErrors) {
     const errorField = Object.keys(fieldErrors).find((field) => field.startsWith("components"));
@@ -75,14 +80,76 @@ function stepErrorsOnRows(fieldErrors, sentSteps) {
     return errors;
 }
 
-const FIELDS_WITH_ERROR = ["productDescription", "brand", "batch", "spectrum", "volume", "posology", "treatmentDurationDays"];
+const FIELDS_THAT_SHOW_ERROR = [
+    "productDescription", "brand", "batch", "spectrum", "volume", "posology", "treatmentDurationDays",
+];
+
+function isErrorShownOnForm(field) {
+    return FIELDS_THAT_SHOW_ERROR.includes(field) || field.startsWith("components")
+        || /^step-\d+-(dosage|note)$/.test(field);
+}
 
 // erro de campo q o formulario n mostra em lugar nenhum vai pro aviso de cima
 function hiddenErrorsOf(fieldErrors) {
     return Object.keys(fieldErrors)
-        .filter((field) => !FIELDS_WITH_ERROR.includes(field) && !field.startsWith("components")
-            && !/^step-\d+-(dosage|note)$/.test(field))
+        .filter((field) => !isErrorShownOnForm(field))
         .map((field) => fieldErrors[field]);
+}
+
+// sem erro de campo vale a msg da api e qnd todo erro ja aparece na tela pede p/ conferir os destacados
+function formErrorOf(apiMessage, errorsByField) {
+    if (Object.keys(errorsByField).length === 0) {
+        return apiMessage;
+    }
+    const hiddenErrors = hiddenErrorsOf(errorsByField);
+    if (hiddenErrors.length > 0) {
+        return hiddenErrors.join(". ") + ".";
+    }
+    return "Confira os campos destacados.";
+}
+
+function prescriptionBodyOf(form, components, escalationSteps) {
+    return {
+        productDescription: form.productDescription,
+        brand: textOrNull(form.brand),
+        batch: textOrNull(form.batch),
+        spectrum: emptyToNull(form.spectrum),
+        components: components.map((component) => ({
+            cannabinoid: component.cannabinoid,
+            concentration: numberOrNull(component.concentration),
+            unit: component.unit,
+        })),
+        volume: textOrNull(form.volume),
+        posology: form.posology,
+        administrationRoute: emptyToNull(form.administrationRoute),
+        // a semana eh a da linha q a prescritora ve na tela, e a linha sem dose fica de fora
+        escalationSteps: escalationSteps
+            .map((step, index) => ({week: index + 1, dosage: step.dosage, note: textOrNull(step.note)}))
+            .filter((step) => step.dosage.trim() !== ""),
+        instructions: textOrNull(form.instructions),
+        precautions: textOrNull(form.precautions),
+        expectedEffects: textOrNull(form.expectedEffects),
+        observation: textOrNull(form.observation),
+        treatmentDurationDays: numberOrNull(form.treatmentDurationDays),
+        nextConsultationDate: emptyToNull(form.nextConsultationDate),
+    };
+}
+
+function blockedMessageOf(appointment) {
+    if (appointment.annulled) {
+        return "Esta consulta foi anulada e não gera prescrição.";
+    }
+    if (appointment.status === "CANCELADA") {
+        return "Esta consulta foi cancelada e não gera prescrição.";
+    }
+    if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA"
+        || appointment.status === "NAO_COMPARECEU") {
+        return "Só consulta confirmada na agenda gera prescrição.";
+    }
+    if (isInTheFuture(appointment.dateTime)) {
+        return "Esta consulta ainda não aconteceu. A prescrição é emitida depois do atendimento.";
+    }
+    return null;
 }
 
 // emissao de prescricao dentro de uma consulta (RF05)
@@ -166,46 +233,15 @@ export default function PrescriptionForm() {
         setFormError(null);
         setFieldErrors({});
 
-        const requestBody = {
-            productDescription: form.productDescription,
-            brand: textOrNull(form.brand),
-            batch: textOrNull(form.batch),
-            spectrum: form.spectrum === "" ? null : form.spectrum,
-            components: components.map((component) => ({
-                cannabinoid: component.cannabinoid,
-                concentration: numberOrNull(component.concentration),
-                unit: component.unit,
-            })),
-            volume: textOrNull(form.volume),
-            posology: form.posology,
-            administrationRoute: form.administrationRoute === "" ? null : form.administrationRoute,
-            // a semana eh a da linha q a prescritora ve na tela, e a linha sem dose fica de fora
-            escalationSteps: escalationSteps
-                .map((step, index) => ({week: index + 1, dosage: step.dosage, note: textOrNull(step.note)}))
-                .filter((step) => step.dosage.trim() !== ""),
-            instructions: textOrNull(form.instructions),
-            precautions: textOrNull(form.precautions),
-            expectedEffects: textOrNull(form.expectedEffects),
-            observation: textOrNull(form.observation),
-            treatmentDurationDays: numberOrNull(form.treatmentDurationDays),
-            nextConsultationDate: form.nextConsultationDate === "" ? null : form.nextConsultationDate,
-        };
-
+        const requestBody = prescriptionBodyOf(form, components, escalationSteps);
         try {
             const savedPrescription = await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
             setIssuedPrescription(savedPrescription);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
                 const errorsByField = stepErrorsOnRows(requestError.fieldErrors(), requestBody.escalationSteps);
-                const hiddenErrors = hiddenErrorsOf(errorsByField);
                 setFieldErrors(errorsByField);
-                if (Object.keys(errorsByField).length === 0) {
-                    setFormError(requestError.message);
-                } else if (hiddenErrors.length > 0) {
-                    setFormError(hiddenErrors.join(". ") + ".");
-                } else {
-                    setFormError("Confira os campos destacados.");
-                }
+                setFormError(formErrorOf(requestError.message, errorsByField));
             } else {
                 setFormError("Não foi possível falar com o servidor. Confira sua internet e tente de novo.");
             }
@@ -253,17 +289,7 @@ export default function PrescriptionForm() {
         );
     }
 
-    let blockedMessage = null;
-    if (appointment.annulled) {
-        blockedMessage = "Esta consulta foi anulada e não gera prescrição.";
-    } else if (appointment.status === "CANCELADA") {
-        blockedMessage = "Esta consulta foi cancelada e não gera prescrição.";
-    } else if (appointment.status === "SOLICITADA" || appointment.status === "RECUSADA"
-        || appointment.status === "NAO_COMPARECEU") {
-        blockedMessage = "Só consulta confirmada na agenda gera prescrição.";
-    } else if (isInTheFuture(appointment.dateTime)) {
-        blockedMessage = "Esta consulta ainda não aconteceu. A prescrição é emitida depois do atendimento.";
-    }
+    const blockedMessage = blockedMessageOf(appointment);
     const becomesCurrent = currentPrescription === null
         || isSameOrAfter(appointment.dateTime, currentPrescription.appointmentDateTime);
     const compositionError = compositionErrorOf(fieldErrors);

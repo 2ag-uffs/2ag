@@ -51,6 +51,8 @@ public class ScaleTaskService {
     public static final String ANSWERED_TODAY_MESSAGE =
             "Esta escala já foi respondida hoje. Veja a resposta no histórico do paciente";
 
+    private static final String FORM_NOTIFICATION = "FORM";
+
     // quanto tempo o paciente tem pra responder uma escala avulsa
     private static final int DEFAULT_TASK_DAYS = 7;
     // a tarefa reaberta pela anulacao vale pelo menos ate depois de amanha: o job de amanha n fecha ela
@@ -104,7 +106,7 @@ public class ScaleTaskService {
             prescriberRepository.lockById(prescriber.getId());
         }
         ScaleTask task = assign(patientId, scaleType, LocalDate.now(), DEFAULT_TASK_DAYS, false);
-        return new ScaleTaskDTO(task, validAnswersOf(task), LocalDate.now(), isDaily(scaleType));
+        return dtoOf(task, LocalDate.now());
     }
 
     // a versao com data e prazo serve pro acompanhamento automatico: o
@@ -126,19 +128,9 @@ public class ScaleTaskService {
         if (scaleType == ScaleType.ANAMNESE && patient.isArchived()) {
             throw new BusinessException(ARCHIVED_ANAMNESIS_MESSAGE);
         }
-
-        // a mesma escala ainda aberta n vira duas tarefas iguais
-        Optional<ScaleTask> openTask = openTaskOf(patientId, scaleType);
-        if (openTask.isPresent() && openTask.get().coversDay(today)) {
-            return openTask.get();
-        }
-        // a rodada q chega no dia em q a escala ja foi respondida fica com essa resposta: a resposta
-        // do dia eh uma so, entao responder a tarefa nova so corrigia a primeira e ela seguia pendente
-        if (fromProtocol && !isDaily(scaleType)) {
-            Optional<ScaleTask> answeredToday = taskAnsweredOn(patientId, scaleType, today);
-            if (answeredToday.isPresent()) {
-                return answeredToday.get();
-            }
+        Optional<ScaleTask> existingTask = taskToReuse(patientId, scaleType, today, fromProtocol);
+        if (existingTask.isPresent()) {
+            return existingTask.get();
         }
         // a avulsa no dia da resposta ficava pendente sem jeito de fechar: o paciente responder de novo
         // no mesmo dia so corrigia a resposta q ja existia
@@ -160,12 +152,30 @@ public class ScaleTaskService {
         if (isDaily(scaleType)) {
             linkDaysAlreadyFilled(savedTask);
         }
-
-        notificationService.createNotification(patient, "Nova escala para responder",
-                scaleType.getDisplayName() + ". Você tem até " + formatDate(savedTask.getPeriodEnd())
-                        + " para responder.",
-                "FORM", "/pacientes/" + patientId + "/escalas");
+        notifyNewTask(patient, savedTask);
         return savedTask;
+    }
+
+    private Optional<ScaleTask> taskToReuse(Long patientId, ScaleType scaleType, LocalDate today,
+                                            boolean fromProtocol) {
+        // a mesma escala ainda aberta n vira duas tarefas iguais
+        Optional<ScaleTask> openTask = openTaskOf(patientId, scaleType);
+        if (openTask.isPresent() && openTask.get().coversDay(today)) {
+            return openTask;
+        }
+        // a rodada q chega no dia em q a escala ja foi respondida fica com essa resposta: a resposta
+        // do dia eh uma so, entao responder a tarefa nova so corrigia a primeira e ela seguia pendente
+        if (fromProtocol && !isDaily(scaleType)) {
+            return taskAnsweredOn(patientId, scaleType, today);
+        }
+        return Optional.empty();
+    }
+
+    private void notifyNewTask(Patient patient, ScaleTask task) {
+        notificationService.createNotification(patient, "Nova escala para responder",
+                task.getScaleType().getDisplayName() + ". Você tem até " + formatDate(task.getPeriodEnd())
+                        + " para responder.",
+                FORM_NOTIFICATION, "/pacientes/" + patient.getId() + "/escalas");
     }
 
     // liga a resposta na tarefa aberta daquela escala
@@ -311,7 +321,7 @@ public class ScaleTaskService {
         notificationService.createNotification(patient, "Escala para responder de novo",
                 scaleType.getDisplayName() + ": sua resposta foi anulada pelo prescritor. " + whatToDo
                         + " Motivo: " + annulledResponse.getAnnulment().getAnnulmentReason(),
-                "FORM", scaleType.getPath() + "?data=" + annulledDay);
+                FORM_NOTIFICATION, scaleType.getPath() + "?data=" + annulledDay);
     }
 
     // a pendente q cobre hoje eh outra q n a reaberta (a rodada seguinte, ou uma avulsa enviada depois)
@@ -339,7 +349,12 @@ public class ScaleTaskService {
         }
         notificationService.createNotification(prescriber, "Escala respondida",
                 patient.getDisplayName() + " respondeu " + scaleType.getDisplayName() + ".",
-                "FORM", "/paciente/" + patient.getId() + "/historico");
+                FORM_NOTIFICATION, historyLinkOf(patient));
+    }
+
+    // o historico do paciente na tela do prescritor
+    private String historyLinkOf(Patient patient) {
+        return "/paciente/" + patient.getId() + "/historico";
     }
 
     // resposta anulada n conta, entao a tarefa dela continua precisando de resposta
@@ -363,15 +378,16 @@ public class ScaleTaskService {
     public int closeOverdue(LocalDate today) {
         int closed = 0;
         int failures = 0;
-        for (ScaleTask found : taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today)) {
+        for (ScaleTask overdueTask : taskRepository.findByStatusAndPeriodEndBefore(ScaleTaskStatus.PENDENTE, today)) {
+            Long taskId = overdueTask.getId();
             try {
-                Boolean wasClosed = transactionTemplate.execute(status -> closeIfStillOverdue(found.getId(), today));
+                Boolean wasClosed = transactionTemplate.execute(status -> closeIfStillOverdue(taskId, today));
                 if (Boolean.TRUE.equals(wasClosed)) {
                     closed++;
                 }
             } catch (RuntimeException exception) {
                 failures++;
-                log.error("Tarefas do dia: falha ao fechar a tarefa {}", found.getId(), exception);
+                log.error("Tarefas do dia: falha ao fechar a tarefa {}", taskId, exception);
             }
         }
         // o dia n conta como feito e a proxima rodada tenta de novo, sem repetir o q ja saiu
@@ -389,7 +405,9 @@ public class ScaleTaskService {
         }
         patientRepository.lockById(patientId);
         ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
-        if (task == null || task.getStatus() != ScaleTaskStatus.PENDENTE || !task.getPeriodEnd().isBefore(today)) {
+        boolean stillOverdue = task != null && task.getStatus() == ScaleTaskStatus.PENDENTE
+                && task.getPeriodEnd().isBefore(today);
+        if (!stillOverdue) {
             return false;
         }
         closeByAnswers(task, task.getPeriodEnd());
@@ -417,23 +435,25 @@ public class ScaleTaskService {
     }
 
     private void closeByAnswers(ScaleTask task, LocalDate answeredDay) {
-        long answers = validAnswersOf(task);
-        task.setStatus(answers > 0 ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
-        if (answers > 0 && task.getAnsweredAt() == null) {
+        boolean answered = validAnswersOf(task) > 0;
+        task.setStatus(answered ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
+        if (answered && task.getAnsweredAt() == null) {
             task.setAnsweredAt(answeredDay);
         }
         taskRepository.save(task);
     }
 
-    // a anamnese n tem definicao no catalogo
     public boolean isDaily(ScaleType scaleType) {
-        return catalog.hasDefinition(scaleType)
-                && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.DIARIO;
+        return hasFillMode(scaleType, ScaleDefinition.FillMode.DIARIO);
     }
 
     private boolean isPeriod(ScaleType scaleType) {
-        return catalog.hasDefinition(scaleType)
-                && catalog.definitionOf(scaleType).fillMode() == ScaleDefinition.FillMode.PERIODO;
+        return hasFillMode(scaleType, ScaleDefinition.FillMode.PERIODO);
+    }
+
+    // a anamnese n tem definicao no catalogo
+    private boolean hasFillMode(ScaleType scaleType, ScaleDefinition.FillMode fillMode) {
+        return catalog.hasDefinition(scaleType) && catalog.definitionOf(scaleType).fillMode() == fillMode;
     }
 
     // conta pela data os dias q caem no periodo, inclusive os preenchidos atrasados antes do fim
@@ -453,7 +473,7 @@ public class ScaleTaskService {
                 task.getScaleType().getDisplayName() + " de " + formatDate(task.getPeriodStart()) + " a "
                         + formatDate(task.getPeriodEnd()) + ": " + patient.getDisplayName() + " preencheu "
                         + filledDays + " de " + totalDays + " dias.",
-                "FORM", "/paciente/" + patient.getId() + "/historico");
+                FORM_NOTIFICATION, historyLinkOf(patient));
     }
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
@@ -466,7 +486,7 @@ public class ScaleTaskService {
         List<ScaleTaskDTO> pending = taskRepository
                 .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
+                .map(task -> dtoOf(task, today))
                 .toList();
 
         List<ScaleResponseSummaryDTO> history = responseRepository
@@ -483,8 +503,12 @@ public class ScaleTaskService {
         LocalDate today = LocalDate.now();
         return taskRepository.findByPatientIdOrderByPeriodStartDesc(patientId)
                 .stream()
-                .map(task -> new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType())))
+                .map(task -> dtoOf(task, today))
                 .toList();
+    }
+
+    private ScaleTaskDTO dtoOf(ScaleTask task, LocalDate today) {
+        return new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType()));
     }
 
     // a tarefa q ja existia na hora da rodada passa a ser a rodada, com o prazo dela: a avulsa aberta

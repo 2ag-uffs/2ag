@@ -25,23 +25,24 @@ export function directionTextOf(attribute) {
     return null;
 }
 
+function hasCutoff(point) {
+    return point.cutoff !== null && point.cutoff !== undefined;
+}
+
+// exame com escore mas sem corte, q eh o MEEM antigo sem escolaridade
+function hasScoreWithoutCutoff(point) {
+    return point.value !== null && point.value !== undefined && !hasCutoff(point);
+}
+
 // a linha do corte so vale qnd todo ponto tem o mesmo. no MEEM o corte muda
 // com a escolaridade do exame, e uma linha so ficaria errada pros outros exames
 export function sharedCutoffOf(points) {
-    if (points.length === 0) {
+    if (points.length === 0 || !hasCutoff(points[0])) {
         return null;
     }
     const first = points[0].cutoff;
-    if (first === null || first === undefined) {
-        return null;
-    }
     return points.every((point) => point.cutoff === first) ? first : null;
 }
-
-const hasCutoff = (point) => point.cutoff !== null && point.cutoff !== undefined;
-
-// exame com escore mas sem corte, q eh o MEEM antigo sem escolaridade
-const hasScoreWithoutCutoff = (point) => point.value !== null && point.value !== undefined && !hasCutoff(point);
 
 // a escolaridade so mudou de verdade qnd tem dois cortes diferentes. o exame
 // sem escolaridade n tem corte e conta a parte, no countWithoutCutoff

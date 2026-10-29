@@ -52,13 +52,17 @@ public record ScaleResponseDTO(
                 response.getAppointment() == null ? null : response.getAppointment().getId(),
                 response.isReviewed(),
                 response.getReviewedAt(),
-                response.getScaleType().isFilledByPatient() && !response.isReviewed() && !response.isAnnulled(),
+                isEditableByPatient(response),
                 response.getCreatedAt(),
                 response.isAnnulled(),
                 annulledAtOf(response.getAnnulment()),
                 reasonOf(response.getAnnulment()),
                 annulledByNameOf(response.getAnnulment())
         );
+    }
+
+    private static boolean isEditableByPatient(ScaleResponse response) {
+        return response.getScaleType().isFilledByPatient() && !response.isReviewed() && !response.isAnnulled();
     }
 
     private static LocalDateTime annulledAtOf(Annulment annulment) {

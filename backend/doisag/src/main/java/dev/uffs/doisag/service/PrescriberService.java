@@ -24,10 +24,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 @Service
-
 public class PrescriberService {
 
     public static final String INACTIVE_ACCOUNT_MESSAGE =
@@ -36,6 +34,8 @@ public class PrescriberService {
             "Essa pessoa já criou a senha dela. Só ela troca o e-mail, no próprio perfil";
     public static final String INACTIVE_ACCOUNT_EMAIL_MESSAGE =
             "Esta conta está desativada. Ative ela antes de corrigir o e-mail";
+
+    private static final String EMAIL_TAKEN_MESSAGE = "Este e-mail já tem conta no sistema";
 
     private final PrescriberRepository prescriberRepository;
     private final UsersRepository usersRepository;
@@ -61,58 +61,55 @@ public class PrescriberService {
     // o administrador cria a conta de um prescritor (RF02.2)
     // a senha nasce aleatoria e ninguem conhece, a pessoa cria a dela pelo link de primeiro acesso
     @Transactional
-    public PasswordResetLinkDTO createByAdmin(PrescriberCreateDTO dados) {
-        Prescriber prescriber = createAccount(dados, SecureTokens.createRandomToken());
+    public PasswordResetLinkDTO createByAdmin(PrescriberCreateDTO prescriberData) {
+        Prescriber prescriber = createAccount(prescriberData, SecureTokens.createRandomToken());
         auditService.recordCreation(AuditRecordType.CONTA_DE_PRESCRITOR, prescriber.getId(), null);
-        String firstAccessLink = passwordResetService.createFirstAccessLinkFor(prescriber);
-        return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), firstAccessLink,
-                PasswordResetService.FIRST_ACCESS_VALID_MINUTES);
+        return sendFirstAccessLink(prescriber);
     }
 
     // com a senha escolhida so o seed de desenvolvimento chama
     // a senha veio pronta, entao a conta ja conta como senha criada: senao o administrador
     // ainda poderia trocar o e-mail dela pela rota de corrigir e-mail e tomar a conta de teste
     @Transactional
-    public Prescriber create(PrescriberCreateDTO dados, String password) {
-        Prescriber prescriber = createAccount(dados, password);
+    public Prescriber create(PrescriberCreateDTO prescriberData, String password) {
+        Prescriber prescriber = createAccount(prescriberData, password);
         prescriber.setPasswordChangedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         return prescriberRepository.save(prescriber);
     }
 
-    private Prescriber createAccount(PrescriberCreateDTO dados, String password) {
+    private Prescriber createAccount(PrescriberCreateDTO prescriberData, String password) {
         // conselho e numero de registro identificam o profissional
         // "crbm" e "77777 " sao o mesmo registro q "CRBM" e "77777", senao a mesma pessoa ganhava outra conta
-        String registryType = dados.registryType().trim().toUpperCase(Locale.ROOT);
-        String registryNumber = dados.registryNumber().trim();
+        String registryType = prescriberData.registryType().trim().toUpperCase(Locale.ROOT);
+        String registryNumber = prescriberData.registryNumber().trim();
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(registryType, registryNumber)) {
             throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
         }
 
         // e-mail e cpf n se repetem em nenhuma conta senao o login n sabe quem eh quem
-        String email = InputCleaner.normalizeEmail(dados.email());
+        String email = InputCleaner.normalizeEmail(prescriberData.email());
         if (usersRepository.existsByEmail(email)) {
-            throw new DuplicateValueException("email", "Este e-mail já tem conta no sistema");
+            throw new DuplicateValueException("email", EMAIL_TAKEN_MESSAGE);
         }
-        String cpf = InputCleaner.keepOnlyDigits(dados.cpf());
+        String cpf = InputCleaner.keepOnlyDigits(prescriberData.cpf());
         if (usersRepository.existsByCpf(cpf)) {
             throw new DuplicateValueException("cpf", "Este CPF já tem conta no sistema");
         }
 
         Prescriber prescriber = new Prescriber();
-        prescriber.setName(dados.name().trim());
+        prescriber.setName(prescriberData.name().trim());
         prescriber.setEmail(email);
         prescriber.setCpf(cpf);
-        prescriber.setBirthDate(dados.birthDate());
-        prescriber.setPhone(InputCleaner.keepOnlyDigits(dados.phone()));
-        prescriber.setAddress(dados.address() == null ? null : dados.address().toAddress());
-        prescriber.setProfession(dados.profession());
+        prescriber.setBirthDate(prescriberData.birthDate());
+        prescriber.setPhone(InputCleaner.keepOnlyDigits(prescriberData.phone()));
+        prescriber.setAddress(prescriberData.address() == null ? null : prescriberData.address().toAddress());
+        prescriber.setProfession(prescriberData.profession());
         prescriber.setRegistryType(registryType);
         prescriber.setRegistryNumber(registryNumber);
         prescriber.setPassword(passwordEncoder.encode(password));
         return prescriberRepository.save(prescriber);
     }
 
-    // lista pro administrador em ordem de nome
     public List<Prescriber> listAllByName() {
         return prescriberRepository.findAll(Sort.by("name"));
     }
@@ -176,13 +173,18 @@ public class PrescriberService {
         }
         String email = InputCleaner.normalizeEmail(newEmail);
         if (!email.equals(prescriber.getEmail()) && usersRepository.existsByEmail(email)) {
-            throw new DuplicateValueException("email", "Este e-mail já tem conta no sistema");
+            throw new DuplicateValueException("email", EMAIL_TAKEN_MESSAGE);
         }
 
         prescriber.setEmail(email);
         prescriberRepository.save(prescriber);
         auditService.recordChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null);
         // o link novo cancela o q foi pro endereco errado
+        return sendFirstAccessLink(prescriber);
+    }
+
+    // o link so volta na resposta qnd o e-mail n saiu
+    private PasswordResetLinkDTO sendFirstAccessLink(Prescriber prescriber) {
         String firstAccessLink = passwordResetService.createFirstAccessLinkFor(prescriber);
         return new PasswordResetLinkDTO(prescriber.getId(), prescriber.getName(), firstAccessLink,
                 PasswordResetService.FIRST_ACCESS_VALID_MINUTES);
@@ -200,7 +202,6 @@ public class PrescriberService {
         loginAttemptLimiter.registerSuccess(admin.getEmail(), clientAddress);
     }
 
-    // read by id prescriber
     public Prescriber getById(Long id) {
         return prescriberRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Prescritor não encontrado com o id: " + id));

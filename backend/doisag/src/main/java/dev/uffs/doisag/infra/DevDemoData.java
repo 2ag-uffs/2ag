@@ -71,6 +71,9 @@ public class DevDemoData {
     // se esse paciente ja existe a demonstracao ja foi criada antes
     private static final String MARKER_EMAIL = "joao.almeida@email.com";
 
+    // cada escala enviada tem uma semana de prazo
+    private static final int TASK_DAYS = 7;
+
     private static final String[] HAMILTON_ITEMS = {
             "humorAnsioso", "tensao", "medos", "insonia", "intelectual", "humorDeprimido",
             "somatizacoesMotoras", "somatizacoesSensoriais", "sintomasCardiovasculares", "sintomasRespiratorios",
@@ -142,21 +145,10 @@ public class DevDemoData {
             Patient joao = createPatient("João Pedro Almeida", MARKER_EMAIL, "391846205",
                     LocalDate.of(1990, 11, 20), "49991234567",
                     new Address("Rua das Palmeiras", "210", "Chapecó", "SC", "Brasil"), prescriber, password);
-            Patient renata = createPatient("Renata Dias Carvalho", "renata.dias@email.com", "274153869",
-                    LocalDate.of(1965, 2, 8), "49992345678",
-                    new Address("Avenida Getúlio Vargas", "1450", "Chapecó", "SC", "Brasil"), prescriber, password);
-            renata.setGuardianName("Lucas Dias Carvalho");
-            renata.setGuardianRelationship("filho");
-            renata.setGuardianPhone("49981234567");
-            renata = patientRepository.save(renata);
+            Patient renata = createRenata(prescriber, password);
             // o joao aceitou a pesquisa, assim da pra testar a exportacao sem identificacao
             consentTermService.registerAcceptance(joao, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
-            Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
-                    LocalDate.of(1983, 7, 30), "49993456789",
-                    new Address("Rua Marechal Deodoro", "88", "Xaxim", "SC", "Brasil"), prescriber, password);
-            // nome social pra conferir as telas com ele (RN15)
-            paulo.setSocialName("Paula Nunes");
-            paulo = patientRepository.save(paulo);
+            Patient paulo = createPaulo(prescriber, password);
             Patient carla = createPatient("Carla Menezes", "carla.menezes@email.com", "603918274",
                     LocalDate.of(1972, 9, 14), "49994567890",
                     new Address("Rua Clevelândia", "35", "Chapecó", "SC", "Brasil"), prescriber, password);
@@ -175,11 +167,11 @@ public class DevDemoData {
             createJoaoRecent(prescriber, joao, today);
             createRenataRecent(prescriber, renata, today);
             // paciente novo so com a ficha de avaliacao inicial pra responder
-            scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, 7, false);
+            scaleTaskService.assign(paulo.getId(), ScaleType.ANAMNESE, today, TASK_DAYS, false);
             // outro prescritor da clinica pra lista da administracao n ficar com um nome so
             prescriberService.create(new PrescriberCreateDTO("Carlos Pereira", "carlos.pereira@email.com",
-                    validCpf("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico", "CRM", "23456"),
-                    password);
+                    CpfRules.withCheckDigits("286415937"), LocalDate.of(1979, 6, 11), "49996789012", null, "Médico",
+                    "CRM", "23456"), password);
 
             log.info("seed de desenvolvimento criou os dados de demonstracao");
         } catch (RuntimeException exception) {
@@ -253,7 +245,17 @@ public class DevDemoData {
         scaleResponseService.review(middleHamilton.id(), prescriber);
         hamilton(maria, today.minusDays(14), 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1);
 
-        // o MEEM eh do prescritor e foi aplicado na primeira consulta
+        applyMariaMentalStateExam(firstConsultation, prescriber);
+        createMariaSleepDiary(maria, today);
+
+        treatmentProtocolService.create(maria.getId(), new TreatmentProtocolCreateDTO(today.minusDays(30), 90,
+                LocalTime.of(23, 0), LocalTime.of(7, 0), List.of(
+                new ProtocolItemDTO(ScaleType.ACOMPANHAMENTO_SEMANAL, null, Periodicity.SEMANAL),
+                new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.QUINZENAL))), prescriber);
+    }
+
+    // o MEEM eh do prescritor e foi aplicado na primeira consulta
+    private void applyMariaMentalStateExam(AppointmentResponseDTO firstConsultation, Prescriber prescriber) {
         Map<String, Object> mentalStateAnswers = new LinkedHashMap<>();
         mentalStateAnswers.put("escolaridade", 4);
         mentalStateAnswers.put("orientacaoTemporal", 5);
@@ -269,8 +271,10 @@ public class DevDemoData {
         mentalStateAnswers.put("copia", 1);
         scaleResponseService.applyMentalStateExam(firstConsultation.id(),
                 new ScaleResponseCreateDTO(null, null, mentalStateAnswers), prescriber);
+    }
 
-        // duas semanas de diario do sono com algumas noites sem registro
+    // duas semanas de diario do sono com algumas noites sem registro
+    private void createMariaSleepDiary(Patient maria, LocalDate today) {
         LocalDate firstSleepDay = today.minusDays(14);
         for (int day = 0; day < 14; day++) {
             if (day % 4 == 2) {
@@ -279,23 +283,18 @@ public class DevDemoData {
             sleepDiaryNight(maria, firstSleepDay.plusDays(day), day);
         }
         // a primeira semana vira uma tarefa ja vencida, com 5 de 7 noites, pros indicadores terem diario (RF39)
-        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, firstSleepDay, 7, false);
-
-        treatmentProtocolService.create(maria.getId(), new TreatmentProtocolCreateDTO(today.minusDays(30), 90,
-                LocalTime.of(23, 0), LocalTime.of(7, 0), List.of(
-                new ProtocolItemDTO(ScaleType.ACOMPANHAMENTO_SEMANAL, null, Periodicity.SEMANAL),
-                new ProtocolItemDTO(ScaleType.REGISTRO_SONO, null, Periodicity.QUINZENAL))), prescriber);
+        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, firstSleepDay, TASK_DAYS, false);
     }
 
     private void createMariaRecent(Prescriber prescriber, Patient maria, LocalDate today) {
         // a semana atual do diario comecou anteontem e ja tem dois dias preenchidos
-        scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(2), 7, true);
+        scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(2), TASK_DAYS, true);
         LocalDate firstDay = today.minusDays(56);
         mariaFollowUpDay(maria, firstDay, 54);
         mariaFollowUpDay(maria, firstDay, 55);
 
-        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, 7, false);
-        scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, 7, false);
+        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, TASK_DAYS, false);
+        scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, TASK_DAYS, false);
 
         appointmentService.schedule(new AppointmentScheduleDTO(maria.getId(),
                 nextWorkingDay(today.plusDays(7)).atTime(9, 0), AppointmentModality.PRESENCIAL, null, null),
@@ -306,12 +305,13 @@ public class DevDemoData {
     // a dor cai e o resto melhora aos poucos com um sobe e desce leve de um dia pro outro
     private ScaleResponseDTO mariaFollowUpDay(Patient maria, LocalDate firstDay, int day) {
         int[] dayToDayChange = {0, 1, 0, 0, -1};
+        int lastDay = 55;
         int drops = Math.min(3 + day / 7, 5);
-        int pain = trend(8, 3, day, 55) + dayToDayChange[day % 5];
-        int sleep = trend(3, 7, day, 55) - dayToDayChange[day % 5];
-        int mood = trend(4, 7, day, 55) - dayToDayChange[(day + 2) % 5];
-        int calm = trend(4, 7, day, 55) - dayToDayChange[(day + 3) % 5];
-        int energy = trend(4, 7, day, 55);
+        int pain = trend(8, 3, day, lastDay) + dayToDayChange[day % 5];
+        int sleep = trend(3, 7, day, lastDay) - dayToDayChange[day % 5];
+        int mood = trend(4, 7, day, lastDay) - dayToDayChange[(day + 2) % 5];
+        int calm = trend(4, 7, day, lastDay) - dayToDayChange[(day + 3) % 5];
+        int energy = trend(4, 7, day, lastDay);
         return followUpDay(maria, firstDay.plusDays(day), 0, drops, pain, sleep, mood, calm, energy,
                 MARIA_COMMENTS.get(day));
     }
@@ -319,16 +319,17 @@ public class DevDemoData {
     // uma noite do diario do sono da maria
     // ela demora menos pra dormir e acorda menos vezes conforme os dias passam
     private void sleepDiaryNight(Patient maria, LocalDate night, int day) {
+        int lastDay = 13;
         Map<String, Object> answers = new LinkedHashMap<>();
         answers.put("horarioDormir", day % 3 == 0 ? "23:30" : "23:00");
         answers.put("horarioLevantar", "06:50");
-        answers.put("tempoAteDormir", trend(40, 15, day, 13));
-        answers.put("vezesQueAcordou", trend(3, 1, day, 13));
-        answers.put("tempoAcordadoNoite", trend(45, 10, day, 13));
+        answers.put("tempoAteDormir", trend(40, 15, day, lastDay));
+        answers.put("vezesQueAcordou", trend(3, 1, day, lastDay));
+        answers.put("tempoAcordadoNoite", trend(45, 10, day, lastDay));
         answers.put("diaComum", true);
-        answers.put("cansaco", trend(4, 2, day, 13));
-        answers.put("estresse", trend(3, 1, day, 13));
-        answers.put("sonolenciaDiurna", trend(3, 1, day, 13));
+        answers.put("cansaco", trend(4, 2, day, lastDay));
+        answers.put("estresse", trend(3, 1, day, lastDay));
+        answers.put("sonolenciaDiurna", trend(3, 1, day, lastDay));
         answers.put("xicarasCafe", 2);
         scaleResponseService.answer(maria.getId(), ScaleType.REGISTRO_SONO,
                 new ScaleResponseCreateDTO(night, night, answers));
@@ -379,15 +380,16 @@ public class DevDemoData {
     }
 
     private ScaleResponseDTO joaoFollowUpDay(Patient joao, LocalDate firstDay, int day) {
+        int lastDay = 13;
         String comment = null;
         if (day == 0) {
             comment = "Sem efeito colateral até agora.";
         }
-        if (day == 13) {
+        if (day == lastDay) {
             comment = "Ainda fico ansioso no fim da tarde.";
         }
-        return followUpDay(joao, firstDay.plusDays(day), 2, 2, 2, trend(5, 7, day, 13), trend(5, 7, day, 13),
-                trend(3, 6, day, 13), trend(5, 6, day, 13), comment);
+        return followUpDay(joao, firstDay.plusDays(day), 2, 2, 2, trend(5, 7, day, lastDay),
+                trend(5, 7, day, lastDay), trend(3, 6, day, lastDay), trend(5, 6, day, lastDay), comment);
     }
 
     // dor neuropatica nos pes com uma escala q passou do prazo sem resposta
@@ -416,7 +418,7 @@ public class DevDemoData {
         }
 
         // enviada ha doze dias com uma semana de prazo entao ja venceu
-        scaleTaskService.assign(renata.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(12), 7, false);
+        scaleTaskService.assign(renata.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(12), TASK_DAYS, false);
     }
 
     private void createRenataRecent(Prescriber prescriber, Patient renata, LocalDate today) {
@@ -437,8 +439,10 @@ public class DevDemoData {
         if (day == 0) {
             comment = "Ainda acordo com os pés queimando.";
         }
-        return followUpDay(renata, firstDay.plusDays(day), 0, 4, trend(7, 5, day, 20), trend(4, 6, day, 20),
-                trend(5, 6, day, 20), trend(5, 6, day, 20), trend(4, 6, day, 20), comment);
+        int lastDay = 20;
+        return followUpDay(renata, firstDay.plusDays(day), 0, 4, trend(7, 5, day, lastDay),
+                trend(4, 6, day, lastDay), trend(5, 6, day, lastDay), trend(5, 6, day, lastDay),
+                trend(4, 6, day, lastDay), comment);
     }
 
     // paciente q teve alta e ficou no arquivo com o prontuario guardado
@@ -454,13 +458,34 @@ public class DevDemoData {
         patientRepository.save(archivedCarla);
     }
 
+    // renata tem o filho como responsavel (RF38)
+    private Patient createRenata(Prescriber prescriber, String password) {
+        Patient renata = createPatient("Renata Dias Carvalho", "renata.dias@email.com", "274153869",
+                LocalDate.of(1965, 2, 8), "49992345678",
+                new Address("Avenida Getúlio Vargas", "1450", "Chapecó", "SC", "Brasil"), prescriber, password);
+        renata.setGuardianName("Lucas Dias Carvalho");
+        renata.setGuardianRelationship("filho");
+        renata.setGuardianPhone("49981234567");
+        return patientRepository.save(renata);
+    }
+
+    // nome social pra conferir as telas com ele (RN15)
+    private Patient createPaulo(Prescriber prescriber, String password) {
+        Patient paulo = createPatient("Paulo Nunes", "paulo.nunes@email.com", "815362947",
+                LocalDate.of(1983, 7, 30), "49993456789",
+                new Address("Rua Marechal Deodoro", "88", "Xaxim", "SC", "Brasil"), prescriber, password);
+        paulo.setSocialName("Paula Nunes");
+        return patientRepository.save(paulo);
+    }
+
     private Patient createPatient(String name, String email, String firstNineCpfDigits, LocalDate birthDate,
                                   String phone, Address address, Prescriber prescriber, String password) {
         Patient patient = new Patient();
         patient.setName(name);
         patient.setEmail(email);
         patient.setPassword(passwordEncoder.encode(password));
-        patient.setCpf(validCpf(firstNineCpfDigits));
+        // cpf valido feito c/ a msm conta q o cadastro confere
+        patient.setCpf(CpfRules.withCheckDigits(firstNineCpfDigits));
         patient.setBirthDate(birthDate);
         patient.setPhone(phone);
         patient.setAddress(address);
@@ -565,10 +590,5 @@ public class DevDemoData {
             result = result.plusDays(1);
         }
         return result;
-    }
-
-    // monta um cpf valido a partir de 9 numeros, com a mesma conta q o cadastro confere
-    private String validCpf(String firstNineDigits) {
-        return CpfRules.withCheckDigits(firstNineDigits);
     }
 }

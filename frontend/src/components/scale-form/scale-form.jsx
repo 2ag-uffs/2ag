@@ -54,53 +54,64 @@ function ScaleField({item, bands, values, onChange, disabled}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
-    // o sistema calcula e a pessoa n preenche
     if (item.type === "CALCULADO") {
-        return (
-            <div className={styles.field}>
-                <Label item={item}/>
-                <p className={styles.computed}>
-                    {value === "" ? "o sistema calcula quando você salvar" : formatAnswer(item, value)}
-                </p>
-            </div>
-        );
+        return <ComputedField item={item} value={value}/>;
     }
-
     if (item.type === "NOTA" || item.type === "ESCOLHA" || item.type === "SIM_NAO") {
-        // toque errado no celular n pode virar dado clinico (RN10)
-        // o botao some dps de limpar, entao o foco volta pra primeira opcao
-        const clearAnswer = (event) => {
-            event.currentTarget.closest("fieldset").querySelector("input").focus();
-            change("");
-        };
+        return <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled}/>;
+    }
+    return <TypedField item={item} value={value} onChange={change} disabled={disabled}/>;
+}
 
-        let choices = <OptionChoices item={item} value={value} onChange={change}/>;
-        if (item.type === "NOTA" && bands.length > 0) {
-            choices = <BandedScoreChoices item={item} bands={bands} value={value} onChange={change}/>;
-        } else if (item.type === "NOTA") {
-            choices = <ScoreChoices item={item} value={value} onChange={change}/>;
-        }
+// o sistema calcula e a pessoa n preenche
+function ComputedField({item, value}) {
+    return (
+        <div className={styles.field}>
+            <Label item={item}/>
+            <p className={styles.computed}>
+                {value === "" ? "o sistema calcula quando você salvar" : formatAnswer(item, value)}
+            </p>
+        </div>
+    );
+}
 
-        return (
-            <fieldset className={styles.field} disabled={disabled}>
-                <legend className={styles.legend}>
-                    <Label item={item}/>
-                </legend>
-                {choices}
-                {value !== "" && !disabled && (
-                    <button
-                        type="button"
-                        className={"button-tertiary button-small " + styles.clear}
-                        aria-label={"Limpar resposta de " + item.label}
-                        onClick={clearAnswer}
-                    >
-                        Limpar resposta
-                    </button>
-                )}
-            </fieldset>
-        );
+function ChoiceField({item, bands, value, onChange, disabled}) {
+    // toque errado no celular n pode virar dado clinico (RN10)
+    // o botao some dps de limpar, entao o foco volta pra primeira opcao
+    const clearAnswer = (event) => {
+        event.currentTarget.closest("fieldset").querySelector("input").focus();
+        onChange("");
+    };
+
+    let choices = <OptionChoices item={item} value={value} onChange={onChange}/>;
+    if (item.type === "NOTA" && bands.length > 0) {
+        choices = <BandedScoreChoices item={item} bands={bands} value={value} onChange={onChange}/>;
+    } else if (item.type === "NOTA") {
+        choices = <ScoreChoices item={item} value={value} onChange={onChange}/>;
     }
 
+    return (
+        <fieldset className={styles.field} disabled={disabled}>
+            <legend className={styles.legend}>
+                <Label item={item}/>
+            </legend>
+            {choices}
+            {value !== "" && !disabled && (
+                <button
+                    type="button"
+                    className={"button-tertiary button-small " + styles.clear}
+                    aria-label={"Limpar resposta de " + item.label}
+                    onClick={clearAnswer}
+                >
+                    Limpar resposta
+                </button>
+            )}
+        </fieldset>
+    );
+}
+
+// texto livre hora ou numero digitado
+function TypedField({item, value, onChange, disabled}) {
     return (
         <div className={styles.field}>
             <label className={styles.labelBox} htmlFor={item.key}>
@@ -114,7 +125,7 @@ function ScaleField({item, bands, values, onChange, disabled}) {
                     maxLength={2000}
                     value={value}
                     disabled={disabled}
-                    onChange={(event) => change(event.target.value)}
+                    onChange={(event) => onChange(event.target.value)}
                 />
             ) : (
                 <input
@@ -126,7 +137,7 @@ function ScaleField({item, bands, values, onChange, disabled}) {
                     step={item.type === "HORAS" ? 0.5 : 1}
                     value={value}
                     disabled={disabled}
-                    onChange={(event) => change(event.target.value)}
+                    onChange={(event) => onChange(event.target.value)}
                 />
             )}
         </div>

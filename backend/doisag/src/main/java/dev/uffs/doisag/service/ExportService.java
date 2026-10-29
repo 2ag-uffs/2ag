@@ -8,6 +8,7 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.CsvBuilder;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Anamnesis;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -129,8 +130,8 @@ public class ExportService {
                     appointment.getBloodPressure(),
                     appointment.getWeight(),
                     appointment.getHeight(),
-                    appointment.isAnnulled() ? "sim" : "não",
-                    appointment.getAnnulment() == null ? null : appointment.getAnnulment().getAnnulmentReason());
+                    yesOrNo(appointment.isAnnulled()),
+                    annulmentReasonOf(appointment.getAnnulment()));
         }
         return csv.build();
     }
@@ -159,8 +160,8 @@ public class ExportService {
                     prescription.getTreatmentDurationDays(),
                     date(prescription.getNextConsultationDate()),
                     prescription.getObservation(),
-                    prescription.isAnnulled() ? "sim" : "não",
-                    prescription.getAnnulment() == null ? null : prescription.getAnnulment().getAnnulmentReason());
+                    yesOrNo(prescription.isAnnulled()),
+                    annulmentReasonOf(prescription.getAnnulment()));
         }
         return csv.build();
     }
@@ -191,8 +192,8 @@ public class ExportService {
                         item.label(),
                         answerText(item, answer),
                         answer,
-                        response.isAnnulled() ? "sim" : "não",
-                        response.getAnnulment() == null ? null : response.getAnnulment().getAnnulmentReason());
+                        yesOrNo(response.isAnnulled()),
+                        annulmentReasonOf(response.getAnnulment()));
             }
         }
         return csv.build();
@@ -214,11 +215,12 @@ public class ExportService {
         if (value == null) {
             return String.valueOf(answer);
         }
-        return item.options().stream()
-                .filter(option -> option.value() == value)
-                .map(ScaleOption::label)
-                .findFirst()
-                .orElse(String.valueOf(answer));
+        for (ScaleOption option : item.options()) {
+            if (option.value() == value) {
+                return option.label();
+            }
+        }
+        return String.valueOf(answer);
     }
 
     // minutos em horas e minutos, do mesmo jeito q a tela mostra
@@ -241,6 +243,7 @@ public class ExportService {
         try {
             return (int) Double.parseDouble(String.valueOf(answer));
         } catch (NumberFormatException error) {
+            // n eh numero entao quem chamou mostra a resposta como veio
             return null;
         }
     }
@@ -279,14 +282,13 @@ public class ExportService {
                         date(anamnesis.getAssessmentDate()),
                         field.label(),
                         answer,
-                        anamnesis.isAnnulled() ? "sim" : "não",
-                        anamnesis.getAnnulment() == null ? null : anamnesis.getAnnulment().getAnnulmentReason());
+                        yesOrNo(anamnesis.isAnnulled()),
+                        annulmentReasonOf(anamnesis.getAnnulment()));
             }
         }
         return csv.build();
     }
 
-    // o nome do arquivo q vai no download
     public String fileName(String content, Long patientId, boolean deidentified) {
         String owner = deidentified ? "sem-identificacao" : "paciente-" + patientId;
         return content + "-" + owner + "-" + LocalDate.now() + ".csv";
@@ -305,6 +307,14 @@ public class ExportService {
         }
         auditService.recordChartView(patientId);
         return patient;
+    }
+
+    private String yesOrNo(boolean value) {
+        return value ? "sim" : "não";
+    }
+
+    private String annulmentReasonOf(Annulment annulment) {
+        return annulment == null ? null : annulment.getAnnulmentReason();
     }
 
     private String patientColumn(boolean deidentified) {

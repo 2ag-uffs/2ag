@@ -10,12 +10,17 @@ import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {addDays, ageFrom, formatDate, formatNow, toIsoDate} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
 
+// o tratamento todo n tem data de corte
+const WHOLE_TREATMENT = 0;
+
 const PERIODS = [
     {value: 90, label: "Últimos 90 dias"},
     {value: 180, label: "Últimos 6 meses"},
     {value: 365, label: "Último ano"},
-    {value: 0, label: "Todo o tratamento"},
+    {value: WHOLE_TREATMENT, label: "Todo o tratamento"},
 ];
+
+const DEFAULT_PERIOD_DAYS = 90;
 
 // versao para impressao do historico (RF33)
 //
@@ -30,7 +35,7 @@ export default function Impressao() {
 
     const [history, setHistory] = useState(null);
     const [loadError, setLoadError] = useState(null);
-    const [periodDays, setPeriodDays] = useState(90);
+    const [periodDays, setPeriodDays] = useState(DEFAULT_PERIOD_DAYS);
 
     useEffect(() => {
         if (!patientId) {
@@ -39,7 +44,7 @@ export default function Impressao() {
         const patientPath = "/patients/" + patientId;
 
         Promise.all([
-            apiService.get("/patients/" + patientId),
+            apiService.get(patientPath),
             apiService.get(patientPath + "/appointments"),
             apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
@@ -56,9 +61,8 @@ export default function Impressao() {
             });
     }, [patientId]);
 
-    // a data de corte do periodo escolhido, ou nada quando eh tudo
     const startDate = useMemo(() => {
-        if (periodDays === 0) {
+        if (periodDays === WHOLE_TREATMENT) {
             return null;
         }
         // pelo toISOString a data voltaria um dia no fuso de brasilia
@@ -138,70 +142,69 @@ export default function Impressao() {
                 </dl>
             </header>
 
-            <section className={styles.section}>
-                <h2>Consultas ({appointmentsInPeriod.length})</h2>
-                {appointmentsInPeriod.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma consulta no período.</p>
-                ) : (
-                    appointmentsInPeriod.map((appointment) => (
-                        <ConsultationCard key={appointment.id} appointment={appointment}/>
-                    ))
-                )}
-            </section>
+            <PrintSection title="Consultas" count={appointmentsInPeriod.length} emptyText="Nenhuma consulta no período.">
+                {appointmentsInPeriod.map((appointment) => (
+                    <ConsultationCard key={appointment.id} appointment={appointment}/>
+                ))}
+            </PrintSection>
 
-            <section className={styles.section}>
-                <h2>Prescrições ({prescriptionsInPeriod.length})</h2>
-                {prescriptionsInPeriod.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma prescrição no período.</p>
-                ) : (
-                    prescriptionsInPeriod.map((prescription) => (
-                        <PrescriptionCard key={prescription.id} prescription={prescription}/>
-                    ))
-                )}
-            </section>
+            <PrintSection
+                title="Prescrições"
+                count={prescriptionsInPeriod.length}
+                emptyText="Nenhuma prescrição no período."
+            >
+                {prescriptionsInPeriod.map((prescription) => (
+                    <PrescriptionCard key={prescription.id} prescription={prescription}/>
+                ))}
+            </PrintSection>
 
-            <section className={styles.section}>
-                <h2>Escalas respondidas ({scalesInPeriod.length})</h2>
-                {scalesInPeriod.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma escala respondida no período.</p>
-                ) : (
-                    <div className={styles.tableWrap}>
-                        <table className={styles.table}>
-                            <thead>
-                            <tr>
-                                <th>Escala</th>
-                                <th>Período</th>
-                                <th>Resultado</th>
+            <PrintSection
+                title="Escalas respondidas"
+                count={scalesInPeriod.length}
+                emptyText="Nenhuma escala respondida no período."
+            >
+                <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                        <thead>
+                        <tr>
+                            <th>Escala</th>
+                            <th>Período</th>
+                            <th>Resultado</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {scalesInPeriod.map((scale) => (
+                            <tr key={scale.id}>
+                                <td>{scale.scaleName}</td>
+                                <td>{periodTextOf(scale)}</td>
+                                <td>{scale.annulled ? "anulada" : scale.result}</td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            {scalesInPeriod.map((scale) => (
-                                <tr key={scale.id}>
-                                    <td>{scale.scaleName}</td>
-                                    <td>
-                                        {scale.periodStart === scale.periodEnd
-                                            ? formatDate(scale.periodStart)
-                                            : formatDate(scale.periodStart) + " a " + formatDate(scale.periodEnd)}
-                                    </td>
-                                    <td>{scale.annulled ? "anulada" : scale.result}</td>
-                                </tr>
-                            ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </section>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
+            </PrintSection>
 
-            <section className={styles.section}>
-                <h2>Anamnese ({anamnesesInPeriod.length})</h2>
-                {anamnesesInPeriod.length === 0 ? (
-                    <p className={styles.empty}>Nenhuma anamnese no período.</p>
-                ) : (
-                    anamnesesInPeriod.map((anamnesis) => (
-                        <AnamnesisView key={anamnesis.id} anamnesis={anamnesis}/>
-                    ))
-                )}
-            </section>
+            <PrintSection title="Anamnese" count={anamnesesInPeriod.length} emptyText="Nenhuma anamnese no período.">
+                {anamnesesInPeriod.map((anamnesis) => (
+                    <AnamnesisView key={anamnesis.id} anamnesis={anamnesis}/>
+                ))}
+            </PrintSection>
         </section>
     );
+}
+
+function PrintSection({title, count, emptyText, children}) {
+    return (
+        <section className={styles.section}>
+            <h2>{title} ({count})</h2>
+            {count === 0 ? <p className={styles.empty}>{emptyText}</p> : children}
+        </section>
+    );
+}
+
+function periodTextOf(scale) {
+    return scale.periodStart === scale.periodEnd
+        ? formatDate(scale.periodStart)
+        : formatDate(scale.periodStart) + " a " + formatDate(scale.periodEnd);
 }

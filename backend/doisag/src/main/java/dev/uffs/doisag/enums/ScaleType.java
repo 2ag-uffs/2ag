@@ -2,8 +2,6 @@ package dev.uffs.doisag.enums;
 
 import dev.uffs.doisag.infra.NotFoundException;
 
-import java.util.Arrays;
-
 // as escalas q o sistema aplica (RF08 e RF09)
 // o slug eh o q aparece na url e na api pra n expor o nome do enum
 public enum ScaleType {
@@ -82,9 +80,11 @@ public enum ScaleType {
     }
 
     public static ScaleType fromSlug(String slug) {
-        return Arrays.stream(values())
-                .filter(scaleType -> scaleType.slug.equals(slug))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Escala não encontrada: " + slug));
+        for (ScaleType scaleType : values()) {
+            if (scaleType.slug.equals(slug)) {
+                return scaleType;
+            }
+        }
+        throw new NotFoundException("Escala não encontrada: " + slug);
     }
 }

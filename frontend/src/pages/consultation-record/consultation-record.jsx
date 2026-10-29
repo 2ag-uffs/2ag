@@ -9,13 +9,9 @@ import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError} from "../../services/api.js";
+import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import styles from "./consultation-record.module.css";
-
-const MODALITY_OPTIONS = [
-    {value: "PRESENCIAL", label: "Presencial"},
-    {value: "REMOTA", label: "Remota"},
-];
 
 const EMPTY_RECORD = {
     dateTime: "",
@@ -70,6 +66,39 @@ function recordFromAppointment(appointment) {
     };
 }
 
+function requestBodyOf(record) {
+    return {
+        dateTime: record.dateTime === "" ? null : record.dateTime + ":00",
+        modality: record.modality,
+        clinicalObservation: textOrNull(record.clinicalObservation),
+        physicalExam: textOrNull(record.physicalExam),
+        evolution: textOrNull(record.evolution),
+        diagnosis: textOrNull(record.diagnosis),
+        therapeuticPlan: textOrNull(record.therapeuticPlan),
+        complementaryExams: textOrNull(record.complementaryExams),
+        bloodPressure: textOrNull(record.bloodPressure),
+        weight: numberOrNull(record.weight),
+        height: numberOrNull(record.height),
+    };
+}
+
+// o motivo da tela abrir so pra leitura ou null qnd a consulta recebe registro
+function blockedMessageOf(appointment) {
+    if (appointment.annulled) {
+        return "Esta consulta foi anulada e não pode ser alterada. Motivo: " + appointment.annulmentReason;
+    }
+    if (appointment.status === "CANCELADA") {
+        return "Esta consulta foi cancelada e não recebe registro clínico.";
+    }
+    if (appointment.status === "SOLICITADA") {
+        return "Este pedido de consulta ainda não foi confirmado na agenda. Confirme antes de registrar o atendimento.";
+    }
+    if (appointment.status === "RECUSADA") {
+        return "Este pedido de consulta foi recusado e não recebe registro clínico.";
+    }
+    return null;
+}
+
 // registro clinico da consulta (RF04)
 // abre vazio pra uma consulta nova ou com os dados de uma consulta q ja existe
 export default function ConsultationRecord() {
@@ -106,15 +135,9 @@ export default function ConsultationRecord() {
                 }
                 setPatient({id: appointment.patientId, name: appointment.patientName, birthDate: null});
                 setRecord(recordFromAppointment(appointment));
-                if (appointment.annulled) {
-                    setBlockedMessage("Esta consulta foi anulada e não pode ser alterada. Motivo: "
-                        + appointment.annulmentReason);
-                } else if (appointment.status === "CANCELADA") {
-                    setBlockedMessage("Esta consulta foi cancelada e não recebe registro clínico.");
-                } else if (appointment.status === "SOLICITADA") {
-                    setBlockedMessage("Este pedido de consulta ainda não foi confirmado na agenda. Confirme antes de registrar o atendimento.");
-                } else if (appointment.status === "RECUSADA") {
-                    setBlockedMessage("Este pedido de consulta foi recusado e não recebe registro clínico.");
+                const message = blockedMessageOf(appointment);
+                if (message !== null) {
+                    setBlockedMessage(message);
                 }
             });
 
@@ -147,20 +170,7 @@ export default function ConsultationRecord() {
         setFormError(null);
         setFieldErrors({});
 
-        const requestBody = {
-            dateTime: record.dateTime === "" ? null : record.dateTime + ":00",
-            modality: record.modality,
-            clinicalObservation: textOrNull(record.clinicalObservation),
-            physicalExam: textOrNull(record.physicalExam),
-            evolution: textOrNull(record.evolution),
-            diagnosis: textOrNull(record.diagnosis),
-            therapeuticPlan: textOrNull(record.therapeuticPlan),
-            complementaryExams: textOrNull(record.complementaryExams),
-            bloodPressure: textOrNull(record.bloodPressure),
-            weight: numberOrNull(record.weight),
-            height: numberOrNull(record.height),
-        };
-
+        const requestBody = requestBodyOf(record);
         try {
             if (isNewConsultation) {
                 const savedAppointment = await apiService.post("/patients/" + patientId + "/appointments", requestBody);
@@ -236,6 +246,7 @@ export default function ConsultationRecord() {
 
     const age = ageFrom(patient.birthDate);
     const isReadOnly = blockedMessage !== null;
+    const areFieldsLocked = isReadOnly || isSaving;
     // a clinica n mede sinais vitais em consulta remota, mas registro q ja tem algum n pode sumir da tela
     const hasVitalSigns = record.bloodPressure !== "" || record.weight !== "" || record.height !== "";
     const showsVitalSigns = record.modality !== "REMOTA" || hasVitalSigns;
@@ -251,7 +262,7 @@ export default function ConsultationRecord() {
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
             <form className={styles.form} onSubmit={handleSubmit}>
-                <FormSection title="Quando e como" disabled={isReadOnly || isSaving}>
+                <FormSection title="Quando e como" disabled={areFieldsLocked}>
                     <FieldRow>
                         <TextField
                             label="Data e hora"
@@ -273,7 +284,7 @@ export default function ConsultationRecord() {
                     </FieldRow>
                 </FormSection>
 
-                <FormSection title="Queixa e exame" disabled={isReadOnly || isSaving}>
+                <FormSection title="Queixa e exame" disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Queixa principal e observações"
                         name="clinicalObservation"
@@ -321,7 +332,7 @@ export default function ConsultationRecord() {
                     )}
                 </FormSection>
 
-                <FormSection title="Avaliação" disabled={isReadOnly || isSaving}>
+                <FormSection title="Avaliação" disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Evolução do quadro"
                         name="evolution"
@@ -339,7 +350,7 @@ export default function ConsultationRecord() {
                     />
                 </FormSection>
 
-                <FormSection title="Conduta" disabled={isReadOnly || isSaving}>
+                <FormSection title="Conduta" disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Conduta e plano terapêutico"
                         name="therapeuticPlan"

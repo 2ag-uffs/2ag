@@ -10,6 +10,24 @@ function badgeClassOf(prescription) {
     return prescription.annulled ? styles.badgeAnnulled : styles.badgeReplaced;
 }
 
+function DetailItem({term, children}) {
+    return (
+        <div>
+            <dt>{term}</dt>
+            <dd>{children}</dd>
+        </div>
+    );
+}
+
+function TextBlock({title, text}) {
+    return (
+        <div className={styles.block}>
+            <h4>{title}</h4>
+            <p>{text}</p>
+        </div>
+    );
+}
+
 // cartao de uma prescricao usado pelo paciente e pelo prescritor
 // o actions deixa quem usa colocar botoes como o de anular
 export default function PrescriptionCard({prescription, actions}) {
@@ -31,49 +49,23 @@ export default function PrescriptionCard({prescription, actions}) {
             </header>
 
             <dl className={styles.details}>
-                <div>
-                    <dt>Composição</dt>
-                    <dd>{compositionSummary(prescription.components) || "Não informada"}</dd>
-                </div>
+                <DetailItem term="Composição">
+                    {compositionSummary(prescription.components) || "Não informada"}
+                </DetailItem>
                 {prescription.spectrum && (
-                    <div>
-                        <dt>Espectro</dt>
-                        <dd>{labelOf(SPECTRUM_OPTIONS, prescription.spectrum)}</dd>
-                    </div>
+                    <DetailItem term="Espectro">{labelOf(SPECTRUM_OPTIONS, prescription.spectrum)}</DetailItem>
                 )}
-                {brandAndBatch && (
-                    <div>
-                        <dt>Marca e lote</dt>
-                        <dd>{brandAndBatch}</dd>
-                    </div>
-                )}
-                {prescription.volume && (
-                    <div>
-                        <dt>Volume</dt>
-                        <dd>{prescription.volume} mL</dd>
-                    </div>
-                )}
-                <div>
-                    <dt>Posologia</dt>
-                    <dd>{prescription.posology}</dd>
-                </div>
+                {brandAndBatch && <DetailItem term="Marca e lote">{brandAndBatch}</DetailItem>}
+                {prescription.volume && <DetailItem term="Volume">{prescription.volume} mL</DetailItem>}
+                <DetailItem term="Posologia">{prescription.posology}</DetailItem>
                 {prescription.administrationRoute && (
-                    <div>
-                        <dt>Via</dt>
-                        <dd>{prescription.administrationRoute}</dd>
-                    </div>
+                    <DetailItem term="Via">{prescription.administrationRoute}</DetailItem>
                 )}
                 {prescription.treatmentDurationDays && (
-                    <div>
-                        <dt>Duração</dt>
-                        <dd>{prescription.treatmentDurationDays} dias</dd>
-                    </div>
+                    <DetailItem term="Duração">{prescription.treatmentDurationDays} dias</DetailItem>
                 )}
                 {prescription.nextConsultationDate && (
-                    <div>
-                        <dt>Próxima consulta</dt>
-                        <dd>{formatDate(prescription.nextConsultationDate)}</dd>
-                    </div>
+                    <DetailItem term="Próxima consulta">{formatDate(prescription.nextConsultationDate)}</DetailItem>
                 )}
             </dl>
 
@@ -90,30 +82,12 @@ export default function PrescriptionCard({prescription, actions}) {
                 </div>
             )}
 
-            {prescription.instructions && (
-                <div className={styles.block}>
-                    <h4>Instruções de uso</h4>
-                    <p>{prescription.instructions}</p>
-                </div>
-            )}
+            {prescription.instructions && <TextBlock title="Instruções de uso" text={prescription.instructions}/>}
             {prescription.precautions && (
-                <div className={styles.block}>
-                    <h4>Precauções e contraindicações</h4>
-                    <p>{prescription.precautions}</p>
-                </div>
+                <TextBlock title="Precauções e contraindicações" text={prescription.precautions}/>
             )}
-            {prescription.expectedEffects && (
-                <div className={styles.block}>
-                    <h4>Efeitos esperados</h4>
-                    <p>{prescription.expectedEffects}</p>
-                </div>
-            )}
-            {prescription.observation && (
-                <div className={styles.block}>
-                    <h4>Observações</h4>
-                    <p>{prescription.observation}</p>
-                </div>
-            )}
+            {prescription.expectedEffects && <TextBlock title="Efeitos esperados" text={prescription.expectedEffects}/>}
+            {prescription.observation && <TextBlock title="Observações" text={prescription.observation}/>}
 
             {prescription.annulled && <AnnulmentNotice record={prescription}/>}
 

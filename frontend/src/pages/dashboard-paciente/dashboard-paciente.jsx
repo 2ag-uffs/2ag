@@ -76,13 +76,9 @@ export default function DashboardPaciente() {
                     title="Esperando resposta"
                     count={panel.pendingScalesTotal}
                     footer={(
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
-                        >
+                        <FooterButton path={"/pacientes/" + loggedUser.id + "/escalas"}>
                             Ver todas as avaliações
-                        </button>
+                        </FooterButton>
                     )}
                 >
                     {panel.pendingScales.length === 0 ? (
@@ -114,15 +110,7 @@ export default function DashboardPaciente() {
 
                 <Card
                     title="Próximas consultas"
-                    footer={(
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => navigate("/agendamento-consulta")}
-                        >
-                            Ver minhas consultas
-                        </button>
-                    )}
+                    footer={<FooterButton path="/agendamento-consulta">Ver minhas consultas</FooterButton>}
                 >
                     {panel.upcomingAppointments.length === 0 ? (
                         <p className={styles.empty}>Nenhuma consulta marcada. Você pode pedir um horário.</p>
@@ -143,15 +131,7 @@ export default function DashboardPaciente() {
 
                 <Card
                     title="Prescrição de agora"
-                    footer={(
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => navigate("/minhas-prescricoes")}
-                        >
-                            Ver prescrições
-                        </button>
-                    )}
+                    footer={<FooterButton path="/minhas-prescricoes">Ver prescrições</FooterButton>}
                 >
                     {panel.currentPrescription === null ? (
                         <p className={styles.empty}>Nenhuma prescrição vigente.</p>
@@ -169,15 +149,7 @@ export default function DashboardPaciente() {
                 <Card
                     title="Avisos não lidos"
                     count={panel.unreadNotifications}
-                    footer={(
-                        <button
-                            type="button"
-                            className="button-secondary button-small"
-                            onClick={() => navigate("/notificacoes")}
-                        >
-                            Ver avisos
-                        </button>
-                    )}
+                    footer={<FooterButton path="/notificacoes">Ver avisos</FooterButton>}
                 >
                     {panel.latestNotifications.length === 0 ? (
                         <p className={styles.empty}>Nenhum aviso novo.</p>
@@ -196,5 +168,16 @@ export default function DashboardPaciente() {
                 </Card>
             </div>
         </section>
+    );
+}
+
+// o rodape de cada cartao leva pra tela com a lista inteira
+function FooterButton({path, children}) {
+    const navigate = useNavigate();
+
+    return (
+        <button type="button" className="button-secondary button-small" onClick={() => navigate(path)}>
+            {children}
+        </button>
     );
 }

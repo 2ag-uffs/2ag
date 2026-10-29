@@ -28,6 +28,9 @@ import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from 
 import {formatPhone} from "../../utils/masks.js";
 import styles from "./historico-clinico-prescritor.module.css";
 
+// so a consulta confirmada e n anulada recebe registro prescricao e anulacao
+const CONFIRMED_STATUSES = ["AGENDADA", "EM_ANDAMENTO", "CONCLUIDA"];
+
 // historico clinico de um paciente do prescritor (RF13)
 // o registro feito por engano eh anulado com motivo e continua aparecendo aqui
 export default function HistoricoClinicoPrescritor() {
@@ -52,7 +55,7 @@ export default function HistoricoClinicoPrescritor() {
         const patientPath = "/patients/" + patientId;
 
         Promise.all([
-            apiService.get("/patients/" + patientId),
+            apiService.get(patientPath),
             apiService.get(patientPath + "/appointments"),
             apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
@@ -108,25 +111,16 @@ export default function HistoricoClinicoPrescritor() {
     const {patient, appointments, prescriptions, anamneses, scalesPage} = history;
     const age = ageFrom(patient.birthDate);
 
-    // a lista vem da consulta mais recente pra mais antiga
-    // entao a proxima consulta marcada eh a ultima futura da lista
     const pastAppointments = appointments.filter(belongsToHistory);
-    const upcomingAppointments = appointments.filter((appointment) => isInTheFuture(appointment.dateTime)
-        && !appointment.annulled && appointment.status === "AGENDADA");
-    const nextAppointment = upcomingAppointments.length > 0
-        ? upcomingAppointments[upcomingAppointments.length - 1]
-        : null;
+    const nextAppointment = nextAppointmentOf(appointments);
 
     // a vigente aparece primeiro e as outras seguem da mais nova pra mais antiga
     const orderedPrescriptions = prescriptions.filter((prescription) => prescription.current)
         .concat(prescriptions.filter((prescription) => !prescription.current));
     const currentPrescription = prescriptions.find((prescription) => prescription.current) || null;
 
-    // so a consulta confirmada e n anulada recebe registro prescricao e anulacao
     const consultationActions = (appointment) => {
-        const isConfirmed = appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO"
-            || appointment.status === "CONCLUIDA";
-        if (appointment.annulled || !isConfirmed) {
+        if (appointment.annulled || !CONFIRMED_STATUSES.includes(appointment.status)) {
             return null;
         }
         // receita em consulta mais antiga q a da vigente entra so no historico
@@ -158,11 +152,7 @@ export default function HistoricoClinicoPrescritor() {
                 <button
                     type="button"
                     className="button-danger button-small"
-                    onClick={() => setAnnulmentTarget({
-                        title: "Anular consulta",
-                        recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
-                        endpoint: "/appointments/" + appointment.id + "/annul",
-                    })}
+                    onClick={() => setAnnulmentTarget(consultationAnnulmentOf(appointment))}
                 >
                     Anular
                 </button>
@@ -178,20 +168,7 @@ export default function HistoricoClinicoPrescritor() {
             <button
                 type="button"
                 className="button-danger button-small"
-                onClick={() => setAnnulmentTarget({
-                    title: "Anular prescrição",
-                    recordDescription: prescription.productDescription + ", emitida em "
-                        + formatDate(prescription.appointmentDateTime),
-                    endpoint: "/prescriptions/" + prescription.id + "/annul",
-                    // a anterior n volta a valer sozinha, entao o paciente fica sem prescricao em uso (NOOP-04)
-                    warning: prescription.current
-                        ? "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
-                            + "até você emitir uma nova. A anterior não volta a valer."
-                        : null,
-                    annulledNotice: prescription.current
-                        ? "Prescrição anulada. O paciente está sem prescrição em uso até você emitir uma nova."
-                        : null,
-                })}
+                onClick={() => setAnnulmentTarget(prescriptionAnnulmentOf(prescription))}
             >
                 Anular
             </button>
@@ -206,11 +183,7 @@ export default function HistoricoClinicoPrescritor() {
             <button
                 type="button"
                 className="button-danger button-small"
-                onClick={() => setAnnulmentTarget({
-                    title: "Anular anamnese",
-                    recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
-                    endpoint: "/anamneses/" + anamnesis.id + "/annul",
-                })}
+                onClick={() => setAnnulmentTarget(anamnesisAnnulmentOf(anamnesis))}
             >
                 Anular
             </button>
@@ -242,46 +215,7 @@ export default function HistoricoClinicoPrescritor() {
                 )}
             />
 
-            {(nextAppointment || patient.archived || patient.guardian || patient.civilName) && (
-                <div className={styles.facts}>
-                    {/* o titulo usa o nome social e o civil fica aqui pq o prontuario identifica a pessoa */}
-                    {patient.civilName && (
-                        <span className={styles.fact}>
-                            <FiUser aria-hidden="true"/>
-                            Nome civil: {patient.civilName}
-                        </span>
-                    )}
-                    {nextAppointment && (
-                        <span className={styles.fact}>
-                            <FiCalendar aria-hidden="true"/>
-                            Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
-                        </span>
-                    )}
-                    {patient.guardian && (
-                        <span className={styles.fact}>
-                            <FiPhone aria-hidden="true"/>
-                            <span>
-                                Familiar ou cuidador: {patient.guardian.name}
-                                {patient.guardian.relationship ? " (" + patient.guardian.relationship + ")" : ""}
-                                {patient.guardian.phone && (
-                                    <>
-                                        {" · "}
-                                        <a href={"tel:+55" + patient.guardian.phone}>
-                                            {formatPhone(patient.guardian.phone)}
-                                        </a>
-                                    </>
-                                )}
-                            </span>
-                        </span>
-                    )}
-                    {patient.archived && (
-                        <span className={styles.fact + " " + styles.factWarning}>
-                            <FiArchive aria-hidden="true"/>
-                            No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi encerrado.
-                        </span>
-                    )}
-                </div>
-            )}
+            <PatientFacts patient={patient} nextAppointment={nextAppointment}/>
 
             {/* as outras telas do paciente ficam juntas numa faixa discreta */}
             <div className={styles.tools}>
@@ -390,11 +324,7 @@ export default function HistoricoClinicoPrescritor() {
                     pendingTitle="Aguardando o paciente"
                     onOpenResponse={(response) => navigate("/escalas/resposta/" + response.id)}
                     onReview={reviewScale}
-                    onAnnul={(response) => setAnnulmentTarget({
-                        title: "Anular escala respondida",
-                        recordDescription: response.scaleName + " de " + formatDate(response.periodStart),
-                        endpoint: "/scales/responses/" + response.id + "/annul",
-                    })}
+                    onAnnul={(response) => setAnnulmentTarget(scaleAnnulmentOf(response))}
                 />
             </section>
 
@@ -420,4 +350,102 @@ export default function HistoricoClinicoPrescritor() {
             )}
         </section>
     );
+}
+
+function PatientFacts({patient, nextAppointment}) {
+    const hasFacts = nextAppointment || patient.archived || patient.guardian || patient.civilName;
+    if (!hasFacts) {
+        return null;
+    }
+
+    return (
+        <div className={styles.facts}>
+            {/* o titulo usa o nome social e o civil fica aqui pq o prontuario identifica a pessoa */}
+            {patient.civilName && (
+                <span className={styles.fact}>
+                    <FiUser aria-hidden="true"/>
+                    Nome civil: {patient.civilName}
+                </span>
+            )}
+            {nextAppointment && (
+                <span className={styles.fact}>
+                    <FiCalendar aria-hidden="true"/>
+                    Próxima consulta: {formatDateTime(nextAppointment.dateTime)}
+                </span>
+            )}
+            {patient.guardian && (
+                <span className={styles.fact}>
+                    <FiPhone aria-hidden="true"/>
+                    <span>
+                        Familiar ou cuidador: {patient.guardian.name}
+                        {patient.guardian.relationship ? " (" + patient.guardian.relationship + ")" : ""}
+                        {patient.guardian.phone && (
+                            <>
+                                {" · "}
+                                <a href={"tel:+55" + patient.guardian.phone}>
+                                    {formatPhone(patient.guardian.phone)}
+                                </a>
+                            </>
+                        )}
+                    </span>
+                </span>
+            )}
+            {patient.archived && (
+                <span className={styles.fact + " " + styles.factWarning}>
+                    <FiArchive aria-hidden="true"/>
+                    No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi encerrado.
+                </span>
+            )}
+        </div>
+    );
+}
+
+// a lista vem da consulta mais recente pra mais antiga
+// entao a proxima consulta marcada eh a ultima futura da lista
+function nextAppointmentOf(appointments) {
+    const upcomingAppointments = appointments.filter((appointment) => isInTheFuture(appointment.dateTime)
+        && !appointment.annulled && appointment.status === "AGENDADA");
+    return upcomingAppointments.length > 0 ? upcomingAppointments[upcomingAppointments.length - 1] : null;
+}
+
+// o q o modal de anulacao mostra e pra onde manda cada tipo de registro
+function consultationAnnulmentOf(appointment) {
+    return {
+        title: "Anular consulta",
+        recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
+        endpoint: "/appointments/" + appointment.id + "/annul",
+    };
+}
+
+function prescriptionAnnulmentOf(prescription) {
+    return {
+        title: "Anular prescrição",
+        recordDescription: prescription.productDescription + ", emitida em "
+            + formatDate(prescription.appointmentDateTime),
+        endpoint: "/prescriptions/" + prescription.id + "/annul",
+        // a anterior n volta a valer sozinha entao o paciente fica sem prescricao em uso (NOOP-04)
+        warning: prescription.current
+            ? "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
+                + "até você emitir uma nova. A anterior não volta a valer."
+            : null,
+        annulledNotice: prescription.current
+            ? "Prescrição anulada. O paciente está sem prescrição em uso até você emitir uma nova."
+            : null,
+    };
+}
+
+function anamnesisAnnulmentOf(anamnesis) {
+    return {
+        title: "Anular anamnese",
+        recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
+        endpoint: "/anamneses/" + anamnesis.id + "/annul",
+    };
+}
+
+function scaleAnnulmentOf(response) {
+    return {
+        title: "Anular escala respondida",
+        recordDescription: response.scaleName + " de " + formatDate(response.periodStart),
+        endpoint: "/scales/responses/" + response.id + "/annul",
+    };
 }

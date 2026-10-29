@@ -19,15 +19,20 @@ public class ScaleCatalog {
 
     public static final String INCOMPLETE_RESULT = "Incompleta: sem escore";
 
+    private static final String ANSWERED_RESULT = "Respondida";
+    private static final String LAST_WEEK_INSTRUCTION = "Pense na última semana para responder.";
+    private static final String NOTES_HELP = "Relato de efeito colateral, ausência da tomada de alguma medicação, "
+            + "momento significativo na rotina";
+
     // frequencia dos acompanhamentos semanais de dor e de TEA
-    private static final List<ScaleOption> DIAS_DA_SEMANA = List.of(
+    private static final List<ScaleOption> DAYS_PER_WEEK_OPTIONS = List.of(
             new ScaleOption(0, "Nenhum dia"),
             new ScaleOption(1, "Até 3 dias"),
             new ScaleOption(2, "Entre 3 e 6 dias"),
             new ScaleOption(3, "Todos os dias"));
 
     // frequencia do psqi, com o texto do formulario
-    private static final List<ScaleOption> FREQUENCIA_NO_MES = List.of(
+    private static final List<ScaleOption> TIMES_PER_MONTH_OPTIONS = List.of(
             new ScaleOption(0, "Nenhuma no último mês"),
             new ScaleOption(1, "Menos de uma vez por semana"),
             new ScaleOption(2, "Uma ou duas vezes por semana"),
@@ -81,10 +86,13 @@ public class ScaleCatalog {
             return INCOMPLETE_RESULT;
         }
         String summaryKey = definition.summaryItemKey();
-        ScaleItem item = summaryKey == null ? null : definition.itemOf(summaryKey).orElse(null);
-        Object value = summaryKey == null ? null : answers.get(summaryKey);
+        if (summaryKey == null) {
+            return ANSWERED_RESULT;
+        }
+        ScaleItem item = definition.itemOf(summaryKey).orElse(null);
+        Object value = answers.get(summaryKey);
         if (item == null || !(value instanceof Number number)) {
-            return "Respondida";
+            return ANSWERED_RESULT;
         }
         if (item.type() == ScaleItemType.MINUTOS || item.type() == ScaleItemType.CALCULADO) {
             return item.label() + " " + formatMinutes(number.intValue());
@@ -123,9 +131,7 @@ public class ScaleCatalog {
                 ScaleItem.texto("doencaDermatologica", "Doença dermatológica", "Especifique qual"),
                 ScaleItem.nota("doencaDermatologicaIntensidade", "Intensidade da doença dermatológica",
                         0, 10, "nenhuma", "intensa", false),
-                ScaleItem.texto("comentario", "Observações",
-                        "Relato de efeito colateral, ausência da tomada de alguma medicação, "
-                                + "momento significativo na rotina"));
+                notesItem("comentario"));
 
         return new ScaleDefinition(ScaleType.ACOMPANHAMENTO_SEMANAL, "Acompanhamento semanal",
                 "Preencha um dia de cada vez, como na ficha em papel. O que você não responder fica em branco, "
@@ -296,7 +302,7 @@ public class ScaleCatalog {
     }
 
     private ScaleItem psqiFreq(String key, String label) {
-        return ScaleItem.escolha(key, label, null, FREQUENCIA_NO_MES, false);
+        return ScaleItem.escolha(key, label, null, TIMES_PER_MONTH_OPTIONS, false);
     }
 
     // acompanhamento semanal de paciente com dor (RF25)
@@ -310,9 +316,7 @@ public class ScaleCatalog {
                 painFreq("freqProdutividade", "Produtividade no trabalho"),
                 painFreq("freqSono", "Sono"),
                 painFreq("freqMedicacaoExtra", "Necessitou de medicação extra para dor"),
-                ScaleItem.texto("observacao", "Observações",
-                        "Relato de efeito colateral, ausência da tomada de alguma medicação, "
-                                + "momento significativo na rotina"));
+                notesItem("observacao"));
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 2, "Dor leve"),
@@ -320,13 +324,13 @@ public class ScaleCatalog {
                 new ScoreBand(8, 10, "Dor intensa"));
 
         return new ScaleDefinition(ScaleType.REGISTRO_DOR, "Acompanhamento semanal de dor",
-                "Pense na última semana para responder.",
+                LAST_WEEK_INSTRUCTION,
                 FillMode.PERIODO, items, bands, 0, 10, "Intensidade da dor", false, "intensidadeDor");
     }
 
     private ScaleItem painFreq(String key, String label) {
         return ScaleItem.escolha(key, label, "Durante a última semana, com que frequência a dor atrapalhou",
-                DIAS_DA_SEMANA, false);
+                DAYS_PER_WEEK_OPTIONS, false);
     }
 
     // acompanhamento semanal de paciente com TEA (RF24)
@@ -349,17 +353,19 @@ public class ScaleCatalog {
                         "Realizou movimentos repetitivos estereotipados?"),
                 teaFreq("freqApetite", "Apetite",
                         "Perdeu ou ganhou peso, ou teve alterações no tipo de comida de que gosta?"),
-                ScaleItem.texto("observacao", "Observações",
-                        "Relato de efeito colateral, ausência da tomada de alguma medicação, "
-                                + "momento significativo na rotina"));
+                notesItem("observacao"));
 
         return new ScaleDefinition(ScaleType.REGISTRO_TEA, "Acompanhamento semanal de TEA",
-                "Pense na última semana para responder.",
+                LAST_WEEK_INSTRUCTION,
                 FillMode.PERIODO, items, List.of(), null, null, null, null, "qualidadeDeVida");
     }
 
     private ScaleItem teaFreq(String key, String label, String help) {
-        return ScaleItem.escolha(key, label, help, DIAS_DA_SEMANA, false);
+        return ScaleItem.escolha(key, label, help, DAYS_PER_WEEK_OPTIONS, false);
+    }
+
+    private ScaleItem notesItem(String key) {
+        return ScaleItem.texto(key, "Observações", NOTES_HELP);
     }
 
     // MEEM (RF26 e Anexo A.3)

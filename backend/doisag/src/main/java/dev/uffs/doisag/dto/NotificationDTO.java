@@ -4,7 +4,7 @@ import dev.uffs.doisag.model.Notification;
 
 import java.time.LocalDateTime;
 
-// so tem os dados que a tela precisa, sem o objeto de usuario inteiro
+// so o q a tela precisa sem o usuario inteiro pendurado
 public record NotificationDTO(
         Long id,
         String title,
@@ -14,7 +14,6 @@ public record NotificationDTO(
         String type,
         String link
 ) {
-    // um construtor que facilita a conversao da nossa entidade para este dto
     public NotificationDTO(Notification notification) {
         this(
                 notification.getId(),
