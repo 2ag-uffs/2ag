@@ -9,7 +9,7 @@ import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
-import {formatDate, shortTime, toIsoDate} from "../../utils/date-format.js";
+import {addDays, formatDate, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./acompanhamento-protocolo.module.css";
 
@@ -29,6 +29,16 @@ const DEFAULT_PERIODICITY = "SEMANAL";
 
 // so esses campos mostram o proprio erro no formulario
 const FIELDS_THAT_SHOW_ERROR = ["startDate", "durationDays"];
+
+// a api recusa o acompanhamento q terminaria antes de hoje, entao o inicio volta no maximo a duracao menos um dia
+// duracao vazia ou fora da faixa a api recusa de qualquer jeito, ai vale a menor
+function earliestStartDate(durationDays) {
+    let days = Number(durationDays);
+    if (!(days >= MIN_DURATION_DAYS && days <= MAX_DURATION_DAYS)) {
+        days = MIN_DURATION_DAYS;
+    }
+    return toIsoDate(addDays(new Date(), 1 - days));
+}
 
 function periodicityLabelOf(periodicity) {
     const option = PERIODICITIES.find((current) => current.value === periodicity);
@@ -155,6 +165,10 @@ export default function AcompanhamentoProtocolo() {
         return <SkeletonPage cards={2}/>;
     }
 
+    // o job das 8h encerra o q passou do fim, mas ate la ele ja aparece encerrado
+    // e o cadastro do novo encerra ele sozinho, entao o formulario de renovar aparece junto
+    const hasProtocolEnded = protocol !== null && protocol.endDate < toIsoDate(new Date());
+
     return (
         <section className={styles.page}>
             <PageHeader
@@ -165,11 +179,13 @@ export default function AcompanhamentoProtocolo() {
             {notice && <p className="aviso" role="status">{notice}</p>}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
-            {protocol ? (
+            {protocol && (
                 <Card
-                    title="Em andamento"
-                    headerAction={<span className={styles.status}>Ativo</span>}
-                    footer={(
+                    title={hasProtocolEnded ? "Último acompanhamento" : "Em andamento"}
+                    headerAction={hasProtocolEnded
+                        ? <span className={styles.status + " " + styles.statusEnded}>Encerrado</span>
+                        : <span className={styles.status}>Ativo</span>}
+                    footer={hasProtocolEnded ? null : (
                         <>
                             <button
                                 type="button"
@@ -217,7 +233,9 @@ export default function AcompanhamentoProtocolo() {
                         </table>
                     </div>
                 </Card>
-            ) : (
+            )}
+
+            {(!protocol || hasProtocolEnded) && (
                 <form className={styles.form} onSubmit={create}>
                     <FormSection title="Período" disabled={isSaving}>
                         <FieldRow>
@@ -225,6 +243,7 @@ export default function AcompanhamentoProtocolo() {
                                 label="Começa em"
                                 name="startDate"
                                 type="date"
+                                min={earliestStartDate(durationDays)}
                                 value={startDate}
                                 required={true}
                                 onChange={(event) => setStartDate(event.target.value)}

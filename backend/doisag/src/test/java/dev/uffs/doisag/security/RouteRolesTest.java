@@ -31,6 +31,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -288,6 +289,18 @@ class RouteRolesTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(patient.getId()));
+    }
+
+    // link copiado com espaco (/patients/%20) vira id nulo na conversao e caia no 500 pra qualquer perfil (#167)
+    @Test
+    void blankRecordIdAnswersBadRequest() throws Exception {
+        for (String path : List.of("/patients/%20", "/patients/%09", "/appointments/%20")) {
+            for (Users user : List.of(prescriber, patient)) {
+                mockMvc.perform(get(URI.create(path)).header("Authorization", bearerTokenOf(user)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+            }
+        }
     }
 
     // o paciente escolhe o horario mas diagnostico e conduta sao do prescritor

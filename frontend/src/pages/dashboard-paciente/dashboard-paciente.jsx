@@ -8,6 +8,7 @@ import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
+import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, formatDateTimeWithZone, withBrasiliaTimeNote} from "../../utils/date-format.js";
 import {firstNameOf} from "../../utils/initials.js";
 import styles from "./dashboard-paciente.module.css";
@@ -32,8 +33,14 @@ export default function DashboardPaciente() {
             navigate("/entrar");
             return;
         }
-        apiService.get("/dashboard/patient/" + loggedUser.id)
-            .then(setPanel)
+        // o cadastro diz se o acompanhamento acabou, q o painel n traz
+        Promise.all([
+            apiService.get("/dashboard/patient/" + loggedUser.id),
+            apiService.get("/patients/" + loggedUser.id),
+        ])
+            .then(([dashboard, patient]) => {
+                setPanel({...dashboard, isArchived: patient.archived});
+            })
             .catch((requestError) => {
                 setLoadError(errorMessageOf(requestError,
                     "Não foi possível carregar o painel. Confira sua internet e tente de novo."));
@@ -60,14 +67,18 @@ export default function DashboardPaciente() {
                         <button type="button" className="button-secondary" onClick={() => navigate("/historico-paciente")}>
                             Meu histórico
                         </button>
-                        <button type="button" className="button" onClick={() => navigate("/agendamento-consulta")}>
-                            Agendar consulta
-                        </button>
+                        {/* a api recusa pedido de consulta de quem foi arquivado */}
+                        {!panel.isArchived && (
+                            <button type="button" className="button" onClick={() => navigate("/agendamento-consulta")}>
+                                Agendar consulta
+                            </button>
+                        )}
                     </>
                 )}
             />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
+            {panel.isArchived && <p className="aviso aviso--atencao" role="status">{ARCHIVED_APPOINTMENT_NOTICE}</p>}
 
             <div className={styles.grid}>
                 {/* a lista vem com no maximo cinco, entao o numero eh o total q a api manda */}
@@ -112,7 +123,9 @@ export default function DashboardPaciente() {
                     footer={<FooterButton path="/agendamento-consulta">Ver minhas consultas</FooterButton>}
                 >
                     {panel.upcomingAppointments.length === 0 ? (
-                        <p className={styles.empty}>Nenhuma consulta marcada. Você pode pedir um horário.</p>
+                        <p className={styles.empty}>
+                            {panel.isArchived ? "Nenhuma consulta marcada." : "Nenhuma consulta marcada. Você pode pedir um horário."}
+                        </p>
                     ) : (
                         <ItemList>
                             {panel.upcomingAppointments.map((appointment) => (

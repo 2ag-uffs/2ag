@@ -32,7 +32,7 @@ public class ConsentTermController {
         return consentTermService.getCurrentTerm();
     }
 
-    // paciente q aceitou uma versao antiga aceita a atual (#58)
+    // paciente com o termo pendente (versao antiga ou aceite de outra faixa de idade) aceita a atual (#58)
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping("/accept")
     public SessionUserDTO acceptNewVersion(@RequestBody @Valid TermAcceptanceDTO acceptanceData,

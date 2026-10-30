@@ -285,6 +285,18 @@ export default function AgendamentoPrescritor() {
                 </button>
             );
         }
+        // falta marcada por engano: a api aceita o registro e ele desfaz a falta e conclui a consulta
+        if (appointment.status === "NAO_COMPARECEU") {
+            return (
+                <button
+                    type="button"
+                    className="button-secondary button-small"
+                    onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
+                >
+                    Desfazer falta e registrar atendimento
+                </button>
+            );
+        }
         return null;
     };
 

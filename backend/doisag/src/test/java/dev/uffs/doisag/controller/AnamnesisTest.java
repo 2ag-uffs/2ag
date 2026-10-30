@@ -186,6 +186,22 @@ class AnamnesisTest {
                 .andExpect(jsonPath("$.message").value(AnamnesisService.ALREADY_ANNULLED_MESSAGE));
     }
 
+    // corrigir eh anular e preencher de novo, as vezes no mesmo dia: a ficha valida vem antes da anulada
+    @Test
+    void theRedoneAnamnesisComesBeforeTheAnnulledOneOfTheSameDay() throws Exception {
+        Long firstId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        annul(firstId, "Preenchida com o peso errado", prescriber).andExpect(status().isOk());
+        Long secondId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/anamneses").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(secondId))
+                .andExpect(jsonPath("$[0].annulled").value(false))
+                .andExpect(jsonPath("$[1].id").value(firstId))
+                .andExpect(jsonPath("$[1].annulled").value(true));
+    }
+
     @Test
     void onlyThePatientFillsAndOnlyThePrescriberAnnuls() throws Exception {
         Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));

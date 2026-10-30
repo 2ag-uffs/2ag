@@ -19,6 +19,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -95,6 +96,17 @@ public class ErrorHandler {
             HandlerMethodValidationException.class
     })
     public ResponseEntity<ErrorResponseDTO> handleBadRequest(Exception exception, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, INVALID_REQUEST_MESSAGE, request);
+    }
+
+    // id so de espaco na rota (/patients/%20, de link copiado com espaco) vira nulo na conversao
+    // e o spring diz q a variavel faltou. a q falta de verdade eh rota mal escrita, bug nosso, e fica 500
+    @ExceptionHandler(MissingPathVariableException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMissingPathVariable(MissingPathVariableException exception,
+                                                                      HttpServletRequest request) {
+        if (!exception.isMissingAfterConversion()) {
+            return handleUnexpected(exception, request);
+        }
         return buildResponse(HttpStatus.BAD_REQUEST, INVALID_REQUEST_MESSAGE, request);
     }
 

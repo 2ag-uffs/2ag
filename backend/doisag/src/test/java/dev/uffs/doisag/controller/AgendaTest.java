@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
@@ -493,13 +494,14 @@ class AgendaTest {
         reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "REMOTA").andExpect(status().isOk());
     }
 
-    // a consulta q ja passou e ficou agendada pode ter receita: remarcar levava a receita pra uma
-    // consulta futura e ela virava a vigente pela data errada (RF05), igual na correcao do registro
+    // a consulta q ja passou e ficou agendada com receita (de antes da receita concluir a consulta): remarcar
+    // levava a receita pra uma consulta futura e ela virava a vigente pela data errada (RF05), igual na correcao
     @Test
     void rescheduleOfAConsultationWithPrescriptionIsRejected() throws Exception {
         LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
         Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
         Long prescriptionId = idOf(prescribe(past.getId()).andExpect(status().isCreated()));
+        backToScheduled(past);
 
         reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL")
                 .andExpect(status().isBadRequest())
@@ -507,11 +509,7 @@ class AgendaTest {
         assertThat(appointmentRepository.findById(past.getId()).orElseThrow().getDateTime()).isEqualTo(pastTime);
 
         // anulada a receita, a consulta volta a poder mudar de data
-        mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
-                        .header("Authorization", bearerTokenOf(prescriber))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"Lancada na consulta errada\"}"))
-                .andExpect(status().isOk());
+        annulPrescription(prescriptionId).andExpect(status().isOk());
         reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL").andExpect(status().isOk());
     }
 
@@ -522,6 +520,7 @@ class AgendaTest {
         LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
         Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
         prescribe(past.getId()).andExpect(status().isCreated());
+        backToScheduled(past);
 
         reschedule(past.getId(), LocalDateTime.now().minusHours(1), "PRESENCIAL")
                 .andExpect(status().isBadRequest())
@@ -534,14 +533,8 @@ class AgendaTest {
     void rescheduleOfAConsultationWithAMiniExamIsRejected() throws Exception {
         LocalDateTime pastTime = LocalDateTime.now().minusHours(3).truncatedTo(ChronoUnit.MINUTES);
         Appointment past = saveAppointment(patient, pastTime, AppointmentStatus.AGENDADA);
-        mockMvc.perform(post("/scales/mental-state-exam/appointments/" + past.getId())
-                        .header("Authorization", bearerTokenOf(prescriber))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
-                                + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
-                                + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
-                                + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"))
-                .andExpect(status().isCreated());
+        applyMiniExam(past.getId()).andExpect(status().isCreated());
+        backToScheduled(past);
 
         reschedule(past.getId(), AGENDA_DAY.atTime(9, 0), "PRESENCIAL")
                 .andExpect(status().isBadRequest())
@@ -689,6 +682,120 @@ class AgendaTest {
         noShow(yesterday.getId(), prescriber).andExpect(status().isOk());
 
         assertThat(appointmentService.getById(yesterday.getId()).status().holdsTimeSlot()).isFalse();
+    }
+
+    // receita ou meem valendo mostram q a consulta aconteceu: com eles ela n vira falta nem cancelada,
+    // senao o paciente recebia "foi marcada como falta" com a receita daquela consulta em uso
+    @Test
+    void absenceAndCancelOfAConsultationWithPrescriptionAreRejected() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        Long prescriptionId = idOf(prescribe(yesterday.getId()).andExpect(status().isCreated()));
+
+        // a receita ja concluiu a consulta
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.NOT_SCHEDULED_MESSAGE));
+        cancel(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CLOSED_APPOINTMENT_MESSAGE));
+
+        // e a q ficou agendada com receita, de antes dessa regra, tbm n passa
+        backToScheduled(yesterday);
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.NO_SHOW_WITH_PRESCRIPTION_MESSAGE));
+        cancel(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_PRESCRIPTION_MESSAGE));
+        // o paciente esbarra antes na regra das 24 horas e n recebe o recado do prescritor
+        cancel(yesterday.getId(), patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.LATE_CANCELLATION_MESSAGE));
+        assertThat(appointmentRepository.findById(yesterday.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Falta registrada", "Consulta cancelada");
+
+        // na antiga q ficou agendada, anulada a receita a falta volta a valer
+        annulPrescription(prescriptionId).andExpect(status().isOk());
+        noShow(yesterday.getId(), prescriber).andExpect(status().isOk());
+    }
+
+    @Test
+    void absenceAndCancelOfAConsultationWithAMiniExamAreRejected() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        applyMiniExam(yesterday.getId()).andExpect(status().isCreated());
+        backToScheduled(yesterday);
+
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.NO_SHOW_WITH_EXAM_MESSAGE));
+        cancel(yesterday.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_EXAM_MESSAGE));
+        assertThat(appointmentRepository.findById(yesterday.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+    }
+
+    // receita lancada na consulta errada: ela concluiu a consulta, e anulada a consulta volta a agendada,
+    // entao a falta volta a valer e a proxima volta a ser primeira, pq receita anulada n conta
+    @Test
+    void annullingThePrescriptionThatConcludedTheConsultationBringsTheAbsenceBack() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        Long prescriptionId = idOf(prescribe(yesterday.getId()).andExpect(status().isCreated()));
+
+        annulPrescription(prescriptionId).andExpect(status().isOk());
+
+        assertThat(appointmentRepository.findById(yesterday.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        request(patient, AGENDA_DAY.atTime(8, 0), null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"))
+                .andExpect(jsonPath("$.durationMinutes").value(90));
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NAO_COMPARECEU"));
+    }
+
+    @Test
+    void annullingTheMiniExamThatConcludedTheConsultationBringsTheAbsenceBack() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        Long examId = idOf(applyMiniExam(yesterday.getId()).andExpect(status().isCreated()));
+
+        mockMvc.perform(put("/scales/responses/" + examId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Aplicado na consulta errada\"}"))
+                .andExpect(status().isOk());
+
+        assertThat(appointmentRepository.findById(yesterday.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        noShow(yesterday.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NAO_COMPARECEU"));
+    }
+
+    // a falta avisou o paciente, entao desfazer ela avisa tbm, uma vez so: a correcao seguinte do registro
+    // e o registro de uma consulta q so estava agendada n mandam esse aviso
+    @Test
+    void undoingTheAbsenceTellsThePatientOnce() throws Exception {
+        Appointment yesterday = saveAppointment(patient, LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        noShow(yesterday.getId(), prescriber).andExpect(status().isOk());
+
+        registerAttendance(yesterday.getId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
+        registerAttendance(yesterday.getId()).andExpect(status().isOk());
+
+        assertThat(notificationTitlesOf(patient)).containsOnlyOnce("Falta desfeita");
+        assertThat(notificationMessageOf(patient, "Falta desfeita")).isEqualTo("A falta da consulta de "
+                + BrazilianFormat.dateTime(yesterday.getDateTime()) + " foi desfeita e o atendimento foi registrado.");
+        assertThat(notificationTypeOf(patient, "Falta desfeita")).isEqualTo(Notification.TYPE_APPOINTMENT);
+
+        Appointment scheduled = saveAppointment(otherPatient, LocalDateTime.now().minusDays(1),
+                AppointmentStatus.AGENDADA);
+        registerAttendance(scheduled.getId()).andExpect(status().isOk());
+        assertThat(notificationTitlesOf(otherPatient)).doesNotContain("Falta desfeita");
     }
 
     // ---------- primeira consulta e retorno ----------
@@ -1219,6 +1326,40 @@ class AgendaTest {
                 .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
                         + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,"
                         + "\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"));
+    }
+
+    // o exame inteiro, q da os 30 pontos
+    private ResultActions applyMiniExam(Long appointmentId) throws Exception {
+        return mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointmentId)
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                        + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
+                        + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
+                        + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"));
+    }
+
+    private ResultActions annulPrescription(Long prescriptionId) throws Exception {
+        return mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"Lancada na consulta errada\"}"));
+    }
+
+    // o registro do atendimento q a tela manda, q tbm desfaz a falta
+    private ResultActions registerAttendance(Long appointmentId) throws Exception {
+        return mockMvc.perform(put("/appointments/" + appointmentId + "/clinical-record")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modality\":\"PRESENCIAL\",\"evolution\":\"Dormindo melhor\"}"));
+    }
+
+    // a consulta q ganhou receita ou meem antes deles concluirem a consulta ficou agendada no banco
+    // ela eh lida de novo pq a trava do servico tira a copia antiga da sessao
+    private void backToScheduled(Appointment appointment) {
+        Appointment stored = appointmentRepository.findById(appointment.getId()).orElseThrow();
+        stored.setStatus(AppointmentStatus.AGENDADA);
+        appointmentRepository.save(stored);
     }
 
     private ResultActions cancel(Long appointmentId, Users user) throws Exception {

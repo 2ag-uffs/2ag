@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
@@ -26,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -228,6 +231,150 @@ class DashboardTest {
                 .andExpect(jsonPath("$.lateScalesTotal").value(1));
     }
 
+    // a resposta q chega dps de o job fechar a tarefa, sem outra pendente da escala, fica com ela e tira ela
+    // das vencidas no mesmo dia. antes ela ficava solta e a escala ficava no painel pra sempre
+    // o status segue nao respondida, entao o indicador conta fora do prazo, e anular a resposta devolve
+    // a escala pras vencidas sem reabrir a tarefa
+    @Test
+    void aRespostaAtrasadaSaiDasEscalasVencidasNoMesmoDia() throws Exception {
+        ScaleTask task = saveLateTask(ScaleType.REGISTRO_TEA, TODAY.minusDays(2));
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(1));
+
+        String body = mockMvc.perform(post("/scales/registro-tea/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"qualidadeDeVida\":7}}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        lateIndicator();
+
+        Number responseId = JsonPath.read(body, "$.id");
+        mockMvc.perform(put("/scales/responses/" + responseId.longValue() + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Respondeu a semana errada\"}"))
+                .andExpect(status().isOk());
+
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(1));
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+    }
+
+    // a rodada perdida antes de uma respondida n pega a resposta nova, q n eh dela
+    @Test
+    void aRespostaNovaNaoTiraDasVencidasARodadaPerdidaAntesDeUmaRespondida() throws Exception {
+        saveLateTask(ScaleType.REGISTRO_TEA, TODAY.minusDays(9));
+        ScaleTask answered = saveLateTask(ScaleType.REGISTRO_TEA, TODAY.minusDays(2));
+        answered.setStatus(ScaleTaskStatus.RESPONDIDA);
+        answered.setAnsweredAt(TODAY.minusDays(3));
+
+        mockMvc.perform(post("/scales/registro-tea/responses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"qualidadeDeVida\":7}}"))
+                .andExpect(status().isCreated());
+
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(1));
+    }
+
+    // a anamnese atrasada deixava a avaliacao inicial vencida no painel com a ficha ja no historico
+    @Test
+    void aAnamneseAtrasadaTiraAAvaliacaoInicialDasVencidas() throws Exception {
+        ScaleTask task = saveLateTask(ScaleType.ANAMNESE, TODAY.minusDays(2));
+        prescriberPanel().andExpect(jsonPath("$.lateScales[0].scaleName").value("Avaliação inicial"));
+
+        sendAnamnesis();
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        lateIndicator();
+    }
+
+    // a avaliacao inicial perdida costuma ser enviada de novo pelo painel. a ficha q chega fecha a nova e
+    // tbm tira a perdida das vencidas, pq as duas pediam a mesma ficha
+    @Test
+    void aAnamneseTiraDasVencidasAAvaliacaoInicialPerdidaQueFoiEnviadaDeNovo() throws Exception {
+        ScaleTask missed = saveLateTask(ScaleType.ANAMNESE, TODAY.minusDays(2));
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scaleType\":\"ANAMNESE\"}"))
+                .andExpect(status().isCreated());
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(1));
+
+        sendAnamnesis();
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
+        assertThat(missed.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(missed.getAnsweredAt()).isEqualTo(TODAY);
+        assertThat(taskRepository.countByPatientIdAndStatus(patient.getId(), ScaleTaskStatus.RESPONDIDA))
+                .isEqualTo(1);
+        lateIndicator();
+    }
+
+    // com duas avaliacoes iniciais perdidas so a ultima ganhava o dia, e a mais velha ficava nas vencidas
+    @Test
+    void aAnamneseAtrasadaTiraDasVencidasTodasAsAvaliacoesIniciaisPerdidas() throws Exception {
+        ScaleTask older = saveLateTask(ScaleType.ANAMNESE, TODAY.minusDays(12));
+        ScaleTask newer = saveLateTask(ScaleType.ANAMNESE, TODAY.minusDays(2));
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(2));
+
+        sendAnamnesis();
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
+        assertThat(older.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(older.getAnsweredAt()).isEqualTo(TODAY);
+        assertThat(newer.getAnsweredAt()).isEqualTo(TODAY);
+        mockMvc.perform(get("/indicators").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formsDue").value(2))
+                .andExpect(jsonPath("$.formsOnTime").value(0));
+    }
+
+    // arquivado e reativado no mesmo dia: o arquivamento cortou o prazo pra hoje e fechou a avaliacao inicial
+    // como nao respondida, e a anamnese de hoje marcava o dia igual ao fim do prazo. dai a tarefa
+    // nao respondida contava no prazo nos indicadores
+    @Test
+    void aAvaliacaoInicialCortadaNoArquivamentoContaForaDoPrazoComAAnamneseDoMesmoDia() throws Exception {
+        ScaleTask task = new ScaleTask();
+        task.setPatient(patient);
+        task.setPrescriber(prescriber);
+        task.setScaleType(ScaleType.ANAMNESE);
+        task.setPeriodStart(TODAY.minusDays(2));
+        task.setPeriodEnd(TODAY.plusDays(4));
+        taskRepository.save(task);
+        mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/patients/" + patient.getId() + "/reactivate")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        sendAnamnesis();
+
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(task.getPeriodEnd()).isEqualTo(TODAY);
+        assertThat(task.getAnsweredAt()).isEqualTo(TODAY);
+        // o indicador so conta prazo q ja acabou, entao a tarefa volta um dia como se fosse amanha
+        task.setPeriodStart(TODAY.minusDays(3));
+        task.setPeriodEnd(TODAY.minusDays(1));
+        task.setAnsweredAt(TODAY.minusDays(1));
+        taskRepository.saveAndFlush(task);
+
+        prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(0));
+        lateIndicator();
+    }
+
     // quem foi arquivado saiu do acompanhamento: o q venceu e o q o arquivamento fechou no dia
     // n vira alerta de escala vencida no painel
     @Test
@@ -306,6 +453,22 @@ class DashboardTest {
         return mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId())
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
+    }
+
+    private void sendAnamnesis() throws Exception {
+        mockMvc.perform(post("/anamneses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    // a unica tarefa do periodo conta fora do prazo nos indicadores
+    private void lateIndicator() throws Exception {
+        mockMvc.perform(get("/indicators").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formsDue").value(1))
+                .andExpect(jsonPath("$.formsOnTime").value(0));
     }
 
     private Appointment saveAppointment(LocalDateTime dateTime, AppointmentStatus status) {

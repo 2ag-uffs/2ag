@@ -42,7 +42,7 @@ class DevDemoDataTest {
         Users carla = usersRepository.findByEmail("carla.menezes@email.com").orElseThrow();
 
         // oito semanas de diario com alguns dias em branco mais as duas hamilton
-        assertThat(responseRepository.findByPatientIdOrderByPeriodStartDesc(maria.getId())).hasSizeGreaterThan(40);
+        assertThat(responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(maria.getId())).hasSizeGreaterThan(40);
         assertThat(appointmentRepository.findByPrescriberIdOrderByDateTimeAsc(prescriber.getId()))
                 .hasSizeGreaterThanOrEqualTo(7);
         assertThat(patientRepository.findById(carla.getId()).orElseThrow().isArchived()).isTrue();

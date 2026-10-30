@@ -31,6 +31,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -91,6 +92,40 @@ class ConsentTermTest {
                 .filter(acceptance -> acceptance.getTermVersion().equals(termVersion))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    // perfil do PROFILE_JSON com outra data de nascimento e, se tiver, o responsavel
+    private String profileJson(LocalDate birthDate, String guardianName) {
+        String guardian = guardianName == null ? ""
+                : ",\"guardian\":{\"name\":\"" + guardianName + "\",\"relationship\":\"mãe\"}";
+        return "{\"name\":\"Paciente do Termo\",\"birthDate\":\"" + birthDate + "\",\"phone\":\"49999887766\","
+                + "\"address\":{\"street\":\"Rua das Flores\",\"number\":\"120\",\"city\":\"Chapeco\",\"state\":\"SC\"}"
+                + guardian + "}";
+    }
+
+    private void acceptCurrentVersion() throws Exception {
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(false));
+    }
+
+    // nos testes da faixa de idade o texto atual ja foi aceito, entao pendente eh sempre pela idade
+    private void expectTermPendingByAge(boolean termPending) throws Exception {
+        mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termPending").value(termPending))
+                .andExpect(jsonPath("$.termPendingByAge").value(termPending));
+    }
+
+    private void saveProfile(LocalDate birthDate, String guardianName) throws Exception {
+        mockMvc.perform(put("/profile")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(profileJson(birthDate, guardianName)))
+                .andExpect(status().isOk());
     }
 
     // paciente de 10 anos, com o responsavel legal ou sem ele (conta de antes da regra)
@@ -157,9 +192,11 @@ class ConsentTermTest {
 
         mockMvc.perform(get("/auth/me").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.termPending").value(true));
+                .andExpect(jsonPath("$.termPending").value(true))
+                .andExpect(jsonPath("$.termPendingByAge").value(false));
         mockMvc.perform(get("/profile").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isOk());
+        // com a versao antiga o perfil tbm fica travado, a correcao da data eh so pra faixa de idade
         mockMvc.perform(put("/profile")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -395,6 +432,81 @@ class ConsentTermTest {
         Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
         assertThat(savedPatient.getGuardianName()).isEqualTo("Carlos Lima");
         assertThat(savedPatient.getGuardianPhone()).isEqualTo("49988776655");
+    }
+
+    // a data corrigida pra de um menor deixa sem valer o aceite q o paciente fez sozinho (#163):
+    // o termo volta a ficar pendente e o aceite novo, da msm versao, guarda o responsavel
+    // a mensagem do 403 n diz q o texto mudou, pq aqui ele n mudou
+    @Test
+    void birthDateCorrectedToAMinorAsksTheGuardianToAcceptAgain() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION);
+        expectTermPendingByAge(false);
+
+        saveProfile(LocalDate.now().minusYears(10), "Joana Souza");
+
+        expectTermPendingByAge(true);
+        mockMvc.perform(put("/profile/email-preference")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailNotificationsEnabled\":false}"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string(PendingTermException.HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(PendingTermException.MESSAGE))
+                .andExpect(jsonPath("$.message").value(not(containsString("atualizado"))));
+
+        acceptCurrentVersion();
+        acceptCurrentVersion();
+
+        expectTermPendingByAge(false);
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .allSatisfy(acceptance -> assertThat(acceptance.getTermVersion())
+                        .isEqualTo(ConsentTermService.CURRENT_VERSION))
+                .extracting("guardianName")
+                .containsExactlyInAnyOrder(null, "Joana Souza");
+    }
+
+    // no sentido contrario o aceite do responsavel em nome do menor n vale pro adulto, q aceita sozinho
+    // o responsavel pode ficar no perfil como cuidador e msm assim o aceite novo sai sem ele
+    @Test
+    void birthDateCorrectedToAnAdultAsksThePatientToAcceptAlone() throws Exception {
+        makePatientTenYearsOld("Joana Souza");
+        consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION);
+        expectTermPendingByAge(false);
+
+        saveProfile(LocalDate.of(1990, 4, 12), "Joana Souza");
+
+        expectTermPendingByAge(true);
+
+        acceptCurrentVersion();
+        acceptCurrentVersion();
+
+        expectTermPendingByAge(false);
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().getGuardianName())
+                .isEqualTo("Joana Souza");
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .allSatisfy(acceptance -> assertThat(acceptance.getTermVersion())
+                        .isEqualTo(ConsentTermService.CURRENT_VERSION))
+                .extracting("guardianName")
+                .containsExactlyInAnyOrder("Joana Souza", null);
+    }
+
+    // a data errada q cruzou os 18 anos se corrige no perfil sem aceitar antes na faixa errada:
+    // senao a crianca ficava com um aceite sem o responsavel so pra poder arrumar a data
+    @Test
+    void wrongBirthDateThatCrossed18IsFixedWithoutANewAcceptance() throws Exception {
+        makePatientTenYearsOld("Joana Souza");
+        LocalDate realBirthDate = patient.getBirthDate();
+        consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION);
+
+        saveProfile(LocalDate.of(1990, 4, 12), "Joana Souza");
+        expectTermPendingByAge(true);
+
+        saveProfile(realBirthDate, "Joana Souza");
+
+        expectTermPendingByAge(false);
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .singleElement()
+                .satisfies(acceptance -> assertThat(acceptance.getGuardianName()).isEqualTo("Joana Souza"));
     }
 
     // conta so com o aceite de pesquisa n fica presa no aceite do termo do cadastro

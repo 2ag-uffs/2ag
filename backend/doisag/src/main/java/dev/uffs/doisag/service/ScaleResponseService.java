@@ -4,6 +4,8 @@ import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
 import dev.uffs.doisag.dto.ScaleResponseDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
+import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
@@ -77,6 +79,7 @@ public class ScaleResponseService {
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
     private final ScaleTaskService taskService;
+    private final ConsultationService consultationService;
     private final ScaleCatalog catalog;
     private final ScaleScorer scorer;
     private final AuditService auditService;
@@ -86,6 +89,7 @@ public class ScaleResponseService {
                                 PatientRepository patientRepository,
                                 PrescriberRepository prescriberRepository,
                                 ScaleTaskService taskService,
+                                ConsultationService consultationService,
                                 ScaleCatalog catalog,
                                 ScaleScorer scorer,
                                 AuditService auditService,
@@ -94,6 +98,7 @@ public class ScaleResponseService {
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.taskService = taskService;
+        this.consultationService = consultationService;
         this.catalog = catalog;
         this.scorer = scorer;
         this.auditService = auditService;
@@ -165,6 +170,7 @@ public class ScaleResponseService {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> NotFoundException.appointment(appointmentId));
         checkAppointmentCanReceiveExam(appointment);
+        boolean concludedNow = concludeAppointment(appointment);
         // dps da consulta vem o prescritor e so dps o paciente: no postgres o insert do exame toma o paciente e
         // dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
         // paciente. com o prescritor travado antes os dois n ficam esperando um pelo outro
@@ -184,9 +190,24 @@ public class ScaleResponseService {
         checkCompleteExam(definition, response.getAnswers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
-        auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(),
-                appointment.getPatient().getId());
+        Long patientId = appointment.getPatient().getId();
+        auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
+        // a trilha encosta no paciente e na conta, entao a da consulta concluida vem dps da trava do prescritor
+        if (concludedNow) {
+            auditService.recordChange(AuditRecordType.CONSULTA, appointment.getId(), patientId);
+        }
         return dtoOf(savedResponse);
+    }
+
+    // o meem na consulta passada q ficou agendada mostra q ela aconteceu, entao ela fica concluida igual
+    // na receita: a proxima sai como retorno e o grafico marca o dia. o registro clinico fica vazio ate o
+    // prescritor preencher. a consulta ja esta travada e o jpa grava a mudanca no fim
+    private boolean concludeAppointment(Appointment appointment) {
+        if (appointment.getStatus() == AppointmentStatus.CONCLUIDA) {
+            return false;
+        }
+        appointment.setStatus(AppointmentStatus.CONCLUIDA);
+        return true;
     }
 
     private void checkAppointmentCanReceiveExam(Appointment appointment) {
@@ -287,6 +308,11 @@ public class ScaleResponseService {
     // resposta registrada por engano n eh apagada, fica anulada com motivo
     @Transactional
     public ScaleResponseDTO annul(Long responseId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
+        // o meem pode devolver a consulta dele pra agendada, entao ela trava antes do paciente (ordem das travas)
+        Long appointmentId = responseRepository.findAppointmentIdById(responseId).orElse(null);
+        if (appointmentId != null) {
+            rowLock.reload(Appointment.class, appointmentId);
+        }
         ScaleResponse response = findResponseForUpdate(responseId);
         if (response.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
@@ -298,6 +324,10 @@ public class ScaleResponseService {
         taskService.reopenAfterAnnulment(response);
         auditService.recordAnnulment(response.getScaleType().getAuditRecordType(), response.getId(),
                 response.getPatient().getId());
+        // igual na receita: o meem q era o unico sinal de q a consulta aconteceu devolve ela pra agendada
+        if (response.getAppointment() != null) {
+            consultationService.reopenIfConcludedOnlyByPrescriptionOrExam(response.getAppointment());
+        }
         return dtoOf(response);
     }
 
@@ -311,7 +341,7 @@ public class ScaleResponseService {
     @Transactional
     public List<ScaleResponseSummaryDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)
+        return responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
                 .map(this::summaryOf)
                 .toList();
@@ -322,7 +352,7 @@ public class ScaleResponseService {
     @Transactional
     public List<ScaleResponseDTO> getByPatientIdAndType(Long patientId, ScaleType scaleType) {
         auditService.recordChartView(patientId);
-        return responseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(patientId, scaleType)
+        return responseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(patientId, scaleType)
                 .stream()
                 .map(this::dtoOf)
                 .toList();

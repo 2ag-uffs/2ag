@@ -17,9 +17,15 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     @Query("select response.patient.id from ScaleResponse response where response.id = :id")
     Optional<Long> findPatientIdById(@Param("id") Long id);
 
-    List<ScaleResponse> findByPatientIdOrderByPeriodStartDesc(Long patientId);
+    // a consulta do meem, sem carregar a resposta: a anulacao dele trava a consulta antes do paciente
+    // nas outras escalas vem vazio
+    @Query("select response.appointment.id from ScaleResponse response where response.id = :id")
+    Optional<Long> findAppointmentIdById(@Param("id") Long id);
 
-    List<ScaleResponse> findByPatientIdAndScaleTypeOrderByPeriodStartDesc(Long patientId, ScaleType scaleType);
+    // no mesmo dia a mais nova vem antes: corrigir eh anular e responder de novo, e a anulada vinha em cima
+    List<ScaleResponse> findByPatientIdOrderByPeriodStartDescIdDesc(Long patientId);
+
+    List<ScaleResponse> findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(Long patientId, ScaleType scaleType);
 
     // as respostas de um periodo, q o grafico de evolucao usa
     List<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(

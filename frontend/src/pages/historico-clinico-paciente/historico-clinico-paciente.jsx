@@ -12,6 +12,7 @@ import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
+import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {currentFirst} from "../../utils/prescription-labels.js";
 import styles from "./historico-clinico-paciente.module.css";
 
@@ -33,14 +34,15 @@ export default function HistoricoClinicoPaciente() {
         const patientPath = "/patients/" + loggedUser.id;
 
         Promise.all([
+            apiService.get(patientPath),
             apiService.get(patientPath + "/appointments"),
             apiService.get(patientPath + "/prescriptions"),
             apiService.get(patientPath + "/anamneses"),
             apiService.get(patientPath + "/scales/overview"),
         ])
-            .then(([appointments, prescriptions, anamneses, scalesPage]) => {
+            .then(([patient, appointments, prescriptions, anamneses, scalesPage]) => {
                 if (isCurrentRequest) {
-                    setHistory({appointments, prescriptions, anamneses, scalesPage});
+                    setHistory({patient, appointments, prescriptions, anamneses, scalesPage});
                 }
             })
             .catch((requestError) => {
@@ -63,7 +65,7 @@ export default function HistoricoClinicoPaciente() {
         return <SkeletonPage cards={3}/>;
     }
 
-    const {appointments, prescriptions, anamneses, scalesPage} = history;
+    const {patient, appointments, prescriptions, anamneses, scalesPage} = history;
     // so a consulta q ja passou e foi atendida, estava marcada ou virou falta
     const pastAppointments = appointments.filter(belongsToHistory);
     const orderedPrescriptions = currentFirst(prescriptions);
@@ -130,12 +132,13 @@ export default function HistoricoClinicoPaciente() {
 
             <section id="anamnese" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Anamnese</h2>
+                {/* a api recusa anamnese nova de quem foi arquivado, entao o botao nem aparece */}
                 {anamneses.length === 0 ? (
                     <EmptyState
                         icon={FiActivity}
-                        message="Você ainda não preencheu a anamnese."
+                        message={patient.archived ? ARCHIVED_ANAMNESIS_NOTICE : "Você ainda não preencheu a anamnese."}
                         isCompact={true}
-                        action={(
+                        action={patient.archived ? null : (
                             <button type="button" className="button-secondary button-small" onClick={() => navigate("/anamnese")}>
                                 Preencher anamnese
                             </button>

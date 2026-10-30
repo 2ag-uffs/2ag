@@ -1,7 +1,14 @@
 import {useEffect, useState} from "react";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
-import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, setLoggedUser} from "../../services/api.js";
+import {
+    apiService,
+    ApiError,
+    CONNECTION_ERROR_MESSAGE,
+    readRequestError,
+    setLoggedUser,
+} from "../../services/api.js";
+import {formatDate} from "../../utils/date-format.js";
 import {
     ACCEPT_BUTTON_TEXT,
     ageBandOf,
@@ -55,10 +62,79 @@ function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChan
     );
 }
 
+// o perfil vai igual ao salvo, so com a data nova
+function profileBodyWith(profile, birthDate) {
+    return {
+        name: profile.name,
+        socialName: profile.socialName,
+        birthDate: birthDate || null,
+        phone: profile.phone,
+        address: profile.address,
+        guardian: profile.guardian,
+    };
+}
+
+// aqui so tem o campo da data, entao o erro de outro campo do perfil aparece nele tbm
+function birthDateErrorOf(requestError) {
+    const errorInfo = readRequestError(requestError);
+    const fieldMessages = Object.values(errorInfo.fieldErrors);
+    return fieldMessages.length > 0 ? fieldMessages[0] : errorInfo.message;
+}
+
+// termo pendente so pela faixa de idade: a data de nascimento errada se corrige aqui, sem gravar antes
+// um aceite na faixa errada, como o de uma crianca sem o responsavel (#163)
+function BirthDateFix({profile, onFixed}) {
+    const [birthDate, setBirthDate] = useState(profile.birthDate || "");
+    const [error, setError] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setError(null);
+        setIsSaving(true);
+        try {
+            const savedProfile = await apiService.put("/profile", profileBodyWith(profile, birthDate));
+            const sessionUser = await apiService.get("/auth/me");
+            onFixed(savedProfile, sessionUser);
+        } catch (requestError) {
+            setError(birthDateErrorOf(requestError));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <form className={styles.birthDateFix} onSubmit={handleSubmit}>
+            <p className="aviso">
+                A data de nascimento salva é {formatDate(profile.birthDate)}, e por ela a sua faixa de idade mudou
+                desde o último aceite. Se a data estiver errada, corrija aqui em vez de aceitar: com a data certa, o
+                aceite que você já fez continua valendo.
+            </p>
+            {/* o nome n repete o do perfil, q pode estar montado por baixo */}
+            <TextField
+                label="Data de nascimento"
+                name="correctedBirthDate"
+                type="date"
+                value={birthDate}
+                onChange={(event) => setBirthDate(event.target.value)}
+                error={error}
+                required={true}
+            />
+            <div>
+                <button type="submit" className="button-secondary" disabled={isSaving}>
+                    {isSaving ? "Salvando..." : "Corrigir a data"}
+                </button>
+            </div>
+        </form>
+    );
+}
+
 // paciente q aceitou uma versao antiga do termo le e aceita a nova antes de seguir (#58)
-export default function TermUpdate({onAccepted}) {
+// a api tbm pede o aceite de novo qnd a idade cruzou os 18 anos: menor aceita com o responsavel e adulto sozinho
+export default function TermUpdate({onAccepted, onBirthDateFixed}) {
     const [term, setTerm] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [isPendingByAge, setIsPendingByAge] = useState(false);
     const [guardianData, setGuardianData] = useState(EMPTY_GUARDIAN);
     const [fieldErrors, setFieldErrors] = useState({});
     const [loadError, setLoadError] = useState(null);
@@ -68,12 +144,13 @@ export default function TermUpdate({onAccepted}) {
     useEffect(() => {
         let isCurrentPage = true;
         // o perfil traz a idade, pq pelo menor de 18 o responsavel legal participa do aceite
-        // GET passa mesmo com o termo pendente
-        Promise.all([apiService.get("/consent-term"), apiService.get("/profile")])
-            .then(([currentTerm, loadedProfile]) => {
+        // e a sessao diz se o termo esta pendente so pela faixa de idade. GET passa mesmo com o termo pendente
+        Promise.all([apiService.get("/consent-term"), apiService.get("/profile"), apiService.get("/auth/me")])
+            .then(([currentTerm, loadedProfile, sessionUser]) => {
                 if (isCurrentPage) {
                     setTerm(currentTerm);
                     setProfile(loadedProfile);
+                    setIsPendingByAge(Boolean(sessionUser && sessionUser.termPendingByAge));
                     // o q ja esta salvo vem preenchido e o telefone salvo vai junto no aceite
                     setGuardianData(guardianFieldsFrom(loadedProfile.guardian));
                 }
@@ -145,16 +222,29 @@ export default function TermUpdate({onAccepted}) {
         }
     };
 
+    // com a data certa o aceite q ja existe volta a valer e a tela fecha sem aceitar de novo
+    // se a data nova ainda deixa o termo pendente, a tela fica e troca os textos da faixa
+    const handleBirthDateFixed = (savedProfile, sessionUser) => {
+        setLoggedUser(sessionUser);
+        if (!sessionUser.termPending) {
+            onBirthDateFixed();
+            return;
+        }
+        setProfile(savedProfile);
+        setGuardianData(guardianFieldsFrom(savedProfile.guardian));
+        setIsPendingByAge(Boolean(sessionUser.termPendingByAge));
+    };
+
     const guardianText = guardianTextOf(guardian);
 
     return (
         <section className={styles.page}>
             <PageHeader
-                title="Termo de consentimento atualizado"
-                subtitle="O texto mudou desde o seu último aceite"
+                title="Termo de consentimento"
+                subtitle="O texto do termo ou a sua faixa de idade mudou desde o último aceite"
             />
             <p className="aviso">
-                Leia a versão nova e aceite para continuar usando o 2AG. Se não concordar, fale com a clínica.
+                Leia o termo e aceite de novo para continuar usando o 2AG. Se não concordar, fale com a clínica.
             </p>
 
             {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
@@ -173,6 +263,9 @@ export default function TermUpdate({onAccepted}) {
                             Paciente com 16 ou 17 anos: o paciente e o responsável legal leem e aceitam juntos.
                             {guardianText}
                         </p>
+                    )}
+                    {isPendingByAge && profile.birthDate && (
+                        <BirthDateFix profile={profile} onFixed={handleBirthDateFixed}/>
                     )}
                     {/* a chave faz o texto novo comecar do topo */}
                     <div key={term.version} className={styles.termText} tabIndex={0} aria-label="Texto do termo">

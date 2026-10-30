@@ -156,6 +156,6 @@ class AnamnesisRaceTest {
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(AnamnesisService.ARCHIVED_PATIENT_MESSAGE);
         // so a anamnese criada antes do teste
-        assertThat(anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patient.getId())).hasSize(1);
+        assertThat(anamnesisRepository.findByPatientIdOrderByAssessmentDateDescIdDesc(patient.getId())).hasSize(1);
     }
 }

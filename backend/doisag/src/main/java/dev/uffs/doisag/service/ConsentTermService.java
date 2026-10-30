@@ -115,14 +115,43 @@ public class ConsentTermService {
     }
 
     // paciente q aceitou uma versao antiga do termo do cadastro precisa aceitar a atual
+    // e tbm qnd a idade cruzou os 18 anos dps do aceite, pela data corrigida ou pelo aniversario
     // conta sem aceite nenhum so existe em teste e seed, o cadastro sempre grava um
     public boolean needsNewAcceptance(Users user) {
-        if (!(user instanceof Patient)) {
+        if (!(user instanceof Patient patient)) {
             return false;
         }
-        return consentAcceptanceRepository.existsByUserIdAndTermType(user.getId(), ConsentType.REGISTRATION)
-                && !consentAcceptanceRepository.existsByUserIdAndTermTypeAndTermVersion(
-                        user.getId(), ConsentType.REGISTRATION, CURRENT_VERSION);
+        if (hasCurrentAcceptance(patient)) {
+            return false;
+        }
+        return consentAcceptanceRepository.existsByUserIdAndTermType(patient.getId(), ConsentType.REGISTRATION);
+    }
+
+    // termo pendente so pela faixa de idade: o texto atual ja foi aceito, mas por outra faixa
+    // ai a data de nascimento errada ainda pode ser corrigida no perfil, sem gravar um aceite na faixa errada
+    public boolean isPendingOnlyByAge(Users user) {
+        if (!(user instanceof Patient patient)) {
+            return false;
+        }
+        Optional<ConsentAcceptance> lastAcceptance = lastCurrentAcceptance(patient);
+        return lastAcceptance.isPresent() && !isFromTheAgeBandOf(lastAcceptance.get(), patient);
+    }
+
+    // o ultimo aceite da versao atual precisa ser da faixa de idade de hoje
+    private boolean hasCurrentAcceptance(Patient patient) {
+        Optional<ConsentAcceptance> lastAcceptance = lastCurrentAcceptance(patient);
+        return lastAcceptance.isPresent() && isFromTheAgeBandOf(lastAcceptance.get(), patient);
+    }
+
+    private Optional<ConsentAcceptance> lastCurrentAcceptance(Patient patient) {
+        return consentAcceptanceRepository.findFirstByUserIdAndTermTypeAndTermVersionOrderByAcceptedAtDescIdDesc(
+                patient.getId(), ConsentType.REGISTRATION, CURRENT_VERSION);
+    }
+
+    // o de menor vale com o responsavel junto e o de adulto eh do proprio paciente, sem responsavel
+    private boolean isFromTheAgeBandOf(ConsentAcceptance acceptance, Patient patient) {
+        boolean acceptedByGuardian = hasText(acceptance.getGuardianName());
+        return acceptedByGuardian == patient.isMinor();
     }
 
     @Transactional
@@ -146,9 +175,8 @@ public class ConsentTermService {
             GuardianDTO.applyTo(patient, newGuardian);
             patientRepository.save(patient);
         }
-        // aceitar de novo a msm versao n duplica o registro
-        if (!consentAcceptanceRepository.existsByUserIdAndTermTypeAndTermVersion(
-                patient.getId(), ConsentType.REGISTRATION, termVersion)) {
+        // aceitar de novo a msm versao n duplica o registro, mas a idade q cruzou os 18 anos grava outro
+        if (!hasCurrentAcceptance(patient)) {
             registerAcceptance(patient, termVersion);
         }
     }

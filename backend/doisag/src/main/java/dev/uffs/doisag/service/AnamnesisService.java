@@ -109,7 +109,7 @@ public class AnamnesisService {
     @Transactional
     public List<AnamnesisResponseDTO> getByPatientId(Long patientId) {
         auditService.recordChartView(patientId);
-        return anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId)
+        return anamnesisRepository.findByPatientIdOrderByAssessmentDateDescIdDesc(patientId)
                 .stream()
                 .map(AnamnesisResponseDTO::new)
                 .toList();

@@ -46,6 +46,30 @@ function newEscalationStep() {
     return {dosage: "", note: ""};
 }
 
+// as mesmas regras da api (RN03): isolado tem um canabinoide so, broad spectrum n tem THC,
+// canabinoide n repete (o Outro pode) e % vai ate 100
+function compositionErrorsOf(spectrum, components) {
+    if (spectrum === "ISOLADO" && components.length !== 1) {
+        return {components: "O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum"};
+    }
+    const seenCannabinoids = [];
+    for (let index = 0; index < components.length; index++) {
+        const component = components[index];
+        const field = "components[" + index + "]";
+        if (spectrum === "BROAD_SPECTRUM" && component.cannabinoid === "THC") {
+            return {[field + ".cannabinoid"]: "O broad spectrum não tem THC. Tire o THC ou escolha full spectrum"};
+        }
+        if (component.cannabinoid !== "OUTRO" && seenCannabinoids.includes(component.cannabinoid)) {
+            return {[field + ".cannabinoid"]: "O mesmo canabinoide está em duas linhas. Deixe uma linha só para cada um"};
+        }
+        seenCannabinoids.push(component.cannabinoid);
+        if (component.unit === "PERCENTUAL" && Number(component.concentration) > 100) {
+            return {[field + ".concentration"]: "A concentração em % vai até 100"};
+        }
+    }
+    return {};
+}
+
 // o erro de um canabinoide chega com o nome tipo components[0].concentration
 function compositionErrorOf(fieldErrors) {
     const errorField = Object.keys(fieldErrors).find((field) => field.startsWith("components"));
@@ -70,6 +94,7 @@ function stepErrorsOnRows(fieldErrors, sentSteps) {
 
 const FIELDS_THAT_SHOW_ERROR = [
     "productDescription", "brand", "batch", "spectrum", "volume", "posology", "treatmentDurationDays",
+    "nextConsultationDate",
 ];
 
 function isErrorShownOnForm(field) {
@@ -216,6 +241,12 @@ export default function PrescriptionForm() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        const compositionErrors = compositionErrorsOf(form.spectrum, components);
+        if (Object.keys(compositionErrors).length > 0) {
+            setFieldErrors(compositionErrors);
+            setFormError(formErrorOf(null, compositionErrors));
+            return;
+        }
         setIsSaving(true);
         setFormError(null);
         setFieldErrors({});
@@ -512,6 +543,7 @@ export default function PrescriptionForm() {
                                 type="number"
                                 inputMode="numeric"
                                 min="1"
+                                max="730"
                                 value={form.treatmentDurationDays}
                                 onChange={(event) => updateField("treatmentDurationDays", event.target.value)}
                                 error={fieldErrors.treatmentDurationDays}
@@ -520,8 +552,10 @@ export default function PrescriptionForm() {
                                 label="Próxima consulta"
                                 name="nextConsultationDate"
                                 type="date"
+                                min={appointment.dateTime.slice(0, 10)}
                                 value={form.nextConsultationDate}
                                 onChange={(event) => updateField("nextConsultationDate", event.target.value)}
+                                error={fieldErrors.nextConsultationDate}
                             />
                         </FieldRow>
                     </FormSection>

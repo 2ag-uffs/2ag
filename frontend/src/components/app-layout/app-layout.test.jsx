@@ -38,6 +38,44 @@ function bottomMenu() {
     return within(screen.getByRole("navigation", {name: "Menu"}));
 }
 
+// paciente de 10 anos com a mae como responsavel legal, do jeito q o perfil vem da api
+function minorPatientProfile() {
+    const today = new Date();
+    return {
+        id: 3, role: "PATIENT", name: "Lucas Souza", socialName: null, email: "lucas@email.com", pendingEmail: null,
+        cpf: "52998224725", birthDate: (today.getFullYear() - 10) + "-01-01", phone: "49999887766",
+        address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC", country: "Brasil"},
+        guardian: {name: "Joana Souza", relationship: "mãe", phone: null}, researchConsent: null,
+        emailNotificationsEnabled: true, prescriberName: "Ana Lima", profession: null, registryType: null,
+        registryNumber: null,
+    };
+}
+
+// a api guarda o perfil salvo, e o aceite foi feito com a data de menor:
+// a data de adulto digitada por engano deixa o termo pendente pela faixa de idade
+function mockPatientApi(profile) {
+    let savedProfile = profile;
+    vi.spyOn(apiService, "get").mockImplementation((path) => {
+        if (path === "/profile") {
+            return Promise.resolve(savedProfile);
+        }
+        if (path === "/auth/me") {
+            const isPending = savedProfile.birthDate === "1990-01-01";
+            return Promise.resolve({
+                id: 3, name: "Lucas Souza", role: "PATIENT", termPending: isPending, termPendingByAge: isPending,
+            });
+        }
+        if (path === "/notifications/unread-count") {
+            return Promise.resolve({unread: 0});
+        }
+        return Promise.resolve({version: "v2", text: "texto do termo novo"});
+    });
+    return vi.spyOn(apiService, "put").mockImplementation((path, body) => {
+        savedProfile = {...savedProfile, birthDate: body.birthDate};
+        return Promise.resolve(savedProfile);
+    });
+}
+
 // o aceite do termo novo busca o termo e o perfil, q diz a idade e o responsavel
 function mockTermAndProfile(profile) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
@@ -109,6 +147,108 @@ describe("AppLayout", () => {
 
         expect(await screen.findByText("conteudo da tela")).toBeVisible();
         expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // quem fez 18 anos ou corrigiu a data pra de adulto aceita de novo sozinho, msm com o responsavel
+    // salvo como cuidador, e a tela n diz q o texto mudou
+    it("paciente q passou dos 18 anos aceita o termo de novo sozinho", async () => {
+        mockTermAndProfile({
+            id: 3, role: "PATIENT", birthDate: "1990-01-01",
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        });
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        expect(screen.getByText("O texto do termo ou a sua faixa de idade mudou desde o último aceite"))
+            .toBeInTheDocument();
+        expect(screen.queryByText(/responsável legal/)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // a data de nascimento q cruza os 18 anos deixa o termo pendente: ele abre logo dps de salvar o perfil,
+    // sem esperar a proxima gravacao dar 403 (#163)
+    it("salvar no perfil a data q cruza os 18 anos abre o termo na hora", async () => {
+        const put = mockPatientApi(minorPatientProfile());
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        openLayoutWithLoginAt("/perfil");
+
+        fireEvent.change(await screen.findByLabelText("Data de nascimento"), {target: {value: "1990-01-01"}});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar dados"}));
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: "Meu perfil", hidden: true})).not.toBeVisible();
+        expect(put).toHaveBeenCalledTimes(1);
+        expect(post).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        await waitFor(() => expect(screen.getByRole("heading", {name: "Meu perfil"})).toBeVisible());
+        expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
+    });
+
+    // a data errada q cruzou os 18 anos se corrige na tela do termo, sem gravar um aceite na faixa errada,
+    // e o perfil de baixo volta com a data certa, senao salvar de novo cruzava os 18 anos outra vez (#163)
+    it("a data de nascimento errada se corrige na tela do termo sem aceitar", async () => {
+        const realBirthDate = minorPatientProfile().birthDate;
+        const put = mockPatientApi(minorPatientProfile());
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(null);
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        openLayoutWithLoginAt("/perfil");
+
+        fireEvent.change(await screen.findByLabelText("Data de nascimento"), {target: {value: "1990-01-01"}});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar dados"}));
+
+        const fixButton = await screen.findByRole("button", {name: "Corrigir a data"});
+        const fixForm = within(fixButton.closest("form"));
+        expect(fixForm.getByText(/A data de nascimento salva é 01\/01\/1990/)).toBeInTheDocument();
+        fireEvent.change(fixForm.getByLabelText("Data de nascimento"), {target: {value: realBirthDate}});
+        fireEvent.click(fixButton);
+
+        await waitFor(() => expect(screen.getByRole("heading", {name: "Meu perfil"})).toBeVisible());
+        expect(screen.queryByText("texto do termo novo")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Data de nascimento")).toHaveValue(realBirthDate);
+        expect(put).toHaveBeenLastCalledWith("/profile", expect.objectContaining({
+            name: "Lucas Souza",
+            birthDate: realBirthDate,
+            guardian: {name: "Joana Souza", relationship: "mãe", phone: null},
+        }));
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // o erro do perfil na correcao aparece no campo da data e o termo continua aberto
+    it("o erro ao corrigir a data aparece no campo e o termo continua", async () => {
+        vi.spyOn(apiService, "get").mockImplementation((path) => {
+            if (path === "/profile") {
+                return Promise.resolve({...minorPatientProfile(), birthDate: "1990-01-01", guardian: null});
+            }
+            if (path === "/auth/me") {
+                return Promise.resolve({
+                    id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true, termPendingByAge: true,
+                });
+            }
+            return Promise.resolve({version: "v2", text: "texto do termo novo"});
+        });
+        vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, "Dados inválidos",
+            [{field: "guardian.name", message: "Informe o nome do responsável legal"}]));
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: true, termPendingByAge: true});
+        openLayoutAt("/painel-paciente");
+
+        const fixButton = await screen.findByRole("button", {name: "Corrigir a data"});
+        fireEvent.change(screen.getByLabelText("Data de nascimento"), {target: {value: "2016-01-01"}});
+        fireEvent.click(fixButton);
+
+        expect(await screen.findByText("Informe o nome do responsável legal")).toBeInTheDocument();
+        expect(screen.getByText("texto do termo novo")).toBeInTheDocument();
+        expect(screen.getByText("conteudo da tela")).not.toBeVisible();
     });
 
     // conta de menor sem responsavel (de antes da regra) n consegue abrir o perfil com o termo pendente,
@@ -207,6 +347,11 @@ describe("AppLayout", () => {
             if (path === "/profile") {
                 return Promise.resolve({id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null});
             }
+            if (path === "/auth/me") {
+                return Promise.resolve({
+                    id: 3, name: "Maria Souza", role: "PATIENT", termPending: true, termPendingByAge: false,
+                });
+            }
             return Promise.resolve({version: currentVersion, text: "texto do termo " + currentVersion});
         });
         const post = vi.spyOn(apiService, "post").mockImplementation((path, body) => {
@@ -220,6 +365,8 @@ describe("AppLayout", () => {
         openLayoutAt("/painel-paciente");
 
         expect(await screen.findByText("texto do termo v2")).toBeInTheDocument();
+        // pendente pela versao a data n se corrige aqui, o perfil fica travado ate aceitar
+        expect(screen.queryByRole("button", {name: "Corrigir a data"})).not.toBeInTheDocument();
         currentVersion = "v3";
         fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
 

@@ -41,6 +41,12 @@
     padding: 0.125rem var(--space-2);
 }
 
+/* passou do fim e o job das 8h ainda n encerrou */
+.statusEnded {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}
+
 .facts {
     display: flex;
     flex-wrap: wrap;

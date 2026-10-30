@@ -5,7 +5,9 @@ import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -24,8 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 // cuida do acompanhamento automatico dos 90 dias (RF32)
 //
@@ -48,6 +52,10 @@ public class TreatmentProtocolService {
     public static final String SINGLE_SCALE_MESSAGE =
             "A avaliação inicial é respondida uma vez, então ela não entra no acompanhamento automático. "
                     + "Envie ela em Enviar escalas";
+    public static final String ENDS_BEFORE_TODAY_MESSAGE =
+            "O acompanhamento terminaria antes de hoje. Confira a data de início";
+    public static final String DUPLICATE_SCALE_MESSAGE =
+            "A mesma escala não pode entrar duas vezes no acompanhamento";
 
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
@@ -88,21 +96,38 @@ public class TreatmentProtocolService {
         if (patient.isArchived()) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
         }
-        // dois protocolos ativos ao mesmo tempo designariam a mesma escala
-        // duas vezes, entao o anterior precisa ser encerrado antes
-        if (protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).isPresent()) {
-            throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = protocolData.startDate() != null ? protocolData.startDate() : today;
+        int durationDays = protocolData.durationDays() != null ? protocolData.durationDays() : DEFAULT_DURATION_DAYS;
+        // o primeiro dia conta, entao 90 dias terminam no dia 90 e n no 91
+        LocalDate endDate = startDate.plusDays(durationDays - 1L);
+        // o q acaba antes de hoje nascia vencido, sem mandar rodada nenhuma
+        if (endDate.isBefore(today)) {
+            throw new InvalidFieldException("startDate", ENDS_BEFORE_TODAY_MESSAGE);
         }
 
-        LocalDate startDate = protocolData.startDate() != null ? protocolData.startDate() : LocalDate.now();
-        int durationDays = protocolData.durationDays() != null ? protocolData.durationDays() : DEFAULT_DURATION_DAYS;
+        // dois protocolos ativos ao mesmo tempo designariam a mesma escala
+        // duas vezes, entao o anterior precisa ser encerrado antes
+        Optional<TreatmentProtocol> current = protocolRepository.findFirstByPatientIdAndActiveTrue(patientId);
+        if (current.isPresent()) {
+            // o q ja passou do fim so espera o job das 8h encerrar, entao encerra aqui igual o job
+            // e a renovacao do dia seguinte n depende do prescritor encerrar na mao
+            if (current.get().getEndDate().isBefore(today)) {
+                endProtocol(current.get());
+                // o insert do novo sai antes do update e o indice de um ativo por paciente do postgres
+                // recusava, entao o encerramento vai pro banco ja
+                protocolRepository.flush();
+            } else {
+                throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
+            }
+        }
 
         TreatmentProtocol protocol = new TreatmentProtocol();
         protocol.setPatient(patient);
         protocol.setPrescriber(prescriber);
         protocol.setStartDate(startDate);
-        // o primeiro dia conta, entao 90 dias terminam no dia 90 e n no 91
-        protocol.setEndDate(startDate.plusDays(durationDays - 1L));
+        protocol.setEndDate(endDate);
         protocol.setActive(true);
         // a programacao de horarios q aparece no topo do diario do sono (RF22)
         protocol.setSleepBedTime(protocolData.sleepBedTime());
@@ -113,13 +138,21 @@ public class TreatmentProtocolService {
         auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
         // acompanhamento q comeca hoje manda a primeira rodada agora, sem esperar o job de amanha
         // conta desativada n recebe, igual no job
-        if (startDate.equals(LocalDate.now()) && patient.isActive()) {
+        if (startDate.equals(today) && patient.isActive()) {
             assignRound(savedProtocol, startDate);
         }
         return new TreatmentProtocolResponseDTO(savedProtocol);
     }
 
     private void addItems(TreatmentProtocol protocol, List<ProtocolItemDTO> itemsData) {
+        // a mesma escala duas vezes fazia as duas rodadas adotarem a mesma tarefa
+        // e cada uma reescrevia o prazo dela
+        Set<ScaleType> scaleTypes = new HashSet<>();
+        for (ProtocolItemDTO itemData : itemsData) {
+            if (!scaleTypes.add(itemData.scaleType())) {
+                throw new BusinessException(DUPLICATE_SCALE_MESSAGE);
+            }
+        }
         for (ProtocolItemDTO itemData : itemsData) {
             // o MEEM eh aplicado pelo prescritor na consulta, n entra no
             // acompanhamento automatico do paciente (RN09)

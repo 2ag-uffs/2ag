@@ -339,6 +339,31 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.message").value(ScaleResponseService.EXAM_ALREADY_APPLIED_MESSAGE));
     }
 
+    // o meem tbm mostra q a consulta aconteceu, entao a passada q ficou agendada vira concluida,
+    // a proxima sai como retorno e o grafico marca o dia, igual na receita
+    @Test
+    void miniExameConcluiAConsultaPassadaQueFicouAgendada() throws Exception {
+        LocalDateTime pastTime = TODAY.minusDays(2).atTime(9, 0);
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, pastTime);
+
+        applyMentalStateExam(appointmentId, prescriber).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/appointments/" + appointmentId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
+        mockMvc.perform(post("/appointments")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patientId\":" + patient.getId() + ",\"dateTime\":\""
+                                + TODAY.plusDays(3).atTime(10, 0) + "\",\"modality\":\"PRESENCIAL\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", "DIAS_30")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].data").value(pastTime.toLocalDate().toString()));
+    }
+
     @Test
     void miniExameNaoEntraEmConsultaQueAindaNaoAconteceu() throws Exception {
         Long futureAppointment = saveAppointment(AppointmentStatus.AGENDADA, TODAY.plusDays(7).atTime(9, 0));

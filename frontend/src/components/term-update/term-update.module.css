@@ -43,3 +43,10 @@
     font-size: var(--text-lg);
     padding: 0;
 }
+
+/* termo pendente so pela faixa de idade: a data errada se corrige antes de aceitar */
+.birthDateFix {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}

@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-// paciente q ainda n aceitou a versao nova do termo so le os proprios dados (#58)
+// paciente com o termo pendente (versao antiga ou aceite de outra faixa de idade) so le os proprios dados (#58)
 // entrar, sair, aceitar o termo e conferir um convite continuam liberados
 @Component
 public class PendingTermInterceptor implements HandlerInterceptor {
@@ -34,9 +34,15 @@ public class PendingTermInterceptor implements HandlerInterceptor {
         }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof Patient patient
-                && consentTermService.needsNewAcceptance(patient)) {
+                && consentTermService.needsNewAcceptance(patient) && !isBirthDateFix(method, path, patient)) {
             throw new PendingTermException();
         }
         return true;
+    }
+
+    // pendente so pela faixa de idade, o perfil ainda salva: a data de nascimento errada q cruzou os 18 anos
+    // eh corrigida sem gravar antes um aceite na faixa errada, como o de uma crianca sem o responsavel (#163)
+    private boolean isBirthDateFix(String method, String path, Patient patient) {
+        return "PUT".equals(method) && path.equals("/profile") && consentTermService.isPendingOnlyByAge(patient);
     }
 }

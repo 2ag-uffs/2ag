@@ -72,6 +72,14 @@ public class AppointmentService {
     public static final String NOT_SCHEDULED_MESSAGE = "Só dá para marcar falta em consulta que estava agendada";
     public static final String APPOINTMENT_NOT_OVER_MESSAGE =
             "Espere o horário da consulta terminar para marcar falta";
+    public static final String NO_SHOW_WITH_PRESCRIPTION_MESSAGE =
+            "Esta consulta tem prescrição. Registre o atendimento ou anule a prescrição antes de marcar falta";
+    public static final String NO_SHOW_WITH_EXAM_MESSAGE = "Esta consulta tem um Mini-Exame aplicado. "
+            + "Registre o atendimento ou anule o exame antes de marcar falta";
+    public static final String CANCEL_WITH_PRESCRIPTION_MESSAGE =
+            "Esta consulta tem prescrição. Registre o atendimento ou anule a prescrição antes de cancelar a consulta";
+    public static final String CANCEL_WITH_EXAM_MESSAGE = "Esta consulta tem um Mini-Exame aplicado. "
+            + "Registre o atendimento ou anule o exame antes de cancelar a consulta";
     public static final String INVALID_RANGE_MESSAGE = DateCheck.INVALID_RANGE_MESSAGE;
     public static final String INCOMPLETE_RANGE_MESSAGE = DateCheck.INCOMPLETE_RANGE_MESSAGE;
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
@@ -366,6 +374,10 @@ public class AppointmentService {
         if (canceledByPatient && isLateForThePatient) {
             throw new BusinessException(LATE_CANCELLATION_MESSAGE);
         }
+        // a consulta antiga q ficou agendada com receita ou meem aconteceu e n vira cancelada com eles valendo
+        // vem dps das 24 horas, entao o paciente nunca chega aqui com uma consulta q ja passou
+        consultationService.checkHasNoPrescriptionOrExam(appointmentId, CANCEL_WITH_PRESCRIPTION_MESSAGE,
+                CANCEL_WITH_EXAM_MESSAGE);
 
         appointment.setStatus(AppointmentStatus.CANCELADA);
         Appointment savedAppointment = saveChange(appointment);
@@ -398,6 +410,10 @@ public class AppointmentService {
         if (endOf(appointment).isAfter(LocalDateTime.now())) {
             throw new BusinessException(APPOINTMENT_NOT_OVER_MESSAGE);
         }
+        // hoje a receita e o meem ja concluem a consulta, mas a antiga q ficou agendada com eles
+        // mostra q o paciente veio, e a falta avisava ele com a receita daquela consulta em uso
+        consultationService.checkHasNoPrescriptionOrExam(appointmentId, NO_SHOW_WITH_PRESCRIPTION_MESSAGE,
+                NO_SHOW_WITH_EXAM_MESSAGE);
 
         appointment.setStatus(AppointmentStatus.NAO_COMPARECEU);
         Appointment savedAppointment = saveChange(appointment);

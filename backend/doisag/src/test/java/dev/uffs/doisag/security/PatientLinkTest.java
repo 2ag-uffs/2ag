@@ -233,7 +233,16 @@ class PatientLinkTest {
                         .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\",\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(put("/appointments/" + recordsOfA.appointmentId() + "/cancel")
+        // consulta com receita n eh cancelada, entao o cancelamento vai numa consulta ainda por vir
+        Appointment upcoming = new Appointment();
+        upcoming.setPatient(recordsOfA.patient());
+        upcoming.setPrescriber(prescriberA);
+        upcoming.setDateTime(LocalDate.now().plusDays(7).atTime(9, 0));
+        upcoming.setModality(AppointmentModality.PRESENCIAL);
+        upcoming.setStatus(AppointmentStatus.AGENDADA);
+        upcoming.setDurationMinutes(60);
+        Long upcomingId = appointmentRepository.save(upcoming).getId();
+        mockMvc.perform(put("/appointments/" + upcomingId + "/cancel")
                         .header("Authorization", bearerTokenOf(prescriberA)))
                 .andExpect(status().isOk());
     }

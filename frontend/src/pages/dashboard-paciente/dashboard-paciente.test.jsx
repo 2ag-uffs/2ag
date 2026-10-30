@@ -90,4 +90,27 @@ describe("DashboardPaciente", () => {
         expect(await screen.findByRole("heading", {name: /Avisos não lidos/})).toHaveTextContent("Avisos não lidos1");
         expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument();
     });
+
+    it("paciente em acompanhamento ve o agendar consulta e nenhum aviso de encerrado", async () => {
+        renderPanel();
+
+        expect(await screen.findByRole("button", {name: "Agendar consulta"})).toBeInTheDocument();
+        expect(screen.queryByText(/acompanhamento foi encerrado/)).not.toBeInTheDocument();
+    });
+
+    // a api recusa pedido de consulta do arquivado e o painel oferecia agendar como se nada tivesse mudado
+    it("paciente arquivado ve no painel q o acompanhamento acabou e n ve o agendar consulta", async () => {
+        apiService.get.mockImplementation((path) => Promise.resolve(path === "/patients/3"
+            ? {id: 3, archived: true}
+            : {...PANEL, upcomingAppointments: []}));
+        renderPanel();
+
+        expect(await screen.findByText(
+            "Seu acompanhamento foi encerrado. Fale com a clínica para voltar a marcar consultas."))
+            .toBeInTheDocument();
+        expect(apiService.get).toHaveBeenCalledWith("/patients/3");
+        expect(screen.queryByRole("button", {name: "Agendar consulta"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/Você pode pedir um horário/)).not.toBeInTheDocument();
+        expect(screen.getByText("Nenhuma consulta marcada.")).toBeInTheDocument();
+    });
 });

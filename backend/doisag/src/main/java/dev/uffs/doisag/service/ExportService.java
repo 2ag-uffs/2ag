@@ -174,7 +174,7 @@ public class ExportService {
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Início do período", "Fim do período",
                 "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada", "Motivo da anulação");
 
-        for (ScaleResponse response : responseRepository.findByPatientIdOrderByPeriodStartDesc(patientId)) {
+        for (ScaleResponse response : responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(patientId)) {
             if (!catalog.hasDefinition(response.getScaleType())) {
                 continue;
             }
@@ -269,7 +269,7 @@ public class ExportService {
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Pergunta", "Resposta", "Anulada",
                 "Motivo da anulação");
 
-        for (Anamnesis anamnesis : anamnesisRepository.findByPatientIdOrderByAssessmentDateDesc(patientId)) {
+        for (Anamnesis anamnesis : anamnesisRepository.findByPatientIdOrderByAssessmentDateDescIdDesc(patientId)) {
             for (AnamnesisField field : ANAMNESIS_FIELDS) {
                 String answer = field.value().apply(anamnesis);
                 if (answer == null || answer.isBlank()) {

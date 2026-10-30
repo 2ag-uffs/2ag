@@ -7,9 +7,13 @@ import dev.uffs.doisag.dto.PrescriptionComponentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.enums.Cannabinoid;
+import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.PrescriptionStatus;
+import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
@@ -23,6 +27,9 @@ import dev.uffs.doisag.repository.PrescriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 // prescricao (RF05)
@@ -36,16 +43,32 @@ public class PrescriptionService {
     public static final String NOT_CONFIRMED_CONSULTATION_MESSAGE = "Só consulta confirmada na agenda gera prescrição";
     public static final String FUTURE_CONSULTATION_MESSAGE = "Consulta que ainda não aconteceu não gera prescrição";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
+    public static final String ISOLATE_ONE_CANNABINOID_MESSAGE =
+            "O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum";
+    public static final String BROAD_SPECTRUM_THC_MESSAGE =
+            "O broad spectrum não tem THC. Tire o THC ou escolha full spectrum";
+    public static final String REPEATED_CANNABINOID_MESSAGE =
+            "O mesmo canabinoide está em duas linhas. Deixe uma linha só para cada um";
+    public static final String PERCENT_OVER_100_MESSAGE = "A concentração em % vai até 100";
+    public static final String NEXT_CONSULTATION_BEFORE_MESSAGE =
+            "A próxima consulta não pode ser antes desta consulta";
+    public static final String DURATION_TOO_LONG_MESSAGE = "A duração do tratamento pode ser de até 730 dias";
+
+    private static final BigDecimal MAX_PERCENT = new BigDecimal("100");
+    private static final int MAX_TREATMENT_DAYS = 730;
 
     private final PrescriptionRepository prescriptionRepository;
     private final PatientRepository patientRepository;
+    private final ConsultationService consultationService;
     private final AuditService auditService;
     private final RowLock rowLock;
 
     public PrescriptionService(PrescriptionRepository prescriptionRepository, PatientRepository patientRepository,
-                               AuditService auditService, RowLock rowLock) {
+                               ConsultationService consultationService, AuditService auditService,
+                               RowLock rowLock) {
         this.prescriptionRepository = prescriptionRepository;
         this.patientRepository = patientRepository;
+        this.consultationService = consultationService;
         this.auditService = auditService;
         this.rowLock = rowLock;
     }
@@ -58,6 +81,8 @@ public class PrescriptionService {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> NotFoundException.appointment(appointmentId));
         checkAppointmentCanPrescribe(appointment);
+        checkPrescriptionData(prescriptionData, appointment);
+        boolean concludedNow = concludeAppointment(appointment);
 
         Long patientId = appointment.getPatient().getId();
         patientRepository.lockById(patientId);
@@ -72,10 +97,15 @@ public class PrescriptionService {
 
         Prescription savedPrescription = prescriptionRepository.save(prescription);
         auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(), patientId);
+        // a trilha encosta no paciente e na conta, entao a da consulta concluida vem dps da trava do paciente
+        if (concludedNow) {
+            auditService.recordChange(AuditRecordType.CONSULTA, appointment.getId(), patientId);
+        }
         return new PrescriptionResponseDTO(savedPrescription);
     }
 
     // prescricao errada fica no historico marcada como anulada e deixa de valer
+    // se ela era o unico sinal de q a consulta aconteceu, a consulta volta a agendada
     @Transactional
     public PrescriptionResponseDTO annul(Long prescriptionId, AnnulmentDTO annulmentData, Prescriber loggedPrescriber) {
         Prescription prescription = findPrescriptionForUpdate(prescriptionId);
@@ -89,8 +119,10 @@ public class PrescriptionService {
             prescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
         }
         Prescription savedPrescription = prescriptionRepository.save(prescription);
+        Appointment appointment = savedPrescription.getAppointment();
         auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
-                savedPrescription.getAppointment().getPatient().getId());
+                appointment.getPatient().getId());
+        consultationService.reopenIfConcludedOnlyByPrescriptionOrExam(appointment);
         return new PrescriptionResponseDTO(savedPrescription);
     }
 
@@ -116,6 +148,55 @@ public class PrescriptionService {
             throw new BusinessException(NOT_CONFIRMED_CONSULTATION_MESSAGE);
         }
         DateCheck.checkAlreadyHappened(appointment.getDateTime(), FUTURE_CONSULTATION_MESSAGE);
+    }
+
+    // receita na consulta passada q ficou agendada mostra q ela aconteceu, entao ela fica concluida como no
+    // registro do atendimento: a proxima sai como retorno e o grafico marca o dia. o registro clinico fica
+    // vazio ate o prescritor preencher. a consulta ja esta travada e o jpa grava a mudanca no fim
+    private boolean concludeAppointment(Appointment appointment) {
+        if (appointment.getStatus() == AppointmentStatus.CONCLUIDA) {
+            return false;
+        }
+        appointment.setStatus(AppointmentStatus.CONCLUIDA);
+        return true;
+    }
+
+    // a duracao vai ate dois anos e o retorno n fica antes da propria consulta
+    private void checkPrescriptionData(PrescriptionCreateDTO prescriptionData, Appointment appointment) {
+        checkComposition(prescriptionData.spectrum(), prescriptionData.components());
+
+        Integer durationDays = prescriptionData.treatmentDurationDays();
+        if (durationDays != null && durationDays > MAX_TREATMENT_DAYS) {
+            throw new InvalidFieldException("treatmentDurationDays", DURATION_TOO_LONG_MESSAGE);
+        }
+        LocalDate nextConsultationDate = prescriptionData.nextConsultationDate();
+        if (nextConsultationDate != null && nextConsultationDate.isBefore(appointment.getDateTime().toLocalDate())) {
+            throw new InvalidFieldException("nextConsultationDate", NEXT_CONSULTATION_BEFORE_MESSAGE);
+        }
+    }
+
+    // RN03: isolado eh um canabinoide so e broad spectrum eh sem THC
+    // canabinoide repetido deixa o paciente sem saber qual concentracao vale, so o OUTRO pode repetir
+    private void checkComposition(Spectrum spectrum, List<PrescriptionComponentDTO> components) {
+        if (spectrum == Spectrum.ISOLADO && components.size() != 1) {
+            throw new InvalidFieldException("components", ISOLATE_ONE_CANNABINOID_MESSAGE);
+        }
+        List<Cannabinoid> seenCannabinoids = new ArrayList<>();
+        for (int index = 0; index < components.size(); index++) {
+            PrescriptionComponentDTO component = components.get(index);
+            String field = "components[" + index + "]";
+            if (spectrum == Spectrum.BROAD_SPECTRUM && component.cannabinoid() == Cannabinoid.THC) {
+                throw new InvalidFieldException(field + ".cannabinoid", BROAD_SPECTRUM_THC_MESSAGE);
+            }
+            if (component.cannabinoid() != Cannabinoid.OUTRO && seenCannabinoids.contains(component.cannabinoid())) {
+                throw new InvalidFieldException(field + ".cannabinoid", REPEATED_CANNABINOID_MESSAGE);
+            }
+            seenCannabinoids.add(component.cannabinoid());
+            if (component.unit() == ConcentrationUnit.PERCENTUAL
+                    && component.concentration().compareTo(MAX_PERCENT) > 0) {
+                throw new InvalidFieldException(field + ".concentration", PERCENT_OVER_100_MESSAGE);
+            }
+        }
     }
 
     private void copyPrescriptionData(PrescriptionCreateDTO prescriptionData, Prescription prescription) {
@@ -168,11 +249,16 @@ public class PrescriptionService {
         return true;
     }
 
-    // trava o paciente e dps a receita, lida de novo, na ordem do lancamento (consulta, paciente, receitas):
-    // duas anulacoes ao mesmo tempo passavam as duas pela conferencia e a segunda trocava o motivo da primeira
+    // trava a consulta, o paciente e dps a receita, lida de novo, na ordem do lancamento (consulta, paciente,
+    // receitas): duas anulacoes ao mesmo tempo passavam as duas pela conferencia e a segunda trocava o motivo
+    // da primeira. a consulta vem antes pq a anulacao pode devolver ela pra agendada, e assim o registro ou
+    // a receita gravados nela no meio tempo aparecem
     private Prescription findPrescriptionForUpdate(Long id) {
-        Long patientId = prescriptionRepository.findPatientIdById(id).orElseThrow(() -> prescriptionNotFound(id));
-        patientRepository.lockById(patientId);
+        Long appointmentId = prescriptionRepository.findAppointmentIdById(id)
+                .orElseThrow(() -> prescriptionNotFound(id));
+        Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
+                .orElseThrow(() -> prescriptionNotFound(id));
+        patientRepository.lockById(appointment.getPatient().getId());
         return rowLock.reload(Prescription.class, id).orElseThrow(() -> prescriptionNotFound(id));
     }
 

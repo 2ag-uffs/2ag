@@ -10,6 +10,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
+import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
 import {
     addDays,
     brasiliaTimeNote,
@@ -190,6 +191,8 @@ export default function AgendamentoConsultaPaciente() {
 
     const {patient, upcomingAppointments, freeSlots} = page;
     const hasPrescriber = patient.prescriberId !== null;
+    // a api recusa o pedido do arquivado e devolve a agenda vazia, q n eh falta de horario
+    const canRequest = hasPrescriber && !patient.archived;
     const slotsByDay = groupSlotsByDay(freeSlots);
     const availableDays = Object.keys(slotsByDay).sort();
     // o dia escolhido pode ter ficado sem horario depois de buscar de novo
@@ -203,7 +206,7 @@ export default function AgendamentoConsultaPaciente() {
         <section className={styles.page}>
             <PageHeader
                 title="Consultas"
-                subtitle={hasPrescriber
+                subtitle={canRequest
                     ? "Peça um horário na agenda de " + patient.prescriberName + ". O horário fica reservado até o pedido ser respondido."
                     : "Acompanhe seus pedidos e consultas."}
             />
@@ -212,14 +215,16 @@ export default function AgendamentoConsultaPaciente() {
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
             {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
-            {!hasPrescriber && (
+            {patient.archived && <EmptyState icon={FiUserX} message={ARCHIVED_APPOINTMENT_NOTICE}/>}
+
+            {!patient.archived && !hasPrescriber && (
                 <EmptyState
                     icon={FiUserX}
                     message="Você ainda não tem um prescritor vinculado. Fale com a clínica para receber o convite."
                 />
             )}
 
-            {hasPrescriber && (
+            {canRequest && (
                 <Card title="Pedir consulta">
                     {availableDays.length === 0 ? (
                         <EmptyState

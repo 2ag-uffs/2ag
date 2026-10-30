@@ -15,6 +15,7 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
@@ -60,6 +61,7 @@ public class ScaleTaskService {
 
     private final ScaleTaskRepository taskRepository;
     private final ScaleResponseRepository responseRepository;
+    private final AnamnesisRepository anamnesisRepository;
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
     private final ScaleCatalog catalog;
@@ -70,6 +72,7 @@ public class ScaleTaskService {
 
     public ScaleTaskService(ScaleTaskRepository taskRepository,
                             ScaleResponseRepository responseRepository,
+                            AnamnesisRepository anamnesisRepository,
                             PatientRepository patientRepository,
                             PrescriberRepository prescriberRepository,
                             ScaleCatalog catalog,
@@ -78,6 +81,7 @@ public class ScaleTaskService {
                             PlatformTransactionManager transactionManager) {
         this.taskRepository = taskRepository;
         this.responseRepository = responseRepository;
+        this.anamnesisRepository = anamnesisRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.catalog = catalog;
@@ -196,7 +200,8 @@ public class ScaleTaskService {
         }
         ScaleTask task = openTask.get();
         response.setTask(task);
-        if (!daily) {
+        // a nao respondida so ganha a resposta atrasada e fica como esta
+        if (!daily && task.getStatus() == ScaleTaskStatus.PENDENTE) {
             closeAsAnswered(task, today);
         }
     }
@@ -237,6 +242,19 @@ public class ScaleTaskService {
                 return Optional.of(task);
             }
         }
+        return lateTaskOf(patientId, scaleType);
+    }
+
+    // a resposta q chega dps de o job fechar a tarefa como nao respondida ficava solta, e a tarefa ficava
+    // nas escalas vencidas pra sempre. agora ela fica com a ultima tarefa da escala qnd essa fechou sem
+    // resposta, sem mudar o status, entao o indicador segue contando fora do prazo
+    // o diario n chega aqui: la o indicador conta os dias ligados e o dia atrasado viraria no prazo
+    private Optional<ScaleTask> lateTaskOf(Long patientId, ScaleType scaleType) {
+        Optional<ScaleTask> lastTask = taskRepository.findFirstByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(
+                patientId, scaleType);
+        if (lastTask.isPresent() && lastTask.get().getStatus() == ScaleTaskStatus.NAO_RESPONDIDA) {
+            return lastTask;
+        }
         return Optional.empty();
     }
 
@@ -255,10 +273,15 @@ public class ScaleTaskService {
     // a resposta valida daquele dia, q eh a data q a tela sugere: o envio do paciente com ela so corrigiria
     // essa resposta. na pontual eh a avaliacao q comeca no dia, e na de periodo eh a semana q termina nele,
     // pq a tela e o servidor mandam o inicio 6 dias antes. no diario cada dia eh um registro e a tarefa
-    // cobre a semana toda, entao n entra
+    // cobre a semana toda, entao n entra. a avaliacao inicial eh a anamnese enviada no dia, seja qual for a
+    // data de preenchimento: ficha nova sempre vira outra anamnese e n corrige a q ja existe
     private boolean answeredOn(Long patientId, ScaleType scaleType, LocalDate day) {
         if (isDaily(scaleType)) {
             return false;
+        }
+        if (scaleType == ScaleType.ANAMNESE) {
+            return anamnesisRepository.existsByPatientIdAndCreatedAtGreaterThanEqualAndAnnulmentAnnulledAtIsNull(
+                    patientId, day.atStartOfDay());
         }
         if (isPeriod(scaleType)) {
             return responseRepository.existsByPatientIdAndScaleTypeAndPeriodEndAndAnnulmentAnnulledAtIsNull(
@@ -270,9 +293,10 @@ public class ScaleTaskService {
 
     // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
     // devolve se ela estava fechada e foi reaberta
+    // a nao respondida q tinha resposta atrasada n reabre, so volta pras escalas vencidas
     @Transactional
     public boolean reopenIfWithoutAnswers(ScaleTask task) {
-        if (task == null || validAnswersOf(task) > 0) {
+        if (task == null || task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA || validAnswersOf(task) > 0) {
             return false;
         }
         boolean wasClosed = task.getStatus() != ScaleTaskStatus.PENDENTE;
@@ -357,9 +381,22 @@ public class ScaleTaskService {
     }
 
     // a anamnese tem tela propria mas tbm eh uma tarefa (RF19)
+    // ela n fica ligada na tarefa, entao a atrasada marca o dia nas nao respondidas e isso tira elas das
+    // vencidas. o status fica e o indicador conta fora do prazo
+    // a ficha eh uma so: toda avaliacao inicial perdida pedia essa mesma ficha, entao todas saem das vencidas,
+    // com ou sem uma pendente, e n so a ultima
     @Transactional
     public void completeTask(Long patientId, ScaleType scaleType) {
-        openTaskOf(patientId, scaleType).ifPresent(task -> closeAsAnswered(task, LocalDate.now()));
+        LocalDate today = LocalDate.now();
+        openTaskOf(patientId, scaleType).ifPresent(task -> closeAsAnswered(task, today));
+        List<ScaleTask> missedTasks = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
+                patientId, scaleType, ScaleTaskStatus.NAO_RESPONDIDA);
+        for (ScaleTask task : missedTasks) {
+            if (task.getAnsweredAt() == null) {
+                task.setAnsweredAt(today);
+                taskRepository.save(task);
+            }
+        }
     }
 
     // roda uma vez por dia: fecha as tarefas q passaram do prazo
@@ -484,7 +521,7 @@ public class ScaleTaskService {
                 .toList();
 
         List<ScaleResponseSummaryDTO> history = responseRepository
-                .findByPatientIdOrderByPeriodStartDesc(patientId)
+                .findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
                 .map(response -> new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response)))
                 .toList();

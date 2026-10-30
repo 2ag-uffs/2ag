@@ -47,7 +47,8 @@ public class AuthenticationController {
                                 HttpServletResponse response) {
         Users user = authService.login(loginData.email(), loginData.password(), request.getRemoteAddr());
         sessionCookieService.writeSession(response, user);
-        return new SessionUserDTO(user, consentTermService.needsNewAcceptance(user));
+        return new SessionUserDTO(user, consentTermService.needsNewAcceptance(user),
+                consentTermService.isPendingOnlyByAge(user));
     }
 
     // encerra as sessoes abertas de quem esta saindo e apaga o cookie
@@ -65,7 +66,8 @@ public class AuthenticationController {
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER', 'ADMIN')")
     @GetMapping("/me")
     public SessionUserDTO getLoggedUser(@AuthenticationPrincipal Users loggedUser) {
-        return new SessionUserDTO(loggedUser, consentTermService.needsNewAcceptance(loggedUser));
+        return new SessionUserDTO(loggedUser, consentTermService.needsNewAcceptance(loggedUser),
+                consentTermService.isPendingOnlyByAge(loggedUser));
     }
 
     // o paciente cria a conta pelo link de convite e ja sai logado

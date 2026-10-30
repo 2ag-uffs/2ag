@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -57,6 +58,7 @@ class ScaleDeliveryTest {
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private ReminderService reminderService;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Prescriber prescriber;
     private Patient patient;
@@ -546,6 +548,79 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.pending.length()").value(0))
                 .andExpect(jsonPath("$.history[?(@.scaleType == 'ESCALA_HAMILTON')].result")
                         .value("14 de 56 · Ansiedade temporária"));
+    }
+
+    // a avaliacao inicial enviada a quem preencheu a anamnese hoje criava uma tarefa q so fechava com outra ficha
+    // a anamnese anulada n segura o envio, igual a resposta anulada
+    @Test
+    void theInitialAssessmentIsNotSentAgainToWhoFilledTheAnamnesisToday() throws Exception {
+        String body = mockMvc.perform(post("/anamneses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        sendScale("ANAMNESE")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ANSWERED_TODAY_MESSAGE));
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
+
+        Number anamnesisId = JsonPath.read(body, "$.id");
+        mockMvc.perform(put("/anamneses/" + anamnesisId.longValue() + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Preenchida no lugar de outra pessoa\"}"))
+                .andExpect(status().isOk());
+        sendScale("ANAMNESE").andExpect(status().isCreated());
+    }
+
+    // a data de preenchimento eh o paciente q escolhe: a ficha enviada hoje com a data de ontem tbm segura
+    // o envio, senao a tarefa nova so fechava com outra ficha. a ficha enviada ontem n segura
+    @Test
+    void theInitialAssessmentIsNotSentAgainWhenTheAnamnesisSentTodayHasAnEarlierDate() throws Exception {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        mockMvc.perform(post("/anamneses")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\","
+                                + "\"assessmentDate\":\"" + yesterday + "\"}"))
+                .andExpect(status().isCreated());
+
+        sendScale("ANAMNESE")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleTaskService.ANSWERED_TODAY_MESSAGE));
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
+
+        int moved = jdbcTemplate.update("update anamnesis set created_at = ? where patient_id = ?",
+                yesterday.atTime(10, 0), patient.getId());
+        assertThat(moved).isEqualTo(1);
+        sendScale("ANAMNESE").andExpect(status().isCreated());
+    }
+
+    // anular e responder de novo no mesmo dia eh o jeito de corrigir: as duas tem a mesma data, e a valida
+    // vem antes da anulada na central, no historico e na grade da escala
+    @Test
+    void theRedoneAnswerComesBeforeTheAnnulledOneOfTheSameDay() throws Exception {
+        String patientToken = bearerTokenOf(patient);
+        Number firstId = JsonPath.read(answerHamilton(patientToken).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        annul(firstId.longValue()).andExpect(status().isOk());
+        Number secondId = JsonPath.read(answerHamilton(patientToken).andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.history.length()").value(2))
+                .andExpect(jsonPath("$.history[0].id").value(secondId.longValue()))
+                .andExpect(jsonPath("$.history[0].annulled").value(false))
+                .andExpect(jsonPath("$.history[1].annulled").value(true));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/responses")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[0].id").value(secondId.longValue()))
+                .andExpect(jsonPath("$[1].annulled").value(true));
+        mockMvc.perform(get("/scales/hamilton/responses").header("Authorization", patientToken))
+                .andExpect(jsonPath("$[0].id").value(secondId.longValue()))
+                .andExpect(jsonPath("$[1].annulled").value(true));
     }
 
     // a resposta anulada, a de outro dia e o dia do diario n seguram o envio: nelas a tarefa nova fecha

@@ -22,9 +22,10 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     @EntityGraph(attributePaths = {"appointment", "appointment.patient", "appointment.prescriber"})
     List<Prescription> findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(Long patientId);
 
-    // so o paciente da receita, sem carregar ela: a anulacao trava o paciente antes de ler a receita travada
-    @Query("select prescription.appointment.patient.id from Prescription prescription where prescription.id = :id")
-    Optional<Long> findPatientIdById(@Param("id") Long id);
+    // so a consulta da receita, sem carregar ela: a anulacao trava a consulta e o paciente
+    // antes de ler a receita travada
+    @Query("select prescription.appointment.id from Prescription prescription where prescription.id = :id")
+    Optional<Long> findAppointmentIdById(@Param("id") Long id);
 
     // a prescricao q esta valendo pro paciente
     List<Prescription> findByAppointmentPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(Long patientId,

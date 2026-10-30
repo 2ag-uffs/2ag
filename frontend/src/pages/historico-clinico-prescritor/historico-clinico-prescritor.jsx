@@ -114,8 +114,10 @@ export default function HistoricoClinicoPrescritor() {
     const currentPrescription = prescriptions.find((prescription) => prescription.current) || null;
 
     const consultationActions = (appointment) => {
-        // so a consulta confirmada e n anulada recebe registro prescricao e anulacao
-        if (appointment.annulled || !isConfirmed(appointment)) {
+        // a falta marcada por engano se desfaz registrando o atendimento, igual a api aceita
+        const isMissed = appointment.status === "NAO_COMPARECEU";
+        // so a consulta confirmada ou a falta, sem anulacao, recebe registro e anulacao
+        if (appointment.annulled || !(isConfirmed(appointment) || isMissed)) {
             return null;
         }
         // receita em consulta mais antiga q a da vigente entra so no historico
@@ -128,22 +130,27 @@ export default function HistoricoClinicoPrescritor() {
                     className="button-secondary button-small"
                     onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
                 >
-                    Editar registro
+                    {isMissed ? "Desfazer falta e registrar atendimento" : "Editar registro"}
                 </button>
-                <button
-                    type="button"
-                    className="button-secondary button-small"
-                    onClick={() => navigate("/consulta/" + appointment.id + "/prescricao")}
-                >
-                    {becomesCurrent ? "Emitir prescrição" : "Lançar receita no histórico"}
-                </button>
-                <button
-                    type="button"
-                    className="button-secondary button-small"
-                    onClick={() => navigate("/consulta/" + appointment.id + "/mini-exame")}
-                >
-                    Mini-exame
-                </button>
+                {/* a api so aceita receita e meem dps q o registro tira a consulta da falta */}
+                {!isMissed && (
+                    <>
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/consulta/" + appointment.id + "/prescricao")}
+                        >
+                            {becomesCurrent ? "Emitir prescrição" : "Lançar receita no histórico"}
+                        </button>
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/consulta/" + appointment.id + "/mini-exame")}
+                        >
+                            Mini-exame
+                        </button>
+                    </>
+                )}
                 <button
                     type="button"
                     className="button-danger button-small"

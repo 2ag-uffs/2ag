@@ -14,7 +14,9 @@ public interface ConsentAcceptanceRepository extends JpaRepository<ConsentAccept
 
     boolean existsByUserIdAndTermType(Long userId, ConsentType termType);
 
-    boolean existsByUserIdAndTermTypeAndTermVersion(Long userId, ConsentType termType, String termVersion);
+    // o ultimo aceite de uma versao, o id desempata dois aceites no msm instante
+    Optional<ConsentAcceptance> findFirstByUserIdAndTermTypeAndTermVersionOrderByAcceptedAtDescIdDesc(
+            Long userId, ConsentType termType, String termVersion);
 
     boolean existsByUserIdAndTermTypeAndTermVersionAndRevokedAtIsNull(Long userId, ConsentType termType,
                                                                       String termVersion);

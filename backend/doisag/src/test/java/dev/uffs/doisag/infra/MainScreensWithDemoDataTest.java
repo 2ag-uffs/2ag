@@ -134,6 +134,6 @@ class MainScreensWithDemoDataTest {
     }
 
     private Long lastResponseIdOf(Users patient) {
-        return responseRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0).getId();
+        return responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(patient.getId()).get(0).getId();
     }
 }

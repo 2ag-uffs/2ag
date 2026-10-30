@@ -31,6 +31,13 @@ async function addWeeks(user, count) {
     }
 }
 
+async function addCannabinoid(user, cannabinoid, concentration) {
+    await user.click(screen.getByRole("button", {name: "Adicionar canabinoide"}));
+    const lastRow = screen.getAllByLabelText("Canabinoide").length - 1;
+    fireEvent.change(screen.getAllByLabelText("Canabinoide")[lastRow], {target: {value: cannabinoid}});
+    fireEvent.change(screen.getAllByLabelText("Concentração")[lastRow], {target: {value: concentration}});
+}
+
 describe("PrescriptionForm", () => {
     beforeEach(() => {
         vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
@@ -94,5 +101,107 @@ describe("PrescriptionForm", () => {
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
         expect(await screen.findByRole("alert")).toHaveTextContent("O plano de dose pode ter até 104 degraus.");
+    });
+
+    // RN03: o isolado tem um canabinoide so
+    it("isolado com dois canabinoides avisa na composicao e nem chega na api", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Espectro"), {target: {value: "ISOLADO"}});
+        await addCannabinoid(user, "CBG", "5");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByText("O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum"))
+            .toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Confira os campos destacados.");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // RN03: broad spectrum eh sem THC
+    it("broad spectrum com THC avisa antes de enviar", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Espectro"), {target: {value: "BROAD_SPECTRUM"}});
+        await addCannabinoid(user, "THC", "1");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByText("O broad spectrum não tem THC. Tire o THC ou escolha full spectrum"))
+            .toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("o mesmo canabinoide em duas linhas avisa antes de enviar", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addCannabinoid(user, "CBD", "20");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByText("O mesmo canabinoide está em duas linhas. Deixe uma linha só para cada um"))
+            .toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("concentração acima de 100% avisa antes de enviar", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Concentração"), {target: {value: "150"}});
+        fireEvent.change(screen.getByLabelText("Unidade"), {target: {value: "PERCENTUAL"}});
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByText("A concentração em % vai até 100")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // outro pode repetir pq cada linha eh um canabinoide fora da lista, e 150 mg/mL n eh porcentagem
+    it("composição dentro da RN03 vai pra api", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Espectro"), {target: {value: "BROAD_SPECTRUM"}});
+        fireEvent.change(screen.getByLabelText("Concentração"), {target: {value: "150"}});
+        await addCannabinoid(user, "OUTRO", "2");
+        await addCannabinoid(user, "OUTRO", "1");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(post).toHaveBeenCalledTimes(1);
+        expect(post.mock.calls[0][1].components.map((component) => component.cannabinoid))
+            .toEqual(["CBD", "OUTRO", "OUTRO"]);
+    });
+
+    it("a próxima consulta começa no dia da consulta e a duração vai até 730 dias", async () => {
+        renderForm();
+
+        expect(await screen.findByLabelText("Próxima consulta")).toHaveAttribute("min", "2026-09-01");
+        expect(screen.getByLabelText("Duração do tratamento em dias")).toHaveAttribute("max", "730");
+    });
+
+    it("o erro da api na próxima consulta aparece no campo", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
+            {field: "nextConsultationDate", message: "A próxima consulta não pode ser antes desta consulta"},
+        ]));
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Próxima consulta"), {target: {value: "2026-09-10"}});
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(await screen.findByText("Confira os campos destacados.")).toBeInTheDocument();
+        expect(screen.getByLabelText("Próxima consulta")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByText("A próxima consulta não pode ser antes desta consulta")).toBeInTheDocument();
     });
 });

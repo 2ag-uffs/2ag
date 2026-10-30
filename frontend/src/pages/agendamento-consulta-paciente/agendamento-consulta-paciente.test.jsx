@@ -63,4 +63,27 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(await screen.findByText("20/10/2026 às 10:00")).toBeInTheDocument();
         expect(screen.queryByText(/horário de Brasília/)).not.toBeInTheDocument();
     });
+
+    // a api devolve agenda vazia pro arquivado e antes a tela mandava tentar de novo mais tarde
+    it("paciente arquivado ve q o acompanhamento acabou e a tela n oferece o pedido", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients/3") {
+                return Promise.resolve({...PATIENT, archived: true});
+            }
+            if (path === "/appointments/mine") {
+                return Promise.resolve([APPOINTMENT]);
+            }
+            return Promise.resolve([]);
+        });
+        render(<AgendamentoConsultaPaciente/>);
+
+        expect(await screen.findByText(
+            "Seu acompanhamento foi encerrado. Fale com a clínica para voltar a marcar consultas."))
+            .toBeInTheDocument();
+        expect(screen.queryByText(/Tente de novo mais tarde/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Pedir consulta"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/Peça um horário/)).not.toBeInTheDocument();
+        // a consulta q ja estava marcada continua aparecendo
+        expect(screen.getByRole("button", {name: "Cancelar consulta"})).toBeInTheDocument();
+    });
 });

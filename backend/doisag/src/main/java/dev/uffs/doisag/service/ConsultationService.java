@@ -6,12 +6,14 @@ import dev.uffs.doisag.dto.ConsultationRecordDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.AppointmentRepository;
@@ -52,18 +54,20 @@ public class ConsultationService {
     private final PrescriptionRepository prescriptionRepository;
     private final ScaleResponseRepository responseRepository;
     private final AuditService auditService;
+    private final NotificationService notificationService;
     private final RowLock rowLock;
 
     public ConsultationService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                                PrescriberRepository prescriberRepository, PrescriptionRepository prescriptionRepository,
                                ScaleResponseRepository responseRepository, AuditService auditService,
-                               RowLock rowLock) {
+                               NotificationService notificationService, RowLock rowLock) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.responseRepository = responseRepository;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.rowLock = rowLock;
     }
 
@@ -126,6 +130,8 @@ public class ConsultationService {
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
         checkRecordHasClinicalContent(recordData);
         checkDateCanChange(appointment, dateTime);
+        boolean undoesAbsence = appointment.getStatus() == AppointmentStatus.NAO_COMPARECEU;
+        LocalDateTime absenceDateTime = appointment.getDateTime();
 
         appointment.setDateTime(dateTime);
         appointment.setStatus(AppointmentStatus.CONCLUIDA);
@@ -134,6 +140,14 @@ public class ConsultationService {
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
                 savedAppointment.getPatient().getId());
+        // a falta avisou o paciente, entao desfazer avisa tbm, senao sobrava so o aviso pedindo pra remarcar
+        // vai com a data da falta pra bater com o aviso dela. igual na falta, o aviso vem dps da trilha
+        if (undoesAbsence) {
+            notificationService.createNotification(savedAppointment.getPatient(), "Falta desfeita",
+                    "A falta da consulta de " + BrazilianFormat.dateTime(absenceDateTime)
+                            + " foi desfeita e o atendimento foi registrado.",
+                    Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
+        }
         return new AppointmentResponseDTO(savedAppointment);
     }
 
@@ -144,14 +158,9 @@ public class ConsultationService {
         if (appointment.isAnnulled()) {
             throw new BusinessException(ALREADY_ANNULLED_MESSAGE);
         }
-        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
-            throw new BusinessException(HAS_PRESCRIPTION_MESSAGE);
-        }
-        // mesmo tratamento da prescricao pq o exame tem motivo proprio de anulacao
-        // e a trilha precisa registrar cada um entao n da pra anular em cascata
-        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
-            throw new BusinessException(HAS_EXAM_MESSAGE);
-        }
+        // a receita e o exame tem motivo proprio de anulacao e a trilha
+        // precisa registrar cada um entao n da pra anular em cascata
+        checkHasNoPrescriptionOrExam(appointmentId, HAS_PRESCRIPTION_MESSAGE, HAS_EXAM_MESSAGE);
 
         appointment.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -170,12 +179,41 @@ public class ConsultationService {
         if (sameMinute) {
             return;
         }
-        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
-            throw new BusinessException(DATE_WITH_PRESCRIPTION_MESSAGE);
+        checkHasNoPrescriptionOrExam(appointment.getId(), DATE_WITH_PRESCRIPTION_MESSAGE, DATE_WITH_EXAM_MESSAGE);
+    }
+
+    // receita ou meem n anulados mostram q a consulta aconteceu e prendem ela ao dia dela
+    // anular, mudar a data, marcar falta e cancelar esperam o prescritor anular os dois antes
+    // cada acao manda a propria mensagem pq o q o prescritor faz em seguida muda
+    public void checkHasNoPrescriptionOrExam(Long appointmentId, String prescriptionMessage, String examMessage) {
+        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
+            throw new BusinessException(prescriptionMessage);
         }
-        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
-            throw new BusinessException(DATE_WITH_EXAM_MESSAGE);
+        if (responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointmentId)) {
+            throw new BusinessException(examMessage);
         }
+    }
+
+    // a receita e o meem concluem a consulta agendada com o registro clinico vazio. anulado o ultimo deles,
+    // nada mais mostra q ela aconteceu, entao ela volta a agendada: senao a receita anulada seguia contando
+    // como atendimento (retorno, marca no grafico) e a falta e o cancelamento ficavam travados
+    // registro clinico nunca eh gravado vazio, entao concluida sem ele so veio da receita ou do meem
+    // quem chama ja travou a consulta e o paciente, por isso a trilha pode vir aqui
+    public void reopenIfConcludedOnlyByPrescriptionOrExam(Appointment appointment) {
+        if (appointment.isAnnulled() || appointment.getStatus() != AppointmentStatus.CONCLUIDA) {
+            return;
+        }
+        if (hasClinicalRecord(appointment)) {
+            return;
+        }
+        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())
+                || responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            return;
+        }
+        appointment.setStatus(AppointmentStatus.AGENDADA);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        auditService.recordChange(AuditRecordType.CONSULTA, savedAppointment.getId(),
+                savedAppointment.getPatient().getId());
     }
 
     // a consulta fica travada e eh lida de novo, igual na receita e no meem: a receita gravada
@@ -187,19 +225,28 @@ public class ConsultationService {
     }
 
     private void checkRecordHasClinicalContent(ConsultationRecordDTO recordData) {
-        boolean hasClinicalContent = hasText(recordData.clinicalObservation())
-                || hasText(recordData.physicalExam())
-                || hasText(recordData.evolution())
-                || hasText(recordData.diagnosis())
-                || hasText(recordData.therapeuticPlan())
-                || hasText(recordData.complementaryExams());
+        boolean hasClinicalContent = hasAnyText(recordData.clinicalObservation(), recordData.physicalExam(),
+                recordData.evolution(), recordData.diagnosis(), recordData.therapeuticPlan(),
+                recordData.complementaryExams());
         if (!hasClinicalContent) {
             throw new BusinessException(EMPTY_RECORD_MESSAGE);
         }
     }
 
-    private boolean hasText(String text) {
-        return text != null && !text.isBlank();
+    // os mesmos campos q o registro pede preenchidos
+    private boolean hasClinicalRecord(Appointment appointment) {
+        return hasAnyText(appointment.getClinicalObservation(), appointment.getPhysicalExam(),
+                appointment.getEvolution(), appointment.getDiagnosis(), appointment.getTherapeuticPlan(),
+                appointment.getComplementaryExams());
+    }
+
+    private boolean hasAnyText(String... texts) {
+        for (String text : texts) {
+            if (text != null && !text.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void copyClinicalFields(ConsultationRecordDTO recordData, Appointment appointment) {

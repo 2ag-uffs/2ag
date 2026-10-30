@@ -2,8 +2,10 @@ package dev.uffs.doisag.infra;
 
 import dev.uffs.doisag.dto.ErrorResponseDTO;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.method.annotation.ExceptionHandlerMethodResolver;
 
 import java.lang.reflect.Method;
@@ -41,5 +43,23 @@ class ErrorHandlerTest {
                 .resolveMethod(new ArithmeticException("/ by zero"));
 
         assertThat(handler.getName()).isEqualTo("handleUnexpected");
+    }
+
+    // id em branco eh pedido errado (400), mas a variavel q n existe na rota eh bug nosso e fica 500
+    @Test
+    void missingPathVariableIsBadRequestOnlyWhenTheIdCameBlank() throws Exception {
+        MethodParameter idParameter = new MethodParameter(Long.class.getMethod("valueOf", long.class), 0);
+
+        ResponseEntity<ErrorResponseDTO> blankId = errorHandler.handleMissingPathVariable(
+                new MissingPathVariableException("id", idParameter, true),
+                new MockHttpServletRequest("GET", "/patients/%20"));
+        ResponseEntity<ErrorResponseDTO> wrongRoute = errorHandler.handleMissingPathVariable(
+                new MissingPathVariableException("id", idParameter, false),
+                new MockHttpServletRequest("GET", "/patients/1"));
+
+        assertThat(blankId.getStatusCode().value()).isEqualTo(400);
+        assertThat(blankId.getBody().message()).isEqualTo("Requisição inválida. Confira os dados enviados");
+        assertThat(wrongRoute.getStatusCode().value()).isEqualTo(500);
+        assertThat(wrongRoute.getBody().message()).isEqualTo("Ocorreu um erro inesperado no servidor");
     }
 }

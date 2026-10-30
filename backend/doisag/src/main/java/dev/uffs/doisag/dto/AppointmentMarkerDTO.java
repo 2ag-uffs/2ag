@@ -26,7 +26,13 @@ public record AppointmentMarkerDTO(
                 appointment.getModality(),
                 appointment.getStatus(),
                 appointment.getDiagnosis(),
-                appointment.getPrescriptions() != null && !appointment.getPrescriptions().isEmpty()
+                hasValidPrescription(appointment)
         );
+    }
+
+    // receita anulada n conta, senao a marca ligava a curva a uma dose q n valeu
+    private static boolean hasValidPrescription(Appointment appointment) {
+        return appointment.getPrescriptions() != null
+                && appointment.getPrescriptions().stream().anyMatch(prescription -> !prescription.isAnnulled());
     }
 }

@@ -1,6 +1,7 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PilotIndicatorsDTO;
+import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
@@ -156,7 +157,10 @@ public class IndicatorsService {
                 count.daysFilled += validDays;
             } else {
                 // reabrir apaga o answeredAt, entao resposta anulada sem outra no lugar n conta
-                onTime = task.getAnsweredAt() != null && !task.getAnsweredAt().isAfter(task.getPeriodEnd());
+                // a nao respondida q ganhou resposta ou anamnese atrasada segue fora do prazo, mesmo qnd o
+                // arquivamento cortou o prazo pro dia dela
+                onTime = task.getStatus() != ScaleTaskStatus.NAO_RESPONDIDA && task.getAnsweredAt() != null
+                        && !task.getAnsweredAt().isAfter(task.getPeriodEnd());
             }
             if (onTime) {
                 count.formsOnTime++;

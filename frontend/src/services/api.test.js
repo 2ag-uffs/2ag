@@ -1,6 +1,8 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {
     ApiError,
+    apiService,
+    checkPendingTerm,
     CONNECTION_ERROR_MESSAGE,
     errorMessageOf,
     getLoggedUser,
@@ -51,6 +53,43 @@ describe("logout", () => {
 
         expect(await logout()).toBe(true);
         expect(getLoggedUser()).toBeNull();
+    });
+});
+
+// a data salva no perfil pode deixar o termo pendente, e o layout abre ele pelo aviso
+describe("checkPendingTerm", () => {
+    afterEach(() => {
+        setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    it("abre o termo qnd a api diz q ele ficou pendente", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({...MARIA, termPending: true, termPendingByAge: true});
+        const openTerm = vi.fn();
+        window.addEventListener("term-pending", openTerm);
+        setLoggedUser(MARIA);
+
+        await checkPendingTerm();
+        window.removeEventListener("term-pending", openTerm);
+
+        expect(openTerm).toHaveBeenCalledTimes(1);
+        expect(getLoggedUser()).toEqual({...MARIA, termPending: true, termPendingByAge: true});
+    });
+
+    // sem resposta da api o 403 da proxima gravacao ainda abre o termo
+    it("sem termo pendente ou sem resposta da api nada abre", async () => {
+        const get = vi.spyOn(apiService, "get").mockResolvedValue(MARIA);
+        const openTerm = vi.fn();
+        window.addEventListener("term-pending", openTerm);
+        setLoggedUser(MARIA);
+
+        await checkPendingTerm();
+        get.mockRejectedValue(new TypeError("Failed to fetch"));
+        await checkPendingTerm();
+        window.removeEventListener("term-pending", openTerm);
+
+        expect(openTerm).not.toHaveBeenCalled();
+        expect(getLoggedUser()).toEqual(MARIA);
     });
 });
 

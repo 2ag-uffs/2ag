@@ -129,7 +129,7 @@ class ScaleResponseRaceTest {
         // 200 e n 201: o envio q esperava corrigiu o dia gravado no meio tempo
         assertThat(outcome.value().created()).isFalse();
         List<ScaleResponse> responsesOfTheDay = responseRepository
-                .findByPatientIdAndScaleTypeOrderByPeriodStartDesc(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL);
+                .findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL);
         assertThat(responsesOfTheDay).hasSize(1);
         assertThat(responsesOfTheDay.get(0).getId()).isEqualTo(outcome.value().response().id());
         assertThat(responsesOfTheDay.get(0).getAnswers()).containsEntry("dor", 5);

@@ -350,14 +350,15 @@ class ClinicalRecordRaceTest {
         assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
     }
 
-    // a anulacao da receita trava o paciente e dps a receita, lida de novo: a segunda anulacao espera, encontra
-    // a receita ja anulada e eh recusada, em vez de trocar o motivo da primeira
+    // a anulacao da receita trava a consulta, o paciente e dps a receita, lida de novo: a segunda anulacao espera,
+    // encontra a receita ja anulada e eh recusada, em vez de trocar o motivo da primeira
     @Test
     void theSecondPrescriptionAnnulmentWaitsAndIsRefused() throws Exception {
-        Prescription prescription = savePrescriptionOf(saveAppointmentOn(TODAY.minusDays(1)));
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+        Prescription prescription = savePrescriptionOf(appointment);
 
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
-                () -> patientRepository.lockById(patient.getId()),
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> prescriptionService.annul(prescription.getId(), new AnnulmentDTO("Lançada no paciente errado"),
                         prescriber),
                 () -> prescriptionService.annul(prescription.getId(), new AnnulmentDTO("Dose errada"), prescriber));
@@ -366,6 +367,23 @@ class ClinicalRecordRaceTest {
                 .hasMessage(PrescriptionService.ALREADY_ANNULLED_MESSAGE);
         assertThat(prescriptionRepository.findById(prescription.getId()).orElseThrow().getAnnulment()
                 .getAnnulmentReason()).isEqualTo("Lançada no paciente errado");
+    }
+
+    // a anulacao da receita pode devolver a consulta pra agendada, entao ela espera a consulta: o registro
+    // gravado no meio tempo aparece e a consulta atendida continua concluida
+    @Test
+    void thePrescriptionAnnulmentWaitsForTheConsultationAndKeepsTheRecordSavedMeanwhile() throws Exception {
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+        PrescriptionResponseDTO prescription = prescriptionService.create(prescriptionData(), appointment.getId());
+
+        HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
+                () -> rowLock.reload(Appointment.class, appointment.getId()),
+                () -> consultationService.updateRecord(appointment.getId(), recordOn(TODAY.minusDays(1))),
+                () -> prescriptionService.annul(prescription.id(), new AnnulmentDTO("Dose errada"), prescriber));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CONCLUIDA);
     }
 
     private ConsultationRecordDTO recordOn(LocalDate day) {

@@ -158,6 +158,107 @@ class PrescriptionFlowTest {
                 .andExpect(jsonPath("$.errors[0].field").value("components[0].concentration"));
     }
 
+    // RN03: isolado eh um canabinoide so
+    @Test
+    void isolateWithMoreThanOneCannabinoidIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo isolado");
+        prescription.put("spectrum", "ISOLADO");
+        prescription.put("components", List.of(
+                component("CBD", 10, "MG_POR_ML"),
+                component("CBG", 5, "MG_POR_ML"),
+                component("CBN", 2, "MG_POR_ML")));
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.ISOLATE_ONE_CANNABINOID_MESSAGE));
+    }
+
+    // RN03: broad spectrum eh sem THC
+    @Test
+    void broadSpectrumWithThcIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo broad spectrum");
+        prescription.put("spectrum", "BROAD_SPECTRUM");
+        prescription.put("components", List.of(
+                component("CBD", 10, "MG_POR_ML"),
+                component("THC", 1, "MG_POR_ML")));
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components[1].cannabinoid"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.BROAD_SPECTRUM_THC_MESSAGE));
+    }
+
+    // CBD 10 + CBD 20 o paciente n sabe qual vale
+    @Test
+    void repeatedCannabinoidIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo");
+        prescription.put("components", List.of(
+                component("CBD", 10, "MG_POR_ML"),
+                component("CBD", 20, "MG_POR_ML")));
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components[1].cannabinoid"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.REPEATED_CANNABINOID_MESSAGE));
+    }
+
+    @Test
+    void percentAboveOneHundredIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo");
+        prescription.put("components", List.of(component("CBD", 150, "PERCENTUAL")));
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("components[0].concentration"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.PERCENT_OVER_100_MESSAGE));
+    }
+
+    @Test
+    void nextConsultationBeforeTheConsultationIsRefused() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, LocalDateTime.of(2026, 9, 1, 10, 0));
+        Map<String, Object> prescription = prescriptionWith("Oleo");
+        prescription.put("nextConsultationDate", "2020-01-01");
+
+        issuePrescription(appointmentId, prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("nextConsultationDate"))
+                .andExpect(jsonPath("$.errors[0].message")
+                        .value(PrescriptionService.NEXT_CONSULTATION_BEFORE_MESSAGE));
+    }
+
+    @Test
+    void treatmentLongerThanTwoYearsIsRefused() throws Exception {
+        Map<String, Object> prescription = prescriptionWith("Oleo");
+        prescription.put("treatmentDurationDays", 99999);
+
+        issuePrescription(registeredConsultationId(), prescription)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("treatmentDurationDays"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.DURATION_TOO_LONG_MESSAGE));
+    }
+
+    // os limites ainda passam: isolado com um, OUTRO repetido, 100%, retorno no mesmo dia e 730 dias
+    @Test
+    void prescriptionInsideTheCompositionRulesIsIssued() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, LocalDateTime.of(2026, 9, 1, 10, 0));
+        Map<String, Object> isolate = prescriptionWith("Oleo isolado");
+        isolate.put("spectrum", "ISOLADO");
+        isolate.put("components", List.of(component("CBD", 100, "PERCENTUAL")));
+        isolate.put("treatmentDurationDays", 730);
+        isolate.put("nextConsultationDate", "2026-09-01");
+        issuePrescription(appointmentId, isolate).andExpect(status().isCreated());
+
+        Map<String, Object> broadSpectrum = prescriptionWith("Oleo broad spectrum");
+        broadSpectrum.put("spectrum", "BROAD_SPECTRUM");
+        broadSpectrum.put("components", List.of(
+                component("CBD", 150, "MG_POR_ML"),
+                component("OUTRO", 2, "MG_POR_ML"),
+                component("OUTRO", 1, "MG_POR_ML")));
+        broadSpectrum.put("nextConsultationDate", "2026-10-01");
+        issuePrescription(appointmentId, broadSpectrum).andExpect(status().isCreated());
+    }
+
     // item nulo no meio da lista passava pela validacao e derrubava o servico com 500
     @Test
     void nullCannabinoidOrDoseStepIsRefusedWithTheField() throws Exception {
@@ -201,6 +302,97 @@ class PrescriptionFlowTest {
         issuePrescription(appointmentId, prescriptionWith("Oleo"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PrescriptionService.FUTURE_CONSULTATION_MESSAGE));
+    }
+
+    // a receita mostra q a consulta aconteceu, entao a passada q ficou agendada vira concluida: senao a
+    // proxima consulta voltava a ser primeira e o grafico n marcava o dia. o registro fica vazio ate o prescritor preencher
+    @Test
+    void prescriptionConcludesThePastScheduledConsultation() throws Exception {
+        LocalDateTime pastTime = LocalDate.now().minusDays(2).atTime(9, 0);
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, pastTime);
+
+        issuedPrescriptionId(appointmentId, "Oleo da consulta agendada");
+
+        mockMvc.perform(get("/appointments/" + appointmentId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"))
+                .andExpect(jsonPath("$.diagnosis").isEmpty());
+        mockMvc.perform(post("/appointments")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("patientId", patient.getId(),
+                                "dateTime", LocalDate.now().plusDays(3).atTime(10, 0).toString(),
+                                "modality", "PRESENCIAL"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("RETORNO"));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/appointments")
+                        .param("period", "DIAS_30")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].data").value(pastTime.toLocalDate().toString()));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.events[?(@.recordType == 'CONSULTA' && @.operation == 'ALTERACAO')]",
+                        hasSize(1)));
+    }
+
+    // a receita na consulta errada concluiu a consulta e o registro ficou vazio: anulada, nada mais mostra
+    // q ela aconteceu, entao ela volta a agendada, a proxima volta a ser primeira e a volta entra na trilha
+    @Test
+    void annullingThePrescriptionReopensTheConsultationItConcluded() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, LocalDate.now().minusDays(2).atTime(9, 0));
+        Long prescriptionId = issuedPrescriptionId(appointmentId, "Oleo da consulta errada");
+
+        annulPrescription(prescriptionId, "Lancada na consulta errada").andExpect(status().isOk());
+
+        mockMvc.perform(get("/appointments/" + appointmentId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.status").value("AGENDADA"));
+        mockMvc.perform(post("/appointments")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("patientId", patient.getId(),
+                                "dateTime", LocalDate.now().plusDays(3).atTime(10, 0).toString(),
+                                "modality", "PRESENCIAL"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.appointmentType").value("PRIMEIRA_CONSULTA"));
+        // uma alteracao da consulta na conclusao e outra na volta pra agendada
+        mockMvc.perform(get("/patients/" + patient.getId() + "/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.events[?(@.recordType == 'CONSULTA' && @.operation == 'ALTERACAO')]",
+                        hasSize(2)));
+    }
+
+    // com o registro preenchido a consulta aconteceu de qq jeito, e anular a receita n mexe nela
+    @Test
+    void annullingThePrescriptionKeepsAConsultationWithARecordConcluded() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, LocalDate.now().minusDays(2).atTime(9, 0));
+        Long prescriptionId = issuedPrescriptionId(appointmentId, "Oleo");
+        mockMvc.perform(put("/appointments/" + appointmentId + "/clinical-record")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"modality\":\"PRESENCIAL\",\"evolution\":\"Dormindo melhor\"}"))
+                .andExpect(status().isOk());
+
+        annulPrescription(prescriptionId, "Dose errada").andExpect(status().isOk());
+
+        mockMvc.perform(get("/appointments/" + appointmentId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
+    }
+
+    // a outra receita valendo na mesma consulta tbm mostra q ela aconteceu
+    @Test
+    void annullingOneOfTwoPrescriptionsKeepsTheConsultationConcluded() throws Exception {
+        Long appointmentId = saveAppointment(AppointmentStatus.AGENDADA, LocalDate.now().minusDays(2).atTime(9, 0));
+        Long firstId = issuedPrescriptionId(appointmentId, "Oleo de dia");
+        issuedPrescriptionId(appointmentId, "Oleo de noite");
+
+        annulPrescription(firstId, "Dose errada").andExpect(status().isOk());
+
+        mockMvc.perform(get("/appointments/" + appointmentId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.status").value("CONCLUIDA"));
     }
 
     // receita q faltou numa consulta antiga entra so no historico e a vigente continua

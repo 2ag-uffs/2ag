@@ -9,6 +9,7 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Patient;
@@ -56,7 +57,9 @@ class TreatmentProtocolServiceTest {
     @Autowired private ReminderService reminderService;
     @Autowired private AuditEventRepository auditEventRepository;
 
-    private static final LocalDate INICIO = LocalDate.of(2026, 9, 1);
+    // comeca amanha: a primeira rodada fica pro job, q os testes chamam com a data na mao
+    // uma data fixa vencia com o calendario, pq o acompanhamento q terminaria antes de hoje eh recusado
+    private static final LocalDate INICIO = LocalDate.now().plusDays(1);
 
     private Patient paciente;
     private Prescriber prescritora;
@@ -223,6 +226,60 @@ class TreatmentProtocolServiceTest {
                 .hasMessageContaining("já tem um acompanhamento");
     }
 
+    // a renovacao do RF32 no dia seguinte ao fim, antes do job das 8h encerrar o anterior
+    @Test
+    void renovaNoDiaSeguinteAoFimSemEncerrarNaMao() {
+        LocalDate hoje = LocalDate.now();
+        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL)));
+        TreatmentProtocol anterior = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
+                .orElseThrow();
+        // terminou ontem e o job ainda n passou por ele
+        anterior.setStartDate(hoje.minusDays(90));
+        anterior.setEndDate(hoje.minusDays(1));
+        protocolRepository.save(anterior);
+
+        TreatmentProtocolResponseDTO novo = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(protocolRepository.findById(anterior.getId()).orElseThrow().isActive()).isFalse();
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId()).orElseThrow().getId())
+                .isEqualTo(novo.id());
+        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(1);
+        // encerrado igual o job encerra, com a trilha
+        LocalDateTime agora = LocalDateTime.now();
+        assertThat(auditEventRepository.findPatientEvents(paciente.getId(), agora.minusDays(1), agora.plusDays(1),
+                PageRequest.of(0, 10)).getContent())
+                .anyMatch(evento -> evento.getOperation() == AuditOperation.ALTERACAO
+                        && evento.getRecordId().equals(anterior.getId()));
+    }
+
+    // o q terminaria antes de hoje nascia vencido, sem rodada nenhuma, e travava o certo ate o job
+    @Test
+    void naoDeixaOAcompanhamentoNascerVencido() {
+        LocalDate hoje = LocalDate.now();
+
+        assertThatThrownBy(() -> treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje.minusDays(90), 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora))
+                .isInstanceOf(InvalidFieldException.class)
+                .hasMessage(TreatmentProtocolService.ENDS_BEFORE_TODAY_MESSAGE)
+                .extracting("field").isEqualTo("startDate");
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())).isEmpty();
+    }
+
+    @Test
+    void acompanhamentoQueTerminaHojeAindaVale() {
+        LocalDate hoje = LocalDate.now();
+
+        TreatmentProtocolResponseDTO criado = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje.minusDays(89), 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(criado.endDate()).isEqualTo(hoje);
+        assertThat(criado.active()).isTrue();
+    }
+
     // o MEEM eh aplicado pelo prescritor na consulta, n entra no
     // acompanhamento automatico do paciente (RN09)
     @Test
@@ -231,6 +288,16 @@ class TreatmentProtocolServiceTest {
                 item(ScaleType.MINI_EXAME_ESTADO_MENTAL, Periodicity.MENSAL))))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage(ScaleTaskService.PRESCRIBER_SCALE_MESSAGE);
+    }
+
+    // as duas rodadas adotavam a mesma tarefa e cada uma reescrevia o prazo dela
+    @Test
+    void naoDeixaAMesmaEscalaDuasVezesNoAcompanhamento() {
+        assertThatThrownBy(() -> criaProtocolo(List.of(
+                item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL))))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(TreatmentProtocolService.DUPLICATE_SCALE_MESSAGE);
     }
 
     private ScaleTask enviaAvulsa(ScaleType escala, LocalDate dia) {

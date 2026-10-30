@@ -27,6 +27,10 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     Optional<ScaleTask> findFirstByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
             Long patientId, ScaleType scaleType, ScaleTaskStatus status);
 
+    // a ultima tarefa de uma escala, seja qual for a situacao: a resposta atrasada so fica com ela
+    Optional<ScaleTask> findFirstByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(Long patientId,
+                                                                                     ScaleType scaleType);
+
     // todas as tarefas abertas de uma escala, pq no diario pode ter a antiga e a atual ao mesmo tempo
     List<ScaleTask> findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
             Long patientId, ScaleType scaleType, ScaleTaskStatus status);
@@ -46,13 +50,15 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     // entram as q o job ja fechou e as q venceram antes de ele rodar
     // paciente arquivado fica de fora: o arquivamento fecha as escalas abertas no dia, e elas
     // viravam alerta de atraso de quem ja saiu do acompanhamento
+    // a nao respondida sai qnd ganha resposta atrasada: a de escala fica ligada nela e a anamnese, q n
+    // tem ligacao, marca o dia em answeredAt
     //
     // a conta de quem n tem resposta fica no banco e o corte vem no Pageable:
     // antes o painel carregava todas as vencidas e contava uma por uma pra
     // jogar fora tudo menos cinco
     @Query("select task from ScaleTask task "
             + "where task.prescriber.id = :prescriberId and task.status in :statuses "
-            + "and task.periodEnd < :day and task.patient.archivedAt is null "
+            + "and task.periodEnd < :day and task.patient.archivedAt is null and task.answeredAt is null "
             + "and not exists (select response.id from ScaleResponse response "
             + "where response.task = task and response.annulment.annulledAt is null) "
             + "order by task.periodEnd desc")
@@ -64,7 +70,7 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     // o total das vencidas com a mesma regra da lista, pq o painel mostra so cinco
     @Query("select count(task) from ScaleTask task "
             + "where task.prescriber.id = :prescriberId and task.status in :statuses "
-            + "and task.periodEnd < :day and task.patient.archivedAt is null "
+            + "and task.periodEnd < :day and task.patient.archivedAt is null and task.answeredAt is null "
             + "and not exists (select response.id from ScaleResponse response "
             + "where response.task = task and response.annulment.annulledAt is null)")
     long countLateWithoutAnswers(@Param("prescriberId") Long prescriberId,

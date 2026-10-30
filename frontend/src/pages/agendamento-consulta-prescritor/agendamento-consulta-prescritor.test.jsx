@@ -36,9 +36,12 @@ function renderAgenda({weekAppointments = [], daysOff = []} = {}) {
         };
         return Promise.resolve(answers[path]);
     });
-    const router = createMemoryRouter([{path: "/agendamento-prescritor", element: <AgendamentoPrescritor/>}],
-        {initialEntries: ["/agendamento-prescritor"]});
+    const router = createMemoryRouter([
+        {path: "/agendamento-prescritor", element: <AgendamentoPrescritor/>},
+        {path: "/consulta/:appointmentId/registro", element: <p>registro da consulta</p>},
+    ], {initialEntries: ["/agendamento-prescritor"]});
     render(<RouterProvider router={router}/>);
+    return router;
 }
 
 async function fillNewAppointment(user) {
@@ -149,5 +152,23 @@ describe("AgendamentoPrescritor", () => {
 
         expect(await screen.findByText("Primeira consulta · Presencial")).toBeInTheDocument();
         expect(screen.getByText("sem atendimento")).toBeInTheDocument();
+    });
+
+    // a falta marcada por engano se desfaz registrando o atendimento, q a api ja aceitava
+    it("a falta oferece desfazer e leva ao registro do atendimento", async () => {
+        const user = userEvent.setup();
+        const monday = toIsoDate(mondayOf(new Date()));
+        const router = renderAgenda({
+            weekAppointments: [{
+                id: 9, dateTime: monday + "T08:00:00", durationMinutes: 60, appointmentType: "RETORNO",
+                modality: "PRESENCIAL", status: "NAO_COMPARECEU", patientId: 5, patientName: "Maria Souza",
+                prescriberName: "Ana Lima", patientNote: null, annulled: false,
+            }],
+        });
+
+        await user.click(await screen.findByRole("button", {name: "Desfazer falta e registrar atendimento"}));
+
+        expect(await screen.findByText("registro da consulta")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/consulta/9/registro");
     });
 });

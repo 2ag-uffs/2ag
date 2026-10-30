@@ -224,9 +224,18 @@ export default function AppLayout() {
     const homePath = homePathFor(loggedUser);
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
-    // paciente com versao antiga do termo ve o aceite no lugar de qualquer tela (#58)
+    // paciente com o termo pendente (versao antiga ou aceite de outra faixa de idade) ve o aceite
+    // no lugar de qualquer tela (#58)
     const [isTermPending, setIsTermPending] = useState(
         Boolean(loggedUser && loggedUser.role === "PATIENT" && loggedUser.termPending));
+    // a data de nascimento corrigida na tela do termo monta de novo a tela de baixo,
+    // senao o perfil continuava com a data errada no formulario e salvar de novo cruzava os 18 anos outra vez
+    const [pageReloads, setPageReloads] = useState(0);
+
+    const handleBirthDateFixed = () => {
+        setIsTermPending(false);
+        setPageReloads((count) => count + 1);
+    };
 
     const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
     const unreadCount = useUnreadCount(hasNotices, location.pathname);
@@ -354,9 +363,11 @@ export default function AppLayout() {
                 )}
                 {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
                 <div key={location.pathname} className={styles.page}>
-                    {isTermPending && <TermUpdate onAccepted={() => setIsTermPending(false)}/>}
+                    {isTermPending && (
+                        <TermUpdate onAccepted={() => setIsTermPending(false)} onBirthDateFixed={handleBirthDateFixed}/>
+                    )}
                     {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
-                    <div className={styles.pageContent} hidden={isTermPending}>
+                    <div key={pageReloads} className={styles.pageContent} hidden={isTermPending}>
                         <Outlet/>
                     </div>
                 </div>

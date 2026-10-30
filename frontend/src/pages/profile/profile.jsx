@@ -11,6 +11,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {
     apiService,
+    checkPendingTerm,
     CONNECTION_ERROR_MESSAGE,
     getLoggedUser,
     readRequestError,
@@ -681,6 +682,14 @@ export default function Profile() {
         }
     };
 
+    // a data de nascimento q cruza os 18 anos deixa o termo pendente, e o layout abre ele na hora (#163)
+    const handlePersonalDataSaved = (savedProfile) => {
+        handleSaved(savedProfile);
+        if (savedProfile.role === "PATIENT") {
+            checkPendingTerm();
+        }
+    };
+
     const handleResearchChanged = (researchConsent) => {
         setProfile((currentProfile) => ({...currentProfile, researchConsent: researchConsent}));
     };
@@ -724,7 +733,7 @@ export default function Profile() {
             <PageHeader title="Meu perfil" subtitle={subtitle}/>
 
             <div className={styles.grid}>
-                <PersonalDataCard profile={profile} onSaved={handleSaved}/>
+                <PersonalDataCard profile={profile} onSaved={handlePersonalDataSaved}/>
                 <div className={styles.column}>
                     {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
                     <PasswordCard onPasswordChanged={handlePasswordChanged}/>

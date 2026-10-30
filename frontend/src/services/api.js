@@ -84,6 +84,12 @@ function goToLoginWithExpiredSession() {
     window.location.href = "/entrar?sessao=expirada&voltar=" + encodeURIComponent(currentPath);
 }
 
+// o layout escuta o aviso e abre o termo por cima da tela aberta
+function openPendingTerm(user) {
+    loggedUser = user;
+    window.dispatchEvent(new Event("term-pending"));
+}
+
 async function request(path, options = {}) {
     const headers = {"Content-Type": "application/json", ...(options.headers || {})};
     const response = await fetch(BASE_URL + path, {...options, headers});
@@ -103,10 +109,9 @@ async function request(path, options = {}) {
         throw new ApiError(401, message);
     }
 
-    // a versao do termo mudou com a sessao aberta e o layout abre o termo por cima da tela
+    // o termo ficou pendente com a sessao aberta (versao nova ou aniversario de 18 anos)
     if (response.status === 403 && response.headers.get("X-Term-Pending") === "true" && loggedUser) {
-        loggedUser = {...loggedUser, termPending: true};
-        window.dispatchEvent(new Event("term-pending"));
+        openPendingTerm({...loggedUser, termPending: true});
     }
 
     if (!response.ok) {
@@ -125,6 +130,20 @@ export async function loadSession() {
         loggedUser = null;
     }
     return loggedUser;
+}
+
+// a data de nascimento salva no perfil pode cruzar os 18 anos e deixar o termo pendente,
+// entao pergunta de novo pra api e abre o termo na hora, sem esperar a proxima gravacao dar 403
+// quem decide eh a api, q conta a idade no horario de brasilia
+export async function checkPendingTerm() {
+    try {
+        const sessionUser = await apiService.get("/auth/me");
+        if (sessionUser && sessionUser.termPending && loggedUser) {
+            openPendingTerm(sessionUser);
+        }
+    } catch {
+        // sem resposta o 403 da proxima gravacao ainda abre o termo
+    }
 }
 
 // o nome do arquivo vem do cabecalho q a api manda

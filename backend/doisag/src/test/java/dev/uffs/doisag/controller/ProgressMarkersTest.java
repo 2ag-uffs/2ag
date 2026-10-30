@@ -12,11 +12,13 @@ import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,8 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // marcas das consultas no grafico de evolucao
@@ -42,6 +46,7 @@ class ProgressMarkersTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private EntityManager entityManager;
 
     private Prescriber prescriber;
     private Prescriber otherPrescriber;
@@ -90,6 +95,31 @@ class ProgressMarkersTest {
         assertThat(json.readTree(markersOf(bearerTokenOf(patient), "DIAS_30"))).isEmpty();
     }
 
+    // receita anulada n conta em lugar nenhum, entao anular a unica receita da consulta tira a marca de receita
+    @Test
+    void annulledPrescriptionDoesNotMarkTheConsultation() throws Exception {
+        long prescriptionId = prescribe(saveConsultation(1, AppointmentStatus.CONCLUIDA));
+        assertThat(markerOfTheConsultation().get("geraPrescricao").asBoolean()).isTrue();
+
+        annulPrescription(prescriptionId);
+
+        assertThat(markerOfTheConsultation().get("geraPrescricao").asBoolean()).isFalse();
+    }
+
+    // a receita concluiu a consulta q estava agendada, e anulada nada mais mostra q ela aconteceu:
+    // a consulta volta a agendada e o dia sai do grafico
+    @Test
+    void annullingThePrescriptionThatConcludedTheConsultationRemovesTheMarker() throws Exception {
+        long prescriptionId = prescribe(saveConsultation(1, AppointmentStatus.AGENDADA));
+        assertThat(markerOfTheConsultation().get("geraPrescricao").asBoolean()).isTrue();
+
+        annulPrescription(prescriptionId);
+
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(json.readTree(markersOf(bearerTokenOf(prescriber), "DIAS_30"))).isEmpty();
+    }
+
     @Test
     void markersRespectTheChartWindow() throws Exception {
         saveConsultation(40, AppointmentStatus.CONCLUIDA);
@@ -121,7 +151,7 @@ class ProgressMarkersTest {
     }
 
     // o grafico olha pra tras e a agenda recusa data passada entao a consulta entra direto pelo repositorio
-    private void saveConsultation(int daysAgo, AppointmentStatus appointmentStatus) {
+    private Long saveConsultation(int daysAgo, AppointmentStatus appointmentStatus) {
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
         appointment.setPrescriber(prescriber);
@@ -129,7 +159,42 @@ class ProgressMarkersTest {
         appointment.setModality(AppointmentModality.PRESENCIAL);
         appointment.setStatus(appointmentStatus);
         appointment.setDurationMinutes(60);
-        appointmentRepository.save(appointment);
+        // a concluida pela tela sempre tem registro clinico
+        if (appointmentStatus == AppointmentStatus.CONCLUIDA) {
+            appointment.setEvolution("Dormindo melhor");
+        }
+        return appointmentRepository.save(appointment).getId();
+    }
+
+    private long prescribe(Long appointmentId) throws Exception {
+        String prescriptionBody = mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
+                                + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,"
+                                + "\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(prescriptionBody).get("id").asLong();
+    }
+
+    private void annulPrescription(long prescriptionId) throws Exception {
+        mockMvc.perform(put("/prescriptions/" + prescriptionId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Lancada na consulta errada\"}"))
+                .andExpect(status().isOk());
+    }
+
+    // a sessao do teste eh uma so e guardava a consulta com a lista de receitas de antes,
+    // entao ela eh esvaziada antes e dps de ler as marcas, como se cada rota tivesse a propria
+    private JsonNode markerOfTheConsultation() throws Exception {
+        entityManager.flush();
+        entityManager.clear();
+        JsonNode markers = json.readTree(markersOf(bearerTokenOf(prescriber), "DIAS_30"));
+        entityManager.clear();
+        assertThat(markers).hasSize(1);
+        return markers.get(0);
     }
 
     private String markersOf(String token, String period) throws Exception {

@@ -317,7 +317,7 @@ class EmailChangeRaceTest {
         assertThat(outcome.error()).isNull();
         assertThat(outcome.value().getResponse().getStatus()).isEqualTo(204);
         assertThat(savedPatient().getEmail()).isEqualTo(FIRST_EMAIL);
-        assertThat(scaleResponseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(
+        assertThat(scaleResponseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(
                 patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL)).hasSize(1);
     }
 

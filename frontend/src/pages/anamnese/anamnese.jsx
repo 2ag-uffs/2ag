@@ -5,7 +5,8 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
+import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./anamnese.module.css";
@@ -44,8 +45,8 @@ function emptyAnswers() {
         adverseReaction: "",
         geneticCondition: "",
         diet: "",
-        smokingHabits: "Não",
-        alcoholConsumption: "Não",
+        smokingHabits: "",
+        alcoholConsumption: "",
         weight: "",
         height: "",
         substanceUse: "",
@@ -59,7 +60,7 @@ function emptyAnswers() {
     };
 }
 
-// resposta q ficou em branco volta vazia e as de escolha voltam no padrao
+// resposta q ficou em branco volta vazia, inclusive as de escolha (RN10)
 function answersFrom(savedAnamnesis) {
     const defaultAnswers = emptyAnswers();
     const savedAnswers = {};
@@ -88,9 +89,10 @@ export default function Anamnese() {
     const [searchParams] = useSearchParams();
     const anamnesisId = searchParams.get("id");
     const isCorrection = anamnesisId !== null;
+    const loggedUser = getLoggedUser();
 
     const [answers, setAnswers] = useState(emptyAnswers);
-    const [isLoading, setIsLoading] = useState(isCorrection);
+    const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
@@ -98,20 +100,21 @@ export default function Anamnese() {
     const [isConfirmingExit, setIsConfirmingExit] = useState(false);
 
     useEffect(() => {
-        if (!isCorrection) {
-            return;
-        }
         let isCurrentRequest = true;
+        // a ficha nova confere antes o paciente pq a api recusa anamnese nova de quem foi arquivado
+        const path = isCorrection ? "/anamneses/" + anamnesisId : "/patients/" + loggedUser.id;
 
-        apiService.get("/anamneses/" + anamnesisId)
-            .then((savedAnamnesis) => {
+        apiService.get(path)
+            .then((found) => {
                 if (!isCurrentRequest) {
                     return;
                 }
-                if (savedAnamnesis.annulled) {
+                if (isCorrection && found.annulled) {
                     setLoadError("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
-                } else {
-                    setAnswers(answersFrom(savedAnamnesis));
+                } else if (isCorrection) {
+                    setAnswers(answersFrom(found));
+                } else if (found.archived) {
+                    setLoadError(ARCHIVED_ANAMNESIS_NOTICE);
                 }
                 setIsLoading(false);
             })
@@ -126,7 +129,7 @@ export default function Anamnese() {
         return () => {
             isCurrentRequest = false;
         };
-    }, [isCorrection, anamnesisId]);
+    }, [isCorrection, anamnesisId, loggedUser.id]);
 
     // quem desiste volta pra tela de onde veio a ficha
     const exitPath = isCorrection ? "/historico-paciente" : "/painel-paciente";
@@ -290,6 +293,7 @@ export default function Anamnese() {
                             label="Fuma?"
                             name="smokingHabits"
                             options={SMOKING_OPTIONS}
+                            placeholder="Escolha uma resposta"
                             value={answers.smokingHabits}
                             onChange={updateAnswer}
                         />
@@ -297,6 +301,7 @@ export default function Anamnese() {
                             label="Bebe álcool?"
                             name="alcoholConsumption"
                             options={ALCOHOL_OPTIONS}
+                            placeholder="Escolha uma resposta"
                             value={answers.alcoholConsumption}
                             onChange={updateAnswer}
                         />
