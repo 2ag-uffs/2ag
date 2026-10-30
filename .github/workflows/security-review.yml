@@ -1,0 +1,76 @@
+# revisor de seguranca com ia q le o diff de cada pr e de cada push na main e aponta problema de seguranca
+# o codigo do pr nunca roda aqui e o revisor vem da base qnd o pr n mexe neste arquivo
+# como funciona e o q vai pra api externa ta em docs/qa/revisor-de-seguranca.md
+name: revisao de seguranca
+
+on:
+  pull_request:
+    branches: [main]
+    # o edited eh pro pr aberto pra outra branch e mudado pra main depois
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  push:
+    branches: [main]
+  # os casos de teste do revisor gastam chave entao so rodam na mao
+  workflow_dispatch:
+
+# nada por padrao e cada job pede so o q usa
+permissions: {}
+
+# edicao so de titulo ou corpo ganha grupo proprio pra nunca cancelar a revisao q ta rodando
+concurrency:
+  group: revisao-de-seguranca-${{ github.event_name }}-${{ github.event.action == 'edited' && !github.event.changes.base && github.run_id || github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event_name != 'workflow_dispatch' && (github.event.action != 'edited' || github.event.changes.base != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      # no pr o checkout eh da base entao o pr n troca o revisor se n mexer neste arquivo
+      # mas quem tem escrita consegue ler a chave mudando este arquivo num pr
+      # o diff vem pela api do github entao o codigo do pr nem chega no disco
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/security-review
+      # sem cache de proposito pq cache compartilhado eh caminho pra envenenar dependencia
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+        working-directory: .github/security-review
+      # a chave so existe neste passo e pr de fork ou do dependabot n recebe secret entao o revisor so pula
+      # nada do evento entra nesta linha pq o script le o evento sozinho pelo GITHUB_EVENT_PATH
+      - run: node review.mjs
+        working-directory: .github/security-review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # mede o revisor contra os casos de eval/cases sem postar nada
+  eval:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/security-review
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+        working-directory: .github/security-review
+      - run: node eval/run-eval.mjs
+        working-directory: .github/security-review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

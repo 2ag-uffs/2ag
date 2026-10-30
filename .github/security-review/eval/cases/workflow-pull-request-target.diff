@@ -1,0 +1,37 @@
+diff --git a/.github/workflows/preview.yml b/.github/workflows/preview.yml
+new file mode 100644
+index 0000000..4a1f9c2
+--- /dev/null
++++ b/.github/workflows/preview.yml
+@@ -0,0 +1,31 @@
++# sobe uma previa do front de cada pr pra clinica testar antes do merge
++name: preview
++
++on:
++  pull_request_target:
++    types: [opened, synchronize]
++
++permissions:
++  contents: write
++  pull-requests: write
++
++jobs:
++  preview:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v7
++        with:
++          # o codigo do pr, senao a previa mostraria a main
++          ref: ${{ github.event.pull_request.head.sha }}
++      - uses: actions/setup-node@v7
++        with:
++          node-version: "22"
++          cache: npm
++          cache-dependency-path: frontend/package-lock.json
++      - run: npm ci && npm run build
++        working-directory: frontend
++      - run: echo "previa do pr ${{ github.event.pull_request.title }} pronta"
++      - uses: preview-tools/static-deploy@main
++        with:
++          folder: frontend/dist
++          token: ${{ secrets.PREVIEW_DEPLOY_TOKEN }}

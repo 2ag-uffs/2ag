@@ -1,0 +1,13 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 4b0e2c7..9d61fa3 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -78,6 +78,8 @@ jobs:
+
+   frontend:
+     runs-on: ubuntu-latest
++    # build travado n segura o runner por 6 horas
++    timeout-minutes: 20
+     defaults:
+       run:
+         working-directory: frontend

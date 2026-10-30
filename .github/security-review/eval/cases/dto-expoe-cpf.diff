@@ -1,0 +1,31 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/dto/PatientResponseDTO.java b/backend/doisag/src/main/java/dev/uffs/doisag/dto/PatientResponseDTO.java
+index 5c1e2a7..d94b310 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/dto/PatientResponseDTO.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/dto/PatientResponseDTO.java
+@@ -8,14 +8,16 @@ import java.time.LocalDate;
+ import java.time.LocalDateTime;
+
+ // o que a api devolve quando o assunto eh paciente
+-// so o q as telas usam: cpf e contato ficam no perfil da propria pessoa
++// a lista de pacientes agora mostra cpf e telefone pra recepcao achar a pessoa mais rapido
+ public record PatientResponseDTO(
+         Long id,
+         // nome q as telas mostram, o social qnd tem (RN15)
+         String name,
+         LocalDate birthDate,
++        String cpf,
++        String phone,
+         Long prescriberId,
+         String prescriberName,
+         boolean archived,
+         LocalDateTime archivedAt,
+         // os dois so vem no prontuario de um paciente, a lista n leva (RF38 e RF37)
+@@ -36,6 +38,8 @@ public record PatientResponseDTO(
+                 patient.getId(),
+                 patient.getDisplayName(),
+                 patient.getBirthDate(),
++                patient.getCpf(),
++                patient.getPhone(),
+                 prescriberIdOf(patient),
+                 prescriberNameOf(patient),
+                 patient.isArchived(),

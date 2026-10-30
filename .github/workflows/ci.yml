@@ -95,6 +95,25 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # testes do revisor de seguranca com ia do security-review.yml sem chave nenhuma
+  # nos testes o modelo e o github sao falsos entao eles n chamam api nenhuma
+  security-review:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .github/security-review
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # sem cache igual no workflow do revisor
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm test
+
   # garante q as imagens do compose continuam montando e q a pilha sobe de ponta a ponta
   docker:
     runs-on: ubuntu-latest

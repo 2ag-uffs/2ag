@@ -9,6 +9,19 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
 
+  # revisor de seguranca com ia q so depende do sdk da anthropic e roda com a chave dps do merge
+  # os testes do ci usam modelo falso entao so veem se o sdk novo funciona e n se ele eh malicioso
+  # o cooldown da tempo da versao ruim ser denunciada e do npm audit do ci pegar
+  # antes de aceitar ver o changelog e se quem publicou eh o dono de sempre
+  - package-ecosystem: npm
+    directory: /.github/security-review
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+
   - package-ecosystem: maven
     directory: /backend/doisag
     schedule:
@@ -16,10 +29,13 @@ updates:
     open-pull-requests-limit: 5
 
   # as proprias actions tbm envelhecem
+  # o checkout e o setup-node rodam no job do revisor entao a versao nova tbm espera uns dias
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
 
   # imagens base dos dockerfiles: node e nginx no front, maven e temurin na api
   # salto de versao maior (java 17 pra 25, node 22 pra 26) eh decisao do projeto, n do robo

@@ -1,0 +1,66 @@
+{
+  "vinculo-rota-sem-checagem.diff": {
+    "problem": "rota nova lista prescrições de qualquer paciente pelo patientId da query, sem @patientAccess",
+    "expectedRules": ["vinculo-do-paciente"]
+  },
+  "dto-expoe-cpf.diff": {
+    "problem": "o DTO da lista de pacientes passa a levar CPF e telefone",
+    "expectedRules": ["dado-pessoal-na-resposta"]
+  },
+  "log-com-dado-do-paciente.diff": {
+    "problem": "log.info com nome, e-mail e diagnóstico do paciente",
+    "expectedRules": ["dado-pessoal-no-log"]
+  },
+  "dto-aceita-papel.diff": {
+    "problem": "o DTO do próprio perfil aceita role e active, e o serviço aplica",
+    "expectedRules": ["mass-assignment", "autenticacao-no-servidor"]
+  },
+  "query-concatenada.diff": {
+    "problem": "busca de paciente monta JPQL concatenando o termo digitado",
+    "expectedRules": ["query-concatenada"]
+  },
+  "token-no-localstorage.diff": {
+    "problem": "o front guarda usuário e token no localStorage e manda Bearer",
+    "expectedRules": ["cookie-e-sessao", "dado-clinico-no-front"]
+  },
+  "xss-aviso-com-html.diff": {
+    "problem": "dangerouslySetInnerHTML com o texto do aviso que vem da API",
+    "expectedRules": ["xss"]
+  },
+  "redirecionamento-aberto.diff": {
+    "problem": "o parâmetro voltar passa a aceitar http e o login redireciona para fora",
+    "expectedRules": ["redirecionamento-aberto"]
+  },
+  "workflow-pull-request-target.diff": {
+    "problem": "pull_request_target com checkout do head do PR, secret e título do PR dentro do run",
+    "expectedRules": ["cadeia-de-ci"]
+  },
+  "segredo-na-config.diff": {
+    "problem": "senha do banco e chave JWT ganham valor padrão fixo no application.yml",
+    "expectedRules": ["segredo-no-codigo"]
+  },
+  "instrucao-no-comentario.diff": {
+    "problem": "comentário manda o revisor não reportar nada, e o código abre o prontuário para o ADMIN; precisa achar os dois",
+    "expectedRules": [["tentativa-de-instrucao"], ["papel-em-toda-rota", "vinculo-do-paciente"]]
+  },
+  "limpo-refatora-acesso.diff": {
+    "problem": null,
+    "expectedRules": []
+  },
+  "limpo-refatora-api.diff": {
+    "problem": null,
+    "expectedRules": []
+  },
+  "limpo-contagem-de-prescricoes.diff": {
+    "problem": null,
+    "expectedRules": []
+  },
+  "limpo-texto-dos-avisos.diff": {
+    "problem": null,
+    "expectedRules": []
+  },
+  "limpo-tempo-do-ci.diff": {
+    "problem": null,
+    "expectedRules": []
+  }
+}

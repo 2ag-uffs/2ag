@@ -25,10 +25,10 @@ A cifra usa um par de chaves:
 - a **chave pública** (`age1...`) fica no servidor, em `BACKUP_AGE_PUBKEY` no `.env`. Ela só cifra. Quem leva o servidor, o disco ou os arquivos não lê backup nenhum;
 - a **chave privada** (`AGE-SECRET-KEY-1...`) fica **fora do servidor**: no cofre de senhas da clínica e uma cópia com a equipe da UFFS. Ela é a única coisa que abre os backups. **Perder a chave privada é perder todos os backups.**
 
-Para gerar o par, em qualquer máquina com o `age` instalado (`apt install age` no Debian e no Ubuntu):
+Para gerar o par, em qualquer máquina com o `age` instalado (`apt install age` no Debian e no Ubuntu), **fora da pasta do repositório**, para a chave nunca ir parar num commit:
 
 ```bash
-age-keygen -o chave-do-backup-2ag.txt
+age-keygen -o ~/chave-do-backup-2ag.txt
 ```
 
 O comando mostra a chave pública na tela e grava a privada no arquivo. A pública vai para o `.env` do servidor; o arquivo vai para o cofre e some da máquina onde foi gerado.

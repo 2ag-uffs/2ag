@@ -1,0 +1,47 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/controller/ClinicalHistoryController.java b/backend/doisag/src/main/java/dev/uffs/doisag/controller/ClinicalHistoryController.java
+index 58e1d0b..a7c2f94 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/controller/ClinicalHistoryController.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/controller/ClinicalHistoryController.java
+@@ -48,4 +48,11 @@ public class ClinicalHistoryController {
+     public List<PrescriptionResponseDTO> getPrescriptions(@PathVariable Long patientId) {
+         return prescriptionService.getByPatientId(patientId);
+     }
++
++    // so o numero de prescricoes validas pro card do historico
++    @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
++    @GetMapping("/prescriptions/count")
++    public long countPrescriptions(@PathVariable Long patientId) {
++        return prescriptionService.countValidByPatientId(patientId);
++    }
+ }
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/repository/PrescriptionRepository.java b/backend/doisag/src/main/java/dev/uffs/doisag/repository/PrescriptionRepository.java
+index 1fd70c3..6be2a58 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/repository/PrescriptionRepository.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/repository/PrescriptionRepository.java
+@@ -16,6 +16,9 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long> {
+
+     // consulta com prescricao q ainda n foi anulada n pode ser anulada
+     boolean existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(Long appointmentId);
++
++    // quantas prescricoes validas o paciente tem, pro card do historico
++    long countByAppointmentPatientIdAndAnnulmentAnnulledAtIsNull(Long patientId);
+
+     // prescricoes de um paciente da consulta mais recente pra mais antiga
+     // a consulta e quem a fez vem junto. as duas listas da receita vem em lote, pelo BatchSize
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/service/PrescriptionService.java b/backend/doisag/src/main/java/dev/uffs/doisag/service/PrescriptionService.java
+index 93a5e21..c18d4f6 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/service/PrescriptionService.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/service/PrescriptionService.java
+@@ -104,5 +104,12 @@ public class PrescriptionService {
+                 .toList();
+     }
+
++    // so o numero pro card do historico mas conta como abrir o prontuario
++    @Transactional
++    public long countValidByPatientId(Long patientId) {
++        auditService.recordChartView(patientId);
++        return prescriptionRepository.countByAppointmentPatientIdAndAnnulmentAnnulledAtIsNull(patientId);
++    }
++
+     private void checkAppointmentCanPrescribe(Appointment appointment) {
+         if (appointment.isAnnulled()) {

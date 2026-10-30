@@ -1,0 +1,17 @@
+diff --git a/frontend/src/pages/notificacoes/notificacoes.jsx b/frontend/src/pages/notificacoes/notificacoes.jsx
+index 1c4d8f2..e95a7b3 100644
+--- a/frontend/src/pages/notificacoes/notificacoes.jsx
++++ b/frontend/src/pages/notificacoes/notificacoes.jsx
+@@ -45,7 +45,11 @@ function NotificationItem({notification, onOpen, onRemove}) {
+                     {!notification.isRead && <span className={styles.unreadMark}>não lido</span>}
+                 </p>
+                 <h2 className={styles.title}>{notification.title}</h2>
+-                <p className={styles.message}>{withBrasiliaTimeNote(notification.message)}</p>
++                {/* o aviso agora vem com negrito e quebra de linha montados no backend */}
++                <p
++                    className={styles.message}
++                    dangerouslySetInnerHTML={{__html: withBrasiliaTimeNote(notification.message)}}
++                />
+             </div>
+             <div className={styles.actions}>
+                 <button type="button" className="button-secondary button-small" onClick={onOpen}>

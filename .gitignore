@@ -28,6 +28,9 @@ application-secrets.yml
 *.key
 *.p12
 *.jks
+# chave privada do age q abre os backups do banco
+chave-do-backup*
+*.age-key*
 # certificado do servidor montado no nginx do compose e a pasta q o certbot usa
 /certs/
 /acme/

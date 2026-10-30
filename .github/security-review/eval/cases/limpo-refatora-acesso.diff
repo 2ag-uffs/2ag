@@ -1,0 +1,22 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/security/PatientAccessService.java b/backend/doisag/src/main/java/dev/uffs/doisag/security/PatientAccessService.java
+index 2d81c6e..9b4e07a 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/security/PatientAccessService.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/security/PatientAccessService.java
+@@ -43,11 +43,12 @@ public class PatientAccessService {
+         }
+
+         // prescritor so ve paciente da carteira dele
+-        if (loggedUser instanceof Prescriber) {
+-            return patientRepository.existsByIdAndPrescriberId(patientId, loggedUser.getId());
+-        }
+-
+-        return false;
++        return loggedUser instanceof Prescriber && isInPortfolio(patientId, loggedUser);
++    }
++
++    // a carteira do prescritor eh conferida numa consulta so no banco
++    private boolean isInPortfolio(Long patientId, Users prescriber) {
++        return patientRepository.existsByIdAndPrescriberId(patientId, prescriber.getId());
+     }
+
+     // quando o alvo eh o proprio usuario logado tipo o painel do prescritor

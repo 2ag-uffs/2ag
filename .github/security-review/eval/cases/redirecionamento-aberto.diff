@@ -1,0 +1,41 @@
+diff --git a/frontend/src/pages/login/login.jsx b/frontend/src/pages/login/login.jsx
+index 8f31c0a..2d6e9b4 100644
+--- a/frontend/src/pages/login/login.jsx
++++ b/frontend/src/pages/login/login.jsx
+@@ -18,19 +18,16 @@ function findNotice(searchParams, location) {
+     return null;
+ }
+
+-// so aceita voltar pra uma tela do proprio sistema
+-// senao alguem podia montar um link de login q manda a pessoa pra outro site
++// o link do e-mail volta com o endereco completo, entao aceita os dois jeitos
+ function findReturnPath(searchParams) {
+     const returnPath = searchParams.get("voltar");
+     if (!returnPath) {
+         return null;
+     }
+-    // o navegador le //site e /\site como outro site
+-    const isOwnPath = returnPath.startsWith("/") && !returnPath.startsWith("//") && !returnPath.includes("\\");
+-    if (!isOwnPath) {
+-        return null;
++    if (returnPath.startsWith("/") || returnPath.startsWith("http")) {
++        return returnPath;
+     }
+-    return returnPath;
++    return null;
+ }
+
+ export default function Login() {
+@@ -61,7 +58,11 @@ export default function Login() {
+             }
+             setLoggedUser(user);
+             // quem caiu aqui pq a sessao acabou volta pra tela onde estava
+             const returnPath = findReturnPath(searchParams);
+-            navigate(returnPath || homePathFor(user), {replace: true});
++            if (returnPath && returnPath.startsWith("http")) {
++                window.location.href = returnPath;
++                return;
++            }
++            navigate(returnPath || homePathFor(user), {replace: true});
+         } catch (requestError) {
+             setErrorMessage(errorMessageOf(requestError));

@@ -1,0 +1,32 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/service/ConsultationService.java b/backend/doisag/src/main/java/dev/uffs/doisag/service/ConsultationService.java
+index 41d9a2e..7ce0b5f 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/service/ConsultationService.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/service/ConsultationService.java
+@@ -19,6 +19,8 @@ import dev.uffs.doisag.repository.PatientRepository;
+ import dev.uffs.doisag.repository.PrescriberRepository;
+ import dev.uffs.doisag.repository.PrescriptionRepository;
+ import dev.uffs.doisag.repository.ScaleResponseRepository;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+
+@@ -46,6 +48,8 @@ public class ConsultationService {
+     public static final String DATE_WITH_EXAM_MESSAGE =
+             "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de mudar a data da consulta";
+
++    private static final Logger log = LoggerFactory.getLogger(ConsultationService.class);
++
+     private final AppointmentRepository appointmentRepository;
+     private final PatientRepository patientRepository;
+     private final PrescriberRepository prescriberRepository;
+@@ -103,6 +107,9 @@ public class ConsultationService {
+
+         Appointment savedAppointment = appointmentRepository.save(appointment);
+         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
++        // ajuda a achar no log qnd a clinica liga perguntando de uma consulta
++        log.info("consulta {} registrada para {} ({}) diagnostico {}", savedAppointment.getId(),
++                patient.getName(), patient.getEmail(), recordData.diagnosis());
+         return new AppointmentResponseDTO(savedAppointment);
+     }
+

@@ -1,0 +1,41 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/dto/ProfileUpdateDTO.java b/backend/doisag/src/main/java/dev/uffs/doisag/dto/ProfileUpdateDTO.java
+index 9a7e1f0..c03b5d2 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/dto/ProfileUpdateDTO.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/dto/ProfileUpdateDTO.java
+@@ -1,5 +1,6 @@
+ package dev.uffs.doisag.dto;
+
++import dev.uffs.doisag.enums.UserRole;
+ import jakarta.validation.Valid;
+ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.Past;
+@@ -31,6 +32,10 @@ public record ProfileUpdateDTO(
+
+         // so vale pra paciente
+         @Valid
+-        GuardianDTO guardian
++        GuardianDTO guardian,
++
++        // a tela de administracao reaproveita este dto pra editar qualquer conta
++        UserRole role,
++        Boolean active
+ ) {
+ }
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/service/ProfileService.java b/backend/doisag/src/main/java/dev/uffs/doisag/service/ProfileService.java
+index 2be41c9..e8f07a1 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/service/ProfileService.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/service/ProfileService.java
+@@ -57,6 +57,13 @@ public class ProfileService {
+         user.setName(profileData.name().trim());
+         user.setBirthDate(profileData.birthDate());
+         user.setPhone(profileData.phone());
++        // vem preenchido so pela tela de administracao
++        if (profileData.active() != null) {
++            user.setActive(profileData.active());
++        }
++        if (profileData.role() != null) {
++            usersRepository.changeRole(userId, profileData.role().name());
++        }
+         user.setAddress(profileData.address() == null ? null : profileData.address().toAddress());
+         // nome social so vale pra paciente, as outras contas ignoram o campo
+         if (user instanceof Patient patient) {

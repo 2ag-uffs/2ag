@@ -1,0 +1,18 @@
+diff --git a/frontend/src/pages/notificacoes/notificacoes.jsx b/frontend/src/pages/notificacoes/notificacoes.jsx
+index 1c4d8f2..7da09c1 100644
+--- a/frontend/src/pages/notificacoes/notificacoes.jsx
++++ b/frontend/src/pages/notificacoes/notificacoes.jsx
+@@ -24,9 +24,10 @@ const TYPE_ICONS = {
+ function unreadTextOf(unread) {
+     if (unread === 0) {
+-        return "Você está em dia, nenhum aviso novo.";
++        return "Tudo em dia: nenhum aviso novo.";
+     }
+     if (unread === 1) {
+-        return "1 aviso não lido.";
++        return "Você tem 1 aviso não lido.";
+     }
+-    return unread + " avisos não lidos.";
++    // numero grande fica com ponto de milhar
++    return "Você tem " + unread.toLocaleString("pt-BR") + " avisos não lidos.";
+ }

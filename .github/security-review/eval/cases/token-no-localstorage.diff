@@ -1,0 +1,40 @@
+diff --git a/frontend/src/services/api.js b/frontend/src/services/api.js
+index 6e0b2d1..b81fa47 100644
+--- a/frontend/src/services/api.js
++++ b/frontend/src/services/api.js
+@@ -1,19 +1,23 @@
+ // cliente unico pra falar com a api
+ // o front e a api ficam na mesma origem entao todo caminho comeca com api
+-// a sessao fica num cookie httponly q o javascript nem enxerga
++// a sessao fica guardada no navegador pra n cair ao recarregar a pagina
+ const BASE_URL = "/api";
++const SESSION_KEY = "2ag-sessao";
+
+ // quem esta logado agora
+ // eh carregado quando o app abre e muda no login e no logout
+-let loggedUser = null;
++let loggedUser = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+
+ export function getLoggedUser() {
+     return loggedUser;
+ }
+
+ // o layout escuta o aviso e mostra na hora o nome salvo no perfil
+ export function setLoggedUser(user) {
+     loggedUser = user;
++    // guarda o usuario e o token q o login devolve
++    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
++    localStorage.setItem("2ag-token", user.token);
+     window.dispatchEvent(new Event("logged-user-changed"));
+ }
+
+@@ -87,5 +91,9 @@ function goToLoginWithExpiredSession() {
+ async function request(path, options = {}) {
+     const headers = {"Content-Type": "application/json", ...(options.headers || {})};
++    const token = localStorage.getItem("2ag-token");
++    if (token) {
++        headers.Authorization = "Bearer " + token;
++    }
+     const response = await fetch(BASE_URL + path, {...options, headers});
+     const body = await readBody(response);
+

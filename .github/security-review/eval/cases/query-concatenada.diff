@@ -1,0 +1,48 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/controller/PatientsController.java b/backend/doisag/src/main/java/dev/uffs/doisag/controller/PatientsController.java
+index 77c0e15..a3d4f62 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/controller/PatientsController.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/controller/PatientsController.java
+@@ -34,7 +34,11 @@ public class PatientsController {
+     @PreAuthorize("hasRole('PRESCRIBER')")
+     @GetMapping
+     public List<PatientResponseDTO> getMyPatients(@RequestParam(name = "archived", defaultValue = "false") boolean archived,
++                                                  @RequestParam(name = "busca", required = false) String term,
+                                                   @AuthenticationPrincipal Users loggedUser) {
++        if (term != null && !term.isBlank()) {
++            return patientService.searchByName(loggedUser.getId(), term);
++        }
+         return patientService.getPatientsByPrescriberId(loggedUser.getId(), archived);
+     }
+
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/service/PatientService.java b/backend/doisag/src/main/java/dev/uffs/doisag/service/PatientService.java
+index 0d6b3e8..5f1a9c7 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/service/PatientService.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/service/PatientService.java
+@@ -19,5 +19,7 @@ import dev.uffs.doisag.repository.UsersRepository;
+ import dev.uffs.doisag.security.LoginAttemptLimiter;
+ import dev.uffs.doisag.security.SecureTokens;
++import jakarta.persistence.EntityManager;
++import jakarta.persistence.PersistenceContext;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.context.annotation.Lazy;
+ import org.springframework.security.crypto.password.PasswordEncoder;
+@@ -90,5 +92,19 @@ public class PatientService {
+                 .sorted(Comparator.comparing(PatientResponseDTO::name, collator))
+                 .toList();
+     }
++
++    @PersistenceContext
++    private EntityManager entityManager;
++
++    // busca da lista de pacientes pelo pedaco do nome q a pessoa digitou
++    public List<PatientResponseDTO> searchByName(Long prescriberId, String term) {
++        String jpql = "select p from Patient p where p.prescriber.id = " + prescriberId
++                + " and lower(p.name) like '%" + term.toLowerCase() + "%' order by p.name";
++        return entityManager.createQuery(jpql, Patient.class)
++                .getResultList()
++                .stream()
++                .map(PatientResponseDTO::new)
++                .toList();
++    }
+
+     // o proprio paciente cria a conta pelo link de convite (RF02.1 e RN06)

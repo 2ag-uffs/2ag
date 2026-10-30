@@ -1,0 +1,35 @@
+diff --git a/backend/doisag/src/main/java/dev/uffs/doisag/controller/PrescriptionsController.java b/backend/doisag/src/main/java/dev/uffs/doisag/controller/PrescriptionsController.java
+index 3f2a1c4..8b7d9e0 100644
+--- a/backend/doisag/src/main/java/dev/uffs/doisag/controller/PrescriptionsController.java
++++ b/backend/doisag/src/main/java/dev/uffs/doisag/controller/PrescriptionsController.java
+@@ -10,12 +10,16 @@ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.security.access.prepost.PreAuthorize;
+ import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PathVariable;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.PutMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestParam;
+ import org.springframework.web.bind.annotation.RestController;
+
++import java.util.List;
++
+ // prescricao (RF05)
+ // alterar uma prescricao eh emitir outra entao a unica mudanca numa prescricao eh a anulacao
+ @RestController
+@@ -36,6 +40,13 @@ public class PrescriptionsController {
+         return ResponseEntity.status(HttpStatus.CREATED).body(createdPrescription);
+     }
+
++    // lista as prescricoes do paciente pra tela de impressao
++    @PreAuthorize("hasRole('PRESCRIBER')")
++    @GetMapping("/prescriptions")
++    public List<PrescriptionResponseDTO> listByPatient(@RequestParam Long patientId) {
++        return prescriptionService.getByPatientId(patientId);
++    }
++
+     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessPrescription(#id, authentication)")
+     @PutMapping("/prescriptions/{id}/annul")
+     public PrescriptionResponseDTO annul(@PathVariable Long id,

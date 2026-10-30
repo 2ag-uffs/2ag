@@ -1,0 +1,18 @@
+{
+  "name": "2ag-security-review",
+  "version": "1.0.0",
+  "private": true,
+  "description": "revisor de seguranca com ia para os pull requests e pushes do 2ag",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\" \"test/redteam/*.test.mjs\"",
+    "eval": "node eval/run-eval.mjs",
+    "eval:local": "node --env-file=.env eval/run-eval.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.3.0"
+  }
+}

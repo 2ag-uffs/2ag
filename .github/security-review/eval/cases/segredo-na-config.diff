@@ -1,0 +1,28 @@
+diff --git a/backend/doisag/src/main/resources/application.yml b/backend/doisag/src/main/resources/application.yml
+index c2b7e90..41f8a3d 100644
+--- a/backend/doisag/src/main/resources/application.yml
++++ b/backend/doisag/src/main/resources/application.yml
+@@ -26,8 +26,8 @@ spring:
+   datasource:
+     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/doisag}
+     username: ${DATABASE_USER:admindoisag}
+-    # sem padrao de proposito pra api n subir com senha publicada no repositorio
+-    password: ${DATABASE_PASSWORD}
++    # padrao igual ao do servidor pra api subir sem precisar de .env
++    password: ${DATABASE_PASSWORD:{{SEGREDO_FALSO_1}}}
+   flyway:
+     # quem cria e altera tabela eh o flyway pelos arquivos da pasta de migracoes
+     enabled: ${FLYWAY_ENABLED:true}
+@@ -65,9 +65,9 @@ spring:
+ api:
+   security:
+     token:
+-      # chave q assina a sessao e tbm n tem padrao
+-      # pra gerar uma use openssl rand -base64 48
+-      secret: ${JWT_SECRET}
++      # mesma chave do servidor, assim a sessao n cai qnd a api reinicia sem o .env
++      # tirar daqui depois do deploy
++      secret: ${JWT_SECRET:{{SEGREDO_FALSO_2}}}
+     login:
+       # senhas erradas do mesmo e-mail no mesmo endereco antes de bloquear
+       max-failures: ${LOGIN_MAX_FAILURES:5}
