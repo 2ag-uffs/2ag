@@ -13,7 +13,7 @@ para instalar o sistema no ambiente do Linux, o passo a passo está em [`docs/Li
 
 ---
 
-## umas coisas boas de saber
+## para saber
 
 - o paciente cria a própria conta pelo link de convite que o prescritor gera no sistema. conta de prescritor é criada pelo administrador, nunca por autocadastro.
 - cada pessoa cria a própria senha. o administrador não escolhe a senha do prescritor: a conta nova recebe um link de primeiro acesso.
@@ -22,7 +22,6 @@ para instalar o sistema no ambiente do Linux, o passo a passo está em [`docs/Li
 - o paciente pede consulta só nos horários de atendimento que o prescritor cadastra, e o horário fica reservado até o prescritor responder.
 - paciente e prescritor exportam o histórico em CSV, e a página de impressão salva em PDF pelo próprio navegador. a exportação do prescritor tem modo sem identificação para pesquisa.
 - cada clínica roda a própria instalação. os dados não se misturam porque nem ficam no mesmo lugar.
-- nunca comite arquivo com dado de paciente: formulário preenchido, planilha de acompanhamento, exportação de prontuário. o `.gitignore` pega os casos mais comuns, mas confira o `git diff` antes de enviar.
 
 ---
 
