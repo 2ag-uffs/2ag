@@ -167,4 +167,21 @@ describe("AdminPrescribers", () => {
         expect(await screen.findByText("Este CPF já tem conta no sistema")).toBeInTheDocument();
         expect(screen.getByLabelText(/^CPF/)).toHaveValue("111.444.777-35");
     });
+
+    // pra conta q nunca criou a senha o texto "a senha atual continua valendo" n fazia sentido (#154)
+    it("o Senha nova de quem ainda nao criou a senha fala em criar a primeira senha", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Senha nova"});
+        await user.click(buttons[1]);
+        expect(screen.getByText(/ainda não tem senha/)).toBeInTheDocument();
+        expect(screen.queryByText(/A senha atual dela continua valendo/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Cancelar"}));
+
+        await user.click(buttons[0]);
+        expect(screen.getByText(/A senha atual dela continua valendo/)).toBeInTheDocument();
+        expect(screen.queryByText(/ainda não tem senha/)).not.toBeInTheDocument();
+    });
 });

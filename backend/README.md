@@ -122,7 +122,7 @@ o `RouteRolesTest` passa por todas as rotas da api e falha se alguma não declar
 | `PUT /admin/prescribers/{id}` | corrige o registro profissional, a profissão e o CPF de um prescritor digitados errado. o conselho e o número passam pela mesma limpeza e unicidade do cadastro (`409` em `registryNumber` ou em `cpf`), o CPF pela mesma conferência dos dígitos, e em branco ele fica como está, porque a lista não mostra o CPF. a correção vai para a trilha como `ALTERACAO` de `CONTA_DE_PRESCRITOR` |
 | `PUT /admin/prescribers/{id}/active` | ativa ou desativa a conta, sem apagar nada |
 | `PUT /admin/prescribers/{id}/email` | corrige o e-mail digitado errado de um prescritor que ainda não criou a senha, com a senha do administrador. o link de primeiro acesso sai de novo para o endereço certo e o anterior deixa de valer. depois que a pessoa criou a senha, só ela troca o e-mail, no perfil |
-| `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu |
+| `POST /admin/prescribers/{id}/password-reset` | gera um link de senha nova para um prescritor. o link só volta na resposta quando o e-mail não saiu. para a conta que ainda não criou a senha, o e-mail diz que é esse link que cria a primeira senha, em vez de "a sua senha continua a mesma" |
 | `POST /admin/patients/lookup` | acha a conta de um paciente pelo e-mail inteiro, que vai no corpo. devolve só `{id, name, email, active}`, e o `civilName` quando o paciente tem nome social |
 | `GET /admin/patients/deactivated` | as contas de paciente desativadas, em ordem alfabética do nome mostrado, para dar para reativar depois |
 | `PUT /admin/patients/{id}/active` | ativa ou desativa a conta de um paciente e devolve a conta como a busca. pedir o estado que a conta já tem responde `400`, sem a conta |
@@ -155,7 +155,7 @@ o nome social é opcional e só o próprio paciente informa, no cadastro ou no p
 
 | rota | o que faz |
 | :--- | :--- |
-| `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma |
+| `POST /auth/password-reset/request` | manda o link de senha nova para o e-mail, se ele for de uma conta ativa. a resposta é sempre a mesma. para o prescritor que ainda não criou a senha, o e-mail diz que é esse link que cria a primeira, como no link gerado pela administração |
 | `POST /auth/password-reset/confirm` | grava a senha nova. o link vale uma vez, por 30 minutos, e as sessões abertas caem |
 | `POST /auth/email-change/confirm` | confirma o e-mail de acesso novo pelo link que chegou nele, sem login. o link vale uma vez, por 30 minutos; na confirmação o e-mail muda, as sessões abertas caem, o link de senha nova que tiver ido para o endereço antigo deixa de valer e o endereço antigo recebe um aviso |
 

@@ -162,6 +162,25 @@ class PasswordResetTest {
                 .doesNotContain("Paciente da Recuperacao");
     }
 
+    // o prescritor q nunca criou a senha chega aqui pelo proprio e-mail de primeira senha, entao recebe
+    // o texto de primeira senha e n "a sua senha continua a mesma" (#154). o paciente sem a data de troca
+    // tem senha desde o cadastro e recebe o texto de sempre
+    @Test
+    void prescriberWithoutPasswordGetsTheFirstPasswordText() throws Exception {
+        requestReset("recuperacao-prescritora@email.com").andExpect(status().isNoContent());
+        requestReset(PATIENT_EMAIL).andExpect(status().isNoContent());
+
+        ArgumentCaptor<EmailMessage> emailCaptor = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emailCaptor.capture());
+        EmailMessage prescriberEmail = emailCaptor.getAllValues().get(0);
+        EmailMessage patientEmail = emailCaptor.getAllValues().get(1);
+        assertThat(prescriberEmail.subject()).isEqualTo("Criar a sua senha no 2AG");
+        assertThat(prescriberEmail.text()).contains("token=").contains("ainda não tem senha")
+                .doesNotContain("continua a mesma").doesNotContain("A administração gerou");
+        assertThat(patientEmail.text()).contains("token=").contains("continua a mesma")
+                .doesNotContain("ainda não tem senha");
+    }
+
     @Test
     void unknownEmailGetsTheSameAnswerAndNoEmail() throws Exception {
         requestReset("ninguem@email.com").andExpect(status().isNoContent());

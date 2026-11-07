@@ -438,6 +438,29 @@ class AdminPrescribersTest {
         assertThat(sentMessage.getValue().text()).contains("token=");
     }
 
+    // quem nunca criou a senha recebia "a sua senha continua a mesma" (#154)
+    @Test
+    void theLinkEmailSaysItCreatesTheFirstPasswordWhenTheAccountHasNoPasswordYet() throws Exception {
+        when(emailSender.send(any(EmailMessage.class))).thenReturn(true);
+        Long newPrescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+        Prescriber prescriberWithPassword = savePrescriber("admin-senha-texto@email.com", "ADM16");
+        prescriberWithPassword.markPasswordChangedNow();
+        prescriberRepository.save(prescriberWithPassword);
+
+        passwordReset(newPrescriberId, ADMIN_PASSWORD).andExpect(status().isOk());
+        passwordReset(prescriberWithPassword.getId(), ADMIN_PASSWORD).andExpect(status().isOk());
+
+        // o primeiro e-mail eh o da criacao da conta
+        ArgumentCaptor<EmailMessage> sentMessage = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(3)).send(sentMessage.capture());
+        EmailMessage withoutPassword = sentMessage.getAllValues().get(1);
+        EmailMessage withPassword = sentMessage.getAllValues().get(2);
+        assertThat(withoutPassword.text()).contains("token=").contains("ainda não tem senha")
+                .doesNotContain("continua a mesma");
+        assertThat(withPassword.text()).contains("token=").contains("continua a mesma")
+                .doesNotContain("ainda não tem senha");
+    }
+
     // a conta de outra pessoa ta em jogo entao a sessao aberta n basta
     @Test
     void theWrongAdminPasswordDoesNotGenerateALink() throws Exception {

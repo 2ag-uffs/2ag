@@ -8,6 +8,7 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.model.PasswordReset;
+import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -80,7 +81,11 @@ public class PasswordResetService {
         }
 
         // o smtp fica fora da resposta, senao a demora dele contaria q a conta existe
-        backgroundEmailSender.sendLater(linkMessage(user, createLink(user, now, VALID_MINUTES)), user.getId());
+        String resetLink = createLink(user, now, VALID_MINUTES);
+        EmailMessage message = hasNoPasswordYet(user)
+                ? forgotFirstPasswordMessage(user, resetLink)
+                : linkMessage(user, resetLink);
+        backgroundEmailSender.sendLater(message, user.getId());
     }
 
     // link de senha nova pedido pelo administrador, sem o limite por hora
@@ -88,7 +93,10 @@ public class PasswordResetService {
     @Transactional
     public String createLinkFor(Users user) {
         String resetLink = createLink(user, LocalDateTime.now(), VALID_MINUTES);
-        boolean wasEmailed = emailSender.send(linkMessage(user, resetLink));
+        EmailMessage message = hasNoPasswordYet(user)
+                ? firstPasswordLinkMessage(user, resetLink)
+                : linkMessage(user, resetLink);
+        boolean wasEmailed = emailSender.send(message);
         return wasEmailed ? null : resetLink;
     }
 
@@ -128,6 +136,13 @@ public class PasswordResetService {
         loginAttemptLimiter.forgetEmail(passwordReset.getUser().getEmail());
     }
 
+    // o prescritor nasce sem senha e so ganha a data de troca qnd cria a primeira, entao nele a data nula
+    // eh conta sem senha: o e-mail fala em criar a primeira, pq "a sua senha continua a mesma" n faz
+    // sentido (#154). paciente e admin tem senha desde o cadastro mesmo com a data nula
+    private boolean hasNoPasswordYet(Users user) {
+        return user instanceof Prescriber && user.getPasswordChangedAt() == null;
+    }
+
     private void markPendingLinksUsed(Long userId, LocalDateTime now) {
         for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
             pendingReset.setUsedAt(now);
@@ -160,6 +175,35 @@ public class PasswordResetService {
                 + "Abra o link abaixo em até " + VALID_MINUTES + " minutos:\n\n"
                 + resetLink + "\n\n"
                 + "Se não foi você que pediu, ignore este e-mail. A sua senha continua a mesma.";
+    }
+
+    private EmailMessage firstPasswordLinkMessage(Users user, String resetLink) {
+        return new EmailMessage(user.getEmail(), "Criar a sua senha no 2AG",
+                buildFirstPasswordText(user.getDisplayName(), resetLink));
+    }
+
+    private String buildFirstPasswordText(String name, String resetLink) {
+        return "Olá, " + name + ".\n\n"
+                + "A administração gerou um link para você criar a sua senha no 2AG. "
+                + "Abra o link abaixo em até " + VALID_MINUTES + " minutos:\n\n"
+                + resetLink + "\n\n"
+                + "A sua conta ainda não tem senha: é este link que cria a primeira. "
+                + "Se ele vencer, use \"Esqueci minha senha\" na tela de entrada ou peça outro à administração.";
+    }
+
+    // o msm texto de primeira senha, pedido pela propria pessoa no "Esqueci minha senha"
+    private EmailMessage forgotFirstPasswordMessage(Users user, String resetLink) {
+        return new EmailMessage(user.getEmail(), "Criar a sua senha no 2AG",
+                buildForgotFirstPasswordText(user.getDisplayName(), resetLink));
+    }
+
+    private String buildForgotFirstPasswordText(String name, String resetLink) {
+        return "Olá, " + name + ".\n\n"
+                + "Recebemos um pedido para criar a sua senha no 2AG. "
+                + "Abra o link abaixo em até " + VALID_MINUTES + " minutos:\n\n"
+                + resetLink + "\n\n"
+                + "A sua conta ainda não tem senha: é este link que cria a primeira. "
+                + "Se não foi você que pediu, ignore este e-mail.";
     }
 
     private String buildFirstAccessText(String name, String firstAccessLink) {

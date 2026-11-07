@@ -446,6 +446,8 @@ export default function AdminPrescribers() {
     };
 
     const isDeactivating = prescriberToToggle !== null && prescriberToToggle.active;
+    // o modal fechado ainda monta o texto, entao sem alvo conta como se a senha existisse
+    const resetTargetHasPassword = resetTarget === null || resetTarget.passwordCreated;
 
     // um conselho guardado fora da lista continua aparecendo selecionado na correcao
     const fixRegistryTypes = REGISTRY_TYPES.includes(fixData.registryType)
@@ -554,9 +556,13 @@ export default function AdminPrescribers() {
             >
                 {newLink === null ? (
                     <form className={styles.form} onSubmit={handleReset}>
+                        {/* quem nunca criou a senha n tem "senha atual" pra continuar valendo (#154) */}
                         <p className={styles.fieldWide}>
-                            Isso cria um link de senha nova e derruba os links anteriores dessa pessoa.
-                            A senha atual dela continua valendo até ela abrir o link.
+                            {resetTargetHasPassword
+                                ? "Isso cria um link de senha nova e derruba os links anteriores dessa pessoa."
+                                    + " A senha atual dela continua valendo até ela abrir o link."
+                                : "Essa conta ainda não tem senha. Isso cria um link para a pessoa criar a primeira"
+                                    + " senha dela e derruba os links anteriores, como o de primeiro acesso."}
                         </p>
                         {resetError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{resetError}</p>}
 
@@ -583,7 +589,10 @@ export default function AdminPrescribers() {
                 ) : (
                     <LinkResult
                         link={newLink.resetLink}
-                        sentText={"O link de senha nova foi enviado para " + resetTarget.email + ". Ele vale "
+                        sentText={(resetTargetHasPassword
+                                ? "O link de senha nova foi enviado para "
+                                : "O link para criar a senha foi enviado para ")
+                            + resetTarget.email + ". Ele vale "
                             + validityText(newLink.validMinutes) + " e serve uma vez só. Se não chegar, peça para"
                             + " a pessoa conferir a caixa de spam"
                             + (resetTarget.passwordCreated ? "." : " ou, se o endereço estiver errado, use Corrigir e-mail.")}
