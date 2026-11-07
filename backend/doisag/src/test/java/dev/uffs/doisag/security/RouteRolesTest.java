@@ -263,6 +263,16 @@ class RouteRolesTest {
                         .header("Authorization", prescriberToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
                 .andExpect(status().isForbidden());
+        // corrigir registro, cpf e profissao eh so da administracao, nem o proprio prescritor (#149)
+        String correctionBody = "{\"profession\":\"Médico\",\"registryType\":\"CRM\",\"registryNumber\":\"1\"}";
+        mockMvc.perform(put("/admin/prescribers/" + prescriber.getId())
+                        .header("Authorization", prescriberToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(correctionBody))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/admin/prescribers/" + prescriber.getId())
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON).content(correctionBody))
+                .andExpect(status().isForbidden());
     }
 
     // a api antiga devolvia anamneses escalas e prescricoes do sistema inteiro

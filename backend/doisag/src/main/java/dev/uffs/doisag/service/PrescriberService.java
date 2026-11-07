@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AdminPrescriberUpdateDTO;
 import dev.uffs.doisag.dto.PasswordResetLinkDTO;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -31,6 +32,8 @@ public class PrescriberService {
             "Esta conta está desativada. Ative ela antes de corrigir o e-mail";
 
     private static final String EMAIL_TAKEN_MESSAGE = "Este e-mail já tem conta no sistema";
+    private static final String CPF_TAKEN_MESSAGE = "Este CPF já tem conta no sistema";
+    private static final String REGISTRY_TAKEN_MESSAGE = "Este registro profissional já tem conta no sistema";
 
     private final PrescriberRepository prescriberRepository;
     private final UsersRepository usersRepository;
@@ -78,7 +81,7 @@ public class PrescriberService {
         String registryType = prescriberData.registryType().trim().toUpperCase(Locale.ROOT);
         String registryNumber = prescriberData.registryNumber().trim();
         if (prescriberRepository.existsByRegistryTypeAndRegistryNumber(registryType, registryNumber)) {
-            throw new DuplicateValueException("registryNumber", "Este registro profissional já tem conta no sistema");
+            throw new DuplicateValueException("registryNumber", REGISTRY_TAKEN_MESSAGE);
         }
 
         // e-mail e cpf n se repetem em nenhuma conta senao o login n sabe quem eh quem
@@ -88,7 +91,7 @@ public class PrescriberService {
         }
         String cpf = InputCleaner.keepOnlyDigits(prescriberData.cpf());
         if (usersRepository.existsByCpf(cpf)) {
-            throw new DuplicateValueException("cpf", "Este CPF já tem conta no sistema");
+            throw new DuplicateValueException("cpf", CPF_TAKEN_MESSAGE);
         }
 
         Prescriber prescriber = new Prescriber();
@@ -107,6 +110,35 @@ public class PrescriberService {
 
     public List<Prescriber> listAllByName() {
         return prescriberRepository.findAll(Sort.by("name"));
+    }
+
+    // o administrador corrige o registro profissional, o cpf ou a profissao digitados errado (#149)
+    // a limpeza e a unicidade sao as mesmas do cadastro, e o cpf em branco mantem o q esta guardado
+    @Transactional
+    public Prescriber updateByAdmin(Long prescriberId, AdminPrescriberUpdateDTO prescriberData) {
+        Prescriber prescriber = getById(prescriberId);
+
+        String registryType = prescriberData.registryType().trim().toUpperCase(Locale.ROOT);
+        String registryNumber = prescriberData.registryNumber().trim();
+        boolean registryChanged = !registryType.equals(prescriber.getRegistryType())
+                || !registryNumber.equals(prescriber.getRegistryNumber());
+        if (registryChanged && prescriberRepository.existsByRegistryTypeAndRegistryNumber(registryType, registryNumber)) {
+            throw new DuplicateValueException("registryNumber", REGISTRY_TAKEN_MESSAGE);
+        }
+        if (prescriberData.cpf() != null && !prescriberData.cpf().isBlank()) {
+            String cpf = InputCleaner.keepOnlyDigits(prescriberData.cpf());
+            if (!cpf.equals(prescriber.getCpf()) && usersRepository.existsByCpf(cpf)) {
+                throw new DuplicateValueException("cpf", CPF_TAKEN_MESSAGE);
+            }
+            prescriber.setCpf(cpf);
+        }
+
+        prescriber.setRegistryType(registryType);
+        prescriber.setRegistryNumber(registryNumber);
+        prescriber.setProfession(prescriberData.profession().trim());
+        prescriberRepository.save(prescriber);
+        auditService.recordChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null);
+        return prescriber;
     }
 
     // ativa ou desativa a conta sem apagar nada

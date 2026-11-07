@@ -114,4 +114,57 @@ describe("AdminPrescribers", () => {
             registryNumber: "4321",
         }));
     });
+
+    // registro, cpf ou profissao digitados errado n tinham conserto (#149)
+    it("corrige o registro e a profissao pelo Corrigir dados e a lista recarrega", async () => {
+        let prescribers = PRESCRIBERS;
+        vi.spyOn(apiService, "get").mockImplementation(() => Promise.resolve(prescribers));
+        const put = vi.spyOn(apiService, "put").mockImplementation(() => {
+            prescribers = [{...PRESCRIBERS[0], registryType: "CRM", registryNumber: "54321", profession: "Médica"},
+                PRESCRIBERS[1]];
+            return Promise.resolve(prescribers[0]);
+        });
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Corrigir dados"});
+        expect(buttons).toHaveLength(2);
+        await user.click(buttons[0]);
+
+        // os campos ja vem com o q a lista mostra, e o cpf fica em branco pra so mandar se for corrigir
+        expect(screen.getByLabelText("Profissão")).toHaveValue("Biomédica");
+        expect(screen.getByLabelText("Conselho")).toHaveValue("CRBM");
+        expect(screen.getByLabelText("Número do registro")).toHaveValue("12345");
+        expect(screen.getByLabelText(/^CPF/)).toHaveValue("");
+
+        await user.clear(screen.getByLabelText("Profissão"));
+        await user.type(screen.getByLabelText("Profissão"), "Médica");
+        await user.selectOptions(screen.getByLabelText("Conselho"), "CRM");
+        await user.clear(screen.getByLabelText("Número do registro"));
+        await user.type(screen.getByLabelText("Número do registro"), " 54321 ");
+        await user.click(screen.getByRole("button", {name: "Salvar correção"}));
+
+        expect(put).toHaveBeenCalledWith("/admin/prescribers/1",
+            {cpf: null, profession: "Médica", registryType: "CRM", registryNumber: "54321"});
+        expect(await screen.findByText("Dados de Ana Lima corrigidos.")).toBeInTheDocument();
+        expect(screen.getByText("CRM 54321 · Médica")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Salvar correção"})).not.toBeInTheDocument();
+    });
+
+    it("o cpf vai so com numeros e o erro do campo da correcao aparece embaixo dele", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const put = vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(409, "Confira os campos destacados",
+            [{field: "cpf", message: "Este CPF já tem conta no sistema"}]));
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        await user.click((await screen.findAllByRole("button", {name: "Corrigir dados"}))[1]);
+        await user.type(screen.getByLabelText(/^CPF/), "111.444.777-35");
+        await user.click(screen.getByRole("button", {name: "Salvar correção"}));
+
+        expect(put).toHaveBeenCalledWith("/admin/prescribers/2",
+            {cpf: "11144477735", profession: "Médico", registryType: "CRM", registryNumber: "777"});
+        expect(await screen.findByText("Este CPF já tem conta no sistema")).toBeInTheDocument();
+        expect(screen.getByLabelText(/^CPF/)).toHaveValue("111.444.777-35");
+    });
 });

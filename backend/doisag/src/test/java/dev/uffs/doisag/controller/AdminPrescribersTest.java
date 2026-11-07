@@ -511,6 +511,71 @@ class AdminPrescribersTest {
                 .isEqualTo("novo-prescritor@email.com");
     }
 
+    private ResultActions correctData(Long prescriberId, String body) throws Exception {
+        return mockMvc.perform(put("/admin/prescribers/" + prescriberId)
+                .header("Authorization", adminToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    // registro, cpf ou profissao digitados errado ficavam errados pra sempre (#149)
+    @Test
+    void adminCorrectsTheRegistryTheCpfAndTheProfessionAndItShowsUpInTheAuditTrail() throws Exception {
+        Long prescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+
+        correctData(prescriberId, "{\"cpf\":\"111.444.777-35\",\"profession\":\"Médico\","
+                + "\"registryType\":\" crm \",\"registryNumber\":\" 12345 \"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registryType").value("CRM"))
+                .andExpect(jsonPath("$.registryNumber").value("12345"))
+                .andExpect(jsonPath("$.profession").value("Médico"))
+                .andExpect(jsonPath("$.cpf").doesNotExist());
+        assertThat(prescriberRepository.findById(prescriberId).orElseThrow().getCpf()).isEqualTo("11144477735");
+
+        // cpf em branco mantem o q esta guardado: a lista n mostra o cpf, entao o admin so digita se for corrigir
+        correctData(prescriberId, "{\"cpf\":\"\",\"profession\":\"Médico\","
+                + "\"registryType\":\"CRM\",\"registryNumber\":\"12345\"}")
+                .andExpect(status().isOk());
+        assertThat(prescriberRepository.findById(prescriberId).orElseThrow().getCpf()).isEqualTo("11144477735");
+
+        mockMvc.perform(get("/admin/prescribers").header("Authorization", adminToken()))
+                .andExpect(jsonPath("$[?(@.id == " + prescriberId + ")].registryNumber").value("12345"));
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", adminToken()))
+                .andExpect(jsonPath("$.events[?(@.operation == 'ALTERACAO' "
+                        + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(2)));
+    }
+
+    // a unicidade eh a mesma do cadastro, e o proprio registro n briga com ele mesmo
+    @Test
+    void theDataCorrectionRefusesARegistryOrACpfOfAnotherAccountAndAnInvalidCpf() throws Exception {
+        Prescriber otherPrescriber = savePrescriber("ja-existe@email.com", "88888");
+        otherPrescriber.setCpf("11144477735");
+        prescriberRepository.save(otherPrescriber);
+        Long prescriberId = idOf(createPrescriber(NEW_PRESCRIBER_JSON).andExpect(status().isCreated()));
+
+        correctData(prescriberId, "{\"profession\":\"Biomédico\",\"registryType\":\"crbm\",\"registryNumber\":\"88888 \"}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("registryNumber"));
+        correctData(prescriberId, "{\"cpf\":\"11144477735\",\"profession\":\"Biomédico\","
+                + "\"registryType\":\"CRBM\",\"registryNumber\":\"77777\"}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].field").value("cpf"));
+        correctData(prescriberId, "{\"cpf\":\"12345678901\",\"profession\":\"Biomédico\","
+                + "\"registryType\":\"CRBM\",\"registryNumber\":\"77777\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("cpf"));
+        correctData(prescriberId, "{\"cpf\":\"168.995.350-09\",\"profession\":\"Biomédico\","
+                + "\"registryType\":\" crbm \",\"registryNumber\":\"77777 \"}")
+                .andExpect(status().isOk());
+
+        Prescriber savedPrescriber = prescriberRepository.findById(prescriberId).orElseThrow();
+        assertThat(savedPrescriber.getRegistryNumber()).isEqualTo("77777");
+        assertThat(savedPrescriber.getCpf()).isEqualTo("16899535009");
+    }
+
     @Test
     void theDeactivatedPrescriberDoesNotGetALink() throws Exception {
         Prescriber prescriber = savePrescriber("admin-senha-inativo@email.com", "ADM08");

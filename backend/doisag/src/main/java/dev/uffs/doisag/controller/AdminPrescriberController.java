@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.AdminEmailChangeDTO;
 import dev.uffs.doisag.dto.AdminPasswordResetDTO;
 import dev.uffs.doisag.dto.AdminPrescriberDTO;
+import dev.uffs.doisag.dto.AdminPrescriberUpdateDTO;
 import dev.uffs.doisag.dto.ChangeActiveDTO;
 import dev.uffs.doisag.dto.PasswordResetLinkDTO;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
@@ -74,6 +75,14 @@ public class AdminPrescriberController {
                                             HttpServletRequest request) {
         return prescriberService.changeEmailByAdmin(prescriberId, emailData.email(), emailData.adminPassword(),
                 loggedAdmin, request.getRemoteAddr());
+    }
+
+    // corrige registro profissional, cpf e profissao digitados errado (#149)
+    // nenhum desses campos da acesso a conta, entao a senha do administrador n entra aqui
+    @PutMapping("/{prescriberId}")
+    public AdminPrescriberDTO updatePrescriber(@PathVariable Long prescriberId,
+                                               @RequestBody @Valid AdminPrescriberUpdateDTO prescriberData) {
+        return new AdminPrescriberDTO(prescriberService.updateByAdmin(prescriberId, prescriberData));
     }
 
     // desativar tira o acesso na hora e n apaga nada do historico

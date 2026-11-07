@@ -119,6 +119,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, data de nascimento, telefone, e
 *Critérios de aceite:*
 - A combinação tipo + número de registro é única. *O conselho é comparado e guardado em maiúsculas e o número sem espaço nas pontas, então "crbm" e "77777 " são o mesmo registro que "CRBM" e "77777" (16/10/2026)*
 - O CPF passa pela mesma conferência dos dois dígitos verificadores do cadastro do paciente (RF02.1), feita pelo próprio sistema (23/10/2026)
+- A administração corrige o registro profissional, a profissão e o CPF de um prescritor digitados errado, com a mesma conferência de CPF e de unicidade do cadastro; a correção fica na trilha de auditoria como alteração de conta de prescritor (07/11/2026)
 - O sistema gera um **código de vínculo** único por prescritor (ver RN06)
 - Requisição anônima a qualquer rota de criação de prescritor retorna **401/403**
 - O administrador **não escolhe nem conhece** a senha do prescritor: a conta nasce com um link de primeiro acesso de uso único (48 h), enviado por e-mail ou, sem SMTP, mostrado ao administrador para entregar. Quem cria a senha é o próprio prescritor
@@ -683,7 +684,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 
 | Requisito | Alteração |
 |---|---|
-| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores. *Acrescentado em 02/10/2026:* o prescritor cria a própria senha por link de primeiro acesso, e o administrador desativa e reativa conta de paciente achando-a pelo e-mail, sem lista geral e sem ver prontuário. *Acrescentado em 16/10/2026:* pedir para a conta o estado que ela já tem é recusado, porque a resposta traz o nome e o e-mail e o número do paciente na trilha virava uma pessoa sem a ação ficar registrada |
+| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores. *Acrescentado em 02/10/2026:* o prescritor cria a própria senha por link de primeiro acesso, e o administrador desativa e reativa conta de paciente achando-a pelo e-mail, sem lista geral e sem ver prontuário. *Acrescentado em 16/10/2026:* pedir para a conta o estado que ela já tem é recusado, porque a resposta traz o nome e o e-mail e o número do paciente na trilha virava uma pessoa sem a ação ficar registrada. *Acrescentado em 07/11/2026:* a administração corrige registro profissional, profissão e CPF digitados errado, com a alteração na trilha |
 | RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
 | RF04 | *Critério acrescentado:* pressão, peso e altura são opcionais. A clínica não mede sinais vitais, porque a maioria das consultas é remota (01/10/2026) |
 | RF05 | Nova prescrição substitui a vigente quando a consulta dela não é mais antiga que a da vigente; lançada em consulta anterior, entra só no histórico (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |

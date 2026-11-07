@@ -28,6 +28,14 @@ const EMPTY_FORM = {
     registryNumber: "",
 };
 
+// correcao de registro, cpf e profissao: o cpf comeca em branco pq a lista n mostra ele
+const EMPTY_FIX = {
+    cpf: "",
+    profession: "",
+    registryType: "CRBM",
+    registryNumber: "",
+};
+
 // 30 vira 30 minutos e 2880 vira 48 horas
 // 60 continua 60 minutos pra n virar 1 horas
 function validityText(minutes) {
@@ -106,8 +114,8 @@ function LoadingList() {
     );
 }
 
-// uma conta de prescritor c/ os botoes de senha nova e-mail e acesso
-function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onToggle}) {
+// uma conta de prescritor com os botoes de senha nova, e-mail, dados e acesso
+function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onFixData, onToggle}) {
     return (
         <li className={styles.row}>
             <span
@@ -146,6 +154,14 @@ function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onToggle}) {
                         Corrigir e-mail
                     </button>
                 )}
+                {/* registro, cpf ou profissao digitados errado (#149) */}
+                <button
+                    type="button"
+                    className="button-secondary button-small"
+                    onClick={() => onFixData(prescriber)}
+                >
+                    Corrigir dados
+                </button>
                 <button
                     type="button"
                     className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
@@ -192,6 +208,12 @@ export default function AdminPrescribers() {
     const [emailError, setEmailError] = useState(null);
     const [isChangingEmail, setIsChangingEmail] = useState(false);
     const [emailLink, setEmailLink] = useState(null);
+    // correcao do registro, cpf ou profissao digitados errado (#149)
+    const [fixTarget, setFixTarget] = useState(null);
+    const [fixData, setFixData] = useState(EMPTY_FIX);
+    const [fixFieldErrors, setFixFieldErrors] = useState({});
+    const [fixError, setFixError] = useState(null);
+    const [isFixing, setIsFixing] = useState(false);
 
     // devolve a promessa pra quem cria ou desativa prescritor poder esperar a lista nova
     const loadPrescribers = useCallback(() => {
@@ -363,6 +385,56 @@ export default function AdminPrescribers() {
         }
     };
 
+    const openFix = (prescriber) => {
+        setFixTarget(prescriber);
+        setFixData({
+            cpf: "",
+            profession: prescriber.profession,
+            registryType: prescriber.registryType,
+            registryNumber: prescriber.registryNumber,
+        });
+        setFixFieldErrors({});
+        setFixError(null);
+    };
+
+    const closeFix = () => {
+        if (!isFixing) {
+            setFixTarget(null);
+        }
+    };
+
+    const updateFixField = (fieldName, value) => {
+        setFixData((currentData) => ({...currentData, [fieldName]: value}));
+    };
+
+    const handleFix = async (event) => {
+        event.preventDefault();
+        setIsFixing(true);
+        setFixFieldErrors({});
+        setFixError(null);
+        // cpf em branco vai como null e a api mantem o q esta guardado
+        try {
+            await apiService.put("/admin/prescribers/" + fixTarget.id, {
+                cpf: onlyDigits(fixData.cpf) || null,
+                profession: fixData.profession,
+                registryType: fixData.registryType,
+                registryNumber: fixData.registryNumber.trim(),
+            });
+            setFixTarget(null);
+            setPageError(null);
+            setNotice("Dados de " + fixTarget.name + " corrigidos.");
+            await loadPrescribers();
+        } catch (requestError) {
+            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            setFixFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setFixError(errorInfo.message);
+            }
+        } finally {
+            setIsFixing(false);
+        }
+    };
+
     // navegador sem area de transferencia n quebra a tela, o link fica ali pra copiar na mao
     const copyLink = async (link) => {
         try {
@@ -374,6 +446,11 @@ export default function AdminPrescribers() {
     };
 
     const isDeactivating = prescriberToToggle !== null && prescriberToToggle.active;
+
+    // um conselho guardado fora da lista continua aparecendo selecionado na correcao
+    const fixRegistryTypes = REGISTRY_TYPES.includes(fixData.registryType)
+        ? REGISTRY_TYPES
+        : [fixData.registryType, ...REGISTRY_TYPES];
 
     return (
         <section className={styles.page}>
@@ -413,6 +490,7 @@ export default function AdminPrescribers() {
                             prescriber={prescriber}
                             onResetPassword={openReset}
                             onChangeEmail={openEmailChange}
+                            onFixData={openFix}
                             onToggle={setPrescriberToToggle}
                         />
                     ))}
@@ -572,6 +650,54 @@ export default function AdminPrescribers() {
                         onClose={closeEmailChange}
                     />
                 )}
+            </Modal>
+
+            <Modal
+                show={fixTarget !== null}
+                title={fixTarget === null ? "" : "Corrigir dados de " + fixTarget.name}
+                onClickClose={closeFix}
+            >
+                <form className={styles.form} onSubmit={handleFix}>
+                    <p className={styles.fieldWide}>
+                        Serve para corrigir o registro profissional, a profissão ou o CPF digitados errado.
+                        O CPF guardado não aparece aqui: preencha só se for corrigir.
+                    </p>
+                    {fixError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{fixError}</p>}
+
+                    <FormField label="CPF (só se for corrigir)" fieldName="fixCpf" value={fixData.cpf}
+                               error={fixFieldErrors.cpf} isRequired={false}
+                               onChange={(fieldName, value) => updateFixField("cpf", value)}/>
+                    <FormField label="Profissão" fieldName="fixProfession" value={fixData.profession}
+                               error={fixFieldErrors.profession}
+                               onChange={(fieldName, value) => updateFixField("profession", value)}/>
+
+                    <div className={styles.field}>
+                        <label htmlFor="fixRegistryType">Conselho</label>
+                        <select
+                            id="fixRegistryType"
+                            className={styles.select}
+                            value={fixData.registryType}
+                            onChange={(event) => updateFixField("registryType", event.target.value)}
+                        >
+                            {fixRegistryTypes.map((registryType) => (
+                                <option key={registryType} value={registryType}>{registryType}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <FormField label="Número do registro" fieldName="fixRegistryNumber" value={fixData.registryNumber}
+                               error={fixFieldErrors.registryNumber}
+                               onChange={(fieldName, value) => updateFixField("registryNumber", value)}/>
+
+                    <div className={styles.formActions}>
+                        <button type="button" className="button-secondary" onClick={closeFix} disabled={isFixing}>
+                            Cancelar
+                        </button>
+                        <button type="submit" className="button" disabled={isFixing}>
+                            {isFixing ? "Salvando..." : "Salvar correção"}
+                        </button>
+                    </div>
+                </form>
             </Modal>
 
             <Modal show={firstAccess !== null} title="Conta criada" onClickClose={() => setFirstAccess(null)}>
