@@ -24,7 +24,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 
 1. No **Início**, veja **Esperando resposta** e toque em **Responder**.
 2. Responda e toque em **Salvar respostas** (na Avaliação inicial, **Enviar anamnese**).
-3. Na ficha diária (**Acompanhamento semanal**), cada dia aparece como *preenchido* ou *em branco*. Esqueceu um dia? Toque nele e preencha agora. Em branco não vale zero.
+3. Na ficha diária (**Acompanhamento semanal**), cada dia aparece como *preenchido*, *em branco* ou *não salvo*. Esqueceu um dia? Toque nele e preencha agora. Dá para preencher vários dias e tocar em **Salvar respostas** uma vez só: o aviso diz quantos dias foram salvos. Um dia *não salvo* ainda não foi enviado; se você sair da tela com um dia assim, por **Voltar**, pela seta do topo ou pelo menu, ela pergunta antes. Em branco não vale zero.
 4. Errou? Em **Escalas** (no celular, **Ver todas as avaliações** no **Início**), na parte **Respondidas**, use **Ver e corrigir** enquanto o prescritor não analisar a resposta.
 
 ## pedir e cancelar consulta

@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react";
-import {useNavigate, useParams, useSearchParams} from "react-router";
-import {FiCheck, FiMoon} from "react-icons/fi";
+import {useBlocker, useNavigate, useParams, useSearchParams} from "react-router";
+import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
@@ -52,7 +53,7 @@ function daysBetween(firstDay, lastDay) {
     return days;
 }
 
-function DayGrid({days, responses, selectedDay, isInsideTask, onChooseDay}) {
+function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, onChooseDay}) {
     return (
         <section className={styles.daysSection}>
             <h2 className={styles.sectionTitle}>{isInsideTask ? "Dias do período" : "Dia da semana"}</h2>
@@ -70,6 +71,14 @@ function DayGrid({days, responses, selectedDay, isInsideTask, onChooseDay}) {
                     // dia so com resposta anulada volta a ficar em branco
                     const isFilled = responses.some((response) => response.periodStart === dayIso
                         && !response.annulled);
+                    // dia mexido e ainda n salvo avisa na grade, senao a pessoa sai achando q salvou
+                    const isUnsaved = unsavedDays.includes(dayIso);
+                    let markClass = styles.dayMark;
+                    if (isUnsaved) {
+                        markClass = styles.dayMark + " " + styles.dayUnsaved;
+                    } else if (isFilled) {
+                        markClass = styles.dayMark + " " + styles.dayFilled;
+                    }
                     return (
                         <button
                             key={dayIso}
@@ -79,9 +88,10 @@ function DayGrid({days, responses, selectedDay, isInsideTask, onChooseDay}) {
                             onClick={() => onChooseDay(dayIso)}
                         >
                             <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
-                            <span className={isFilled ? styles.dayMark + " " + styles.dayFilled : styles.dayMark}>
-                                {isFilled && <FiCheck aria-hidden="true"/>}
-                                {isFilled ? "preenchido" : "em branco"}
+                            <span className={markClass}>
+                                {isUnsaved && <FiEdit2 aria-hidden="true"/>}
+                                {!isUnsaved && isFilled && <FiCheck aria-hidden="true"/>}
+                                {isUnsaved ? "não salvo" : (isFilled ? "preenchido" : "em branco")}
                             </span>
                         </button>
                     );
@@ -221,6 +231,12 @@ export default function Escala() {
     // dia em branco abre em branco e a tela nunca sugere valor (RN10)
     const savedValues = currentResponse ? answersToValues(currentResponse.answers) : {};
     const values = editsByDay[selectedDay] || savedValues;
+    // dia mexido com alguma resposta e ainda n salvo. o rascunho todo limpo n tem o q salvar
+    const hasDraft = (dayIso) => Boolean(definition && editsByDay[dayIso])
+        && Object.keys(answersPayload(definition.items, editsByDay[dayIso])).length > 0;
+    // no diario sao os dias mexidos, em ordem de data. fora dele so o dia da tela, pq o rascunho de outra
+    // data some da tela e n vai no salvar
+    const unsavedDays = isDiary ? Object.keys(editsByDay).filter(hasDraft).sort() : [selectedDay].filter(hasDraft);
     // o periodo ja respondido abre com o fim q foi salvo e n com hoje. o so com resposta anulada abre com o
     // fim dela: o aviso da anulacao chega pela data, e com o fim em hoje a resposta nova caia na pendencia
     // mais nova da escala em vez da reaberta
@@ -263,48 +279,96 @@ export default function Escala() {
         setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
     };
 
+    // manda a resposta de um dia do diario, ou do periodo q esta na tela
+    const sendResponse = (dayIso) => {
+        const dayValues = dayIso === selectedDay ? values : editsByDay[dayIso];
+        const body = {
+            periodStart: isDiary ? dayIso : periodStart,
+            periodEnd: isDiary ? dayIso : (isPeriod ? periodEnd : periodStart),
+            answers: answersPayload(definition.items, dayValues),
+        };
+        return isCorrecting
+            ? apiService.put("/scales/responses/" + currentResponse.id, body)
+            : apiService.post("/scales/" + slug + "/responses", body);
+    };
+
     const save = async (event) => {
         event.preventDefault();
         setFormError(null);
         setNotice(null);
 
-        const missingItems = missingItemsOf(requiredItemsOf(definition), values);
-        if (missingItems.length > 0) {
-            setMissingKeys(missingItems.map((item) => item.key));
-            return;
+        // no diario salvar manda cada dia editado, em ordem de data, pro dia preenchido n ficar pra tras
+        // sem nenhum dia editado vai o dia da tela, como sempre foi
+        const daysToSave = isDiary && unsavedDays.length > 0 ? unsavedDays : [selectedDay];
+        for (const dayIso of daysToSave) {
+            const dayValues = dayIso === selectedDay ? values : editsByDay[dayIso];
+            const missingItems = missingItemsOf(requiredItemsOf(definition), dayValues);
+            if (missingItems.length > 0) {
+                setSelectedDay(dayIso);
+                setMissingKeys(missingItems.map((item) => item.key));
+                return;
+            }
         }
 
         setIsSaving(true);
-        try {
-            const body = {
-                periodStart,
-                periodEnd: isPeriod ? periodEnd : periodStart,
-                answers: answersPayload(definition.items, values),
-            };
-            const saved = isCorrecting
-                ? await apiService.put("/scales/responses/" + currentResponse.id, body)
-                : await apiService.post("/scales/" + slug + "/responses", body);
-            setNotice(saved.result ? "Respostas salvas. Resultado: " + saved.result : "Respostas salvas.");
-            // a resposta salva entra na lista na hora e o rascunho daquele dia sai
-            setResponses((current) => [saved, ...current.filter((response) => response.id !== saved.id
-                && response.periodStart !== saved.periodStart)]);
-            setEditsByDay((current) => ({...current, [selectedDay]: null}));
-            setPeriodEndByDay((current) => ({...current, [selectedDay]: null}));
-            setPeriodStartByDay((current) => ({...current, [selectedDay]: null}));
-            // a tela segue na resposta salva ja em modo de correcao: mexer na data dps
-            // de salvar corrige essa resposta, em vez de abrir outro dia em branco
-            if (!isDiary && chosenDate !== saved.periodStart) {
-                setSelectedDay(saved.periodStart);
-                navigate("/escalas/" + slug + "?data=" + saved.periodStart, {replace: true});
-            } else {
-                setReloadCount((currentCount) => currentCount + 1);
+        const savedDays = [];
+        const savedResponses = [];
+        const failures = [];
+        for (const dayIso of daysToSave) {
+            try {
+                savedResponses.push(await sendResponse(dayIso));
+                savedDays.push(dayIso);
+            } catch (requestError) {
+                // o dia recusado continua como rascunho e o erro diz qual dia foi
+                const message = errorMessageOf(requestError);
+                failures.push(isDiary
+                    ? formatWeekdayAndDate(dayIso) + ": a resposta não foi salva. " + message
+                    : message);
             }
-        } catch (requestError) {
-            setFormError(errorMessageOf(requestError));
-        } finally {
-            setIsSaving(false);
+        }
+        setIsSaving(false);
+        if (failures.length > 0) {
+            setFormError(failures.join(" "));
+        }
+        if (savedResponses.length === 0) {
+            return;
+        }
+
+        const lastSaved = savedResponses[savedResponses.length - 1];
+        if (savedResponses.length > 1) {
+            setNotice("Respostas de " + savedResponses.length + " dias salvas.");
+        } else {
+            setNotice(lastSaved.result ? "Respostas salvas. Resultado: " + lastSaved.result : "Respostas salvas.");
+        }
+        // as respostas salvas entram na lista na hora e o rascunho dos dias salvos sai
+        setResponses((current) => [...savedResponses, ...current.filter((response) => !savedResponses.some(
+            (saved) => response.id === saved.id || response.periodStart === saved.periodStart))]);
+        const withoutSavedDays = (byDay) => {
+            const next = {...byDay};
+            savedDays.forEach((dayIso) => {
+                next[dayIso] = null;
+            });
+            return next;
+        };
+        setEditsByDay(withoutSavedDays);
+        setPeriodEndByDay(withoutSavedDays);
+        setPeriodStartByDay(withoutSavedDays);
+        // a tela segue na resposta salva ja em modo de correcao: mexer na data dps
+        // de salvar corrige essa resposta, em vez de abrir outro dia em branco
+        if (!isDiary && chosenDate !== lastSaved.periodStart) {
+            setSelectedDay(lastSaved.periodStart);
+            navigate("/escalas/" + slug + "?data=" + lastSaved.periodStart, {replace: true});
+        } else {
+            setReloadCount((currentCount) => currentCount + 1);
         }
     };
+
+    // sair da tela com dia mexido e n salvo pergunta antes, pra resposta n sumir calada
+    // vale pra qqr saida: o Voltar do formulario, a seta do topo, o Voltar de cima e o menu
+    // trocar so a data na url continua na tela, e sair da conta n pergunta pq a sessao ja acabou
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => unsavedDays.length > 0
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
 
     if (loadError) {
         return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
@@ -346,6 +410,7 @@ export default function Escala() {
                     days={gridDays}
                     responses={responses}
                     selectedDay={selectedDay}
+                    unsavedDays={unsavedDays}
                     isInsideTask={insideOpenTask}
                     onChooseDay={changeDay}
                 />
@@ -450,6 +515,19 @@ export default function Escala() {
                     )}
                 </FormActions>
             </form>
+
+            <ConfirmModal
+                show={exitBlocker.state === "blocked"}
+                title="Sair sem salvar"
+                message={isDiary && unsavedDays.length > 1
+                    ? "Você preencheu " + unsavedDays.length + " dias que ainda não foram salvos e vão se perder. "
+                        + "Quer mesmo sair?"
+                    : "O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"}
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
+            />
         </section>
     );
 }

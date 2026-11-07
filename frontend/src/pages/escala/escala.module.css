@@ -103,6 +103,17 @@
     color: var(--color-straw);
 }
 
+/* dia mexido e ainda n salvo */
+.dayUnsaved {
+    color: var(--color-error);
+    font-weight: 700;
+    opacity: 1;
+}
+
+.dayChosen .dayUnsaved {
+    color: var(--color-straw);
+}
+
 /* ---- formulario ---- */
 
 .form {

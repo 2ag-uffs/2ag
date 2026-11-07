@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import AppLayout from "../../components/app-layout/app-layout.jsx";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import {addDays, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
 import Escala from "./escala.jsx";
 
@@ -94,6 +95,38 @@ describe("Escala", () => {
             {periodStart: "2026-09-25", periodEnd: "2026-09-25", answers: {humorAnsioso: 1}});
         expect(router.state.location.search).toBe("?data=2026-09-25");
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
+    });
+
+    // fora do diario o rascunho de outra data some da tela e n vai no salvar, entao n segura o voltar
+    it("fora do diario, dps de trocar a data e salvar o voltar sai sem perguntar", async () => {
+        const created = {...SAVED_RESPONSE, id: 8, periodStart: "2026-09-25", periodEnd: "2026-09-25",
+            answers: {humorAnsioso: 1}};
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => {
+            responses = [SAVED_RESPONSE, created];
+            return Promise.resolve(created);
+        });
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/painel-paciente", "/escalas/hamilton"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Humor ansioso"), "2");
+        // o q esta na tela e n foi salvo ainda segura o voltar
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        await user.click(within(screen.getByRole("dialog", {name: "Sair sem salvar"}))
+            .getByRole("button", {name: "Continuar preenchendo"}));
+
+        fireEvent.change(screen.getByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
+        expect(post).toHaveBeenCalledTimes(1);
+
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
     });
 
     // a anulada fica no historico e o paciente responde de novo no msm dia
@@ -449,5 +482,234 @@ describe("Escala diaria", () => {
         expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(taskStart));
         expect(within(grid).getByRole("button", {pressed: true})).toHaveTextContent(formatWeekdayAndDate(annulledDay));
         expect(screen.getByText(/Esqueceu algum dia/)).toBeInTheDocument();
+    });
+
+    // a tela com o painel atras, pro voltar ter pra onde ir
+    function renderScaleWithHome() {
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/painel-paciente", "/escalas/acompanhamento-semanal"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+    }
+
+    // a tela dentro do layout de vdd, com a seta do topo, o Voltar de cima e o menu
+    function renderScaleInsideLayout() {
+        const router = createMemoryRouter([
+            {path: "/entrar", element: <p>tela de login</p>},
+            {
+                element: <AppLayout/>,
+                children: [
+                    {path: "/painel-paciente", element: <p>painel do paciente</p>},
+                    {path: "/escalas/:slug", element: <Escala/>},
+                ],
+            },
+        ], {initialEntries: ["/painel-paciente", "/escalas/acompanhamento-semanal"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+    }
+
+    // o GET das respostas passa a devolver o q o POST salvou, igual a api de vdd
+    function mockSavingApi(rejectDay = null) {
+        let savedResponses = [];
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: pendingTasks, history: []});
+            }
+            return Promise.resolve(savedResponses);
+        });
+        return vi.spyOn(apiService, "post").mockImplementation((path, body) => {
+            if (body.periodStart === rejectDay) {
+                return Promise.reject(new ApiError(400, "Dia fora do período da tarefa"));
+            }
+            // a api de vdd recusa resposta sem nenhum item
+            if (Object.keys(body.answers).length === 0) {
+                return Promise.reject(new ApiError(400, "Responda ao menos um item da escala"));
+            }
+            const saved = {
+                id: savedResponses.length + 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal",
+                periodStart: body.periodStart, periodEnd: body.periodEnd, answers: body.answers, result: null,
+                reviewed: false, annulled: false, editableByPatient: true,
+            };
+            savedResponses = [...savedResponses, saved];
+            return Promise.resolve(saved);
+        });
+    }
+
+    // qm preenche os dias esquecidos de uma vez salva uma vez so: cada dia editado vai num POST, em ordem de
+    // data, e o aviso diz quantos dias foram salvos (issue 168)
+    it("salvar envia todos os dias editados em ordem de data e diz quantos dias salvou", async () => {
+        const secondDay = dayFromToday(-8);
+        const post = mockSavingApi();
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const days = within(grid).getAllByRole("button");
+        expect(within(grid).queryByText("não salvo")).not.toBeInTheDocument();
+        // preenche o segundo dia antes do primeiro pra ver q o envio segue a data e n a ordem de digitacao
+        await user.click(days[1]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(days[0]);
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        expect(days[0]).toHaveTextContent("não salvo");
+        expect(days[1]).toHaveTextContent("não salvo");
+        expect(days[2]).toHaveTextContent("em branco");
+
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText("Respostas de 2 dias salvas.")).toBeInTheDocument();
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[0]).toEqual(["/scales/acompanhamento-semanal/responses",
+            {periodStart: taskStart, periodEnd: taskStart, answers: {dor: 6}}]);
+        expect(post.mock.calls[1]).toEqual(["/scales/acompanhamento-semanal/responses",
+            {periodStart: secondDay, periodEnd: secondDay, answers: {dor: 4}}]);
+        await waitFor(() => expect(within(grid).getAllByRole("button")[0]).toHaveTextContent("preenchido"));
+        expect(within(grid).getAllByRole("button")[1]).toHaveTextContent("preenchido");
+        expect(within(grid).queryByText("não salvo")).not.toBeInTheDocument();
+    });
+
+    // o dia q a api recusa n some calado: continua como rascunho marcado na grade e o erro dele aparece
+    it("dia q a api recusa continua nao salvo na grade e o erro aparece", async () => {
+        const post = mockSavingApi(taskStart);
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const days = within(grid).getAllByRole("button");
+        await user.click(days[0]);
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        await user.click(days[1]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText("Respostas salvas.")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            formatWeekdayAndDate(taskStart) + ": a resposta não foi salva. Dia fora do período da tarefa");
+        expect(post).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(within(grid).getAllByRole("button")[1]).toHaveTextContent("preenchido"));
+        expect(within(grid).getAllByRole("button")[0]).toHaveTextContent("não salvo");
+        // o rascunho do dia recusado continua la pra tentar de novo
+        await user.click(within(grid).getAllByRole("button")[0]);
+        expect(screen.getByRole("radio", {name: "6"})).toBeChecked();
+    });
+
+    // voltar com dia preenchido e ainda n salvo pergunta antes, igual a anamnese, pra resposta n sumir calada
+    it("voltar com dia preenchido e n salvo pergunta antes de sair", async () => {
+        mockSavingApi();
+        renderScaleWithHome();
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+
+        const dialog = screen.getByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/ainda não foi salvo/);
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "4"})).toBeChecked();
+
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        await user.click(screen.getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // a seta do topo no celular, o Voltar de cima e o menu tbm saem da tela, entao tbm perguntam
+    it("sair pela seta do topo ou pelo menu com dia n salvo tbm pergunta antes", async () => {
+        mockSavingApi();
+        renderScaleInsideLayout();
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+
+        // o primeiro Voltar eh a seta do topo do celular, o segundo o de cima da tela
+        const backButtons = screen.getAllByRole("button", {name: "Voltar"});
+        expect(backButtons).toHaveLength(3);
+        await user.click(backButtons[0]);
+        let dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(screen.getByRole("radio", {name: "4"})).toBeChecked();
+
+        await user.click(screen.getAllByRole("button", {name: "Voltar"})[1]);
+        dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        const sideMenu = within(screen.getByRole("navigation", {name: "Menu principal"}));
+        await user.click(sideMenu.getByRole("link", {name: "Início"}));
+        dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // sair da conta n eh so sair da tela: a sessao ja acabou e a tela vai pro login sem perguntar
+    it("sair da conta com dia n salvo vai pro login sem perguntar", async () => {
+        mockSavingApi();
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({ok: true, status: 204});
+        renderScaleInsideLayout();
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getAllByRole("button", {name: "Sair"})[0]);
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // depois de salvar n tem rascunho, entao o voltar sai direto
+    it("depois de salvar o voltar sai sem perguntar", async () => {
+        mockSavingApi();
+        renderScaleWithHome();
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        expect(await screen.findByText("Respostas salvas.")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // o dia com a resposta limpa fica com o rascunho em branco, q n tem o q salvar: ele n fica nao salvo,
+    // n vai no salvar (a api recusaria) e n segura o voltar
+    it("dia com a resposta limpa n conta como nao salvo", async () => {
+        const secondDay = dayFromToday(-8);
+        const post = mockSavingApi();
+        renderScaleWithHome();
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const days = within(grid).getAllByRole("button");
+        await user.click(days[0]);
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        await user.click(screen.getByRole("button", {name: "Limpar resposta de Dor"}));
+        expect(days[0]).toHaveTextContent("em branco");
+        await user.click(days[1]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText("Respostas salvas.")).toBeInTheDocument();
+        expect(post).toHaveBeenCalledTimes(1);
+        expect(post).toHaveBeenCalledWith("/scales/acompanhamento-semanal/responses",
+            {periodStart: secondDay, periodEnd: secondDay, answers: {dor: 4}});
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        await waitFor(() => expect(within(grid).getAllByRole("button")[1]).toHaveTextContent("preenchido"));
+        expect(within(grid).queryByText("não salvo")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
     });
 });

@@ -68,6 +68,10 @@ a sessão fica num cookie `httpOnly`, que o javascript não enxerga. o `main.jsx
 
 a api trabalha no horário de Brasília (`America/Sao_Paulo`) e as telas também. o hoje e o agora saem de `utils/date-format.js`, que usa o fuso de Brasília mesmo com o navegador em outro fuso: `toIsoDate(new Date())` é o dia de hoje em Brasília, e `isInTheFuture`, `hasEnded` e `minutesUntil` comparam o horário da consulta com o agora de Brasília. os horários aparecem como a api manda, e sempre que o fuso do navegador não é `America/Sao_Paulo`, mesmo outro de UTC-3 como `America/Fortaleza`, vai "(horário de Brasília)" do lado: `brasiliaTimeNote()` depois do horário nas telas de consultas e do painel do paciente, e `withBrasiliaTimeNote(texto)` nos avisos que já vêm com o horário no texto, no painel do paciente e na página de avisos, que o prescritor também vê. um dia montado pela tela (`addDays`, `mondayOf`, `new Date("2026-10-16T00:00:00")`) fica no começo do dia local, que onde o horário de verão pula a meia-noite é 1h.
 
+## escalas
+
+a tela de escala (`pages/escala`) monta o formulário com a definição que vem da api. no diário a grade mostra os dias da tarefa aberta, e o que a pessoa mexe fica guardado por dia (`editsByDay`) até salvar: o dia com rascunho aparece como *não salvo* na grade, **Salvar respostas** envia cada dia editado num `POST` próprio, em ordem de data, e o aviso diz quantos dias foram salvos. o dia que a api recusa continua como rascunho *não salvo* e o erro dele aparece na tela. sair da tela com rascunho pergunta antes, com o mesmo modal de confirmação da anamnese: o `useBlocker` do react router segura qualquer saída, seja o **Voltar** do formulário, a seta e o **Voltar** do layout ou o menu. trocar só a data na url continua na tela e não pergunta, e sair da conta também não, porque a sessão já acabou.
+
 ## padrão de código
 
 vale para todo código novo ou reescrito:

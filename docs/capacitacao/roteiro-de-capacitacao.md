@@ -330,8 +330,8 @@ Janela anônima, paciente adulto.
 
 - **Onde clicar:** saia e entre como `paciente@email.com` (Maria Souza). Em **Escalas**, clique em **Responder** no **Acompanhamento semanal**.
 - **Conferir:**
-  - A grade **Dias do período** mostra todos os dias desde o início do período até hoje, cada um como **preenchido** ou **em branco**, e o aviso *Esqueceu algum dia? Escolha o dia na grade e preencha agora.*
-  - O paciente escolhe um dia em branco, preenche e salva, e repete para os outros dias esquecidos, tudo de uma vez.
+  - A grade **Dias do período** mostra todos os dias desde o início do período até hoje, cada um como **preenchido**, **em branco** ou, enquanto não for salvo, **não salvo**, e o aviso *Esqueceu algum dia? Escolha o dia na grade e preencha agora.*
+  - O paciente escolhe um dia em branco, preenche, passa para os outros dias esquecidos e clica em **Salvar respostas** uma vez só. Até salvar, cada dia preenchido aparece como **não salvo**; depois, o aviso diz quantos dias foram salvos (*Respostas de 2 dias salvas.*) e eles passam a **preenchido**. Com um dia **não salvo**, sair da tela pergunta antes (*Sair sem salvar*), seja pelo **Voltar**, pela seta do topo no celular ou pelo menu.
   - Dia que ainda não chegou nunca aparece na grade.
   - Na demonstração que subiu hoje, os dois primeiros dias do período da Maria já vêm preenchidos e só o de hoje está em branco. Mostre que qualquer dia da grade abre do mesmo jeito: o dia em branco de dias atrás seria preenchido como o de hoje.
 
