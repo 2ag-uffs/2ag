@@ -114,7 +114,7 @@ Autoatendimento. O paciente informa nome completo, CPF, e-mail, data de nascimen
 
 Contas de prescritor são criadas por administrador, por seed de inicialização ou por fluxo de convite. **Não há endpoint público de cadastro de prescritor.**
 
-Dados obrigatórios: nome completo, CPF, e-mail, data de nascimento, telefone, endereço, profissão e registro profissional (tipo + número: CRM, COREN, CRBM, CRP).
+Dados obrigatórios: nome completo, CPF, e-mail, profissão e registro profissional (tipo + número: CRM, COREN, CRBM, CRP). Data de nascimento, telefone e endereço são opcionais nesse cadastro: a administração registra o prescritor com o que tem e ele completa esses dados no próprio perfil (RF18) *(07/11/2026)*.
 
 *Critérios de aceite:*
 - A combinação tipo + número de registro é única. *O conselho é comparado e guardado em maiúsculas e o número sem espaço nas pontas, então "crbm" e "77777 " são o mesmo registro que "CRBM" e "77777" (16/10/2026)*
@@ -684,7 +684,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 
 | Requisito | Alteração |
 |---|---|
-| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores. *Acrescentado em 02/10/2026:* o prescritor cria a própria senha por link de primeiro acesso, e o administrador desativa e reativa conta de paciente achando-a pelo e-mail, sem lista geral e sem ver prontuário. *Acrescentado em 16/10/2026:* pedir para a conta o estado que ela já tem é recusado, porque a resposta traz o nome e o e-mail e o número do paciente na trilha virava uma pessoa sem a ação ficar registrada. *Acrescentado em 07/11/2026:* a administração corrige registro profissional, profissão e CPF digitados errado, com a alteração na trilha |
+| RF02.2 | Conta administrativa mínima criada por variável de ambiente na primeira inicialização, responsável por criar e desativar prescritores. *Acrescentado em 02/10/2026:* o prescritor cria a própria senha por link de primeiro acesso, e o administrador desativa e reativa conta de paciente achando-a pelo e-mail, sem lista geral e sem ver prontuário. *Acrescentado em 16/10/2026:* pedir para a conta o estado que ela já tem é recusado, porque a resposta traz o nome e o e-mail e o número do paciente na trilha virava uma pessoa sem a ação ficar registrada. *Acrescentado em 07/11/2026:* data de nascimento, telefone e endereço do prescritor são opcionais no cadastro feito pela administração e ele completa esses dados no perfil; a administração corrige registro profissional, profissão e CPF digitados errado, com a alteração na trilha |
 | RN06 | O vínculo passa a ser feito por link ou QR de convite gerado pelo prescritor, aleatório e com validade |
 | RF04 | *Critério acrescentado:* pressão, peso e altura são opcionais. A clínica não mede sinais vitais, porque a maioria das consultas é remota (01/10/2026) |
 | RF05 | Nova prescrição substitui a vigente quando a consulta dela não é mais antiga que a da vigente; lançada em consulta anterior, entra só no histórico (vigente ou substituída). O histórico resulta da própria sequência, sem tabela de versões. O paciente acessa suas prescrições em tela própria |

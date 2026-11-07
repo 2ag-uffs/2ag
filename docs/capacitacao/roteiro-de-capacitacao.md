@@ -109,7 +109,7 @@ Janela normal, conta `admin@email.com`.
 - **Mostrar:** a tela **Prescritores**, que é a primeira da administração. Ela lista quem atende na clínica, com o selo **Ativo** ou **Desativado**.
 - **Onde clicar:**
   1. **Novo prescritor**.
-  2. Preencha **Nome completo**, **E-mail**, **CPF**, **Profissão**, **Conselho** e **Número do registro**. **Data de nascimento (opcional)** e **Telefone (opcional)** podem ficar em branco. Mostre o aviso no fim do formulário: *Você não escolhe a senha. A pessoa recebe um link e cria a própria senha no primeiro acesso.*
+  2. Preencha **Nome completo**, **E-mail**, **CPF**, **Profissão**, **Conselho** e **Número do registro**. **Data de nascimento (opcional)** e **Telefone (opcional)** podem ficar em branco, e o endereço não entra aqui: a pessoa completa esses dados depois, no **Perfil** dela. Mostre o aviso no fim do formulário: *Você não escolhe a senha. A pessoa recebe um link e cria a própria senha no primeiro acesso.*
   3. **Criar conta**.
   4. Na janela **Conta criada**, clique em **Copiar link** e depois em **Fechar**.
 - **Conferir:**
