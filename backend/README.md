@@ -299,8 +299,8 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /patients/{patientId}/export/appointments.csv` | as consultas do paciente, com a conduta de cada atendimento |
-| `GET /patients/{patientId}/export/prescriptions.csv` | as prescrições, com composição, posologia e vigência |
+| `GET /patients/{patientId}/export/appointments.csv` | as consultas do paciente que entram no histórico, com a conduta de cada atendimento |
+| `GET /patients/{patientId}/export/prescriptions.csv` | as prescrições, com prescritor, composição, posologia, plano de dose, instruções, precauções, efeitos esperados e vigência |
 | `GET /patients/{patientId}/export/scales.csv` | as escalas respondidas, uma linha por item, com o escore e a faixa |
 | `GET /patients/{patientId}/export/anamneses.csv` | a anamnese, uma linha por pergunta respondida |
 | `GET /patients/{patientId}/export/progress.csv?attribute=&period=` | a série de um atributo no período, com a faixa ao lado do escore |
@@ -308,7 +308,9 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - todas aceitam `deidentified=true`, que é a exportação sem identificação, para pesquisa: sai sem nome, CPF, e-mail, telefone e endereço, e o paciente e o prescritor aparecem só por um número. só o prescritor pode pedir esse modo, e só de paciente que aceitou a versão atual do consentimento de pesquisa e não retirou (RF37). texto livre, como queixa e observação, sai como foi escrito. não é anônimo: o número é o id do banco e a clínica sabe de quem é, então pela LGPD o arquivo continua sendo dado pessoal de saúde (art. 12). o parâmetro antigo `anonymous` responde 400, para uma aba desatualizada não baixar o arquivo com nome
 - no arquivo com identificação, o paciente com nome social sai como `Nome social (nome civil: Nome civil)` na coluna `Paciente`. o arquivo sem identificação não leva nenhum dos dois
 - o arquivo vai como anexo, separado por ponto e vírgula e com marca de UTF-8, que é como a planilha abre com acento certo
+- o `appointments.csv` segue a mesma regra do histórico e da impressão: entra a consulta que já passou e foi atendida, estava marcada ou virou falta; pedido sem resposta, recusado, cancelada e consulta futura ficam de fora, para o arquivo não misturar pedido com atendimento feito. a anulada entra marcada, como no histórico (07/11/2026, #147)
 - no `prescriptions.csv` a composição sai como a tela mostra, `CBD 10% + THC 0,3% + CBG 25 mg/mL`: vírgula decimal, sem os zeros que o banco guarda (`10.000` seria lido como dez mil) e a unidade escrita, não o nome do enum
+- o `prescriptions.csv` leva a receita inteira (RF05): `Prescritor` traz o nome de quem prescreveu (no modo sem identificação só o número dele), `Plano de dose` traz os degraus numa célula só, como `Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite`, e `Instruções de uso`, `Precauções e contraindicações` e `Efeitos esperados` saem como foram escritos. texto que começa como fórmula ganha o apóstrofo, como nas outras colunas (07/11/2026, #146)
 - os quatro arquivos do histórico têm `Anulada` e `Motivo da anulação`. no `scales.csv` e no `anamneses.csv`, que têm uma linha por item, o motivo se repete em cada linha do registro anulado
 - no `progress.csv` a coluna `Faixa` traz a faixa gravada do escore (HAM-A, PSQI, MEEM e intensidade da dor), igual à do `scales.csv`, e fica em branco nos itens da ficha, que não têm faixa publicada (RN13 e RN14)
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)

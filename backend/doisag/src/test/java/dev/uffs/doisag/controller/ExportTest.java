@@ -6,9 +6,11 @@ import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.DoseEscalationStep;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
@@ -38,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,6 +140,33 @@ class ExportTest {
         assertThat(csv).contains("Paciente da exportação");
         assertThat(csv).contains("Dor lombar crônica");
         assertThat(csv).contains("Dra. Exportação");
+    }
+
+    // o csv segue a mesma regra do historico e da impressao: consulta q ja passou e foi atendida,
+    // estava marcada ou virou falta. pedido sem resposta, recusado, cancelada e consulta futura
+    // n sao atendimento e ficam fora, senao o arquivo mistura pedido com atendimento feito
+    // a anulada entra marcada com o motivo, como no historico
+    @Test
+    void appointmentsCsvFollowsTheHistoryRule() throws Exception {
+        Appointment annulled = saveAppointment(TODAY.minusDays(6).atTime(10, 0), AppointmentStatus.CONCLUIDA,
+                "atendimento anulado");
+        annulled.setAnnulment(new Annulment(prescriber, "Registro de outro paciente"));
+        appointmentRepository.save(annulled);
+        saveAppointment(TODAY.minusDays(5).atTime(10, 0), AppointmentStatus.NAO_COMPARECEU, "faltou na consulta");
+        saveAppointment(TODAY.minusDays(4).atTime(10, 0), AppointmentStatus.AGENDADA, "marcada e ja passou");
+        saveAppointment(TODAY.minusDays(3).atTime(10, 0), AppointmentStatus.CANCELADA, "consulta cancelada");
+        saveAppointment(TODAY.minusDays(2).atTime(10, 0), AppointmentStatus.RECUSADA, "pedido recusado");
+        saveAppointment(TODAY.plusDays(2).atTime(10, 0), AppointmentStatus.SOLICITADA, "pedido esperando resposta");
+        saveAppointment(TODAY.plusDays(3).atTime(10, 0), AppointmentStatus.AGENDADA, "marcada pro futuro");
+
+        String csv = download("appointments.csv", "", patient);
+
+        assertThat(csv).contains("Dor lombar crônica").contains("faltou na consulta").contains("marcada e ja passou");
+        assertThat(csv).contains("atendimento anulado").contains("\"sim\";\"Registro de outro paciente\"");
+        assertThat(csv).doesNotContain("consulta cancelada").doesNotContain("pedido recusado")
+                .doesNotContain("pedido esperando resposta").doesNotContain("marcada pro futuro");
+        // o cabecalho e as quatro consultas q entram no historico
+        assertThat(csv.lines().count()).isEqualTo(5);
     }
 
     // o arquivo tem q vir como anexo, senao o navegador abre em vez de baixar
@@ -482,6 +512,73 @@ class ExportTest {
                 .doesNotContain("PERCENTUAL").doesNotContain("MG_POR_ML").doesNotContain("OUTRO");
     }
 
+    // a receita tem mais q oleo, composicao e posologia (RF05): qnd a posologia eh "conforme o plano"
+    // a linha ficava sem dose nenhuma, e instrucoes, cuidados, efeitos esperados e quem prescreveu
+    // so saiam na impressao. a linha inteira eh conferida pra coluna nenhuma sair do lugar
+    @Test
+    void prescriptionWithADosePlanComesOutWithTheWholeLine() throws Exception {
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(appointment);
+        prescription.setProductDescription("Óleo de CBD 20%");
+        prescription.setPosology("Conforme o plano");
+        prescription.setAdministrationRoute("Sublingual");
+        prescription.setTreatmentDurationDays(90);
+        prescription.setInstructions("Pingar embaixo da língua e esperar um minuto");
+        prescription.setPrecautions("Não dirigir nas primeiras semanas");
+        prescription.setExpectedEffects("Sono melhor em duas semanas");
+        prescription.setObservation("Rever a dose no retorno");
+        prescription.addEscalationStep(stepOf(1, "2 gotas à noite", "começar devagar"));
+        prescription.addEscalationStep(stepOf(2, "4 gotas à noite", null));
+        prescriptionRepository.save(prescription);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("prescriptions.csv", "", patient);
+
+        assertThat(csv).contains("\"Paciente\";\"Data da consulta\";\"Situação\";\"Prescritor\";\"Produto\";"
+                + "\"Espectro\";\"Composição\";\"Marca\";\"Lote\";\"Volume\";\"Posologia\";\"Plano de dose\";\"Via\";"
+                + "\"Duração em dias\";\"Próxima consulta\";\"Instruções de uso\";\"Precauções e contraindicações\";"
+                + "\"Efeitos esperados\";\"Observações\";\"Anulada\";\"Motivo da anulação\"");
+        assertThat(csv).contains("\"Paciente da exportação\";\"" + BrazilianFormat.date(TODAY.minusDays(10))
+                + "\";\"VIGENTE\";\"Dra. Exportação\";\"Óleo de CBD 20%\";\"\";\"\";\"\";\"\";\"\";\"Conforme o plano\";"
+                + "\"Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite\";\"Sublingual\";\"90\";"
+                + "\"\";\"Pingar embaixo da língua e esperar um minuto\";\"Não dirigir nas primeiras semanas\";"
+                + "\"Sono melhor em duas semanas\";\"Rever a dose no retorno\";\"não\";\"\"");
+    }
+
+    // no modo sem identificacao o prescritor da receita vira numero, igual no appointments.csv
+    @Test
+    void deidentifiedPrescriptionsCarryOnlyThePrescriberNumber() throws Exception {
+        String csv = download("prescriptions.csv", "?deidentified=true", prescriber);
+
+        assertThat(csv).contains("\"Identificador\";\"Data da consulta\";\"Situação\";\"Prescritor\"");
+        assertThat(csv).contains("\"prescritor " + prescriber.getId() + "\"");
+        assertThat(csv).doesNotContain("Dra. Exportação");
+    }
+
+    // texto da receita q comeca como formula n pode rodar na planilha de quem abre o arquivo,
+    // e as colunas novas passam pela mesma protecao das antigas
+    @Test
+    void prescriptionTextStartingLikeAFormulaGetsTheApostrophe() throws Exception {
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(appointment);
+        prescription.setProductDescription("Óleo de CBD 5%");
+        prescription.setPosology("1 gota");
+        prescription.setInstructions("=HYPERLINK(\"http://site-estranho\")");
+        prescription.setPrecautions("-nenhuma");
+        prescription.addEscalationStep(stepOf(1, "+2 gotas", null));
+        prescriptionRepository.save(prescription);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("prescriptions.csv", "", patient);
+
+        assertThat(csv).contains("\"'=HYPERLINK(\"\"http://site-estranho\"\")\"");
+        assertThat(csv).contains("\"'-nenhuma\"");
+        // o plano comeca sempre com a palavra Semana, entao o degrau com sinal na frente n vira formula
+        assertThat(csv).contains("\"Semana 1: +2 gotas\"");
+    }
+
     // RF30 ninguem exporta paciente de outro prescritor
     @Test
     void outroPrescritorNaoExporta() throws Exception {
@@ -494,6 +591,26 @@ class ExportTest {
         mockMvc.perform(get("/patients/" + patient.getId() + "/export/appointments.csv")
                         .header("Authorization", bearerTokenOf(saved)))
                 .andExpect(status().isForbidden());
+    }
+
+    private DoseEscalationStep stepOf(int week, String dosage, String note) {
+        DoseEscalationStep step = new DoseEscalationStep();
+        step.setWeek(week);
+        step.setDosage(dosage);
+        step.setNote(note);
+        return step;
+    }
+
+    private Appointment saveAppointment(LocalDateTime dateTime, AppointmentStatus status, String observation) {
+        Appointment other = new Appointment();
+        other.setPatient(patient);
+        other.setPrescriber(prescriber);
+        other.setDateTime(dateTime);
+        other.setModality(AppointmentModality.REMOTA);
+        other.setStatus(status);
+        other.setDurationMinutes(30);
+        other.setClinicalObservation(observation);
+        return appointmentRepository.save(other);
     }
 
     private void saveScore(ScaleType scaleType, LocalDate day, int score, String band) {

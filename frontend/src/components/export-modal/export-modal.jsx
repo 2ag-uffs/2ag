@@ -5,9 +5,20 @@ import {download, errorMessageOf} from "../../services/api.js";
 import styles from "./export-modal.module.css";
 
 // o q da pra levar, um arquivo por tipo
+// as consultas seguem a regra do historico e a receita vai inteira, e o texto diz isso
 const FILES = [
-    {file: "appointments.csv", label: "Consultas", help: "Data, conduta e o que foi registrado em cada atendimento"},
-    {file: "prescriptions.csv", label: "Prescrições", help: "Óleo, composição, posologia e vigência de cada uma"},
+    {
+        file: "appointments.csv",
+        label: "Consultas",
+        help: "As consultas que estão no histórico: atendidas, marcadas que já passaram e faltas. Pedido sem "
+            + "resposta, recusado, cancelada e consulta futura ficam de fora",
+    },
+    {
+        file: "prescriptions.csv",
+        label: "Prescrições",
+        help: "Óleo, composição, posologia, plano de dose, instruções, cuidados, efeitos esperados, prescritor e "
+            + "vigência de cada uma",
+    },
     {file: "scales.csv", label: "Escalas respondidas", help: "Uma linha por item respondido, com o escore e a faixa"},
     {file: "anamneses.csv", label: "Anamnese", help: "A ficha de triagem, pergunta por pergunta"},
 ];

@@ -441,6 +441,7 @@ Exportação de histórico clínico, escalas respondidas e séries de evolução
 - O prescritor exporta dados dos seus pacientes
 - Existe modo **sem identificação** para fins de pesquisa, sem nome, CPF, e-mail, telefone e endereço
 - O PDF identifica paciente, prescritor, período e data de emissão
+- O CSV de consultas segue a mesma regra do histórico (atendidas, marcadas que já passaram e faltas), e o de prescrições traz a receita inteira, com prescritor, plano de dose, instruções, precauções e efeitos esperados (07/11/2026)
 
 *Origem:* consolida os RF16 e RF17 da v1.0 e atende as necessidades "exportação de dados para pesquisa" e "padronização para estudos científicos" da tabela de §1.5, além do RNF09.
 
@@ -878,6 +879,8 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Modo sem identificação:** é do prescritor, para pesquisa. Sai sem nome, CPF, e-mail, telefone e endereço, com o paciente e o prescritor identificados só por um número (RNF04). Antes de 15/10/2026 se chamava "modo anônimo", mas não é anonimização: o número é o id do banco e a clínica sabe de quem é, as datas saem como estão e o texto livre sai como foi escrito e pode citar nomes. Por isso o arquivo continua sendo dado pessoal sensível de saúde (LGPD, art. 5º, II, e art. 12). O termo técnico mais próximo é pseudonimização, que a LGPD só define no art. 13, § 4º, para estudos em saúde pública feitos por órgão de pesquisa. O texto do consentimento de pesquisa diz o mesmo ao paciente (versão `2026-10-rascunho-2`), e a API recusa o parâmetro antigo `anonymous`, para uma aba desatualizada não baixar o arquivo com nome.
 - **PDF pela impressão:** em vez de gerar PDF no servidor, existe uma página de impressão com cabeçalho de paciente, prescritor, período e data de emissão, e o histórico do período. O navegador imprime ou salva em PDF. No papel o texto corre de uma folha para a outra, e a primeira folha já traz as consultas: segurar uma seção ou um cartão inteiro jogava ele para a folha seguinte e deixava a anterior em branco. Só o topo de cada cartão e cada linha da tabela de escalas não se partem; o topo do cartão fica na mesma folha que a linha de pressão, peso e altura e o começo do registro, e nenhum título fica sozinho no pé da folha.
 - **Trilha:** exportar é leitura de prontuário e entra na trilha de auditoria como qualquer abertura (RF31).
+- **Consultas no CSV (07/11/2026):** o `appointments.csv` passou a seguir a regra do histórico e da impressão: entra a consulta que já passou e foi atendida, estava marcada ou virou falta; pedido sem resposta, recusado, cancelada e consulta futura ficam de fora. Antes o arquivo trazia toda consulta do paciente e misturava pedido com atendimento feito, enquanto o histórico já filtrava. O modal de exportação diz o que vai no arquivo.
+- **Receita inteira no CSV (07/11/2026):** o `prescriptions.csv` trazia só óleo, composição, posologia e vigência, e a linha com posologia "conforme o plano" ficava sem dose nenhuma. Ganhou o prescritor (só o número dele no modo sem identificação), o plano de dose como texto numa célula só, as instruções de uso, as precauções e os efeitos esperados (RF05).
 
 Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto não é módulo, e sim as perguntas que dependem da clínica, que ficam fora do repositório.
 

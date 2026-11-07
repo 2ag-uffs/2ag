@@ -35,4 +35,17 @@ describe("ExportModal", () => {
 
         expect(await screen.findByRole("checkbox", {name: /Modo sem identificação/})).toBeEnabled();
     });
+
+    // o csv de consultas segue a regra do historico e o de prescricoes leva a receita inteira,
+    // e o modal tem q dizer isso pra quem baixa saber o q vem no arquivo
+    it("explica q as consultas sao as do historico e q a prescricao vai inteira", async () => {
+        openModal(true);
+
+        expect(await screen.findByText(
+            "As consultas que estão no histórico: atendidas, marcadas que já passaram e faltas. Pedido "
+            + "sem resposta, recusado, cancelada e consulta futura ficam de fora")).toBeInTheDocument();
+        expect(screen.getByText(
+            "Óleo, composição, posologia, plano de dose, instruções, cuidados, efeitos esperados, "
+            + "prescritor e vigência de cada uma")).toBeInTheDocument();
+    });
 });

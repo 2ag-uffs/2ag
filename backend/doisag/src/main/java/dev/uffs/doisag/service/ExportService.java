@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.TimePeriod;
@@ -11,6 +12,7 @@ import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.DoseEscalationStep;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
@@ -30,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
@@ -115,6 +118,9 @@ public class ExportService {
                 "Motivo da anulação");
 
         for (Appointment appointment : appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)) {
+            if (!belongsToHistory(appointment)) {
+                continue;
+            }
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
                     BrazilianFormat.time(appointment.getDateTime()),
@@ -136,12 +142,24 @@ public class ExportService {
         return csv.build();
     }
 
+    // a mesma regra do historico e da impressao do front: consulta q ja passou e foi atendida,
+    // estava marcada ou virou falta. pedido sem resposta, recusado, cancelada e consulta futura
+    // n sao atendimento e ficam fora do arquivo, senao o csv mistura pedido com atendimento feito
+    private boolean belongsToHistory(Appointment appointment) {
+        boolean attended = appointment.getStatus().isConfirmed()
+                || appointment.getStatus() == AppointmentStatus.NAO_COMPARECEU;
+        return attended && !appointment.getDateTime().isAfter(LocalDateTime.now());
+    }
+
+    // a receita inteira (RF05): plano de dose, instrucoes, cuidados, efeitos esperados e quem
+    // prescreveu, senao a linha com posologia "conforme o plano" ficava sem dose nenhuma
     @Transactional
     public String prescriptionsCsv(Long patientId, boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação", "Produto",
-                "Espectro", "Composição", "Marca", "Lote", "Volume", "Posologia", "Via", "Duração em dias",
-                "Próxima consulta", "Observações", "Anulada", "Motivo da anulação");
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação", "Prescritor",
+                "Produto", "Espectro", "Composição", "Marca", "Lote", "Volume", "Posologia", "Plano de dose", "Via",
+                "Duração em dias", "Próxima consulta", "Instruções de uso", "Precauções e contraindicações",
+                "Efeitos esperados", "Observações", "Anulada", "Motivo da anulação");
 
         for (Prescription prescription
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
@@ -149,6 +167,7 @@ public class ExportService {
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()),
                     prescription.getStatus(),
+                    prescriberCell(prescription.getAppointment().getPrescriber(), deidentified),
                     prescription.getProductDescription(),
                     prescription.getSpectrum(),
                     composition(prescription),
@@ -156,14 +175,35 @@ public class ExportService {
                     prescription.getBatch(),
                     prescription.getVolume(),
                     prescription.getPosology(),
+                    dosePlan(prescription),
                     prescription.getAdministrationRoute(),
                     prescription.getTreatmentDurationDays(),
                     BrazilianFormat.date(prescription.getNextConsultationDate()),
+                    prescription.getInstructions(),
+                    prescription.getPrecautions(),
+                    prescription.getExpectedEffects(),
                     prescription.getObservation(),
                     yesOrNo(prescription.isAnnulled()),
                     Annulment.reasonOf(prescription.getAnnulment()));
         }
         return csv.build();
+    }
+
+    // o plano de subida de dose numa celula so, um degrau atras do outro do jeito q a tela mostra,
+    // tipo "Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite"
+    // a celula comeca sempre com a palavra Semana, entao degrau com sinal na frente n vira formula
+    private String dosePlan(Prescription prescription) {
+        return prescription.getEscalationSteps().stream()
+                .map(this::stepText)
+                .collect(Collectors.joining("; "));
+    }
+
+    private String stepText(DoseEscalationStep step) {
+        String text = "Semana " + step.getWeek() + ": " + step.getDosage();
+        if (step.getNote() == null || step.getNote().isBlank()) {
+            return text;
+        }
+        return text + " · " + step.getNote();
     }
 
     // uma linha por item respondido, q eh o formato q a planilha filtra
