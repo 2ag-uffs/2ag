@@ -57,6 +57,11 @@ const GUARDIAN_HINTS = {
         + "e aceita o termo em nome dele.",
 };
 
+// o e-mail eh unico (RN04) e a recusa do cadastro n diz qual campo repetiu, entao o responsavel com mais de um
+// filho fica sabendo antes q cada conta precisa do seu e-mail. a frase n diz se um e-mail ja existe
+const MINOR_EMAIL_HINT = "Cada paciente precisa de um e-mail próprio, mesmo que o responsável seja o mesmo. "
+    + "Um e-mail vale para uma conta só.";
+
 // texto do aceite antes e depois do botao q abre o termo
 const CONSENT_LABELS = {
     "adult": {
@@ -549,6 +554,7 @@ export default function SignUp() {
                         type="email"
                         inputMode="email"
                         autoComplete="email"
+                        hint={isMinor ? MINOR_EMAIL_HINT : undefined}
                         value={formData.email}
                         onChange={(event) => updateField("email", event.target.value)}
                         error={fieldErrors.email}

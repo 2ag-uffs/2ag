@@ -18,7 +18,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 4. Leia o termo de consentimento, marque o aceite e toque em **Criar conta**. A pesquisa é opcional e não muda o atendimento.
 5. Nas outras vezes, abra o endereço do 2AG, digite o e-mail e a senha e toque em **Entrar**. Se aparecer o **Termo de consentimento**, leia e aceite para continuar. Se a tela disser que a sua faixa de idade mudou e a data de nascimento estiver errada, corrija a data ali mesmo em **Corrigir a data**, sem aceitar.
 
-**Menor de 18 anos:** preencha nome e parentesco do **Responsável legal**. Com menos de 16 anos, o responsável preenche e aceita o termo em nome do paciente. Com 16 ou 17, o paciente e o responsável aceitam juntos.
+**Menor de 18 anos:** preencha nome e parentesco do **Responsável legal**. Com menos de 16 anos, o responsável preenche e aceita o termo em nome do paciente. Com 16 ou 17, o paciente e o responsável aceitam juntos. Cada paciente precisa de um e-mail próprio, mesmo que o responsável seja o mesmo: quem cadastra dois filhos usa um e-mail diferente em cada conta.
 
 ## responder os formulários
 

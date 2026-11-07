@@ -169,6 +169,27 @@ describe("SignUp", () => {
         expect(screen.getByRole("checkbox", {name: /pesquisa/})).not.toBeChecked();
     });
 
+    // o e-mail eh unico (RN04) e a recusa do cadastro n diz qual campo repetiu, entao o responsavel com dois
+    // filhos fica sabendo antes q cada conta precisa do seu e-mail (issue 152)
+    it("cadastro de menor avisa embaixo do e-mail q cada paciente precisa de um e-mail proprio", async () => {
+        mockApi();
+        renderSignUp();
+
+        const birthDateField = await screen.findByLabelText("Data de nascimento");
+        expect(screen.queryByText(/e-mail próprio/)).not.toBeInTheDocument();
+
+        fireEvent.change(birthDateField, {target: {value: childBirthDate()}});
+        expect(screen.getByLabelText("E-mail").parentElement)
+            .toHaveTextContent(/Cada paciente precisa de um e-mail próprio, mesmo que o responsável seja o mesmo/);
+
+        fireEvent.change(birthDateField, {target: {value: teenBirthDate()}});
+        expect(screen.getByText(/Cada paciente precisa de um e-mail próprio/)).toBeInTheDocument();
+
+        // adulto n ve a frase
+        fireEvent.change(birthDateField, {target: {value: "1990-04-12"}});
+        expect(screen.queryByText(/e-mail próprio/)).not.toBeInTheDocument();
+    });
+
     it("responsavel legal em branco n deixa criar a conta do menor", async () => {
         const post = mockApi();
         const user = userEvent.setup();
