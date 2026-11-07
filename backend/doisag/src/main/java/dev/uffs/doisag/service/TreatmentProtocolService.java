@@ -132,7 +132,7 @@ public class TreatmentProtocolService {
         // a programacao de horarios q aparece no topo do diario do sono (RF22)
         protocol.setSleepBedTime(protocolData.sleepBedTime());
         protocol.setSleepWakeTime(protocolData.sleepWakeTime());
-        addItems(protocol, protocolData.items());
+        Set<ScaleType> newScaleTypes = addItems(protocol, protocolData.items());
 
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);
         auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
@@ -141,10 +141,14 @@ public class TreatmentProtocolService {
         if (startDate.equals(today) && patient.isActive()) {
             assignRound(savedProtocol, startDate);
         }
+        // a escala q o prescritor tirou na troca n fica com a rodada antiga correndo: o paciente via ela em
+        // esperando resposta, levava lembrete e ela virava escala vencida de uma escala tirada de proposito
+        scaleTaskService.closeProtocolTasksNotIn(patientId, newScaleTypes);
         return new TreatmentProtocolResponseDTO(savedProtocol);
     }
 
-    private void addItems(TreatmentProtocol protocol, List<ProtocolItemDTO> itemsData) {
+    // devolve as escalas do acompanhamento, q a troca usa pra saber qual ficou de fora
+    private Set<ScaleType> addItems(TreatmentProtocol protocol, List<ProtocolItemDTO> itemsData) {
         // a mesma escala duas vezes fazia as duas rodadas adotarem a mesma tarefa
         // e cada uma reescrevia o prazo dela
         Set<ScaleType> scaleTypes = new HashSet<>();
@@ -169,6 +173,7 @@ public class TreatmentProtocolService {
             item.setPeriodicity(itemData.periodicity());
             protocol.addItem(item);
         }
+        return scaleTypes;
     }
 
     // abrir a pagina do acompanhamento conta como abrir o prontuario, mesmo sem acompanhamento

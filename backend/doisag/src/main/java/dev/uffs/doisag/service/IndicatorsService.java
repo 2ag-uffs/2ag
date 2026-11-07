@@ -77,7 +77,8 @@ public class IndicatorsService {
         InviteCount invites = countInvites(prescriberId, from, to);
 
         Map<Long, Integer> validDaysByTask = countValidDaysByTask(prescriberId, from, to);
-        List<ScaleTask> tasksDue = taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to);
+        List<ScaleTask> tasksDue = withoutRemovedScales(
+                taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to));
         Map<ScaleType, ScaleCount> countsByScale = countFormsByScale(tasksDue, validDaysByTask);
 
         long formsDue = 0;
@@ -131,6 +132,21 @@ public class IndicatorsService {
             }
         }
         return count;
+    }
+
+    // a escala q o prescritor tirou do acompanhamento fecha sem resposta e com o dia marcado (ScaleTaskService):
+    // n foi atraso do paciente, entao ela fica fora da conta. a avaliacao inicial eh a unica outra nao
+    // respondida com o dia marcado, pela anamnese atrasada, e essa segue contando fora do prazo
+    private List<ScaleTask> withoutRemovedScales(List<ScaleTask> tasks) {
+        List<ScaleTask> kept = new ArrayList<>();
+        for (ScaleTask task : tasks) {
+            boolean removedFromProtocol = task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA
+                    && task.getAnsweredAt() != null && task.getScaleType() != ScaleType.ANAMNESE;
+            if (!removedFromProtocol) {
+                kept.add(task);
+            }
+        }
+        return kept;
     }
 
     // quantos dias validos cada tarefa tem ligados nela

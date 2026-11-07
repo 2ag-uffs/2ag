@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.PilotIndicatorsDTO;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
@@ -56,6 +57,7 @@ class TreatmentProtocolServiceTest {
     @Autowired private TreatmentProtocolRepository protocolRepository;
     @Autowired private ReminderService reminderService;
     @Autowired private AuditEventRepository auditEventRepository;
+    @Autowired private IndicatorsService indicatorsService;
 
     // comeca amanha: a primeira rodada fica pro job, q os testes chamam com a data na mao
     // uma data fixa vencia com o calendario, pq o acompanhamento q terminaria antes de hoje eh recusado
@@ -467,6 +469,89 @@ class TreatmentProtocolServiceTest {
         }
         // lida de novo: o lembrete trava a tarefa e le ela de novo, entao a copia de cima ficou pra tras
         assertThat(taskRepository.findById(hamiltonDaSemana.getId()).orElseThrow().getReminderSentAt()).isNotNull();
+    }
+
+    // a escala q o prescritor tirou do acompanhamento novo para de ser cobrada na hora: a rodada dela fecha
+    // no dia da troca com o dia marcado, sai de esperando resposta, n vira escala vencida amanha e o job n
+    // manda ela de novo. a q ficou segue como rodada do novo. antes a rodada antiga seguia ate o prazo dela
+    @Test
+    void trocarOAcompanhamentoSemUmaEscalaFechaARodadaDela() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null, List.of(
+                        item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
+                        item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+        ScaleTask pittsburgh = tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH);
+        assertThat(pittsburgh.getPeriodEnd()).isEqualTo(hoje.plusDays(29));
+
+        treatmentProtocolService.end(paciente.getId());
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(pittsburgh.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(pittsburgh.getPeriodEnd()).isEqualTo(hoje);
+        assertThat(pittsburgh.getAnsweredAt()).isEqualTo(hoje);
+        assertThat(taskRepository.findByPatientIdAndStatusOrderByPeriodEndAsc(paciente.getId(),
+                ScaleTaskStatus.PENDENTE))
+                .extracting(ScaleTask::getScaleType)
+                .containsExactly(ScaleType.ACOMPANHAMENTO_SEMANAL);
+        assertThat(taskRepository.findLateWithoutAnswers(prescritora.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), hoje.plusDays(1),
+                PageRequest.of(0, 5)))
+                .isEmpty();
+        assertThat(scaleTaskService.closeOverdue(hoje.plusDays(1))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(1))).isZero();
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(1);
+    }
+
+    // a rodada da escala tirada q ja tinha vencido antes da troca, com o job das 8h ainda sem rodar, foi
+    // atraso de vdd: ela fecha como no job, sem o dia marcado, e segue nas vencidas e no indicador
+    @Test
+    void trocarOAcompanhamentoNaoPerdoaARodadaQueJaTinhaVencido() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+        ScaleTask pittsburgh = tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH);
+        pittsburgh.setPeriodStart(hoje.minusDays(30));
+        pittsburgh.setPeriodEnd(hoje.minusDays(1));
+        taskRepository.save(pittsburgh);
+
+        treatmentProtocolService.end(paciente.getId());
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(pittsburgh.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(pittsburgh.getPeriodEnd()).isEqualTo(hoje.minusDays(1));
+        assertThat(pittsburgh.getAnsweredAt()).isNull();
+        assertThat(taskRepository.findLateWithoutAnswers(prescritora.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), hoje, PageRequest.of(0, 5)))
+                .containsExactly(pittsburgh);
+        PilotIndicatorsDTO indicadores = indicatorsService.getIndicators(prescritora.getId(), hoje.minusDays(1),
+                hoje.minusDays(1));
+        assertThat(indicadores.formsDue()).isEqualTo(1);
+        assertThat(indicadores.formsOnTime()).isZero();
+    }
+
+    // a escala enviada a mao n eh do acompanhamento, entao a troca n mexe nela
+    @Test
+    void trocarOAcompanhamentoNaoFechaAEscalaEnviadaAMao() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+        ScaleTask avulsa = enviaAvulsa(ScaleType.ESCALA_PITTSBURGH, hoje);
+
+        treatmentProtocolService.end(paciente.getId());
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(avulsa.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(avulsa.getPeriodEnd()).isEqualTo(hoje.plusDays(6));
+        assertThat(tarefaMaisNova(ScaleType.ACOMPANHAMENTO_SEMANAL).getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
     }
 
     // a ordem do job de verdade: fecha o q venceu, manda a rodada e os lembretes

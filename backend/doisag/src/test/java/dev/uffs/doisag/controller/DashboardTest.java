@@ -403,6 +403,24 @@ class DashboardTest {
         assertThat(lateTomorrow).isEmpty();
     }
 
+    // a escala q o prescritor tirou do acompanhamento fecha sem resposta e com o dia marcado (secao escalas
+    // do README). n foi atraso do paciente, entao ela n vira escala vencida e o indicador deixa ela de fora,
+    // enquanto a rodada perdida de vdd segue contando
+    @Test
+    void aEscalaTiradaDoAcompanhamentoNaoViraVencidaNemContaNoIndicador() throws Exception {
+        saveLateTask(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(1));
+        // como a troca deixa a rodada da escala tirada, vista no dia seguinte
+        ScaleTask removed = saveLateTask(ScaleType.ESCALA_PITTSBURGH, TODAY.minusDays(1));
+        removed.setAnsweredAt(TODAY.minusDays(1));
+        taskRepository.save(removed);
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(1))
+                .andExpect(jsonPath("$.lateScales[0].scaleName").value(ScaleType.ESCALA_HAMILTON.getDisplayName()))
+                .andExpect(jsonPath("$.lateScalesTotal").value(1));
+        lateIndicator();
+    }
+
     // a escala ainda dentro do prazo n eh atraso
     @Test
     void aEscalaDentroDoPrazoNaoEntraComoVencida() throws Exception {

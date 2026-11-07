@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -518,6 +519,76 @@ class ScaleDeliveryTest {
 
         assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(6))).isZero();
         assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(7))).isEqualTo(1);
+    }
+
+    // a escala q saiu do acompanhamento novo para de ser cobrada na troca: a rodada dela fecha no dia, com o
+    // q o paciente ja respondeu valendo, em vez de seguir ate o prazo antigo cobrando uma escala q o
+    // prescritor tirou de proposito
+    @Test
+    void theScaleLeftOutOfTheNewFollowUpClosesWithTheAnswersItAlreadyHas() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUpWithItems("[{\"scaleType\":\"ACOMPANHAMENTO_SEMANAL\",\"periodicity\":\"SEMANAL\"},"
+                + "{\"scaleType\":\"ESCALA_PITTSBURGH\",\"periodicity\":\"MENSAL\"}]").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        answerScale("acompanhamento-semanal", "{\"dor\":3}", patientToken).andExpect(status().isCreated());
+        mockMvc.perform(put("/patients/" + patient.getId() + "/treatment-protocol/end")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        startFollowUp("ESCALA_PITTSBURGH", "MENSAL").andExpect(status().isCreated());
+
+        ScaleTask diary = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).stream()
+                .filter(task -> task.getScaleType() == ScaleType.ACOMPANHAMENTO_SEMANAL)
+                .findFirst()
+                .orElseThrow();
+        assertThat(diary.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(diary.getPeriodEnd()).isEqualTo(today);
+        assertThat(diary.getAnsweredAt()).isEqualTo(today);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].scaleType").value("ESCALA_PITTSBURGH"));
+    }
+
+    // anular dps da troca a resposta de uma escala q saiu do acompanhamento n traz ela de volta: a tarefa n
+    // reabre nem pede pra responder de novo, fecha como a escala tirada na troca e n vira vencida amanha.
+    // antes o diario voltava pra pendente e virava vencido no job, e a Hamilton mensal cobrava ate o prazo antigo
+    @Test
+    void annullingAnAnswerOfAScaleLeftOutOfTheFollowUpDoesNotChargeItAgain() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUpWithItems("[{\"scaleType\":\"ACOMPANHAMENTO_SEMANAL\",\"periodicity\":\"SEMANAL\"},"
+                + "{\"scaleType\":\"ESCALA_HAMILTON\",\"periodicity\":\"MENSAL\"}]").andExpect(status().isCreated());
+        String patientToken = bearerTokenOf(patient);
+        Number diaryAnswerId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        Number hamiltonAnswerId = JsonPath.read(answerHamilton(patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        mockMvc.perform(put("/patients/" + patient.getId() + "/treatment-protocol/end")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+        startFollowUp("ESCALA_PITTSBURGH", "MENSAL").andExpect(status().isCreated());
+
+        annul(diaryAnswerId.longValue()).andExpect(status().isOk());
+        annul(hamiltonAnswerId.longValue()).andExpect(status().isOk());
+
+        for (ScaleTask task : taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())) {
+            if (task.getScaleType() == ScaleType.ESCALA_PITTSBURGH) {
+                continue;
+            }
+            assertThat(task.getStatus()).as(task.getScaleType().name()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+            assertThat(task.getPeriodEnd()).as(task.getScaleType().name()).isEqualTo(today);
+            assertThat(task.getAnsweredAt()).as(task.getScaleType().name()).isEqualTo(today);
+        }
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending.length()").value(1))
+                .andExpect(jsonPath("$.pending[0].scaleType").value("ESCALA_PITTSBURGH"));
+        assertThat(scaleTaskService.closeOverdue(today.plusDays(1))).isZero();
+        assertThat(taskRepository.findLateWithoutAnswers(prescriber.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), today.plusDays(1),
+                PageRequest.of(0, 5)))
+                .isEmpty();
     }
 
     // a avulsa no dia em q a escala ja foi respondida ficava pendente sem jeito de fechar no dia: a resposta
@@ -1026,10 +1097,14 @@ class ScaleDeliveryTest {
 
     // acompanhamento q comeca hoje, com uma escala so
     private ResultActions startFollowUp(String scaleType, String periodicity) throws Exception {
+        return startFollowUpWithItems("[{\"scaleType\":\"" + scaleType + "\",\"periodicity\":\"" + periodicity + "\"}]");
+    }
+
+    private ResultActions startFollowUpWithItems(String itemsJson) throws Exception {
         return mockMvc.perform(post("/patients/" + patient.getId() + "/treatment-protocol")
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"items\":[{\"scaleType\":\"" + scaleType + "\",\"periodicity\":\"" + periodicity + "\"}]}"));
+                .content("{\"items\":" + itemsJson + "}"));
     }
 
     private ResultActions annul(Long responseId) throws Exception {

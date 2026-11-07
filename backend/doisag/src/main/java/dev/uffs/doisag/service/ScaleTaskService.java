@@ -13,13 +13,16 @@ import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
 import org.slf4j.Logger;
@@ -34,6 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 // as tarefas de escala q o paciente recebe (RF09 e RF32)
 //
@@ -64,6 +68,7 @@ public class ScaleTaskService {
     private final AnamnesisRepository anamnesisRepository;
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
+    private final TreatmentProtocolRepository protocolRepository;
     private final ScaleCatalog catalog;
     private final AuditService auditService;
     private final RowLock rowLock;
@@ -75,6 +80,7 @@ public class ScaleTaskService {
                             AnamnesisRepository anamnesisRepository,
                             PatientRepository patientRepository,
                             PrescriberRepository prescriberRepository,
+                            TreatmentProtocolRepository protocolRepository,
                             ScaleCatalog catalog,
                             AuditService auditService,
                             RowLock rowLock,
@@ -84,6 +90,7 @@ public class ScaleTaskService {
         this.anamnesisRepository = anamnesisRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
+        this.protocolRepository = protocolRepository;
         this.catalog = catalog;
         this.auditService = auditService;
         this.rowLock = rowLock;
@@ -299,6 +306,18 @@ public class ScaleTaskService {
         if (task == null || task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA || validAnswersOf(task) > 0) {
             return false;
         }
+        // a escala q o prescritor tirou do acompanhamento n volta a ser cobrada: fecha como na troca, sem
+        // resposta e com o dia marcado, e o paciente n recebe o aviso de responder de novo
+        if (isRemovedFromProtocol(task)) {
+            LocalDate today = LocalDate.now();
+            if (task.getPeriodEnd().isAfter(today)) {
+                task.setPeriodEnd(today);
+            }
+            task.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
+            task.setAnsweredAt(today);
+            taskRepository.save(task);
+            return false;
+        }
         boolean wasClosed = task.getStatus() != ScaleTaskStatus.PENDENTE;
         task.setStatus(ScaleTaskStatus.PENDENTE);
         task.setAnsweredAt(null);
@@ -373,6 +392,25 @@ public class ScaleTaskService {
         notificationService.createNotification(prescriber, "Escala respondida",
                 patient.getDisplayName() + " respondeu " + scaleType.getDisplayName() + ".",
                 Notification.TYPE_FORM, Notification.patientHistoryLink(patient.getId()));
+    }
+
+    // a tarefa do acompanhamento cuja escala ficou de fora do acompanhamento q vale agora
+    // sem nenhum valendo segue a regra de sempre, pq encerrar so para de mandar rodada nova
+    private boolean isRemovedFromProtocol(ScaleTask task) {
+        if (!task.isFromProtocol()) {
+            return false;
+        }
+        Optional<TreatmentProtocol> current = protocolRepository.findFirstByPatientIdAndActiveTrue(
+                task.getPatient().getId());
+        if (current.isEmpty()) {
+            return false;
+        }
+        for (ProtocolItem item : current.get().getItems()) {
+            if (item.getScaleType() == task.getScaleType()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // resposta anulada n conta, entao a tarefa dela continua precisando de resposta
@@ -463,6 +501,36 @@ public class ScaleTaskService {
             closeByAnswers(task, today);
         }
         return pending.size();
+    }
+
+    // a escala q ficou de fora do acompanhamento novo para de ser cobrada na hora: a rodada pendente dela
+    // fecha pelas respostas, como no arquivamento, com o periodo acabando hoje. a q fecha vazia ganha o dia
+    // marcado, igual a avaliacao inicial perdida q recebeu a ficha atrasada: assim ela sai das escalas
+    // vencidas do painel, e o indicador deixa ela de fora, pq quem tirou a escala foi o prescritor e n foi
+    // atraso do paciente. a rodada q ja tinha vencido antes da troca, com o job das 8h ainda sem rodar, foi
+    // atraso de vdd e fecha como no job, sem o dia marcado. a avulsa n eh do acompanhamento e fica como esta
+    // quem chama ja travou o prescritor e o paciente
+    @Transactional
+    public int closeProtocolTasksNotIn(Long patientId, Set<ScaleType> keptScaleTypes) {
+        LocalDate today = LocalDate.now();
+        int closed = 0;
+        for (ScaleTask task : taskRepository.findByPatientIdAndStatusOrderByPeriodEndAsc(patientId,
+                ScaleTaskStatus.PENDENTE)) {
+            if (!task.isFromProtocol() || keptScaleTypes.contains(task.getScaleType())) {
+                continue;
+            }
+            boolean stillRunning = !task.getPeriodEnd().isBefore(today);
+            if (task.getPeriodEnd().isAfter(today)) {
+                task.setPeriodEnd(today);
+            }
+            closeByAnswers(task, today);
+            if (stillRunning && task.getAnsweredAt() == null) {
+                task.setAnsweredAt(today);
+                taskRepository.save(task);
+            }
+            closed++;
+        }
+        return closed;
     }
 
     private void closeByAnswers(ScaleTask task, LocalDate answeredDay) {
