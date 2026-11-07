@@ -12,6 +12,7 @@ public class Notification {
     public static final String TYPE_FORM = "FORM";
 
     public static final String PATIENT_AGENDA_LINK = "/agendamento-consulta";
+    public static final String PATIENT_PRESCRIPTIONS_LINK = "/minhas-prescricoes";
     public static final String PRESCRIBER_AGENDA_LINK = "/agendamento-prescritor";
     public static final String PRESCRIBER_PATIENT_LIST_LINK = "/lista-paciente";
 

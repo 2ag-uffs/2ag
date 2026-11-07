@@ -19,6 +19,7 @@ import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.DoseEscalationStep;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.PrescriptionComponent;
@@ -61,15 +62,17 @@ public class PrescriptionService {
     private final PatientRepository patientRepository;
     private final ConsultationService consultationService;
     private final AuditService auditService;
+    private final NotificationService notificationService;
     private final RowLock rowLock;
 
     public PrescriptionService(PrescriptionRepository prescriptionRepository, PatientRepository patientRepository,
                                ConsultationService consultationService, AuditService auditService,
-                               RowLock rowLock) {
+                               NotificationService notificationService, RowLock rowLock) {
         this.prescriptionRepository = prescriptionRepository;
         this.patientRepository = patientRepository;
         this.consultationService = consultationService;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.rowLock = rowLock;
     }
 
@@ -101,6 +104,13 @@ public class PrescriptionService {
         if (concludedNow) {
             auditService.recordChange(AuditRecordType.CONSULTA, appointment.getId(), patientId);
         }
+        // a receita q passa a valer avisa o paciente (RF14), uma vez so, mesmo qnd substitui outra. a q entra
+        // so no historico n muda o q ele toma e n avisa. o aviso vem dps da trilha, como nas consultas
+        if (becomesCurrent) {
+            notificationService.createNotification(appointment.getPatient(), "Prescrição nova",
+                    "Você tem uma prescrição nova. Veja em Minhas prescrições.",
+                    Notification.TYPE_ALERT, Notification.PATIENT_PRESCRIPTIONS_LINK);
+        }
         return new PrescriptionResponseDTO(savedPrescription);
     }
 
@@ -115,7 +125,8 @@ public class PrescriptionService {
 
         prescription.setAnnulment(new Annulment(loggedPrescriber, annulmentData.reason()));
         // a anulada n fica como vigente, e a anterior n volta sozinha pq isso eh escolha da prescritora (NOOP-04)
-        if (prescription.getStatus() == PrescriptionStatus.VIGENTE) {
+        boolean wasCurrent = prescription.getStatus() == PrescriptionStatus.VIGENTE;
+        if (wasCurrent) {
             prescription.setStatus(PrescriptionStatus.SUBSTITUIDA);
         }
         Prescription savedPrescription = prescriptionRepository.save(prescription);
@@ -123,6 +134,13 @@ public class PrescriptionService {
         auditService.recordAnnulment(AuditRecordType.PRESCRICAO, savedPrescription.getId(),
                 appointment.getPatient().getId());
         consultationService.reopenIfConcludedOnlyByPrescriptionOrExam(appointment);
+        // anular a receita em uso deixa o paciente sem prescricao vigente, e quem toma a dose todo dia precisa
+        // saber se para, segue ou espera (RF14). a q ja tinha sido substituida n muda nada pra ele
+        if (wasCurrent) {
+            notificationService.createNotification(appointment.getPatient(), "Prescrição anulada",
+                    "Sua prescrição em uso foi anulada. Fale com a clínica antes de mudar a dose.",
+                    Notification.TYPE_ALERT, Notification.PATIENT_PRESCRIPTIONS_LINK);
+        }
         return new PrescriptionResponseDTO(savedPrescription);
     }
 

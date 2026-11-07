@@ -4,10 +4,12 @@ import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.security.TokenService;
@@ -30,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -52,6 +55,7 @@ class PrescriptionFlowTest {
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private PatientRepository patientRepository;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -448,6 +452,57 @@ class PrescriptionFlowTest {
                 .andExpect(jsonPath("$[?(@.current == true)]", hasSize(0)));
     }
 
+    // RF14 a receita q passa a valer avisa o paciente, q eh quem toma a dose todo dia
+    @Test
+    void theNewCurrentPrescriptionTellsThePatient() throws Exception {
+        issuedPrescriptionId(registeredConsultationId(), "Oleo novo");
+
+        assertThat(notificationTitlesOf(patient)).containsOnlyOnce("Prescrição nova");
+        assertThat(notificationMessageOf(patient, "Prescrição nova"))
+                .isEqualTo("Você tem uma prescrição nova. Veja em Minhas prescrições.");
+        assertThat(notificationLinkOf(patient, "Prescrição nova")).isEqualTo("/minhas-prescricoes");
+        assertThat(notificationTypeOf(patient, "Prescrição nova")).isEqualTo(Notification.TYPE_ALERT);
+        assertThat(notificationTitlesOf(prescriber)).doesNotContain("Prescrição nova");
+    }
+
+    // a troca avisa uma vez so, da receita nova, e a q entra so no historico n muda o q ele toma
+    @Test
+    void replacingThePrescriptionTellsThePatientOnceAndTheHistoryOnlyOneIsSilent() throws Exception {
+        issuedPrescriptionId(registeredConsultationId(), "Primeiro oleo");
+        issuedPrescriptionId(registeredConsultationId(), "Dose ajustada");
+        assertThat(prescriptionNoticesOf(patient)).containsExactly("Prescrição nova", "Prescrição nova");
+
+        Long oldAppointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, LocalDateTime.now().minusMonths(3));
+        issuePrescription(oldAppointmentId, prescriptionWith("Oleo esquecido")).andExpect(status().isCreated());
+
+        assertThat(prescriptionNoticesOf(patient)).hasSize(2);
+    }
+
+    // anular a receita em uso deixa o paciente sem prescricao vigente, e ele precisa saber antes de mudar a dose
+    @Test
+    void annullingTheCurrentPrescriptionTellsThePatient() throws Exception {
+        Long prescriptionId = issuedPrescriptionId(registeredConsultationId(), "Oleo errado");
+
+        annulPrescription(prescriptionId, "Produto trocado na hora de registrar").andExpect(status().isOk());
+
+        assertThat(notificationTitlesOf(patient)).containsOnlyOnce("Prescrição anulada");
+        assertThat(notificationMessageOf(patient, "Prescrição anulada"))
+                .isEqualTo("Sua prescrição em uso foi anulada. Fale com a clínica antes de mudar a dose.");
+        assertThat(notificationLinkOf(patient, "Prescrição anulada")).isEqualTo("/minhas-prescricoes");
+        assertThat(notificationTypeOf(patient, "Prescrição anulada")).isEqualTo(Notification.TYPE_ALERT);
+    }
+
+    // a receita q ja tinha sido substituida n muda o q o paciente toma, entao anular ela n avisa
+    @Test
+    void annullingAReplacedPrescriptionSendsNoNotice() throws Exception {
+        Long firstPrescriptionId = issuedPrescriptionId(registeredConsultationId(), "Primeiro oleo");
+        issuedPrescriptionId(registeredConsultationId(), "Dose ajustada");
+
+        annulPrescription(firstPrescriptionId, "Lancada duas vezes").andExpect(status().isOk());
+
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Prescrição anulada");
+    }
+
     // a prescricao anulada deixa de travar a anulacao da consulta
     @Test
     void consultationCanBeAnnulledAfterItsPrescriptionIsAnnulled() throws Exception {
@@ -553,6 +608,40 @@ class PrescriptionFlowTest {
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("reason", reason))));
+    }
+
+    private List<String> notificationTitlesOf(Users user) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(Notification::getTitle)
+                .toList();
+    }
+
+    // so os avisos de receita, pq o registro da consulta pode avisar tbm
+    private List<String> prescriptionNoticesOf(Users user) {
+        return notificationTitlesOf(user).stream()
+                .filter(title -> title.startsWith("Prescrição"))
+                .toList();
+    }
+
+    private Notification notificationOf(Users user, String title) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .filter(notification -> notification.getTitle().equals(title))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private String notificationMessageOf(Users user, String title) {
+        return notificationOf(user, title).getMessage();
+    }
+
+    private String notificationLinkOf(Users user, String title) {
+        return notificationOf(user, title).getLink();
+    }
+
+    private String notificationTypeOf(Users user, String title) {
+        return notificationOf(user, title).getType();
     }
 
     private ResultActions annulConsultation(Long appointmentId, String reason) throws Exception {
