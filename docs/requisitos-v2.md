@@ -441,6 +441,7 @@ Exportação de histórico clínico, escalas respondidas e séries de evolução
 - O prescritor exporta dados dos seus pacientes
 - Existe modo **sem identificação** para fins de pesquisa, sem nome, CPF, e-mail, telefone e endereço
 - O PDF identifica paciente, prescritor, período e data de emissão
+- A impressão traz a seção **Prescrição em uso** com a prescrição vigente, independentemente do período escolhido: a receita em uso é estado, não histórico, e a emitida antes do período continua valendo (07/11/2026)
 - O CSV de consultas segue a mesma regra do histórico (atendidas, marcadas que já passaram e faltas), e o de prescrições traz a receita inteira, com prescritor, plano de dose, instruções, precauções e efeitos esperados (07/11/2026)
 
 *Origem:* consolida os RF16 e RF17 da v1.0 e atende as necessidades "exportação de dados para pesquisa" e "padronização para estudos científicos" da tabela de §1.5, além do RNF09.
@@ -881,6 +882,7 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Trilha:** exportar é leitura de prontuário e entra na trilha de auditoria como qualquer abertura (RF31).
 - **Consultas no CSV (07/11/2026):** o `appointments.csv` passou a seguir a regra do histórico e da impressão: entra a consulta que já passou e foi atendida, estava marcada ou virou falta; pedido sem resposta, recusado, cancelada e consulta futura ficam de fora. Antes o arquivo trazia toda consulta do paciente e misturava pedido com atendimento feito, enquanto o histórico já filtrava. O modal de exportação diz o que vai no arquivo.
 - **Receita inteira no CSV (07/11/2026):** o `prescriptions.csv` trazia só óleo, composição, posologia e vigência, e a linha com posologia "conforme o plano" ficava sem dose nenhuma. Ganhou o prescritor (só o número dele no modo sem identificação), o plano de dose como texto numa célula só, as instruções de uso, as precauções e os efeitos esperados (RF05).
+- **Prescrição em uso na impressão (07/11/2026):** a impressão filtrava as prescrições pela data da consulta, e a vigente emitida há mais de 90 dias, comum porque o tratamento dura de 90 a 180 dias, sumia da impressão padrão: quem recebia o papel lia "Nenhuma prescrição no período" e concluía que o paciente não toma nada. A receita em uso é estado, não histórico, então ganhou a seção *Prescrição em uso* antes da lista, independentemente do período; quando também está no período, aparece nos dois lugares.
 
 Com isso, a ordem de trabalho do §8.6 está concluída. O que segue em aberto não é módulo, e sim as perguntas que dependem da clínica, que ficam fora do repositório.
 

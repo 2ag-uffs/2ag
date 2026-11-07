@@ -315,7 +315,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - no `progress.csv` a coluna `Faixa` traz a faixa gravada do escore (HAM-A, PSQI, MEEM e intensidade da dor), igual à do `scales.csv`, e fica em branco nos itens da ficha, que não têm faixa publicada (RN13 e RN14)
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - exportar é leitura de prontuário e entra na trilha de auditoria
-- não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF
+- não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF. a impressão traz a seção *Prescrição em uso* com a prescrição vigente, independentemente do período escolhido, porque a receita em uso é estado e não histórico: a vigente emitida antes do período continua valendo e sumia da impressão de 90 dias (07/11/2026, #171)
 
 ## avisos e lembretes
 

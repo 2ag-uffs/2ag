@@ -85,6 +85,9 @@ export default function Impressao() {
         (appointment) => belongsToHistory(appointment) && insidePeriod(appointment.dateTime));
     const prescriptionsInPeriod = prescriptions.filter(
         (prescription) => insidePeriod(prescription.appointmentDateTime));
+    // a receita em uso eh estado, n historico: sai sempre, msm emitida antes do periodo, senao
+    // o medico q recebe a impressao de 90 dias conclui q o paciente n toma nada
+    const currentPrescription = prescriptions.find((prescription) => prescription.current);
     const anamnesesInPeriod = anamneses.filter((anamnesis) => insidePeriod(anamnesis.assessmentDate));
     const scalesInPeriod = scales.filter((scale) => insidePeriod(scale.periodStart));
 
@@ -146,6 +149,13 @@ export default function Impressao() {
                     <ConsultationCard key={appointment.id} appointment={appointment}/>
                 ))}
             </PrintSection>
+
+            <section className={styles.section}>
+                <h2>Prescrição em uso</h2>
+                {currentPrescription
+                    ? <PrescriptionCard prescription={currentPrescription}/>
+                    : <p className={styles.empty}>Nenhuma prescrição em uso.</p>}
+            </section>
 
             <PrintSection
                 title="Prescrições"
