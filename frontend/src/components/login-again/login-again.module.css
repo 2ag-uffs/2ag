@@ -1,0 +1,42 @@
+/* login por cima da tela qnd a sessao vence com algo aberto (#151) */
+
+.backdrop {
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.45);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: var(--space-4);
+    position: fixed;
+    z-index: var(--layer-modal);
+}
+
+.box {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 26rem;
+    padding: var(--space-6);
+    width: 100%;
+}
+
+.title {
+    color: var(--color-text-headings);
+    font-size: var(--text-xl);
+    margin: 0;
+}
+
+.text {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: flex-end;
+    margin-top: var(--space-2);
+}

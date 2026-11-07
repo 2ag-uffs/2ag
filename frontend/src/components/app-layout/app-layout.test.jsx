@@ -1,11 +1,46 @@
 import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {useState} from "react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import Profile from "../../pages/profile/profile.jsx";
-import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {
+    apiService,
+    ApiError,
+    errorMessageOf,
+    getLoggedUser,
+    leaveExpiredSession,
+    setLoggedUser,
+} from "../../services/api.js";
 import AppLayout from "./app-layout.jsx";
+
+const MARIA = {id: 3, name: "Maria Souza", email: "maria@email.com", role: "PATIENT", termPending: false};
+
+// tela de teste q envia uma resposta pela api, como a escala faz
+function AnswerForm() {
+    const [answer, setAnswer] = useState("");
+    const [status, setStatus] = useState(null);
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        try {
+            const saved = await apiService.post("/scales/answers", {answer});
+            setStatus("Salvo: " + saved.answer);
+        } catch (requestError) {
+            setStatus(errorMessageOf(requestError));
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <label htmlFor="answer">Resposta</label>
+            <input id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)}/>
+            <button type="submit">Enviar</button>
+            {status && <p>{status}</p>}
+        </form>
+    );
+}
 
 function openLayoutAt(path) {
     const router = createMemoryRouter([
@@ -22,12 +57,36 @@ function openLayoutWithLoginAt(path) {
             element: <AppLayout/>,
             children: [
                 {path: "/perfil", element: <Profile/>},
+                {path: "/escalas/:scaleName", element: <AnswerForm/>},
                 {path: "*", element: <p>conteudo da tela</p>},
             ],
         },
     ], {initialEntries: [path]});
     render(<RouterProvider router={router}/>);
     return router;
+}
+
+// resposta da api como o fetch devolve, com o status e o json
+function apiResponse(status, body) {
+    return new Response(JSON.stringify(body), {status});
+}
+
+// a sessao venceu: o envio da escala da 401 ate a pessoa entrar de novo, e dps passa
+function mockExpiredSessionApi() {
+    let isSessionExpired = true;
+    return vi.spyOn(globalThis, "fetch").mockImplementation((url, options) => {
+        if (url === "/api/notifications/unread-count") {
+            return Promise.resolve(apiResponse(200, {unread: 0}));
+        }
+        if (url === "/api/auth/login") {
+            isSessionExpired = false;
+            return Promise.resolve(apiResponse(200, MARIA));
+        }
+        if (isSessionExpired) {
+            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+        }
+        return Promise.resolve(apiResponse(200, {answer: JSON.parse(options.body).answer}));
+    });
 }
 
 function sideMenu() {
@@ -88,8 +147,131 @@ function mockTermAndProfile(profile) {
 
 describe("AppLayout", () => {
     afterEach(() => {
+        leaveExpiredSession();
         setLoggedUser(null);
         vi.restoreAllMocks();
+    });
+
+    // a sessao vence com a escala pela metade: o login abre por cima, a tela fica montada com o q foi digitado
+    // e o envio q deu 401 vai de novo depois de entrar, entao a tela so ve uma resposta demorada (#151)
+    it("a sessao q vence no meio de um envio abre o login por cima e o envio segue dps de entrar de novo", async () => {
+        const fetchSpy = mockExpiredSessionApi();
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.click(screen.getByRole("button", {name: "Enviar"}));
+
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        expect(dialog.getByText(/entre de novo para continuar/i)).toBeInTheDocument();
+        // o e-mail eh o da conta q estava aberta e n muda
+        expect(dialog.getByLabelText("E-mail")).toHaveValue("maria@email.com");
+        expect(dialog.getByLabelText("E-mail")).toHaveAttribute("readonly");
+        expect(screen.getByLabelText("Resposta")).toHaveValue("dormi bem");
+        // o computador pode ser de mais gente, entao a tela de baixo fica escondida ate entrar de novo
+        expect(screen.getByLabelText("Resposta")).not.toBeVisible();
+        expect(screen.queryByText(/Sua sessão expirou/)).not.toBeInTheDocument();
+
+        await user.type(dialog.getByLabelText("Senha"), "Senha#2026");
+        await user.click(dialog.getByRole("button", {name: "Entrar"}));
+
+        expect(await screen.findByText("Salvo: dormi bem")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Resposta")).toBeVisible();
+        expect(screen.getByLabelText("Resposta")).toHaveValue("dormi bem");
+        const loginCall = fetchSpy.mock.calls.find((call) => call[0] === "/api/auth/login");
+        expect(JSON.parse(loginCall[1].body)).toEqual({email: "maria@email.com", password: "Senha#2026"});
+    });
+
+    // o termo ficou pendente enquanto a sessao estava vencida (versao nova ou 18 anos): quem entra de novo
+    // por cima ve o aceite no lugar da tela, igual a quem entra pela tela de login
+    it("paciente q entra de novo por cima com o termo pendente ve o aceite no lugar da tela", async () => {
+        let isSessionExpired = true;
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/auth/login") {
+                isSessionExpired = false;
+                return Promise.resolve(apiResponse(200, {...MARIA, termPending: true}));
+            }
+            if (isSessionExpired) {
+                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            }
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/profile") {
+                return Promise.resolve(apiResponse(200, {id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null}));
+            }
+            if (url === "/api/auth/me") {
+                return Promise.resolve(apiResponse(200, {...MARIA, termPending: true, termPendingByAge: false}));
+            }
+            return Promise.resolve(apiResponse(200, {version: "v2", text: "texto do termo novo"}));
+        });
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        openLayoutWithLoginAt("/painel-paciente");
+
+        // a contagem de avisos da tela q abriu eh uma leitura, e o GET passa mesmo com o termo pendente
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        await user.type(dialog.getByLabelText("Senha"), "Senha#2026");
+        await user.click(dialog.getByRole("button", {name: "Entrar"}));
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByText("conteudo da tela")).not.toBeVisible();
+    });
+
+    it("sair no login por cima vai pro login e o envio q esperava n eh enviado", async () => {
+        const fetchSpy = mockExpiredSessionApi();
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        const router = openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.click(screen.getByRole("button", {name: "Enviar"}));
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+
+        await user.click(dialog.getByRole("button", {name: "Sair"}));
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/entrar");
+        expect(getLoggedUser()).toBeNull();
+        const calledPaths = fetchSpy.mock.calls.map((call) => call[0]);
+        expect(calledPaths).not.toContain("/api/auth/login");
+        expect(calledPaths.filter((path) => path === "/api/scales/answers")).toHaveLength(1);
+    });
+
+    // o e-mail confirmado em outra aba encerra a sessao, e o login por cima so aceita o e-mail antigo:
+    // a recusa diz como sair dali em vez de deixar a pessoa achando q errou a senha
+    it("login por cima recusado diz q quem trocou o e-mail sai e entra com o e-mail novo", async () => {
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/auth/login") {
+                return Promise.resolve(apiResponse(401, {message: "E-mail ou senha inválidos"}));
+            }
+            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+        });
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        const router = openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.click(screen.getByRole("button", {name: "Enviar"}));
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        expect(dialog.queryByText(/Trocou o e-mail/)).not.toBeInTheDocument();
+
+        await user.type(dialog.getByLabelText("Senha"), "Senha#2026");
+        await user.click(dialog.getByRole("button", {name: "Entrar"}));
+
+        expect(await dialog.findByRole("alert")).toHaveTextContent("E-mail ou senha inválidos");
+        expect(dialog.getByText("Trocou o e-mail de acesso? Toque em Sair e entre com o e-mail novo."))
+            .toBeInTheDocument();
+
+        await user.click(dialog.getByRole("button", {name: "Sair"}));
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/entrar");
     });
 
     it("paciente com termo antigo ve o aceite no lugar da tela e volta pra ela depois de aceitar", async () => {

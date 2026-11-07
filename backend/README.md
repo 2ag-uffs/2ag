@@ -82,7 +82,7 @@ a api trabalha sempre no fuso `America/Sao_Paulo`, independente da máquina onde
 
 | rota | o que faz |
 | :--- | :--- |
-| `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, role, termPending, termPendingByAge}` |
+| `POST /auth/login` | confere e-mail e senha, grava o cookie `session` e devolve `{id, name, email, role, termPending, termPendingByAge}`. o `email` é o da própria conta: quando a sessão vence com uma tela aberta, o frontend entra de novo por cima dela só nessa conta (#151) |
 | `POST /auth/logout` | apaga o cookie e encerra as sessões abertas da pessoa em qualquer aparelho |
 | `GET /auth/me` | quem está logado. `termPending` diz se o paciente precisa aceitar o termo de novo: a versão é antiga, ou o aceite é de outra faixa de idade porque a data de nascimento cruzou os 18 anos. `termPendingByAge` diz que é só pela faixa de idade, e aí a data errada ainda se corrige no `PUT /profile` |
 | `POST /auth/register` | cadastro do paciente pelo link de convite, já entrando logado. `guardian` (nome, parentesco e telefone de familiar ou cuidador) é opcional, e o `socialName` (nome social) também. se a `birthDate` dá menos de 18 anos, o `guardian` é o responsável legal e o nome e o parentesco dele são obrigatórios, e o `researchTermVersion` é recusado |

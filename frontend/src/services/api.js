@@ -84,6 +84,76 @@ function goToLoginWithExpiredSession() {
     window.location.href = "/entrar?sessao=expirada&voltar=" + encodeURIComponent(currentPath);
 }
 
+// a sessao venceu com uma tela aberta (#151)
+// o layout se cadastra aqui qnd monta pra abrir o login por cima da tela, e o envio q deu 401 fica
+// esperando a pessoa entrar de novo. fica so na memoria: nada do q foi digitado vai pro navegador,
+// q pode ser de mais gente
+let loginAgainOpener = null;
+let pendingRequests = [];
+
+export function setLoginAgainOpener(opener) {
+    loginAgainOpener = opener;
+}
+
+// guarda o envio e abre o login por cima. a promessa so termina qnd a pessoa entra de novo ou sai
+function waitForLoginAgain(retry) {
+    return new Promise((resolve, reject) => {
+        pendingRequests.push({retry, resolve, reject});
+        loginAgainOpener();
+    });
+}
+
+// sem o layout montado (link de senha nova aberto com alguem logado) n tem onde abrir o login por cima,
+// entao a pagina recarrega no login como sempre
+function handleExpiredSession(retry) {
+    if (loginAgainOpener) {
+        return waitForLoginAgain(retry);
+    }
+    loggedUser = null;
+    goToLoginWithExpiredSession();
+    throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
+}
+
+// cada envio q estava esperando vai de novo com a sessao nova e a tela dele recebe a resposta de vdd
+function retryPendingRequests() {
+    const requests = pendingRequests;
+    pendingRequests = [];
+    requests.forEach((pending) => pending.retry().then(pending.resolve, pending.reject));
+}
+
+// sair no login por cima: esquece quem estava logado e o q esperava falha como sessao vencida
+export function leaveExpiredSession() {
+    const requests = pendingRequests;
+    pendingRequests = [];
+    loggedUser = null;
+    requests.forEach((pending) => pending.reject(new ApiError(401, SESSION_EXPIRED_MESSAGE)));
+}
+
+// entra de novo por cima da tela, so na msm conta, e reenvia o q ficou esperando
+// vai direto no fetch pq a senha errada aqui eh 401 e n pode cair na regra de sessao vencida do request
+export async function loginAgain(password) {
+    const response = await fetch(BASE_URL + "/auth/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({email: loggedUser.email, password}),
+    });
+    const body = await readBody(response);
+    if (!response.ok) {
+        const message = (body && body.message) || "E-mail ou senha inválidos.";
+        throw new ApiError(response.status, message, body && body.errors);
+    }
+    // outra conta no lugar da q estava aberta (n deveria acontecer com o e-mail travado):
+    // nada eh reenviado, a conta nova sai e a pagina volta pro login como antes
+    if (body.id !== loggedUser.id) {
+        await logout();
+        leaveExpiredSession();
+        goToLoginWithExpiredSession();
+        return;
+    }
+    setLoggedUser(body);
+    retryPendingRequests();
+}
+
 // o layout escuta o aviso e abre o termo por cima da tela aberta
 function openPendingTerm(user) {
     loggedUser = user;
@@ -95,18 +165,18 @@ async function request(path, options = {}) {
     const response = await fetch(BASE_URL + path, {...options, headers});
     const body = await readBody(response);
 
-    // 401 com alguem logado quer dizer q a sessao acabou e a pessoa volta pro login
+    // 401 com alguem logado quer dizer q a sessao acabou
     // 401 sem ninguem logado eh senha errada e quem mostra a mensagem eh a tela
     if (response.status === 401) {
-        const hadSession = loggedUser !== null;
-        loggedUser = null;
-        if (hadSession && !window.location.pathname.startsWith("/entrar")) {
-            goToLoginWithExpiredSession();
+        if (loggedUser === null) {
+            throw new ApiError(401, (body && body.message) || "E-mail ou senha inválidos.");
         }
-        const message = hadSession
-            ? SESSION_EXPIRED_MESSAGE
-            : (body && body.message) || "E-mail ou senha inválidos.";
-        throw new ApiError(401, message);
+        // na tela de login a sessao velha eh so esquecida
+        if (window.location.pathname.startsWith("/entrar")) {
+            loggedUser = null;
+            throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
+        }
+        return handleExpiredSession(() => request(path, options));
     }
 
     // o termo ficou pendente com a sessao aberta (versao nova ou aniversario de 18 anos)
@@ -172,9 +242,7 @@ export async function download(path, fallbackName) {
     if (!response.ok) {
         const body = await readBody(response);
         if (response.status === 401) {
-            loggedUser = null;
-            goToLoginWithExpiredSession();
-            throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
+            return handleExpiredSession(() => download(path, fallbackName));
         }
         throw new ApiError(response.status, body && body.message, body && body.errors);
     }

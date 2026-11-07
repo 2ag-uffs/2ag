@@ -106,6 +106,8 @@ class SessionTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(patient.getId()))
                 .andExpect(jsonPath("$.name").value("Paciente da sessao"))
+                // o e-mail da propria conta: o front entra de novo so nela qnd a sessao vence com a tela aberta (#151)
+                .andExpect(jsonPath("$.email").value(PATIENT_EMAIL))
                 .andExpect(jsonPath("$.role").value("PATIENT"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andReturn();
@@ -148,6 +150,7 @@ class SessionTest {
         mockMvc.perform(get("/auth/me").cookie(sessionCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(patient.getId()))
+                .andExpect(jsonPath("$.email").value(PATIENT_EMAIL))
                 .andExpect(jsonPath("$.role").value("PATIENT"));
     }
 

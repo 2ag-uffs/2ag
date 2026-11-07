@@ -93,6 +93,7 @@ Acesso por e-mail e senha previamente cadastrados. Em caso de sucesso, o usuári
 - Token de acesso expira em no máximo 2 horas
 - Token expirado ou com assinatura inválida retorna **401**, nunca 500
 - Senha armazenada apenas como hash BCrypt; nenhuma resposta da API contém o campo de senha, em nenhuma circunstância
+- Sessão vencida com uma tela aberta (07/11/2026): o **401** dentro do sistema não recarrega a página. Um login abre por cima da tela, só para a mesma conta (e-mail fixo, só a senha é digitada), a tela fica montada, mas escondida enquanto esse login está aberto, e o envio que recebeu o 401 vai de novo com a sessão nova, então uma escala ou anamnese pela metade não perde o que foi preenchido. Nada do que foi digitado é guardado no navegador, que pode ser compartilhado. "Sair" nesse login descarta o envio e leva à tela de login; se a API devolvesse outra conta, nada é reenviado e a página recarrega no login
 
 ---
 

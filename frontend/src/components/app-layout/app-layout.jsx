@@ -20,8 +20,9 @@ import {
     FiUsers,
 } from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
+import LoginAgain from "../login-again/login-again.jsx";
 import TermUpdate from "../term-update/term-update.jsx";
-import {apiService, getLoggedUser, logout} from "../../services/api.js";
+import {apiService, getLoggedUser, leaveExpiredSession, logout, setLoginAgainOpener} from "../../services/api.js";
 import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
 
@@ -210,6 +211,12 @@ function useUnreadCount(hasNotices, pathname) {
     return unreadCount;
 }
 
+// paciente com o termo pendente (versao antiga ou aceite de outra faixa de idade) ve o aceite
+// no lugar de qualquer tela (#58)
+function hasPendingTerm(user) {
+    return Boolean(user && user.role === "PATIENT" && user.termPending);
+}
+
 // moldura de todas as telas de quem esta logado
 // no computador o menu fica na lateral, no tablet a lateral mostra so os
 // icones e no celular o menu vai pra barra de baixo
@@ -224,10 +231,7 @@ export default function AppLayout() {
     const homePath = homePathFor(loggedUser);
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
-    // paciente com o termo pendente (versao antiga ou aceite de outra faixa de idade) ve o aceite
-    // no lugar de qualquer tela (#58)
-    const [isTermPending, setIsTermPending] = useState(
-        Boolean(loggedUser && loggedUser.role === "PATIENT" && loggedUser.termPending));
+    const [isTermPending, setIsTermPending] = useState(hasPendingTerm(loggedUser));
     // a data de nascimento corrigida na tela do termo monta de novo a tela de baixo,
     // senao o perfil continuava com a data errada no formulario e salvar de novo cruzava os 18 anos outra vez
     const [pageReloads, setPageReloads] = useState(0);
@@ -245,6 +249,30 @@ export default function AppLayout() {
         window.addEventListener("term-pending", openTerm);
         return () => window.removeEventListener("term-pending", openTerm);
     }, []);
+
+    // a sessao venceu com a tela aberta: o login abre por cima, a tela fica como estava e o envio q parou
+    // segue depois de entrar de novo (#151). fora do layout a api recarrega no login como sempre
+    const [isSessionExpired, setIsSessionExpired] = useState(false);
+
+    useEffect(() => {
+        setLoginAgainOpener(() => setIsSessionExpired(true));
+        return () => setLoginAgainOpener(null);
+    }, []);
+
+    // o termo pode ter ficado pendente enquanto a sessao estava vencida, e uma leitura reenviada
+    // passa sem o 403 q abriria ele, entao o login de novo confere como o login da tela de entrar
+    const handleLoggedInAgain = () => {
+        setIsSessionExpired(false);
+        if (hasPendingTerm(getLoggedUser())) {
+            setIsTermPending(true);
+        }
+    };
+
+    const handleLeaveExpiredSession = () => {
+        leaveExpiredSession();
+        setIsSessionExpired(false);
+        navigate("/entrar", {replace: true});
+    };
 
     useEffect(() => {
         // sem ninguem logado a tela ja esta indo pro login, entao o menu fica como estava
@@ -313,69 +341,76 @@ export default function AppLayout() {
     };
 
     return (
-        <div className={styles.layout}>
-            {/* barra fina no topo enquanto a proxima tela carrega */}
-            {isChangingPage && <div className={styles.loadingBar} role="progressbar" aria-label="Carregando"/>}
+        <>
+            {/* com o login por cima aberto a tela de baixo n recebe clique nem tab */}
+            <div className={styles.layout} inert={isSessionExpired}>
+                {/* barra fina no topo enquanto a proxima tela carrega */}
+                {isChangingPage && <div className={styles.loadingBar} role="progressbar" aria-label="Carregando"/>}
 
-            <aside className={styles.sidebar}>
-                <Link to={homePath} className={styles.brand} aria-label="Ir para o início">
-                    <img src="/images/logotipo-vertical-claro.svg" alt="2AG" className={styles.brandFull}/>
-                    <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon}/>
-                </Link>
+                <aside className={styles.sidebar}>
+                    <Link to={homePath} className={styles.brand} aria-label="Ir para o início">
+                        <img src="/images/logotipo-vertical-claro.svg" alt="2AG" className={styles.brandFull}/>
+                        <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon}/>
+                    </Link>
 
-                <SideMenu items={menuItems} activeItem={activeSideItem} unreadCount={unreadCount}/>
+                    <SideMenu items={menuItems} activeItem={activeSideItem} unreadCount={unreadCount}/>
 
-                <div className={styles.account}>
-                    <div className={styles.accountText}>
-                        <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
-                        <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
+                    <div className={styles.account}>
+                        <div className={styles.accountText}>
+                            <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
+                            <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
+                        </div>
+                        <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
                     </div>
-                    <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
-                </div>
-            </aside>
+                </aside>
 
-            <header className={styles.mobileHeader}>
-                {isHomePage ? (
-                    <span className={styles.headerSpacer}/>
-                ) : (
-                    <button type="button" className={styles.iconButton} onClick={handleBack}
-                            aria-label="Voltar" title="Voltar">
-                        <FiArrowLeft/>
-                    </button>
-                )}
-                <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
-                <div className={styles.headerActions}>
-                    <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
-                </div>
-            </header>
-
-            <main className={styles.content}>
-                {logoutError && (
-                    <p className={"aviso aviso--atencao " + styles.logoutError} role="alert" ref={logoutErrorRef}>
-                        {logoutError.message}
-                    </p>
-                )}
-                {!isHomePage && (
-                    <button type="button" className={styles.backLink} onClick={handleBack}>
-                        <FiArrowLeft/>
-                        Voltar
-                    </button>
-                )}
-                {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
-                <div key={location.pathname} className={styles.page}>
-                    {isTermPending && (
-                        <TermUpdate onAccepted={() => setIsTermPending(false)} onBirthDateFixed={handleBirthDateFixed}/>
+                <header className={styles.mobileHeader}>
+                    {isHomePage ? (
+                        <span className={styles.headerSpacer}/>
+                    ) : (
+                        <button type="button" className={styles.iconButton} onClick={handleBack}
+                                aria-label="Voltar" title="Voltar">
+                            <FiArrowLeft/>
+                        </button>
                     )}
-                    {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
-                    <div key={pageReloads} className={styles.pageContent} hidden={isTermPending}>
-                        <Outlet/>
+                    <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
+                    <div className={styles.headerActions}>
+                        <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
                     </div>
-                </div>
-            </main>
+                </header>
 
-            <BottomMenu items={mobileItems} activeItem={activeBottomItem} unreadCount={unreadCount}/>
+                <main className={styles.content}>
+                    {logoutError && (
+                        <p className={"aviso aviso--atencao " + styles.logoutError} role="alert" ref={logoutErrorRef}>
+                            {logoutError.message}
+                        </p>
+                    )}
+                    {!isHomePage && (
+                        <button type="button" className={styles.backLink} onClick={handleBack}>
+                            <FiArrowLeft/>
+                            Voltar
+                        </button>
+                    )}
+                    {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
+                    <div key={location.pathname} className={styles.page}>
+                        {isTermPending && (
+                            <TermUpdate onAccepted={() => setIsTermPending(false)} onBirthDateFixed={handleBirthDateFixed}/>
+                        )}
+                        {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
+                        {/* e com o login por cima fica escondida, pq o computador pode ser de mais gente */}
+                        <div key={pageReloads} className={styles.pageContent} hidden={isTermPending || isSessionExpired}>
+                            <Outlet/>
+                        </div>
+                    </div>
+                </main>
 
-            <ScrollRestoration/>
-        </div>
+                <BottomMenu items={mobileItems} activeItem={activeBottomItem} unreadCount={unreadCount}/>
+
+                <ScrollRestoration/>
+            </div>
+            {isSessionExpired && (
+                <LoginAgain onLoggedIn={handleLoggedInAgain} onLeave={handleLeaveExpiredSession}/>
+            )}
+        </>
     );
 }
