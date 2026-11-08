@@ -45,6 +45,22 @@ function validityText(minutes) {
     return minutes + " minutos";
 }
 
+// desativar n fecha nada dos pacientes: a api diz quantas escalas esperando resposta e quantos pedidos e
+// consultas por vir ficaram, e os lembretes delas so voltam com a conta reativada (#148)
+function pendingText(result) {
+    const openTasks = result && result.openTasks ? result.openTasks : 0;
+    const futureAppointments = result && result.futureAppointments ? result.futureAppointments : 0;
+    if (openTasks === 0 && futureAppointments === 0) {
+        return " Nenhuma escala nem consulta dos pacientes ficou esperando.";
+    }
+    const taskText = openTasks === 1 ? "1 escala esperando resposta" : openTasks + " escalas esperando resposta";
+    const appointmentText = futureAppointments === 1
+        ? "1 consulta ou pedido de consulta por vir"
+        : futureAppointments + " consultas ou pedidos de consulta por vir";
+    return " Ficaram com os pacientes " + taskText + " e " + appointmentText
+        + ". Nada foi fechado, e os lembretes só voltam quando a conta for reativada.";
+}
+
 // o link de senha foi por e-mail ou aparece aqui pro administrador entregar
 function LinkResult({link, sentText, handText, isCopied, onCopy, onClose}) {
     if (!link) {
@@ -291,9 +307,10 @@ export default function AdminPrescribers() {
         const prescriber = prescriberToToggle;
         setPrescriberToToggle(null);
         try {
-            await apiService.put("/admin/prescribers/" + prescriber.id + "/active", {active: !prescriber.active});
+            const result = await apiService.put("/admin/prescribers/" + prescriber.id + "/active",
+                {active: !prescriber.active});
             if (prescriber.active) {
-                setNotice("Acesso de " + prescriber.name + " desativado.");
+                setNotice("Acesso de " + prescriber.name + " desativado." + pendingText(result));
             } else {
                 setNotice("Acesso de " + prescriber.name + " reativado.");
             }
@@ -734,9 +751,11 @@ export default function AdminPrescribers() {
                 message={
                     isDeactivating
                         ? "A pessoa perde o acesso na hora e o acompanhamento automático dos pacientes dela é"
-                            + " encerrado. Os pacientes e o histórico continuam guardados."
+                            + " encerrado. As escalas esperando resposta e as consultas marcadas ficam como estão,"
+                            + " sem lembrete para os pacientes enquanto a conta estiver desativada. Os pacientes e"
+                            + " o histórico continuam guardados."
                         : "A pessoa volta a conseguir entrar no sistema. O acompanhamento automático dos pacientes"
-                            + " não volta sozinho."
+                            + " não volta sozinho, e os lembretes de escala e de consulta voltam a sair."
                 }
                 confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
                 cancelText="Voltar"

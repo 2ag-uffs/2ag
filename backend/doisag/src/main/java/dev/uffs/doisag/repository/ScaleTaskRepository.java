@@ -79,6 +79,9 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
 
     long countByPatientIdAndStatus(Long patientId, ScaleTaskStatus status);
 
+    // quantas escalas dos pacientes do prescritor ainda esperam resposta, pro aviso da desativacao dele
+    long countByPrescriberIdAndStatus(Long prescriberId, ScaleTaskStatus status);
+
     // as tarefas com prazo no periodo dos indicadores, respondidas ou n (RF39)
     List<ScaleTask> findByPrescriberIdAndPeriodEndBetween(Long prescriberId, LocalDate from, LocalDate to);
 }

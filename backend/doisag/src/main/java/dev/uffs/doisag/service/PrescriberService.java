@@ -3,14 +3,18 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.AdminPrescriberUpdateDTO;
 import dev.uffs.doisag.dto.PasswordResetLinkDTO;
 import dev.uffs.doisag.dto.PrescriberCreateDTO;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
+import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.SecureTokens;
 import org.springframework.data.domain.Sort;
@@ -18,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 
@@ -37,6 +42,8 @@ public class PrescriberService {
 
     private final PrescriberRepository prescriberRepository;
     private final UsersRepository usersRepository;
+    private final ScaleTaskRepository taskRepository;
+    private final AppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
@@ -44,11 +51,14 @@ public class PrescriberService {
     private final TreatmentProtocolService treatmentProtocolService;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
+                             ScaleTaskRepository taskRepository, AppointmentRepository appointmentRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
                              AuditService auditService, PasswordService passwordService,
                              TreatmentProtocolService treatmentProtocolService) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
+        this.taskRepository = taskRepository;
+        this.appointmentRepository = appointmentRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
@@ -159,6 +169,21 @@ public class PrescriberService {
         }
         auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null, active);
         return prescriberRepository.save(prescriber);
+    }
+
+    // desativar n fecha nada dos pacientes: a escala esperando resposta e a agenda ficam como estao
+    // e so os lembretes delas pausam ate reativar (ReminderService). a tela da administracao mostra
+    // quantas ficaram, so o numero, sem nome nem prontuario (#148)
+    @Transactional(readOnly = true)
+    public long countOpenTasksOf(Long prescriberId) {
+        return taskRepository.countByPrescriberIdAndStatus(prescriberId, ScaleTaskStatus.PENDENTE);
+    }
+
+    // pedidos esperando resposta e consultas marcadas, daqui pra frente
+    @Transactional(readOnly = true)
+    public long countFutureAppointmentsOf(Long prescriberId) {
+        return appointmentRepository.countByPrescriberIdAndDateTimeAfterAndStatusInAndAnnulmentAnnulledAtIsNull(
+                prescriberId, LocalDateTime.now(), List.of(AppointmentStatus.SOLICITADA, AppointmentStatus.AGENDADA));
     }
 
     // o administrador gera um link de senha nova pra um prescritor q ficou sem acesso (RF35)

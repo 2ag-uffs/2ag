@@ -65,6 +65,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                                                       LocalDateTime end,
                                                                                       Collection<AppointmentStatus> statuses);
 
+    // o mesmo daqui pra frente, sem fim: o q fica na agenda do prescritor desativado
+    long countByPrescriberIdAndDateTimeAfterAndStatusInAndAnnulmentAnnulledAtIsNull(Long prescriberId,
+                                                                                    LocalDateTime moment,
+                                                                                    Collection<AppointmentStatus> statuses);
+
     // consultas de um paciente num intervalo pro grafico de evolucao
     List<Appointment> findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(Long patientId, LocalDateTime start,
                                                                            LocalDateTime end);

@@ -133,10 +133,12 @@ public class ReminderService {
         return true;
     }
 
+    // com o prescritor desativado o lembrete pausa sem fechar nada, e reativado ele volta a sair (#148)
     private boolean canAppointmentBeReminded(Appointment appointment, LocalDate tomorrow) {
         return appointment.getStatus() == AppointmentStatus.AGENDADA && !appointment.isAnnulled()
                 && appointment.getReminderSentAt() == null
-                && appointment.getDateTime().toLocalDate().equals(tomorrow);
+                && appointment.getDateTime().toLocalDate().equals(tomorrow)
+                && appointment.getPrescriber().isActive();
     }
 
     private void sendAppointmentReminder(Appointment appointment) {
@@ -195,9 +197,11 @@ public class ReminderService {
         return true;
     }
 
+    // sem o prescritor ninguem le a resposta, entao o lembrete espera a conta dele voltar (#148)
     private boolean canTaskBeReminded(ScaleTask task, LocalDate lastDay) {
         return task.getStatus() == ScaleTaskStatus.PENDENTE && task.getReminderSentAt() == null
-                && !task.getPeriodEnd().isAfter(lastDay);
+                && !task.getPeriodEnd().isAfter(lastDay)
+                && task.getPrescriber().isActive();
     }
 
     private void sendTaskReminder(ScaleTask task) {

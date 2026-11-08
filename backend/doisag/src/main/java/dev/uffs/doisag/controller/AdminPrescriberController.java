@@ -90,6 +90,11 @@ public class AdminPrescriberController {
     public AdminPrescriberDTO changeActive(@PathVariable Long prescriberId,
                                            @RequestBody @Valid ChangeActiveDTO activeData) {
         Prescriber prescriber = prescriberService.changeActive(prescriberId, activeData.active());
-        return new AdminPrescriberDTO(prescriber);
+        if (prescriber.isActive()) {
+            return new AdminPrescriberDTO(prescriber);
+        }
+        // a desativacao diz o q ficou esperando nos pacientes dele, pq nada disso eh fechado (#148)
+        return new AdminPrescriberDTO(prescriber).withPending(prescriberService.countOpenTasksOf(prescriberId),
+                prescriberService.countFutureAppointmentsOf(prescriberId));
     }
 }

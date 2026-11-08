@@ -1,4 +1,4 @@
-import {render, screen} from "@testing-library/react";
+import {render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
@@ -18,6 +18,28 @@ const PRESCRIBERS = [
 describe("AdminPrescribers", () => {
     afterEach(() => {
         vi.restoreAllMocks();
+    });
+
+    // desativar n fecha nada dos pacientes: a resposta diz o q ficou esperando e a tela mostra (#148)
+    it("desativar diz quantas escalas e consultas dos pacientes ficaram esperando", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({
+            ...PRESCRIBERS[0], active: false, openTasks: 3, futureAppointments: 1,
+        });
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Desativar"});
+        await user.click(buttons[0]);
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveTextContent(/sem lembrete para os pacientes enquanto a conta estiver desativada/);
+        await user.click(within(dialog).getByRole("button", {name: "Sim, desativar"}));
+
+        expect(put).toHaveBeenCalledWith("/admin/prescribers/1/active", {active: false});
+        const notice = await screen.findByText(/Acesso de Ana Lima desativado/);
+        expect(notice).toHaveTextContent(/3 escalas esperando resposta/);
+        expect(notice).toHaveTextContent(/1 consulta ou pedido de consulta por vir/);
+        expect(notice).toHaveTextContent(/lembretes só voltam quando a conta for reativada/);
     });
 
     // o e-mail digitado errado so pode ser corrigido enquanto a pessoa n criou a senha (issue 131)
