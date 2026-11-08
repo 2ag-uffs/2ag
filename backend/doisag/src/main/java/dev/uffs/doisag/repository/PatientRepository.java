@@ -29,6 +29,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // nem depender de lazy loading e eh usado pelo PatientAccessService
     boolean existsByIdAndPrescriberId(Long id, Long prescriberId);
 
+    // le o arquivamento direto no banco, dps da trava: o paciente q ja esta na sessao pode ser a copia velha
+    boolean existsByIdAndArchivedAtIsNotNull(Long id);
+
     // a administracao acha a conta pelo e-mail e ve as q ela desativou
     Optional<Patient> findByEmail(String email);
 

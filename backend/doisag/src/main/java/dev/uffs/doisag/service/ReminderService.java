@@ -113,7 +113,13 @@ public class ReminderService {
 
     private boolean remindAppointment(Long appointmentId, LocalDate tomorrow) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId).orElse(null);
-        if (appointment == null || !canAppointmentBeReminded(appointment, tomorrow)) {
+        if (appointment == null) {
+            return false;
+        }
+        // o paciente vem dps da consulta, como no cancelamento, e so eh lido dps dessa trava:
+        // o arquivamento gravado no meio tempo aparece e o arquivado n recebe o lembrete (#170)
+        patientRepository.lockById(appointment.getPatient().getId());
+        if (!canAppointmentBeReminded(appointment, tomorrow)) {
             return false;
         }
         sendAppointmentReminder(appointment);
@@ -134,11 +140,13 @@ public class ReminderService {
     }
 
     // com o prescritor desativado o lembrete pausa sem fechar nada, e reativado ele volta a sair (#148)
+    // o paciente arquivado saiu do tratamento e n recebe "sua consulta eh amanha" (#170)
     private boolean canAppointmentBeReminded(Appointment appointment, LocalDate tomorrow) {
         return appointment.getStatus() == AppointmentStatus.AGENDADA && !appointment.isAnnulled()
                 && appointment.getReminderSentAt() == null
                 && appointment.getDateTime().toLocalDate().equals(tomorrow)
-                && appointment.getPrescriber().isActive();
+                && appointment.getPrescriber().isActive()
+                && !appointment.getPatient().isArchived();
     }
 
     private void sendAppointmentReminder(Appointment appointment) {

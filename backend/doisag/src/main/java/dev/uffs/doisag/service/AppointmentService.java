@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -187,6 +188,12 @@ public class AppointmentService {
         // a conta eh feita ja com a agenda travada senao dois pedidos do mesmo paciente
         // ao mesmo tempo contavam os dois 2 em aberto e ele ficava com 4
         lockAgendaOf(prescriber.getId());
+        // o paciente vem dps do prescritor na ordem das travas. o arquivamento gravado enquanto o pedido esperava
+        // aparece aqui e o pedido eh recusado, e o arquivamento q chega no meio espera o pedido gravar (#170)
+        patientRepository.lockById(patientId);
+        if (patientRepository.existsByIdAndArchivedAtIsNotNull(patientId)) {
+            throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
+        }
         checkOpenRequestsLimit(patientId);
 
         // o paciente n escolhe o tipo pq ele sai do historico dele
@@ -278,12 +285,9 @@ public class AppointmentService {
         if (!stillExpired) {
             return false;
         }
-        appointment.setStatus(AppointmentStatus.RECUSADA);
-        Appointment savedAppointment = saveChange(appointment);
-        notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta sem resposta",
-                "Seu pedido de consulta para " + formatDateTime(savedAppointment)
-                        + " passou da data sem resposta. Escolha outro horário na agenda.",
-                Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
+        refuse(appointment, "Pedido de consulta sem resposta",
+                "Seu pedido de consulta para " + formatDateTime(appointment)
+                        + " passou da data sem resposta. Escolha outro horário na agenda.");
         return true;
     }
 
@@ -293,18 +297,78 @@ public class AppointmentService {
         Appointment appointment = findAppointmentForUpdate(appointmentId);
         checkIsWaitingAnswer(appointment);
 
-        appointment.setStatus(AppointmentStatus.RECUSADA);
-        Appointment savedAppointment = saveChange(appointment);
-
-        String message = "Seu pedido de consulta para " + formatDateTime(savedAppointment)
+        String message = "Seu pedido de consulta para " + formatDateTime(appointment)
                 + " não foi aceito. Escolha outro horário na agenda.";
         String reason = declineData == null ? null : InputCleaner.textOrNull(declineData.reason());
         if (reason != null) {
             message = message + " Motivo: " + reason;
         }
-        notificationService.createNotification(savedAppointment.getPatient(), "Pedido de consulta recusado",
-                message, Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
-        return new AgendaAppointmentDTO(savedAppointment);
+        return new AgendaAppointmentDTO(refuse(appointment, "Pedido de consulta recusado", message));
+    }
+
+    // os pedidos em aberto de um paciente q vai ser arquivado, ja travados e lidos de novo
+    // a consulta vem antes do paciente na ordem das travas, entao o arquivamento chama isso antes de travar ele
+    // MANDATORY pq fora da transacao de quem chama a trava soltaria aqui mesmo
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<Appointment> lockOpenRequestsOf(Long patientId) {
+        List<Appointment> lockedRequests = new ArrayList<>();
+        for (Appointment request : appointmentRepository.findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(
+                patientId, AppointmentStatus.SOLICITADA)) {
+            rowLock.reload(Appointment.class, request.getId()).ifPresent(lockedRequests::add);
+        }
+        return lockedRequests;
+    }
+
+    // o pedido gravado dps da leitura acima n esta na lista travada, e travar ele dps do paciente quebrava a ordem
+    // o arquivamento confere isso ja com o paciente travado, qnd nenhum pedido novo entra mais (o pedido trava ele)
+    @Transactional(readOnly = true)
+    public boolean hasOpenRequestsBesides(Long patientId, List<Appointment> lockedRequests) {
+        int stillOpen = 0;
+        for (Appointment request : lockedRequests) {
+            if (!request.isAnnulled() && request.getStatus() == AppointmentStatus.SOLICITADA) {
+                stillOpen++;
+            }
+        }
+        long openNow = appointmentRepository.countByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patientId,
+                AppointmentStatus.SOLICITADA);
+        return openNow > stillOpen;
+    }
+
+    // o arquivamento recusa o pedido em aberto, q segurava horario de quem segue em tratamento (#170)
+    // o mesmo caminho da recusa do prescritor, so q o aviso n manda escolher outro horario,
+    // pq o arquivado n pede mais consulta pelo sistema
+    @Transactional
+    public int declineForArchiving(List<Appointment> openRequests) {
+        int declined = 0;
+        for (Appointment request : openRequests) {
+            // lido de novo com a trava: pode ter sido confirmado ou cancelado nesse meio tempo
+            if (request.isAnnulled() || request.getStatus() != AppointmentStatus.SOLICITADA) {
+                continue;
+            }
+            refuse(request, "Pedido de consulta recusado",
+                    "Seu pedido de consulta para " + formatDateTime(request)
+                            + " não foi aceito porque o seu acompanhamento foi encerrado."
+                            + " Fale com a clínica se quiser marcar uma consulta.");
+            declined++;
+        }
+        return declined;
+    }
+
+    // recusar devolve o horario pra agenda, grava a trilha e avisa o paciente
+    // quem chama ja travou o pedido
+    private Appointment refuse(Appointment request, String title, String message) {
+        request.setStatus(AppointmentStatus.RECUSADA);
+        Appointment savedRequest = saveChange(request);
+        notificationService.createNotification(savedRequest.getPatient(), title, message,
+                Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
+        return savedRequest;
+    }
+
+    // quantas consultas marcadas o paciente ainda tem por vir: o arquivamento n cancela, so conta e avisa
+    @Transactional(readOnly = true)
+    public long countFutureConfirmedOf(Long patientId) {
+        return appointmentRepository.countByPatientIdAndStatusAndDateTimeAfterAndAnnulmentAnnulledAtIsNull(
+                patientId, AppointmentStatus.AGENDADA, LocalDateTime.now());
     }
 
     // remarcar muda quando e como a consulta acontece e avisa o paciente

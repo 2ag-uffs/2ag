@@ -1,10 +1,16 @@
 package dev.uffs.doisag.controller;
 
+import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
@@ -26,10 +32,13 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -53,6 +62,8 @@ class PatientArchiveTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private AppointmentRepository appointmentRepository;
+    @Autowired private NotificationRepository notificationRepository;
     @Autowired private ReminderService reminderService;
     @Autowired private TokenService tokenService;
 
@@ -291,6 +302,64 @@ class PatientArchiveTest {
                                 + "\",\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(AnamnesisService.ARCHIVED_PATIENT_MESSAGE));
+    }
+
+    // o pedido em aberto segurava horario de quem segue em tratamento, entao o arquivamento recusa ele
+    // a consulta marcada fica: cancelar eh decisao do prescritor, q ve na resposta quantas ficaram (#170)
+    @Test
+    void archivingRefusesTheOpenRequestsAndTellsHowManyConsultationsStay() throws Exception {
+        Appointment request = saveAppointment(LocalDate.now().plusDays(3).atTime(10, 0), AppointmentStatus.SOLICITADA);
+        Appointment scheduled = saveAppointment(LocalDate.now().plusDays(5).atTime(9, 0), AppointmentStatus.AGENDADA);
+        saveAppointment(LocalDate.now().minusDays(10).atTime(9, 0), AppointmentStatus.CONCLUIDA);
+
+        archive(patient, prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.futureAppointments").value(1));
+
+        assertThat(appointmentRepository.findById(request.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.RECUSADA);
+        assertThat(appointmentRepository.findById(scheduled.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        // o horario volta pra agenda e o paciente fica sabendo, igual na recusa do prescritor
+        mockMvc.perform(get("/appointments/requests").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId());
+        assertThat(notifications).extracting(Notification::getTitle).contains("Pedido de consulta recusado");
+        assertThat(notifications.get(0).getMessage()).contains("acompanhamento foi encerrado")
+                .doesNotContain("Escolha outro horário");
+        LocalDate today = LocalDate.now();
+        mockMvc.perform(get("/patients/" + patient.getId() + "/audit-events?from=" + today + "&to=" + today + "&page=0")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.events[?(@.operation == 'ALTERACAO' && @.recordType == 'CONSULTA')]",
+                        hasSize(1)));
+    }
+
+    // quem saiu do tratamento n recebe "sua consulta eh amanha", e reativado volta a receber
+    @Test
+    void theArchivedPatientGetsNoAppointmentReminder() throws Exception {
+        LocalDate today = LocalDate.now();
+        saveAppointment(today.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        assertThat(reminderService.sendAppointmentReminders(today)).isZero();
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .extracting(Notification::getTitle).doesNotContain("Consulta amanhã");
+
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        assertThat(reminderService.sendAppointmentReminders(today)).isEqualTo(1);
+    }
+
+    private Appointment saveAppointment(LocalDateTime dateTime, AppointmentStatus status) {
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPrescriber(prescriber);
+        appointment.setDateTime(dateTime);
+        appointment.setModality(AppointmentModality.PRESENCIAL);
+        appointment.setStatus(status);
+        appointment.setDurationMinutes(60);
+        return appointmentRepository.save(appointment);
     }
 
     private ResultActions archive(Patient archivedPatient, Users user) throws Exception {

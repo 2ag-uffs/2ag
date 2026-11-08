@@ -70,6 +70,17 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                                                     LocalDateTime moment,
                                                                                     Collection<AppointmentStatus> statuses);
 
+    // os pedidos em aberto do paciente, q o arquivamento recusa. por id pra travar sempre na mesma ordem
+    List<Appointment> findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(Long patientId,
+                                                                                       AppointmentStatus status);
+
+    long countByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(Long patientId, AppointmentStatus status);
+
+    // quantas consultas marcadas o paciente ainda tem por vir, pro aviso do arquivamento
+    long countByPatientIdAndStatusAndDateTimeAfterAndAnnulmentAnnulledAtIsNull(Long patientId,
+                                                                               AppointmentStatus status,
+                                                                               LocalDateTime moment);
+
     // consultas de um paciente num intervalo pro grafico de evolucao
     List<Appointment> findByPatientIdAndDateTimeBetweenOrderByDateTimeAsc(Long patientId, LocalDateTime start,
                                                                            LocalDateTime end);

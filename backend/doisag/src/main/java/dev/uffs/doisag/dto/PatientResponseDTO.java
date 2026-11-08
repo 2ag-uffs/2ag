@@ -25,13 +25,17 @@ public record PatientResponseDTO(
         Boolean researchConsent,
         // nome civil so no prontuario e so qnd o paciente tem nome social
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        String civilName
+        String civilName,
+        // so na resposta do arquivamento: quantas consultas marcadas ficaram por vir na agenda
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        Long futureAppointments
 ) {
     public PatientResponseDTO(Patient patient) {
-        this(patient, null, null, null);
+        this(patient, null, null, null, null);
     }
 
-    private PatientResponseDTO(Patient patient, GuardianDTO guardian, Boolean researchConsent, String civilName) {
+    private PatientResponseDTO(Patient patient, GuardianDTO guardian, Boolean researchConsent, String civilName,
+                               Long futureAppointments) {
         this(
                 patient.getId(),
                 patient.getDisplayName(),
@@ -42,13 +46,18 @@ public record PatientResponseDTO(
                 patient.getArchivedAt(),
                 guardian,
                 researchConsent,
-                civilName
+                civilName,
+                futureAppointments
         );
     }
 
     public static PatientResponseDTO forChart(Patient patient, boolean researchConsent) {
         String civilName = patient.civilNameWhenSocial();
-        return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent, civilName);
+        return new PatientResponseDTO(patient, GuardianDTO.from(patient), researchConsent, civilName, null);
+    }
+
+    public static PatientResponseDTO forArchive(Patient patient, long futureAppointments) {
+        return new PatientResponseDTO(patient, null, null, null, futureAppointments);
     }
 
     // o prescritor pode ser nulo e o campo eh lazy entao separei

@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.DayOffDTO;
 import dev.uffs.doisag.dto.DayOffResponseDTO;
+import dev.uffs.doisag.dto.PatientResponseDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.infra.BusinessException;
@@ -61,6 +62,7 @@ class AgendaRaceTest {
     @Autowired private AppointmentService appointmentService;
     @Autowired private AvailabilityService availabilityService;
     @Autowired private ReminderService reminderService;
+    @Autowired private PatientArchiveService patientArchiveService;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private PrescriberRepository prescriberRepository;
     @Autowired private PatientRepository patientRepository;
@@ -284,6 +286,88 @@ class AgendaRaceTest {
         assertThat(kept.getStatus()).isEqualTo(AppointmentStatus.CANCELADA);
         assertThat(kept.getReminderSentAt()).isNull();
         assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta amanhã");
+    }
+
+    // o arquivamento trava os pedidos em aberto antes do paciente e le cada um de novo: o pedido confirmado
+    // no meio tempo fica confirmado e entra na conta das consultas q ficaram, em vez de virar recusado (#170)
+    @Test
+    void archivingWaitsForTheOpenRequestAndKeepsTheConfirmationSavedMeanwhile() throws Exception {
+        Appointment request = saveAppointment(patient, DISPUTED_SLOT, AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<PatientResponseDTO> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, request.getId()),
+                () -> appointmentService.confirm(request.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(outcome.value().archived()).isTrue();
+        assertThat(outcome.value().futureAppointments()).isEqualTo(1);
+        assertThat(appointmentRepository.findById(request.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(notificationTitlesOf(patient)).contains("Consulta confirmada")
+                .doesNotContain("Pedido de consulta recusado");
+    }
+
+    // o pedido trava o prescritor e dps o paciente antes de gravar. o pedido gravado enquanto o arquivamento
+    // esperava o paciente ficou fora da lista q ele travou, e travar agora quebrava a ordem das travas:
+    // o arquivamento eh recusado e o prescritor tenta de novo, em vez de deixar o pedido aberto no arquivado
+    @Test
+    void archivingIsRefusedWhenARequestArrivesWhileItWaitsForThePatient() throws Exception {
+        HeldLock.Outcome<PatientResponseDTO> outcome = heldAgenda.run(
+                () -> {
+                    prescriberRepository.lockById(prescriber.getId());
+                    patientRepository.lockById(patient.getId());
+                },
+                () -> saveAppointment(patient, DISPUTED_SLOT, AppointmentStatus.SOLICITADA),
+                () -> patientArchiveService.archive(patient.getId(), prescriber));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(PatientArchiveService.NEW_REQUEST_MESSAGE);
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().isArchived()).isFalse();
+        assertThat(openRequestsOf(patient)).hasSize(1);
+
+        // na segunda vez o pedido ja esta na lista e eh recusado com o arquivamento
+        patientArchiveService.archive(patient.getId(), prescriber);
+        assertThat(patientRepository.findById(patient.getId()).orElseThrow().isArchived()).isTrue();
+        assertThat(openRequestsOf(patient)).isEmpty();
+        assertThat(notificationTitlesOf(patient)).contains("Pedido de consulta recusado");
+    }
+
+    // o pedido trava o paciente dps da agenda e le o arquivamento de novo: o arquivamento gravado enquanto
+    // ele esperava aparece e o pedido eh recusado, em vez de ficar aberto segurando horario no arquivado
+    @Test
+    void thePatientRequestWaitsForTheArchivingAndIsRefused() throws Exception {
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> appointmentService.request(patient.getId(),
+                        new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(AppointmentService.ARCHIVED_PATIENT_MESSAGE);
+        assertThat(openRequestsOf(patient)).isEmpty();
+    }
+
+    // o lembrete trava a consulta e dps o paciente antes de olhar o arquivamento: o arquivamento gravado
+    // no meio tempo aparece e o arquivado n recebe "consulta amanha" (#170)
+    @Test
+    void theAppointmentReminderWaitsForTheArchivingAndSkipsTheArchivedPatient() throws Exception {
+        Appointment tomorrow = saveAppointment(patient, LocalDate.now().plusDays(1).atTime(10, 0),
+                AppointmentStatus.AGENDADA);
+
+        HeldLock.Outcome<Integer> outcome = heldAgenda.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> reminderService.sendAppointmentReminders(LocalDate.now()));
+
+        assertThat(outcome.error()).isNull();
+        assertThat(appointmentRepository.findById(tomorrow.getId()).orElseThrow().getReminderSentAt()).isNull();
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta amanhã");
+    }
+
+    private List<Appointment> openRequestsOf(Patient owner) {
+        return appointmentRepository.findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(owner.getId(),
+                AppointmentStatus.SOLICITADA);
     }
 
     private List<String> notificationTitlesOf(Patient owner) {

@@ -21,6 +21,19 @@ function patientDetailsOf(patient) {
     return ageText;
 }
 
+// o arquivamento n cancela a consulta marcada, entao o aviso diz quantas ficaram pro prescritor decidir (#170)
+function archivedNoticeOf(patient, archived) {
+    let notice = patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.";
+    const futureAppointments = archived && archived.futureAppointments ? archived.futureAppointments : 0;
+    if (futureAppointments === 1) {
+        notice += " Ficou 1 consulta marcada na agenda: cancele se ela não for acontecer.";
+    } else if (futureAppointments > 1) {
+        notice += " Ficaram " + futureAppointments
+            + " consultas marcadas na agenda: cancele as que não forem acontecer.";
+    }
+    return notice;
+}
+
 // carteira de pacientes do prescritor
 // os ativos aparecem primeiro e os arquivados ficam numa aba separada com o prontuario guardado
 // o resto das acoes do paciente fica no historico dele
@@ -76,14 +89,14 @@ export default function ListaPacientes() {
         setShowArchived(archived);
     };
 
-    // arquivar e reativar so mudam o fim do endereco e o aviso
-    const runPatientAction = async (patient, action, successMessage) => {
+    // arquivar e reativar so mudam o fim do endereco e o aviso, q pode usar a resposta da api
+    const runPatientAction = async (patient, action, noticeOf) => {
         setNotice(null);
         setActionError(null);
         setBusyPatientId(patient.id);
         try {
-            await apiService.put("/patients/" + patient.id + "/" + action);
-            setNotice(successMessage);
+            const response = await apiService.put("/patients/" + patient.id + "/" + action);
+            setNotice(noticeOf(response));
             setReloadCount((currentCount) => currentCount + 1);
         } catch (requestError) {
             setActionError(errorMessageOf(requestError));
@@ -95,12 +108,11 @@ export default function ListaPacientes() {
     const archivePatient = async () => {
         const patient = patientToArchive;
         setPatientToArchive(null);
-        await runPatientAction(patient, "archive",
-            patient.name + " saiu da lista de ativos. O prontuário continua guardado na aba Arquivados.");
+        await runPatientAction(patient, "archive", (archived) => archivedNoticeOf(patient, archived));
     };
 
     const reactivatePatient = async (patient) => {
-        await runPatientAction(patient, "reactivate", patient.name + " voltou para a lista de ativos.");
+        await runPatientAction(patient, "reactivate", () => patient.name + " voltou para a lista de ativos.");
     };
 
     const renderPatientRow = (patient) => {
@@ -257,9 +269,11 @@ export default function ListaPacientes() {
                 show={patientToArchive !== null}
                 title="Arquivar paciente"
                 message={patientToArchive
-                    ? patientToArchive.name + " sai da lista de ativos, o acompanhamento automático é encerrado"
-                    + " e as escalas em aberto são fechadas. O prontuário fica guardado, as escalas que você"
-                    + " enviar depois continuam chegando e você pode reativar quando quiser."
+                    ? patientToArchive.name + " sai da lista de ativos, o acompanhamento automático é encerrado,"
+                    + " as escalas em aberto são fechadas e os pedidos de consulta esperando resposta são recusados."
+                    + " As consultas já marcadas continuam na agenda, sem lembrete para o paciente: cancele você"
+                    + " mesmo as que não forem acontecer. O prontuário fica guardado, as escalas que você enviar"
+                    + " depois continuam chegando e você pode reativar quando quiser."
                     : ""}
                 confirmText="Arquivar"
                 cancelText="Voltar"
