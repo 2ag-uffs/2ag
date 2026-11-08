@@ -32,6 +32,20 @@ describe("ListaPacientes", () => {
         expect(screen.queryByText("Maria Souza")).not.toBeInTheDocument();
     });
 
+    // a conta desligada pela administracao so aparecia na trilha; o prescritor precisa ver na lista (#153)
+    it("o selo de conta desativada aparece so pra quem a administracao desativou", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([
+            {id: 1, name: "Ana Desativada", birthDate: "1990-01-01", archived: false, accountActive: false},
+            {id: 2, name: "Maria Souza", birthDate: "1985-05-10", archived: false, accountActive: true},
+        ]);
+        renderList();
+
+        expect(await screen.findByText("Ana Desativada")).toBeInTheDocument();
+        const badges = screen.getAllByText("Conta desativada");
+        expect(badges).toHaveLength(1);
+        expect(badges[0].closest("li")).toHaveTextContent("Ana Desativada");
+    });
+
     // o arquivamento recusa os pedidos em aberto e n cancela a consulta marcada: o prescritor fica sabendo
     // quantas ficaram e cancela na mao se quiser (#170)
     it("arquivar avisa q os pedidos sao recusados e quantas consultas marcadas ficaram", async () => {

@@ -18,10 +18,10 @@ const DONE = {
     prescriberName: "Ana Lima", annulled: false, evolution: "melhorou da dor",
 };
 
-function renderHistory(appointments) {
+function renderHistory(appointments, patient = PATIENT) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
         const answers = {
-            "/patients/5": PATIENT,
+            "/patients/5": patient,
             "/patients/5/appointments": appointments,
             "/patients/5/prescriptions": [],
             "/patients/5/anamneses": [],
@@ -79,5 +79,19 @@ describe("HistoricoClinicoPrescritor", () => {
         expect(doneCard.getByRole("button", {name: "Emitir prescrição"})).toBeInTheDocument();
         expect(doneCard.getByRole("button", {name: "Mini-exame"})).toBeInTheDocument();
         expect(doneCard.getByRole("button", {name: "Anular"})).toBeInTheDocument();
+    });
+
+    // a conta desligada pela administracao so aparecia na trilha (#153)
+    it("o cabecalho avisa qnd a conta do paciente foi desativada", async () => {
+        renderHistory([DONE], {...PATIENT, accountActive: false});
+
+        expect(await screen.findByText(/Conta desativada/)).toBeInTheDocument();
+    });
+
+    it("com a conta ativa o cabecalho n fala em conta desativada", async () => {
+        renderHistory([DONE], {...PATIENT, accountActive: true});
+
+        await cardWithStatus("Concluída");
+        expect(screen.queryByText(/Conta desativada/)).not.toBeInTheDocument();
     });
 });

@@ -11,6 +11,7 @@ import {
     FiShield,
     FiTrendingUp,
     FiUser,
+    FiUserX,
 } from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
@@ -355,7 +356,10 @@ export default function HistoricoClinicoPrescritor() {
 }
 
 function PatientFacts({patient, nextAppointment}) {
-    const hasFacts = nextAppointment || patient.archived || patient.guardian || patient.civilName;
+    // a conta desligada pela administracao: o paciente n consegue entrar pra responder nada (#153)
+    const isAccountInactive = patient.accountActive === false;
+    const hasFacts = nextAppointment || patient.archived || patient.guardian || patient.civilName
+        || isAccountInactive;
     if (!hasFacts) {
         return null;
     }
@@ -396,6 +400,12 @@ function PatientFacts({patient, nextAppointment}) {
                 <span className={styles.fact + " " + styles.factWarning}>
                     <FiArchive aria-hidden="true"/>
                     No arquivo desde {formatDate(patient.archivedAt)}. O acompanhamento automático foi encerrado.
+                </span>
+            )}
+            {isAccountInactive && (
+                <span className={styles.fact + " " + styles.factWarning}>
+                    <FiUserX aria-hidden="true"/>
+                    Conta desativada pela administração: o paciente não consegue entrar no sistema.
                 </span>
             )}
         </div>

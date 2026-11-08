@@ -126,6 +126,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, profissão e registro profissio
 - O administrador **não escolhe nem conhece** a senha do prescritor: a conta nasce com um link de primeiro acesso de uso único (48 h), enviado por e-mail ou, sem SMTP, mostrado ao administrador para entregar. Quem cria a senha é o próprio prescritor
 - O seed de desenvolvimento roda **somente** no profile `dev` e nunca em produção
 - Desativar o prescritor tira o acesso dele e encerra o acompanhamento automático dos pacientes, mas não fecha nem cancela mais nada: as escalas esperando resposta continuam pendentes, os pedidos e as consultas marcadas continuam na agenda e os prazos correm como sempre. Enquanto a conta estiver desativada, nenhum lembrete de formulário ou de consulta (aviso ou e-mail) sai para os pacientes dele, porque ninguém leria a resposta. Reativar a conta faz os lembretes voltarem; o acompanhamento automático encerrado não volta sozinho, e a escala cujo prazo venceu enquanto a conta estava desativada fecha como não respondida pelo job das 8h, como sempre. A resposta da desativação diz quantas escalas esperando resposta e quantos pedidos e consultas por vir ficaram, só os números, e a tela da administração mostra isso no aviso (07/11/2026)
+- A conta de paciente desativada pela administração aparece para o prescritor com o selo "Conta desativada" na lista de pacientes e no cabeçalho do prontuário, e o selo some quando a conta é reativada. Nenhuma contagem muda com isso: só o arquivamento tira o paciente da lista (07/11/2026)
 
 ---
 

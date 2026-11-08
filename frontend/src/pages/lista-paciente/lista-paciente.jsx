@@ -127,7 +127,13 @@ export default function ListaPacientes() {
                         {initialsOf(patient.name)}
                     </span>
                     <div className={styles.patientText}>
-                        <h2 className={styles.patientName}>{patient.name}</h2>
+                        <div className={styles.nameRow}>
+                            <h2 className={styles.patientName}>{patient.name}</h2>
+                            {/* a conta desligada pela administracao: o paciente n consegue entrar (#153) */}
+                            {patient.accountActive === false && (
+                                <span className={styles.badgeInactive}>Conta desativada</span>
+                            )}
+                        </div>
                         <p className={styles.details}>{patientDetailsOf(patient)}</p>
                     </div>
                 </div>

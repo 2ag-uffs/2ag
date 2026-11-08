@@ -18,6 +18,9 @@ public record PatientResponseDTO(
         String prescriberName,
         boolean archived,
         LocalDateTime archivedAt,
+        // a conta desligada pela administracao, pro prescritor ver o selo na lista e no prontuario
+        // n muda contagem nenhuma: so o arquivamento tira o paciente da lista
+        boolean accountActive,
         // os dois so vem no prontuario de um paciente, a lista n leva (RF38 e RF37)
         @JsonInclude(JsonInclude.Include.NON_NULL)
         GuardianDTO guardian,
@@ -44,6 +47,7 @@ public record PatientResponseDTO(
                 prescriberNameOf(patient),
                 patient.isArchived(),
                 patient.getArchivedAt(),
+                patient.isActive(),
                 guardian,
                 researchConsent,
                 civilName,

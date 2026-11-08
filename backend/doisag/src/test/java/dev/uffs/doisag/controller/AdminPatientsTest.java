@@ -195,6 +195,29 @@ class AdminPatientsTest {
         assertThat(savedPatient.getArchivedAt()).isNull();
     }
 
+    // o prescritor so via a desativacao na trilha; agora a lista e o prontuario dizem (#153)
+    // a contagem n muda: so o arquivamento tira o paciente da lista
+    @Test
+    void thePrescriberSeesTheDeactivatedAccountInTheListAndInTheChart() throws Exception {
+        String prescriberToken = bearerTokenOf(prescriber);
+        mockMvc.perform(get("/patients").header("Authorization", prescriberToken))
+                .andExpect(jsonPath("$[0].accountActive").value(true));
+
+        changeActive(false, adminToken()).andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients").header("Authorization", prescriberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].accountActive").value(false));
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", prescriberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountActive").value(false));
+
+        changeActive(true, adminToken()).andExpect(status().isOk());
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", prescriberToken))
+                .andExpect(jsonPath("$.accountActive").value(true));
+    }
+
     // a conta desativada n recebe escala nova, e reativada o acompanhamento continua
     @Test
     void deactivatedPatientGetsNoNewScaleUntilReactivated() throws Exception {
