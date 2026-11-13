@@ -220,4 +220,25 @@ describe("Progresso", () => {
         expect(screen.queryByText("consulta")).not.toBeInTheDocument();
         expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
     });
+
+    // CT-09 o prescritor q troca o numero no endereco n ve filtro grafico nem cartao do paciente de outro
+    it("paciente de outro prescritor mostra so o acesso negado", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(PRESCRIBER_ATTRIBUTES);
+            }
+            if (path.startsWith("/patients/3")) {
+                return Promise.reject(new ApiError(403, "Acesso negado"));
+            }
+            return Promise.resolve([]);
+        });
+        renderPrescriberProgress("DOR");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Esse paciente não está na sua lista");
+        expect(screen.getByRole("link", {name: "Ver pacientes"})).toHaveAttribute("href", "/lista-paciente");
+        expect(screen.queryByLabelText("Período")).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Dor"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/escreveu/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+    });
 });

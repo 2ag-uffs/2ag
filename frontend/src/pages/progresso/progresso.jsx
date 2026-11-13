@@ -6,7 +6,7 @@ import EmptyState from "../../components/empty-state/empty-state.jsx";
 import LineChart from "../../components/line-chart/line-chart.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, download, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, download, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import {
     anchorsTextOf,
@@ -61,6 +61,8 @@ export default function Progresso() {
     const [patients, setPatients] = useState(null);
     const [currentPatient, setCurrentPatient] = useState(null);
     const [isPatientLoading, setIsPatientLoading] = useState(isPrescriber && Boolean(patientId));
+    // o erro lembra de qual paciente ele eh, entao voltar pra um paciente dele n fica preso no aviso
+    const [patientError, setPatientError] = useState(null);
 
     const [attributes, setAttributes] = useState([]);
     const [chosenAttribute, setChosenAttribute] = useState(keptFilters.attribute || "");
@@ -102,7 +104,19 @@ export default function Progresso() {
         }
         apiService.get("/patients/" + patientId)
             .then(setCurrentPatient)
-            .catch(() => setCurrentPatient(null))
+            .catch((requestError) => {
+                setCurrentPatient(null);
+                // 403 e 404 querem dizer q o paciente n eh dele
+                const isNotTheirs = requestError instanceof ApiError
+                    && (requestError.status === 403 || requestError.status === 404);
+                setPatientError({
+                    patientId: patientId,
+                    message: isNotTheirs
+                        ? "Acesso negado. Esse paciente não está na sua lista de pacientes."
+                        : errorMessageOf(requestError,
+                            "Não foi possível carregar o paciente. Confira sua internet e tente de novo."),
+                });
+            })
             .finally(() => setIsPatientLoading(false));
     }, [isPrescriber, patientId]);
 
@@ -310,6 +324,22 @@ export default function Progresso() {
 
     if (!patientId) {
         return <p className="aviso aviso--atencao">Não foi possível identificar o paciente.</p>;
+    }
+
+    // sem o paciente a tela fica so no aviso: filtro grafico e cartao vazios
+    // falariam de um paciente q ela n conseguiu ler (CT-09)
+    if (isPrescriber && patientError && patientError.patientId === patientId) {
+        return (
+            <section className={styles.page}>
+                <PageHeader title="Progresso"/>
+                <p className="aviso aviso--atencao" role="alert">{patientError.message}</p>
+                <EmptyState
+                    icon={FiUsers}
+                    message="Escolha um dos seus pacientes para ver como o tratamento está evoluindo."
+                    action={<Link to="/lista-paciente" className="button-secondary">Ver pacientes</Link>}
+                />
+            </section>
+        );
     }
 
     let pageTitle = "Evolução do tratamento";
