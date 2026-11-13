@@ -505,7 +505,8 @@ public class AppointmentService {
         }
 
         boolean canceledByPatient = loggedUser instanceof Patient;
-        boolean isLateForThePatient = appointment.getStatus() != AppointmentStatus.SOLICITADA
+        boolean isRequest = appointment.getStatus() == AppointmentStatus.SOLICITADA;
+        boolean isLateForThePatient = !isRequest
                 && appointment.getDateTime().isBefore(LocalDateTime.now().plusHours(PATIENT_CANCELLATION_HOURS));
         if (canceledByPatient && isLateForThePatient) {
             throw new BusinessException(LATE_CANCELLATION_MESSAGE);
@@ -517,7 +518,14 @@ public class AppointmentService {
 
         appointment.setStatus(AppointmentStatus.CANCELADA);
         Appointment savedAppointment = saveChange(appointment);
-        if (canceledByPatient) {
+        // o pedido o prescritor nunca confirmou, entao o aviso dele fala de pedido e n de consulta
+        if (canceledByPatient && isRequest) {
+            notificationService.createNotification(savedAppointment.getPrescriber(),
+                    "Pedido de consulta cancelado pelo paciente",
+                    savedAppointment.getPatient().getDisplayName() + " cancelou o pedido de consulta de "
+                            + formatDateTime(savedAppointment) + ".",
+                    Notification.TYPE_ALERT, Notification.PRESCRIBER_AGENDA_LINK);
+        } else if (canceledByPatient) {
             notificationService.createNotification(savedAppointment.getPrescriber(), "Consulta cancelada pelo paciente",
                     savedAppointment.getPatient().getDisplayName() + " cancelou a consulta de "
                             + formatDateTime(savedAppointment) + ".",

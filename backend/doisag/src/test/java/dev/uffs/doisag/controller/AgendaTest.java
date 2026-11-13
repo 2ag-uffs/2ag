@@ -782,6 +782,7 @@ class AgendaTest {
 
     // ---------- cancelar ----------
 
+    // o prescritor nunca confirmou o pedido, entao o aviso fala de pedido e n de consulta
     @Test
     void patientCancelsTheirRequestAnytimeAndThePrescriberIsTold() throws Exception {
         Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
@@ -789,7 +790,10 @@ class AgendaTest {
         cancel(requestId, patient)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELADA"));
-        assertThat(notificationTitlesOf(prescriber)).contains("Consulta cancelada pelo paciente");
+        assertThat(notificationTitlesOf(prescriber)).contains("Pedido de consulta cancelado pelo paciente")
+                .doesNotContain("Consulta cancelada pelo paciente");
+        assertThat(notificationMessageOf(prescriber, "Pedido de consulta cancelado pelo paciente"))
+                .startsWith("Paciente da agenda cancelou o pedido de consulta de ");
     }
 
     @Test
@@ -797,6 +801,8 @@ class AgendaTest {
         Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
 
         cancel(appointmentId, patient).andExpect(status().isOk());
+        assertThat(notificationMessageOf(prescriber, "Consulta cancelada pelo paciente"))
+                .startsWith("Paciente da agenda cancelou a consulta de ");
     }
 
     // com menos de 24 horas so o prescritor cancela
@@ -870,7 +876,7 @@ class AgendaTest {
         cancel(requestId, patient).andExpect(status().isOk());
         cancel(appointmentId, prescriber).andExpect(status().isOk());
 
-        assertThat(notificationTypeOf(prescriber, "Consulta cancelada pelo paciente")).isEqualTo("ALERT");
+        assertThat(notificationTypeOf(prescriber, "Pedido de consulta cancelado pelo paciente")).isEqualTo("ALERT");
         assertThat(notificationTypeOf(otherPatient, "Consulta cancelada")).isEqualTo("ALERT");
     }
 
@@ -1376,7 +1382,7 @@ class AgendaTest {
         assertThat(notificationMessageOf(prescriber, "Pedido de consulta")).startsWith("Nome Social da Agenda pediu");
 
         cancel(requestId, patient).andExpect(status().isOk());
-        assertThat(notificationMessageOf(prescriber, "Consulta cancelada pelo paciente"))
+        assertThat(notificationMessageOf(prescriber, "Pedido de consulta cancelado pelo paciente"))
                 .startsWith("Nome Social da Agenda cancelou");
     }
 
