@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import {render, screen, within} from "@testing-library/react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -7,6 +8,14 @@ import {addDays, toIsoDate} from "../../utils/date-format.js";
 import Impressao from "./impressao.jsx";
 
 const PATIENT = {id: 5, name: "Maria Souza", birthDate: "1990-01-01", prescriberName: "Ana Lima", archived: false};
+
+const APPOINTMENT = {
+    id: 7, dateTime: toIsoDate(addDays(new Date(), -8)) + "T10:00:00", modality: "PRESENCIAL",
+    status: "CONCLUIDA", annulled: false, prescriberName: "Ana Lima", weight: 72.5,
+    evolution: "Paciente relata melhora parcial.",
+};
+
+const ANAMNESIS = {id: 3, assessmentDate: toIsoDate(addDays(new Date(), -5)), annulled: false, reasonForVisit: "Dor"};
 
 // receita emitida ha tantos dias, em uso ou substituida
 function prescriptionOf(id, daysAgo, current, productDescription) {
@@ -18,13 +27,13 @@ function prescriptionOf(id, daysAgo, current, productDescription) {
     };
 }
 
-function renderPrint(prescriptions) {
+function renderPrint(prescriptions, appointments = [], anamneses = []) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
         const answers = {
             "/patients/5": PATIENT,
-            "/patients/5/appointments": [],
+            "/patients/5/appointments": appointments,
             "/patients/5/prescriptions": prescriptions,
-            "/patients/5/anamneses": [],
+            "/patients/5/anamneses": anamneses,
             "/patients/5/scales/responses": [],
         };
         return Promise.resolve(answers[path]);
@@ -65,5 +74,24 @@ describe("Impressao", () => {
 
         await screen.findByRole("heading", {name: "Prescrição em uso"});
         expect(screen.getByText("Nenhuma prescrição em uso.")).toBeInTheDocument();
+    });
+
+    // o chrome quebrava a folha dentro da borda e do espaco de cima do cartao, antes do topo, e o titulo
+    // ficava sozinho no pe da folha com a moldura vazia embaixo. o jsdom n monta folha, entao o teste
+    // confere o q a regra de impressao precisa: todo cartao comeca pelo topo e no papel n tem borda
+    // nem espaco antes dele, e os campos saem em bloco, pq a grade empurrava a linha inteira de folha
+    it("no papel o cartao n tem nada antes do topo e os campos correm de uma folha pra outra", async () => {
+        renderPrint([prescriptionOf(1, 10, true, "Óleo de CBD 20%")], [APPOINTMENT], [ANAMNESIS]);
+
+        await screen.findByRole("heading", {name: "Prescrição em uso"});
+        const cards = document.querySelectorAll("section section article");
+        expect(cards).toHaveLength(4);
+        cards.forEach((card) => expect(card.firstElementChild.tagName).toBe("HEADER"));
+
+        const css = readFileSync(import.meta.dirname + "/impressao.module.css", "utf8");
+        const printRules = css.slice(css.indexOf("@media print"));
+        expect(printRules).toMatch(/\.section article \{[^}]*border: 0;[^}]*padding: 0 /);
+        expect(printRules).toMatch(/\.section article > header \{[^}]*padding-top: /);
+        expect(printRules).toMatch(/\.section article dl \{[^}]*display: block;/);
     });
 });

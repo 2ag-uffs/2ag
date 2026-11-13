@@ -143,6 +143,32 @@
         break-inside: avoid;
     }
 
+    /* o chrome quebrava a folha dentro da borda e do espaco de cima do cartao, antes do topo,
+       e o titulo ficava sozinho no pe da folha com a moldura vazia embaixo. no papel o cartao
+       n tem nada antes do topo: a moldura vira contorno, q n ocupa espaco, e o espaco de cima
+       fica dentro do topo, q n quebra */
+    .section article {
+        border: 0;
+        outline: 1px solid var(--color-border);
+        outline-offset: -1px;
+        padding: 0 var(--space-4) var(--space-4);
+    }
+
+    .section article > header {
+        padding-top: var(--space-4);
+    }
+
+    /* em grade o chrome joga a linha de campos inteira pra folha seguinte qnd ela cabe la,
+       e o topo do cartao ficava sozinho com a moldura vazia. no papel os campos vem um
+       embaixo do outro e o texto corre de uma folha pra outra */
+    .section article dl {
+        display: block;
+    }
+
+    .section article dl > div + div {
+        margin-top: var(--space-3);
+    }
+
     /* e titulo n fica sozinho no pe da folha, longe do q vem embaixo dele.
        a linha de pressao, peso e altura (o p logo abaixo do topo do cartao)
        tbm segura o q vem depois: senao o topo gruda nela e o registro
