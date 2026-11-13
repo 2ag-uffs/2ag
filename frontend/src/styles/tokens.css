@@ -62,6 +62,9 @@
     --sidebar-width: 15.5rem;
     --rail-width: 4.75rem;
     --bottom-bar-height: 4rem;
+    --mobile-header-height: 3.5rem;
+    /* barra de acoes presa no pe dos formularios compridos, com folga */
+    --form-actions-height: 6rem;
     --control-height: 2.75rem;
     --control-height-small: 2.25rem;
 

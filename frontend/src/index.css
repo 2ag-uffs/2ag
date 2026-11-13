@@ -18,6 +18,19 @@
     box-sizing: border-box;
 }
 
+/* o navegador rola o campo com foco do teclado ate ele sair de baixo da barra de acoes presa no pe da tela */
+html {
+    scroll-padding-bottom: var(--form-actions-height);
+}
+
+/* no celular tbm do menu de baixo e do cabecalho fixo em cima */
+@media (max-width: 47.99rem) {
+    html {
+        scroll-padding-bottom: calc(var(--form-actions-height) + var(--bottom-bar-height) + env(safe-area-inset-bottom));
+        scroll-padding-top: calc(var(--mobile-header-height) + env(safe-area-inset-top));
+    }
+}
+
 #root {
     display: flex;
     flex-direction: column;

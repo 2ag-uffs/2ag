@@ -337,7 +337,7 @@
         color: var(--color-on-brand-surface);
         display: flex;
         justify-content: space-between;
-        min-height: 3.5rem;
+        min-height: var(--mobile-header-height);
         padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-3) var(--space-2);
         position: sticky;
         top: 0;
