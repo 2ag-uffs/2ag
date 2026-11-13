@@ -313,6 +313,11 @@
         display: none;
     }
 
+    /* os dois botoes lado a lado n cabem na lateral estreita */
+    .account {
+        flex-direction: column;
+    }
+
     .content {
         padding: var(--space-6) var(--space-6) var(--space-10);
     }

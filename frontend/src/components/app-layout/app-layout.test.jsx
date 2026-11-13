@@ -14,6 +14,7 @@ import {
     leaveExpiredSession,
     setLoggedUser,
 } from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import AppLayout from "./app-layout.jsx";
 
 const MARIA = {id: 3, name: "Maria Souza", email: "maria@email.com", role: "PATIENT", termPending: false};
@@ -689,6 +690,16 @@ describe("AppLayout", () => {
         await waitFor(() => expect(router.state.location.pathname).toBe("/administracao/pacientes"));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(getLoggedUser()).not.toBeNull();
+    });
+
+    // a lateral do tablet tem 4,75rem e os botoes de tema e sair lado a lado (2,5rem cada mais o espaco)
+    // passavam dela, criavam rolagem pro lado e cortavam o sair (CT-38)
+    it("no tablet os botoes de tema e sair ficam um embaixo do outro na lateral so com icones", () => {
+        const layoutCss = readCss(import.meta.url, "./app-layout.module.css");
+        const tablet = mediaRules(layoutCss, "@media (min-width: 48rem) and (max-width: 63.99rem)");
+
+        expect(declarationsOf(tablet, ".account")["flex-direction"]).toBe("column");
+        expect(declarationsOf(layoutCss, ".account")["align-items"]).toBe("center");
     });
 
     it("o nome salvo no perfil aparece no menu lateral na hora", async () => {
