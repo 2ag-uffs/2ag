@@ -105,9 +105,20 @@ export default function Progresso() {
         if (!isPrescriber || !patientId) {
             return;
         }
+        // no app o layout ja remonta a tela qnd o paciente muda, pq a chave eh o endereco
+        // isso so segura o nome atrasado do anterior se a tela for usada sem essa chave
+        let isCurrentRequest = true;
+
         apiService.get("/patients/" + patientId)
-            .then(setCurrentPatient)
+            .then((patient) => {
+                if (isCurrentRequest) {
+                    setCurrentPatient(patient);
+                }
+            })
             .catch((requestError) => {
+                if (!isCurrentRequest) {
+                    return;
+                }
                 setCurrentPatient(null);
                 // 403 e 404 querem dizer q o paciente n eh dele
                 const isNotTheirs = requestError instanceof ApiError
@@ -120,7 +131,15 @@ export default function Progresso() {
                             "Não foi possível carregar o paciente. Confira sua internet e tente de novo."),
                 });
             })
-            .finally(() => setIsPatientLoading(false));
+            .finally(() => {
+                if (isCurrentRequest) {
+                    setIsPatientLoading(false);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [isPrescriber, patientId]);
 
     // o catalogo vem do backend entao a tela n tem uma lista de escalas
@@ -214,9 +233,24 @@ export default function Progresso() {
             return;
         }
         const url = "/patients/" + patientId + "/progress?period=" + period + "&attribute=";
+        // como na serie, a gota de um periodo antigo q chega atrasada n passa por cima da atual
+        let isCurrentRequest = true;
+
         Promise.all([apiService.get(url + "GOTAS_MANHA"), apiService.get(url + "GOTAS_TARDE")])
-            .then(([morning, afternoon]) => setDosePoints(sumByDate(morning, afternoon)))
-            .catch(() => setDosePoints([]));
+            .then(([morning, afternoon]) => {
+                if (isCurrentRequest) {
+                    setDosePoints(sumByDate(morning, afternoon));
+                }
+            })
+            .catch(() => {
+                if (isCurrentRequest) {
+                    setDosePoints([]);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [patientId, period, showDose, isFollowUpScale]);
 
     // as consultas e os comentarios n dependem da escala escolhida so
@@ -225,14 +259,37 @@ export default function Progresso() {
         if (!patientId) {
             return;
         }
+        // trocar o periodo com a internet lenta n pode deixar a lista do periodo anterior na tela
+        let isCurrentRequest = true;
+
         apiService.get("/patients/" + patientId + "/progress/appointments?period=" + period)
+            .then((loadedAppointments) => {
+                if (isCurrentRequest) {
+                    setAppointments(loadedAppointments);
+                }
+            })
             // se as consultas falharem o grafico ainda serve pq elas sao contexto e n o dado principal
-            .then(setAppointments)
-            .catch(() => setAppointments([]));
+            .catch(() => {
+                if (isCurrentRequest) {
+                    setAppointments([]);
+                }
+            });
 
         apiService.get("/patients/" + patientId + "/progress/comments?period=" + period)
-            .then(setComments)
-            .catch(() => setComments([]));
+            .then((loadedComments) => {
+                if (isCurrentRequest) {
+                    setComments(loadedComments);
+                }
+            })
+            .catch(() => {
+                if (isCurrentRequest) {
+                    setComments([]);
+                }
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
     }, [patientId, period]);
 
     // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal

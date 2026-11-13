@@ -1,4 +1,5 @@
-import {render, screen} from "@testing-library/react";
+import {act, render, screen} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
@@ -43,6 +44,24 @@ function renderPrescriberProgress(attribute, period) {
         initialEntries: [{pathname: "/paciente/3/progresso", state: {attribute: attribute, period: period}}],
     });
     render(<RouterProvider router={router}/>);
+    return router;
+}
+
+// a resposta fica segurada ate o teste soltar, como a internet lenta do celular
+function heldAnswer(value) {
+    let release;
+    const answer = new Promise((resolve) => {
+        release = () => resolve(value);
+    });
+    return {answer, release};
+}
+
+// solta e espera a tela terminar de reagir
+async function releaseAndWait(held) {
+    await act(async () => {
+        held.forEach((item) => item.release());
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 }
 
 // todo pedido q a tela fez pra api
@@ -269,5 +288,109 @@ describe("Progresso", () => {
         expect(screen.queryByRole("heading", {name: "Dor"})).not.toBeInTheDocument();
         expect(screen.queryByText(/escreveu/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+    });
+
+    // CT-31 os 90 dias respondem dps dos 15 e a tela continua com os 15
+    it("consultas e comentarios de um periodo antigo q chegam atrasados n passam por cima do atual", async () => {
+        const user = userEvent.setup();
+        const oldAppointments = heldAnswer([{id: 1, data: "2026-09-18", diagnosis: null, geraPrescricao: false}]);
+        const oldComments = heldAnswer([{responseId: 1, itemLabel: "Observações", date: "2026-09-18",
+            scaleName: "Acompanhamento semanal", text: "comentário dos 90 dias"}]);
+        const newComments = [{responseId: 2, itemLabel: "Observações", date: "2026-11-10",
+            scaleName: "Acompanhamento semanal", text: "comentário dos 15 dias"}];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress/appointments?period=DIAS_90") {
+                return oldAppointments.answer;
+            }
+            if (path === "/patients/3/progress/comments?period=DIAS_90") {
+                return oldComments.answer;
+            }
+            if (path === "/patients/3/progress/comments?period=DIAS_15") {
+                return Promise.resolve(newComments);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_15");
+        expect(await screen.findByText("comentário dos 15 dias")).toBeInTheDocument();
+
+        await releaseAndWait([oldAppointments, oldComments]);
+
+        expect(screen.getByText("comentário dos 15 dias")).toBeInTheDocument();
+        expect(screen.queryByText("comentário dos 90 dias")).not.toBeInTheDocument();
+        expect(screen.queryByText("Consultas no período")).not.toBeInTheDocument();
+    });
+
+    // as gotas dos 30 dias chegam dps das dos 90 e n podem apagar as dos dias mais antigos
+    it("gotas de um periodo antigo q chegam atrasadas n passam por cima do atual", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-09-01", value: 3, band: null, cutoff: null},
+            {date: "2026-11-10", value: 4, band: null, cutoff: null},
+        ];
+        const oldMorning = heldAnswer([{date: "2026-11-10", value: 5}]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_MANHA") {
+                return oldMorning.answer;
+            }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_MANHA") {
+                return Promise.resolve([{date: "2026-09-01", value: 8}, {date: "2026-11-10", value: 5}]);
+            }
+            if (path.startsWith("/patients/3/progress?period=")) {
+                return Promise.resolve([]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+        // dois pontos do escore e duas gotas
+        await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(4));
+
+        await releaseAndWait([oldMorning]);
+
+        expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(4);
+    });
+
+    // sem o layout, q no app ja remonta a tela qnd o endereco muda, a propria tela tem q descartar o nome atrasado
+    it("o nome do paciente anterior q chega atrasado n vai pro topo do grafico do outro", async () => {
+        const oldPatient = heldAnswer({id: 3, name: "Maria Souza", researchConsent: false});
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(PRESCRIBER_ATTRIBUTES);
+            }
+            if (path === "/patients/3") {
+                return oldPatient.answer;
+            }
+            if (path === "/patients/4") {
+                return Promise.resolve({id: 4, name: "João Almeida", researchConsent: false});
+            }
+            return Promise.resolve([]);
+        });
+        const router = renderPrescriberProgress("DOR");
+
+        await act(() => router.navigate("/paciente/4/progresso"));
+        expect(await screen.findByRole("heading", {level: 1, name: "João Almeida"})).toBeInTheDocument();
+
+        await releaseAndWait([oldPatient]);
+
+        expect(screen.getByRole("heading", {level: 1})).toHaveTextContent("João Almeida");
     });
 });
