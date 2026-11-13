@@ -774,7 +774,7 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
   - o prescritor anula registros no próprio histórico e chega de lá às outras telas do paciente.
 - **Arquivamento de paciente:**
   - tira o paciente da lista de ativos e da contagem do painel;
-  - encerra o acompanhamento automático, e um novo só começa depois de reativar;
+  - encerra o acompanhamento automático, e um novo só começa depois de reativar. A tela do acompanhamento automático de um paciente arquivado diz isso no lugar do formulário, em vez de oferecer o que a API recusa (13/11/2026);
   - fecha as escalas que estavam em aberto, para o paciente não ser cobrado delas (02/10/2026);
   - o paciente continua vendo o próprio histórico, e as escalas enviadas pelo prescritor continuam chegando, menos a avaliação inicial, que o arquivado não consegue mandar: o envio dela é recusado até reativar (16/10/2026);
   - as telas do paciente avisam que o acompanhamento foi encerrado e que ele deve falar com a clínica, em vez de oferecer o que a API recusa: a de consultas não mostra mais o pedido nem diz que falta horário livre, o histórico e a anamnese não abrem a ficha nova e o painel fica sem o botão de agendar. As consultas já marcadas e a correção da anamnese continuam valendo (30/10/2026);

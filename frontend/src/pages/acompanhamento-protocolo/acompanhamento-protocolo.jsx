@@ -1,9 +1,10 @@
-import {useCallback, useEffect, useState} from "react";
-import {useNavigate, useParams} from "react-router";
-import {FiCalendar, FiMoon} from "react-icons/fi";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {Link, useNavigate, useParams} from "react-router";
+import {FiCalendar, FiMoon, FiUsers} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -58,6 +59,7 @@ export default function AcompanhamentoProtocolo() {
     const {patientId} = useParams();
 
     const [protocol, setProtocol] = useState(null);
+    const [isArchived, setIsArchived] = useState(false);
     const [scales, setScales] = useState([]);
     const [chosen, setChosen] = useState({});
     const [startDate, setStartDate] = useState(toIsoDate(new Date()));
@@ -66,11 +68,15 @@ export default function AcompanhamentoProtocolo() {
     const [sleepWakeTime, setSleepWakeTime] = useState("");
 
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
+    // conta cada aviso mostrado, pq a msm msg de novo n muda o formError e a tela n rolaria ate ele
+    const [formErrorCount, setFormErrorCount] = useState(0);
     const [fieldErrors, setFieldErrors] = useState({});
     const [notice, setNotice] = useState(null);
     const [isEndingOpen, setIsEndingOpen] = useState(false);
+    const formErrorRef = useRef(null);
 
     // o esqueleto so aparece na primeira carga e depois de salvar a tela so atualiza
     const load = useCallback(() => {
@@ -79,20 +85,48 @@ export default function AcompanhamentoProtocolo() {
             .then((allScales) => setScales(allScales.filter((scale) => scale.assignablePeriodically)))
             .catch(() => setScales([]));
 
-        apiService.get("/patients/" + patientId + "/treatment-protocol")
-            .then(setProtocol)
+        // 404 aqui so quer dizer que ainda n existe acompanhamento
+        const protocolRequest = apiService.get("/patients/" + patientId + "/treatment-protocol")
             .catch((requestError) => {
-                // 404 aqui so quer dizer que ainda n existe acompanhamento
                 if (requestError instanceof ApiError && requestError.status === 404) {
-                    setProtocol(null);
-                } else {
-                    setFormError(errorMessageOf(requestError));
+                    return null;
                 }
+                throw requestError;
+            });
+
+        // o paciente vem junto pq a api recusa acompanhamento novo de quem foi arquivado
+        // e sem acesso a ele (paciente de outro prescritor) a tela fica so com o aviso, sem formulario
+        Promise.all([apiService.get("/patients/" + patientId), protocolRequest])
+            .then(([patient, foundProtocol]) => {
+                setIsArchived(patient.archived);
+                setProtocol(foundProtocol);
+            })
+            .catch((requestError) => {
+                // 403 e 404 querem dizer q o paciente n eh dele, igual no progresso
+                const isNotTheirs = requestError instanceof ApiError
+                    && (requestError.status === 403 || requestError.status === 404);
+                setLoadError(isNotTheirs
+                    ? "Acesso negado. Esse paciente não está na sua lista de pacientes."
+                    : errorMessageOf(requestError,
+                        "Não foi possível abrir o acompanhamento. Confira sua internet e tente de novo."));
             })
             .finally(() => setIsLoading(false));
     }, [patientId]);
 
     useEffect(load, [load]);
+
+    // o botao de iniciar fica no fim do formulario e o aviso la em cima, entao a tela rola ate ele
+    // senao a recusa parece um clique q n fez nada
+    useEffect(() => {
+        if (formErrorRef.current) {
+            formErrorRef.current.scrollIntoView({block: "center"});
+        }
+    }, [formErrorCount]);
+
+    const showFormError = (message) => {
+        setFormError(message);
+        setFormErrorCount((count) => count + 1);
+    };
 
     const toggleScale = (type) => {
         setChosen((current) => {
@@ -117,7 +151,7 @@ export default function AcompanhamentoProtocolo() {
 
         const items = Object.entries(chosen).map(([scaleType, periodicity]) => ({scaleType, periodicity}));
         if (items.length === 0) {
-            setFormError("Escolha ao menos uma escala.");
+            showFormError("Escolha ao menos uma escala.");
             return;
         }
 
@@ -140,9 +174,9 @@ export default function AcompanhamentoProtocolo() {
                 const hiddenErrors = Object.keys(errorsByField)
                     .filter((field) => !FIELDS_THAT_SHOW_ERROR.includes(field))
                     .map((field) => errorsByField[field]);
-                setFormError(hiddenErrors.length > 0 ? hiddenErrors.join(". ") + "." : requestError.message);
+                showFormError(hiddenErrors.length > 0 ? hiddenErrors.join(". ") + "." : requestError.message);
             } else {
-                setFormError(CONNECTION_ERROR_MESSAGE);
+                showFormError(CONNECTION_ERROR_MESSAGE);
             }
         } finally {
             setIsSaving(false);
@@ -157,12 +191,26 @@ export default function AcompanhamentoProtocolo() {
             setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente.");
             load();
         } catch (requestError) {
-            setFormError(errorMessageOf(requestError));
+            showFormError(errorMessageOf(requestError));
         }
     };
 
     if (isLoading) {
         return <SkeletonPage cards={2}/>;
+    }
+
+    if (loadError) {
+        return (
+            <section className={styles.page}>
+                <PageHeader title="Acompanhamento automático"/>
+                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+                <EmptyState
+                    icon={FiUsers}
+                    message="Escolha um dos seus pacientes para ver o acompanhamento automático dele."
+                    action={<Link to="/lista-paciente" className="button-secondary">Ver pacientes</Link>}
+                />
+            </section>
+        );
     }
 
     // o job das 8h encerra o q passou do fim, mas ate la ele ja aparece encerrado
@@ -177,7 +225,7 @@ export default function AcompanhamentoProtocolo() {
             />
 
             {notice && <p className="aviso" role="status">{notice}</p>}
-            {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
+            {formError && <p className="aviso aviso--atencao" role="alert" ref={formErrorRef}>{formError}</p>}
 
             {protocol && (
                 <Card
@@ -235,7 +283,12 @@ export default function AcompanhamentoProtocolo() {
                 </Card>
             )}
 
-            {(!protocol || hasProtocolEnded) && (
+            {/* o arquivamento encerra o acompanhamento e um novo so comeca dps de reativar */}
+            {isArchived && (
+                <p className="aviso">Paciente arquivado. Reative o paciente para começar um acompanhamento novo.</p>
+            )}
+
+            {(!protocol || hasProtocolEnded) && !isArchived && (
                 <form className={styles.form} onSubmit={create}>
                     <FormSection title="Período" disabled={isSaving}>
                         <FieldRow>
