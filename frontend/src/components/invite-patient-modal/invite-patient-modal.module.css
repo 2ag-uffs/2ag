@@ -77,6 +77,12 @@
     justify-content: space-between;
 }
 
+/* o link q esta na tela, numa linha propria embaixo da data */
+.shownMark {
+    color: var(--color-primary);
+    display: block;
+}
+
 /* botao com cara de link, pra acao secundaria */
 .linkButton {
     align-self: flex-start;

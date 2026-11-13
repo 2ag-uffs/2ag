@@ -10,8 +10,20 @@ function buildInviteLink(token) {
     return window.location.origin + "/cadastro?convite=" + encodeURIComponent(token);
 }
 
+// dois convites do mesmo minuto ficavam iguais na lista, entao esses mostram os segundos tbm
+// a api manda a hora de brasilia como 2026-11-13T12:36:28.121631 e os segundos sao o 17 e o 18
+function createdTextOf(openInvite, openInvites) {
+    const minuteText = formatDateTime(openInvite.createdAt);
+    const sameMinute = openInvites.filter((other) => formatDateTime(other.createdAt) === minuteText);
+    if (sameMinute.length > 1) {
+        return minuteText + ":" + openInvite.createdAt.slice(17, 19);
+    }
+    return minuteText;
+}
+
 // os convites q ainda estao na rua, pra cancelar o q foi pro numero errado
-function OpenInviteList({openInvites, onCancel}) {
+// o link q esta na tela vem marcado, pro prescritor saber qual linha eh qual
+function OpenInviteList({openInvites, shownInviteId, onCancel}) {
     return (
         <div className={styles.openInvites}>
             <h3 className={styles.openTitle}>Convites em aberto</h3>
@@ -20,22 +32,27 @@ function OpenInviteList({openInvites, onCancel}) {
                 não aparece aqui.
             </p>
             <ul className={styles.openList}>
-                {openInvites.map((openInvite) => (
-                    <li key={openInvite.id} className={styles.openRow}>
-                        <span>
-                            Gerado em {formatDateTime(openInvite.createdAt)}, vale até{" "}
-                            {formatDateTimeWithZone(openInvite.expiresAt)}
-                        </span>
-                        <button
-                            type="button"
-                            className="button-danger button-small"
-                            aria-label={"Cancelar convite gerado em " + formatDateTime(openInvite.createdAt)}
-                            onClick={() => onCancel(openInvite.id)}
-                        >
-                            Cancelar
-                        </button>
-                    </li>
-                ))}
+                {openInvites.map((openInvite) => {
+                    const createdText = createdTextOf(openInvite, openInvites);
+                    const isShown = openInvite.id === shownInviteId;
+                    return (
+                        <li key={openInvite.id} className={styles.openRow}>
+                            <span>
+                                Gerado em {createdText}, vale até{" "}
+                                {formatDateTimeWithZone(openInvite.expiresAt)}
+                                {isShown && <strong className={styles.shownMark}>É o link acima</strong>}
+                            </span>
+                            <button
+                                type="button"
+                                className="button-danger button-small"
+                                aria-label={"Cancelar convite gerado em " + createdText + (isShown ? ", o link acima" : "")}
+                                onClick={() => onCancel(openInvite.id)}
+                            >
+                                Cancelar
+                            </button>
+                        </li>
+                    );
+                })}
             </ul>
         </div>
     );
@@ -176,7 +193,13 @@ export default function InvitePatientModal({show, onClose}) {
                     </>
                 )}
 
-                {openInvites.length > 0 && <OpenInviteList openInvites={openInvites} onCancel={cancelInvite}/>}
+                {openInvites.length > 0 && (
+                    <OpenInviteList
+                        openInvites={openInvites}
+                        shownInviteId={invite ? invite.id : null}
+                        onCancel={cancelInvite}
+                    />
+                )}
             </div>
         </Modal>
     );

@@ -32,4 +32,37 @@ describe("InvitePatientModal", () => {
         expect(await screen.findByText(/Gerado em/)).toHaveTextContent(
             "Gerado em 16/10/2026 às 18:38, vale até 23/10/2026 às 18:38" + brasiliaTimeNote());
     });
+
+    // dois convites do msm minuto ficavam iguais na lista e o prescritor n sabia qual cancelar (RN06)
+    it("convites do mesmo minuto mostram os segundos e o link da tela vem marcado", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([
+            {id: 2, createdAt: "2026-11-13T12:36:28.121631", expiresAt: "2026-11-20T12:36:28.121631"},
+            {id: 1, createdAt: "2026-11-13T12:36:27.420803", expiresAt: "2026-11-20T12:36:27.420803"},
+            {id: 3, createdAt: "2026-11-12T09:10:05.000001", expiresAt: "2026-11-19T09:10:05.000001"},
+        ]);
+        vi.spyOn(apiService, "post").mockResolvedValue({id: 2, token: "tok", expiresAt: "2026-11-20T12:36:28.121631"});
+        const put = vi.spyOn(apiService, "put").mockResolvedValue(null);
+        const user = userEvent.setup();
+        render(<InvitePatientModal show={true} onClose={() => {}}/>);
+
+        await user.click(screen.getByRole("button", {name: "Gerar link de convite"}));
+
+        const rows = await screen.findAllByRole("listitem");
+        expect(rows).toHaveLength(3);
+        expect(rows[0]).toHaveTextContent("Gerado em 13/11/2026 às 12:36:28, vale até");
+        expect(rows[0]).toHaveTextContent("É o link acima");
+        expect(rows[1]).toHaveTextContent("Gerado em 13/11/2026 às 12:36:27, vale até");
+        expect(rows[1]).not.toHaveTextContent("É o link acima");
+        // o convite sozinho no minuto dele continua sem os segundos
+        expect(rows[2]).toHaveTextContent("Gerado em 12/11/2026 às 09:10, vale até");
+
+        expect(screen.getByRole("button", {name: "Cancelar convite gerado em 13/11/2026 às 12:36:28, o link acima"}))
+            .toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Cancelar convite gerado em 13/11/2026 às 12:36:27"}));
+        expect(put).toHaveBeenCalledWith("/invites/1/cancel");
+        // o link da tela continua la, agora sozinho no minuto dele
+        expect(screen.getByLabelText("Link de convite")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Cancelar convite gerado em 13/11/2026 às 12:36, o link acima"}))
+            .toBeInTheDocument();
+    });
 });
