@@ -1,7 +1,9 @@
-import {act, fireEvent, render, screen} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import AppLayout from "../../components/app-layout/app-layout.jsx";
 import {apiService, setLoggedUser} from "../../services/api.js";
 import Anamnese from "./anamnese.jsx";
 
@@ -11,6 +13,24 @@ function renderAnamnesis(fromPath, anamnesisPath) {
         {path: "/anamnese", element: <Anamnese/>},
         {path: "/painel-paciente", element: <p>painel do paciente</p>},
     ], {initialEntries: [fromPath, anamnesisPath], initialIndex: 1});
+    render(<RouterProvider router={router}/>);
+    return router;
+}
+
+// a ficha dentro do layout de vdd, com a seta do topo, o Voltar de cima e o menu
+function renderAnamnesisInsideLayout(anamnesisPath = "/anamnese") {
+    const router = createMemoryRouter([
+        {path: "/entrar", element: <p>tela de login</p>},
+        {
+            element: <AppLayout/>,
+            children: [
+                {path: "/painel-paciente", element: <p>painel do paciente</p>},
+                {path: "/historico-paciente", element: <p>historico</p>},
+                {path: "/agendamento-consulta", element: <p>consultas</p>},
+                {path: "/anamnese", element: <Anamnese/>},
+            ],
+        },
+    ], {initialEntries: ["/painel-paciente", anamnesisPath], initialIndex: 1});
     render(<RouterProvider router={router}/>);
     return router;
 }
@@ -108,6 +128,83 @@ describe("Anamnese", () => {
 
         expect(await screen.findByLabelText("Fuma?")).toHaveValue("Sim, ocasionalmente");
         expect(screen.getByLabelText("Bebe álcool?")).toHaveValue("Não");
+    });
+
+    // o Cancelar perguntava mas a seta, o Voltar de cima e o menu saiam calados e a ficha voltava vazia
+    it("sair pelo layout ou pelo menu com algo digitado pergunta antes, igual o Cancelar", async () => {
+        renderAnamnesisInsideLayout();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Motivo principal da consulta"), "dor nas costas");
+
+        await user.click(screen.getByRole("button", {name: "Cancelar"}));
+        let dialog = await screen.findByRole("dialog", {name: "Sair sem enviar"});
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        // o primeiro Voltar eh a seta do topo do celular, o segundo o de cima da tela
+        const backButtons = screen.getAllByRole("button", {name: "Voltar"});
+        expect(backButtons).toHaveLength(2);
+        for (const backButton of backButtons) {
+            await user.click(backButton);
+            dialog = await screen.findByRole("dialog", {name: "Sair sem enviar"});
+            await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+            expect(screen.getByLabelText("Motivo principal da consulta")).toHaveValue("dor nas costas");
+        }
+
+        const sideMenu = within(screen.getByRole("navigation", {name: "Menu principal"}));
+        await user.click(sideMenu.getByRole("link", {name: "Consultas"}));
+        dialog = await screen.findByRole("dialog", {name: "Sair sem enviar"});
+        expect(dialog).toHaveTextContent(/ainda não foi enviado e vai se perder/);
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("consultas")).toBeInTheDocument();
+    });
+
+    // sem nada digitado n tem o q perder e a saida n pergunta
+    it("sem nada digitado o Cancelar e o Voltar de cima saem direto", async () => {
+        const router = renderAnamnesisInsideLayout();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Cancelar"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+        await act(() => router.navigate("/anamnese"));
+        await screen.findByLabelText("Motivo principal da consulta");
+        await user.click(screen.getAllByRole("button", {name: "Voltar"})[1]);
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // na correcao conta o q mudou: a ficha so aberta sai direto e a mudada pergunta antes
+    it("na correcao so a ficha mudada pergunta antes de sair", async () => {
+        apiService.get.mockResolvedValue({id: 3, annulled: false, reasonForVisit: "dor", treatmentAwareness: "Sim"});
+        renderAnamnesisInsideLayout("/anamnese?id=3");
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Motivo principal da consulta"), " nas costas");
+        await user.click(screen.getAllByRole("button", {name: "Voltar"})[1]);
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/O que você mudou ainda não foi salvo/);
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // recarregar ou fechar a aba n passa pelo router, entao o navegador pergunta
+    it("com algo digitado recarregar ou fechar a aba pede pro navegador perguntar antes", async () => {
+        renderAnamnesis("/painel-paciente", "/anamnese");
+        const user = userEvent.setup();
+
+        const reason = await screen.findByLabelText("Motivo principal da consulta");
+        const before = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(before);
+        expect(before.defaultPrevented).toBe(false);
+
+        await user.type(reason, "dor");
+        const after = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(after);
+        expect(after.defaultPrevented).toBe(true);
     });
 
     // a api recusa anamnese nova de quem foi arquivado, antes o formulario abria inteiro e so o envio dava erro

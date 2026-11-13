@@ -1,5 +1,5 @@
-import {useEffect, useState} from "react";
-import {useNavigate, useSearchParams} from "react-router";
+import {useEffect, useRef, useState} from "react";
+import {useBlocker, useNavigate, useSearchParams} from "react-router";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
@@ -9,6 +9,7 @@ import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../..
 import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
+import {useLeaveWarning} from "../../utils/leave-warning.js";
 import styles from "./anamnese.module.css";
 
 const SMOKING_OPTIONS = [
@@ -92,12 +93,15 @@ export default function Anamnese() {
     const loggedUser = getLoggedUser();
 
     const [answers, setAnswers] = useState(emptyAnswers);
+    // como a ficha abriu, pra saber se a pessoa mexeu em algo
+    const [startingAnswers, setStartingAnswers] = useState(emptyAnswers);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
-    const [isConfirmingExit, setIsConfirmingExit] = useState(false);
+    // a ficha enviada sai sem perguntar. eh ref pq o blocker le na hora da saida, logo dps do envio
+    const isSentRef = useRef(false);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -113,6 +117,7 @@ export default function Anamnese() {
                     setLoadError("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
                 } else if (isCorrection) {
                     setAnswers(answersFrom(found));
+                    setStartingAnswers(answersFrom(found));
                 } else if (found.archived) {
                     setLoadError(ARCHIVED_ANAMNESIS_NOTICE);
                 }
@@ -133,6 +138,17 @@ export default function Anamnese() {
 
     // quem desiste volta pra tela de onde veio a ficha
     const exitPath = isCorrection ? "/historico-paciente" : "/painel-paciente";
+
+    const hasChanges = Object.keys(answers).some((fieldName) => answers[fieldName] !== startingAnswers[fieldName]);
+
+    // sair da ficha com algo digitado ou mudado pergunta antes, pra resposta n sumir calada, como na escala
+    // vale pra qqr saida: o Cancelar, a seta do topo, o Voltar de cima e o menu
+    // a ficha enviada sai direto, e sair da conta n pergunta pq a sessao ja acabou
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasChanges
+        && !isSentRef.current
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(hasChanges);
 
     // o name de cada campo eh a chave da resposta
     const updateAnswer = (event) => {
@@ -160,6 +176,7 @@ export default function Anamnese() {
             const notice = isCorrection
                 ? "Correção da anamnese salva. O seu prescritor já vê a ficha nova."
                 : "Ficha de anamnese enviada. Obrigado por responder.";
+            isSentRef.current = true;
             navigate(exitPath, {replace: true, state: {notice}});
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
@@ -404,7 +421,7 @@ export default function Anamnese() {
                     <button
                         type="button"
                         className={styles.secondaryButton}
-                        onClick={() => setIsConfirmingExit(true)}
+                        onClick={() => navigate(exitPath)}
                         disabled={isSaving}
                     >
                         Cancelar
@@ -416,15 +433,15 @@ export default function Anamnese() {
             </form>
 
             <ConfirmModal
-                show={isConfirmingExit}
+                show={exitBlocker.state === "blocked"}
                 title={isCorrection ? "Sair sem salvar" : "Sair sem enviar"}
                 message={isCorrection
                     ? "O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"
                     : "O que você preencheu ainda não foi enviado e vai se perder. Quer mesmo sair?"}
                 confirmText="Sim, sair"
                 cancelText="Continuar preenchendo"
-                onConfirm={() => navigate(exitPath)}
-                onCancel={() => setIsConfirmingExit(false)}
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
             />
         </section>
     );
