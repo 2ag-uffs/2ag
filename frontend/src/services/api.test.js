@@ -8,6 +8,7 @@ import {
     errorMessageOf,
     getLoggedUser,
     leaveExpiredSession,
+    loadSession,
     loginAgain,
     logout,
     readRequestError,
@@ -146,6 +147,49 @@ describe("readRequestError", () => {
             .toEqual({fieldErrors: {}, message: CONNECTION_ERROR_MESSAGE});
         expect(readRequestError(new TypeError("Failed to fetch"), "Não foi possível falar com o servidor."))
             .toEqual({fieldErrors: {}, message: "Não foi possível falar com o servidor."});
+    });
+});
+
+// o app pergunta quem esta logado qnd abre
+describe("loadSession", () => {
+    afterEach(() => {
+        setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    it("com a sessao valendo devolve quem esta logado", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(200, MARIA));
+
+        expect(await loadSession()).toEqual(MARIA);
+        expect(getLoggedUser()).toEqual(MARIA);
+    });
+
+    it("sem sessao a api responde 401 e ninguem esta logado", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sessão inválida"}));
+
+        expect(await loadSession()).toBeNull();
+        expect(getLoggedUser()).toBeNull();
+    });
+
+    // sem resposta da api n da pra saber se a pessoa esta logada, entao o erro sobe pro app avisar (CT-40)
+    it("com a api fora do ar ou sem internet o erro sobe em vez de dizer q ninguem esta logado", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("<html>502</html>", {status: 502}));
+        await expect(loadSession()).rejects.toThrow(CONNECTION_ERROR_MESSAGE);
+        expect(getLoggedUser()).toBeNull();
+
+        fetchSpy.mockRejectedValue(new TypeError("Failed to fetch"));
+        await expect(loadSession()).rejects.toThrow("Failed to fetch");
+    });
+
+    // so o 401 quer dizer q ninguem esta logado, o 500 da api e o 429 do nginx n dizem nada da sessao
+    it("o erro 500 da api e o limite do nginx sobem com a mensagem deles em vez de dizer q ninguem esta logado", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch")
+            .mockResolvedValue(apiResponse(500, {message: "Ocorreu um erro inesperado no servidor"}));
+        await expect(loadSession()).rejects.toThrow("Ocorreu um erro inesperado no servidor");
+        expect(getLoggedUser()).toBeNull();
+
+        fetchSpy.mockResolvedValue(apiResponse(429, {message: "Muitas requisições em pouco tempo. Aguarde um instante e tente de novo."}));
+        await expect(loadSession()).rejects.toThrow("Muitas requisições em pouco tempo. Aguarde um instante e tente de novo.");
     });
 });
 

@@ -100,7 +100,7 @@ Cada conta precisa de um e-mail e de um CPF diferentes. O sistema confere os dí
 - **Mostrar:** a tela **Entrar** em http://localhost:5173 e os três perfis do sistema: administração (cuida só das contas e não vê prontuário), prescritor (cuida dos pacientes) e paciente (responde as escalas, pede consulta e acompanha o próprio progresso).
 - **Onde clicar:** nada ainda. Explique que tudo o que aparecer é inventado e que reiniciar a demonstração apaga o que for feito hoje.
 - **Conferir:** todos enxergam a tela e sabem qual janela é da equipe e qual é do paciente.
-- **Se der errado:** se, ao clicar em **Entrar**, a tela disser *Não foi possível falar com o servidor. Confira sua internet e tente de novo.* e o terminal do `npm run dev` mostrar `http proxy error`, a tela não alcançou a API, mesmo com o aviso falando da internet: ela não subiu, ainda está subindo ou subiu em outra porta. Confira o terminal da API e tente de novo quando ela terminar de subir.
+- **Se der errado:** se a tela abrir em *Sem conexão com o servidor* em vez de **Entrar**, ou se, ao clicar em **Entrar**, ela disser *Não foi possível falar com o servidor. Confira sua internet e tente de novo.*, e o terminal do `npm run dev` mostrar `http proxy error`, a tela não alcançou a API, mesmo com o aviso falando da internet: ela não subiu, ainda está subindo ou subiu em outra porta. Confira o terminal da API e, quando ela terminar de subir, clique em **Tentar de novo** (ou em **Entrar** outra vez).
 
 ## 2. a administração cria a conta do prescritor (6 min)
 

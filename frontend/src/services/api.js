@@ -204,12 +204,18 @@ async function request(path, options = {}) {
 }
 
 // pergunta pra api quem esta logado quando o app abre
-// sem sessao valida o resultado eh null
+// sem sessao valida (o 401 da api) o resultado eh null
+// qualquer outro erro sobe, sem resposta ou com o 500 da api: ai n da pra saber se a pessoa esta logada,
+// e mandar pro login faria ela achar q saiu da conta com o cookie ainda valendo
 export async function loadSession() {
     try {
         loggedUser = await request("/auth/me");
-    } catch {
+    } catch (requestError) {
         loggedUser = null;
+        const noSession = requestError instanceof ApiError && requestError.status === 401;
+        if (!noSession) {
+            throw requestError;
+        }
     }
     return loggedUser;
 }
