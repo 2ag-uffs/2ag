@@ -221,7 +221,7 @@ Janela anônima, sem ninguém logado.
   - O nome e o parentesco do responsável ficam guardados junto com o aceite. No histórico do paciente, na janela do prescritor, aparecem como **Familiar ou cuidador**.
 - **Se der errado:**
   - *Este convite não vale mais*: o link venceu, foi cancelado ou já foi usado. Gere outro.
-  - *Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF*: o e-mail ou o CPF já tem conta. Use outros.
+  - *Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF*: o e-mail ou o CPF já tem conta. Use outros. Logo embaixo da mensagem aparecem **Entrar** e **Esqueci minha senha**, para quem já tem conta, e o que foi digitado continua no formulário.
   - *CPF inválido. Confira os números*: use um CPF fictício com dígitos válidos.
   - A tela diz *Você está conectado como* com o nome de outro paciente: a janela tinha alguém logado. Clique em **Sair e continuar o cadastro** e a tela **Criar conta** segue com o mesmo convite.
 

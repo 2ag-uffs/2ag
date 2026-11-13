@@ -62,6 +62,13 @@
     text-decoration: none;
 }
 
+/* entrar e senha nova embaixo da recusa do cadastro */
+.accountLinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
 .loginNote {
     color: var(--color-text-secondary);
     font-size: var(--text-sm);

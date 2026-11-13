@@ -1,4 +1,4 @@
-import {fireEvent, render, screen} from "@testing-library/react";
+import {fireEvent, render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -9,6 +9,9 @@ import SignUp from "./sign-up.jsx";
 
 const INVITE = {prescriberName: "Ana Lima", prescriberProfession: "Médica", expiresAt: "2026-12-01T10:00:00"};
 const OUTDATED_TERM_MESSAGE = "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
+const SIGN_UP_REFUSED_MESSAGE = "Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF. "
+    + "Se você já tem conta, entre pela tela de login, que também tem o Esqueci minha senha";
+const INVALID_INVITE_MESSAGE = "Convite inválido ou vencido. Peça um novo link ao seu prescritor.";
 
 function mockApi() {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
@@ -23,6 +26,15 @@ function mockApi() {
         }
         return Promise.resolve({id: 9, name: "Ana Souza", role: "PATIENT", termPending: false});
     });
+}
+
+// o convite vale e o cadastro volta com o erro dado
+function mockRefusedSignUp(registerError) {
+    const post = mockApi();
+    post.mockImplementation((path) => path === "/invites/lookup"
+        ? Promise.resolve(INVITE)
+        : Promise.reject(registerError));
+    return post;
 }
 
 function renderSignUp(path = "/cadastro?convite=abc") {
@@ -269,6 +281,50 @@ describe("SignUp", () => {
 
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
         expect(post).toHaveBeenLastCalledWith("/auth/register", expect.objectContaining({consentTermVersion: "termo-2"}));
+    }, TYPING_TIMEOUT);
+
+    // a msg manda entrar ou usar o esqueci minha senha, entao o caminho fica logo embaixo dela (pedido da qa)
+    // ela continua sem dizer se foi o e-mail ou o cpf, e o q foi digitado fica pq a pessoa pode so ter errado
+    it("e-mail ou cpf q ja tem conta mostra os links de entrar e de senha nova sem apagar o formulario", async () => {
+        mockRefusedSignUp(new ApiError(400, SIGN_UP_REFUSED_MESSAGE));
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(SIGN_UP_REFUSED_MESSAGE);
+        const accountLinks = screen.getByRole("group", {name: "Se você já tem conta"});
+        expect(within(accountLinks).getByRole("link", {name: "Entrar"})).toHaveAttribute("href", "/entrar");
+        expect(within(accountLinks).getByRole("link", {name: "Esqueci minha senha"}))
+            .toHaveAttribute("href", "/esqueci-senha");
+        expect(screen.getByLabelText("Nome completo")).toHaveValue("Maria da Silva");
+        expect(screen.getByLabelText("CPF")).toHaveValue("529.982.247-25");
+        expect(screen.getByLabelText("E-mail")).toHaveValue("maria@email.com");
+        expect(screen.getByRole("checkbox", {name: /termo de consentimento/})).toBeChecked();
+    }, TYPING_TIMEOUT);
+
+    it("erro de campo e convite ja usado n mostram os links de entrar e de senha nova", async () => {
+        const post = mockRefusedSignUp(new ApiError(400, "Confira os campos destacados",
+            [{field: "email", message: "Informe um e-mail válido"}]));
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("Informe um e-mail válido")).toBeInTheDocument();
+        expect(screen.queryByRole("group", {name: "Se você já tem conta"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", {name: "Esqueci minha senha"})).not.toBeInTheDocument();
+
+        post.mockImplementation((path) => path === "/invites/lookup"
+            ? Promise.resolve(INVITE)
+            : Promise.reject(new ApiError(400, INVALID_INVITE_MESSAGE)));
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(INVALID_INVITE_MESSAGE);
+        expect(screen.queryByRole("group", {name: "Se você já tem conta"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", {name: "Esqueci minha senha"})).not.toBeInTheDocument();
     }, TYPING_TIMEOUT);
 
     // responsavel com dois filhos logado na conta do primeiro abre o convite do segundo (RF38)

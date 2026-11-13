@@ -36,6 +36,7 @@ public class PatientService {
             "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
 
     // n diz qual dos dois ja tem conta, pq isso contaria quem eh paciente da clinica
+    // a tela de cadastro reconhece a recusa por esse texto e mostra embaixo os links de entrar e de senha nova
     public static final String SIGN_UP_REFUSED_MESSAGE =
             "Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF. "
                     + "Se você já tem conta, entre pela tela de login, que também tem o Esqueci minha senha";

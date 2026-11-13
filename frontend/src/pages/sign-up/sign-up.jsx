@@ -62,6 +62,11 @@ const GUARDIAN_HINTS = {
 const MINOR_EMAIL_HINT = "Cada paciente precisa de um e-mail próprio, mesmo que o responsável seja o mesmo. "
     + "Um e-mail vale para uma conta só.";
 
+// a recusa do e-mail ou cpf q ja tem conta, com o texto igual ao da api (PatientService)
+// ela manda entrar ou usar o esqueci minha senha, entao a tela poe os dois links embaixo dela
+const SIGN_UP_REFUSED_MESSAGE = "Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF. "
+    + "Se você já tem conta, entre pela tela de login, que também tem o Esqueci minha senha";
+
 // texto do aceite antes e depois do botao q abre o termo
 const CONSENT_LABELS = {
     "adult": {
@@ -408,6 +413,16 @@ export default function SignUp() {
                 <p className={"aviso aviso--atencao " + styles.message} role="alert" ref={messageRef}>
                     {errorMessage}
                 </p>
+            )}
+            {errorMessage === SIGN_UP_REFUSED_MESSAGE && (
+                <div className={styles.accountLinks} role="group" aria-label="Se você já tem conta">
+                    <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
+                        Entrar
+                    </Link>
+                    <Link to="/esqueci-senha" className={"button button-secondary " + styles.linkButton}>
+                        Esqueci minha senha
+                    </Link>
+                </div>
             )}
 
             <form className={styles.form} onSubmit={handleSubmit}>
