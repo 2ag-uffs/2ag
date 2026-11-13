@@ -32,6 +32,8 @@ para mexer só nas telas, sem instalar postgres, a api sobe com o h2 em memória
 ./mvnw spring-boot:test-run "-Dspring-boot.run.arguments=--spring.profiles.active=test --api.seed.enabled=true --api.session.secure-cookie=false"
 ```
 
+nesse modo a conexão com o banco não tem prazo (`spring.datasource.hikari.max-lifetime: 0` no `application-test.yml`). o h2 2.4 não consegue mais avaliar as checagens (`check`) de uma tabela depois que fecha a conexão que criou essa tabela, a das migrações, e passa a recusar toda gravação nela ("Check constraint invalid"), mesmo a que respeita a checagem. com o prazo padrão do pool, de 30 minutos, a api parava de gravar tudo o que entra na trilha meia hora depois de subir, sempre com `409` "Este registro já existe ou está em uso".
+
 ## documentação da api
 
 a documentação gerada do código fica em `/api/swagger-ui/index.html` no endereço do front (`http://localhost:5173/api/swagger-ui/index.html` com o `npm run dev`; o json cru em `/api/v3/api-docs`), com o corpo e a resposta de cada rota tirados dos dtos e, em cada rota, quem pode usar, lido das regras de acesso do código. ela só abre para quem está logado: entre no sistema e abra o endereço. pelo endereço da api direto (`:8080`) a página abre, mas o *try it out* do que grava recebe 403, porque a origem não é o `PUBLIC_URL`.

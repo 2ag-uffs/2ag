@@ -8,6 +8,11 @@ spring:
     url: jdbc:h2:mem:doisag-teste;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;LOCK_TIMEOUT=10000
     username: sa
     password: ""
+    hikari:
+      # conexao sem prazo: o h2 2.4 n consegue mais avaliar as checagens de uma tabela qnd fecha a conexao
+      # q criou ela, a da migracao, e recusa todo insert na tabela. com o padrao de 30 min a api local
+      # parava de gravar na trilha meia hora dps de subir, sempre com 409
+      max-lifetime: 0
   flyway:
     # ligado tbm no teste: assim a suite verifica a migracao de verdade,
     # e n so o codigo java
