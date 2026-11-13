@@ -34,11 +34,9 @@ import dev.uffs.doisag.scale.ScaleOption;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -138,7 +136,7 @@ public class ExportService {
                     appointment.getTherapeuticPlan(),
                     appointment.getComplementaryExams(),
                     appointment.getBloodPressure(),
-                    appointment.getWeight(),
+                    BrazilianFormat.decimal(appointment.getWeight()),
                     appointment.getHeight(),
                     yesOrNo(appointment.isAnnulled()),
                     Annulment.reasonOf(appointment.getAnnulment()));
@@ -441,11 +439,9 @@ public class ExportService {
                 .collect(Collectors.joining(" + "));
     }
 
-    // do jeito q a tela mostra, tipo CBD 10% + THC 0,3%. o banco devolve 10.000
-    // e no brasil o ponto separa o milhar, entao sai com virgula e sem os zeros
+    // do jeito q a tela mostra, tipo CBD 10% + THC 0,3%, com virgula e sem os zeros do banco
     private String componentText(PrescriptionComponent component) {
-        String amount = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR"))
-                .format(component.getConcentration());
+        String amount = BrazilianFormat.decimal(component.getConcentration());
         String unit = component.getUnit() == ConcentrationUnit.PERCENTUAL ? "%" : " mg/mL";
         String cannabinoid = component.getCannabinoid() == Cannabinoid.OUTRO
                 ? "Outro" : component.getCannabinoid().name();

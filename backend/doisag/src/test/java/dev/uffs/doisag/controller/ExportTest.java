@@ -186,6 +186,27 @@ class ExportTest {
                 .doesNotContain("NAO_COMPARECEU");
     }
 
+    // com ponto a planilha em portugues le 72.5 como texto e n soma nem tira media do peso
+    @Test
+    void weightComesOutWithADecimalComma() throws Exception {
+        appointment.setWeight(72.5f);
+        appointment.setHeight(170);
+        appointmentRepository.save(appointment);
+        Appointment other = saveAppointment(TODAY.minusDays(5).atTime(10, 0), AppointmentStatus.CONCLUIDA,
+                "retorno");
+        other.setWeight(80f);
+        appointmentRepository.save(other);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("appointments.csv", "", prescriber);
+
+        assertThat(csv).contains("\"72,5\";\"170\"");
+        // sem o zero a toa do 80.0
+        assertThat(csv).contains("\"80\";\"\"");
+        assertThat(csv).doesNotContain("72.5").doesNotContain("80.0");
+    }
+
     // o arquivo tem q vir como anexo, senao o navegador abre em vez de baixar
     @Test
     void oArquivoVemComoAnexoEEmCsv() throws Exception {

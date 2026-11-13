@@ -2,6 +2,7 @@ package dev.uffs.doisag.infra;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,6 +22,16 @@ class BrazilianFormatTest {
     @Test
     void emptyDateStaysEmpty() {
         assertThat(BrazilianFormat.date(null)).isNull();
+    }
+
+    // no brasil o ponto separa o milhar, entao 72.5 a planilha em portugues le como texto
+    @Test
+    void decimalGetsACommaWithoutUselessZeros() {
+        assertThat(BrazilianFormat.decimal(72.5f)).isEqualTo("72,5");
+        assertThat(BrazilianFormat.decimal(72.3f)).isEqualTo("72,3");
+        assertThat(BrazilianFormat.decimal(80f)).isEqualTo("80");
+        assertThat(BrazilianFormat.decimal(new BigDecimal("0.300"))).isEqualTo("0,3");
+        assertThat(BrazilianFormat.decimal(null)).isNull();
     }
 
     @Test
