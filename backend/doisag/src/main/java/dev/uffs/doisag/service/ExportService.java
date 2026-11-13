@@ -1,8 +1,11 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
+import dev.uffs.doisag.enums.PrescriptionStatus;
+import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
 import dev.uffs.doisag.infra.BrazilianFormat;
@@ -25,6 +28,7 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
+import dev.uffs.doisag.scale.ScaleDefinition;
 import dev.uffs.doisag.scale.ScaleItem;
 import dev.uffs.doisag.scale.ScaleOption;
 import org.springframework.stereotype.Service;
@@ -124,8 +128,8 @@ public class ExportService {
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
                     BrazilianFormat.time(appointment.getDateTime()),
-                    appointment.getModality(),
-                    appointment.getStatus(),
+                    modalityText(appointment.getModality()),
+                    statusText(appointment.getStatus()),
                     prescriberCell(appointment.getPrescriber(), deidentified),
                     appointment.getClinicalObservation(),
                     appointment.getPhysicalExam(),
@@ -166,10 +170,10 @@ public class ExportService {
                         patientId)) {
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()),
-                    prescription.getStatus(),
+                    prescriptionStatusText(prescription),
                     prescriberCell(prescription.getAppointment().getPrescriber(), deidentified),
                     prescription.getProductDescription(),
-                    prescription.getSpectrum(),
+                    spectrumText(prescription.getSpectrum()),
                     composition(prescription),
                     prescription.getBrand(),
                     prescription.getBatch(),
@@ -296,11 +300,12 @@ public class ExportService {
                               boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor", "Faixa");
+        String attributeName = attributeText(attribute);
 
         progressReportService.getPatientProgress(patientId, attribute, period, loggedUser)
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
-                        attribute.name(),
+                        attributeName,
                         BrazilianFormat.date(point.date()),
                         point.value(),
                         point.band()));
@@ -352,6 +357,58 @@ public class ExportService {
 
     private String yesOrNo(boolean value) {
         return value ? "sim" : "não";
+    }
+
+    // modalidade, situacao, espectro e atributo saem com o texto q a tela mostra,
+    // pq o codigo do banco tipo NAO_COMPARECEU so quem fez o sistema entende
+    private String modalityText(AppointmentModality modality) {
+        if (modality == null) {
+            return null;
+        }
+        return modality == AppointmentModality.PRESENCIAL ? "Presencial" : "Remota";
+    }
+
+    private String statusText(AppointmentStatus status) {
+        return switch (status) {
+            case SOLICITADA -> "Aguardando resposta";
+            case AGENDADA -> "Agendada";
+            case EM_ANDAMENTO -> "Em andamento";
+            case CONCLUIDA -> "Concluída";
+            case CANCELADA -> "Cancelada";
+            case RECUSADA -> "Recusada";
+            case NAO_COMPARECEU -> "Falta";
+        };
+    }
+
+    // anular a vigente troca o status pra SUBSTITUIDA so pra ela n contar como vigente (NOOP-04),
+    // mas ninguem substituiu ela. entao a anulada diz anulada, igual a tela
+    private String prescriptionStatusText(Prescription prescription) {
+        if (prescription.isAnnulled()) {
+            return "Anulada";
+        }
+        return prescription.getStatus() == PrescriptionStatus.VIGENTE ? "Vigente" : "Substituída";
+    }
+
+    private String spectrumText(Spectrum spectrum) {
+        if (spectrum == null) {
+            return null;
+        }
+        return switch (spectrum) {
+            case ISOLADO -> "Isolado";
+            case BROAD_SPECTRUM -> "Broad spectrum";
+            case FULL_SPECTRUM -> "Full spectrum";
+        };
+    }
+
+    // o nome q o seletor do grafico mostra: o rotulo do escore ou o do item da ficha
+    private String attributeText(TrackableAttribute attribute) {
+        ScaleDefinition definition = catalog.definitionOf(attribute.getScaleType());
+        if (attribute.isScore()) {
+            return definition.scoreLabel();
+        }
+        return definition.itemOf(attribute.getItemKey())
+                .map(ScaleItem::label)
+                .orElse(attribute.name());
     }
 
     private String patientColumn(boolean deidentified) {

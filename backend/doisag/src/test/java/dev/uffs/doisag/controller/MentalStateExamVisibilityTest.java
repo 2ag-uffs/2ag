@@ -233,7 +233,8 @@ class MentalStateExamVisibilityTest {
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-        assertThat(progressOfPrescriber).contains("\"ESCORE_MEEM\"").contains("\"24\";\"" + EXAM_BAND + "\"");
+        assertThat(progressOfPrescriber).contains("\"Mini-Exame do Estado Mental (MEEM)\";\"Escore total\";")
+                .contains("\"24\";\"" + EXAM_BAND + "\"");
     }
 
     // nem o nome, nem a faixa, nem os itens do exame

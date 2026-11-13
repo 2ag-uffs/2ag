@@ -5,7 +5,9 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.ConsentType;
+import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.Annulment;
@@ -163,10 +165,25 @@ class ExportTest {
 
         assertThat(csv).contains("Dor lombar crônica").contains("faltou na consulta").contains("marcada e ja passou");
         assertThat(csv).contains("atendimento anulado").contains("\"sim\";\"Registro de outro paciente\"");
+        // a anulacao n troca a situacao da consulta, entao a anulada segue concluida e a marca fica na coluna Anulada
+        assertThat(csv).contains("\"Remota\";\"Concluída\";\"Dra. Exportação\";\"atendimento anulado\"");
         assertThat(csv).doesNotContain("consulta cancelada").doesNotContain("pedido recusado")
                 .doesNotContain("pedido esperando resposta").doesNotContain("marcada pro futuro");
         // o cabecalho e as quatro consultas q entram no historico
         assertThat(csv.lines().count()).isEqualTo(5);
+    }
+
+    // o csv traz o texto q a tela mostra e n o codigo do banco, igual as respostas do scales.csv (#96)
+    @Test
+    void appointmentsCsvHasTheScreenText() throws Exception {
+        saveAppointment(TODAY.minusDays(5).atTime(10, 0), AppointmentStatus.NAO_COMPARECEU, "faltou na consulta");
+
+        String csv = download("appointments.csv", "", prescriber);
+
+        assertThat(csv).contains("\"09:00\";\"Presencial\";\"Concluída\"");
+        assertThat(csv).contains("\"10:00\";\"Remota\";\"Falta\"");
+        assertThat(csv).doesNotContain("PRESENCIAL").doesNotContain("REMOTA").doesNotContain("CONCLUIDA")
+                .doesNotContain("NAO_COMPARECEU");
     }
 
     // o arquivo tem q vir como anexo, senao o navegador abre em vez de baixar
@@ -387,7 +404,9 @@ class ExportTest {
         String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
 
         assertThat(csv).contains("\"Atributo\";\"Data\";\"Valor\"");
-        assertThat(csv).contains("\"DOR\"");
+        // o atributo com o nome q o seletor do grafico mostra, n o codigo
+        assertThat(csv).contains("\"Acompanhamento semanal\";\"Dor\";");
+        assertThat(csv).doesNotContain("\"DOR\"");
         assertThat(csv).contains("\"7\"");
     }
 
@@ -411,7 +430,9 @@ class ExportTest {
 
         String csv = download("progress.csv", "?attribute=ESCORE_HAMILTON&period=DIAS_30", patient);
         assertThat(csv).contains("\"Paciente\";\"Escala\";\"Atributo\";\"Data\";\"Valor\";\"Faixa\"");
-        assertThat(csv).contains("\"ESCORE_HAMILTON\"").contains("\"30\";\"Ansiedade grave\"");
+        assertThat(csv).contains("\"Escala de ansiedade de Hamilton\";\"Escore total\";")
+                .contains("\"30\";\"Ansiedade grave\"");
+        assertThat(csv).doesNotContain("ESCORE_HAMILTON");
 
         String deidentified = download("progress.csv", "?attribute=ESCORE_MEEM&period=DIAS_30&deidentified=true",
                 prescriber);
@@ -540,10 +561,53 @@ class ExportTest {
                 + "\"Duração em dias\";\"Próxima consulta\";\"Instruções de uso\";\"Precauções e contraindicações\";"
                 + "\"Efeitos esperados\";\"Observações\";\"Anulada\";\"Motivo da anulação\"");
         assertThat(csv).contains("\"Paciente da exportação\";\"" + BrazilianFormat.date(TODAY.minusDays(10))
-                + "\";\"VIGENTE\";\"Dra. Exportação\";\"Óleo de CBD 20%\";\"\";\"\";\"\";\"\";\"\";\"Conforme o plano\";"
+                + "\";\"Vigente\";\"Dra. Exportação\";\"Óleo de CBD 20%\";\"\";\"\";\"\";\"\";\"\";\"Conforme o plano\";"
                 + "\"Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite\";\"Sublingual\";\"90\";"
                 + "\"\";\"Pingar embaixo da língua e esperar um minuto\";\"Não dirigir nas primeiras semanas\";"
                 + "\"Sono melhor em duas semanas\";\"Rever a dose no retorno\";\"não\";\"\"");
+    }
+
+    // situacao e espectro com o texto da tela, sem o codigo do banco
+    @Test
+    void prescriptionsCsvHasTheScreenText() throws Exception {
+        Prescription replaced = new Prescription();
+        replaced.setAppointment(appointment);
+        replaced.setProductDescription("Óleo full spectrum");
+        replaced.setPosology("3 gotas à noite");
+        replaced.setSpectrum(Spectrum.FULL_SPECTRUM);
+        replaced.setStatus(PrescriptionStatus.SUBSTITUIDA);
+        prescriptionRepository.save(replaced);
+
+        String csv = download("prescriptions.csv", "", prescriber);
+
+        assertThat(csv).contains("\";\"Vigente\";\"Dra. Exportação\";\"Óleo de CBD 10%\";");
+        assertThat(csv).contains("\";\"Substituída\";\"Dra. Exportação\";\"Óleo full spectrum\";\"Full spectrum\";");
+        assertThat(csv).doesNotContain("VIGENTE").doesNotContain("SUBSTITUIDA").doesNotContain("FULL_SPECTRUM");
+    }
+
+    // anular a vigente troca o status pra SUBSTITUIDA, pra ela n contar como vigente (NOOP-04),
+    // mas ninguem substituiu ela. a situacao diz anulada, como a tela
+    @Test
+    void annulledCurrentPrescriptionComesOutAsAnnulled() throws Exception {
+        Prescription current = new Prescription();
+        current.setAppointment(appointment);
+        current.setProductDescription("Óleo full spectrum");
+        current.setPosology("3 gotas à noite");
+        current = prescriptionRepository.save(current);
+
+        mockMvc.perform(put("/prescriptions/" + current.getId() + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Receita do paciente errado\"}"))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("prescriptions.csv", "", prescriber);
+
+        assertThat(csv).contains("\";\"Anulada\";\"Dra. Exportação\";\"Óleo full spectrum\";");
+        assertThat(csv).contains("\"sim\";\"Receita do paciente errado\"");
+        assertThat(csv).doesNotContain("SUBSTITUIDA").doesNotContain("Substituída");
     }
 
     // no modo sem identificacao o prescritor da receita vira numero, igual no appointments.csv
