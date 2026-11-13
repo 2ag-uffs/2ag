@@ -76,6 +76,12 @@ async function readBody(response) {
     }
 }
 
+// erro 5xx sem o json da api eh o proxy (nginx ou vite) dizendo q a api esta fora do ar
+// a tela trata igual a falta de internet, com o aviso de sem conexao em vez de "Ocorreu um erro."
+function isApiDown(response, body) {
+    return response.status >= 500 && body === null;
+}
+
 const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
 
 // o login avisa q a sessao acabou e depois volta pra tela onde a pessoa estava
@@ -138,6 +144,9 @@ export async function loginAgain(password) {
         body: JSON.stringify({email: loggedUser.email, password}),
     });
     const body = await readBody(response);
+    if (isApiDown(response, body)) {
+        throw new Error(CONNECTION_ERROR_MESSAGE);
+    }
     if (!response.ok) {
         const message = (body && body.message) || "E-mail ou senha inválidos.";
         throw new ApiError(response.status, message, body && body.errors);
@@ -184,6 +193,9 @@ async function request(path, options = {}) {
         openPendingTerm({...loggedUser, termPending: true});
     }
 
+    if (isApiDown(response, body)) {
+        throw new Error(CONNECTION_ERROR_MESSAGE);
+    }
     if (!response.ok) {
         throw new ApiError(response.status, body && body.message, body && body.errors);
     }
@@ -243,6 +255,9 @@ export async function download(path, fallbackName) {
         const body = await readBody(response);
         if (response.status === 401) {
             return handleExpiredSession(() => download(path, fallbackName));
+        }
+        if (isApiDown(response, body)) {
+            throw new Error(CONNECTION_ERROR_MESSAGE);
         }
         throw new ApiError(response.status, body && body.message, body && body.errors);
     }

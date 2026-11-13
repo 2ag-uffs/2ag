@@ -251,7 +251,7 @@ export default function ListaPacientes() {
                 </ul>
             )}
 
-            {!isLoading && loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+            {!isLoading && loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
 
             {!isLoading && !loadError && visiblePatients.length === 0 && (
                 <EmptyState

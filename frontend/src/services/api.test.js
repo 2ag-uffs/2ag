@@ -149,6 +149,87 @@ describe("readRequestError", () => {
     });
 });
 
+// com a api parada o proxy (nginx ou vite) responde 502, 503 ou 504 sem o json da api (CT-40)
+describe("api fora do ar atras do proxy", () => {
+    afterEach(() => {
+        leaveExpiredSession();
+        setLoginAgainOpener(null);
+        setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    function proxyResponse(status) {
+        return new Response("<html><body><h1>" + status + " Bad Gateway</h1></body></html>", {
+            status, headers: {"Content-Type": "text/html"},
+        });
+    }
+
+    it("o 502 do proxy vira o aviso de sem conexao, igual a falta de internet", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(proxyResponse(502));
+        setLoggedUser(MARIA);
+
+        const requestError = await apiService.get("/appointments/mine").catch((error) => error);
+
+        expect(requestError).not.toBeInstanceOf(ApiError);
+        expect(errorMessageOf(requestError)).toBe(CONNECTION_ERROR_MESSAGE);
+        // a tela q tem o aviso dela de sem conexao mostra o dela
+        expect(errorMessageOf(requestError, "Não foi possível carregar suas consultas."))
+            .toBe("Não foi possível carregar suas consultas.");
+        expect(readRequestError(requestError)).toEqual({fieldErrors: {}, message: CONNECTION_ERROR_MESSAGE});
+    });
+
+    it("503 e 504 do proxy e o 502 sem corpo do vite tbm", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        for (const response of [proxyResponse(503), proxyResponse(504), new Response(null, {status: 502})]) {
+            fetchSpy.mockResolvedValueOnce(response);
+            const requestError = await apiService.post("/scales/acompanhamento-semanal/responses", {})
+                .catch((error) => error);
+            expect(errorMessageOf(requestError)).toBe(CONNECTION_ERROR_MESSAGE);
+        }
+    });
+
+    it("entrar com a api fora diz q n falou com o servidor", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(proxyResponse(502));
+
+        const requestError = await apiService.post("/auth/login", {email: "maria@email.com", password: "x"})
+            .catch((error) => error);
+
+        expect(errorMessageOf(requestError)).toBe(CONNECTION_ERROR_MESSAGE);
+    });
+
+    // no login por cima o erro sem json virava senha errada
+    it("o login por cima com a api fora diz q n falou com o servidor e n q a senha esta errada", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(proxyResponse(502));
+        setLoggedUser(MARIA);
+
+        const requestError = await loginAgain("Senha#2026").catch((error) => error);
+
+        expect(errorMessageOf(requestError)).toBe(CONNECTION_ERROR_MESSAGE);
+        expect(requestError.status).toBeUndefined();
+    });
+
+    it("baixar o arquivo com a api fora diz q n falou com o servidor", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(proxyResponse(502));
+        setLoggedUser(MARIA);
+
+        const requestError = await download("/patients/3/export/progress.csv", "progresso.csv").catch((error) => error);
+
+        expect(errorMessageOf(requestError)).toBe(CONNECTION_ERROR_MESSAGE);
+    });
+
+    // o erro inesperado da propria api vem com o json dela e a mensagem continua a dela
+    it("o 500 com o json da api continua com a mensagem da api", async () => {
+        vi.spyOn(globalThis, "fetch")
+            .mockResolvedValue(apiResponse(500, {message: "Ocorreu um erro inesperado no servidor"}));
+        setLoggedUser(MARIA);
+
+        const requestError = await apiService.get("/appointments/mine").catch((error) => error);
+
+        expect(requestError).toBeInstanceOf(ApiError);
+        expect(errorMessageOf(requestError)).toBe("Ocorreu um erro inesperado no servidor");
+    });
+});
+
 // a sessao venceu com uma tela aberta: o envio q deu 401 espera a pessoa entrar de novo por cima da tela
 // e vai de novo com a sessao nova, em vez de a pagina recarregar e perder o q foi digitado (#151)
 describe("sessao vencida com a tela aberta", () => {

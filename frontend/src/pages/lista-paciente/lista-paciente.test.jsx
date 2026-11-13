@@ -32,6 +32,15 @@ describe("ListaPacientes", () => {
         expect(screen.queryByText("Maria Souza")).not.toBeInTheDocument();
     });
 
+    // com a api parada o proxy responde 502 sem o json da api, e o aviso tem q ser lido pelo leitor de tela (CT-40)
+    it("com a api fora do ar a lista avisa q n carregou, como alerta", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("<html>502 Bad Gateway</html>", {status: 502}));
+        renderList();
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Não foi possível carregar seus pacientes. Confira sua internet e tente de novo.");
+    });
+
     // a conta desligada pela administracao so aparecia na trilha; o prescritor precisa ver na lista (#153)
     it("o selo de conta desativada aparece so pra quem a administracao desativou", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue([
