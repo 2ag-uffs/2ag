@@ -133,8 +133,10 @@
     }
 }
 
+/* no celular o estado ao lado da cidade cortava o nome, entao tudo fica um embaixo do outro */
 @media (max-width: 47.99rem) {
     .row,
+    .rowWide,
     .readOnlyInfo {
         grid-template-columns: minmax(0, 1fr);
     }

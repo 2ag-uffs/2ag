@@ -5,6 +5,7 @@ import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {redirectLoggedUserHomeUnlessInvite} from "../../app/route-guards.js";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import SignUp from "./sign-up.jsx";
 
 const INVITE = {prescriberName: "Ana Lima", prescriberProfession: "Médica", expiresAt: "2026-12-01T10:00:00"};
@@ -413,5 +414,12 @@ describe("SignUp", () => {
         renderSignUp("/cadastro");
 
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // o mesmo desenho do perfil: cidade e estado lado a lado cortavam o nome do estado no celular (CT-38)
+    it("no celular rua, numero, cidade e estado ficam um embaixo do outro", () => {
+        const mobile = mediaRules(readCss(import.meta.url, "./sign-up.module.css"), "@media (max-width: 47.99rem)");
+
+        expect(declarationsOf(mobile, ".rowWide")["grid-template-columns"]).toBe("minmax(0, 1fr)");
     });
 });

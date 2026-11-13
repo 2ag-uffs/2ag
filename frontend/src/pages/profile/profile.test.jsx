@@ -2,6 +2,7 @@ import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Profile from "./profile.jsx";
 
 const ADMIN_PROFILE = {
@@ -206,5 +207,12 @@ describe("Profile", () => {
 
         expect(post).toHaveBeenCalledWith("/consent-term/research/revoke", undefined);
         await waitFor(() => expect(screen.queryByRole("heading", {name: "Pesquisa"})).not.toBeInTheDocument());
+    });
+
+    // cidade e estado lado a lado no celular deixavam uns 48px pro estado, e Santa Catarina virava "Santa Ca" (CT-38)
+    it("no celular rua, numero, cidade e estado ficam um embaixo do outro", () => {
+        const mobile = mediaRules(readCss(import.meta.url, "./profile.module.css"), "@media (max-width: 47.99rem)");
+
+        expect(declarationsOf(mobile, ".rowWide")["grid-template-columns"]).toBe("minmax(0, 1fr)");
     });
 });
