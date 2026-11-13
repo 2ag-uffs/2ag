@@ -980,6 +980,8 @@ Itens: 1 humor ansioso · 2 tensão · 3 medos · 4 insônia · 5 comprometiment
 
 Faixas interpretativas, **conforme o formulário aplicado pela clínica** (`docs/scales/ham-a.pdf`, que referencia Hamilton M., 1959): abaixo de 9 sem ansiedade · 9 a 15 ansiedade temporária · 16 a 25 ansiedade moderada · acima de 26 ansiedade grave.
 
+> A ficha põe de 16 a 25 em ansiedade moderada e "acima de 26" em ansiedade grave, então o escore 26 fica sem faixa no papel. O sistema põe o 26 em ansiedade grave (faixa de 26 a 56 em `ScaleCatalog.hamilton()`), o que ainda precisa ser confirmado com a clínica.
+
 > Existem outras faixas em circulação para o HAM-A. O sistema deve usar as do instrumento que a prescritora efetivamente aplica, porque é contra elas que ela interpreta o resultado.
 
 *Atendido desde 12/09/2026:* o item 14, que faltava na v1.0 e na primeira implementação, está no formulário como "Comportamento na entrevista" (`ScaleCatalog.hamilton()`), e o escore soma os 14 itens, de 0 a 56 (`ScaleScorer.hamiltonScore`, coberto pelo `ScaleScorerTest`).
@@ -1061,6 +1063,18 @@ Enunciados exatos do formulário aplicado pela clínica (`docs/scales/meem.pdf`)
 > O formulário impresso da clínica traz a sequência de subtração como "100-7 = 93-7 = 86-7 = 79-7 = 65", omitindo o 72 por erro de digitação. O sistema implementa os cinco passos corretos.
 
 Faixas interpretativas variam por escolaridade; o resultado é sempre exibido com a faixa correspondente (RN14).
+
+Pontos de corte por escolaridade usados pelo sistema (Brucki 2003, em `ScaleScorer`). Escore igual ou maior que o corte fica "Dentro do esperado para a escolaridade", e menor fica "Abaixo do esperado para a escolaridade", sempre com o corte ao lado.
+
+| Escolaridade | Corte |
+| :--- | :--- |
+| Analfabeto | 20 |
+| 1 a 4 anos de estudo | 25 |
+| 5 a 8 anos de estudo | 26,5 |
+| 9 a 11 anos de estudo | 28 |
+| Mais de 11 anos de estudo | 29 |
+
+> O formulário da clínica (`docs/scales/meem.pdf`) não traz pontos de corte. Estes são os da decisão de 13/09/2026 e ainda precisam ser confirmados com a clínica (#27).
 
 *Atendido desde 12/09/2026:* leitura, escrita e cópia, que constavam do RF26 da v1.0 e faltavam na primeira implementação (com teto de 27 pontos), estão no formulário do prescritor (`ScaleCatalog.mentalStateExam()`), e o escore soma as 11 seções, de 0 a 30, com o ponto de corte por escolaridade (`ScaleScorer.mentalStateExamResult`).
 
