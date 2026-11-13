@@ -269,6 +269,19 @@ describe("Progresso", () => {
         expect(screen.getByText("01/10/25")).toBeInTheDocument();
     });
 
+    // CT-38 o li eh flex e um texto solto vira um item a parte, q no celular quebrava comecando com o travessao
+    it("a data e o diagnostico da consulta ficam juntos num item so da lista", async () => {
+        appointments = [{id: 1, data: "2026-10-16", diagnosis: "Lombalgia crônica", geraPrescricao: true}];
+        renderProgress("ANSIEDADE");
+
+        const date = await screen.findByText("16/10/2026");
+        const item = date.closest("li");
+        const looseTexts = Array.from(item.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE);
+        expect(looseTexts).toHaveLength(0);
+        expect(date.parentElement.textContent).toBe("16/10/2026\u00a0— Lombalgia crônica");
+        expect(item).toHaveTextContent("receita emitida");
+    });
+
     // CT-33 a tela da paciente fala com ela, como o resto da tela
     it("na tela do paciente o cartao dos comentarios fala com ele", async () => {
         renderProgress("ANSIEDADE");

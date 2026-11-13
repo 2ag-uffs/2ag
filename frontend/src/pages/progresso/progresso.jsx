@@ -692,8 +692,12 @@ function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
             <ul className={styles.list}>
                 {appointments.map((appointment) => (
                     <li key={appointment.id}>
-                        <strong>{formatDate(appointment.data)}</strong>
-                        {appointment.diagnosis ? " — " + appointment.diagnosis : ""}
+                        {/* data e diagnostico num item so do li flex e o espaco q n quebra
+                            antes do travessao, senao no celular a linha de baixo comecava com ele */}
+                        <span>
+                            <strong>{formatDate(appointment.data)}</strong>
+                            {appointment.diagnosis ? "\u00a0— " + appointment.diagnosis : ""}
+                        </span>
                         {appointment.geraPrescricao && (
                             <span className={styles.mark}>receita emitida</span>
                         )}
