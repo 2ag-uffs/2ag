@@ -1,6 +1,6 @@
 import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {createMemoryRouter} from "react-router";
+import {createBrowserRouter, createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import AppLayout from "../../components/app-layout/app-layout.jsx";
@@ -40,6 +40,7 @@ describe("Escala", () => {
     afterEach(() => {
         vi.restoreAllMocks();
         setLoggedUser(null);
+        window.history.replaceState(null, "", "/");
     });
 
     // corrigir pela data mexe na resposta q ja existe, mesmo trocando a data (issue 108)
@@ -127,6 +128,64 @@ describe("Escala", () => {
         await user.click(screen.getByRole("button", {name: "Voltar"}));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // salvar com outra data troca o endereco e a key do router, mas a escala continua sendo a primeira tela da aba:
+    // o voltar segue indo pra central de escalas com o modal, em vez do navigate(-1) q saia do app sem perguntar
+    it("aberta pelo endereco, dps de salvar com outra data o voltar ainda pergunta e vai pra central de escalas", async () => {
+        const created = {...SAVED_RESPONSE, id: 8, periodStart: "2026-09-25", periodEnd: "2026-09-25",
+            answers: {humorAnsioso: 1}};
+        vi.spyOn(apiService, "post").mockImplementation(() => {
+            responses = [SAVED_RESPONSE, created];
+            return Promise.resolve(created);
+        });
+        // o router do navegador, igual no app, pq eh ele q guarda no history.state a posicao da tela na aba
+        window.history.replaceState(null, "", "/escalas/hamilton");
+        const router = createBrowserRouter([
+            {path: "/pacientes/:patientId/escalas", element: <p>central de escalas</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ]);
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
+        expect(window.location.search).toBe("?data=2026-09-25");
+
+        await user.clear(screen.getByLabelText("Humor ansioso"));
+        await user.type(screen.getByLabelText("Humor ansioso"), "3");
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("central de escalas")).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/pacientes/3/escalas");
+        router.dispose();
+    });
+
+    // o F5 na escala aberta pelo app deixa a tela de antes na aba, entao o voltar volta pra ela e n pra central
+    it("recarregada dps de chegar pelo app, o voltar pergunta e volta pra tela de antes", async () => {
+        // o q o router deixou no history.state antes do F5: o painel eh a primeira tela da aba e a escala a segunda
+        window.history.replaceState({usr: null, key: "painel", idx: 0}, "", "/painel-paciente");
+        window.history.pushState({usr: null, key: "escala", idx: 1}, "", "/escalas/hamilton");
+        const router = createBrowserRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/pacientes/:patientId/escalas", element: <p>central de escalas</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ]);
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Humor ansioso"), "2");
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        expect(window.location.pathname).toBe("/painel-paciente");
+        router.dispose();
     });
 
     // a anulada fica no historico e o paciente responde de novo no msm dia
@@ -663,6 +722,46 @@ describe("Escala diaria", () => {
 
         expect(await screen.findByText("tela de login")).toBeInTheDocument();
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // aberta pelo endereco (favorito ou link colado) a escala n tem tela do app atras: o navigate(-1) saia
+    // do app e o rascunho sumia sem perguntar. o voltar vai pra central de escalas e o modal segura
+    it("aberta pelo endereco, o voltar com dia n salvo pergunta e sai pra central de escalas", async () => {
+        mockSavingApi();
+        const router = createMemoryRouter([
+            {path: "/pacientes/:patientId/escalas", element: <p>central de escalas</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/escalas/acompanhamento-semanal"]});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("central de escalas")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/pacientes/3/escalas");
+    });
+
+    // recarregar, fechar a aba ou sair do app pelo navegador n passam pelo router, entao o navegador pergunta
+    it("com dia n salvo recarregar ou fechar a aba pede pro navegador perguntar antes", async () => {
+        mockSavingApi();
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const before = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(before);
+        expect(before.defaultPrevented).toBe(false);
+
+        await user.click(within(grid).getAllByRole("button")[0]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        const after = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(after);
+        expect(after.defaultPrevented).toBe(true);
     });
 
     // depois de salvar n tem rascunho, entao o voltar sai direto

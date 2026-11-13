@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
-import {useBlocker, useNavigate, useParams, useSearchParams} from "react-router";
+import {useBlocker, useLocation, useNavigate, useParams, useSearchParams} from "react-router";
 import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
@@ -8,6 +8,7 @@ import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
+import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "../../utils/scale-answers.js";
 import styles from "./escala.module.css";
 
@@ -109,6 +110,7 @@ export default function Escala() {
     const {slug} = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const loggedUser = getLoggedUser();
 
     const today = toIsoDate(new Date());
@@ -369,6 +371,19 @@ export default function Escala() {
     const exitBlocker = useBlocker(({currentLocation, nextLocation}) => unsavedDays.length > 0
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(unsavedDays.length > 0);
+
+    // a primeira tela da aba (endereco, favorito ou link colado, msm dps de um F5) n tem tela do app atras e o
+    // navigate(-1) saia do app sem o blocker ver, entao o voltar vai pra central de escalas e o modal pergunta
+    // o idx q o router guarda no history.state segue 0 qnd salvar com outra data troca o endereco, ja a key muda
+    // o F5 na escala aberta pelo app deixa a tela de antes na aba, entao ali o voltar volta pra ela
+    const goBack = () => {
+        if (location.key === "default" || window.history.state?.idx === 0) {
+            navigate("/pacientes/" + loggedUser.id + "/escalas");
+        } else {
+            navigate(-1);
+        }
+    };
 
     if (loadError) {
         return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
@@ -495,7 +510,7 @@ export default function Escala() {
                 )}
 
                 <FormActions>
-                    <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                    <button type="button" className="button-secondary" onClick={goBack}>
                         Voltar
                     </button>
                     {!isReadOnly && (
