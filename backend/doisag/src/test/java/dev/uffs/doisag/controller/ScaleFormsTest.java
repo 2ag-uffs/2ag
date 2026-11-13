@@ -315,10 +315,10 @@ class ScaleFormsTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.editableByPatient").value(false)));
 
+        // nem chega na regra do exame: o paciente n ve o MEEM e recebe o 403 de uma resposta q n eh dele
         updateResponse(examId, "{\"escolaridade\":1,\"registro\":0}", patient)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message")
-                        .value(org.hamcrest.Matchers.containsString("aplicado pelo prescritor")));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Acesso negado"));
     }
 
     // o paciente tambem n responde o MEEM pela rota das escalas dele

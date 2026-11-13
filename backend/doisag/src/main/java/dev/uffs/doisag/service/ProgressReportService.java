@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.TrackableAttributeDTO;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
@@ -45,15 +46,19 @@ public class ProgressReportService {
         this.auditService = auditService;
     }
 
-    public List<TrackableAttributeDTO> getTrackableAttributes() {
+    // o paciente n acompanha o MEEM, o resultado dele eh conversado na consulta
+    public List<TrackableAttributeDTO> getTrackableAttributes(Users loggedUser) {
         return Arrays.stream(TrackableAttribute.values())
+                .filter(attribute -> !attribute.getScaleType().isHiddenFrom(loggedUser.getRole()))
                 .map(this::attributeDtoOf)
                 .toList();
     }
 
     @Transactional
     public List<ProgressDataPointDTO> getPatientProgress(Long patientId, TrackableAttribute attribute,
-                                                         TimePeriod period) {
+                                                         TimePeriod period, Users loggedUser) {
+        // a serie do MEEM pedida pelo paciente vale pro grafico e pro progress.csv
+        attribute.getScaleType().checkShownTo(loggedUser.getRole());
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();
 

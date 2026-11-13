@@ -6,10 +6,12 @@ import dev.uffs.doisag.dto.ProgressDataPointDTO;
 import dev.uffs.doisag.dto.TrackableAttributeDTO;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.ProgressReportService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,11 +33,11 @@ public class ProgressReportController {
 
     // catalogo do que da pra acompanhar, agrupado por escala.
     // fica fora da rota de paciente pq n depende de nenhum: eh a lista
-    // de possibilidades do sistema
+    // de possibilidades do sistema. o do paciente vem sem o MEEM
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
     @GetMapping("/progress/attributes")
-    public List<TrackableAttributeDTO> getTrackableAttributes() {
-        return progressReportService.getTrackableAttributes();
+    public List<TrackableAttributeDTO> getTrackableAttributes(@AuthenticationPrincipal Users loggedUser) {
+        return progressReportService.getTrackableAttributes(loggedUser);
     }
 
     // a serie de um atributo p/ o grafico de evolucao
@@ -44,9 +46,10 @@ public class ProgressReportController {
     public ResponseEntity<List<ProgressDataPointDTO>> getProgress(
             @PathVariable Long patientId,
             @RequestParam("attribute") TrackableAttribute attribute,
-            @RequestParam("period") TimePeriod period
+            @RequestParam("period") TimePeriod period,
+            @AuthenticationPrincipal Users loggedUser
     ) {
-        return ResponseEntity.ok(progressReportService.getPatientProgress(patientId, attribute, period));
+        return ResponseEntity.ok(progressReportService.getPatientProgress(patientId, attribute, period, loggedUser));
     }
 
     // o q o paciente escreveu nas escalas do periodo (RF07)

@@ -290,7 +290,7 @@ Janela normal, prescritora de treino, no histórico do paciente adulto.
 - **Conferir:**
   - O histórico volta com o aviso de quantas escalas foram enviadas.
   - Em **Escalas**, as duas aparecem em **Aguardando o paciente**, com prazo de 7 dias.
-  - O **Mini-Exame do Estado Mental (MEEM)** não aparece nesta lista: ele é aplicado pelo prescritor na consulta, pelo botão **Mini-exame**.
+  - O **Mini-Exame do Estado Mental (MEEM)** não aparece nesta lista: ele é aplicado pelo prescritor na consulta, pelo botão **Mini-exame**. O resultado fica só com o prescritor: o paciente não vê o exame no 2AG, e o resultado é conversado na consulta.
 
 ### acompanhamento automático
 
@@ -357,7 +357,7 @@ Janela normal. Saia da prescritora de treino e entre como `prescritor@email.com`
   - As consultas viram linhas verticais, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas.
   - Na Hamilton aparecem as linhas das faixas de interpretação.
   - O quadro **O que o paciente escreveu** junta os comentários das escalas no período, com a data e o nome da escala.
-  - O mesmo gráfico abre pelo histórico do paciente, no botão **Progresso**. O paciente vê o dele no menu **Progresso**.
+  - O mesmo gráfico abre pelo histórico do paciente, no botão **Progresso**. O paciente vê o dele no menu **Progresso**, sem o **Mini-Exame do Estado Mental**, que só o prescritor vê: a Maria fez o exame na primeira consulta, e a escala aparece para a Ana e não aparece para a Maria.
 - **Se der errado:** *Nenhum registro preenchido neste período*: aumente o **Período** ou troque a escala.
 
 ## 11. exportação (5 min)
@@ -377,6 +377,7 @@ Janela normal, Ana Lima.
   - **Esse modo não é anônimo.** A clínica sabe de quem é cada número, as datas saem como estão e o texto livre, como queixa e observação, sai como foi escrito e pode citar nomes. Pela LGPD o arquivo continua sendo dado de saúde: guarde e envie com o mesmo cuidado do prontuário.
   - Na Maria Souza a caixa fica desligada: ela não aceitou participar da pesquisa, então o arquivo sem identificação não sai. O paciente pode aceitar no **Perfil** dele.
   - A série de um gráfico sai na tela **Progresso**, em **Baixar esta série em CSV**, com a caixa **Baixar o CSV sem identificação, para pesquisa**.
+  - O paciente que baixa os próprios arquivos recebe **Escalas respondidas** sem o Mini-Exame. Quando o paciente ou o responsável pede o prontuário inteiro (LGPD, art. 18), o prescritor baixa ou imprime por aqui, com o exame.
 - **Se der errado:** a caixa do modo sem identificação não marca: o paciente não aceitou a pesquisa. Isso é o esperado.
 
 Ao fim da sessão, apague os arquivos baixados. Mesmo com dados inventados, arquivo exportado não vai para pasta compartilhada nem para o repositório.

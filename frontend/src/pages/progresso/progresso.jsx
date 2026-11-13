@@ -143,13 +143,18 @@ export default function Progresso() {
 
     const attributesOfScale = attributes.filter((attribute) => attribute.scaleType === chosenScale);
 
+    // a serie so eh pedida com o atributo no catalogo: o de um link antigo q n veio nele,
+    // como o MEEM q o paciente n ve, nem chega na api
+    const isAttributeInCatalog = Boolean(currentAttribute);
+
     // enquanto a serie da chave atual n chega a tela mostra o esqueleto
+    // sem o catalogo a serie n vem, entao fica so o erro
     const seriesKey = seriesKeyOf(patientId, chosenAttribute, period);
-    const isLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
+    const isLoading = Boolean(patientId && chosenAttribute) && !loadError && loadedSeriesKey !== seriesKey;
     const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
 
     useEffect(() => {
-        if (!patientId || !chosenAttribute) {
+        if (!patientId || !isAttributeInCatalog) {
             return;
         }
         const requestKey = seriesKeyOf(patientId, chosenAttribute, period);
@@ -182,7 +187,7 @@ export default function Progresso() {
         return () => {
             isCurrentRequest = false;
         };
-    }, [patientId, chosenAttribute, period]);
+    }, [patientId, chosenAttribute, period, isAttributeInCatalog]);
 
     // a dose do dia entra como segunda linha pra dar pra ler se o
     // sintoma mudou depois de mexer na dose

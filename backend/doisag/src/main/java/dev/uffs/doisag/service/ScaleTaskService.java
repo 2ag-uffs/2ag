@@ -17,6 +17,7 @@ import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -577,7 +578,7 @@ public class ScaleTaskService {
 
     // a central do paciente: o q esta em aberto e o q ja foi respondido
     @Transactional
-    public PatientScalesPageDTO getPatientScalesPage(Long patientId) {
+    public PatientScalesPageDTO getPatientScalesPage(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
         Patient patient = findPatient(patientId);
         LocalDate today = LocalDate.now();
@@ -588,9 +589,11 @@ public class ScaleTaskService {
                 .map(task -> dtoOf(task, today))
                 .toList();
 
+        // o MEEM fica so com o prescritor, o paciente conversa o resultado na consulta
         List<ScaleResponseSummaryDTO> history = responseRepository
                 .findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
+                .filter(response -> !response.getScaleType().isHiddenFrom(loggedUser.getRole()))
                 .map(response -> new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response)))
                 .toList();
 

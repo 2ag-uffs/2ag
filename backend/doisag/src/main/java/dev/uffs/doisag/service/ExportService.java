@@ -218,6 +218,10 @@ public class ExportService {
             if (!catalog.hasDefinition(response.getScaleType())) {
                 continue;
             }
+            // o arquivo do paciente sai sem o MEEM. o prontuario inteiro ele pede pra clinica (lgpd art. 18)
+            if (response.getScaleType().isHiddenFrom(loggedUser.getRole())) {
+                continue;
+            }
             for (ScaleItem item : catalog.definitionOf(response.getScaleType()).items()) {
                 Object answer = response.getAnswers().get(item.key());
                 if (answer == null) {
@@ -293,7 +297,7 @@ public class ExportService {
         Patient patient = startExport(patientId, deidentified, loggedUser);
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor", "Faixa");
 
-        progressReportService.getPatientProgress(patientId, attribute, period)
+        progressReportService.getPatientProgress(patientId, attribute, period, loggedUser)
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
                         attribute.name(),

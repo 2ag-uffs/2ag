@@ -17,6 +17,7 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
@@ -339,10 +340,12 @@ public class ScaleResponseService {
     }
 
     @Transactional
-    public List<ScaleResponseSummaryDTO> getByPatientId(Long patientId) {
+    public List<ScaleResponseSummaryDTO> getByPatientId(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
+        // o MEEM fica so com o prescritor, o paciente conversa o resultado na consulta
         return responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
+                .filter(response -> !response.getScaleType().isHiddenFrom(loggedUser.getRole()))
                 .map(this::summaryOf)
                 .toList();
     }

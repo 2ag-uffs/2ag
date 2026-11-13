@@ -72,6 +72,8 @@ a api trabalha no horário de Brasília (`America/Sao_Paulo`) e as telas também
 
 a tela de escala (`pages/escala`) monta o formulário com a definição que vem da api. no diário a grade mostra os dias da tarefa aberta, e o que a pessoa mexe fica guardado por dia (`editsByDay`) até salvar: o dia com rascunho aparece como *não salvo* na grade, **Salvar respostas** envia cada dia editado num `POST` próprio, em ordem de data, e o aviso diz quantos dias foram salvos. o dia que a api recusa continua como rascunho *não salvo* e o erro dele aparece na tela. sair da tela com rascunho pergunta antes, com o mesmo modal de confirmação da anamnese: o `useBlocker` do react router segura qualquer saída, seja o **Voltar** do formulário, a seta e o **Voltar** do layout ou o menu. trocar só a data na url continua na tela e não pergunta, e sair da conta também não, porque a sessão já acabou.
 
+o paciente não vê o Mini-Exame do Estado Mental (decisão de 13/11/2026): a api deixa o exame de fora das listas dele e recusa com 403 o que ele pede direto, então as telas do paciente (central de escalas, histórico, resposta, progresso, impressão e painel) só mostram o que vem e nenhuma fala do exame. a tela de escala perdeu o aviso que só existia para o paciente que abria o endereço do mini-exame. o progresso só pede a série de um atributo que veio no catálogo, então o atributo do MEEM num link antigo nem chega na api e a tela abre no primeiro atributo do paciente. as telas do prescritor (mini-exame, histórico, progresso, exportação e impressão) continuam com o exame.
+
 ## padrão de código
 
 vale para todo código novo ou reescrito:

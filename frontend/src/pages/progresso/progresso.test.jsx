@@ -2,10 +2,10 @@ import {render, screen} from "@testing-library/react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, setLoggedUser} from "../../services/api.js";
 import Progresso from "./progresso.jsx";
 
-// o catalogo do jeito q a api manda, com as ancoras e o lado bom de cada atributo
+// o catalogo do jeito q a api manda pro paciente, com as ancoras e o lado bom de cada atributo
 const ATTRIBUTES = [
     {name: "ANSIEDADE", displayName: "Ansiedade", scaleType: "ACOMPANHAMENTO_SEMANAL", scaleName: "Acompanhamento semanal",
         minValue: 0, maxValue: 10, bands: [], lowAnchor: "muito ansioso", highAnchor: "tranquilo", higherIsBetter: true},
@@ -14,11 +14,17 @@ const ATTRIBUTES = [
     {name: "DESPERTARES", displayName: "Número de vezes que acordou", scaleType: "REGISTRO_SONO",
         scaleName: "Diário do sono", minValue: null, maxValue: null, bands: [], lowAnchor: null, highAnchor: null,
         higherIsBetter: null},
+];
+
+// o MEEM so vem no catalogo do prescritor (decisao de 13/11/2026)
+const PRESCRIBER_ATTRIBUTES = [
+    ...ATTRIBUTES,
     {name: "ESCORE_MEEM", displayName: "Escore total", scaleType: "MINI_EXAME_ESTADO_MENTAL",
         scaleName: "Mini-Exame do Estado Mental", minValue: 0, maxValue: 30, bands: [], lowAnchor: null,
         highAnchor: null, higherIsBetter: true},
 ];
 
+let catalog = ATTRIBUTES;
 let series = [];
 let appointments = [];
 
@@ -29,14 +35,33 @@ function renderProgress(attribute) {
     render(<RouterProvider router={router}/>);
 }
 
+// o prescritor abre o progresso de um paciente dele
+function renderPrescriberProgress(attribute) {
+    setLoggedUser({id: 9, name: "Ana Lima", role: "PRESCRIBER"});
+    catalog = PRESCRIBER_ATTRIBUTES;
+    const router = createMemoryRouter([{path: "/paciente/:patientId/progresso", element: <Progresso/>}], {
+        initialEntries: [{pathname: "/paciente/3/progresso", state: {attribute: attribute}}],
+    });
+    render(<RouterProvider router={router}/>);
+}
+
+// todo pedido q a tela fez pra api
+function requestedPaths() {
+    return apiService.get.mock.calls.map((call) => call[0]);
+}
+
 describe("Progresso", () => {
     beforeEach(() => {
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+        catalog = ATTRIBUTES;
         series = [{date: "2026-10-01", value: 3, band: null, cutoff: null}];
         appointments = [];
         vi.spyOn(apiService, "get").mockImplementation((path) => {
             if (path === "/progress/attributes") {
-                return Promise.resolve(ATTRIBUTES);
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3") {
+                return Promise.resolve({id: 3, name: "Maria Souza", researchConsent: false});
             }
             if (path.startsWith("/patients/3/progress/appointments?")) {
                 return Promise.resolve(appointments);
@@ -77,13 +102,41 @@ describe("Progresso", () => {
         expect(screen.queryByText(/é melhor/)).not.toBeInTheDocument();
     });
 
+    // um link antigo (a central de escalas mandava o atributo do MEEM) n faz a tela pedir o exame pra api
+    it("o paciente n pede a serie do MEEM nem vindo com o atributo dele de um link antigo", async () => {
+        renderProgress("ESCORE_MEEM");
+
+        // a tela abre no primeiro atributo do catalogo do paciente, com o grafico dele ja desenhado
+        expect(await screen.findByRole("application", {name: /Gráfico de Ansiedade/})).toBeInTheDocument();
+        expect(requestedPaths()).toContain("/patients/3/progress?attribute=ANSIEDADE&period=DIAS_30");
+        expect(requestedPaths().some((path) => path.includes("ESCORE_MEEM"))).toBe(false);
+        expect(screen.queryByText(/Mini-Exame|MEEM|escolaridade/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("option", {name: /Mini-Exame/})).not.toBeInTheDocument();
+    });
+
+    // sem o catalogo a serie n eh pedida, entao a tela fica no erro e n no esqueleto pra sempre
+    it("qnd o catalogo falha a tela mostra o erro e para de carregar", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.reject(new ApiError(503, "Sistema em manutenção. Tente de novo em alguns minutos."));
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Sistema em manutenção");
+        expect(document.querySelector("span[style*='height: 320px']")).toBeNull();
+        expect(requestedPaths().some((path) => path.startsWith("/patients/3/progress?"))).toBe(false);
+    });
+
     // RN14 o MEEM vem com a faixa da escolaridade, nunca como numero solto
+    // o grafico do MEEM eh so do prescritor
     it("o MEEM mostra o corte da escolaridade e a faixa do ultimo exame", async () => {
         series = [
             {date: "2026-09-10", value: 24, band: "Abaixo do esperado para a escolaridade (corte 25)", cutoff: 25},
             {date: "2026-10-10", value: 27, band: "Dentro do esperado para a escolaridade (corte 25)", cutoff: 25},
         ];
-        renderProgress("ESCORE_MEEM");
+        renderPrescriberProgress("ESCORE_MEEM");
 
         expect(await screen.findByText(/ponto de corte para a escolaridade registrada no exame \(25 pontos\)/))
             .toBeInTheDocument();
@@ -98,7 +151,7 @@ describe("Progresso", () => {
             {date: "2026-09-10", value: 25, band: "Dentro do esperado para a escolaridade (corte 25)", cutoff: 25},
             {date: "2026-10-10", value: 26, band: "Abaixo do esperado para a escolaridade (corte 26,5)", cutoff: 26.5},
         ];
-        renderProgress("ESCORE_MEEM");
+        renderPrescriberProgress("ESCORE_MEEM");
 
         expect(await screen.findByText(/A escolaridade registrada mudou no período/)).toBeInTheDocument();
         expect(screen.queryByText(/ponto de corte para a escolaridade registrada no exame/)).not.toBeInTheDocument();
@@ -112,7 +165,7 @@ describe("Progresso", () => {
             {date: "2026-09-10", value: 22, band: null, cutoff: null},
             {date: "2026-10-10", value: 27, band: "Dentro do esperado para a escolaridade (corte 25)", cutoff: 25},
         ];
-        renderProgress("ESCORE_MEEM");
+        renderPrescriberProgress("ESCORE_MEEM");
 
         expect(await screen.findByText(/Exame sem escolaridade registrada: sem faixa\. Isso vale para 1 de 2 exames/))
             .toBeInTheDocument();
@@ -126,7 +179,7 @@ describe("Progresso", () => {
             {date: "2026-09-10", value: 22, band: null, cutoff: null},
             {date: "2026-10-10", value: 24, band: null, cutoff: null},
         ];
-        renderProgress("ESCORE_MEEM");
+        renderPrescriberProgress("ESCORE_MEEM");
 
         expect(await screen.findByText(/Exame sem escolaridade registrada: sem faixa\. Sem a escolaridade/))
             .toBeInTheDocument();

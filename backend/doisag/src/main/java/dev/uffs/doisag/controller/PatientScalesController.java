@@ -4,12 +4,14 @@ import dev.uffs.doisag.dto.AssignScaleDTO;
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
 import dev.uffs.doisag.dto.ScaleTaskDTO;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,14 +51,16 @@ public class PatientScalesController {
     // a central de escalas do paciente (RF08)
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/overview")
-    public PatientScalesPageDTO getScalesPage(@PathVariable Long patientId) {
-        return taskService.getPatientScalesPage(patientId);
+    public PatientScalesPageDTO getScalesPage(@PathVariable Long patientId,
+                                              @AuthenticationPrincipal Users loggedUser) {
+        return taskService.getPatientScalesPage(patientId, loggedUser);
     }
 
     // as escalas respondidas, q o historico do prescritor mostra (RF13)
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/responses")
-    public List<ScaleResponseSummaryDTO> getResponses(@PathVariable Long patientId) {
-        return responseService.getByPatientId(patientId);
+    public List<ScaleResponseSummaryDTO> getResponses(@PathVariable Long patientId,
+                                                      @AuthenticationPrincipal Users loggedUser) {
+        return responseService.getByPatientId(patientId, loggedUser);
     }
 }

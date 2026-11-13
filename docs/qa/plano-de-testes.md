@@ -113,7 +113,7 @@ requisitos RF06, RF08, RF09, RF20 a RF26, RF32, RF39, RN09 e RN10.
 | CT-24 | corrigir uma resposta ainda não analisada, inclusive mudando a data de início de uma escala de período. depois a prescritora marca como analisada e a paciente tenta corrigir de novo | antes da análise corrige, e a mudança de data move a mesma resposta: o histórico segue com uma resposta só. depois, a tela avisa que precisa falar com a prescritora |
 | CT-25 | responder Hamilton e Pittsburgh com valores conhecidos. antes, tentar salvar o Hamilton com um item em branco e desmarcar um item com *Limpar resposta*. depois, na central de escalas, usar *Ver progresso* na escala respondida | escore e interpretação batem com a conta feita na ficha em papel de [`docs/scales`](../scales). com item em branco a tela não salva e marca o que falta. o item desmarcado sai da resposta. o progresso abre já na escala certa, com 90 dias |
 | CT-26 | preencher o diário do sono | tempos calculados certos, também quando dormir passa da meia-noite. a programação da prescritora aparece no topo |
-| CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes. tentar salvar com uma seção e a escolaridade em branco | o corte muda com a escolaridade e o MEEM nunca aparece como tarefa da paciente. com item em branco o exame não é salvo, a tela lista o que falta e marca os itens |
+| CT-27 | aplicar o MEEM numa consulta, com escolaridades diferentes. tentar salvar com uma seção e a escolaridade em branco. depois, como a paciente, procurar o exame em *Escalas*, no histórico, no *Progresso*, na impressão e nos CSV, e abrir `/escalas/mini-exame` no endereço | o corte muda com a escolaridade. o MEEM aparece no histórico, no *Progresso*, na impressão e nos CSV da prescritora, e nada dele aparece para a paciente (decisão de 13/11/2026): nem como tarefa, nem em *Escalas*, no histórico, no *Progresso*, na impressão ou nos CSV que ela baixa, e o endereço `/escalas/mini-exame` mostra *Acesso negado*. com item em branco o exame não é salvo, a tela lista o que falta e marca os itens |
 | CT-28 | criar e depois encerrar um acompanhamento automático | as escalas escolhidas e as frequências aparecem certas. encerrar para os envios |
 | CT-29 | anular uma resposta de escala e, como o paciente, abrir a mesma escala na mesma data | motivo obrigatório. a resposta fica marcada como anulada, com o motivo. o paciente vê o formulário em branco, com o aviso de que a resposta foi anulada, e responde de novo no mesmo dia |
 | CT-30 | olhar o painel da prescritora | a escala vencida da Renata aparece em *Escalas vencidas* |
@@ -127,7 +127,7 @@ requisitos RF07, RF27 e RF28.
 | :--- | :--- | :--- |
 | CT-31 | como prescritora, abrir *Progresso*, escolher paciente, trocar escala, item e período, e trocar de paciente | o gráfico acompanha cada troca e os filtros continuam ao trocar de paciente |
 | CT-32 | ver um período com dias sem resposta, com consultas e com as gotas do dia marcadas | dia sem resposta fica sem ponto, nunca como zero. consultas aparecem como linha e as gotas como segunda linha |
-| CT-33 | como paciente, abrir *Progresso* | vê o próprio gráfico, sem a opção *todo o tempo* |
+| CT-33 | como paciente, abrir *Progresso* | vê o próprio gráfico, sem a opção *todo o tempo* e sem o Mini-Exame no seletor de escala, mesmo a Maria tendo um exame aplicado na primeira consulta |
 
 ## 7. avisos, exportação e impressão
 

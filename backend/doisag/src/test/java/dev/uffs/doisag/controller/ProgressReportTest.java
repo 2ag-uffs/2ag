@@ -184,13 +184,14 @@ class ProgressReportTest {
 
     // RN14 o MEEM n tem faixa fixa, o corte muda com a escolaridade. cada ponto
     // leva a faixa gravada no exame e o corte da escolaridade daquele exame
+    // o grafico do MEEM eh so do prescritor (decisao de 13/11/2026)
     @Test
     void oMeemSaiComAFaixaEOCorteDaEscolaridadeDeCadaExame() throws Exception {
         // 1 a 4 anos de estudo tem corte 25 e 5 a 8 anos tem 26,5
         saveMentalStateExam(TODAY.minusDays(20), 1, 24);
         saveMentalStateExam(TODAY.minusDays(5), 2, 27);
 
-        progress("ESCORE_MEEM", "DIAS_30")
+        progress("ESCORE_MEEM", "DIAS_30", prescriber)
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].value").value(24))
                 .andExpect(jsonPath("$[0].band").value("Abaixo do esperado para a escolaridade (corte 25)"))
@@ -239,9 +240,10 @@ class ProgressReportTest {
                 .andExpect(jsonPath("$[1].text").value("Dormi mal a semana toda"));
     }
 
+    // o catalogo do prescritor, q tem todos os atributos. o do paciente vem sem o MEEM
     private JsonNode trackableAttributes() throws Exception {
         String body = mockMvc.perform(get("/progress/attributes")
-                        .header("Authorization", bearerTokenOf(patient)))
+                        .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return new ObjectMapper().readTree(body);
@@ -273,10 +275,15 @@ class ProgressReportTest {
 
     private org.springframework.test.web.servlet.ResultActions progress(String attribute, String period)
             throws Exception {
+        return progress(attribute, period, patient);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions progress(String attribute, String period,
+                                                                         Users loggedUser) throws Exception {
         return mockMvc.perform(get("/patients/" + patient.getId() + "/progress")
                         .param("attribute", attribute)
                         .param("period", period)
-                        .header("Authorization", bearerTokenOf(patient)))
+                        .header("Authorization", bearerTokenOf(loggedUser)))
                 .andExpect(status().isOk());
     }
 

@@ -1,5 +1,6 @@
 package dev.uffs.doisag.enums;
 
+import dev.uffs.doisag.infra.ForbiddenException;
 import dev.uffs.doisag.infra.NotFoundException;
 
 // as escalas q o sistema aplica (RF08 e RF09)
@@ -52,6 +53,19 @@ public enum ScaleType {
 
     public boolean isFilledByPatient() {
         return filledByPatient;
+    }
+
+    // o MEEM eh conversado na consulta e o paciente n ve nada dele, nem chamando a api direto
+    // (decisao de 13/11/2026). o prescritor do paciente continua vendo tudo
+    public boolean isHiddenFrom(UserRole role) {
+        return this == MINI_EXAME_ESTADO_MENTAL && role == UserRole.PATIENT;
+    }
+
+    // quem pede direto a escala q n ve recebe o mesmo 403 de um dado q n eh dele
+    public void checkShownTo(UserRole role) {
+        if (isHiddenFrom(role)) {
+            throw new ForbiddenException("Escala que o paciente não vê: " + slug);
+        }
     }
 
     // a avaliacao inicial eh preenchida uma vez na triagem, entao ela pode ser

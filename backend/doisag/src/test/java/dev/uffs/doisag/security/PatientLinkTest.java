@@ -225,6 +225,14 @@ class PatientLinkTest {
         }
     }
 
+    // o q eh so do prescritor fica fora do alcance do paciente, msm sendo do prontuario dele
+    @Test
+    void patientCannotReadThePrescriberOnlyRoutesOfTheirOwnRecords() throws Exception {
+        for (String url : prescriberOnlyReadRoutes(recordsOfA)) {
+            assertThat(statusOf(get(url), recordsOfA.patient())).as(url).isEqualTo(403);
+        }
+    }
+
     @Test
     void prescriberWritesForTheirOwnPatient() throws Exception {
         mockMvc.perform(post("/appointments/" + recordsOfA.appointmentId() + "/prescriptions")
@@ -339,17 +347,18 @@ class PatientLinkTest {
                 "/patients/" + patientId + "/export/anamneses.csv",
                 "/patients/" + patientId + "/export/progress.csv?attribute=ESCORE_HAMILTON&period=DIAS_30",
                 "/scales/responses/" + records.scaleId(),
-                "/scales/responses/" + records.examId(),
                 "/anamneses/" + records.anamnesisId()
         );
     }
 
     // leituras q so o prescritor faz
+    // o MEEM eh conversado na consulta e o paciente n abre nem o dele (decisao de 13/11/2026)
     private List<String> prescriberOnlyReadRoutes(ClinicalRecords records) {
         Long patientId = records.patient().getId();
         return List.of(
                 "/appointments/" + records.appointmentId(),
                 "/scales/mental-state-exam/appointments/" + records.appointmentId(),
+                "/scales/responses/" + records.examId(),
                 "/patients/" + patientId + "/audit-events?from=" + LocalDate.now().minusDays(30)
                         + "&to=" + LocalDate.now()
         );

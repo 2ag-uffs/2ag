@@ -257,19 +257,19 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /scales/definitions/{slug}` | o formulário de uma escala |
+| `GET /scales/definitions/{slug}` | o formulário de uma escala. o do MEEM só sai para o prescritor, e o paciente recebe 403 |
 | `GET /scales/assignable` | as escalas que o prescritor pode enviar ao paciente |
 | `POST /scales/{slug}/responses` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
-| `GET /scales/{slug}/responses` | as respostas do paciente logado naquela escala, que a grade da semana usa |
-| `GET /scales/responses/{id}` | uma resposta com o escore, a faixa e o valor de cada item |
-| `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou, inclusive as datas do período. o MEEM não se corrige: o prescritor anula e aplica de novo |
+| `GET /scales/{slug}/responses` | as respostas do paciente logado naquela escala, que a grade da semana usa. com o slug do MEEM a resposta é 403 |
+| `GET /scales/responses/{id}` | uma resposta com o escore, a faixa e o valor de cada item. o MEEM só abre para o prescritor do paciente: o paciente recebe o mesmo 403 de uma resposta que não é dele |
+| `PUT /scales/responses/{id}` | o paciente corrige a própria resposta enquanto o prescritor não analisou, inclusive as datas do período. o MEEM não se corrige: o prescritor anula e aplica de novo, e o paciente recebe 403, como na leitura |
 | `PUT /scales/responses/{id}/review` | o prescritor marca que já conferiu, e o paciente para de editar |
 | `PUT /scales/responses/{id}/annul` | anula a resposta com motivo |
 | `POST /scales/mental-state-exam/appointments/{appointmentId}` | o prescritor aplica o MEEM dentro da consulta, depois que ela aconteceu. o exame só é gravado com as 11 seções e a escolaridade |
 | `POST /patients/{patientId}/scales` | envia uma escala avulsa ao paciente. a escala que o paciente já respondeu hoje é recusada: a pontual com a avaliação de hoje, a de período com a semana que termina hoje e a avaliação inicial com a anamnese enviada hoje |
 | `GET /patients/{patientId}/scales` | as tarefas de escala do paciente |
-| `GET /patients/{patientId}/scales/overview` | o que espera resposta e o que já foi respondido |
-| `GET /patients/{patientId}/scales/responses` | as escalas respondidas, para o histórico |
+| `GET /patients/{patientId}/scales/overview` | o que espera resposta e o que já foi respondido. para o paciente, sem o MEEM |
+| `GET /patients/{patientId}/scales/responses` | as escalas respondidas, para o histórico. para o paciente, sem o MEEM |
 
 - cada tarefa vale por um período. o job diário fecha a que passou do prazo: com ao menos uma resposta ela conta como respondida, e sem nenhuma fica como não respondida, que no gráfico é lacuna e nunca zero (RN10). ele fecha uma tarefa por transação, travando o paciente e lendo a tarefa de novo antes de contar as respostas. a resposta ou a anamnese gravada antes de o job ler a tarefa conta, mesmo chegando no mesmo instante, e a que fica esperando o job encontra a tarefa já fechada. nos dois casos o job nunca grava não respondida por cima de uma resposta já gravada, e a tarefa que o arquivamento fechou antes dele fica como o arquivamento deixou
 - a ficha de acompanhamento e o diário do sono são um registro por dia, apresentados como a grade da semana do papel. na tarefa aberta a grade cobre o período inteiro até hoje, e o paciente pode preencher de uma vez os dias que esqueceu. o dia do diário entra na tarefa pendente que cobre a data dele, e não pela do envio, então dia de outro período não conta na tarefa aberta nem cala o lembrete dela. o dia preenchido antes de existir a tarefa que cobre ele (entre a meia-noite e o job das 8h) entra nela quando ela é criada
@@ -297,6 +297,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - paciente arquivado não recebe a avaliação inicial, porque não consegue mandar a ficha: o envio é recusado até ele ser reativado. as outras escalas enviadas à mão continuam chegando
 - o escore de escala validada sai do algoritmo oficial do instrumento e vem sempre com a faixa (RN13 e RN14)
 - o MEEM é de heteroaplicação: só o prescritor aplica, dentro de consulta confirmada, e ele nunca vira tarefa do paciente (RN09)
+- o paciente não vê o MEEM, nem chamando a API direto, e o resultado é conversado na consulta (decisão de 13/11/2026, §8.3 dos requisitos). a regra fica em `ScaleType.isHiddenFrom`: as listas do paciente (central de escalas, histórico, `scales.csv` e o catálogo do progresso) vêm sem o exame, e o que ele pede direto (a resposta pelo número, a lista e o formulário com o slug `mini-exame`, a série e o `progress.csv` do `ESCORE_MEEM`) recebe 403 com *Acesso negado*, o mesmo de um dado que não é dele. a resposta pelo número passa pelo `scaleAccess`, então ele não descobre nem que o exame existe. o prescritor do paciente continua vendo tudo, como antes. as marcas de consulta e os comentários do progresso não falam do exame: a marca traz só a data, a modalidade, a situação, o diagnóstico e se saiu receita, e o MEEM não tem item de texto livre
 - o MEEM é a exceção à regra do item em branco: como não tem correção, exame com seção ou escolaridade em branco é recusado com a lista do que falta, em vez de ser gravado sem escore ou sem faixa (RN14)
 
 ## exportação
@@ -318,6 +319,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - os quatro arquivos do histórico têm `Anulada` e `Motivo da anulação`. no `scales.csv` e no `anamneses.csv`, que têm uma linha por item, o motivo se repete em cada linha do registro anulado
 - no `progress.csv` a coluna `Faixa` traz a faixa gravada do escore (HAM-A, PSQI, MEEM e intensidade da dor), igual à do `scales.csv`, e fica em branco nos itens da ficha, que não têm faixa publicada (RN13 e RN14)
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
+- o arquivo que o paciente baixa sai sem o MEEM: o `scales.csv` dele não tem as linhas do exame e o `progress.csv` do `ESCORE_MEEM` responde 403. o direito de acesso ao prontuário inteiro (LGPD, art. 18) é atendido pela clínica: a pedido do paciente, o prescritor exporta ou imprime o prontuário completo, com o MEEM (decisão de 13/11/2026)
 - exportar é leitura de prontuário e entra na trilha de auditoria
 - não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF. a impressão traz a seção *Prescrição em uso* com a prescrição vigente, independentemente do período escolhido, porque a receita em uso é estado e não histórico: a vigente emitida antes do período continua valendo e sumia da impressão de 90 dias (07/11/2026, #171)
 
@@ -378,8 +380,8 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo, e o cartã
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo, as faixas do instrumento, as âncoras das pontas (`lowAnchor`, `highAnchor`) e qual lado é melhor (`higherIsBetter`) |
-| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento. no escore, cada ponto traz a faixa gravada (`band`) e, no MEEM, o ponto de corte da escolaridade do exame (`cutoff`), que vem nulo, junto com a faixa, no exame antigo sem escolaridade |
+| `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo, as faixas do instrumento, as âncoras das pontas (`lowAnchor`, `highAnchor`) e qual lado é melhor (`higherIsBetter`). o do paciente vem sem o `ESCORE_MEEM` |
+| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento. no escore, cada ponto traz a faixa gravada (`band`) e, no MEEM, o ponto de corte da escolaridade do exame (`cutoff`), que vem nulo, junto com a faixa, no exame antigo sem escolaridade. o `ESCORE_MEEM` pedido pelo paciente responde 403 |
 | `GET /patients/{patientId}/progress/appointments?period=` | as consultas do período, para marcar no gráfico em que dia houve atendimento. `geraPrescricao` só conta prescrição não anulada |
 | `GET /patients/{patientId}/progress/comments?period=` | o que o paciente escreveu nas escalas do período, por data |
 

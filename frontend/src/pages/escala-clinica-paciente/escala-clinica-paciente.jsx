@@ -49,7 +49,6 @@ function PendingTaskCard({task, onAnswer}) {
 }
 
 // o q ainda da pra corrigir abre o formulario e o resto so a leitura
-// o MEEM cai sempre na leitura pq quem aplica eh o prescritor
 function answersPathOf(response) {
     if (response.editableByPatient) {
         return "/escalas/" + response.slug + "?data=" + response.periodStart;

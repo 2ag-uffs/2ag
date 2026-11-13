@@ -17,6 +17,10 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     @Query("select response.patient.id from ScaleResponse response where response.id = :id")
     Optional<Long> findPatientIdById(@Param("id") Long id);
 
+    // so a escala da resposta, sem carregar ela: o paciente n abre o meem
+    @Query("select response.scaleType from ScaleResponse response where response.id = :id")
+    Optional<ScaleType> findScaleTypeById(@Param("id") Long id);
+
     // a consulta do meem, sem carregar a resposta: a anulacao dele trava a consulta antes do paciente
     // nas outras escalas vem vazio
     @Query("select response.appointment.id from ScaleResponse response where response.id = :id")

@@ -8,6 +8,7 @@ import dev.uffs.doisag.dto.ScaleResponseDTO;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.service.ScaleResponseService;
 import jakarta.validation.Valid;
@@ -52,10 +53,13 @@ public class ScalesController {
                 .toList();
     }
 
+    // o paciente n recebe nem o formulario do MEEM
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER')")
     @GetMapping("/definitions/{slug}")
-    public ScaleDefinitionDTO getDefinition(@PathVariable String slug) {
-        return new ScaleDefinitionDTO(catalog.definitionOf(ScaleType.fromSlug(slug)));
+    public ScaleDefinitionDTO getDefinition(@PathVariable String slug, @AuthenticationPrincipal Users loggedUser) {
+        ScaleType scaleType = ScaleType.fromSlug(slug);
+        scaleType.checkShownTo(loggedUser.getRole());
+        return new ScaleDefinitionDTO(catalog.definitionOf(scaleType));
     }
 
     // o paciente responde uma escala dele
@@ -75,7 +79,9 @@ public class ScalesController {
     @GetMapping("/{slug}/responses")
     public List<ScaleResponseDTO> getMyResponses(@PathVariable String slug,
                                                  @AuthenticationPrincipal Patient loggedPatient) {
-        return responseService.getByPatientIdAndType(loggedPatient.getId(), ScaleType.fromSlug(slug));
+        ScaleType scaleType = ScaleType.fromSlug(slug);
+        scaleType.checkShownTo(loggedPatient.getRole());
+        return responseService.getByPatientIdAndType(loggedPatient.getId(), scaleType);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @scaleAccess.canAccess(#id, authentication)")
