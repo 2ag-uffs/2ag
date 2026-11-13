@@ -388,7 +388,7 @@ function PatientFacts({patient, nextAppointment}) {
                         {patient.guardian.phone && (
                             <>
                                 {" · "}
-                                <a href={"tel:+55" + patient.guardian.phone}>
+                                <a href={"tel:+55" + patient.guardian.phone} className={styles.phoneLink}>
                                     {formatPhone(patient.guardian.phone)}
                                 </a>
                             </>

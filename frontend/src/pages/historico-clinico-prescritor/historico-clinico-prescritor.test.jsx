@@ -4,6 +4,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService} from "../../services/api.js";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import HistoricoClinicoPrescritor from "./historico-clinico-prescritor.jsx";
 
 const PATIENT = {id: 5, name: "Maria Souza", birthDate: "1990-01-01", archived: false};
@@ -93,5 +94,16 @@ describe("HistoricoClinicoPrescritor", () => {
 
         await cardWithStatus("Concluída");
         expect(screen.queryByText(/Conta desativada/)).not.toBeInTheDocument();
+    });
+
+    // no celular o link quebrava entre o (49) e o numero e cada pedaco ficava com 18px de toque (CT-45)
+    it("o telefone do familiar abre a ligacao e fica inteiro numa linha so", async () => {
+        renderHistory([DONE], {...PATIENT, guardian: {name: "Carla Dias", relationship: "mãe", phone: "49981234567"}});
+
+        const phoneLink = await screen.findByRole("link", {name: "(49) 98123-4567"});
+        expect(phoneLink).toHaveAttribute("href", "tel:+5549981234567");
+        expect(phoneLink.className).toMatch(/phoneLink/);
+        const css = readCss(import.meta.url, "./historico-clinico-prescritor.module.css");
+        expect(declarationsOf(css, ".phoneLink")["white-space"]).toBe("nowrap");
     });
 });
