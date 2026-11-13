@@ -87,6 +87,30 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(screen.queryByText(/horário de Brasília/)).not.toBeInTheDocument();
     });
 
+    // o texto do pedido eh do proprio paciente, e embaixo de "Recusada" ele lia como o motivo da recusa (CT-14)
+    it("o motivo escrito no pedido aparece como do paciente e a recusa aponta pros avisos", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients/3") {
+                return Promise.resolve(PATIENT);
+            }
+            if (path === "/appointments/mine") {
+                return Promise.resolve([
+                    {...APPOINTMENT, id: 1, status: "RECUSADA", patientNote: "Dor forte de manhã."},
+                    {...APPOINTMENT, id: 2, dateTime: "2026-10-22T10:00:00", status: "SOLICITADA",
+                        patientNote: "Retorno do remédio."},
+                ]);
+            }
+            return Promise.resolve([]);
+        });
+        render(<AgendamentoConsultaPaciente/>);
+
+        const refused = (await screen.findByText("Seu motivo: Dor forte de manhã.")).closest("li");
+        expect(within(refused).getByText("O motivo da recusa, quando houver, está em Avisos.")).toBeInTheDocument();
+        const waiting = screen.getByText("Seu motivo: Retorno do remédio.").closest("li");
+        expect(within(waiting).queryByText(/está em Avisos/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/^Motivo:/)).not.toBeInTheDocument();
+    });
+
     // a api devolve agenda vazia pro arquivado e antes a tela mandava tentar de novo mais tarde
     it("paciente arquivado ve q o acompanhamento acabou e a tela n oferece o pedido", async () => {
         apiService.get.mockImplementation((path) => {

@@ -422,8 +422,12 @@ export default function AgendamentoConsultaPaciente() {
                                         {appointment.appointmentType && appointmentTypeLabelOf(appointment.appointmentType) + " · "}
                                         {modalityLabelOf(appointment.modality)} com {appointment.prescriberName}
                                     </p>
+                                    {/* o texto eh o q o paciente escreveu no pedido, e a recusa vai so no aviso */}
                                     {appointment.patientNote && (
-                                        <p className={styles.meta}>Motivo: {appointment.patientNote}</p>
+                                        <p className={styles.meta}>Seu motivo: {appointment.patientNote}</p>
+                                    )}
+                                    {appointment.status === "RECUSADA" && !appointment.annulled && (
+                                        <p className={styles.meta}>O motivo da recusa, quando houver, está em Avisos.</p>
                                     )}
                                     {isTooLateToCancel(appointment) && (
                                         <p className={styles.meta}>
