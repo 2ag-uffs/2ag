@@ -232,6 +232,28 @@ describe("SignUp", () => {
         expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
     }, TYPING_TIMEOUT);
 
+    // o leitor de tela dizia so q a caixa era invalida, sem o motivo, pq a msg n era ligada a ela
+    it("sem aceitar o termo o erro fica ligado a caixa do termo", async () => {
+        const post = mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        const consent = screen.getByRole("checkbox", {name: /termo de consentimento/});
+        await user.click(consent);
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("Para criar a conta, leia e aceite o termo de consentimento"))
+            .toBeInTheDocument();
+        expect(consent).toHaveAttribute("aria-invalid", "true");
+        expect(consent).toHaveAccessibleDescription("Para criar a conta, leia e aceite o termo de consentimento");
+        expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
+
+        // marcada a caixa o erro some e a descricao tbm
+        await user.click(consent);
+        expect(consent).not.toHaveAttribute("aria-describedby");
+    }, TYPING_TIMEOUT);
+
     it("menor manda o responsavel legal e nunca a pesquisa, mesmo marcada antes", async () => {
         const post = mockApi();
         const user = userEvent.setup();

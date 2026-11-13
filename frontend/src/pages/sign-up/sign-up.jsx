@@ -605,6 +605,7 @@ export default function SignUp() {
                             checked={hasAcceptedConsent}
                             onChange={(event) => changeConsent(event.target.checked)}
                             aria-invalid={fieldErrors.consentTermVersion ? "true" : undefined}
+                            aria-describedby={fieldErrors.consentTermVersion ? "consentTermVersion-error" : undefined}
                         />
                         <span>
                             {CONSENT_LABELS[ageBand].before}{" "}
@@ -615,7 +616,9 @@ export default function SignUp() {
                         </span>
                     </label>
                     {fieldErrors.consentTermVersion && (
-                        <span className={styles.consentError}>{fieldErrors.consentTermVersion}</span>
+                        <span id="consentTermVersion-error" className={styles.consentError}>
+                            {fieldErrors.consentTermVersion}
+                        </span>
                     )}
                 </div>
 
