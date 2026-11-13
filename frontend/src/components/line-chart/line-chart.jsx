@@ -19,6 +19,8 @@ const BOTTOM = 28;
 const LINE_HEIGHT = 14;
 const DEFAULT_WIDTH = 640;
 const DATE_GAP = 44;
+// a data com o ano tem 8 letras em vez de 5 e precisa de mais espaco
+const DATE_WITH_YEAR_GAP = 64;
 const DOSE_NAME = "Gotas no dia";
 
 // o escore vai com a faixa do lado como em todo lugar q ele aparece RN14
@@ -77,9 +79,14 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
     const right = LEFT + plotWidth;
     const xAt = (index) => xOf(index, rows.length, LEFT, plotWidth);
 
+    const dateGap = rows.length > 0 && rows[0].label.length > 5 ? DATE_WITH_YEAR_GAP : DATE_GAP;
+    // a ultima data fica colada na borda direita e a com o ano passaria dela
+    const dateX = (index) => Math.min(xAt(index), width - rows[index].label.length * 3.3 - 2);
+
     const marks = [];
     for (const mark of appointmentMarks) {
-        const index = rows.findIndex((row) => row.label === mark.label);
+        // pela data inteira pq o texto do eixo pode ser so dia e mes
+        const index = rows.findIndex((row) => row.date === mark.date);
         if (index === -1) {
             continue;
         }
@@ -201,11 +208,11 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
                                 <text className={styles.tick} x={LEFT - 8} y={yAt(tick) + 4} textAnchor="end">{tick}</text>
                             </g>
                         ))}
-                        {xLabelIndexes(rows.length, plotWidth, DATE_GAP).map((index) => (
+                        {xLabelIndexes(rows.length, plotWidth, dateGap).map((index) => (
                             <g key={"x" + index}>
                                 <line className={styles.grid} x1={xAt(index)} x2={xAt(index)} y1={top} y2={bottom}/>
                                 <line className={styles.axis} x1={xAt(index)} x2={xAt(index)} y1={bottom} y2={bottom + 5}/>
-                                <text className={styles.tick} x={xAt(index)} y={bottom + 19} textAnchor="middle">
+                                <text className={styles.tick} x={dateX(index)} y={bottom + 19} textAnchor="middle">
                                     {rows[index].label}
                                 </text>
                             </g>

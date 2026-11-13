@@ -24,6 +24,9 @@ import styles from "./progresso.module.css";
 // aaaa-mm-dd vira dd/mm q eh como o eixo do grafico mostra
 const dayAndMonth = (isoDate) => isoDate.slice(8, 10) + "/" + isoDate.slice(5, 7);
 
+// e dd/mm/aa qnd a serie pega mais de um ano, senao 18/09 de dois anos ficava igual
+const dayMonthAndYear = (isoDate) => dayAndMonth(isoDate) + "/" + isoDate.slice(2, 4);
+
 const PERIODS = [
     {value: "DIAS_15", label: "Últimos 15 dias"},
     {value: "DIAS_30", label: "Últimos 30 dias"},
@@ -235,8 +238,12 @@ export default function Progresso() {
     // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal
     const shownDosePoints = showDose && isFollowUpScale ? dosePoints : [];
     const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point.value]));
+    // a serie vem em ordem de data entao basta comparar o ano da primeira com o da ultima
+    const hasManyYears = points.length > 0
+        && points[0].date.slice(0, 4) !== points[points.length - 1].date.slice(0, 4);
     const chartRows = points.map((point) => ({
-        label: dayAndMonth(point.date),
+        date: point.date,
+        label: hasManyYears ? dayMonthAndYear(point.date) : dayAndMonth(point.date),
         valor: point.value,
         faixa: bandTextOf(point, isMentalStateExam),
         gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
@@ -679,16 +686,17 @@ function sumByDate(morningPoints, afternoonPoints) {
 
 // o eixo x eh categorico entao so da pra marcar consulta em dia q tem ponto no grafico
 // senao o grafico n sabe onde por a linha e duas consultas no msm dia viram uma marca so
+// a conta usa a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
 function appointmentMarksOf(appointments, chartRows) {
-    const daysWithPoint = new Set(chartRows.map((row) => row.label));
+    const daysWithPoint = new Set(chartRows.map((row) => row.date));
     const markedDays = new Set();
     return appointments
-        .map((appointment) => ({...appointment, label: dayAndMonth(appointment.data)}))
+        .map((appointment) => ({...appointment, date: appointment.data}))
         .filter((appointment) => {
-            if (!daysWithPoint.has(appointment.label) || markedDays.has(appointment.label)) {
+            if (!daysWithPoint.has(appointment.date) || markedDays.has(appointment.date)) {
                 return false;
             }
-            markedDays.add(appointment.label);
+            markedDays.add(appointment.date);
             return true;
         });
 }

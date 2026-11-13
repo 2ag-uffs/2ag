@@ -36,11 +36,11 @@ function renderProgress(attribute) {
 }
 
 // o prescritor abre o progresso de um paciente dele
-function renderPrescriberProgress(attribute) {
+function renderPrescriberProgress(attribute, period) {
     setLoggedUser({id: 9, name: "Ana Lima", role: "PRESCRIBER"});
     catalog = PRESCRIBER_ATTRIBUTES;
     const router = createMemoryRouter([{path: "/paciente/:patientId/progresso", element: <Progresso/>}], {
-        initialEntries: [{pathname: "/paciente/3/progresso", state: {attribute: attribute}}],
+        initialEntries: [{pathname: "/paciente/3/progresso", state: {attribute: attribute, period: period}}],
     });
     render(<RouterProvider router={router}/>);
 }
@@ -219,6 +219,35 @@ describe("Progresso", () => {
         expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
         expect(screen.queryByText("consulta")).not.toBeInTheDocument();
         expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
+    });
+
+    // CT-32 no todo o tempo a consulta de um ano n cai no ponto do msm dia e mes do ano seguinte
+    it("a consulta casa com o ponto pela data inteira e n so pelo dia e mes", async () => {
+        series = [
+            {date: "2026-09-10", value: 6, band: null, cutoff: null},
+            {date: "2026-09-18", value: 4, band: null, cutoff: null},
+        ];
+        appointments = [
+            {id: 1, data: "2025-09-18", diagnosis: null, geraPrescricao: false},
+            {id: 2, data: "2026-09-18", diagnosis: null, geraPrescricao: true},
+        ];
+        renderPrescriberProgress("DOR", "TUDO");
+
+        expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
+        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
+        expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
+    });
+
+    it("serie de mais de um ano mostra o ano em cada data do eixo", async () => {
+        series = [
+            {date: "2025-10-01", value: 6, band: null, cutoff: null},
+            {date: "2026-09-18", value: 4, band: null, cutoff: null},
+        ];
+        renderPrescriberProgress("DOR", "TUDO");
+
+        expect(await screen.findByRole("application", {name: /com 2 registros, de 01\/10\/25 a 18\/09\/26/}))
+            .toBeInTheDocument();
+        expect(screen.getByText("01/10/25")).toBeInTheDocument();
     });
 
     // CT-09 o prescritor q troca o numero no endereco n ve filtro grafico nem cartao do paciente de outro

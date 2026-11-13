@@ -5,9 +5,9 @@ import LineChart from "./line-chart.jsx";
 
 // as linhas do jeito q a tela de progresso monta
 const ROWS = [
-    {label: "01/10", valor: 3, faixa: null, gotas: 10},
-    {label: "02/10", valor: 5, faixa: null, gotas: null},
-    {label: "03/10", valor: 4, faixa: null, gotas: 12},
+    {date: "2026-10-01", label: "01/10", valor: 3, faixa: null, gotas: 10},
+    {date: "2026-10-02", label: "02/10", valor: 5, faixa: null, gotas: null},
+    {date: "2026-10-03", label: "03/10", valor: 4, faixa: null, gotas: 12},
 ];
 
 const MEEM_ROWS = [
@@ -136,7 +136,7 @@ describe("LineChart", () => {
 
     it("a consulta vira uma linha no dia do ponto com o nome em cima", () => {
         const {container} = renderChart({
-            appointmentMarks: [{id: 7, label: "02/10", geraPrescricao: true}, {id: 8, label: "03/10", geraPrescricao: false}],
+            appointmentMarks: [{id: 7, date: "2026-10-02", geraPrescricao: true}, {id: 8, date: "2026-10-03", geraPrescricao: false}],
         });
 
         const dot = container.querySelectorAll("circle")[1];
@@ -145,6 +145,35 @@ describe("LineChart", () => {
         expect(lines[0].getAttribute("x1")).toBe(dot.getAttribute("cx"));
         expect(screen.getByText("consulta + receita")).toBeInTheDocument();
         expect(screen.getByText("consulta")).toBeInTheDocument();
+    });
+
+    // no todo o tempo o msm dia e mes aparece em dois anos e a marca vai no ponto da data certa
+    it("a consulta acha o ponto pela data e n pelo texto do eixo", () => {
+        const rows = [
+            {date: "2025-09-18", label: "18/09/25", valor: 3, faixa: null, gotas: null},
+            {date: "2026-09-18", label: "18/09/26", valor: 5, faixa: null, gotas: null},
+        ];
+        const {container} = renderChart({rows: rows, appointmentMarks: [{id: 7, date: "2026-09-18", geraPrescricao: true}]});
+
+        const dot = container.querySelectorAll("circle")[1];
+        const line = container.querySelector("line[class*='appointment']");
+        expect(line.getAttribute("x1")).toBe(dot.getAttribute("cx"));
+    });
+
+    // a data com o ano tem 8 letras e com o espaco das de 5 elas encostariam umas nas outras
+    it("datas com o ano ficam mais espacadas e a ultima n passa da borda", () => {
+        const rows = [];
+        for (let day = 1; day <= 14; day++) {
+            const dd = String(day).padStart(2, "0");
+            rows.push({date: "2026-10-" + dd, label: dd + "/10/26", valor: 3, faixa: null, gotas: null});
+        }
+        const {container} = renderChart({rows: rows});
+
+        const dates = Array.from(container.querySelectorAll("text")).filter((text) => /\/10\/26$/.test(text.textContent));
+        expect(dates).toHaveLength(7);
+        // no jsdom o svg tem 640 de largura e a data tem uns 52px
+        const lastX = Number(dates[dates.length - 1].getAttribute("x"));
+        expect(lastX + 26).toBeLessThanOrEqual(640);
     });
 
     it("as setas andam de ponto em ponto e o tooltip eh lido", async () => {
