@@ -38,7 +38,7 @@ public class ErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
-    private static final String INVALID_REQUEST_MESSAGE = "Requisição inválida. Confira os dados enviados";
+    public static final String INVALID_REQUEST_MESSAGE = "Requisição inválida. Confira os dados enviados";
 
     // registro q n existe
     // a mensagem tecnica traz id interno, entao ela fica no log e a tela recebe

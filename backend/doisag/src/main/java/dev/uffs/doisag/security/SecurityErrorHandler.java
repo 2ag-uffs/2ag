@@ -1,6 +1,7 @@
 package dev.uffs.doisag.security;
 
 import dev.uffs.doisag.dto.ErrorResponseDTO;
+import dev.uffs.doisag.infra.ErrorHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,12 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public void writeForbidden(HttpServletRequest request, HttpServletResponse response, String message)
             throws IOException {
         writeError(request, response, HttpStatus.FORBIDDEN, message);
+    }
+
+    // endereco q o firewall do spring recusa, como o com ponto e virgula (/patients/3;x=1)
+    // a resposta sai aqui msm: o sendError padrao ia pro /error, q roda sem a sessao e respondia 401
+    public void writeBadRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        writeError(request, response, HttpStatus.BAD_REQUEST, ErrorHandler.INVALID_REQUEST_MESSAGE);
     }
 
     private void writeError(HttpServletRequest request,

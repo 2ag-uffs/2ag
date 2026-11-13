@@ -313,6 +313,17 @@ class RouteRolesTest {
         }
     }
 
+    // o spring barra endereco com ponto e virgula (/patients/3;x=1) antes de ler a sessao, e o erro ia pro
+    // /error, q roda sem a sessao: a resposta era 401 com a sessao valida e a tela pedia login em laco
+    @Test
+    void addressWithSemicolonAnswersBadRequest() throws Exception {
+        for (String path : List.of("/patients/" + patient.getId() + ";x=1", "/patients/" + patient.getId() + ";/appointments")) {
+            mockMvc.perform(get(URI.create(path)).header("Authorization", bearerTokenOf(prescriber)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+        }
+    }
+
     // o paciente escolhe o horario mas diagnostico e conduta sao do prescritor
     @Test
     void patientSchedulingNeverWritesClinicalFields() throws Exception {

@@ -12,6 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 
 // regras de seguranca da api
 // aqui ficam as rotas publicas e uma primeira barreira por perfil
@@ -74,6 +75,12 @@ public class SecurityConfigurations {
                 // a origem eh conferida antes de descobrir quem esta logado
                 .addFilterBefore(originCheckFilter, SecurityFilter.class)
                 .build();
+    }
+
+    // endereco recusado pelo firewall do spring responde 400 em json, ver SecurityErrorHandler.writeBadRequest
+    @Bean
+    public RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, exception) -> securityErrorHandler.writeBadRequest(request, response);
     }
 
     @Bean
