@@ -70,6 +70,17 @@ function compositionErrorsOf(spectrum, components) {
     return {};
 }
 
+// a linha sem dose fica de fora do plano, entao a observacao escrita nela sumiria calada da receita
+function stepErrorsOf(escalationSteps) {
+    const errors = {};
+    escalationSteps.forEach((step, index) => {
+        if (step.dosage.trim() === "" && step.note.trim() !== "") {
+            errors["step-" + index + "-dosage"] = "Escreva a dose desta semana ou apague a observação";
+        }
+    });
+    return errors;
+}
+
 // o erro de um canabinoide chega com o nome tipo components[0].concentration
 function compositionErrorOf(fieldErrors) {
     const errorField = Object.keys(fieldErrors).find((field) => field.startsWith("components"));
@@ -241,10 +252,10 @@ export default function PrescriptionForm() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const compositionErrors = compositionErrorsOf(form.spectrum, components);
-        if (Object.keys(compositionErrors).length > 0) {
-            setFieldErrors(compositionErrors);
-            setFormError(formErrorOf(null, compositionErrors));
+        const formErrors = {...compositionErrorsOf(form.spectrum, components), ...stepErrorsOf(escalationSteps)};
+        if (Object.keys(formErrors).length > 0) {
+            setFieldErrors(formErrors);
+            setFormError(formErrorOf(null, formErrors));
             return;
         }
         setIsSaving(true);

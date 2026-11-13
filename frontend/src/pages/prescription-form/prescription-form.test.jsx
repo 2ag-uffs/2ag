@@ -66,6 +66,36 @@ describe("PrescriptionForm", () => {
         ]);
     });
 
+    // a linha sem dose fica de fora, e a observacao escrita nela sumia calada da receita
+    it("semana com observacao e sem dose avisa na linha e nem chega na api", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addWeeks(user, 3);
+        fireEvent.change(screen.getByLabelText("Semana 1"), {target: {value: "2 gotas a noite"}});
+        fireEvent.change(screen.getAllByLabelText("Observação (opcional)")[1],
+            {target: {value: "manter a dose da semana 1 se tiver sonolencia"}});
+        fireEvent.change(screen.getByLabelText("Semana 3"), {target: {value: "3 gotas a noite"}});
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByLabelText("Semana 2")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByText("Escreva a dose desta semana ou apague a observação")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Confira os campos destacados.");
+        expect(screen.getByLabelText("Semana 1")).not.toHaveAttribute("aria-invalid");
+        expect(post).not.toHaveBeenCalled();
+
+        // com a dose escrita a semana vai com a observacao dela
+        fireEvent.change(screen.getByLabelText("Semana 2"), {target: {value: "2 gotas a noite"}});
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(post.mock.calls[0][1].escalationSteps).toEqual([
+            {week: 1, dosage: "2 gotas a noite", note: null},
+            {week: 2, dosage: "2 gotas a noite", note: "manter a dose da semana 1 se tiver sonolencia"},
+            {week: 3, dosage: "3 gotas a noite", note: null},
+        ]);
+    });
+
     // a api conta a posicao na lista enviada, q pula a semana 1 em branco
     it("o erro da api aparece no campo dele e na linha certa do plano de dose", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
