@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import {flushSync} from "react-dom";
 import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
 import {
     FiActivity,
@@ -268,7 +269,12 @@ export default function AppLayout() {
         }
     };
 
+    // sair no login por cima: a tela de baixo desmonta antes de esquecer quem estava logado, senao o erro
+    // do envio q esperava ou a troca de tela fazem ela desenhar de novo sem ninguem logado e quebrar
+    const [isLeavingSession, setIsLeavingSession] = useState(false);
+
     const handleLeaveExpiredSession = () => {
+        flushSync(() => setIsLeavingSession(true));
         leaveExpiredSession();
         setIsSessionExpired(false);
         navigate("/entrar", {replace: true});
@@ -399,7 +405,7 @@ export default function AppLayout() {
                         {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
                         {/* e com o login por cima fica escondida, pq o computador pode ser de mais gente */}
                         <div key={pageReloads} className={styles.pageContent} hidden={isTermPending || isSessionExpired}>
-                            <Outlet/>
+                            {!isLeavingSession && <Outlet/>}
                         </div>
                     </div>
                 </main>

@@ -4,6 +4,7 @@ import {useState} from "react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
+import AgendamentoConsultaPaciente from "../../pages/agendamento-consulta-paciente/agendamento-consulta-paciente.jsx";
 import Profile from "../../pages/profile/profile.jsx";
 import {
     apiService,
@@ -239,6 +240,36 @@ describe("AppLayout", () => {
         const calledPaths = fetchSpy.mock.calls.map((call) => call[0]);
         expect(calledPaths).not.toContain("/api/auth/login");
         expect(calledPaths.filter((path) => path === "/api/scales/answers")).toHaveLength(1);
+    });
+
+    // a tela de consultas le o id de quem esta logado ao desenhar, e o erro do envio q esperava fazia ela
+    // desenhar de novo sem ninguem logado e quebrar antes do login abrir (CT-41)
+    it("sair no login por cima com a tela de consultas embaixo vai pro login sem erro na tela", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+        });
+        // o login de vdd demora um pouco pra abrir, pq a tela dele eh baixada na hora
+        const router = createMemoryRouter([
+            {path: "/entrar", loader: () => new Promise((resolve) => setTimeout(() => resolve(null), 50)),
+                element: <p>tela de login</p>},
+            {element: <AppLayout/>, children: [{path: "/agendamento-consulta", element: <AgendamentoConsultaPaciente/>}]},
+        ], {initialEntries: ["/agendamento-consulta"]});
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        render(<RouterProvider router={router}/>);
+
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        await user.click(dialog.getByRole("button", {name: "Sair"}));
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/entrar");
+        expect(getLoggedUser()).toBeNull();
+        const loggedErrors = consoleError.mock.calls.flat().map(String).join("\n");
+        expect(loggedErrors).not.toMatch(/Cannot read properties of null/);
     });
 
     // o e-mail confirmado em outra aba encerra a sessao, e o login por cima so aceita o e-mail antigo:
