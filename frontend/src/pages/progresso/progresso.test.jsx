@@ -269,6 +269,22 @@ describe("Progresso", () => {
         expect(screen.getByText("01/10/25")).toBeInTheDocument();
     });
 
+    // CT-33 a tela da paciente fala com ela, como o resto da tela
+    it("na tela do paciente o cartao dos comentarios fala com ele", async () => {
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByRole("heading", {name: /^O que você escreveu/})).toBeInTheDocument();
+        expect(screen.getByText("Nenhum comentário seu nas escalas deste período.")).toBeInTheDocument();
+        expect(screen.queryByText(/O que o paciente escreveu/)).not.toBeInTheDocument();
+    });
+
+    it("na tela do prescritor o cartao dos comentarios fala do paciente", async () => {
+        renderPrescriberProgress("DOR");
+
+        expect(await screen.findByRole("heading", {name: /^O que o paciente escreveu/})).toBeInTheDocument();
+        expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
+    });
+
     // CT-09 o prescritor q troca o numero no endereco n ve filtro grafico nem cartao do paciente de outro
     it("paciente de outro prescritor mostra so o acesso negado", async () => {
         apiService.get.mockImplementation((path) => {

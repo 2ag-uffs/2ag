@@ -579,7 +579,7 @@ export default function Progresso() {
                 />
             )}
 
-            <CommentsCard comments={comments}/>
+            <CommentsCard comments={comments} isPrescriber={isPrescriber}/>
         </section>
     );
 }
@@ -709,11 +709,16 @@ function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
     );
 }
 
-function CommentsCard({comments}) {
+// na tela do paciente o cartao fala com ele, como o resto da tela
+function CommentsCard({comments, isPrescriber}) {
     return (
-        <Card title="O que o paciente escreveu" count={comments.length}>
+        <Card title={isPrescriber ? "O que o paciente escreveu" : "O que você escreveu"} count={comments.length}>
             {comments.length === 0 ? (
-                <p className={styles.empty}>Nenhum comentário nas escalas deste período.</p>
+                <p className={styles.empty}>
+                    {isPrescriber
+                        ? "Nenhum comentário nas escalas deste período."
+                        : "Nenhum comentário seu nas escalas deste período."}
+                </p>
             ) : (
                 <ul className={styles.comments}>
                     {comments.map((comment) => (
