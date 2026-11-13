@@ -412,6 +412,7 @@ o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então nenhuma ro
 - abrir o prontuário também entra na trilha quando quem abre é o prescritor, uma linha por paciente a cada 30 minutos
 - o que o job diário faz aparece com autor `Sistema`
 - o administrador não acessa dado clínico (RF30), e o `patientId` da trilha dele é o mesmo `id` que a busca de conta por e-mail devolve. por isso, na rota da administração, todo evento de registro clínico (escala, MEEM, anamnese, consulta, prescrição, designação e acompanhamento) sai como `recordType` `PRONTUARIO`, "Prontuário", e só os eventos de conta (`CONTA_DE_PACIENTE` e `CONTA_DE_PRESCRITOR`) mantêm o tipo. a trilha do prescritor continua com o tipo de cada registro
+- nos eventos de `CONTA_DE_PRESCRITOR` a rota da administração traz também `prescriberName`, o nome do prescritor dono da conta criada, corrigida, desativada, reativada ou com senha nova, que a administração já vê na lista de prescritores, e a tela mostra "conta de" e o nome. os nomes saem numa leitura só para a página inteira. nos outros eventos, e na trilha do prescritor, o campo vem nulo: o evento de conta de paciente continua só com o número
 - a tabela `audit_event` só recebe inserção: o repositório não tem método de alterar nem de apagar, e nenhuma rota escreve nela
 
 ## erros

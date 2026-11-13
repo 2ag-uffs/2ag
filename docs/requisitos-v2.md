@@ -759,7 +759,7 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 - **Trilha de auditoria:** registra quem cria ou altera consulta, prescrição, anamnese, escala, designação e acompanhamento. Registra também quando o prescritor abre o prontuário, uma linha por visita de até 30 minutos.
 - **Quem consulta a trilha:**
   - o prescritor, para os próprios pacientes;
-  - o administrador, com as ações de prescritores e do sistema e o paciente identificado só pelo número. Esse número é o mesmo que a busca de conta por e-mail devolve, então, para o administrador, todo registro clínico aparece só como "Prontuário", sem dizer se foi escala, MEEM, anamnese, consulta ou prescrição (RF30, 16/10/2026). Os eventos de conta continuam com o tipo.
+  - o administrador, com as ações de prescritores e do sistema e o paciente identificado só pelo número. Esse número é o mesmo que a busca de conta por e-mail devolve, então, para o administrador, todo registro clínico aparece só como "Prontuário", sem dizer se foi escala, MEEM, anamnese, consulta ou prescrição (RF30, 16/10/2026). Os eventos de conta continuam com o tipo. Os de conta de prescritor trazem também o nome do prescritor dono da conta, que a administração já vê na lista de prescritores: antes, com dois prescritores, não dava para saber de quem foi a senha nova, a desativação ou a reativação (13/11/2026).
 - **URLs:** nenhuma rota leva dado pessoal. Os caminhos usam só identificadores numéricos.
 
 **Atendimento concluído em 13/09/2026:** RF04, RF05, RF19, RF12 e RF13, com o arquivamento de paciente.

@@ -11,6 +11,7 @@ import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AuditEventRepository;
+import dev.uffs.doisag.repository.PrescriberRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -39,14 +40,16 @@ public class AuditService {
     public static final int CHART_VIEW_WINDOW_MINUTES = 30;
 
     private final AuditEventRepository auditEventRepository;
+    private final PrescriberRepository prescriberRepository;
 
     // hora do ultimo acesso gravado de cada prescritor em cada paciente
     // o historico abre varias listas juntas e quando as outras chegam a gravacao da primeira
     // ainda n foi confirmada no banco entao so olhar o banco deixava passar acesso repetido
     private final Map<String, LocalDateTime> lastChartViews = new HashMap<>();
 
-    public AuditService(AuditEventRepository auditEventRepository) {
+    public AuditService(AuditEventRepository auditEventRepository, PrescriberRepository prescriberRepository) {
         this.auditEventRepository = auditEventRepository;
+        this.prescriberRepository = prescriberRepository;
     }
 
     @Transactional
@@ -179,12 +182,31 @@ public class AuditService {
         checkPeriod(from, to);
         Page<AuditEvent> staffEvents = auditEventRepository.findStaffEvents(
                 from.atStartOfDay(), to.plusDays(1).atStartOfDay(), UserRole.PATIENT, pageRequest(page));
+
+        // de quem era a conta de prescritor mexida, lendo os prescritores da pagina de uma vez
+        List<Long> prescriberIds = staffEvents.getContent()
+                .stream()
+                .filter(this::isPrescriberAccountEvent)
+                .map(AuditEvent::getRecordId)
+                .distinct()
+                .toList();
+        Map<Long, String> prescriberNames = new HashMap<>();
+        for (Prescriber prescriber : prescriberRepository.findAllById(prescriberIds)) {
+            prescriberNames.put(prescriber.getId(), prescriber.getName());
+        }
+
         List<AuditEventDTO> events = staffEvents.getContent()
                 .stream()
-                .map(AuditEventDTO::forAdmin)
+                // o recordId de outro evento eh de consulta, receita... e pode bater com o id de um prescritor
+                .map(event -> AuditEventDTO.forAdmin(event,
+                        isPrescriberAccountEvent(event) ? prescriberNames.get(event.getRecordId()) : null))
                 .toList();
         return new AuditPageDTO(events, staffEvents.getNumber(), staffEvents.getTotalPages(),
                 staffEvents.getTotalElements());
+    }
+
+    private boolean isPrescriberAccountEvent(AuditEvent auditEvent) {
+        return auditEvent.getRecordType() == AuditRecordType.CONTA_DE_PRESCRITOR && auditEvent.getRecordId() != null;
     }
 
     private void checkPeriod(LocalDate from, LocalDate to) {

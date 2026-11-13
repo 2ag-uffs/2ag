@@ -637,6 +637,25 @@ class AdminPrescribersTest {
                         + "&& @.recordType == 'CONTA_DE_PRESCRITOR')]", hasSize(1)));
     }
 
+    // com dois prescritores a administracao n sabia de quem gerou a senha nova nem qual conta desligou
+    @Test
+    void theAuditTrailSaysWhosePrescriberAccountItWas() throws Exception {
+        Prescriber firstPrescriber = savePrescriber("admin-trilha-primeiro@email.com", "ADM17");
+        Prescriber secondPrescriber = savePrescriber("admin-trilha-segundo@email.com", "ADM18");
+        passwordReset(firstPrescriber.getId(), ADMIN_PASSWORD).andExpect(status().isOk());
+        changeActive(secondPrescriber.getId(), false).andExpect(status().isOk());
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.operation == 'REDEFINICAO_DE_SENHA' "
+                        + "&& @.prescriberName == 'Prescritor ADM17')]", hasSize(1)))
+                .andExpect(jsonPath("$.events[?(@.operation == 'DESATIVACAO' "
+                        + "&& @.prescriberName == 'Prescritor ADM18')]", hasSize(1)));
+    }
+
     @Test
     void adminDoesNotSeeClinicalData() throws Exception {
         Patient patient = savePatient(savePrescriber("admin-clinico@email.com", "ADM04"));

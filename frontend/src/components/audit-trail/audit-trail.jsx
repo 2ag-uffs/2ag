@@ -50,6 +50,8 @@ function AuditEventItem({auditEvent, showPatientNumber}) {
                     {/* evento de conta n tem paciente, entao n sai numero nenhum */}
                     {showPatientNumber && auditEvent.patientId
                         && " · paciente nº " + auditEvent.patientId}
+                    {/* so a trilha da administracao manda de quem era a conta de prescritor */}
+                    {auditEvent.prescriberName && " · conta de " + auditEvent.prescriberName}
                 </span>
             </div>
         </li>

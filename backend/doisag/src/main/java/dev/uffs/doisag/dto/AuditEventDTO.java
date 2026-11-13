@@ -16,26 +16,29 @@ public record AuditEventDTO(
         String operationLabel,
         String recordType,
         String recordLabel,
-        Long patientId
+        Long patientId,
+        // so no evento de conta de prescritor da trilha da administracao: de quem era a conta
+        String prescriberName
 ) {
     public static AuditEventDTO from(AuditEvent auditEvent) {
-        return from(auditEvent, auditEvent.getRecordType());
+        return from(auditEvent, auditEvent.getRecordType(), null);
     }
 
     // o administrador n acessa dado clinico (RF30) e o numero do paciente eh o msm da busca dele,
     // entao a escala, o MEEM ou a anamnese q a pessoa fez vira so "Prontuário" pra ele
     // evento de conta continua com o tipo, ele n diz nada clinico
-    public static AuditEventDTO forAdmin(AuditEvent auditEvent) {
+    // o nome do prescritor ele ja ve na lista de prescritores
+    public static AuditEventDTO forAdmin(AuditEvent auditEvent, String prescriberName) {
         AuditRecordType recordType = auditEvent.getRecordType();
         boolean accountEvent = recordType == AuditRecordType.CONTA_DE_PACIENTE
                 || recordType == AuditRecordType.CONTA_DE_PRESCRITOR;
         if (!accountEvent) {
             recordType = AuditRecordType.PRONTUARIO;
         }
-        return from(auditEvent, recordType);
+        return from(auditEvent, recordType, prescriberName);
     }
 
-    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType) {
+    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType, String prescriberName) {
         Users actor = auditEvent.getActor();
         return new AuditEventDTO(
                 auditEvent.getOccurredAt(),
@@ -45,7 +48,8 @@ public record AuditEventDTO(
                 auditEvent.getOperation().getLabel(),
                 recordType.name(),
                 recordType.getLabel(),
-                auditEvent.getPatientId()
+                auditEvent.getPatientId(),
+                prescriberName
         );
     }
 }
