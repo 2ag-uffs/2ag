@@ -45,8 +45,11 @@
     --shadow-md: 0 1px 2px rgba(25, 62, 33, 0.05), 0 4px 12px rgba(25, 62, 33, 0.07);
     --shadow-lg: 0 16px 40px rgba(25, 62, 33, 0.18);
 
-    /* ---- anel de foco de quem navega pelo teclado ---- */
-    --focus-ring: 0 0 0 3px rgba(0, 102, 51, 0.3);
+    /* ---- anel de foco de quem navega pelo teclado ----
+     * verde cheio, q passa de 3:1 sobre o fundo nos dois temas, com uma folga da cor do cartao
+     * pra n grudar no botao verde. o campo de texto fica so com o halo pq a borda dele ja fica verde */
+    --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary);
+    --focus-halo: 0 0 0 3px rgba(0, 102, 51, 0.3);
 
     /* ---- movimento ---- */
     --duration-fast: 120ms;

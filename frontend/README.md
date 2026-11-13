@@ -58,7 +58,7 @@ src/
 - **rotas protegidas:** as regras ficam em `app/route-guards.js` e rodam antes da tela abrir. quem não tem acesso volta para a própria tela inicial, e quem não está logado vai para o login com `?voltar=` e, depois de entrar, volta para a tela que pediu. a api confere tudo de novo, porque esconder rota não protege dado
 - **carregamento sob demanda:** cada tela é um arquivo separado. enquanto a próxima tela baixa, a atual continua visível e uma barra fina aparece no topo
 - **transição:** cada tela nova entra com um fade curto, desligado para quem pede menos movimento no sistema operacional
-- **foco do teclado:** o `scroll-padding` do `html` (`index.css`) faz o navegador rolar o campo que recebe o foco do tab para fora da barra de ações presa no pé dos formulários e, no celular, também do menu de baixo e do cabeçalho
+- **foco do teclado:** botões e links mostram um anel verde cheio (`--focus-ring` em `styles/tokens.css`), separado do botão por uma folga da cor do cartão, que passa de 3:1 sobre o fundo nos dois temas; o campo de texto mostra a borda verde com um halo leve (`--focus-halo`). o `scroll-padding` do `html` (`index.css`) faz o navegador rolar o campo que recebe o foco do tab para fora da barra de ações presa no pé dos formulários e, no celular, também do menu de baixo e do cabeçalho
 - **rota inexistente e erro inesperado:** caem numa página própria, com caminho de volta ao início
 
 ## sessão

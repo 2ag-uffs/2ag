@@ -16,6 +16,6 @@
 /* o verde entra so no campo em foco, pra n encher a tela de verde */
 :where(input, select, textarea):focus {
     border-color: var(--color-primary);
-    box-shadow: var(--focus-ring);
+    box-shadow: var(--focus-halo);
     outline: none;
 }
