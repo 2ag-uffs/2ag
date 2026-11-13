@@ -1,4 +1,4 @@
-import {render, screen, within} from "@testing-library/react";
+import {fireEvent, render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
@@ -188,6 +188,52 @@ describe("AdminPrescribers", () => {
             {cpf: "11144477735", profession: "Médico", registryType: "CRM", registryNumber: "777"});
         expect(await screen.findByText("Este CPF já tem conta no sistema")).toBeInTheDocument();
         expect(screen.getByLabelText(/^CPF/)).toHaveValue("111.444.777-35");
+    });
+
+    // so com letras o cpf ia vazio pra api e a tela dizia q era obrigatorio, com algo digitado no campo
+    it("cpf invalido no cadastro avisa no campo q eh invalido e nem chega na api", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({
+            prescriberId: 3, prescriberName: "Carla Nova", resetLink: null, validMinutes: 2880,
+        });
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        await user.click(await screen.findByRole("button", {name: "Novo prescritor"}));
+        fireEvent.change(screen.getByLabelText("Nome completo"), {target: {value: "Carla Nova"}});
+        fireEvent.change(screen.getByLabelText("E-mail"), {target: {value: "carla@email.com"}});
+        fireEvent.change(screen.getByLabelText("Profissão"), {target: {value: "Biomédica"}});
+        fireEvent.change(screen.getByLabelText("Número do registro"), {target: {value: "4321"}});
+        await user.type(screen.getByLabelText("CPF"), "abc");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(screen.getByLabelText("CPF")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.queryByText("O CPF é obrigatório")).not.toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+
+        // o digito verificador errado tbm fica na tela
+        fireEvent.change(screen.getByLabelText("CPF"), {target: {value: "529.982.247-26"}});
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+        expect(screen.getByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // na correcao o cpf so com letras virava null e a api mantinha o guardado sem avisar nada
+    it("cpf invalido na correcao avisa no campo e n manda a correcao", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        const put = vi.spyOn(apiService, "put").mockResolvedValue(PRESCRIBERS[1]);
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        await user.click((await screen.findAllByRole("button", {name: "Corrigir dados"}))[1]);
+        await user.type(screen.getByLabelText(/^CPF/), "abc");
+        await user.click(screen.getByRole("button", {name: "Salvar correção"}));
+
+        expect(await screen.findByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(screen.getByLabelText(/^CPF/)).toHaveAttribute("aria-invalid", "true");
+        expect(put).not.toHaveBeenCalled();
+        expect(screen.getByRole("button", {name: "Salvar correção"})).toBeInTheDocument();
     });
 
     // pra conta q nunca criou a senha o texto "a senha atual continua valendo" n fazia sentido (#154)

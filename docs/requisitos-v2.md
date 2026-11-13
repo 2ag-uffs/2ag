@@ -119,7 +119,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, profissão e registro profissio
 
 *Critérios de aceite:*
 - A combinação tipo + número de registro é única. *O conselho é comparado e guardado em maiúsculas e o número sem espaço nas pontas, então "crbm" e "77777 " são o mesmo registro que "CRBM" e "77777" (16/10/2026)*
-- O CPF passa pela mesma conferência dos dois dígitos verificadores do cadastro do paciente (RF02.1), feita pelo próprio sistema (23/10/2026)
+- O CPF passa pela mesma conferência dos dois dígitos verificadores do cadastro do paciente (RF02.1), feita pelo próprio sistema (23/10/2026). A tela da administração faz a mesma conferência antes de enviar, no cadastro e na correção, então o CPF digitado com letras é recusado como inválido, e não como em branco nem ignorado na correção (13/11/2026)
 - A administração corrige o registro profissional, a profissão e o CPF de um prescritor digitados errado, com a mesma conferência de CPF e de unicidade do cadastro; a correção fica na trilha de auditoria como alteração de conta de prescritor (07/11/2026)
 - O sistema gera um **código de vínculo** único por prescritor (ver RN06)
 - Requisição anônima a qualquer rota de criação de prescritor retorna **401/403**

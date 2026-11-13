@@ -6,6 +6,7 @@ import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, errorMessageOf, readRequestError} from "../../services/api.js";
+import {isValidCpf} from "../../utils/cpf.js";
 import {initialsOf} from "../../utils/initials.js";
 import {onlyDigits} from "../../utils/masks.js";
 import styles from "./admin-prescribers.module.css";
@@ -14,6 +15,16 @@ import styles from "./admin-prescribers.module.css";
 const REGISTRY_TYPES = ["CRBM", "CRM", "COREN", "CRP", "CRF", "CRN"];
 
 const CONNECTION_ERROR = "Não foi possível falar com o servidor.";
+
+// a msm msg da api pro cpf q n fecha a conta dos dois digitos
+const INVALID_CPF_MESSAGE = "O CPF informado é inválido";
+
+// o envio tira tudo q n eh numero, entao o cpf so com letras chegava vazio: no cadastro a api dizia q era
+// obrigatorio e na correcao ele virava null e ficava o guardado. aqui ele eh conferido como foi digitado
+// em branco segue como antes: no cadastro a api diz q falta e na correcao mantem o guardado
+function isWrongCpf(cpfText) {
+    return cpfText.trim() !== "" && !isValidCpf(cpfText);
+}
 
 const MINUTES_PER_HOUR = 60;
 
@@ -267,6 +278,11 @@ export default function AdminPrescribers() {
 
     const handleCreate = async (event) => {
         event.preventDefault();
+        if (isWrongCpf(formData.cpf)) {
+            setFieldErrors({cpf: INVALID_CPF_MESSAGE});
+            setFormError(null);
+            return;
+        }
         setIsSaving(true);
         setFieldErrors({});
         setFormError(null);
@@ -426,6 +442,11 @@ export default function AdminPrescribers() {
 
     const handleFix = async (event) => {
         event.preventDefault();
+        if (isWrongCpf(fixData.cpf)) {
+            setFixFieldErrors({cpf: INVALID_CPF_MESSAGE});
+            setFixError(null);
+            return;
+        }
         setIsFixing(true);
         setFixFieldErrors({});
         setFixError(null);
