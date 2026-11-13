@@ -144,6 +144,37 @@ class DashboardTest {
                 .andExpect(jsonPath("$.lateScales[0].patientName").value("Paciente do painel"));
     }
 
+    // a consulta de hoje ja registrada continuava pedindo registro no painel, e a agenda ja dizia concluida
+    @Test
+    void oPainelDoPrescritorDizQualConsultaDeHojeJaFoiConcluida() throws Exception {
+        Appointment registered = saveAppointment(TODAY.atTime(0, 30), AppointmentStatus.CONCLUIDA);
+        registered.setEvolution("Dor lombar melhorou");
+        appointmentRepository.save(registered);
+        saveAppointment(TODAY.atTime(23, 0), AppointmentStatus.AGENDADA);
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.todaysAppointments.length()").value(2))
+                .andExpect(jsonPath("$.todaysAppointments[0].status").value("CONCLUIDA"))
+                .andExpect(jsonPath("$.todaysAppointments[1].status").value("AGENDADA"));
+    }
+
+    // o meem e a receita tbm concluem a consulta, com o registro vazio, e o painel diz concluida igual a agenda
+    @Test
+    void aConsultaDeHojeConcluidaPeloMiniExameApareceConcluidaNoPainel() throws Exception {
+        Appointment appointment = saveAppointment(TODAY.atStartOfDay(), AppointmentStatus.AGENDADA);
+
+        mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointment.getId())
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                                + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
+                                + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
+                                + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"))
+                .andExpect(status().isCreated());
+
+        prescriberPanel().andExpect(jsonPath("$.todaysAppointments[0].status").value("CONCLUIDA"));
+    }
+
     // a lista para em cinco, mas o numero do cartao eh o total de vdd:
     // antes o prescritor com sete escalas vencidas via 5
     @Test

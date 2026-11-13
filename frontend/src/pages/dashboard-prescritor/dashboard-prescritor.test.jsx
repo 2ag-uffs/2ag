@@ -1,4 +1,4 @@
-import {fireEvent, render, screen} from "@testing-library/react";
+import {fireEvent, render, screen, within} from "@testing-library/react";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
@@ -30,6 +30,8 @@ function renderPanel() {
     const router = createMemoryRouter([
         {path: "/painel", element: <DashboardPrescritor/>},
         {path: "/agendamento-prescritor", element: <p>Agenda do prescritor</p>},
+        {path: "/paciente/:patientId/historico", element: <p>Histórico do paciente</p>},
+        {path: "/consulta/:appointmentId/registro", element: <p>Registro da consulta</p>},
     ], {initialEntries: ["/painel"]});
     render(<RouterProvider router={router}/>);
 }
@@ -65,6 +67,49 @@ describe("DashboardPrescritor", () => {
         fireEvent.click(await screen.findByRole("button", {name: "Ver todos os pedidos"}));
 
         expect(await screen.findByText("Agenda do prescritor")).toBeInTheDocument();
+    });
+
+    // a consulta ja registrada continuava com Registrar, e a prescritora achava q o registro n tinha salvo
+    it("a consulta de hoje ja registrada mostra concluida e abre o historico em vez de pedir registro", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            todaysAppointments: [
+                {appointmentId: 1, patientId: 3, patientName: "João Pedro", dateTime: "2026-01-05T08:00:00",
+                    modality: "REMOTA", status: "CONCLUIDA"},
+                {appointmentId: 2, patientId: 4, patientName: "Maria Souza", dateTime: "2026-01-05T09:00:00",
+                    modality: "PRESENCIAL", status: "AGENDADA"},
+            ],
+        });
+        renderPanel();
+
+        const concludedItem = (await screen.findByText("Remota · Concluída")).closest("li");
+        expect(within(concludedItem).queryByRole("button", {name: "Registrar"})).not.toBeInTheDocument();
+        // a q ja comecou e n foi registrada continua com o botao
+        expect(screen.getAllByRole("button", {name: "Registrar"})).toHaveLength(1);
+
+        fireEvent.click(within(concludedItem).getByRole("button", {name: "Ver histórico"}));
+
+        expect(await screen.findByText("Histórico do paciente")).toBeInTheDocument();
+    });
+
+    // a receita e o mini-exame tbm concluem a consulta, e a agenda ja mostrava concluida e ver historico
+    // enquanto o painel seguia com registrar. o registro vazio se preenche pelo editar registro do historico
+    it("a consulta de hoje concluida so pela receita tbm mostra concluida e ver historico, igual a agenda", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            todaysAppointments: [
+                {appointmentId: 1, patientId: 3, patientName: "João Pedro", dateTime: "2026-01-05T08:00:00",
+                    modality: "REMOTA", status: "CONCLUIDA"},
+            ],
+        });
+        renderPanel();
+
+        const item = (await screen.findByText("Remota · Concluída")).closest("li");
+        expect(within(item).queryByRole("button", {name: "Registrar"})).not.toBeInTheDocument();
+
+        fireEvent.click(within(item).getByRole("button", {name: "Ver histórico"}));
+
+        expect(await screen.findByText("Histórico do paciente")).toBeInTheDocument();
     });
 
     it("qnd a lista cabe inteira no cartao n aparece o mostrando", async () => {

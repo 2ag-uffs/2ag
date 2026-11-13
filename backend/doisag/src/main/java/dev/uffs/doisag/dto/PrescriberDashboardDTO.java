@@ -1,6 +1,7 @@
 package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.enums.AppointmentModality;
+import dev.uffs.doisag.enums.AppointmentStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,7 +28,9 @@ public record PrescriberDashboardDTO(
             Long patientId,
             String patientName,
             LocalDateTime dateTime,
-            AppointmentModality modality
+            AppointmentModality modality,
+            // a concluida aparece como concluida e com o ver historico, igual na agenda
+            AppointmentStatus status
     ) {}
 
     public record WaitingRequestDTO(

@@ -142,6 +142,34 @@ function StatTile({stat}) {
     return <div className={tileClass}>{tileContent}</div>;
 }
 
+// a consulta concluida abre o historico, igual na agenda, e a q ainda n comecou n tem acao
+// a concluida so pela receita ou pelo mini-exame tbm: o registro vazio dela se preenche pelo historico
+function todayAppointmentAction(appointment, navigate) {
+    if (appointment.status === "CONCLUIDA") {
+        return (
+            <button
+                type="button"
+                className="button-secondary button-small"
+                onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
+            >
+                Ver histórico
+            </button>
+        );
+    }
+    if (isInTheFuture(appointment.dateTime)) {
+        return null;
+    }
+    return (
+        <button
+            type="button"
+            className="button button-small"
+            onClick={() => navigate("/consulta/" + appointment.appointmentId + "/registro")}
+        >
+            Registrar
+        </button>
+    );
+}
+
 function TodaysAppointmentsCard({appointments}) {
     const navigate = useNavigate();
 
@@ -176,16 +204,10 @@ function TodaysAppointmentsCard({appointments}) {
                         <ListItem
                             key={appointment.appointmentId}
                             title={formatTime(appointment.dateTime) + " · " + appointment.patientName}
-                            details={modalityLabelOf(appointment.modality)}
-                            aside={isInTheFuture(appointment.dateTime) ? null : (
-                                <button
-                                    type="button"
-                                    className="button button-small"
-                                    onClick={() => navigate("/consulta/" + appointment.appointmentId + "/registro")}
-                                >
-                                    Registrar
-                                </button>
-                            )}
+                            details={appointment.status === "CONCLUIDA"
+                                ? modalityLabelOf(appointment.modality) + " · Concluída"
+                                : modalityLabelOf(appointment.modality)}
+                            aside={todayAppointmentAction(appointment, navigate)}
                         />
                     ))}
                 </ItemList>
