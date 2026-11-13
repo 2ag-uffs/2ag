@@ -1,7 +1,7 @@
 import {render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import AgendamentoConsultaPaciente from "./agendamento-consulta-paciente.jsx";
 
 const PATIENT = {id: 3, name: "Maria Souza", prescriberId: 5, prescriberName: "Dra Ana"};
@@ -12,6 +12,29 @@ const APPOINTMENT = {
 };
 
 const FREE_SLOT = {start: "2026-10-21T14:00:00", end: "2026-10-21T15:00:00"};
+
+const PENDING_REQUEST = {
+    id: 2, dateTime: "2026-10-22T09:00:00", status: "SOLICITADA", annulled: false, modality: "PRESENCIAL",
+    appointmentType: null, prescriberName: "Dra Ana", patientNote: null,
+};
+
+// a tela com os pedidos e consultas e os horarios livres dados
+function mockScreen(upcomingAppointments, freeSlots) {
+    apiService.get.mockImplementation((path) => {
+        if (path === "/patients/3") {
+            return Promise.resolve(PATIENT);
+        }
+        if (path === "/appointments/mine") {
+            return Promise.resolve(upcomingAppointments);
+        }
+        return Promise.resolve(freeSlots);
+    });
+}
+
+async function chooseFreeSlot(user, time) {
+    const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
+    await user.click(within(slots).getByRole("button", {name: time}));
+}
 
 describe("AgendamentoConsultaPaciente", () => {
     beforeEach(() => {
@@ -85,5 +108,147 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(screen.queryByText(/Peça um horário/)).not.toBeInTheDocument();
         // a consulta q ja estava marcada continua aparecendo
         expect(screen.getByRole("button", {name: "Cancelar consulta"})).toBeInTheDocument();
+    });
+
+    // um pedido esperando resposta por vez: a tela mostra o q ja espera, diz q o novo substitui ele
+    // e pergunta antes de mandar a troca
+    it("com um pedido esperando resposta a tela avisa q o novo substitui e pergunta antes de trocar", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([APPOINTMENT, PENDING_REQUEST], [FREE_SLOT]);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({...PENDING_REQUEST, id: 7});
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/Você já tem um pedido esperando resposta para 22\/10\/2026 às 09:00/))
+            .toHaveTextContent("Se pedir outro horário, ele substitui esse pedido.");
+        await chooseFreeSlot(user, "14:00");
+        await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
+
+        expect(screen.getByRole("dialog")).toHaveTextContent("O pedido de 22/10/2026 às 09:00 será cancelado e o "
+            + "horário dele volta a ficar livre. O novo pedido é para 21/10/2026 às 14:00.");
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Voltar"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}));
+
+        // a api confere se o pedido q a tela mostrou ainda eh o q espera resposta antes de trocar
+        expect(post).toHaveBeenCalledWith("/appointments/requests",
+            expect.objectContaining({dateTime: "2026-10-21T14:00:00", modality: "PRESENCIAL", replacedRequestIds: [2]}));
+        expect(await screen.findByRole("status")).toHaveTextContent(
+            "Pedido trocado. O pedido de 22/10/2026 às 09:00 foi cancelado e o novo foi enviado para Dra Ana.");
+    });
+
+    // o prescritor confirmou o pedido dps q a tela abriu: a api recusa a troca em vez de deixar a tela dizer q
+    // cancelou a consulta, e a tela busca de novo e mostra a consulta confirmada
+    it("a troca de um pedido q mudou enquanto a tela estava aberta mostra a msg da api e busca de novo", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        let upcomingAppointments = [PENDING_REQUEST];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients/3") {
+                return Promise.resolve(PATIENT);
+            }
+            if (path === "/appointments/mine") {
+                return Promise.resolve(upcomingAppointments);
+            }
+            return Promise.resolve([FREE_SLOT]);
+        });
+        const changedMessage = "Seus pedidos de consulta mudaram enquanto você escolhia o horário. "
+            + "Confira seus pedidos e consultas e, se ainda quiser outro horário, peça de novo";
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => {
+            upcomingAppointments = [{...PENDING_REQUEST, status: "AGENDADA"}];
+            return Promise.reject(new ApiError(400, changedMessage));
+        });
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}));
+
+        expect(post).toHaveBeenCalledWith("/appointments/requests", expect.objectContaining({replacedRequestIds: [2]}));
+        expect(await screen.findByRole("alert")).toHaveTextContent(changedMessage);
+        expect(await screen.findByRole("button", {name: "Pedir consulta"})).toBeInTheDocument();
+        expect(screen.queryByText(/Você já tem um pedido esperando resposta/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Pedido trocado/)).not.toBeInTheDocument();
+        expect(apiService.get.mock.calls.filter(([path]) => path === "/appointments/mine")).toHaveLength(2);
+    });
+
+    // pedidos de antes da regra de um por vez: a tela mostra todos, pergunta por todos e manda todos
+    it("com mais de um pedido esperando resposta a troca mostra e manda todos eles", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        const otherPendingRequest = {...PENDING_REQUEST, id: 4, dateTime: "2026-10-23T09:00:00"};
+        mockScreen([PENDING_REQUEST, otherPendingRequest], [FREE_SLOT]);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({...PENDING_REQUEST, id: 7});
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/Você tem pedidos esperando resposta para 22\/10\/2026 às 09:00 e 23\/10\/2026 às 09:00/))
+            .toHaveTextContent("Se pedir outro horário, ele substitui esses pedidos.");
+        await chooseFreeSlot(user, "14:00");
+        await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
+
+        expect(screen.getByRole("dialog")).toHaveTextContent("Os pedidos de 22/10/2026 às 09:00 e 23/10/2026 às 09:00 "
+            + "serão cancelados e os horários deles voltam a ficar livres. O novo pedido é para 21/10/2026 às 14:00.");
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}));
+
+        expect(post).toHaveBeenCalledWith("/appointments/requests", expect.objectContaining({replacedRequestIds: [2, 4]}));
+        expect(await screen.findByRole("status")).toHaveTextContent("Pedido trocado. Os pedidos de 22/10/2026 às 09:00 "
+            + "e 23/10/2026 às 09:00 foram cancelados e o novo foi enviado para Dra Ana.");
+    });
+
+    it("sem pedido esperando resposta o pedido sai direto, sem perguntar", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([APPOINTMENT], [FREE_SLOT]);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({...PENDING_REQUEST, id: 7});
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        expect(screen.queryByText(/Você já tem um pedido esperando resposta/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Pedir consulta"}));
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/appointments/requests",
+            expect.objectContaining({dateTime: FREE_SLOT.start, replacedRequestIds: []}));
+        expect(await screen.findByRole("status")).toHaveTextContent("Pedido enviado para Dra Ana.");
+    });
+
+    it("a troca recusada pela api mostra a mensagem dela", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([PENDING_REQUEST], [FREE_SLOT]);
+        vi.spyOn(apiService, "post").mockRejectedValue(
+            new ApiError(400, "Escolha um horário com pelo menos 24 horas de antecedência"));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}));
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Escolha um horário com pelo menos 24 horas de antecedência");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    // a api ja manda so o q da pra pedir, mas a tela aberta ha horas ficava com horario em cima da hora
+    it("horario com menos de 24 horas de antecedencia n aparece pra pedir", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [
+            {start: "2026-10-16T15:00:00", end: "2026-10-16T16:00:00"},
+            {start: "2026-10-17T08:00:00", end: "2026-10-17T09:00:00"},
+            {start: "2026-10-17T09:00:00", end: "2026-10-17T10:00:00"},
+            FREE_SLOT,
+        ]);
+        render(<AgendamentoConsultaPaciente/>);
+
+        const days = await screen.findByRole("group", {name: "Dias com horário livre"});
+        expect(within(days).getAllByRole("button")).toHaveLength(2);
+        expect(within(days).getAllByRole("button")[0]).toHaveTextContent("1 horário");
+        const slots = screen.getByRole("group", {name: "Horários livres do dia"});
+        expect(within(slots).getByRole("button", {name: "09:00"})).toBeInTheDocument();
+        expect(within(slots).queryByRole("button", {name: "08:00"})).not.toBeInTheDocument();
+        expect(screen.getByText(/com pelo menos 24 horas de antecedência/)).toBeInTheDocument();
     });
 });

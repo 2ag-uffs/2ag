@@ -3,15 +3,18 @@ package dev.uffs.doisag.controller;
 import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.enums.AuditOperation;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
+import dev.uffs.doisag.model.AuditEvent;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.PrescriberDayOff;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.AuditEventRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberDayOffRepository;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,6 +40,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +72,7 @@ class AgendaTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private AuditEventRepository auditEventRepository;
     @Autowired private PrescriberDayOffRepository dayOffRepository;
     @Autowired private TokenService tokenService;
     @Autowired private AppointmentService appointmentService;
@@ -255,14 +261,13 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_NOT_FREE_MESSAGE));
     }
 
-    // fora do periodo no meio de um horario em dia sem atendimento e no passado
+    // fora do periodo no meio de um horario e em dia sem atendimento. o passado cai antes na regra das 24 horas
     @Test
     void requestOutsideTheFreeSlotsIsRejected() throws Exception {
         List<LocalDateTime> invalidTimes = List.of(
                 AGENDA_DAY.atTime(13, 0),
                 AGENDA_DAY.atTime(8, 30),
-                AGENDA_DAY.plusDays(1).atTime(9, 0),
-                LocalDate.now().minusWeeks(1).with(DayOfWeek.MONDAY).atTime(9, 0));
+                AGENDA_DAY.plusDays(1).atTime(9, 0));
 
         for (LocalDateTime invalidTime : invalidTimes) {
             request(patient, invalidTime, null)
@@ -395,16 +400,249 @@ class AgendaTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // cada pedido em aberto segura um horario, entao o paciente n pode acumular um monte
+    // o pedido esperando resposta segura o horario, entao o paciente tem um por vez: o pedido novo substitui o
+    // antigo, q fica cancelado como no cancelamento do paciente (com a trilha) e devolve o horario pra agenda
     @Test
-    void thePatientCannotPileUpOpenRequests() throws Exception {
-        request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated());
-        request(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated());
-        request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
+    void aNewRequestReplacesThePendingOne() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
 
-        request(patient, AGENDA_DAY.atTime(11, 0), null)
+        Long secondId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), "Prefiro mais tarde", List.of(firstId))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SOLICITADA")));
+
+        assertThat(appointmentRepository.findById(firstId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CANCELADA);
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(secondId);
+        assertThat(auditOf(patient)).anyMatch(event -> event.getOperation() == AuditOperation.ALTERACAO
+                && event.getRecordId().equals(firstId));
+        // o horario do pedido antigo volta pra agenda e outro paciente pode pedir
+        freeSlotsOf(otherPatient).andExpect(jsonPath("$[0].start", startsWith(AGENDA_DAY + "T08:00")));
+        request(otherPatient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated());
+    }
+
+    // um aviso so pro prescritor, o do pedido novo, dizendo q ele substitui o antigo
+    @Test
+    void theReplacementTellsThePrescriberInASingleNotice() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+        request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(firstId)).andExpect(status().isCreated());
+
+        assertThat(notificationTitlesOf(prescriber)).hasSize(2).containsOnly("Pedido de consulta");
+        assertThat(notificationMessagesOf(prescriber)).contains("Paciente da agenda pediu uma consulta para "
+                + BrazilianFormat.dateTime(AGENDA_DAY.atTime(10, 0)) + " no lugar do pedido de "
+                + BrazilianFormat.dateTime(AGENDA_DAY.atTime(8, 0)) + ", que foi cancelado.");
+    }
+
+    // o pedido novo recusado por qq motivo deixa o antigo como estava e n avisa ninguem
+    @Test
+    void aRefusedReplacementLeavesThePendingRequestAsItWas() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), "Dor forte").andExpect(status().isCreated()));
+        request(otherPatient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
+
+        request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(firstId))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_MANY_REQUESTS_MESSAGE));
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_NOT_FREE_MESSAGE));
+        request(patient, LocalDate.now().plusDays(40).atTime(9, 0), null, List.of(firstId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_FAR_AHEAD_MESSAGE));
+
+        Appointment first = appointmentRepository.findById(firstId).orElseThrow();
+        assertThat(first.getStatus()).isEqualTo(AppointmentStatus.SOLICITADA);
+        assertThat(first.getDateTime()).isEqualTo(AGENDA_DAY.atTime(8, 0));
+        assertThat(first.getPatientNote()).isEqualTo("Dor forte");
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(firstId);
+        assertThat(notificationTitlesOf(prescriber)).hasSize(2).containsOnly("Pedido de consulta");
+    }
+
+    // pedir de novo o horario do pedido q ja espera resposta n muda nada
+    @Test
+    void askingAgainForTheSlotOfThePendingRequestIsRefused() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+
+        request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(firstId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SAME_SLOT_MESSAGE));
+
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(firstId);
+        assertThat(notificationTitlesOf(prescriber)).hasSize(1);
+    }
+
+    // a tela aberta antes do pedido q outra aba fez n sabe dele e n pergunta antes de trocar: a api recusa em vez de
+    // cancelar ele calada, e o paciente ve o pedido na tela de novo
+    @Test
+    void aReplacementOfARequestTheScreenDidNotShowIsRefused() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+
+        request(patient, AGENDA_DAY.atTime(10, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.REQUEST_CHANGED_MESSAGE));
+
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(firstId);
+        assertThat(appointmentRepository.findByPatientIdOrderByDateTimeDesc(patient.getId())).hasSize(1);
+        assertThat(notificationTitlesOf(prescriber)).hasSize(1);
+    }
+
+    // o prescritor confirmou ou recusou o pedido dps q a tela abriu: a troca q a tela mostrou n cancela a consulta
+    // confirmada nem entra como pedido novo, e o paciente ve a resposta antes de pedir de novo
+    @Test
+    void aReplacementOfARequestAnsweredMeanwhileIsRefused() throws Exception {
+        Long confirmedId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+        confirm(confirmedId, prescriber).andExpect(status().isOk());
+
+        request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(confirmedId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.REQUEST_CHANGED_MESSAGE));
+
+        Long declinedId = idOf(request(otherPatient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        decline(declinedId, null).andExpect(status().isOk());
+
+        request(otherPatient, AGENDA_DAY.atTime(11, 0), null, List.of(declinedId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.REQUEST_CHANGED_MESSAGE));
+
+        assertThat(appointmentRepository.findById(confirmedId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(pendingRequestsOf(patient)).isEmpty();
+        assertThat(pendingRequestsOf(otherPatient)).isEmpty();
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta cancelada");
+    }
+
+    // a consulta confirmada n eh pedido esperando resposta: ela n impede o pedido novo e n eh substituida
+    @Test
+    void aConfirmedConsultationIsNotReplacedByANewRequest() throws Exception {
+        Long confirmedId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+        confirm(confirmedId, prescriber).andExpect(status().isOk());
+
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+
+        assertThat(appointmentRepository.findById(confirmedId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(requestId);
+        assertThat(notificationMessagesOf(prescriber)).noneMatch(message -> message.contains("no lugar"));
+    }
+
+    // os pedidos de antes da regra de um por vez, ate o vencido q o job ainda n recusou, saem todos com o novo
+    // a tela mostra os q ainda n venceram e manda todos eles, senao o q ela n mostrou saia sem o paciente saber
+    @Test
+    void aNewRequestReplacesEveryPendingRequestFromBeforeTheRule() throws Exception {
+        LocalDateTime twoHoursAgo = LocalDateTime.now().minusHours(2).truncatedTo(ChronoUnit.MINUTES);
+        Appointment expired = saveAppointment(patient, twoHoursAgo, AppointmentStatus.SOLICITADA);
+        Appointment atEight = saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA);
+        Appointment atNine = saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.SOLICITADA);
+
+        request(patient, AGENDA_DAY.atTime(11, 0), null, List.of(atEight.getId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.REQUEST_CHANGED_MESSAGE));
+        assertThat(pendingRequestsOf(patient)).hasSize(3);
+
+        Long newId = idOf(request(patient, AGENDA_DAY.atTime(11, 0), null, List.of(atEight.getId(), atNine.getId()))
+                .andExpect(status().isCreated()));
+
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(newId);
+        for (Appointment old : List.of(expired, atEight, atNine)) {
+            assertThat(appointmentRepository.findById(old.getId()).orElseThrow().getStatus())
+                    .isEqualTo(AppointmentStatus.CANCELADA);
+        }
+        assertThat(notificationMessageOf(prescriber, "Pedido de consulta"))
+                .contains(" no lugar dos pedidos de " + BrazilianFormat.dateTime(expired.getDateTime()) + ", "
+                        + BrazilianFormat.dateTime(AGENDA_DAY.atTime(8, 0)) + ", "
+                        + BrazilianFormat.dateTime(AGENDA_DAY.atTime(9, 0)) + ", que foram cancelados.");
+        // o job n acha mais pedido vencido pra recusar
+        assertThat(appointmentService.declineExpiredRequests(LocalDateTime.now())).isZero();
+    }
+
+    // o paciente pede com pelo menos 24 horas de antecedencia, o primeiro pedido e a troca, pro prescritor ter
+    // tempo de responder. a tela n oferece horario mais cedo q isso
+    @Test
+    void freeSlotsAndRequestsStart24HoursAhead() throws Exception {
+        LocalDate today = LocalDate.now();
+        // atende o dia todo de hoje ate depois de amanha, entao so a antecedencia tira horario
+        saveAvailability(60, List.of(period(today.getDayOfWeek().getValue(), "00:00", "23:59"),
+                period(today.plusDays(1).getDayOfWeek().getValue(), "00:00", "23:59"),
+                period(today.plusDays(2).getDayOfWeek().getValue(), "00:00", "23:59")))
+                .andExpect(status().isOk());
+
+        LocalDateTime aDayFromNow = LocalDateTime.now().plusHours(24);
+        List<LocalDateTime> freeStarts = freeSlotStartsOf(patient, today, today.plusDays(2));
+        assertThat(freeStarts).isNotEmpty().allMatch(start -> !start.isBefore(aDayFromNow));
+
+        LocalDateTime almostADay = LocalDateTime.now().plusHours(23).truncatedTo(ChronoUnit.HOURS);
+        request(patient, almostADay, null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_SOON_MESSAGE));
+        request(patient, LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.HOURS), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_SOON_MESSAGE));
+        Long firstId = idOf(request(patient, freeStarts.get(freeStarts.size() - 1), null)
+                .andExpect(status().isCreated()));
+
+        // a troca segue a mesma regra e o pedido q ja esperava fica como estava
+        request(patient, almostADay, null, List.of(firstId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.TOO_SOON_MESSAGE));
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(firstId);
+    }
+
+    // a regra das 24 horas eh do pedido do paciente: o prescritor marca direto em cima da hora
+    @Test
+    void thePrescriberStillBooksWithLessThan24HoursAhead() throws Exception {
+        LocalDateTime inThreeHours = LocalDateTime.now().plusHours(3).truncatedTo(ChronoUnit.MINUTES);
+
+        schedule(patient, inThreeHours, null)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("AGENDADA"));
+    }
+
+    // o pedido q vai ser substituido n segura o horario do proprio paciente: com a primeira consulta de 90 minutos
+    // e o passo de 60, o pedido das 9 encosta nos horarios das 8 e das 10, q continuam oferecidos pra troca
+    @Test
+    void theReplacementCanMoveToASlotThatOverlapsThePendingRequest() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"))).andExpect(status().isOk());
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+
+        // o msm horario do pedido n volta pra lista pq pedir ele de novo n muda nada
+        assertThat(freeSlotStartsOf(patient, AGENDA_DAY, AGENDA_DAY))
+                .containsExactly(AGENDA_DAY.atTime(8, 0), AGENDA_DAY.atTime(10, 0));
+        // pros outros pacientes o pedido continua segurando o horario
+        assertThat(freeSlotStartsOf(otherPatient, AGENDA_DAY, AGENDA_DAY)).isEmpty();
+
+        Long secondId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(firstId))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.durationMinutes").value(90)));
+
+        assertThat(appointmentRepository.findById(firstId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CANCELADA);
+        assertThat(pendingRequestsOf(patient)).extracting(Appointment::getId).containsExactly(secondId);
+        assertThat(freeSlotStartsOf(otherPatient, AGENDA_DAY, AGENDA_DAY)).containsExactly(AGENDA_DAY.atTime(8, 0));
+    }
+
+    // a recusa do prescritor continua devolvendo o horario do pedido, q so assim outro paciente pede
+    @Test
+    void theDeclinedRequestFreesTheSlotForAnotherPatient() throws Exception {
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+        request(otherPatient, AGENDA_DAY.atTime(10, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_NOT_FREE_MESSAGE));
+
+        decline(requestId, null).andExpect(status().isOk());
+
+        request(otherPatient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
+    }
+
+    // o arquivamento recusa o pedido q espera resposta e o substituido continua cancelado
+    @Test
+    void archivingDeclinesOnlyThePendingRequestAfterAReplacement() throws Exception {
+        Long firstId = idOf(request(patient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated()));
+        Long secondId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null, List.of(firstId))
+                .andExpect(status().isCreated()));
+
+        mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+
+        assertThat(appointmentRepository.findById(firstId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.CANCELADA);
+        assertThat(appointmentRepository.findById(secondId).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.RECUSADA);
     }
 
     // pedido q passou da data sem resposta vira recusado no job do dia, senao o
@@ -1279,12 +1517,21 @@ class AgendaTest {
         return body;
     }
 
+    // o pedido de quem a tela mostrou sem pedido esperando resposta
     private ResultActions request(Patient requestingPatient, LocalDateTime dateTime, String patientNote)
             throws Exception {
+        return request(requestingPatient, dateTime, patientNote, null);
+    }
+
+    // a troca manda os pedidos q a tela mostrou e o paciente confirmou trocar
+    private ResultActions request(Patient requestingPatient, LocalDateTime dateTime, String patientNote,
+                                  List<Long> replacedRequestIds) throws Exception {
+        Map<String, Object> body = requestBody(dateTime, patientNote);
+        body.put("replacedRequestIds", replacedRequestIds);
         return mockMvc.perform(post("/appointments/requests")
                 .header("Authorization", bearerTokenOf(requestingPatient))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json.writeValueAsString(requestBody(dateTime, patientNote))));
+                .content(json.writeValueAsString(body)));
     }
 
     private ResultActions confirm(Long appointmentId, Users user) throws Exception {
@@ -1387,6 +1634,37 @@ class AgendaTest {
         appointment.setStatus(appointmentStatus);
         appointment.setDurationMinutes(60);
         return appointmentRepository.save(appointment);
+    }
+
+    private List<Appointment> pendingRequestsOf(Patient owner) {
+        return appointmentRepository.findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(owner.getId(),
+                AppointmentStatus.SOLICITADA);
+    }
+
+    private List<AuditEvent> auditOf(Patient owner) {
+        LocalDateTime now = LocalDateTime.now();
+        return auditEventRepository.findPatientEvents(owner.getId(), now.minusDays(1), now.plusDays(1),
+                PageRequest.of(0, 50)).getContent();
+    }
+
+    // o inicio de cada horario livre q o paciente ve entre as duas datas
+    private List<LocalDateTime> freeSlotStartsOf(Patient slotsPatient, LocalDate from, LocalDate to) throws Exception {
+        String body = mockMvc.perform(get("/appointments/free-slots")
+                        .param("from", from.toString())
+                        .param("to", to.toString())
+                        .header("Authorization", bearerTokenOf(slotsPatient)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        List<LocalDateTime> starts = new ArrayList<>();
+        json.readTree(body).forEach(slot -> starts.add(LocalDateTime.parse(slot.get("start").asText())));
+        return starts;
+    }
+
+    private List<String> notificationMessagesOf(Users user) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(Notification::getMessage)
+                .toList();
     }
 
     private List<String> notificationTitlesOf(Users user) {

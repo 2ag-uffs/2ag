@@ -134,30 +134,73 @@ class AgendaRaceTest {
     @Test
     void thePatientRequestWaitsForTheAgendaAndFindsTheSlotTaken() throws Exception {
         HeldLock.Outcome<AgendaAppointmentDTO> outcome = runWhileTheAgendaIsHeld(() -> appointmentService.request(
-                patient.getId(), new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
+                patient.getId(), new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null, null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(AppointmentService.SLOT_NOT_FREE_MESSAGE);
         assertThat(appointmentsAt(DISPUTED_SLOT)).hasSize(1);
     }
 
-    // o limite de 3 pedidos em aberto eh contado ja com a agenda travada: o pedido q chega
-    // junto com outro do mesmo paciente espera, conta o terceiro e eh recusado
+    // dois pedidos do mesmo paciente ao mesmo tempo terminam com um so esperando resposta: o q chega dps espera
+    // a agenda, acha o pedido q o outro gravou fora da lista q ele travou e eh recusado sem gravar nada
     @Test
-    void thePatientRequestWaitsForTheAgendaAndCountsTheRequestSavedMeanwhile() throws Exception {
-        saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA);
-        saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.SOLICITADA);
-
+    void twoRequestsOfTheSamePatientAtTheSameTimeEndWithOnePending() throws Exception {
         HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
-                () -> saveAppointment(patient, AGENDA_DAY.atTime(10, 0), AppointmentStatus.SOLICITADA),
+                () -> saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA),
                 () -> appointmentService.request(patient.getId(),
-                        new AppointmentRequestDTO(AGENDA_DAY.atTime(11, 0), AppointmentModality.PRESENCIAL, null)));
+                        new AppointmentRequestDTO(AGENDA_DAY.atTime(11, 0), AppointmentModality.PRESENCIAL, null,
+                                null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
-                .hasMessage(AppointmentService.TOO_MANY_REQUESTS_MESSAGE);
-        assertThat(appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
-                patient.getId(), AppointmentStatus.SOLICITADA, LocalDateTime.now())).isEqualTo(3);
+                .hasMessage(AppointmentService.REQUEST_CHANGED_MESSAGE);
+        assertThat(openRequestsOf(patient)).hasSize(1)
+                .allMatch(open -> open.getDateTime().equals(AGENDA_DAY.atTime(8, 0)));
+    }
+
+    // a troca no mesmo instante de outra troca do mesmo paciente: a q chega dps espera o pedido antigo q a
+    // primeira segura, acha ele cancelado e o pedido novo dela fora da lista, e eh recusada. sobra um pedido
+    @Test
+    void twoReplacementsOfTheSamePatientAtTheSameTimeEndWithOnePending() throws Exception {
+        Appointment oldRequest = saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, oldRequest.getId()),
+                () -> {
+                    Appointment held = appointmentRepository.findById(oldRequest.getId()).orElseThrow();
+                    held.setStatus(AppointmentStatus.CANCELADA);
+                    appointmentRepository.save(held);
+                    saveAppointment(patient, AGENDA_DAY.atTime(9, 0), AppointmentStatus.SOLICITADA);
+                },
+                () -> appointmentService.request(patient.getId(),
+                        new AppointmentRequestDTO(AGENDA_DAY.atTime(11, 0), AppointmentModality.PRESENCIAL, null,
+                                List.of(oldRequest.getId()))));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(AppointmentService.REQUEST_CHANGED_MESSAGE);
+        assertThat(openRequestsOf(patient)).hasSize(1)
+                .allMatch(open -> open.getDateTime().equals(AGENDA_DAY.atTime(9, 0)));
+    }
+
+    // o pedido novo trava o pedido antigo antes da agenda e le ele de novo: a confirmacao gravada no meio tempo
+    // fica, a consulta confirmada n eh cancelada e a troca q a tela mostrou eh recusada sem gravar nada, pro
+    // paciente ver a consulta confirmada antes de pedir de novo
+    @Test
+    void theReplacementWaitsForTheOldRequestAndKeepsTheConfirmationSavedMeanwhile() throws Exception {
+        Appointment oldRequest = saveAppointment(patient, AGENDA_DAY.atTime(8, 0), AppointmentStatus.SOLICITADA);
+
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
+                () -> rowLock.reload(Appointment.class, oldRequest.getId()),
+                () -> appointmentService.confirm(oldRequest.getId()),
+                () -> appointmentService.request(patient.getId(),
+                        new AppointmentRequestDTO(AGENDA_DAY.atTime(11, 0), AppointmentModality.PRESENCIAL, null,
+                                List.of(oldRequest.getId()))));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(AppointmentService.REQUEST_CHANGED_MESSAGE);
+        assertThat(appointmentRepository.findById(oldRequest.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(openRequestsOf(patient)).isEmpty();
     }
 
     @Test
@@ -341,7 +384,7 @@ class AgendaRaceTest {
                 () -> patientRepository.lockById(patient.getId()),
                 () -> patientArchiveService.archive(patient.getId(), prescriber),
                 () -> appointmentService.request(patient.getId(),
-                        new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null)));
+                        new AppointmentRequestDTO(DISPUTED_SLOT, AppointmentModality.PRESENCIAL, null, null)));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(AppointmentService.ARCHIVED_PATIENT_MESSAGE);

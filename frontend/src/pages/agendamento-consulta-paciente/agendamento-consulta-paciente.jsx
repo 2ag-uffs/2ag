@@ -30,10 +30,56 @@ const DAYS_AHEAD = 30;
 // o paciente cancela sozinho a consulta marcada so com essa antecedencia
 const PATIENT_CANCELLATION_HOURS = 24;
 
+// e pede so com essa antecedencia, igual a api, pro prescritor ter tempo de responder
+const MIN_REQUEST_HOURS = 24;
+
+// a api ja manda so o q da pra pedir, mas a tela aberta ha horas ainda mostrava horario em cima da hora
+function isFarEnoughAhead(slot) {
+    return minutesUntil(slot.start) >= MIN_REQUEST_HOURS * 60;
+}
+
+// os pedidos q ainda esperam a resposta do prescritor. o paciente tem um por vez e o novo substitui ele,
+// mais de um so sobra de antes dessa regra
+function findPendingRequests(upcomingAppointments) {
+    return upcomingAppointments.filter(
+        (appointment) => appointment.status === "SOLICITADA" && !appointment.annulled);
+}
+
+// "x", "x e y" ou "x, y e z"
+function dateTimesText(appointments) {
+    const dateTimes = appointments.map((appointment) => formatDateTimeWithZone(appointment.dateTime));
+    if (dateTimes.length === 1) {
+        return dateTimes[0];
+    }
+    return dateTimes.slice(0, -1).join(", ") + " e " + dateTimes[dateTimes.length - 1];
+}
+
+function replacementQuestion(replacement) {
+    const newRequestText = " O novo pedido é para " + formatDateTimeWithZone(replacement.slotStart) + ". Quer trocar?";
+    if (replacement.replacedRequests.length === 1) {
+        return "O pedido de " + dateTimesText(replacement.replacedRequests)
+            + " será cancelado e o horário dele volta a ficar livre." + newRequestText;
+    }
+    return "Os pedidos de " + dateTimesText(replacement.replacedRequests)
+        + " serão cancelados e os horários deles voltam a ficar livres." + newRequestText;
+}
+
+function sentNoticeOf(replacedRequests, prescriberName) {
+    if (replacedRequests.length === 0) {
+        return "Pedido enviado para " + prescriberName + ".";
+    }
+    if (replacedRequests.length === 1) {
+        return "Pedido trocado. O pedido de " + dateTimesText(replacedRequests)
+            + " foi cancelado e o novo foi enviado para " + prescriberName + ".";
+    }
+    return "Pedido trocado. Os pedidos de " + dateTimesText(replacedRequests)
+        + " foram cancelados e o novo foi enviado para " + prescriberName + ".";
+}
+
 // separa os horarios livres pelo dia
 function groupSlotsByDay(freeSlots) {
     const slotsByDay = {};
-    freeSlots.forEach((slot) => {
+    freeSlots.filter(isFarEnoughAhead).forEach((slot) => {
         const dayIso = slot.start.slice(0, 10);
         if (!slotsByDay[dayIso]) {
             slotsByDay[dayIso] = [];
@@ -87,6 +133,8 @@ export default function AgendamentoConsultaPaciente() {
     const [patientNote, setPatientNote] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [cancelTarget, setCancelTarget] = useState(null);
+    // o horario escolhido e os pedidos q ele substitui, enquanto a troca espera a confirmacao
+    const [replacement, setReplacement] = useState(null);
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
 
     useEffect(() => {
@@ -141,7 +189,9 @@ export default function AgendamentoConsultaPaciente() {
         clearMessages();
     };
 
-    const sendRequest = async (slotStart) => {
+    // a tela manda os pedidos q mostrou e a api so troca se ainda forem eles, senao recusa sem mudar nada
+    // (o prescritor respondeu ou outra aba pediu). entao o aviso pode dizer quais foram cancelados
+    const sendRequest = async (slotStart, replacedRequests) => {
         setIsSending(true);
         clearMessages();
         try {
@@ -149,9 +199,10 @@ export default function AgendamentoConsultaPaciente() {
                 dateTime: slotStart,
                 modality,
                 patientNote: emptyToNull(patientNote.trim()),
+                replacedRequestIds: replacedRequests.map((request) => request.id),
             });
-            setNotice("Pedido enviado para " + page.patient.prescriberName
-                + ". O horário fica reservado e você recebe um aviso quando o pedido for respondido.");
+            setNotice(sentNoticeOf(replacedRequests, page.patient.prescriberName)
+                + " O horário fica reservado e você recebe um aviso quando o pedido for respondido.");
             setSelectedSlot(null);
             setPatientNote("");
         } catch (requestError) {
@@ -161,6 +212,22 @@ export default function AgendamentoConsultaPaciente() {
             // mesmo com erro vale buscar de novo pq o horario pode ter sido pedido por outra pessoa
             reload();
         }
+    };
+
+    // com um pedido esperando resposta o novo substitui ele, entao a troca so sai dps de confirmar
+    const askForRequest = (slotStart) => {
+        const pendingRequests = findPendingRequests(page.upcomingAppointments);
+        if (pendingRequests.length > 0) {
+            setReplacement({slotStart, replacedRequests: pendingRequests});
+        } else {
+            sendRequest(slotStart, []);
+        }
+    };
+
+    const confirmReplacement = () => {
+        const chosen = replacement;
+        setReplacement(null);
+        sendRequest(chosen.slotStart, chosen.replacedRequests);
     };
 
     const cancelAppointment = async () => {
@@ -201,13 +268,16 @@ export default function AgendamentoConsultaPaciente() {
     const currentSlot = daySlots.some((slot) => slot.start === selectedSlot) ? selectedSlot : null;
     // a primeira consulta dura mais q o retorno, entao o fim do horario mostra quanto tempo reservar
     const currentSlotEnd = currentSlot ? daySlots.find((slot) => slot.start === currentSlot).end : null;
+    const pendingRequests = findPendingRequests(upcomingAppointments);
+    const sendLabel = pendingRequests.length > 0 ? "Trocar pedido" : "Pedir consulta";
 
     return (
         <section className={styles.page}>
             <PageHeader
                 title="Consultas"
                 subtitle={canRequest
-                    ? "Peça um horário na agenda de " + patient.prescriberName + ". O horário fica reservado até o pedido ser respondido."
+                    ? "Peça um horário na agenda de " + patient.prescriberName + ", com pelo menos "
+                        + MIN_REQUEST_HOURS + " horas de antecedência. O horário fica reservado até o pedido ser respondido."
                     : "Acompanhe seus pedidos e consultas."}
             />
 
@@ -226,6 +296,18 @@ export default function AgendamentoConsultaPaciente() {
 
             {canRequest && (
                 <Card title="Pedir consulta">
+                    {pendingRequests.length === 1 && (
+                        <p className="aviso">
+                            Você já tem um pedido esperando resposta para {dateTimesText(pendingRequests)}.
+                            Se pedir outro horário, ele substitui esse pedido.
+                        </p>
+                    )}
+                    {pendingRequests.length > 1 && (
+                        <p className="aviso">
+                            Você tem pedidos esperando resposta para {dateTimesText(pendingRequests)}.
+                            Se pedir outro horário, ele substitui esses pedidos.
+                        </p>
+                    )}
                     {availableDays.length === 0 ? (
                         <EmptyState
                             icon={FiCalendar}
@@ -311,10 +393,10 @@ export default function AgendamentoConsultaPaciente() {
                                         <button
                                             type="button"
                                             className="button"
-                                            onClick={() => sendRequest(currentSlot)}
+                                            onClick={() => askForRequest(currentSlot)}
                                             disabled={isSending}
                                         >
-                                            {isSending ? "Enviando..." : "Pedir consulta"}
+                                            {isSending ? "Enviando..." : sendLabel}
                                         </button>
                                     </div>
                                 </div>
@@ -376,6 +458,16 @@ export default function AgendamentoConsultaPaciente() {
                 cancelText="Voltar"
                 onConfirm={cancelAppointment}
                 onCancel={() => setCancelTarget(null)}
+            />
+
+            <ConfirmModal
+                show={replacement !== null}
+                title="Trocar pedido"
+                message={replacement !== null ? replacementQuestion(replacement) : ""}
+                confirmText="Sim, trocar"
+                cancelText="Voltar"
+                onConfirm={confirmReplacement}
+                onCancel={() => setReplacement(null)}
             />
         </section>
     );

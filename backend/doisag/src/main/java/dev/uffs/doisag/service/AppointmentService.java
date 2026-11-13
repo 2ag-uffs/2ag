@@ -48,6 +48,7 @@ import java.util.List;
 
 // agenda de consultas (RF10 e RF11)
 // o paciente pede um horario livre da agenda do prescritor dele e o pedido segura o horario ate a resposta
+// ele pede com 24 horas de antecedencia e tem um pedido esperando resposta por vez: o novo substitui o antigo
 // o prescritor confirma recusa marca remarca e cancela
 // o paciente cancela o pedido a qualquer hora e a consulta marcada so com 24 horas de antecedencia
 @Service
@@ -85,14 +86,18 @@ public class AppointmentService {
     public static final String INCOMPLETE_RANGE_MESSAGE = DateCheck.INCOMPLETE_RANGE_MESSAGE;
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
-    // pedido em aberto segura o horario entao poucos por vez p/ agenda n travar
-    private static final int MAX_OPEN_REQUESTS = 3;
-    public static final String TOO_MANY_REQUESTS_MESSAGE =
-            "Você já tem " + MAX_OPEN_REQUESTS + " pedidos esperando resposta. "
-                    + "Espere a resposta ou cancele um deles antes de pedir outro horário";
+    // o pedido esperando resposta segura o horario, entao o paciente tem um por vez e o pedido novo substitui o antigo
+    public static final String SAME_SLOT_MESSAGE = "Este já é o horário do seu pedido";
+    public static final String REQUEST_CHANGED_MESSAGE = "Seus pedidos de consulta mudaram enquanto você escolhia "
+            + "o horário. Confira seus pedidos e consultas e, se ainda quiser outro horário, peça de novo";
 
     // antecedencia minima pro paciente cancelar sozinho a consulta marcada
     public static final int PATIENT_CANCELLATION_HOURS = 24;
+
+    // o pedido do paciente tem a mesma antecedencia do cancelamento, pro prescritor ter tempo de responder
+    public static final int MIN_REQUEST_HOURS = PATIENT_CANCELLATION_HOURS;
+    public static final String TOO_SOON_MESSAGE =
+            "Escolha um horário com pelo menos " + MIN_REQUEST_HOURS + " horas de antecedência";
 
     // o paciente ve no maximo um mes de horarios livres por vez
     public static final int MAX_FREE_SLOT_DAYS = 31;
@@ -174,19 +179,25 @@ public class AppointmentService {
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
-    // o paciente pede um dos horarios livres da agenda do prescritor dele
+    // o paciente pede um dos horarios livres da agenda do prescritor dele, com 24 horas de antecedencia
+    // ele tem um pedido esperando resposta por vez, entao o pedido novo substitui o q ainda esperava
     @Transactional
     public AgendaAppointmentDTO request(Long patientId, AppointmentRequestDTO requestData) {
         Patient patient = findPatient(patientId);
         checkPatientCanRequest(patient);
         Prescriber prescriber = patient.getPrescriber();
+        LocalDateTime earliestStart = earliestRequestStart();
+        if (requestData.dateTime().isBefore(earliestStart)) {
+            throw new BusinessException(TOO_SOON_MESSAGE);
+        }
         if (requestData.dateTime().toLocalDate().isAfter(lastDayToRequest())) {
             throw new BusinessException(TOO_FAR_AHEAD_MESSAGE);
         }
 
-        // cada pedido em aberto segura um horario q some da agenda dos outros pacientes
-        // a conta eh feita ja com a agenda travada senao dois pedidos do mesmo paciente
-        // ao mesmo tempo contavam os dois 2 em aberto e ele ficava com 4
+        // o pedido antigo vai ser cancelado e a consulta vem antes do prescritor na ordem das travas,
+        // entao os pedidos em aberto do paciente sao travados e lidos de novo antes da agenda, igual no arquivamento
+        List<Appointment> lockedRequests = lockOpenRequestsOf(patientId);
+        // a agenda travada faz os pedidos do mesmo prescritor passarem um de cada vez
         lockAgendaOf(prescriber.getId());
         // o paciente vem dps do prescritor na ordem das travas. o arquivamento gravado enquanto o pedido esperava
         // aparece aqui e o pedido eh recusado, e o arquivamento q chega no meio espera o pedido gravar (#170)
@@ -194,12 +205,33 @@ public class AppointmentService {
         if (patientRepository.existsByIdAndArchivedAtIsNotNull(patientId)) {
             throw new BusinessException(ARCHIVED_PATIENT_MESSAGE);
         }
-        checkOpenRequestsLimit(patientId);
+        // o pedido q outra aba gravou entre a leitura dos pedidos e a trava da agenda ficou fora da lista travada,
+        // e travar ele agora quebrava a ordem. este eh recusado sem mexer em nada, senao ficavam dois esperando
+        if (hasOpenRequestsBesides(patientId, lockedRequests)) {
+            throw new BusinessException(REQUEST_CHANGED_MESSAGE);
+        }
+        List<Appointment> replacedRequests = stillOpen(lockedRequests);
+        // a tela manda os pedidos q mostrou na troca. se eles mudaram desde q ela abriu (o prescritor respondeu ou
+        // outra aba pediu), nada muda e o paciente confere a lista de novo
+        checkScreenShowedTheseRequests(replacedRequests, requestData.replacedRequestIds());
+        for (Appointment replaced : replacedRequests) {
+            if (replaced.getDateTime().equals(requestData.dateTime())) {
+                throw new BusinessException(SAME_SLOT_MESSAGE);
+            }
+        }
 
         // o paciente n escolhe o tipo pq ele sai do historico dele
         AppointmentType type = typeFor(patientId);
         int durationMinutes = durationOf(prescriber, type);
-        checkIsOfferedSlot(prescriber, requestData.dateTime(), durationMinutes);
+        // o horario dos pedidos q vao ser cancelados n segura a troca
+        checkIsOfferedSlot(prescriber, requestData.dateTime(), durationMinutes, earliestStart, replacedRequests);
+
+        // so dps de tudo conferido o antigo eh cancelado, como no cancelamento do paciente: libera o horario e
+        // entra na trilha. o aviso pro prescritor vai junto com o do pedido novo
+        for (Appointment replaced : replacedRequests) {
+            replaced.setStatus(AppointmentStatus.CANCELADA);
+            saveChange(replaced);
+        }
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);
@@ -214,9 +246,26 @@ public class AppointmentService {
         Appointment savedAppointment = appointmentRepository.save(appointment);
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
         notificationService.createNotification(prescriber, "Pedido de consulta",
-                patient.getDisplayName() + " pediu uma consulta para " + formatDateTime(savedAppointment) + ".",
+                patient.getDisplayName() + " pediu uma consulta para " + formatDateTime(savedAppointment)
+                        + replacementNote(replacedRequests) + ".",
                 Notification.TYPE_APPOINTMENT, Notification.PRESCRIBER_AGENDA_LINK);
         return new AgendaAppointmentDTO(savedAppointment);
+    }
+
+    // o aviso do pedido novo diz qual pedido ele substituiu, pra n chegar um aviso de cancelamento separado
+    // mais de um so com pedido de antes da regra de um por vez
+    private String replacementNote(List<Appointment> replacedRequests) {
+        if (replacedRequests.isEmpty()) {
+            return "";
+        }
+        List<String> times = new ArrayList<>();
+        for (Appointment replaced : replacedRequests) {
+            times.add(formatDateTime(replaced));
+        }
+        if (times.size() == 1) {
+            return " no lugar do pedido de " + times.get(0) + ", que foi cancelado";
+        }
+        return " no lugar dos pedidos de " + String.join(", ", times) + ", que foram cancelados";
     }
 
     @Transactional
@@ -306,8 +355,8 @@ public class AppointmentService {
         return new AgendaAppointmentDTO(refuse(appointment, "Pedido de consulta recusado", message));
     }
 
-    // os pedidos em aberto de um paciente q vai ser arquivado, ja travados e lidos de novo
-    // a consulta vem antes do paciente na ordem das travas, entao o arquivamento chama isso antes de travar ele
+    // os pedidos em aberto do paciente, ja travados e lidos de novo, q o arquivamento recusa e o pedido novo cancela
+    // a consulta vem antes do prescritor e do paciente na ordem das travas, entao os dois chamam isso antes
     // MANDATORY pq fora da transacao de quem chama a trava soltaria aqui mesmo
     @Transactional(propagation = Propagation.MANDATORY)
     public List<Appointment> lockOpenRequestsOf(Long patientId) {
@@ -320,18 +369,41 @@ public class AppointmentService {
     }
 
     // o pedido gravado dps da leitura acima n esta na lista travada, e travar ele dps do paciente quebrava a ordem
-    // o arquivamento confere isso ja com o paciente travado, qnd nenhum pedido novo entra mais (o pedido trava ele)
+    // o arquivamento e o pedido novo conferem isso ja com o paciente travado, qnd nenhum pedido novo entra mais
+    // (o pedido trava ele)
     @Transactional(readOnly = true)
     public boolean hasOpenRequestsBesides(Long patientId, List<Appointment> lockedRequests) {
-        int stillOpen = 0;
-        for (Appointment request : lockedRequests) {
-            if (!request.isAnnulled() && request.getStatus() == AppointmentStatus.SOLICITADA) {
-                stillOpen++;
-            }
-        }
         long openNow = appointmentRepository.countByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(patientId,
                 AppointmentStatus.SOLICITADA);
-        return openNow > stillOpen;
+        return openNow > stillOpen(lockedRequests).size();
+    }
+
+    // cada pedido q a tela mostrou ainda espera resposta, e cada um q espera e ainda n venceu estava na tela
+    // o vencido q o job ainda n recusou n aparece na tela e sai junto sem perguntar
+    private void checkScreenShowedTheseRequests(List<Appointment> openRequests, List<Long> shownIds) {
+        List<Long> screenIds = shownIds == null ? List.of() : shownIds;
+        for (Long shownId : screenIds) {
+            if (!hasAppointment(openRequests, shownId)) {
+                throw new BusinessException(REQUEST_CHANGED_MESSAGE);
+            }
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (Appointment request : openRequests) {
+            if (request.getDateTime().isAfter(now) && !screenIds.contains(request.getId())) {
+                throw new BusinessException(REQUEST_CHANGED_MESSAGE);
+            }
+        }
+    }
+
+    // os da lista travada q ainda esperam resposta: pode ter sido confirmado ou cancelado antes da trava
+    private List<Appointment> stillOpen(List<Appointment> lockedRequests) {
+        List<Appointment> openRequests = new ArrayList<>();
+        for (Appointment request : lockedRequests) {
+            if (!request.isAnnulled() && request.getStatus() == AppointmentStatus.SOLICITADA) {
+                openRequests.add(request);
+            }
+        }
+        return openRequests;
     }
 
     // o arquivamento recusa o pedido em aberto, q segurava horario de quem segue em tratamento (#170)
@@ -507,10 +579,13 @@ public class AppointmentService {
             return List.of();
         }
 
-        // so de hoje ate o limite do pedido pq o resto n tem horario q o paciente possa pedir
+        // so do dia q fica a 24 horas daqui ate o limite do pedido pq o resto n tem horario q o paciente possa pedir
         // e data no fim do calendario nem chega no laco dos dias
-        LocalDate today = LocalDate.now();
-        LocalDate firstDay = from.isBefore(today) ? today : from;
+        LocalDateTime earliestStart = earliestRequestStart();
+        LocalDate firstDay = earliestStart.toLocalDate();
+        if (from.isAfter(firstDay)) {
+            firstDay = from;
+        }
         LocalDate lastDay = lastDayToRequest();
         if (to.isBefore(lastDay)) {
             lastDay = to;
@@ -518,9 +593,12 @@ public class AppointmentService {
 
         // o horario do paciente novo tem o tamanho da primeira consulta e o de quem ja foi atendido o do retorno
         int durationMinutes = durationOf(prescriber, typeFor(patientId));
+        // o pedido novo substitui os q esperam resposta, entao eles n tiram horario do proprio paciente
+        List<Appointment> ownRequests = appointmentRepository
+                .findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(patientId, AppointmentStatus.SOLICITADA);
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
         for (LocalDate day = firstDay; !day.isAfter(lastDay); day = day.plusDays(1)) {
-            freeSlots.addAll(getFreeSlots(prescriber, day, durationMinutes));
+            freeSlots.addAll(getFreeSlots(prescriber, day, durationMinutes, earliestStart, ownRequests));
         }
         return freeSlots;
     }
@@ -596,9 +674,12 @@ public class AppointmentService {
     }
 
     // os periodos de atendimento do dia divididos em horarios com a duracao da consulta do paciente
-    // sai o q ja passou e o q encosta em pedido ou consulta q segura o horario
+    // sai o q comeca antes das 24 horas de antecedencia e o q encosta em pedido ou consulta q segura o horario
     // dia de folga do prescritor n tem horario nenhum
-    private List<TimeSlotDTO> getFreeSlots(Prescriber prescriber, LocalDate day, int durationMinutes) {
+    // os pedidos do proprio paciente q o pedido novo substitui n seguram horario pra ele, so o msm horario de um
+    // deles n entra pq pedir ele de novo n muda nada
+    private List<TimeSlotDTO> getFreeSlots(Prescriber prescriber, LocalDate day, int durationMinutes,
+                                           LocalDateTime earliestStart, List<Appointment> ownRequests) {
         Long prescriberId = prescriber.getId();
         List<PrescriberAvailability> periods = availabilityRepository
                 .findByPrescriberIdAndDayOfWeekOrderByStartTimeAsc(prescriberId, day.getDayOfWeek().getValue());
@@ -609,22 +690,45 @@ public class AppointmentService {
         // anda no passo da consulta mais curta pra primeira e retorno se encaixarem
         int stepMinutes = Math.min(prescriber.getFirstAppointmentDurationMinutes(),
                 prescriber.getAppointmentDurationMinutes());
-        List<Appointment> takenAppointments =
-                appointmentsHoldingTimeAround(prescriberId, day.atStartOfDay(), day.atTime(LocalTime.MAX), null);
-        LocalDateTime now = LocalDateTime.now();
+        List<Appointment> takenAppointments = new ArrayList<>();
+        for (Appointment taken : appointmentsHoldingTimeAround(prescriberId, day.atStartOfDay(),
+                day.atTime(LocalTime.MAX), null)) {
+            if (!hasAppointment(ownRequests, taken.getId())) {
+                takenAppointments.add(taken);
+            }
+        }
         List<TimeSlotDTO> freeSlots = new ArrayList<>();
         for (PrescriberAvailability period : periods) {
             LocalDateTime slotStart = day.atTime(period.getStartTime());
             LocalDateTime periodEnd = day.atTime(period.getEndTime());
             while (!slotStart.plusMinutes(durationMinutes).isAfter(periodEnd)) {
                 LocalDateTime slotEnd = slotStart.plusMinutes(durationMinutes);
-                if (slotStart.isAfter(now) && !overlapsAny(slotStart, slotEnd, takenAppointments)) {
+                if (!slotStart.isBefore(earliestStart) && !overlapsAny(slotStart, slotEnd, takenAppointments)
+                        && !startsAtOneOf(slotStart, ownRequests)) {
                     freeSlots.add(new TimeSlotDTO(slotStart, slotEnd));
                 }
                 slotStart = slotStart.plusMinutes(stepMinutes);
             }
         }
         return freeSlots;
+    }
+
+    private boolean hasAppointment(List<Appointment> appointments, Long appointmentId) {
+        for (Appointment appointment : appointments) {
+            if (appointment.getId().equals(appointmentId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean startsAtOneOf(LocalDateTime start, List<Appointment> appointments) {
+        for (Appointment appointment : appointments) {
+            if (appointment.getDateTime().equals(start)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // primeira consulta eh qnd o paciente ainda n tem consulta atendida
@@ -673,6 +777,11 @@ public class AppointmentService {
         return LocalDate.now().plusDays(MAX_DAYS_AHEAD - 1);
     }
 
+    // o horario mais cedo q o paciente pode pedir, 24 horas contadas de agora
+    private LocalDateTime earliestRequestStart() {
+        return LocalDateTime.now().plusHours(MIN_REQUEST_HOURS);
+    }
+
     private void checkPatientCanRequest(Patient patient) {
         // arquivado saiu do acompanhamento e o pedido dele seguraria horario de quem ta em tratamento
         if (patient.isArchived()) {
@@ -688,17 +797,11 @@ public class AppointmentService {
         }
     }
 
-    private void checkOpenRequestsLimit(Long patientId) {
-        long openRequests = appointmentRepository.countByPatientIdAndStatusAndDateTimeAfter(
-                patientId, AppointmentStatus.SOLICITADA, LocalDateTime.now());
-        if (openRequests >= MAX_OPEN_REQUESTS) {
-            throw new BusinessException(TOO_MANY_REQUESTS_MESSAGE);
-        }
-    }
-
-    // so vale um dos horarios livres entao fora do atendimento ocupado folga ou passado n entra
-    private void checkIsOfferedSlot(Prescriber prescriber, LocalDateTime dateTime, int durationMinutes) {
-        boolean isFreeSlot = getFreeSlots(prescriber, dateTime.toLocalDate(), durationMinutes)
+    // so vale um dos horarios livres entao fora do atendimento ocupado folga ou em cima da hora n entra
+    private void checkIsOfferedSlot(Prescriber prescriber, LocalDateTime dateTime, int durationMinutes,
+                                    LocalDateTime earliestStart, List<Appointment> replacedRequests) {
+        boolean isFreeSlot = getFreeSlots(prescriber, dateTime.toLocalDate(), durationMinutes, earliestStart,
+                replacedRequests)
                 .stream()
                 .anyMatch(slot -> slot.start().equals(dateTime));
         if (!isFreeSlot) {

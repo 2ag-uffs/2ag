@@ -266,7 +266,9 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
   - O dia de folga do passo 4 não oferece horários.
   - O paciente recebe o aviso da confirmação em **Avisos**, e o pedido dele muda de **Aguardando resposta** para **Agendada**.
 - **Se der errado:**
-  - Não aparece horário para o paciente: confira se há período cadastrado e se os próximos 30 dias não caíram todos em folga.
+  - Não aparece horário para o paciente: confira se há período cadastrado e se os próximos 30 dias não caíram todos em folga. Só aparecem horários que começam pelo menos 24 horas depois de agora.
+  - O botão diz **Trocar pedido** em vez de **Pedir consulta**: o paciente já tem um pedido esperando resposta, e cada paciente tem um por vez. A tela pergunta antes e, com **Sim, trocar**, o pedido anterior é cancelado e o novo fica esperando.
+  - *Seus pedidos de consulta mudaram enquanto você escolhia o horário*: com a tela do paciente aberta, o prescritor respondeu o pedido ou o paciente pediu outro horário em outra aba. Nada foi cancelado nem enviado. A tela busca de novo: confira a lista e, se ainda quiser outro horário, peça de novo.
   - *Este pedido de consulta ainda não foi confirmado na agenda*: só consulta confirmada recebe registro clínico e prescrição.
   - Consulta marcada que ainda não começou não mostra **Registrar atendimento**. O botão aparece quando chega a hora; antes disso, só **Remarcar** e **Cancelar**.
 

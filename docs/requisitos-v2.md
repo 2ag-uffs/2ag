@@ -272,6 +272,8 @@ O paciente agenda consulta visualizando a disponibilidade do seu prescritor. O s
 - Não é possível agendar no passado
 - O paciente só vê a agenda do prescritor ao qual está vinculado
 - Lembrete disparado automaticamente antes da consulta (RF34)
+- O paciente pede horário com pelo menos 24 horas de antecedência, e a tela só oferece esses horários. O prescritor continua marcando direto sem antecedência mínima (decisão de 13/11/2026, §8.3)
+- O paciente tem um pedido esperando resposta por vez: o pedido novo substitui o anterior, que é cancelado e libera o horário (RN08, decisão de 13/11/2026, §8.3)
 
 ---
 
@@ -700,6 +702,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF24/RF25 | O período avaliado é registrado com início e fim, como no formulário |
 | RF07 | Consolidado com o RF28 em uma página única do paciente |
 | RF10/RF11 | O prescritor cadastra a disponibilidade, o paciente solicita o horário e o prescritor confirma |
+| RF10 e RN08 | *Decisão de 13/11/2026:* o paciente tem um pedido de consulta esperando resposta por vez, o pedido novo substitui o anterior, e todo pedido do paciente é para um horário com pelo menos 24 horas de antecedência. A QA achou um paciente segurando três horários do mesmo dia com o limite antigo de 3 pedidos em aberto. O pedido continua segurando o horário até o prescritor confirmar ou recusar, para ninguém perder um horário que já pediu; com um pedido por paciente, uma pessoa só não segura vários horários da agenda; e as 24 horas, as mesmas do cancelamento pelo paciente, dão ao prescritor tempo de responder. A troca é feita de uma vez: o horário novo é conferido como antes e, só se ele passar, o pedido anterior é cancelado como no cancelamento pelo paciente e o novo é gravado, então o pedido novo recusado deixa o anterior como estava. A consulta já confirmada não conta como pedido, e o prescritor continua marcando consulta direto sem antecedência mínima |
 | RF18 | Restrito a dados pessoais, senha e preferência de e-mail, sem escolha de idioma |
 | RF26 | *Critério acrescentado:* a escolaridade usada no ponto de corte e a data da avaliação são registradas |
 | RF31 | Tabela de auditoria somente de inserção, gravada pelos serviços |
@@ -827,7 +830,9 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 - **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.
 - **Pedido do paciente:**
   - o paciente escolhe um horário livre dos próximos 30 dias e pode escrever o motivo da consulta, que fica fora dos campos clínicos;
-  - a API segue a mesma janela de 30 dias contando o dia de hoje e recusa o pedido para depois dela, e o limite de 3 pedidos em aberto vale também para dois pedidos enviados ao mesmo tempo (16/10/2026);
+  - a API segue a mesma janela de 30 dias contando o dia de hoje e recusa o pedido para depois dela (16/10/2026);
+  - o pedido é para um horário com pelo menos 24 horas de antecedência, contadas do momento do pedido, as mesmas 24 horas do cancelamento pelo paciente. A tela só oferece esses horários, e a API recusa o mais cedo com "Escolha um horário com pelo menos 24 horas de antecedência" (13/11/2026);
+  - o paciente tem um pedido esperando resposta por vez. Pedir outro horário substitui o pedido anterior: a tela mostra o pedido que espera, avisa que o novo vai substituí-lo e pergunta antes de enviar; a API confere o horário novo como sempre, sem contar o horário do próprio pedido que vai ser substituído (então dá para trocar por um horário vizinho que encosta nele), e, só se ele passar, cancela o anterior como no cancelamento pelo paciente (trilha e horário liberado) e grava o novo, tudo de uma vez. Recusado o novo, o anterior fica como estava, e pedir de novo o horário do próprio pedido é recusado com "Este já é o horário do seu pedido". A troca só cancela o pedido que a tela mostrou e o paciente confirmou: se o prescritor respondeu esse pedido ou outra aba fez um pedido depois que a tela abriu, a API recusa com "Seus pedidos de consulta mudaram enquanto você escolhia o horário..." e nada muda, para a tela nunca dizer que cancelou o que não cancelou. O prescritor recebe um aviso só, o do pedido novo, dizendo qual pedido ele substituiu. A consulta já confirmada não conta como pedido. O limite de 3 pedidos em aberto, de 16/10/2026, saiu, e dois pedidos do mesmo paciente enviados ao mesmo tempo terminam com um só esperando resposta (13/11/2026, §8.3);
   - o pedido segura o horário até o prescritor confirmar ou recusar;
   - a recusa pode levar um motivo, que chega ao paciente no aviso, e libera o horário.
 - **Agenda do prescritor:** mostra os pedidos esperando resposta e as consultas da semana. O prescritor também marca consulta direto, com a duração padrão ou outra, remarca e cancela. Dois agendamentos do mesmo prescritor nunca ocupam o mesmo horário (RN08), nem quando a consulta da noite passa da meia-noite (16/10/2026). Pedido cujo horário passou sem resposta não é mais confirmado: o prescritor recusa, e o paciente escolhe outro horário (16/10/2026).

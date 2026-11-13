@@ -368,7 +368,7 @@ public class DevDemoData {
 
         appointmentService.request(joao.getId(), new AppointmentRequestDTO(
                 nextWorkingDay(today.plusDays(3)).atTime(10, 0), AppointmentModality.REMOTA,
-                "Queria revisar a dose, ainda fico ansioso no fim da tarde."));
+                "Queria revisar a dose, ainda fico ansioso no fim da tarde.", null));
 
         // consulta de hoje pro painel do prescritor se ainda der tempo no dia
         LocalDateTime now = LocalDateTime.now();

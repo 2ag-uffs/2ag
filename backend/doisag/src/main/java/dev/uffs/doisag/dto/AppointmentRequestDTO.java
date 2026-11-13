@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 // o q o paciente manda quando pede um horario (RF10)
 // a duracao eh a do prescritor e nenhum campo clinico entra por aqui
@@ -17,6 +18,10 @@ public record AppointmentRequestDTO(
 
         // o motivo q o paciente conta pro prescritor e fica fora do registro clinico
         @Size(max = 1000, message = "O motivo pode ter até 1000 caracteres")
-        String patientNote
+        String patientNote,
+
+        // os pedidos esperando resposta q a tela mostrou e o paciente confirmou trocar, vazio qnd n tinha nenhum
+        // a api so troca se forem eles msm, pra tela n dizer q cancelou o q n cancelou
+        List<Long> replacedRequestIds
 ) {
 }

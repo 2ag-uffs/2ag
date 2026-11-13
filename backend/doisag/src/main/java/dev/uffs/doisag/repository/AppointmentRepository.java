@@ -48,9 +48,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // pedidos q passaram da data e ninguem respondeu, q o job do dia fecha (RF11)
     List<Appointment> findByStatusAndDateTimeBefore(AppointmentStatus status, LocalDateTime moment);
 
-    // quantos pedidos o paciente ja deixou em aberto, pq cada um segura um horario
-    long countByPatientIdAndStatusAndDateTimeAfter(Long patientId, AppointmentStatus status, LocalDateTime moment);
-
     // se o paciente ja teve consulta atendida e valendo, pra separar primeira consulta de retorno
     boolean existsByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(Long patientId, AppointmentStatus status);
 
@@ -70,7 +67,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                                                                                     LocalDateTime moment,
                                                                                     Collection<AppointmentStatus> statuses);
 
-    // os pedidos em aberto do paciente, q o arquivamento recusa. por id pra travar sempre na mesma ordem
+    // os pedidos em aberto do paciente, q o arquivamento recusa e o pedido novo cancela. por id pra travar sempre
+    // na mesma ordem
     List<Appointment> findByPatientIdAndStatusAndAnnulmentAnnulledAtIsNullOrderByIdAsc(Long patientId,
                                                                                        AppointmentStatus status);
 
