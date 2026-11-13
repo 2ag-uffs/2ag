@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {useBlocker, useLocation, useNavigate, useParams, useSearchParams} from "react-router";
 import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
@@ -55,6 +55,23 @@ function daysBetween(firstDay, lastDay) {
 }
 
 function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, onChooseDay}) {
+    const stripRef = useRef(null);
+
+    // no celular a faixa rola de lado e o dia escolhido abria cortado, entao ela anda ate ele
+    // mexe so na faixa: o scrollIntoView rolaria a pagina tbm e o aviso perto do salvar sairia da vista
+    useEffect(() => {
+        const strip = stripRef.current;
+        const chosenDay = strip ? strip.querySelector("[aria-pressed='true']") : null;
+        if (!chosenDay) {
+            return;
+        }
+        const stripBox = strip.getBoundingClientRect();
+        const dayBox = chosenDay.getBoundingClientRect();
+        if (dayBox.left < stripBox.left || dayBox.right > stripBox.right) {
+            strip.scrollLeft += dayBox.left - stripBox.left;
+        }
+    }, [days, selectedDay]);
+
     return (
         <section className={styles.daysSection}>
             <h2 className={styles.sectionTitle}>{isInsideTask ? "Dias do período" : "Dia da semana"}</h2>
@@ -64,6 +81,7 @@ function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, onCho
                 </p>
             )}
             <div
+                ref={stripRef}
                 className={styles.days}
                 role="group"
                 aria-label={isInsideTask ? "Dias do período" : "Dias da semana"}

@@ -434,6 +434,44 @@ describe("Escala diaria", () => {
         expect(buttons[6]).toHaveAttribute("aria-pressed", "true");
     });
 
+    // no celular a faixa de dias rola de lado e o dia escolhido (hoje, o ultimo) abria cortado
+    // as caixas aqui imitam 375 px: a faixa tem 343 e cada dia 121, entao o terceiro passa da borda
+    it("a faixa de dias rola sozinha ate o dia escolhido sem mexer na pagina", async () => {
+        pendingTasks = [{...pendingTasks[0], periodStart: dayFromToday(-2), periodEnd: dayFromToday(4)}];
+        vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+            const strip = this.closest("[role='group']");
+            if (this.getAttribute("role") === "group") {
+                return {left: 16, right: 359, top: 0, bottom: 60, width: 343, height: 60};
+            }
+            if (strip && this.tagName === "BUTTON") {
+                const index = within(strip).getAllByRole("button").indexOf(this);
+                const left = 16 + index * 129 - strip.scrollLeft;
+                return {left, right: left + 121, top: 0, bottom: 56, width: 121, height: 56};
+            }
+            return {left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0};
+        });
+        const pageScroll = vi.spyOn(window, "scrollTo");
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await waitFor(() => expect(within(grid).getAllByRole("button")).toHaveLength(3));
+        expect(within(grid).getAllByRole("button")[2]).toHaveAttribute("aria-pressed", "true");
+        await waitFor(() => expect(grid.scrollLeft).toBe(258));
+
+        // o dia cortado do outro lado tbm volta pra vista
+        await user.click(within(grid).getAllByRole("button")[1]);
+        expect(grid.scrollLeft).toBe(129);
+
+        // o dia q ja aparece inteiro n faz a faixa andar
+        grid.scrollLeft = 0;
+        await user.click(within(grid).getAllByRole("button")[0]);
+        expect(grid.scrollLeft).toBe(0);
+        expect(pageScroll).not.toHaveBeenCalled();
+        expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
     // o "ver e corrigir" do historico abre um dia antigo, fora da tarefa aberta
     it("dia antigo fora da tarefa abre a semana civil dele", async () => {
         const oldDay = dayFromToday(-20);
