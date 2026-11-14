@@ -60,6 +60,7 @@ src/
 - **transição:** cada tela nova entra com um fade curto, desligado para quem pede menos movimento no sistema operacional
 - **foco do teclado:** botões e links mostram um anel verde cheio (`--focus-ring` em `styles/tokens.css`), separado do botão por uma folga da cor do cartão, que passa de 3:1 sobre o fundo nos dois temas; o campo de texto mostra a borda verde com um halo leve (`--focus-halo`). o `scroll-padding` do `html` (`index.css`) faz o navegador rolar o campo que recebe o foco do tab para fora da barra de ações presa no pé dos formulários e, no celular, também do menu de baixo e do cabeçalho
 - **rota inexistente e erro inesperado:** caem numa página própria, com caminho de volta ao início
+- **erro de campo no envio:** o envio recusado leva o foco ao primeiro campo com erro (`useFocusFirstError`, em `components/form/focus-first-error.js`), e a mensagem ligada pelo `aria-describedby` é lida junto com o campo (decisão de 13/11/2026). vale para os modais com formulário (anulação, marcar e remarcar consulta, e na administração novo prescritor, senha nova, correção de e-mail e correção de dados), o perfil, o cadastro, a tela de senha nova e a tela do termo. nos modais da administração, a recusa que não é de nenhum campo continua no aviso, com `role="alert"`
 
 ## sessão
 

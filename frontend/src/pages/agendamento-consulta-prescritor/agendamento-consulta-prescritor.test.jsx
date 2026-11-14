@@ -154,6 +154,57 @@ describe("AgendamentoPrescritor", () => {
         expect(screen.getByText("sem atendimento")).toBeInTheDocument();
     });
 
+    // o erro aparecia do lado do campo, mas o foco ficava no botao e o leitor de tela n dizia nada (CT-39)
+    it("marcar sem escolher o paciente leva o foco pro campo do paciente com o erro", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({id: 1});
+        const user = userEvent.setup();
+        renderAgenda();
+
+        await user.click(await screen.findByRole("button", {name: "Nova consulta"}));
+        await user.click(screen.getByRole("button", {name: "Marcar consulta"}));
+
+        const patient = screen.getByLabelText("Paciente");
+        expect(patient).toHaveFocus();
+        expect(patient).toHaveAccessibleDescription("Escolha o paciente");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // data e horario vazios tbm sao campos recusados: ficava so o aviso geral e o foco no botao (CT-39)
+    it("marcar sem data e sem horario leva o foco pra data e marca os dois campos", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({id: 1});
+        const user = userEvent.setup();
+        renderAgenda();
+
+        await user.click(await screen.findByRole("button", {name: "Nova consulta"}));
+        await user.selectOptions(screen.getByLabelText("Paciente"), "5");
+        // a data vem preenchida com o dia aberto na agenda
+        fireEvent.change(screen.getByLabelText("Data"), {target: {value: ""}});
+        await user.click(screen.getByRole("button", {name: "Marcar consulta"}));
+
+        const date = screen.getByLabelText("Data");
+        expect(date).toHaveFocus();
+        expect(date).toHaveAccessibleDescription("Escolha a data");
+        expect(screen.getByLabelText("Horário")).toHaveAccessibleDescription("Escolha o horário");
+        expect(screen.getByLabelText("Paciente")).not.toHaveAttribute("aria-invalid");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // no remarcar a data apagada tbm vai pro campo, e o horario q ficou n eh marcado
+    it("remarcar com a data apagada leva o foco pra data", async () => {
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({});
+        const user = userEvent.setup();
+        renderAgenda({weekAppointments: [SCHEDULED_RETURN]});
+
+        const modal = await openReschedule(user);
+        fireEvent.change(modal.getByLabelText("Data"), {target: {value: ""}});
+        await user.click(modal.getByRole("button", {name: "Remarcar"}));
+
+        expect(modal.getByLabelText("Data")).toHaveFocus();
+        expect(modal.getByLabelText("Data")).toHaveAccessibleDescription("Escolha a data");
+        expect(modal.getByLabelText("Horário")).not.toHaveAttribute("aria-invalid");
+        expect(put).not.toHaveBeenCalled();
+    });
+
     // a falta marcada por engano se desfaz registrando o atendimento, q a api ja aceitava
     it("a falta oferece desfazer e leva ao registro do atendimento", async () => {
         const user = userEvent.setup();

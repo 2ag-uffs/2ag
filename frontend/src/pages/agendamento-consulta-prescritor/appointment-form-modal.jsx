@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
@@ -26,6 +27,7 @@ export default function AppointmentFormModal({
     const [fieldErrors, setFieldErrors] = useState({});
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     const updateValue = (fieldName, value) => {
         setValues((currentValues) => ({...currentValues, [fieldName]: value}));
@@ -42,12 +44,20 @@ export default function AppointmentFormModal({
         setFieldErrors({});
         setFormError(null);
 
+        // o q falta fica marcado no proprio campo e o foco vai pro primeiro deles (CT-39)
+        const missingFields = {};
         if (patients && values.patientId === "") {
-            setFieldErrors({patientId: "Escolha o paciente"});
-            return;
+            missingFields.patientId = "Escolha o paciente";
         }
-        if (values.date === "" || values.time === "") {
-            setFormError("Escolha a data e o horário.");
+        if (values.date === "") {
+            missingFields.date = "Escolha a data";
+        }
+        if (values.time === "") {
+            missingFields.time = "Escolha o horário";
+        }
+        if (Object.keys(missingFields).length > 0) {
+            setFieldErrors(missingFields);
+            focusFirstError();
             return;
         }
 
@@ -61,12 +71,13 @@ export default function AppointmentFormModal({
                 setFormError(errorInfo.message);
             }
             setIsSaving(false);
+            focusFirstError();
         }
     };
 
     return (
         <Modal show={true} title={title} onClickClose={onClose}>
-            <form className={styles.modalForm} onSubmit={handleSubmit} noValidate>
+            <form className={styles.modalForm} onSubmit={handleSubmit} noValidate ref={formRef}>
                 {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
                 {patients && (
                     <SelectField
@@ -87,7 +98,7 @@ export default function AppointmentFormModal({
                         type="date"
                         value={values.date}
                         onChange={(event) => updateValue("date", event.target.value)}
-                        error={fieldErrors.dateTime}
+                        error={fieldErrors.date || fieldErrors.dateTime}
                         disabled={isSaving}
                     />
                     <TextField
@@ -97,6 +108,7 @@ export default function AppointmentFormModal({
                         step="300"
                         value={values.time}
                         onChange={(event) => updateValue("time", event.target.value)}
+                        error={fieldErrors.time}
                         disabled={isSaving}
                     />
                 </div>

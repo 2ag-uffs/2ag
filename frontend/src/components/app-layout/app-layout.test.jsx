@@ -532,6 +532,10 @@ describe("AppLayout", () => {
         expect(await screen.findByText("Informe o nome do responsável legal")).toBeInTheDocument();
         expect(screen.getByText("texto do termo novo")).toBeInTheDocument();
         expect(screen.getByText("conteudo da tela")).not.toBeVisible();
+        // o foco vai pro campo da data, q o leitor de tela le junto com o erro (CT-39)
+        await waitFor(() => expect(screen.getByLabelText("Data de nascimento")).toHaveFocus());
+        expect(screen.getByLabelText("Data de nascimento"))
+            .toHaveAccessibleDescription("Informe o nome do responsável legal");
     });
 
     // conta de menor sem responsavel (de antes da regra) n consegue abrir o perfil com o termo pendente,
@@ -550,6 +554,8 @@ describe("AppLayout", () => {
         expect(screen.getByText("Informe o nome do responsável legal")).toBeInTheDocument();
         expect(screen.getByText("Informe o parentesco do responsável legal")).toBeInTheDocument();
         expect(post).not.toHaveBeenCalled();
+        // o foco sai do botao e vai pro primeiro campo com erro (CT-39)
+        expect(screen.getByLabelText("Nome")).toHaveFocus();
 
         await user.type(screen.getByLabelText("Nome"), " Joana Souza ");
         await user.type(screen.getByLabelText("Parentesco"), "mãe");

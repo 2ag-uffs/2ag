@@ -81,6 +81,22 @@ describe("ResetPassword", () => {
         expect(getLoggedUser()).not.toBeNull();
     });
 
+    // o erro aparecia embaixo do campo, mas o foco ficava no botao e o leitor de tela n dizia nada (CT-39)
+    it("senha nova fora das regras leva o foco pro campo com o erro", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(null);
+        const user = userEvent.setup();
+        renderResetPage("/redefinir-senha?token=abc");
+
+        await user.type(await screen.findByLabelText("Nova senha"), "curta");
+        await user.type(screen.getByLabelText("Repita a nova senha"), "curta");
+        await user.click(screen.getByRole("button", {name: "Salvar senha nova"}));
+
+        const newPassword = screen.getByLabelText("Nova senha");
+        expect(newPassword).toHaveFocus();
+        expect(newPassword).toHaveAccessibleDescription("A senha ainda não cumpre todas as regras");
+        expect(post).not.toHaveBeenCalled();
+    });
+
     it("sem o codigo quem esta logado volta pra tela inicial", async () => {
         setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
         renderResetPage("/redefinir-senha");

@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import Modal from "../../components/modal/modal.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
@@ -25,13 +26,14 @@ import styles from "./profile.module.css";
 
 const EMPTY_PASSWORD_FORM = {currentPassword: "", newPassword: "", newPasswordConfirmation: ""};
 
-// erro de campo fica no campo e o resto vira o aviso do cartao
-function showRequestError(requestError, setFieldErrors, setMessage) {
+// erro de campo fica no campo, com o foco nele, e o resto vira o aviso do cartao
+function showRequestError(requestError, setFieldErrors, setMessage, focusFirstError) {
     const errorInfo = readRequestError(requestError);
     setFieldErrors(errorInfo.fieldErrors);
     if (errorInfo.message) {
         setMessage({isError: true, text: errorInfo.message});
     }
+    focusFirstError();
 }
 
 // onde n tem campo pra marcar o erro todo vira aviso
@@ -261,6 +263,7 @@ function PersonalDataCard({profile, onSaved}) {
     const isAdmin = profile.role === "ADMIN";
     // menor de 18 n fica sem o responsavel legal q aceitou o termo por ele (LGPD art. 14)
     const isMinor = isPatient && isMinorPatient(formData.birthDate);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -277,7 +280,7 @@ function PersonalDataCard({profile, onSaved}) {
             onSaved(savedProfile);
             setMessage({isError: false, text: "Dados salvos."});
         } catch (requestError) {
-            showRequestError(requestError, setFieldErrors, setMessage);
+            showRequestError(requestError, setFieldErrors, setMessage, focusFirstError);
         } finally {
             setIsSaving(false);
         }
@@ -289,7 +292,7 @@ function PersonalDataCard({profile, onSaved}) {
 
             <CardMessage message={message}/>
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <TextField
                     label="Nome completo"
                     name="name"
@@ -344,6 +347,7 @@ function EmailCard({profile, onSaved}) {
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     // qnd o pedido some (a senha foi trocada) a mensagem de link enviado sai junto
     const shownMessage = message && !message.isError && !profile.pendingEmail ? null : message;
@@ -365,7 +369,7 @@ function EmailCard({profile, onSaved}) {
             setMessage({isError: false, text: "Enviamos um link para " + savedProfile.pendingEmail
                 + ". O e-mail de acesso só muda depois que você abrir esse link. Ele vale por 30 minutos."});
         } catch (requestError) {
-            showRequestError(requestError, setFieldErrors, setMessage);
+            showRequestError(requestError, setFieldErrors, setMessage, focusFirstError);
         } finally {
             setIsSaving(false);
         }
@@ -384,7 +388,7 @@ function EmailCard({profile, onSaved}) {
 
             <CardMessage message={shownMessage}/>
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <TextField
                     label="Novo e-mail"
                     name="newEmail"
@@ -433,6 +437,7 @@ function PasswordCard({onPasswordChanged}) {
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -445,6 +450,7 @@ function PasswordCard({onPasswordChanged}) {
         const formErrors = findPasswordErrors(formData);
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
+            focusFirstError();
             return;
         }
 
@@ -463,7 +469,7 @@ function PasswordCard({onPasswordChanged}) {
                 onPasswordChanged();
             }
         } catch (requestError) {
-            showRequestError(requestError, setFieldErrors, setMessage);
+            showRequestError(requestError, setFieldErrors, setMessage, focusFirstError);
         } finally {
             setIsSaving(false);
         }
@@ -473,7 +479,7 @@ function PasswordCard({onPasswordChanged}) {
         <Card title={cardTitle(FiLock, "Senha")}>
             <CardMessage message={message}/>
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <PasswordField
                     label="Senha atual"
                     name="currentPassword"

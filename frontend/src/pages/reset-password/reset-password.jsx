@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import {isStrongPassword} from "../../components/form/password-rules.js";
@@ -24,6 +25,7 @@ export default function ResetPassword() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     // tira o codigo da barra de endereco e do historico do navegador
     // com outra conta aberta ele fica, pq sem o codigo a rota manda pra tela inicial dessa conta
@@ -57,6 +59,7 @@ export default function ResetPassword() {
         }
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
+            focusFirstError();
             return;
         }
 
@@ -71,6 +74,7 @@ export default function ResetPassword() {
                 setErrorMessage(errorInfo.message);
             }
             setIsSubmitting(false);
+            focusFirstError();
         }
     };
 
@@ -118,7 +122,7 @@ export default function ResetPassword() {
                 </div>
             )}
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <PasswordField
                     label="Nova senha"
                     name="newPassword"

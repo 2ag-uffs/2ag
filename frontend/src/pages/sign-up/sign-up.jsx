@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import {homePathFor} from "../../app/role-home.js";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import {focusFirstInvalidField} from "../../components/form/focus-first-error.js";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import SelectField from "../../components/form/select-field.jsx";
@@ -107,17 +108,6 @@ function findFormErrors(formData, hasAcceptedConsent, ageBand) {
     return errors;
 }
 
-// leva a pessoa ate o primeiro campo com erro e diz se achou algum
-// no celular o formulario eh comprido e o erro pode estar fora da tela
-function focusFirstInvalidField() {
-    const firstInvalidField = document.querySelector("[aria-invalid='true']");
-    if (!firstInvalidField) {
-        return false;
-    }
-    firstInvalidField.focus();
-    return true;
-}
-
 // convite q falta q n vale mais ou q n deu pra conferir
 function inviteProblemText(inviteStatus) {
     if (inviteStatus === "invalid") {
@@ -178,7 +168,8 @@ export default function SignUp() {
         if (!errorMessage) {
             return;
         }
-        const hasFocusedField = focusFirstInvalidField();
+        // no celular o formulario eh comprido e o erro pode estar fora da tela
+        const hasFocusedField = focusFirstInvalidField(document);
         if (!hasFocusedField && messageRef.current) {
             messageRef.current.scrollIntoView({block: "center"});
         }
@@ -301,7 +292,7 @@ export default function SignUp() {
         setFieldErrors(formErrors);
         if (Object.keys(formErrors).length > 0) {
             // espera a tela desenhar os erros antes de procurar o campo
-            setTimeout(focusFirstInvalidField, 0);
+            setTimeout(() => focusFirstInvalidField(document), 0);
             return;
         }
 

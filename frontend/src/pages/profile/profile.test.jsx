@@ -1,7 +1,7 @@
 import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Profile from "./profile.jsx";
 
@@ -64,6 +64,25 @@ describe("Profile", () => {
             currentPassword: "valor-antigo-A1!",
             newPassword: "Valor-Novo#2026",
         });
+    });
+
+    // a senha atual errada voltava da api e o foco ficava no botao, sem o leitor de tela dizer nada (CT-39)
+    it("a senha atual recusada pela api leva o foco pro campo com o erro", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);
+        vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, "A senha atual está incorreta",
+            [{field: "currentPassword", message: "A senha atual está incorreta"}]));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        await screen.findByRole("heading", {name: "Senha"});
+        await user.type(screen.getByLabelText(/Senha atual/), "valor-errado-A1!");
+        await user.type(screen.getByLabelText(/^Nova senha/), "Valor-Novo#2026");
+        await user.type(screen.getByLabelText(/Repita a nova senha/), "Valor-Novo#2026");
+        await user.click(screen.getByRole("button", {name: "Trocar senha"}));
+
+        const currentPassword = screen.getByLabelText(/Senha atual/);
+        await waitFor(() => expect(currentPassword).toHaveFocus());
+        expect(currentPassword).toHaveAccessibleDescription("A senha atual está incorreta");
     });
 
     it("paciente continua com cpf, troca de e-mail e avisos", async () => {

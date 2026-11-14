@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {useFocusFirstError} from "../form/focus-first-error.js";
 import TextAreaField from "../form/text-area-field.jsx";
 import Modal from "../modal/modal.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE} from "../../services/api.js";
@@ -13,6 +14,7 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
     const [reasonError, setReasonError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -21,6 +23,7 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
 
         if (reason.trim() === "") {
             setReasonError("Conte o motivo da anulação.");
+            focusFirstError();
             return;
         }
 
@@ -33,6 +36,7 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
                 const errorsByField = requestError.fieldErrors();
                 if (errorsByField.reason) {
                     setReasonError(errorsByField.reason);
+                    focusFirstError();
                 } else {
                     setFormError(requestError.message);
                 }
@@ -45,7 +49,7 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
 
     return (
         <Modal show={true} title={title} onClickClose={onClose}>
-            <form className={styles.form} onSubmit={handleSubmit} noValidate>
+            <form className={styles.form} onSubmit={handleSubmit} noValidate ref={formRef}>
                 <p className={styles.recordDescription}>{recordDescription}</p>
                 {warning && <p className="aviso aviso--atencao">{warning}</p>}
                 <p className={styles.note}>

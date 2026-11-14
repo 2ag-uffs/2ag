@@ -508,6 +508,7 @@ Lembretes automáticos de **horário de dose**, de **consulta próxima** e de **
 
 **RNF01 — Usabilidade** · `mantido` · **E**
 Interface simples e de navegação fácil, adequada a usuários com diferentes níveis de familiaridade com tecnologia.
+*Decisão de 13/11/2026:* o envio recusado por um campo leva o foco ao primeiro campo com erro, que já traz a mensagem ligada a ele, então o leitor de tela lê o campo e o motivo juntos. Vale para todos os modais com formulário, inclusive a senha nova e a correção de e-mail do prescritor pela administração, e para o perfil, o cadastro, a tela de senha nova e a tela do termo.
 
 **RNF02 — Responsividade** · `mantido` · **E**
 Telas responsivas em dispositivos móveis e desktop. *Prioridade de projeto no smartphone*: a elicitação registrou preferência unânime dos pacientes por celular.

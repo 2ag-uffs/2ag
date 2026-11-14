@@ -2,6 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import {FiUserPlus, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
@@ -103,10 +104,12 @@ function LinkResult({link, sentText, handText, isCopied, onCopy, onClose}) {
 }
 
 // um campo do formulario com rotulo e mensagem de erro
+// o erro fica ligado ao campo, entao o leitor de tela le os dois juntos qnd o foco chega nele
 function FormField({
     label, fieldName, value, error, onChange,
     type = "text", autoComplete = "off", isWide = false, isRequired = true,
 }) {
+    const errorId = fieldName + "-error";
     return (
         <div className={isWide ? styles.field + " " + styles.fieldWide : styles.field}>
             <label htmlFor={fieldName}>{label}</label>
@@ -118,9 +121,10 @@ function FormField({
                 autoComplete={autoComplete}
                 required={isRequired}
                 aria-invalid={error ? "true" : undefined}
+                aria-describedby={error ? errorId : undefined}
                 onChange={(event) => onChange(fieldName, event.target.value)}
             />
-            {error && <span className={styles.fieldError}>{error}</span>}
+            {error && <span id={errorId} className={styles.fieldError}>{error}</span>}
         </div>
     );
 }
@@ -215,6 +219,7 @@ export default function AdminPrescribers() {
     const [fieldErrors, setFieldErrors] = useState({});
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     // conta recem criada com o link de primeiro acesso, ou sem ele qnd foi por e-mail
     const [firstAccess, setFirstAccess] = useState(null);
@@ -224,23 +229,28 @@ export default function AdminPrescribers() {
     // senha nova de um prescritor: pede a senha do admin e o link vem na resposta ou vai por e-mail
     const [resetTarget, setResetTarget] = useState(null);
     const [adminPassword, setAdminPassword] = useState("");
+    const [resetFieldErrors, setResetFieldErrors] = useState({});
     const [resetError, setResetError] = useState(null);
     const [isResetting, setIsResetting] = useState(false);
     const [newLink, setNewLink] = useState(null);
     const [isLinkCopied, setIsLinkCopied] = useState(false);
+    const [resetFormRef, focusFirstResetError] = useFocusFirstError();
     // correcao do e-mail digitado errado, so enquanto a pessoa ainda n criou a senha
     const [emailTarget, setEmailTarget] = useState(null);
     const [newEmail, setNewEmail] = useState("");
     const [emailAdminPassword, setEmailAdminPassword] = useState("");
+    const [emailFieldErrors, setEmailFieldErrors] = useState({});
     const [emailError, setEmailError] = useState(null);
     const [isChangingEmail, setIsChangingEmail] = useState(false);
     const [emailLink, setEmailLink] = useState(null);
+    const [emailFormRef, focusFirstEmailError] = useFocusFirstError();
     // correcao do registro, cpf ou profissao digitados errado (#149)
     const [fixTarget, setFixTarget] = useState(null);
     const [fixData, setFixData] = useState(EMPTY_FIX);
     const [fixFieldErrors, setFixFieldErrors] = useState({});
     const [fixError, setFixError] = useState(null);
     const [isFixing, setIsFixing] = useState(false);
+    const [fixFormRef, focusFirstFixError] = useFocusFirstError();
 
     // devolve a promessa pra quem cria ou desativa prescritor poder esperar a lista nova
     const loadPrescribers = useCallback(() => {
@@ -281,6 +291,7 @@ export default function AdminPrescribers() {
         if (isWrongCpf(formData.cpf)) {
             setFieldErrors({cpf: INVALID_CPF_MESSAGE});
             setFormError(null);
+            focusFirstError();
             return;
         }
         setIsSaving(true);
@@ -314,6 +325,7 @@ export default function AdminPrescribers() {
             if (errorInfo.message) {
                 setFormError(errorInfo.message);
             }
+            focusFirstError();
         } finally {
             setIsSaving(false);
         }
@@ -340,6 +352,7 @@ export default function AdminPrescribers() {
     const openReset = (prescriber) => {
         setResetTarget(prescriber);
         setAdminPassword("");
+        setResetFieldErrors({});
         setResetError(null);
         setNewLink(null);
         setIsLinkCopied(false);
@@ -356,6 +369,7 @@ export default function AdminPrescribers() {
     const handleReset = async (event) => {
         event.preventDefault();
         setIsResetting(true);
+        setResetFieldErrors({});
         setResetError(null);
         try {
             const link = await apiService.post("/admin/prescribers/" + resetTarget.id + "/password-reset", {
@@ -364,11 +378,12 @@ export default function AdminPrescribers() {
             setNewLink(link);
             setAdminPassword("");
         } catch (requestError) {
-            if (requestError instanceof ApiError) {
-                setResetError(requestError.fieldErrors().adminPassword || requestError.message);
-            } else {
-                setResetError(CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            setResetFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setResetError(errorInfo.message);
             }
+            focusFirstResetError();
         } finally {
             setIsResetting(false);
         }
@@ -378,6 +393,7 @@ export default function AdminPrescribers() {
         setEmailTarget(prescriber);
         setNewEmail(prescriber.email);
         setEmailAdminPassword("");
+        setEmailFieldErrors({});
         setEmailError(null);
         setEmailLink(null);
         setIsLinkCopied(false);
@@ -393,6 +409,7 @@ export default function AdminPrescribers() {
     const handleEmailChange = async (event) => {
         event.preventDefault();
         setIsChangingEmail(true);
+        setEmailFieldErrors({});
         setEmailError(null);
         try {
             const link = await apiService.put("/admin/prescribers/" + emailTarget.id + "/email", {
@@ -405,13 +422,15 @@ export default function AdminPrescribers() {
             // a lista mostra o e-mail certo do jeito q a api guardou
             await loadPrescribers();
         } catch (requestError) {
+            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            setEmailFieldErrors(errorInfo.fieldErrors);
+            if (errorInfo.message) {
+                setEmailError(errorInfo.message);
+            }
+            focusFirstEmailError();
             if (requestError instanceof ApiError) {
-                const errors = requestError.fieldErrors();
-                setEmailError(errors.email || errors.adminPassword || requestError.message);
                 // a pessoa pode ter criado a senha nesse meio tempo, e ai o botao some da linha
                 loadPrescribers();
-            } else {
-                setEmailError(CONNECTION_ERROR);
             }
         } finally {
             setIsChangingEmail(false);
@@ -445,6 +464,7 @@ export default function AdminPrescribers() {
         if (isWrongCpf(fixData.cpf)) {
             setFixFieldErrors({cpf: INVALID_CPF_MESSAGE});
             setFixError(null);
+            focusFirstFixError();
             return;
         }
         setIsFixing(true);
@@ -468,6 +488,7 @@ export default function AdminPrescribers() {
             if (errorInfo.message) {
                 setFixError(errorInfo.message);
             }
+            focusFirstFixError();
         } finally {
             setIsFixing(false);
         }
@@ -538,8 +559,10 @@ export default function AdminPrescribers() {
             )}
 
             <Modal show={isFormOpen} title="Novo prescritor" onClickClose={closeForm}>
-                <form className={styles.form} onSubmit={handleCreate}>
-                    {formError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{formError}</p>}
+                <form className={styles.form} onSubmit={handleCreate} ref={formRef}>
+                    {formError && (
+                        <p className={"aviso aviso--atencao " + styles.fieldWide} role="alert">{formError}</p>
+                    )}
 
                     <FormField label="Nome completo" fieldName="name" value={formData.name}
                                error={fieldErrors.name} onChange={updateField} isWide={true}/>
@@ -593,7 +616,7 @@ export default function AdminPrescribers() {
                 onClickClose={closeReset}
             >
                 {newLink === null ? (
-                    <form className={styles.form} onSubmit={handleReset}>
+                    <form className={styles.form} onSubmit={handleReset} ref={resetFormRef}>
                         {/* quem nunca criou a senha n tem "senha atual" pra continuar valendo (#154) */}
                         <p className={styles.fieldWide}>
                             {resetTargetHasPassword
@@ -602,13 +625,16 @@ export default function AdminPrescribers() {
                                 : "Essa conta ainda não tem senha. Isso cria um link para a pessoa criar a primeira"
                                     + " senha dela e derruba os links anteriores, como o de primeiro acesso."}
                         </p>
-                        {resetError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{resetError}</p>}
+                        {resetError && (
+                            <p className={"aviso aviso--atencao " + styles.fieldWide} role="alert">{resetError}</p>
+                        )}
 
                         <FormField
                             label="Sua senha de administrador"
                             fieldName="adminPassword"
                             type="password"
                             value={adminPassword}
+                            error={resetFieldErrors.adminPassword}
                             onChange={(fieldName, value) => setAdminPassword(value)}
                             autoComplete="current-password"
                             isWide={true}
@@ -649,18 +675,21 @@ export default function AdminPrescribers() {
                 onClickClose={closeEmailChange}
             >
                 {emailLink === null ? (
-                    <form className={styles.form} onSubmit={handleEmailChange}>
+                    <form className={styles.form} onSubmit={handleEmailChange} ref={emailFormRef}>
                         <p className={styles.fieldWide}>
                             Serve para quando o e-mail foi digitado errado e o link de criar a senha não chegou.
                             O link sai de novo para o endereço certo, e o anterior deixa de valer.
                         </p>
-                        {emailError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{emailError}</p>}
+                        {emailError && (
+                            <p className={"aviso aviso--atencao " + styles.fieldWide} role="alert">{emailError}</p>
+                        )}
 
                         <FormField
                             label="E-mail certo"
                             fieldName="newEmail"
                             type="email"
                             value={newEmail}
+                            error={emailFieldErrors.email}
                             onChange={(fieldName, value) => setNewEmail(value)}
                             isWide={true}
                         />
@@ -669,6 +698,7 @@ export default function AdminPrescribers() {
                             fieldName="emailAdminPassword"
                             type="password"
                             value={emailAdminPassword}
+                            error={emailFieldErrors.adminPassword}
                             onChange={(fieldName, value) => setEmailAdminPassword(value)}
                             autoComplete="current-password"
                             isWide={true}
@@ -704,12 +734,12 @@ export default function AdminPrescribers() {
                 title={fixTarget === null ? "" : "Corrigir dados de " + fixTarget.name}
                 onClickClose={closeFix}
             >
-                <form className={styles.form} onSubmit={handleFix}>
+                <form className={styles.form} onSubmit={handleFix} ref={fixFormRef}>
                     <p className={styles.fieldWide}>
                         Serve para corrigir o registro profissional, a profissão ou o CPF digitados errado.
                         O CPF guardado não aparece aqui: preencha só se for corrigir.
                     </p>
-                    {fixError && <p className={"aviso aviso--atencao " + styles.fieldWide}>{fixError}</p>}
+                    {fixError && <p className={"aviso aviso--atencao " + styles.fieldWide} role="alert">{fixError}</p>}
 
                     <FormField label="CPF (só se for corrigir)" fieldName="fixCpf" value={fixData.cpf}
                                error={fixFieldErrors.cpf} isRequired={false}

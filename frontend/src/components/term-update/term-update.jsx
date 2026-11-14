@@ -1,4 +1,5 @@
 import {useEffect, useState} from "react";
+import {useFocusFirstError} from "../form/focus-first-error.js";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
 import {
@@ -30,9 +31,9 @@ function guardianTextOf(guardian) {
 }
 
 // conta de menor sem o responsavel completo preenche o nome e o parentesco aqui
-function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChange}) {
+function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChange, fieldsRef}) {
     return (
-        <fieldset className={styles.guardianFields}>
+        <fieldset className={styles.guardianFields} ref={fieldsRef}>
             <legend className={styles.guardianTitle}>Responsável legal</legend>
             <p className={styles.statusText}>
                 {guardian
@@ -87,6 +88,7 @@ function BirthDateFix({profile, onFixed}) {
     const [birthDate, setBirthDate] = useState(profile.birthDate || "");
     const [error, setError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -98,13 +100,14 @@ function BirthDateFix({profile, onFixed}) {
             onFixed(savedProfile, sessionUser);
         } catch (requestError) {
             setError(birthDateErrorOf(requestError));
+            focusFirstError();
         } finally {
             setIsSaving(false);
         }
     };
 
     return (
-        <form className={styles.birthDateFix} onSubmit={handleSubmit}>
+        <form className={styles.birthDateFix} onSubmit={handleSubmit} ref={formRef}>
             <p className="aviso">
                 A data de nascimento salva é {formatDate(profile.birthDate)}, e por ela a sua faixa de idade mudou
                 desde o último aceite. Se a data estiver errada, corrija aqui em vez de aceitar: com a data certa, o
@@ -140,6 +143,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
     const [loadError, setLoadError] = useState(null);
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [guardianFieldsRef, focusFirstGuardianError] = useFocusFirstError();
 
     useEffect(() => {
         let isCurrentPage = true;
@@ -195,6 +199,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
             const errors = findGuardianErrors(guardianData, true);
             setFieldErrors(errors);
             if (Object.keys(errors).length > 0) {
+                focusFirstGuardianError();
                 return;
             }
             requestBody.guardian = guardianBody(guardianData);
@@ -207,9 +212,10 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
             onAccepted();
         } catch (requestError) {
             if (requestError instanceof ApiError) {
-                // erro de campo ja aparece embaixo do campo
+                // erro de campo ja aparece embaixo do campo, e o foco vai pra ele
                 const errorsByField = requestError.fieldErrors();
                 setFieldErrors(errorsByField);
+                focusFirstGuardianError();
                 if (Object.keys(errorsByField).length === 0) {
                     // tipo o termo q mudou de novo: a mensagem so aparece com o texto novo ja na tela
                     await reloadChangedTerm();
@@ -277,6 +283,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                             guardianData={guardianData}
                             fieldErrors={fieldErrors}
                             onFieldChange={updateGuardianField}
+                            fieldsRef={guardianFieldsRef}
                         />
                     )}
                     {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
