@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { codePath, sanitizeText } from "../lib/sanitize.mjs";
+import { codePath, plainText, sanitizeText } from "../lib/sanitize.mjs";
 import { cpfFrom, fakeSecrets, unescapedCount } from "./helpers.mjs";
 
 test("ninguem eh marcado", () => {
@@ -128,6 +128,22 @@ test("corta no tamanho e numa linha so", () => {
 
 test("caminho vai em crase e sem quebra", () => {
     assert.equal(codePath("a/`b`\nc.js"), "`a/'b' c.js`");
+});
+
+// alerta 7 do codeql: tirar a tag de dentro remontava a de fora
+test("tag escondida dentro de outra n sobra dps de limpar", () => {
+    for (const payload of ["<<b>script>alert(1)<</b>/script>", "<!<!-- x -->-- y --><<i>img src=x>", "<<<b>a>b>"]) {
+        const text = plainText(payload);
+        assert.ok(!/<[A-Za-z!/]/.test(text), payload + " -> " + text);
+    }
+});
+
+test("barra da tabela e barra invertida juntas continuam escapadas", () => {
+    for (const singleLine of [false, true]) {
+        const text = sanitizeText("a | b \\| c \\\\| d", 100, { singleLine });
+        assert.equal(unescapedCount(text, "|"), 0);
+    }
+    assert.equal(sanitizeText("---", 50), "\\-\\-\\-");
 });
 
 test("caminho n marca ninguem nem vira link msm se a crase quebrar", () => {

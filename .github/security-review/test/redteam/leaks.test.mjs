@@ -17,7 +17,14 @@ const HIDDEN = ["Hh7k", "W2pQ", "9rT4", "mX8v"].join("");
 
 // tira o q o modelo pode enfiar no meio do valor e os escapes do markdown
 function squeeze(text) {
-    return text.replace(/[\u200B-\u200F\u2060-\u2069\uFEFF\u00AD]/g, "").replace(/<[^>]*>/g, "").replace(/\\/g, "");
+    let result = text.replace(/[\u200B-\u200F\u2060-\u2069\uFEFF\u00AD]/g, "");
+    // repete pq tirar uma tag do meio de outra pode remontar uma tag
+    let previous;
+    do {
+        previous = result;
+        result = result.replace(/<[^>]*>/g, "");
+    } while (result !== previous);
+    return result.replace(/\\/g, "");
 }
 
 function splitWith(value, glue) {

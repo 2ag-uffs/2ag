@@ -19,10 +19,10 @@ function cut(text, maxLength) {
 function escapeLine(line) {
     let result = line.trim();
     result = result.replace(/^#/, "\\#");
-    result = result.replace(/\|/g, "\\|");
     // linha so de - ou = vira titulo e - - - vira linha horizontal
+    // a barra invertida ta na lista so pro escape ser completo, essa linha nem tem barra
     if (/^([-*_])(?:[ \t]*\1){2,}[ \t]*$/.test(result) || /^(?:=+|-+)$/.test(result)) {
-        result = result.replace(/([=*_-])/g, "\\$1");
+        result = result.replace(/[\\=*_-]/g, "\\$&");
     }
     return result;
 }
@@ -31,8 +31,13 @@ function escapeLine(line) {
 // metade de emoji solta tipo \ud800 no json do modelo vira o caractere de troca
 export function plainText(value) {
     let text = String(value ?? "").toWellFormed().replace(/\r\n?/g, "\n").replace(INVISIBLE, "");
-    text = text.replace(/<!--[\s\S]*?(?:-->|$)/g, "");
-    return text.replace(/<\/?[A-Za-z][^>]*>?/g, "");
+    // repete ate n mudar mais pq tirar uma tag do meio de outra podia remontar uma tag inteira, tipo <<b>script>
+    let previous;
+    do {
+        previous = text;
+        text = text.replace(/<!--[\s\S]*?(?:-->|$)/g, "").replace(/<\/?[A-Za-z][^>]*>?/g, "");
+    } while (text !== previous);
+    return text;
 }
 
 export function sanitizeText(value, maxLength, { singleLine = false } = {}) {
@@ -56,13 +61,11 @@ export function sanitizeText(value, maxLength, { singleLine = false } = {}) {
     // corta antes de escapar pro corte nunca separar um escape do q ele protege
     text = cut(text.trim(), maxLength);
 
-    // a barra invertida primeiro senao ela desfaz os escapes de baixo
-    text = text.replace(/\\/g, "\\\\");
-    // crase e til de cerca viram texto e nenhum par muda onde o codigo comeca
-    text = text.replace(/`/g, "\\`");
+    // barra invertida, crase, negrito, italico e a barra da tabela num passo so, assim um escape n desfaz outro
+    // a crase vira texto e nenhum par muda onde o codigo comeca, e o negrito n imita o texto fixo do bot
+    text = text.replace(/[\\`*_|]/g, "\\$&");
+    // til de cerca tbm vira texto
     text = text.replace(/~{3,}/g, (run) => "\\~".repeat(run.length));
-    // negrito e italico tbm n pra n imitar o texto fixo do bot
-    text = text.replace(/([*_])/g, "\\$1");
 
     // o e comercial primeiro senao a entidade do arroba viraria arroba dps de renderizado
     text = text.replace(/&/g, "&amp;");
