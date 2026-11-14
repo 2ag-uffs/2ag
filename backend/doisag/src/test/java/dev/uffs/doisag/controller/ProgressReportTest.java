@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -180,6 +181,31 @@ class ProgressReportTest {
         JsonNode awakenings = attributeNamed(attributes, "DESPERTARES");
         assertThat(awakenings.has("higherIsBetter")).isTrue();
         assertThat(awakenings.path("higherIsBetter").isNull()).isTrue();
+    }
+
+    // RF27 o grafico vai pela data e corta a linha onde passou mais tempo q a frequencia da escala
+    // sem resposta, e a frequencia vem do catalogo (decisao de 14/11/2026, revisao das regras R3)
+    @Test
+    void oCatalogoDizDeQuantosEmQuantosDiasAEscalaEhRespondida() throws Exception {
+        JsonNode attributes = trackableAttributes();
+
+        // a ficha e o diario sao de todo dia
+        assertThat(attributeNamed(attributes, "DOR").path("frequencyDays").isInt()).isTrue();
+        assertThat(attributeNamed(attributes, "DOR").path("frequencyDays").asInt()).isEqualTo(1);
+        assertThat(attributeNamed(attributes, "GOTAS_MANHA").path("frequencyDays").asInt()).isEqualTo(1);
+        assertThat(attributeNamed(attributes, "TEMPO_TOTAL_SONO").path("frequencyDays").asInt()).isEqualTo(1);
+
+        // o registro de dor e o de TEA falam da semana
+        assertThat(attributeNamed(attributes, "INTENSIDADE_DOR").path("frequencyDays").asInt()).isEqualTo(7);
+        assertThat(attributeNamed(attributes, "QUALIDADE_DE_VIDA").path("frequencyDays").asInt()).isEqualTo(7);
+
+        // hamilton PSQI e MEEM sao de um dia so e n tem frequencia fixa, entao a linha liga uma resposta na outra.
+        // com 7 dias, o hamilton q volta a cada 14 ou 30 dias virava bolinha solta sem faltar resposta nenhuma
+        for (String name : List.of("ESCORE_HAMILTON", "ESCORE_PITTSBURGH", "ESCORE_MEEM")) {
+            JsonNode attribute = attributeNamed(attributes, name);
+            assertThat(attribute.has("frequencyDays")).as(name).isTrue();
+            assertThat(attribute.path("frequencyDays").isNull()).as(name).isTrue();
+        }
     }
 
     // RN14 o MEEM n tem faixa fixa, o corte muda com a escolaridade. cada ponto

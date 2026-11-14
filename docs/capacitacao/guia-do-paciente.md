@@ -37,7 +37,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 ## avisos e progresso
 
 1. Em **Avisos** chegam confirmações, remarcações, formulários novos e lembretes: um dia antes da consulta e dois dias antes do prazo de um formulário sem resposta. Para não receber por e-mail, use **Perfil**, **Avisos por e-mail**.
-2. Em **Progresso**, escolha o **Período**, a **Escala** e **O que acompanhar**. Cada ponto é uma resposta sua, e dia sem resposta não aparece.
+2. Em **Progresso**, escolha o **Período**, a **Escala** e **O que acompanhar**. Cada ponto é uma resposta sua, na data dela. Onde faltou resposta, a linha se interrompe.
 3. O **Mini-Exame do Estado Mental**, um teste que o prescritor aplica na consulta, não aparece no 2AG para você: nem em **Escalas**, nem no **Progresso**, nem nos arquivos que você baixa. O resultado é conversado com o prescritor na consulta. Para ter uma cópia do prontuário inteiro, peça à clínica.
 
 ## e-mail e senha

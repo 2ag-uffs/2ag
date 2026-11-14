@@ -3,6 +3,7 @@ package dev.uffs.doisag.service;
 import dev.uffs.doisag.dto.ProgressCommentDTO;
 import dev.uffs.doisag.dto.ProgressDataPointDTO;
 import dev.uffs.doisag.dto.TrackableAttributeDTO;
+import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
 import dev.uffs.doisag.model.ScaleResponse;
@@ -139,7 +140,8 @@ public class ProgressReportService {
             return new TrackableAttributeDTO(attribute.name(), definition.scoreLabel(), attribute.getScaleType(),
                     attribute.getScaleType().getDisplayName(), definition.minScore(), definition.maxScore(),
                     definition.bands(), ScoreBand.labelOf(definition.bands(), definition.minScore()),
-                    ScoreBand.labelOf(definition.bands(), definition.maxScore()), definition.higherScoreIsBetter());
+                    ScoreBand.labelOf(definition.bands(), definition.maxScore()), definition.higherScoreIsBetter(),
+                    frequencyDaysOf(definition));
         }
         ScaleItem item = definition.itemOf(attribute.getItemKey())
                 .orElseThrow(() -> new IllegalStateException(
@@ -148,6 +150,21 @@ public class ProgressReportService {
         Boolean higherIsBetter = item.lowAnchor() == null ? null : item.higherIsBetter();
         return new TrackableAttributeDTO(attribute.name(), item.label(), attribute.getScaleType(),
                 attribute.getScaleType().getDisplayName(), item.minValue(), item.maxValue(), List.of(),
-                item.lowAnchor(), item.highAnchor(), higherIsBetter);
+                item.lowAnchor(), item.highAnchor(), higherIsBetter, frequencyDaysOf(definition));
+    }
+
+    // de quantos em quantos dias a escala eh respondida, pro grafico cortar a linha onde passou mais
+    // tempo q isso sem resposta (decisao de 14/11/2026, revisao das regras R3). a ficha e o diario sao
+    // de todo dia e o registro de dor e o de TEA falam da semana. o hamilton e o PSQI sao de um dia so,
+    // como o MEEM, e o acompanhamento manda eles a cada 7, 14 ou 30 dias, entao n tem frequencia fixa e a
+    // linha liga uma resposta na outra
+    private Integer frequencyDaysOf(ScaleDefinition definition) {
+        if (definition.fillMode() == ScaleDefinition.FillMode.DIARIO) {
+            return 1;
+        }
+        if (definition.fillMode() == ScaleDefinition.FillMode.PERIODO) {
+            return Periodicity.SEMANAL.getDays();
+        }
+        return null;
     }
 }

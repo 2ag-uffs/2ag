@@ -358,9 +358,9 @@ Janela normal. Saia da prescritora de treino e entre como `prescritor@email.com`
   3. **Marcar as consultas** já vem marcado. Marque também **Mostrar as gotas do dia**.
   4. Troque **Escala** para **Escala de ansiedade de Hamilton**.
 - **Conferir:**
-  - Cada ponto é um preenchimento. Dia sem resposta não aparece no gráfico, em vez de aparecer como zero.
-  - As consultas viram linhas verticais, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas.
-  - Na Hamilton aparecem as linhas das faixas de interpretação.
+  - Cada ponto é um preenchimento, na data dele. Onde faltou resposta, a linha se interrompe, em vez de cair para zero.
+  - As consultas viram linhas verticais no dia delas, mesmo sem preenchimento nesse dia, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas.
+  - Na Hamilton aparecem as linhas das faixas de interpretação, e a linha liga as três respostas da Maria, porque a Hamilton não tem frequência fixa.
   - O quadro **O que o paciente escreveu** junta os comentários das escalas no período, com a data e o nome da escala. Na tela do próprio paciente, ele se chama **O que você escreveu**.
   - O mesmo gráfico abre pelo histórico do paciente, no botão **Progresso**. O paciente vê o dele no menu **Progresso**, sem o **Mini-Exame do Estado Mental**, que só o prescritor vê: a Maria fez o exame na primeira consulta, e a escala aparece para a Ana e não aparece para a Maria.
 - **Se der errado:** *Nenhum registro preenchido neste período*: aumente o **Período** ou troque a escala.

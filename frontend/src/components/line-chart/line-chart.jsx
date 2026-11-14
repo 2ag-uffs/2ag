@@ -1,11 +1,12 @@
 import {useLayoutEffect, useRef, useState} from "react";
 import {formatCutoff, valueWithBand} from "../../utils/progress-reading.js";
 import {
+    dayNumber,
     linePath,
     nearestIndex,
     stackLabels,
     xLabelIndexes,
-    xOf,
+    xOfDay,
     yOf,
     yRange,
     yTicks,
@@ -39,7 +40,19 @@ function summaryOf(rows, valueName) {
 }
 
 // grafico de evolucao em svg com as cores do css entao o tema escuro vale sozinho
-export default function LineChart({rows, minValue, maxValue, valueName, showDose, bandLines, cutoff, appointmentMarks}) {
+// o eixo x vai pela data e a linha corta onde passou mais dias q a frequencia da escala sem resposta
+// (RF27, revisao das regras R3)
+export default function LineChart({
+    rows,
+    minValue,
+    maxValue,
+    valueName,
+    showDose,
+    bandLines,
+    cutoff,
+    appointmentMarks,
+    frequencyDays,
+}) {
     const boxRef = useRef(null);
     const [width, setWidth] = useState(DEFAULT_WIDTH);
     const [activeIndex, setActiveIndex] = useState(null);
@@ -77,26 +90,30 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
 
     const plotWidth = Math.max(40, width - LEFT - RIGHT);
     const right = LEFT + plotWidth;
-    const xAt = (index) => xOf(index, rows.length, LEFT, plotWidth);
+
+    // o eixo vai do dia mais antigo ao mais novo, contando as consultas, entao a consulta em dia sem
+    // resposta tbm cai no dia dela. a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
+    const days = rows.map((row) => dayNumber(row.date));
+    const axisDays = [...days, ...appointmentMarks.map((mark) => dayNumber(mark.date))];
+    const firstDay = Math.min(...axisDays);
+    const lastDay = Math.max(...axisDays);
+    const xAtDay = (day) => xOfDay(day, firstDay, lastDay, LEFT, plotWidth);
+    const xs = days.map(xAtDay);
 
     const dateGap = rows.length > 0 && rows[0].label.length > 5 ? DATE_WITH_YEAR_GAP : DATE_GAP;
     // a ultima data fica colada na borda direita e a com o ano passaria dela
-    const dateX = (index) => Math.min(xAt(index), width - rows[index].label.length * 3.3 - 2);
+    const dateX = (index) => Math.min(xs[index], width - rows[index].label.length * 3.3 - 2);
 
     const marks = [];
     for (const mark of appointmentMarks) {
-        // pela data inteira pq o texto do eixo pode ser so dia e mes
-        const index = rows.findIndex((row) => row.date === mark.date);
-        if (index === -1) {
-            continue;
-        }
+        const x = xAtDay(dayNumber(mark.date));
         const text = mark.geraPrescricao ? "consulta + receita" : "consulta";
         // uns 6px e meio por letra no texto de 12px e o nome n passa da borda
         const halfText = text.length * 3.3;
-        const textX = Math.min(Math.max(xAt(index), halfText + 2), width - halfText - 2);
-        marks.push({id: mark.id, index: index, text: text, textX: textX, left: textX - halfText, right: textX + halfText});
+        const textX = Math.min(Math.max(x, halfText + 2), width - halfText - 2);
+        marks.push({id: mark.id, x: x, text: text, textX: textX, left: textX - halfText, right: textX + halfText});
     }
-    marks.sort((first, second) => first.index - second.index);
+    marks.sort((first, second) => first.x - second.x);
 
     // nome de consulta q encostaria no outro sobe uma linha
     const markLines = stackLabels(marks, 8, 3);
@@ -114,16 +131,16 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
     const scorePoints = [];
     const dosePoints = [];
     rows.forEach((row, index) => {
-        scorePoints.push({x: xAt(index), y: row.valor === null ? null : yAt(row.valor)});
+        scorePoints.push({x: xs[index], y: row.valor === null ? null : yAt(row.valor), day: days[index]});
         if (showDose) {
-            dosePoints.push({x: xAt(index), y: row.gotas === null ? null : yAt(row.gotas)});
+            dosePoints.push({x: xs[index], y: row.gotas === null ? null : yAt(row.gotas), day: days[index]});
         }
     });
 
     const pickNearest = (event) => {
         const box = event.currentTarget.getBoundingClientRect();
         const scale = box.width > 0 ? width / box.width : 1;
-        const index = nearestIndex((event.clientX - box.left) * scale, rows.length, LEFT, plotWidth);
+        const index = nearestIndex((event.clientX - box.left) * scale, xs);
         if (index !== -1) {
             setActiveIndex(index);
         }
@@ -171,7 +188,7 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
     };
 
     const activeRow = activeIndex !== null && activeIndex < rows.length ? rows[activeIndex] : null;
-    const activeX = activeRow ? xAt(activeIndex) : 0;
+    const activeX = activeRow ? xs[activeIndex] : 0;
     const hasActiveDose = Boolean(activeRow && showDose && activeRow.gotas !== null);
 
     // o tooltip fica do lado do ponto q tem mais espaco
@@ -208,10 +225,10 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
                                 <text className={styles.tick} x={LEFT - 8} y={yAt(tick) + 4} textAnchor="end">{tick}</text>
                             </g>
                         ))}
-                        {xLabelIndexes(rows.length, plotWidth, dateGap).map((index) => (
+                        {xLabelIndexes(xs, dateGap).map((index) => (
                             <g key={"x" + index}>
-                                <line className={styles.grid} x1={xAt(index)} x2={xAt(index)} y1={top} y2={bottom}/>
-                                <line className={styles.axis} x1={xAt(index)} x2={xAt(index)} y1={bottom} y2={bottom + 5}/>
+                                <line className={styles.grid} x1={xs[index]} x2={xs[index]} y1={top} y2={bottom}/>
+                                <line className={styles.axis} x1={xs[index]} x2={xs[index]} y1={bottom} y2={bottom + 5}/>
                                 <text className={styles.tick} x={dateX(index)} y={bottom + 19} textAnchor="middle">
                                     {rows[index].label}
                                 </text>
@@ -243,8 +260,8 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
                             <line
                                 key={"l" + mark.id}
                                 className={styles.appointment}
-                                x1={xAt(mark.index)}
-                                x2={xAt(mark.index)}
+                                x1={mark.x}
+                                x2={mark.x}
                                 y1={top - 3 - LINE_HEIGHT * markLines[position]}
                                 y2={bottom}
                             />
@@ -263,7 +280,7 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
 
                         {activeRow && <line className={styles.cursor} x1={activeX} x2={activeX} y1={top} y2={bottom}/>}
 
-                        <path className={styles.scoreLine} d={linePath(scorePoints)}/>
+                        <path className={styles.scoreLine} d={linePath(scorePoints, frequencyDays)}/>
                         {scorePoints.map((point, index) => point.y !== null && (
                             <circle
                                 key={"s" + index}
@@ -274,7 +291,8 @@ export default function LineChart({rows, minValue, maxValue, valueName, showDose
                             />
                         ))}
 
-                        {showDose && <path className={styles.doseLine} d={linePath(dosePoints)}/>}
+                        {/* as gotas sao da ficha, entao a frequencia eh a msm do escore */}
+                        {showDose && <path className={styles.doseLine} d={linePath(dosePoints, frequencyDays)}/>}
                         {dosePoints.map((point, index) => point.y !== null && (
                             <circle
                                 key={"d" + index}

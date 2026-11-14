@@ -316,12 +316,16 @@ export default function Progresso() {
         };
     }, [patientId, period]);
 
+    // so as consultas do periodo escolhido: enquanto elas chegam o cartao n aparece
+    const periodAppointments = loadedAppointmentsKey === periodKey ? appointments : [];
+    const appointmentMarks = showAppointments ? appointmentMarksOf(periodAppointments) : [];
+
     // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal
     const shownDosePoints = showDose && isFollowUpScale ? dosePoints : [];
     const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point.value]));
-    // a serie vem em ordem de data entao basta comparar o ano da primeira com o da ultima
-    const hasManyYears = points.length > 0
-        && points[0].date.slice(0, 4) !== points[points.length - 1].date.slice(0, 4);
+    // o eixo vai pela data e pega tbm as consultas, entao o ano aparece qnd qualquer uma delas cai em outro ano
+    const axisDates = [...points.map((point) => point.date), ...appointmentMarks.map((mark) => mark.date)];
+    const hasManyYears = axisDates.some((date) => date.slice(0, 4) !== axisDates[0].slice(0, 4));
     const chartRows = points.map((point) => ({
         date: point.date,
         label: hasManyYears ? dayMonthAndYear(point.date) : dayAndMonth(point.date),
@@ -329,10 +333,6 @@ export default function Progresso() {
         faixa: bandTextOf(point, isMentalStateExam),
         gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
     }));
-
-    // so as consultas do periodo escolhido: enquanto elas chegam o cartao n aparece
-    const periodAppointments = loadedAppointmentsKey === periodKey ? appointments : [];
-    const appointmentMarks = showAppointments ? appointmentMarksOf(periodAppointments, chartRows) : [];
 
     // a faixa interpretativa vira linha de corte no grafico pq escore
     // sem faixa n quer dizer nada (RN14)
@@ -492,8 +492,8 @@ export default function Progresso() {
             <PageHeader
                 title={pageTitle}
                 subtitle={isPrescriber
-                    ? "Evolução do tratamento. Cada ponto é um preenchimento e dia sem resposta não aparece no gráfico."
-                    : "Cada ponto é um preenchimento. Dia sem resposta não aparece no gráfico, em vez de aparecer como zero."}
+                    ? "Evolução do tratamento. Cada ponto é um preenchimento, na data dele. Onde faltou resposta, a linha se interrompe."
+                    : "Cada ponto é um preenchimento, na data dele. Onde faltou resposta, a linha se interrompe, em vez de cair para zero."}
                 actions={historyLink || csvLink ? <>{historyLink}{csvLink}</> : null}
             />
 
@@ -608,6 +608,7 @@ export default function Progresso() {
                             bandLines={bandLines}
                             cutoff={sharedCutoff}
                             appointmentMarks={appointmentMarks}
+                            frequencyDays={currentAttribute ? currentAttribute.frequencyDays : null}
                         />
                     </div>
                 )}
@@ -617,13 +618,8 @@ export default function Progresso() {
                 )}
             </Card>
 
-            {/* o aviso de consulta sem ponto espera o grafico do periodo, senao comparava com os pontos do anterior */}
             {showAppointments && periodAppointments.length > 0 && (
-                <AppointmentsCard
-                    appointments={periodAppointments}
-                    hasUnmarkedAppointments={!isLoading && chartRows.length > 0
-                        && appointmentMarks.length < periodAppointments.length}
-                />
+                <AppointmentsCard appointments={periodAppointments}/>
             )}
 
             <CommentsCard
@@ -746,8 +742,8 @@ function ReadingNotes({points, isMentalStateExam, sharedCutoff}) {
     );
 }
 
-// so vira linha no grafico a consulta q caiu num dia com preenchimento entao a lista avisa
-function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
+// as consultas do periodo com a data, o diagnostico e se saiu receita
+function AppointmentsCard({appointments}) {
     return (
         <Card title="Consultas no período" count={appointments.length}>
             <ul className={styles.list}>
@@ -765,11 +761,6 @@ function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
                     </li>
                 ))}
             </ul>
-            {hasUnmarkedAppointments && (
-                <p className={styles.note}>
-                    Consulta em dia sem preenchimento aparece aqui, mas não no gráfico: não há ponto onde marcar.
-                </p>
-            )}
         </Card>
     );
 }
@@ -819,16 +810,14 @@ function sumByDate(morningPoints, afternoonPoints) {
         .map((point) => ({date: point.date, value: point.value + afternoonByDate.get(point.date)}));
 }
 
-// o eixo x eh categorico entao so da pra marcar consulta em dia q tem ponto no grafico
-// senao o grafico n sabe onde por a linha e duas consultas no msm dia viram uma marca so
-// a conta usa a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
-function appointmentMarksOf(appointments, chartRows) {
-    const daysWithPoint = new Set(chartRows.map((row) => row.date));
+// o eixo x vai pela data, entao toda consulta vira marca no dia dela, tenha resposta ou n (revisao das regras R3)
+// duas consultas no msm dia viram uma marca so. a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
+function appointmentMarksOf(appointments) {
     const markedDays = new Set();
     return appointments
         .map((appointment) => ({...appointment, date: appointment.data}))
         .filter((appointment) => {
-            if (!daysWithPoint.has(appointment.date) || markedDays.has(appointment.date)) {
+            if (markedDays.has(appointment.date)) {
                 return false;
             }
             markedDays.add(appointment.date);

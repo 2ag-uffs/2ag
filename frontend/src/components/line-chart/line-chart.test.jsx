@@ -11,8 +11,15 @@ const ROWS = [
 ];
 
 const MEEM_ROWS = [
-    {label: "10/09", valor: 24, faixa: "Abaixo do esperado para a escolaridade (corte 25)", gotas: null},
-    {label: "10/10", valor: 27, faixa: "Dentro do esperado para a escolaridade (corte 25)", gotas: null},
+    {date: "2026-09-10", label: "10/09", valor: 24, faixa: "Abaixo do esperado para a escolaridade (corte 25)", gotas: null},
+    {date: "2026-10-10", label: "10/10", valor: 27, faixa: "Dentro do esperado para a escolaridade (corte 25)", gotas: null},
+];
+
+// dor 8 em 01/10 e 02/10, tres semanas sem preencher e dor 3 em 25/10
+const ROWS_WITH_GAP = [
+    {date: "2026-10-01", label: "01/10", valor: 8, faixa: null, gotas: null},
+    {date: "2026-10-02", label: "02/10", valor: 8, faixa: null, gotas: null},
+    {date: "2026-10-25", label: "25/10", valor: 3, faixa: null, gotas: null},
 ];
 
 function renderChart(props) {
@@ -25,6 +32,7 @@ function renderChart(props) {
         bandLines: [],
         cutoff: null,
         appointmentMarks: [],
+        frequencyDays: 1,
     };
     return render(<LineChart {...defaults} {...props}/>);
 }
@@ -95,26 +103,82 @@ describe("LineChart", () => {
     });
 
     it("todos no msm valor e sem maximo no catalogo ainda desenha", () => {
-        const rows = [{label: "01/10", valor: 2, faixa: null, gotas: null}, {label: "02/10", valor: 2, faixa: null, gotas: null}];
+        const rows = [
+            {date: "2026-10-01", label: "01/10", valor: 2, faixa: null, gotas: null},
+            {date: "2026-10-02", label: "02/10", valor: 2, faixa: null, gotas: null},
+        ];
         const {container} = renderChart({rows: rows, minValue: null, maxValue: null});
 
         expect(container.querySelectorAll("circle")).toHaveLength(2);
         expect(numbersOf(container).some((number) => Number.isNaN(number))).toBe(false);
     });
 
-    // dia sem gota fica de fora e a linha passa direto
-    it("a linha das gotas pula o dia sem gota e entra na legenda", () => {
+    // dia sem gota eh lacuna e a linha das gotas corta nele, como a do escore
+    it("a linha das gotas corta no dia sem gota e entra na legenda", () => {
         const {container} = renderChart({showDose: true});
 
         const paths = container.querySelectorAll("path");
         expect(paths).toHaveLength(2);
-        expect(paths[1].getAttribute("d").split("L")).toHaveLength(2);
+        expect(paths[1].getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+ M[\d.]+ [\d.]+$/);
         expect(container.querySelectorAll("circle")).toHaveLength(5);
         expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
     });
 
+    // RF27 o eixo x vai pela data e a linha corta onde passou mais q a frequencia sem resposta (revisao das regras R3)
+    it("tres semanas sem resposta ocupam o espaco de tres semanas e a linha corta nelas", () => {
+        const {container} = renderChart({rows: ROWS_WITH_GAP, valueName: "Dor"});
+
+        // no jsdom o svg tem 640 de largura e o desenho vai de 40 a 620, 24 dias de 01/10 a 25/10
+        const dots = container.querySelectorAll("circle");
+        expect(dots[0].getAttribute("cx")).toBe("40");
+        expect(dots[1].getAttribute("cx")).toBe("64.2");
+        expect(dots[2].getAttribute("cx")).toBe("620");
+        expect(container.querySelector("path").getAttribute("d")).toMatch(/^M40 [\d.]+ L64\.2 [\d.]+ M620 [\d.]+$/);
+    });
+
+    it("na escala semanal a semana seguinte ainda liga a linha", () => {
+        const rows = [
+            {date: "2026-10-01", label: "01/10", valor: 30, faixa: null, gotas: null},
+            {date: "2026-10-08", label: "08/10", valor: 28, faixa: null, gotas: null},
+        ];
+        const {container} = renderChart({rows: rows, maxValue: 56, frequencyDays: 7});
+
+        expect(container.querySelector("path").getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+    });
+
+    // o MEEM eh aplicado na consulta e n tem frequencia
+    it("sem frequencia a linha liga os pontos msm longe", () => {
+        const {container} = renderChart({rows: MEEM_ROWS, maxValue: 30, frequencyDays: null});
+
+        expect(container.querySelector("path").getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+    });
+
+    it("a consulta em dia sem resposta vira linha no dia dela", () => {
+        const {container} = renderChart({
+            rows: ROWS_WITH_GAP,
+            appointmentMarks: [{id: 7, date: "2026-10-10", geraPrescricao: true}],
+        });
+
+        // 9 dias dps de 01/10
+        const line = container.querySelector("line[class*='appointment']");
+        expect(line.getAttribute("x1")).toBe("257.5");
+        expect(screen.getByText("consulta + receita")).toBeInTheDocument();
+    });
+
+    // a consulta q veio antes da primeira resposta tbm fica no dia dela, no comeco do eixo
+    it("a consulta antes do primeiro ponto estica o eixo ate o dia dela", () => {
+        const {container} = renderChart({
+            rows: ROWS_WITH_GAP,
+            appointmentMarks: [{id: 7, date: "2026-09-25", geraPrescricao: false}],
+        });
+
+        const line = container.querySelector("line[class*='appointment']");
+        expect(line.getAttribute("x1")).toBe("40");
+        expect(Number(container.querySelector("circle").getAttribute("cx"))).toBeGreaterThan(40);
+    });
+
     it("gota acima do maximo do escore aumenta o eixo", () => {
-        const rows = [{label: "01/10", valor: 3, faixa: null, gotas: 17}];
+        const rows = [{date: "2026-10-01", label: "01/10", valor: 3, faixa: null, gotas: 17}];
         renderChart({rows: rows, showDose: true});
 
         expect(screen.getByText("20")).toBeInTheDocument();

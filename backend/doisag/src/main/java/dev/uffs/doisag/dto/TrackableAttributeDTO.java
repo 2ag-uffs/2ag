@@ -16,6 +16,10 @@ import java.util.List;
 // em dor o 10 eh dor intensa. sem isso a curva subindo engana (RF20).
 // o higherIsBetter vem nulo qnd o papel n diz qual lado eh melhor, tipo
 // contagem e minutos
+//
+// o frequencyDays diz de quantos em quantos dias a escala eh respondida, pro
+// grafico cortar a linha onde passou mais tempo q isso sem resposta. vem nulo
+// no hamilton, no PSQI e no MEEM, q n tem frequencia fixa (revisao das regras R3)
 public record TrackableAttributeDTO(
         String name,
         String displayName,
@@ -26,6 +30,7 @@ public record TrackableAttributeDTO(
         List<ScoreBand> bands,
         String lowAnchor,
         String highAnchor,
-        Boolean higherIsBetter
+        Boolean higherIsBetter,
+        Integer frequencyDays
 ) {
 }

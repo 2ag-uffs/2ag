@@ -7,15 +7,17 @@ import {ApiError, apiService, CONNECTION_ERROR_MESSAGE, setLoggedUser} from "../
 import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Progresso from "./progresso.jsx";
 
-// o catalogo do jeito q a api manda pro paciente, com as ancoras e o lado bom de cada atributo
+// o catalogo do jeito q a api manda pro paciente, com as ancoras, o lado bom e a frequencia de cada atributo
 const ATTRIBUTES = [
     {name: "ANSIEDADE", displayName: "Ansiedade", scaleType: "ACOMPANHAMENTO_SEMANAL", scaleName: "Acompanhamento semanal",
-        minValue: 0, maxValue: 10, bands: [], lowAnchor: "muito ansioso", highAnchor: "tranquilo", higherIsBetter: true},
+        minValue: 0, maxValue: 10, bands: [], lowAnchor: "muito ansioso", highAnchor: "tranquilo", higherIsBetter: true,
+        frequencyDays: 1},
     {name: "DOR", displayName: "Dor", scaleType: "ACOMPANHAMENTO_SEMANAL", scaleName: "Acompanhamento semanal",
-        minValue: 0, maxValue: 10, bands: [], lowAnchor: "sem dor", highAnchor: "dor intensa", higherIsBetter: false},
+        minValue: 0, maxValue: 10, bands: [], lowAnchor: "sem dor", highAnchor: "dor intensa", higherIsBetter: false,
+        frequencyDays: 1},
     {name: "DESPERTARES", displayName: "Número de vezes que acordou", scaleType: "REGISTRO_SONO",
         scaleName: "Diário do sono", minValue: null, maxValue: null, bands: [], lowAnchor: null, highAnchor: null,
-        higherIsBetter: null},
+        higherIsBetter: null, frequencyDays: 1},
 ];
 
 // o MEEM so vem no catalogo do prescritor (decisao de 13/11/2026)
@@ -23,7 +25,7 @@ const PRESCRIBER_ATTRIBUTES = [
     ...ATTRIBUTES,
     {name: "ESCORE_MEEM", displayName: "Escore total", scaleType: "MINI_EXAME_ESTADO_MENTAL",
         scaleName: "Mini-Exame do Estado Mental", minValue: 0, maxValue: 30, bands: [], lowAnchor: null,
-        highAnchor: null, higherIsBetter: true},
+        highAnchor: null, higherIsBetter: true, frequencyDays: null},
 ];
 
 let catalog = ATTRIBUTES;
@@ -229,7 +231,13 @@ describe("Progresso", () => {
         expect(chart.querySelectorAll("circle")).toHaveLength(2);
     });
 
-    it("so a consulta num dia com ponto vira linha no grafico", async () => {
+    // CT-32 o eixo vai pela data, entao a consulta em dia sem preenchimento tbm vira linha, no dia dela
+    // (revisao das regras R3, 14/11/2026)
+    it("a consulta em dia sem preenchimento tbm vira linha no grafico", async () => {
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-09", value: 5, band: null, cutoff: null},
+        ];
         appointments = [
             {id: 1, data: "2026-10-01", diagnosis: null, geraPrescricao: true},
             {id: 2, data: "2026-10-05", diagnosis: null, geraPrescricao: false},
@@ -237,12 +245,30 @@ describe("Progresso", () => {
         renderProgress("ANSIEDADE");
 
         expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
-        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
-        expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
+        expect(screen.getByText("consulta")).toBeInTheDocument();
+        // 05/10 fica no meio de 01/10 e 09/10
+        const lines = screen.getByRole("application").querySelectorAll("line[class*='appointment']");
+        expect(lines[1].getAttribute("x1")).toBe("330");
+        expect(screen.queryByText(/Consulta em dia sem preenchimento/)).not.toBeInTheDocument();
+    });
+
+    // CT-32 a linha corta onde faltou resposta, pela frequencia da escala q vem no catalogo
+    it("tres semanas sem resposta cortam a linha e a tela diz isso", async () => {
+        series = [
+            {date: "2026-10-01", value: 8, band: null, cutoff: null},
+            {date: "2026-10-02", value: 8, band: null, cutoff: null},
+            {date: "2026-10-25", value: 3, band: null, cutoff: null},
+        ];
+        renderProgress("DOR");
+
+        const chart = await screen.findByRole("application", {name: /Gráfico de Dor com 3 registros/});
+        expect(chart.querySelector("path").getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+ M[\d.]+ [\d.]+$/);
+        expect(screen.getByText(/Onde faltou resposta, a linha se interrompe/)).toBeInTheDocument();
+        expect(screen.queryByText(/não aparece no gráfico/)).not.toBeInTheDocument();
     });
 
     // CT-32 no todo o tempo a consulta de um ano n cai no ponto do msm dia e mes do ano seguinte
-    it("a consulta casa com o ponto pela data inteira e n so pelo dia e mes", async () => {
+    it("a consulta fica no dia dela pela data inteira e n so pelo dia e mes", async () => {
         series = [
             {date: "2026-09-10", value: 6, band: null, cutoff: null},
             {date: "2026-09-18", value: 4, band: null, cutoff: null},
@@ -254,8 +280,15 @@ describe("Progresso", () => {
         renderPrescriberProgress("DOR", "TUDO");
 
         expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
-        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
-        expect(screen.getByText(/Consulta em dia sem preenchimento aparece aqui/)).toBeInTheDocument();
+        expect(screen.getByText("consulta")).toBeInTheDocument();
+        // a do ano anterior abre o eixo e a deste ano fica no ponto de 18/09/26
+        const chart = screen.getByRole("application");
+        const lines = chart.querySelectorAll("line[class*='appointment']");
+        const dots = chart.querySelectorAll("circle");
+        expect(lines[0].getAttribute("x1")).toBe("40");
+        expect(lines[1].getAttribute("x1")).toBe(dots[1].getAttribute("cx"));
+        // o eixo passa de um ano, entao as datas vem com o ano
+        expect(screen.getByText("10/09/26")).toBeInTheDocument();
     });
 
     it("serie de mais de um ano mostra o ano em cada data do eixo", async () => {
@@ -398,18 +431,19 @@ describe("Progresso", () => {
         // tudo chegando: nem a consulta dos 30 dias nem o numero dela sob o periodo novo
         expect(screen.queryByText("Consultas no período")).not.toBeInTheDocument();
         expect(screen.queryByText("16/10/2026")).not.toBeInTheDocument();
-        expect(screen.queryByText(/Consulta em dia sem preenchimento/)).not.toBeInTheDocument();
+        expect(screen.queryByText("consulta + receita")).not.toBeInTheDocument();
 
-        // as consultas chegam antes do grafico: a lista aparece, mas o aviso de consulta sem ponto espera o grafico
+        // as consultas chegam antes do grafico: a lista aparece e as marcas esperam o grafico
         await releaseAndWait([slowAppointments]);
         expect(screen.getByRole("heading", {name: /^Consultas no período\s*2$/})).toBeInTheDocument();
         expect(screen.getByText("18/09/2026")).toBeInTheDocument();
-        expect(screen.queryByText(/Consulta em dia sem preenchimento/)).not.toBeInTheDocument();
+        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
 
+        // a de 16/10 cai num dia sem preenchimento e tbm vira marca, no dia dela (revisao das regras R3)
         await releaseAndWait([slowSeries]);
         expect(screen.getByRole("application", {name: /Gráfico de Ansiedade com 2 registros/})).toBeInTheDocument();
         expect(screen.getByText("consulta")).toBeInTheDocument();
-        expect(screen.getByText(/Consulta em dia sem preenchimento/)).toBeInTheDocument();
+        expect(screen.getByText("consulta + receita")).toBeInTheDocument();
     });
 
     // as gotas dos 30 dias chegam dps das dos 90 e n podem apagar as dos dias mais antigos
