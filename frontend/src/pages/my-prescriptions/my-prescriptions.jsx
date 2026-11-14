@@ -5,6 +5,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {formatDate} from "../../utils/date-format.js";
 import {lastPrescriptionTitle} from "../../utils/prescription-labels.js";
 import styles from "./my-prescriptions.module.css";
 
@@ -48,13 +49,16 @@ export default function MyPrescriptions() {
 
     const currentPrescription = prescriptions.find((prescription) => prescription.current);
     const previousPrescriptions = prescriptions.filter((prescription) => !prescription.current);
+    // o arquivado n tem receita em uso, entao o texto do topo fala do fim do acompanhamento (revisao das regras R2)
+    const followUpEndedAt = currentPrescription ? currentPrescription.followUpEndedAt : null;
+    const subtitle = followUpEndedAt
+        ? "Seu acompanhamento foi encerrado em " + formatDate(followUpEndedAt)
+            + ". A última prescrição fica guardada abaixo."
+        : "A prescrição vigente é a que vale agora. As anteriores ficam guardadas no histórico.";
 
     return (
         <section className={styles.page}>
-            <PageHeader
-                title="Minhas prescrições"
-                subtitle="A prescrição vigente é a que vale agora. As anteriores ficam guardadas no histórico."
-            />
+            <PageHeader title="Minhas prescrições" subtitle={subtitle}/>
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
 

@@ -25,6 +25,8 @@ describe("MyPrescriptions", () => {
 
         const section = (await screen.findByRole("heading", {name: "Vigente"})).closest("section");
         expect(within(section).getByText("Óleo de CBD 20%")).toBeInTheDocument();
+        expect(screen.getByText("A prescrição vigente é a que vale agora. As anteriores ficam guardadas no histórico."))
+            .toBeInTheDocument();
     });
 
     // arquivar n mexe na receita, mas o arquivado n tem receita em uso (revisao das regras R2)
@@ -36,5 +38,16 @@ describe("MyPrescriptions", () => {
             {name: "Última prescrição, acompanhamento encerrado em 10/11/2026"});
         expect(within(heading.closest("section")).getByText("Óleo de CBD 20%")).toBeInTheDocument();
         expect(screen.queryByRole("heading", {name: "Vigente"})).not.toBeInTheDocument();
+    });
+
+    // nada esta em uso, entao o texto do topo n fala mais da vigente, e sim do fim do acompanhamento
+    it("do paciente arquivado o texto do topo diz q o acompanhamento acabou e q a ultima fica guardada", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([{...PRESCRIPTION, followUpEndedAt: "2026-11-10"}]);
+        render(<MyPrescriptions/>);
+
+        expect(await screen.findByText(
+            "Seu acompanhamento foi encerrado em 10/11/2026. A última prescrição fica guardada abaixo."))
+            .toBeInTheDocument();
+        expect(screen.queryByText(/A prescrição vigente é a que vale agora/)).not.toBeInTheDocument();
     });
 });
