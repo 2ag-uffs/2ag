@@ -58,7 +58,7 @@ describe("LineChart", () => {
         expect(screen.getByText("01/10")).toBeInTheDocument();
         expect(screen.getByText("03/10")).toBeInTheDocument();
         expect(screen.getByText("Ansiedade")).toBeInTheDocument();
-        expect(screen.queryByText("Gotas no dia")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Gotas no dia/)).not.toBeInTheDocument();
     });
 
     it("o eixo y vai do minimo ao maximo do atributo", () => {
@@ -121,7 +121,7 @@ describe("LineChart", () => {
         expect(paths).toHaveLength(2);
         expect(paths[1].getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+ M[\d.]+ [\d.]+$/);
         expect(container.querySelectorAll("circle")).toHaveLength(5);
-        expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia (eixo da direita)")).toBeInTheDocument();
     });
 
     // a dose em branco n vale zero, mas o dia mostra a dose preenchida com a bolinha vazada e a dica diz qual
@@ -205,11 +205,32 @@ describe("LineChart", () => {
         expect(Number(container.querySelector("circle").getAttribute("cx"))).toBeGreaterThan(40);
     });
 
-    it("gota acima do maximo do escore aumenta o eixo", () => {
-        const rows = [{date: "2026-10-01", label: "01/10", valor: 3, faixa: null, gotas: 17}];
-        renderChart({rows: rows, showDose: true});
+    // 100 gotas no eixo da nota de 0 a 10 achatavam a curva do sintoma la embaixo (revisao das regras R13)
+    it("as gotas tem o proprio eixo na direita e n achatam a nota", () => {
+        const rows = [
+            {date: "2026-10-01", label: "01/10", valor: 5, faixa: null, gotas: 100},
+            {date: "2026-10-02", label: "02/10", valor: 5, faixa: null, gotas: 40},
+        ];
+        const {container} = renderChart({rows: rows, showDose: true});
 
-        expect(screen.getByText("20")).toBeInTheDocument();
+        // a nota continua de 0 a 10 na esquerda e o 5 fica no meio do desenho, q vai de 24 a 260
+        const scoreTicks = Array.from(container.querySelectorAll("text[class*='tick']"))
+            .filter((text) => !text.getAttribute("class").includes("doseTick") && text.getAttribute("text-anchor") === "end")
+            .map((text) => text.textContent);
+        expect(scoreTicks).toEqual(["0", "2", "4", "6", "8", "10"]);
+        expect(container.querySelector("circle[class*='scoreDot']").getAttribute("cy")).toBe("142");
+
+        // as gotas vao de 0 a 100 na direita e o 100 fica no topo
+        const doseTicks = Array.from(container.querySelectorAll("text[class*='doseTick']")).map((text) => text.textContent);
+        expect(doseTicks).toEqual(["0", "20", "40", "60", "80", "100"]);
+        expect(container.querySelector("circle[class*='doseDot']").getAttribute("cy")).toBe("24");
+        expect(screen.getByText("Gotas no dia (eixo da direita)")).toBeInTheDocument();
+    });
+
+    it("sem as gotas n tem o eixo da direita", () => {
+        const {container} = renderChart();
+
+        expect(container.querySelectorAll("text[class*='doseTick']")).toHaveLength(0);
     });
 
     it("cada faixa vira uma linha com o nome e o corte do MEEM tbm", () => {

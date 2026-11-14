@@ -34,6 +34,7 @@
 }
 
 .tick,
+.doseTick,
 .label,
 .appointmentText {
     font-size: 12px;
@@ -41,6 +42,11 @@
 
 .tick {
     fill: var(--color-text-secondary);
+}
+
+/* o eixo das gotas na cor da linha delas, pra n confundir com o da nota (revisao das regras R13) */
+.doseTick {
+    fill: var(--color-secondary);
 }
 
 /* o contorno da cor do cartao deixa o texto legivel qnd a linha passa por baixo */

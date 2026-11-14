@@ -38,10 +38,17 @@ describe("contas do grafico", () => {
         expect(yRange(0, 30, [24, 27])).toEqual({bottom: 0, top: 30});
     });
 
-    // as gotas dividem o eixo com o escore e podem passar do maximo dele
-    it("gota acima do maximo do escore aumenta o eixo ate a proxima marca", () => {
+    // desde a revisao das regras R13 as gotas tem o proprio eixo, mas valor acima do maximo ainda aumenta o eixo
+    it("valor acima do maximo aumenta o eixo ate a proxima marca", () => {
         expect(yRange(0, 10, [3, 7, 17])).toEqual({bottom: 0, top: 20});
         expect(yRange(0, 10, [3, 40])).toEqual({bottom: 0, top: 40});
+    });
+
+    // o eixo proprio das gotas comeca no 0 e vai ate a marca acima da maior dose
+    it("o eixo das gotas vai do 0 ate a marca acima da maior dose", () => {
+        expect(yRange(0, null, [100, 40, null])).toEqual({bottom: 0, top: 100});
+        expect(yRange(0, null, [17])).toEqual({bottom: 0, top: 20});
+        expect(yRange(0, null, [])).toEqual({bottom: 0, top: 1});
     });
 
     it("sem minimo e maximo no catalogo o eixo comeca no 0 e vai ate a marca acima do maior valor", () => {

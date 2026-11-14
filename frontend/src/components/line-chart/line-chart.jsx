@@ -16,6 +16,8 @@ import styles from "./line-chart.module.css";
 const HEIGHT = 288;
 const LEFT = 40;
 const RIGHT = 20;
+// com as gotas a direita ganha o eixo delas, com numero de ate 3 algarismos
+const RIGHT_WITH_DOSE = 36;
 const BOTTOM = 28;
 const LINE_HEIGHT = 14;
 const DEFAULT_WIDTH = 640;
@@ -23,6 +25,7 @@ const DATE_GAP = 44;
 // a data com o ano tem 8 letras em vez de 5 e precisa de mais espaco
 const DATE_WITH_YEAR_GAP = 64;
 const DOSE_NAME = "Gotas no dia";
+const DOSE_AXIS_NAME = "Gotas no dia (eixo da direita)";
 const PARTIAL_DOSE_NAME = "Dia com uma das doses em branco";
 
 // o escore vai com a faixa do lado como em todo lugar q ele aparece RN14
@@ -96,16 +99,12 @@ export default function LineChart({
         return () => observer.disconnect();
     }, []);
 
-    const values = [];
-    for (const row of rows) {
-        values.push(row.valor);
-        if (showDose) {
-            values.push(row.gotas);
-        }
-    }
-    const range = yRange(minValue, maxValue, values);
+    // as gotas tem o proprio eixo, na direita, pq 100 gotas no eixo da nota de 0 a 10 achatavam a curva
+    // do sintoma (revisao das regras R13)
+    const range = yRange(minValue, maxValue, rows.map((row) => row.valor));
+    const doseRange = yRange(0, null, showDose ? rows.map((row) => row.gotas) : []);
 
-    const plotWidth = Math.max(40, width - LEFT - RIGHT);
+    const plotWidth = Math.max(40, width - LEFT - (showDose ? RIGHT_WITH_DOSE : RIGHT));
     const right = LEFT + plotWidth;
 
     // o eixo vai do dia mais antigo ao mais novo, contando as consultas, entao a consulta em dia sem
@@ -143,6 +142,7 @@ export default function LineChart({
     const bottom = HEIGHT - BOTTOM;
     const plotHeight = bottom - top;
     const yAt = (value) => yOf(value, range, top, plotHeight);
+    const yAtDose = (value) => yOf(value, doseRange, top, plotHeight);
     const isInside = (value) => value >= range.bottom && value <= range.top;
 
     const scorePoints = [];
@@ -150,7 +150,7 @@ export default function LineChart({
     rows.forEach((row, index) => {
         scorePoints.push({x: xs[index], y: row.valor === null ? null : yAt(row.valor), day: days[index]});
         if (showDose) {
-            dosePoints.push({x: xs[index], y: row.gotas === null ? null : yAt(row.gotas), day: days[index]});
+            dosePoints.push({x: xs[index], y: row.gotas === null ? null : yAtDose(row.gotas), day: days[index]});
         }
     });
 
@@ -255,6 +255,20 @@ export default function LineChart({
                         <line className={styles.axis} x1={LEFT} x2={right} y1={bottom} y2={bottom}/>
                         <line className={styles.axis} x1={LEFT} x2={LEFT} y1={top} y2={bottom}/>
 
+                        {/* o eixo das gotas fica na direita, com os numeros na cor da linha delas */}
+                        {showDose && <line className={styles.axis} x1={right} x2={right} y1={top} y2={bottom}/>}
+                        {showDose && yTicks(doseRange).map((tick) => (
+                            <text
+                                key={"d" + tick}
+                                className={styles.doseTick}
+                                x={right + 6}
+                                y={yAtDose(tick) + 4}
+                                textAnchor="start"
+                            >
+                                {tick}
+                            </text>
+                        ))}
+
                         {bandLines.filter((band) => isInside(band.minScore)).map((band) => (
                             <g key={band.label}>
                                 <line className={styles.band} x1={LEFT} x2={right} y1={yAt(band.minScore)} y2={yAt(band.minScore)}/>
@@ -344,7 +358,7 @@ export default function LineChart({
 
             <ul className={styles.legend}>
                 <li><span className={styles.scoreSwatch} aria-hidden="true"/>{valueName}</li>
-                {showDose && <li><span className={styles.doseSwatch} aria-hidden="true"/>{DOSE_NAME}</li>}
+                {showDose && <li><span className={styles.doseSwatch} aria-hidden="true"/>{DOSE_AXIS_NAME}</li>}
                 {hasPartialDose && (
                     <li><span className={styles.partialDoseSwatch} aria-hidden="true"/>{PARTIAL_DOSE_NAME}</li>
                 )}
