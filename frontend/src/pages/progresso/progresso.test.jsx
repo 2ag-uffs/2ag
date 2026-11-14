@@ -509,6 +509,132 @@ describe("Progresso", () => {
         expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(4);
     });
 
+    // as gotas dos 90 dias q ficaram guardadas n entram no grafico dos 15 enquanto as dos 15 n chegam
+    it("gotas de outro periodo n ficam no grafico enquanto as do periodo novo n chegam", async () => {
+        const user = userEvent.setup();
+        const newMorning = heldAnswer([]);
+        const newAfternoon = heldAnswer([]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_MANHA") {
+                return Promise.resolve([{date: "2026-08-20", value: 8}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-08-20", value: 4}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_15&attribute=GOTAS_MANHA") {
+                return newMorning.answer;
+            }
+            if (path === "/patients/3/progress?period=DIAS_15&attribute=GOTAS_TARDE") {
+                return newAfternoon.answer;
+            }
+            if (path.startsWith("/patients/3/progress?period=")) {
+                return Promise.resolve([]);
+            }
+            if (path.startsWith("/patients/3/progress?attribute=")) {
+                return Promise.resolve([{date: "2026-11-10", value: 4, band: null, cutoff: null}]);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        // o ponto da ansiedade e a gota de 20/08
+        await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(2));
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_15");
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        await vi.waitFor(() => expect(requestedPaths())
+            .toContain("/patients/3/progress?period=DIAS_15&attribute=GOTAS_TARDE"));
+
+        const chart = await screen.findByRole("application");
+        expect(chart).toHaveAttribute("aria-label",
+            "Gráfico de Ansiedade com 1 registro, em 10/11. Use as setas para ler cada ponto.");
+        expect(chart.querySelectorAll("circle")).toHaveLength(1);
+    });
+
+    // com a internet lenta a serie dos 15 dias chega antes das gotas e o eixo voltava pros 90 dias
+    it("trocar o periodo com as gotas marcadas n deixa o eixo e as gotas do periodo anterior", async () => {
+        const user = userEvent.setup();
+        const newMorning = heldAnswer([]);
+        const newAfternoon = heldAnswer([]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_MANHA") {
+                return Promise.resolve([{date: "2026-08-20", value: 8}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-08-20", value: 4}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_15&attribute=GOTAS_MANHA") {
+                return newMorning.answer;
+            }
+            if (path === "/patients/3/progress?period=DIAS_15&attribute=GOTAS_TARDE") {
+                return newAfternoon.answer;
+            }
+            if (path.startsWith("/patients/3/progress?period=")) {
+                return Promise.resolve([]);
+            }
+            if (path.startsWith("/patients/3/progress?attribute=")) {
+                return Promise.resolve([{date: "2026-11-10", value: 4, band: null, cutoff: null}]);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(2));
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_15");
+        await vi.waitFor(() => expect(requestedPaths())
+            .toContain("/patients/3/progress?attribute=ANSIEDADE&period=DIAS_15"));
+
+        const chart = await screen.findByRole("application");
+        expect(chart).toHaveAttribute("aria-label",
+            "Gráfico de Ansiedade com 1 registro, em 10/11. Use as setas para ler cada ponto.");
+        expect(chart.querySelectorAll("circle")).toHaveLength(1);
+    });
+
+    // gota q n carregou n pode virar a linha vazia com a legenda, como se nada tivesse sido anotado
+    it("gotas q n carregaram dizem isso em vez de mostrar a linha vazia", async () => {
+        const user = userEvent.setup();
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_MANHA") {
+                return Promise.resolve([{date: "2026-10-01", value: 5}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.reject(new ApiError(0, "Sem conexão com o servidor."));
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+
+        expect(await screen.findByText("Não foi possível carregar as gotas do dia.")).toBeInTheDocument();
+        // o grafico continua com o item, sem a legenda e o eixo das gotas q n vieram
+        const chart = screen.getByRole("application");
+        expect(chart.querySelectorAll("circle")).toHaveLength(1);
+        expect(chart.querySelector("path[class*='doseLine']")).toBeNull();
+        expect(screen.queryByText("Gotas no dia (eixo da direita)")).not.toBeInTheDocument();
+    });
+
     // CT-32 a dose em branco n vale zero (RN10), mas o dia n perde o ponto: ele mostra a dose preenchida com a bolinha
     // vazada e a dica diz qual dose ficou em branco (revisao das regras R12, q troca a decisao de 13/11/2026)
     it("dia com uma das doses em branco mostra a dose preenchida marcada como parcial", async () => {

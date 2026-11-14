@@ -79,6 +79,10 @@ export default function Progresso() {
 
     const [points, setPoints] = useState([]);
     const [dosePoints, setDosePoints] = useState([]);
+    // as gotas tbm lembram de qual paciente e periodo sao, senao as de outro periodo esticavam o eixo
+    const [loadedDoseKey, setLoadedDoseKey] = useState(null);
+    // gota q n carregou n pode virar a linha vazia, como se nada tivesse sido anotado
+    const [doseError, setDoseError] = useState(null);
     const [showDose, setShowDose] = useState(Boolean(keptFilters.showDose));
     const [appointments, setAppointments] = useState([]);
     // as consultas tbm lembram de qual paciente e periodo sao, senao as do periodo anterior ficavam na tela (CT-40)
@@ -248,16 +252,21 @@ export default function Progresso() {
         const url = "/patients/" + patientId + "/progress?period=" + period + "&attribute=";
         // como na serie, a gota de um periodo antigo q chega atrasada n passa por cima da atual
         let isCurrentRequest = true;
+        const requestKey = patientId + "|" + period;
 
         Promise.all([apiService.get(url + "GOTAS_MANHA"), apiService.get(url + "GOTAS_TARDE")])
             .then(([morning, afternoon]) => {
                 if (isCurrentRequest) {
                     setDosePoints(sumByDate(morning, afternoon));
+                    setDoseError(null);
+                    setLoadedDoseKey(requestKey);
                 }
             })
             .catch(() => {
                 if (isCurrentRequest) {
                     setDosePoints([]);
+                    setDoseError("Não foi possível carregar as gotas do dia.");
+                    setLoadedDoseKey(requestKey);
                 }
             });
 
@@ -317,8 +326,11 @@ export default function Progresso() {
     const periodAppointments = loadedAppointmentsKey === periodKey ? appointments : [];
     const appointmentMarks = showAppointments ? appointmentMarksOf(periodAppointments) : [];
 
-    // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal
-    const shownDosePoints = showDose && isFollowUpScale ? dosePoints : [];
+    // a gota so entra no grafico qdo esta marcada, a escala eh o acompanhamento semanal e ja chegaram as gotas
+    // do periodo escolhido. enquanto elas chegam o grafico fica sem gota nenhuma, e o eixo n volta pro anterior
+    const isDoseLoaded = showDose && isFollowUpScale && loadedDoseKey === periodKey;
+    const isDoseShown = isDoseLoaded && !doseError;
+    const shownDosePoints = isDoseShown ? dosePoints : [];
     const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point]));
     const pointByDate = new Map(points.map((point) => [point.date, point]));
     // o dia com gota e com o item em branco tbm entra, senao a gota sumia e a linha delas cortava num dia em q
@@ -598,6 +610,9 @@ export default function Progresso() {
                     </p>
                 )}
 
+                {/* o grafico continua com o item, so as gotas avisam q n vieram */}
+                {isDoseLoaded && doseError && <p className="aviso aviso--atencao" role="alert">{doseError}</p>}
+
                 {isLoading && <SkeletonBlock height="320px"/>}
 
                 {!isLoading && chartRows.length === 0 && !pageError && (
@@ -612,7 +627,7 @@ export default function Progresso() {
                             minValue={currentAttribute ? currentAttribute.minValue : null}
                             maxValue={currentAttribute ? currentAttribute.maxValue : null}
                             valueName={currentAttribute ? currentAttribute.displayName : "valor"}
-                            showDose={showDose && isFollowUpScale}
+                            showDose={isDoseShown}
                             bandLines={bandLines}
                             cutoff={sharedCutoff}
                             appointmentMarks={appointmentMarks}
