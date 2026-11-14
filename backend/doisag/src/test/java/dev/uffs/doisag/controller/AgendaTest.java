@@ -1466,6 +1466,30 @@ class AgendaTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
+    // a conta desativada pela administracao aparece na agenda e nos pedidos, como na lista de pacientes, e
+    // desativar n fecha nada: o pedido continua esperando (decisao de 14/11/2026, revisao das regras R25)
+    @Test
+    void agendaAndRequestsShowTheDeactivatedAccount() throws Exception {
+        request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated());
+        schedule(otherPatient, AGENDA_DAY.atTime(8, 0), null).andExpect(status().isCreated());
+        patient.setActive(false);
+        patientRepository.save(patient);
+
+        mockMvc.perform(get("/appointments/requests").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].patientAccountActive").value(false));
+        mockMvc.perform(get("/appointments")
+                        .param("from", AGENDA_DAY.toString())
+                        .param("to", AGENDA_DAY.toString())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].patientName").value("Segundo paciente"))
+                .andExpect(jsonPath("$[0].patientAccountActive").value(true))
+                .andExpect(jsonPath("$[1].status").value("SOLICITADA"))
+                .andExpect(jsonPath("$[1].patientAccountActive").value(false));
+    }
+
     // a agenda e os avisos do prescritor usam o nome social qnd o paciente tem (RN15)
     @Test
     void agendaAndNoticesUseTheSocialName() throws Exception {

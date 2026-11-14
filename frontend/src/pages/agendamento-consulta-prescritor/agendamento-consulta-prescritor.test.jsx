@@ -23,13 +23,13 @@ const SCHEDULED_RETURN = {
     prescriberName: "Ana Lima", patientNote: null, annulled: false,
 };
 
-function renderAgenda({weekAppointments = [], daysOff = []} = {}) {
+function renderAgenda({weekAppointments = [], daysOff = [], waitingRequests = []} = {}) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
         if (path.startsWith("/appointments?")) {
             return Promise.resolve(weekAppointments);
         }
         const answers = {
-            "/appointments/requests": [],
+            "/appointments/requests": waitingRequests,
             "/availability": AVAILABILITY,
             "/patients": [{id: 5, name: "Maria Souza"}],
             "/availability/days-off": daysOff,
@@ -223,6 +223,29 @@ describe("AgendamentoPrescritor", () => {
         expect(modal.getByLabelText("Data")).toHaveAccessibleDescription("Escolha a data");
         expect(modal.getByLabelText("Horário")).not.toHaveAttribute("aria-invalid");
         expect(put).not.toHaveBeenCalled();
+    });
+
+    // a prescritora confirmava o pedido sem saber q o paciente n ia ver a confirmacao nem o lembrete: a agenda e os
+    // pedidos mostram o selo da conta desativada, como a lista de pacientes (decisao de 14/11/2026, revisao das regras R25)
+    it("a agenda e os pedidos mostram o selo de conta desativada so de quem foi desativado", async () => {
+        const monday = toIsoDate(mondayOf(new Date()));
+        renderAgenda({
+            weekAppointments: [
+                {...SCHEDULED_RETURN, id: 1, dateTime: monday + "T08:00:00", patientAccountActive: false},
+                {...SCHEDULED_RETURN, id: 2, dateTime: monday + "T10:00:00", patientId: 6, patientName: "Ana Ativa",
+                    patientAccountActive: true},
+            ],
+            waitingRequests: [{...SCHEDULED_RETURN, id: 3, status: "SOLICITADA", patientAccountActive: false}],
+        });
+
+        const requests = (await screen.findByRole("heading", {name: /Pedidos aguardando resposta/})).closest("section");
+        expect(within(requests).getByText("Conta desativada")).toBeInTheDocument();
+        const week = within(screen.getByRole("region", {name: /Semana de/}));
+        const badges = week.getAllByText("Conta desativada");
+        expect(badges).toHaveLength(1);
+        expect(badges[0].closest("li")).toHaveTextContent("Maria Souza");
+        // desativar n fecha nada: o pedido continua com os botoes de responder
+        expect(within(requests).getByRole("button", {name: "Recusar"})).toBeInTheDocument();
     });
 
     // a falta marcada por engano se desfaz registrando o atendimento, q a api ja aceitava

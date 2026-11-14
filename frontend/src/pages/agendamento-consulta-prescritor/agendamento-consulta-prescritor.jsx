@@ -311,6 +311,10 @@ export default function AgendamentoPrescritor() {
                 <div className={styles.appointmentTitle}>
                     <span className={styles.patientName}>{appointment.patientName}</span>
                     <AppointmentStatusBadge appointment={appointment}/>
+                    {/* o paciente n ve a confirmacao nem recebe lembrete, mas a consulta continua valendo (R25) */}
+                    {appointment.patientAccountActive === false && (
+                        <span className={styles.badgeInactive}>Conta desativada</span>
+                    )}
                 </div>
                 <p className={styles.meta}>
                     {[appointmentTypeLabelOf(appointment.appointmentType), modalityLabelOf(appointment.modality)]
