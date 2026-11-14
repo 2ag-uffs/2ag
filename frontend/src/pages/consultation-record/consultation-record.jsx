@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -171,6 +172,7 @@ export default function ConsultationRecord() {
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    const successRef = useFocusWhenShown(!isLoading && !loadError && (isUpdated || wasJustRegistered));
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -219,7 +221,9 @@ export default function ConsultationRecord() {
                 <Card>
                     <div className={styles.success}>
                         <FiCheckCircle className={styles.successIcon} aria-hidden="true"/>
-                        <p>O registro clínico foi salvo. O que você quer fazer agora?</p>
+                        <p role="status" tabIndex={-1} ref={successRef}>
+                            O registro clínico foi salvo. O que você quer fazer agora?
+                        </p>
                     </div>
                     <div className={styles.nextSteps}>
                         <button

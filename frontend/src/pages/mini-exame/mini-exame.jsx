@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -14,12 +15,12 @@ import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
 
-function ExamResult({exam, maxScore}) {
+function ExamResult({exam, maxScore, resultRef}) {
     // exame salvo antes da trava q ficou sem escore ou sem faixa
     const isScoreMissing = exam.score === null || exam.score === undefined;
     if (isScoreMissing) {
         return (
-            <div className={styles.result}>
+            <div className={styles.result} role="status" tabIndex={-1} ref={resultRef}>
                 <FiAlertCircle className={styles.resultIconWarning} aria-hidden="true"/>
                 <div>
                     <p className={styles.score}>Exame incompleto: sem escore</p>
@@ -31,7 +32,7 @@ function ExamResult({exam, maxScore}) {
         );
     }
     return (
-        <div className={styles.result}>
+        <div className={styles.result} role="status" tabIndex={-1} ref={resultRef}>
             <FiCheckCircle className={styles.resultIcon} aria-hidden="true"/>
             <div>
                 <p className={styles.score}>{exam.score} de {maxScore}</p>
@@ -56,6 +57,8 @@ export default function MiniExame() {
     const [loadError, setLoadError] = useState(null);
     const [values, setValues] = useState({});
     const [savedExam, setSavedExam] = useState(null);
+    // so o exame salvo agora leva o foco pro resultado, o aplicado antes abre sem mexer no foco
+    const [wasSavedNow, setWasSavedNow] = useState(false);
     const [formError, setFormError] = useState(null);
     const [missingKeys, setMissingKeys] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -104,6 +107,7 @@ export default function MiniExame() {
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    const resultRef = useFocusWhenShown(wasSavedNow);
 
     const save = async (event) => {
         event.preventDefault();
@@ -121,6 +125,7 @@ export default function MiniExame() {
                 answers: answersPayload(definition.items, values),
             });
             setSavedExam(exam);
+            setWasSavedNow(true);
         } catch (requestError) {
             setFormError(errorMessageOf(requestError));
         } finally {
@@ -149,7 +154,7 @@ export default function MiniExame() {
 
             {savedExam ? (
                 <Card>
-                    <ExamResult exam={savedExam} maxScore={definition.maxScore}/>
+                    <ExamResult exam={savedExam} maxScore={definition.maxScore} resultRef={resultRef}/>
                     <p className={styles.hint}>O resultado fica no histórico do paciente junto com a consulta.</p>
                     <div className={styles.nextSteps}>
                         <button

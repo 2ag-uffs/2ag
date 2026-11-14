@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -272,6 +273,7 @@ export default function PrescriptionForm() {
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    const successRef = useFocusWhenShown(issuedPrescription !== null);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -314,7 +316,7 @@ export default function PrescriptionForm() {
                 <Card>
                     <div className={styles.success}>
                         <FiCheckCircle className={styles.successIcon} aria-hidden="true"/>
-                        <p>
+                        <p role="status" tabIndex={-1} ref={successRef}>
                             {issuedPrescription.current
                                 ? "A prescrição agora é a vigente do paciente."
                                     + (currentPrescription ? " A anterior passou para o histórico." : "")

@@ -67,6 +67,40 @@ describe("MiniExame", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
+    // o formulario some dps de salvar e o foco do botao ia pro body, sem nada anunciado (CT-39)
+    it("salvar pelo teclado leva o foco pro resultado do exame", async () => {
+        vi.spyOn(apiService, "post").mockResolvedValue(SAVED_EXAM);
+        const user = userEvent.setup();
+        renderExam();
+
+        await user.click(await screen.findByRole("radio", {name: "4"}));
+        screen.getByRole("button", {name: "Salvar exame"}).focus();
+        await user.keyboard("{Enter}");
+
+        expect(await screen.findByText("4 de 30")).toBeInTheDocument();
+        const result = screen.getByRole("status");
+        expect(result).toHaveTextContent("4 de 30");
+        expect(result).toHaveTextContent("Sem alteração");
+        expect(result).toHaveFocus();
+    });
+
+    // o exame aplicado antes abre direto no resultado e ai n tem pq tirar o foco de onde estava
+    it("exame ja aplicado abre no resultado sem mexer no foco", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/scales/definitions/mini-exame") {
+                return Promise.resolve(DEFINITION);
+            }
+            if (path === "/appointments/7") {
+                return Promise.resolve(APPOINTMENT);
+            }
+            return Promise.resolve(SAVED_EXAM);
+        });
+        renderExam();
+
+        expect(await screen.findByText("4 de 30")).toBeInTheDocument();
+        expect(screen.getByRole("status")).not.toHaveFocus();
+    });
+
     it("com algo marcado o Sim, sair volta pra tela de antes", async () => {
         const user = userEvent.setup();
         renderExam();

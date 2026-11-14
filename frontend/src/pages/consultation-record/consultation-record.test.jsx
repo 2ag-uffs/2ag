@@ -183,6 +183,34 @@ describe("ConsultationRecord", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
+    // o formulario some dps de salvar e o foco do botao ia pro body, sem nada anunciado (CT-39)
+    it("salvar pelo teclado leva o foco pro aviso de registro salvo", async () => {
+        vi.spyOn(apiService, "put").mockResolvedValue({});
+        const router = createMemoryRouter([
+            {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
+        ], {initialEntries: ["/consulta/99/registro"]});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Evolução do quadro"), " e dorme melhor");
+        screen.getByRole("button", {name: "Salvar consulta"}).focus();
+        await user.keyboard("{Enter}");
+
+        expect(await screen.findByText("Registro atualizado")).toBeInTheDocument();
+        const notice = screen.getByRole("status");
+        expect(notice).toHaveTextContent("O registro clínico foi salvo");
+        expect(notice).toHaveFocus();
+    });
+
+    it("a consulta nova salva tbm leva o foco pro aviso", async () => {
+        renderNewConsultation();
+
+        await saveNewConsultation();
+
+        await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
+        expect(screen.getByRole("status")).toHaveTextContent("O registro clínico foi salvo");
+    });
+
     // recarregar ou fechar a aba n passa pelo router, entao o navegador pergunta
     it("com algo digitado recarregar ou fechar a aba pede pro navegador perguntar antes", async () => {
         setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});

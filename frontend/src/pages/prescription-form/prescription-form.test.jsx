@@ -245,6 +245,22 @@ describe("PrescriptionForm", () => {
         expect(screen.getByText("A próxima consulta não pode ser antes desta consulta")).toBeInTheDocument();
     });
 
+    // o formulario some dps de emitir e o foco do botao ia pro body, sem nada anunciado (CT-39)
+    it("emitir pelo teclado leva o foco pro aviso da prescricao emitida", async () => {
+        vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        screen.getByRole("button", {name: "Emitir prescrição"}).focus();
+        await user.keyboard("{Enter}");
+
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+        const notice = screen.getByRole("status");
+        expect(notice).toHaveTextContent("A prescrição agora é a vigente do paciente.");
+        expect(notice).toHaveFocus();
+    });
+
     // a prescricao saia calada pelo Voltar e a receita digitada sumia (CT-39)
     it("sair com algo digitado pergunta antes e dps de emitir sai direto", async () => {
         setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});

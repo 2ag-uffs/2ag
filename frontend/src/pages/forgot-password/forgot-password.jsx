@@ -2,6 +2,7 @@ import {useState} from "react";
 import {Link} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import TextField from "../../components/form/text-field.jsx";
 import TrapField from "../../components/form/trap-field.jsx";
 import {apiService, readRequestError} from "../../services/api.js";
@@ -15,6 +16,7 @@ export default function ForgotPassword() {
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [wasSent, setWasSent] = useState(false);
+    const sentNoticeRef = useFocusWhenShown(wasSent);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -40,7 +42,7 @@ export default function ForgotPassword() {
     if (wasSent) {
         return (
             <AuthLayout title="Confira seu e-mail">
-                <p className={"aviso " + styles.message}>
+                <p className={"aviso " + styles.message} role="status" tabIndex={-1} ref={sentNoticeRef}>
                     Se houver uma conta com o e-mail <strong>{email}</strong>, o link para criar uma senha nova chega
                     em alguns minutos. Ele vale por 30 minutos.
                 </p>
