@@ -121,4 +121,34 @@ describe("CentralEscalas", () => {
 
         expect(await screen.findByText("tela /escalas/hamilton")).toBeInTheDocument();
     });
+
+    // com dois diarios pendentes o leitor de tela lia duas barras iguais, so com a porcentagem
+    it("cada barra de progresso dos diarios diz de qual escala eh e quantos dias ja foram", async () => {
+        const pendingPage = {
+            ...SCALES_PAGE,
+            pending: [
+                {
+                    id: 7, daily: true, answeredDays: 3, totalDays: 7, scaleName: "Diário do sono",
+                    periodEnd: "2026-11-20", late: false, path: "/escalas/diario-sono",
+                },
+                {
+                    id: 8, daily: true, answeredDays: 1, totalDays: 7, scaleName: "Diário da dor",
+                    periodEnd: "2026-11-21", late: false, path: "/escalas/diario-dor",
+                },
+            ],
+        };
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/progress/attributes" ? ATTRIBUTES : pendingPage));
+        const router = createMemoryRouter([
+            {path: "/pacientes/:patientId/escalas", element: <CentralEscalas/>},
+        ], {initialEntries: ["/pacientes/3/escalas"]});
+        render(<RouterProvider router={router}/>);
+
+        const bars = await screen.findAllByRole("progressbar");
+        expect(bars).toHaveLength(2);
+        expect(bars[0]).toHaveAccessibleName(/Diário do sono/);
+        expect(bars[0]).toHaveAccessibleName(/3 de 7 dias preenchidos/);
+        expect(bars[1]).toHaveAccessibleName(/Diário da dor/);
+        expect(bars[1]).toHaveAccessibleName(/1 de 7 dias preenchidos/);
+    });
 });

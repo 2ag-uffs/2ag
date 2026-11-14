@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useId, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import {FiCheckCircle, FiTrendingUp} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
@@ -17,9 +17,12 @@ function PendingTaskCard({task, onAnswer}) {
     const filledPercent = task.daily
         ? Math.round((task.answeredDays / task.totalDays) * 100)
         : 0;
+    // a barra leva o nome da escala e o texto dos dias, senao o leitor de tela le so a porcentagem
+    const titleId = useId();
+    const progressTextId = useId();
     return (
         <li className={task.late ? styles.card + " " + styles.cardLate : styles.card}>
-            <h3 className={styles.cardTitle}>{task.scaleName}</h3>
+            <h3 id={titleId} className={styles.cardTitle}>{task.scaleName}</h3>
             <p className={task.late ? styles.deadlineLate : styles.deadline}>
                 {task.late
                     ? "O prazo era " + formatDate(task.periodEnd)
@@ -33,10 +36,11 @@ function PendingTaskCard({task, onAnswer}) {
                         aria-valuemin={0}
                         aria-valuemax={task.totalDays}
                         aria-valuenow={task.answeredDays}
+                        aria-labelledby={titleId + " " + progressTextId}
                     >
                         <span className={styles.progressFill} style={{width: filledPercent + "%"}}/>
                     </div>
-                    <span className={styles.progressText}>
+                    <span id={progressTextId} className={styles.progressText}>
                         {task.answeredDays} de {task.totalDays} dias preenchidos
                     </span>
                 </div>
