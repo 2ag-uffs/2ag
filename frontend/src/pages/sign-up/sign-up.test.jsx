@@ -416,6 +416,21 @@ describe("SignUp", () => {
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
     });
 
+    // em 768 o estado tinha 73px e Santa Catarina virava "Santa Ca", e ate 1440 Rio Grande do Norte cortava (CT-38).
+    // cidade e estado so ficam lado a lado qnd cada um tem 11rem, onde cabe o nome mais comprido com a seta
+    it("cidade e estado so ficam lado a lado qnd o nome mais comprido do estado cabe", async () => {
+        mockApi();
+        renderSignUp();
+
+        const cityRow = (await screen.findByLabelText("Estado")).closest("div").parentElement;
+        expect(cityRow.className).toMatch(/cityRow/);
+        expect(within(cityRow).getByLabelText("Cidade")).toBeInTheDocument();
+        const css = readCss(import.meta.url, "./sign-up.module.css");
+        expect(declarationsOf(css, ".cityRow")["grid-template-columns"]).toBe("repeat(auto-fit, minmax(11rem, 1fr))");
+        const mobile = mediaRules(css, "@media (max-width: 47.99rem)");
+        expect(declarationsOf(mobile, ".cityRow")["grid-template-columns"]).toBe("minmax(0, 1fr)");
+    });
+
     // o mesmo desenho do perfil: cidade e estado lado a lado cortavam o nome do estado no celular (CT-38)
     it("no celular rua, numero, cidade e estado ficam um embaixo do outro", () => {
         const mobile = mediaRules(readCss(import.meta.url, "./sign-up.module.css"), "@media (max-width: 47.99rem)");

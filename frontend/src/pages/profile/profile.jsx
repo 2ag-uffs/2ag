@@ -183,7 +183,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
                     required={isPatient}
                 />
             </div>
-            <div className={styles.rowWide}>
+            <div className={styles.cityRow}>
                 <TextField
                     label="Cidade"
                     name="address.city"

@@ -495,7 +495,7 @@ export default function SignUp() {
                             required={true}
                         />
                     </div>
-                    <div className={styles.rowWide}>
+                    <div className={styles.cityRow}>
                         <TextField
                             label="Cidade"
                             name="address.city"

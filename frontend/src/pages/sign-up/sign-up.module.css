@@ -54,6 +54,14 @@
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
 
+/* cidade e estado so ficam lado a lado qnd os dois tem 11rem: Rio Grande do Norte, o nome mais comprido,
+   cabe nisso com a seta da lista. com menos espaco, como no cadastro em 768, um fica embaixo do outro (CT-38) */
+.cityRow {
+    display: grid;
+    gap: var(--space-3) var(--space-4);
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
 .submitButton {
     margin-top: var(--space-1);
 }
@@ -155,7 +163,8 @@
 /* no celular o estado ao lado da cidade cortava o nome, entao tudo fica um embaixo do outro */
 @media (max-width: 47.99rem) {
     .row,
-    .rowWide {
+    .rowWide,
+    .cityRow {
         grid-template-columns: minmax(0, 1fr);
     }
 }

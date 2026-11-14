@@ -1,4 +1,4 @@
-import {render, screen, waitFor} from "@testing-library/react";
+import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
@@ -297,6 +297,21 @@ describe("Profile", () => {
 
         expect(post).toHaveBeenCalledWith("/consent-term/research/revoke", undefined);
         await waitFor(() => expect(screen.queryByRole("heading", {name: "Pesquisa"})).not.toBeInTheDocument());
+    });
+
+    // em 1280 sobravam 124px e Rio Grande do Norte cortava (CT-38): cidade e estado so ficam lado a lado
+    // qnd cada um tem 11rem, onde cabe o nome mais comprido com a seta
+    it("cidade e estado so ficam lado a lado qnd o nome mais comprido do estado cabe", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(minorProfile(null));
+        render(<Profile/>);
+
+        const cityRow = (await screen.findByLabelText(/^Estado/)).closest("div").parentElement;
+        expect(cityRow.className).toMatch(/cityRow/);
+        expect(within(cityRow).getByLabelText(/^Cidade/)).toBeInTheDocument();
+        const css = readCss(import.meta.url, "./profile.module.css");
+        expect(declarationsOf(css, ".cityRow")["grid-template-columns"]).toBe("repeat(auto-fit, minmax(11rem, 1fr))");
+        const mobile = mediaRules(css, "@media (max-width: 47.99rem)");
+        expect(declarationsOf(mobile, ".cityRow")["grid-template-columns"]).toBe("minmax(0, 1fr)");
     });
 
     // cidade e estado lado a lado no celular deixavam uns 48px pro estado, e Santa Catarina virava "Santa Ca" (CT-38)
