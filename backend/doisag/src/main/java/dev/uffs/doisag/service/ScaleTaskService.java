@@ -522,7 +522,7 @@ public class ScaleTaskService {
         return true;
     }
 
-    // arquivar fecha na hora o q o paciente ainda tinha em aberto, pela mesma regra do prazo vencido
+    // arquivar fecha na hora o q o paciente ainda tinha em aberto, pela mesma regra da troca do acompanhamento
     // o periodo acaba no dia do arquivamento, senao o diario pela metade seguraria o acompanhamento novo
     @Transactional
     public int closePendingOf(Long patientId) {
@@ -530,20 +530,13 @@ public class ScaleTaskService {
         List<ScaleTask> pending = taskRepository
                 .findByPatientIdAndStatusOrderByPeriodEndAsc(patientId, ScaleTaskStatus.PENDENTE);
         for (ScaleTask task : pending) {
-            if (task.getPeriodEnd().isAfter(today)) {
-                task.setPeriodEnd(today);
-            }
-            closeByAnswers(task, today);
+            closeStoppedByPrescriber(task, today);
         }
         return pending.size();
     }
 
-    // a escala q ficou de fora do acompanhamento novo para de ser cobrada na hora: a rodada pendente dela
-    // fecha pelas respostas, como no arquivamento, com o periodo acabando hoje. a q fecha vazia ganha o dia
-    // marcado, igual a avaliacao inicial perdida q recebeu a ficha atrasada: assim ela sai das escalas
-    // vencidas do painel, e o indicador deixa ela de fora, pq quem tirou a escala foi o prescritor e n foi
-    // atraso do paciente. a rodada q ja tinha vencido antes da troca, com o job das 8h ainda sem rodar, foi
-    // atraso de vdd e fecha como no job, sem o dia marcado. a avulsa n eh do acompanhamento e fica como esta
+    // a escala q ficou de fora do acompanhamento novo para de ser cobrada na hora, como no arquivamento
+    // a avulsa n eh do acompanhamento e fica como esta
     // quem chama ja travou o prescritor e o paciente
     @Transactional
     public int closeProtocolTasksNotIn(Long patientId, Set<ScaleType> keptScaleTypes) {
@@ -554,18 +547,28 @@ public class ScaleTaskService {
             if (!task.isFromProtocol() || keptScaleTypes.contains(task.getScaleType())) {
                 continue;
             }
-            boolean stillRunning = !task.getPeriodEnd().isBefore(today);
-            if (task.getPeriodEnd().isAfter(today)) {
-                task.setPeriodEnd(today);
-            }
-            closeByAnswers(task, today);
-            if (stillRunning && task.getAnsweredAt() == null) {
-                task.setAnsweredAt(today);
-                taskRepository.save(task);
-            }
+            closeStoppedByPrescriber(task, today);
             closed++;
         }
         return closed;
+    }
+
+    // a tarefa q o prescritor interrompeu, tirando a escala do acompanhamento ou arquivando o paciente, fecha
+    // pelas respostas com o periodo acabando hoje. a q ainda estava no prazo e fecha vazia ganha o dia marcado,
+    // igual a avaliacao inicial perdida q recebeu a ficha atrasada: assim ela sai das escalas vencidas do
+    // painel, e o indicador deixa ela de fora, pq foi escolha do prescritor e n atraso do paciente (07/11, e no
+    // arquivamento desde a revisao das regras R22). a q ja tinha vencido, com o job das 8h ainda sem rodar,
+    // foi atraso de vdd e fecha como no job, sem o dia marcado
+    private void closeStoppedByPrescriber(ScaleTask task, LocalDate today) {
+        boolean stillRunning = !task.getPeriodEnd().isBefore(today);
+        if (task.getPeriodEnd().isAfter(today)) {
+            task.setPeriodEnd(today);
+        }
+        closeByAnswers(task, today);
+        if (stillRunning && task.getAnsweredAt() == null) {
+            task.setAnsweredAt(today);
+            taskRepository.save(task);
+        }
     }
 
     // a semana reaberta q so tem o dia atrasado fecha como nao respondida

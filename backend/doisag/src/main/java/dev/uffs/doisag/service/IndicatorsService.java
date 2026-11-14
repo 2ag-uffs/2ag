@@ -79,7 +79,7 @@ public class IndicatorsService {
         Map<Long, Integer> validDaysByTask = countValidDaysByTask(prescriberId, from, to);
         Set<Long> tasksWithOnTimeDay = new HashSet<>(responseRepository.findTaskIdsOfOnTimeAnswers(prescriberId,
                 from, to));
-        List<ScaleTask> tasksDue = withoutRemovedScales(
+        List<ScaleTask> tasksDue = withoutStoppedByPrescriber(
                 taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to));
         Map<ScaleType, ScaleCount> countsByScale = countFormsByScale(tasksDue, validDaysByTask, tasksWithOnTimeDay);
 
@@ -136,15 +136,19 @@ public class IndicatorsService {
         return count;
     }
 
-    // a escala q o prescritor tirou do acompanhamento fecha sem resposta e com o dia marcado (ScaleTaskService):
-    // n foi atraso do paciente, entao ela fica fora da conta. a avaliacao inicial eh a unica outra nao
-    // respondida com o dia marcado, pela anamnese atrasada, e essa segue contando fora do prazo
-    private List<ScaleTask> withoutRemovedScales(List<ScaleTask> tasks) {
+    // a escala q o prescritor tirou do acompanhamento e o q ainda estava no prazo no arquivamento fecham sem
+    // resposta e com o dia marcado no fim do prazo, q a troca ou o arquivamento cortou pra aquele dia
+    // (ScaleTaskService): n foi atraso do paciente, entao fica fora da conta (revisao das regras R22). a
+    // avaliacao inicial perdida tbm ganha o dia, o da anamnese atrasada, q vem dps do fim do prazo, e essa
+    // segue contando fora do prazo
+    private List<ScaleTask> withoutStoppedByPrescriber(List<ScaleTask> tasks) {
         List<ScaleTask> kept = new ArrayList<>();
         for (ScaleTask task : tasks) {
-            boolean removedFromProtocol = task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA
-                    && task.getAnsweredAt() != null && task.getScaleType() != ScaleType.ANAMNESE;
-            if (!removedFromProtocol) {
+            boolean lateAnamnesis = task.getScaleType() == ScaleType.ANAMNESE && task.getAnsweredAt() != null
+                    && task.getAnsweredAt().isAfter(task.getPeriodEnd());
+            boolean stoppedByPrescriber = task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA
+                    && task.getAnsweredAt() != null && !lateAnamnesis;
+            if (!stoppedByPrescriber) {
                 kept.add(task);
             }
         }
@@ -178,8 +182,7 @@ public class IndicatorsService {
                 count.daysFilled += validDays;
             } else {
                 // reabrir apaga o answeredAt, entao resposta anulada sem outra no lugar n conta
-                // a nao respondida q ganhou resposta ou anamnese atrasada segue fora do prazo, mesmo qnd o
-                // arquivamento cortou o prazo pro dia dela
+                // a nao respondida q ganhou resposta ou anamnese atrasada segue fora do prazo
                 onTime = task.getStatus() != ScaleTaskStatus.NAO_RESPONDIDA && task.getAnsweredAt() != null
                         && !task.getAnsweredAt().isAfter(task.getPeriodEnd());
             }

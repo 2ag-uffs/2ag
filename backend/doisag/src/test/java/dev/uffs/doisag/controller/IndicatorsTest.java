@@ -243,10 +243,10 @@ class IndicatorsTest {
                 .andExpect(jsonPath("$.invitesStillOpen").value(1));
     }
 
-    // arquivar encurta o prazo, e sem resposta a tarefa segue contando como fora do prazo
+    // o q ja tinha vencido qnd o paciente foi arquivado segue contando como fora do prazo (revisao das regras R22)
     @Test
     void pacienteArquivadoContinuaNaConta() throws Exception {
-        saveTask(patient, ScaleType.REGISTRO_DOR, TODAY.minusDays(5), TODAY.minusDays(2),
+        saveTask(patient, ScaleType.REGISTRO_DOR, TODAY.minusDays(9), TODAY.minusDays(3),
                 ScaleTaskStatus.NAO_RESPONDIDA, null);
         patient.setArchivedAt(TODAY.minusDays(2).atTime(10, 0));
         patientRepository.save(patient);

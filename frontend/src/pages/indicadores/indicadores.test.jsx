@@ -67,6 +67,16 @@ describe("Indicadores", () => {
         expect(screen.getByText("Escala de ansiedade de Hamilton")).toBeInTheDocument();
     });
 
+    // no arquivamento o q ainda estava no prazo fica de fora (revisao das regras R22)
+    it("a regra dos arquivados diz o q conta como atraso e o q fica de fora", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(INDICATORS);
+        renderPage();
+
+        expect(await screen.findByText("Nos formulários, pacientes arquivados continuam na conta, para a"
+            + " desistência não sumir do número: o que já tinha vencido no arquivamento conta como atraso, e o que"
+            + " ainda estava no prazo fica de fora.")).toBeInTheDocument();
+    });
+
     it("75% mostra a meta atingida", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({
             ...INDICATORS, formsOnTime: 3, formsDue: 4, onTimePercent: 75,

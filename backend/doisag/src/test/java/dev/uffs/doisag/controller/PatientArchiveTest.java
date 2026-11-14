@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
@@ -144,6 +145,59 @@ class PatientArchiveTest {
         mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", bearerTokenOf(patient)))
                 .andExpect(jsonPath("$.pendingScales.length()").value(0));
         assertThat(reminderService.sendScaleReminders(task.getPeriodEnd())).isZero();
+    }
+
+    // no arquivamento o q ja tinha vencido conta como atraso, e o q ainda estava no prazo fica fora dos
+    // indicadores e das vencidas, igual a escala tirada do acompanhamento: quem interrompeu foi o prescritor
+    // (decisao de 14/11/2026, revisao das regras R22). antes o q estava no prazo contava como atrasado
+    @Test
+    void archivingLeavesOutOfTheIndicatorsWhatWasStillWithinTheDeadline() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask withinDeadline = saveOpenTask(ScaleType.ESCALA_HAMILTON, today.minusDays(2), today.plusDays(27));
+        ScaleTask initialAssessment = saveOpenTask(ScaleType.ANAMNESE, today.minusDays(1), today.plusDays(5));
+        // venceu ontem e o job das 8h ainda n fechou
+        ScaleTask overdue = saveOpenTask(ScaleType.ESCALA_PITTSBURGH, today.minusDays(7), today.minusDays(1));
+
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        assertThat(withinDeadline.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(withinDeadline.getPeriodEnd()).isEqualTo(today);
+        assertThat(withinDeadline.getAnsweredAt()).isEqualTo(today);
+        assertThat(initialAssessment.getAnsweredAt()).isEqualTo(today);
+        assertThat(overdue.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(overdue.getPeriodEnd()).isEqualTo(today.minusDays(1));
+        assertThat(overdue.getAnsweredAt()).isNull();
+
+        // o indicador so conta prazo q ja acabou, entao as tarefas voltam um dia como se fosse amanha
+        for (ScaleTask task : List.of(withinDeadline, initialAssessment, overdue)) {
+            task.setPeriodStart(task.getPeriodStart().minusDays(1));
+            task.setPeriodEnd(task.getPeriodEnd().minusDays(1));
+            if (task.getAnsweredAt() != null) {
+                task.setAnsweredAt(task.getAnsweredAt().minusDays(1));
+            }
+            taskRepository.saveAndFlush(task);
+        }
+        reactivate(patient, prescriber).andExpect(status().isOk());
+
+        String prescriberToken = bearerTokenOf(prescriber);
+        mockMvc.perform(get("/indicators").header("Authorization", prescriberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formsDue").value(1))
+                .andExpect(jsonPath("$.formsOnTime").value(0))
+                .andExpect(jsonPath("$.scales[0].scaleType").value("ESCALA_PITTSBURGH"));
+        mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId()).header("Authorization", prescriberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lateScalesTotal").value(1));
+    }
+
+    private ScaleTask saveOpenTask(ScaleType scaleType, LocalDate periodStart, LocalDate periodEnd) {
+        ScaleTask task = new ScaleTask();
+        task.setPatient(patient);
+        task.setPrescriber(prescriber);
+        task.setScaleType(scaleType);
+        task.setPeriodStart(periodStart);
+        task.setPeriodEnd(periodEnd);
+        return taskRepository.save(task);
     }
 
     // a escala fechada no arquivamento n pode segurar o envio do acompanhamento novo

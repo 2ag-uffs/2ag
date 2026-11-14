@@ -373,10 +373,10 @@ class DashboardTest {
     }
 
     // arquivado e reativado no mesmo dia: o arquivamento cortou o prazo pra hoje e fechou a avaliacao inicial
-    // como nao respondida, e a anamnese de hoje marcava o dia igual ao fim do prazo. dai a tarefa
-    // nao respondida contava no prazo nos indicadores
+    // q ainda estava no prazo, entao ela fica fora dos indicadores, nem a favor nem contra, e a anamnese do
+    // mesmo dia n muda isso. antes ela contava fora do prazo (revisao das regras R22)
     @Test
-    void aAvaliacaoInicialCortadaNoArquivamentoContaForaDoPrazoComAAnamneseDoMesmoDia() throws Exception {
+    void aAvaliacaoInicialNoPrazoCortadaNoArquivamentoFicaForaDosIndicadores() throws Exception {
         ScaleTask task = new ScaleTask();
         task.setPatient(patient);
         task.setPrescriber(prescriber);
@@ -403,7 +403,9 @@ class DashboardTest {
         taskRepository.saveAndFlush(task);
 
         prescriberPanel().andExpect(jsonPath("$.lateScalesTotal").value(0));
-        lateIndicator();
+        mockMvc.perform(get("/indicators").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.formsDue").value(0));
     }
 
     // quem foi arquivado saiu do acompanhamento: o q venceu e o q o arquivamento fechou no dia

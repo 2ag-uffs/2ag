@@ -139,7 +139,11 @@ export default function Indicadores() {
                         preenchidos, mas não deixa o diário no prazo.
                     </li>
                     <li>Resposta anulada não conta.</li>
-                    <li>Nos formulários, pacientes arquivados continuam na conta, para a desistência não sumir do número.</li>
+                    <li>
+                        Nos formulários, pacientes arquivados continuam na conta, para a desistência não sumir do
+                        número: o que já tinha vencido no arquivamento conta como atraso, e o que ainda estava no
+                        prazo fica de fora.
+                    </li>
                 </ul>
             </Card>
         </section>
