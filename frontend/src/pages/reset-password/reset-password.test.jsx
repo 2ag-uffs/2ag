@@ -1,4 +1,4 @@
-import {render, screen} from "@testing-library/react";
+import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -37,7 +37,8 @@ describe("ResetPassword", () => {
         const router = renderResetPage("/redefinir-senha?token=abc");
 
         expect(await screen.findByLabelText("Nova senha")).toBeInTheDocument();
-        expect(router.state.location.search).toBe("");
+        // o codigo sai da barra num efeito dps do formulario aparecer, entao espera em vez de olhar na hora
+        await waitFor(() => expect(router.state.location.search).toBe(""));
         await createNewPassword(user);
 
         expect(await screen.findByText("tela de login")).toBeInTheDocument();
