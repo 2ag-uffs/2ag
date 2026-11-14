@@ -34,6 +34,17 @@ class BrazilianFormatTest {
         assertThat(BrazilianFormat.decimal(null)).isNull();
     }
 
+    // resposta escrita da anamnese: so o numero com ponto ganha a virgula, o resto fica como foi escrito
+    @Test
+    void decimalAnswerChangesOnlyTheDotOfANumber() {
+        assertThat(BrazilianFormat.decimalAnswer("68.5")).isEqualTo("68,5");
+        assertThat(BrazilianFormat.decimalAnswer(" 80.25 ")).isEqualTo("80,25");
+        assertThat(BrazilianFormat.decimalAnswer("178")).isEqualTo("178");
+        assertThat(BrazilianFormat.decimalAnswer("68,5")).isEqualTo("68,5");
+        assertThat(BrazilianFormat.decimalAnswer("uns 70.5 kg")).isEqualTo("uns 70.5 kg");
+        assertThat(BrazilianFormat.decimalAnswer(null)).isNull();
+    }
+
     @Test
     void minutesTurnIntoHoursFromSixtyOn() {
         assertThat(BrazilianFormat.minutes(45)).isEqualTo("45 min");

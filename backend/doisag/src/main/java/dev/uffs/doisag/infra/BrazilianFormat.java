@@ -38,6 +38,15 @@ public class BrazilianFormat {
         return NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR")).format(value);
     }
 
+    // resposta escrita q eh so um numero com ponto, como o peso 68.5 q o navegador manda na anamnese,
+    // troca o ponto pela virgula. o resto do texto fica como foi escrito, e o banco continua com o ponto
+    public static String decimalAnswer(String answer) {
+        if (answer == null || !answer.trim().matches("\\d+\\.\\d+")) {
+            return answer;
+        }
+        return answer.trim().replace('.', ',');
+    }
+
     // tipo 45 min e 7h05
     public static String minutes(int minutes) {
         if (minutes < 60) {

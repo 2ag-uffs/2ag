@@ -28,8 +28,8 @@ const ANAMNESIS_SECTIONS = [
             {name: "diet", label: "Alimentação"},
             {name: "smokingHabits", label: "Fuma"},
             {name: "alcoholConsumption", label: "Bebe álcool"},
-            {name: "weight", label: "Peso (kg)"},
-            {name: "height", label: "Altura (cm)"},
+            {name: "weight", label: "Peso (kg)", isDecimal: true},
+            {name: "height", label: "Altura (cm)", isDecimal: true},
             {name: "substanceUse", label: "Uso de outras substâncias"},
             {name: "physicalActivity", label: "Exercícios físicos"},
         ],
@@ -51,6 +51,13 @@ const ANAMNESIS_SECTIONS = [
         ],
     },
 ];
+
+// o peso e a altura chegam como o navegador manda, tipo 68.5, e aparecem com a virgula como o peso da consulta
+// so o numero com ponto muda, a resposta escrita fica como veio
+function decimalAnswer(answer) {
+    const text = String(answer).trim();
+    return /^\d+\.\d+$/.test(text) ? text.replace(".", ",") : answer;
+}
 
 // ficha de anamnese so pra leitura com as respostas q foram dadas (RF12 e RF13)
 // o actions deixa quem usa colocar botoes como o de anular
@@ -75,7 +82,7 @@ export default function AnamnesisView({anamnesis, actions}) {
                             {answeredFields.map((field) => (
                                 <div key={field.name}>
                                     <dt>{field.label}</dt>
-                                    <dd>{anamnesis[field.name]}</dd>
+                                    <dd>{field.isDecimal ? decimalAnswer(anamnesis[field.name]) : anamnesis[field.name]}</dd>
                                 </div>
                             ))}
                         </dl>

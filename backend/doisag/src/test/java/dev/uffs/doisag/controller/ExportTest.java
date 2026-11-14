@@ -387,6 +387,31 @@ class ExportTest {
         assertThat(csv).contains("\"Sono\";\"Durmo mal\"");
     }
 
+    // a ficha guarda o peso como o navegador manda, 68.5, e a planilha em portugues lia como texto
+    // sai com a virgula como o peso da consulta, e o texto q n eh so numero fica como foi escrito
+    @Test
+    void anamnesisWeightAndHeightComeOutWithADecimalComma() throws Exception {
+        Anamnesis anamnesis = new Anamnesis();
+        anamnesis.setPatient(patient);
+        anamnesis.setAssessmentDate(TODAY.minusDays(5));
+        anamnesis.setReasonForVisit("Retorno da dor");
+        anamnesis.setWeight("68.5");
+        anamnesis.setHeight("165.5");
+        anamnesis.setSleepHabits("Durmo 6.5 horas");
+        anamnesisRepository.save(anamnesis);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("anamneses.csv", "", patient);
+
+        assertThat(csv).contains("\"Peso (kg)\";\"68,5\"");
+        assertThat(csv).contains("\"Altura (cm)\";\"165,5\"");
+        assertThat(csv).contains("\"Sono\";\"Durmo 6.5 horas\"");
+        assertThat(csv).doesNotContain("68.5").doesNotContain("165.5");
+        // o banco continua com o q foi enviado, a virgula eh so na saida
+        assertThat(anamnesisRepository.findById(anamnesis.getId()).orElseThrow().getWeight()).isEqualTo("68.5");
+    }
+
     // escala e anamnese anuladas levam o motivo, igual consulta e prescricao, pq eh ele
     // q separa erro de digitacao de correcao clinica
     @Test

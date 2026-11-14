@@ -67,8 +67,9 @@ public class ExportService {
             new AnamnesisField("Alimentação", Anamnesis::getDiet),
             new AnamnesisField("Fuma", Anamnesis::getSmokingHabits),
             new AnamnesisField("Bebe álcool", Anamnesis::getAlcoholConsumption),
-            new AnamnesisField("Peso (kg)", Anamnesis::getWeight),
-            new AnamnesisField("Altura (cm)", Anamnesis::getHeight),
+            // com virgula decimal como o peso da consulta, senao a planilha em portugues le 68.5 como texto
+            new AnamnesisField("Peso (kg)", anamnesis -> BrazilianFormat.decimalAnswer(anamnesis.getWeight())),
+            new AnamnesisField("Altura (cm)", anamnesis -> BrazilianFormat.decimalAnswer(anamnesis.getHeight())),
             new AnamnesisField("Uso de outras substâncias", Anamnesis::getSubstanceUse),
             new AnamnesisField("Exercícios físicos", Anamnesis::getPhysicalActivity),
             new AnamnesisField("Sono", Anamnesis::getSleepHabits),

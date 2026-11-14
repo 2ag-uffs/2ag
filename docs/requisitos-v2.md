@@ -246,6 +246,7 @@ Formulário de triagem com: profissão, motivo principal da consulta, diagnósti
 - Identificador único e data de preenchimento
 - Campos descritivos aceitam texto longo sem truncamento (RN11)
 - Preenchimento dá baixa automática na tarefa correspondente (RF08)
+- Peso e altura aparecem na ficha do histórico, na impressão e no `anamneses.csv` com vírgula decimal (`68,5`), como o peso da consulta: com ponto, a planilha em português lê a resposta como texto. A resposta continua guardada como foi enviada (13/11/2026)
 
 ---
 
