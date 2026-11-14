@@ -88,6 +88,13 @@
     white-space: pre-line;
 }
 
+/* diz de quando conta a semana 1 */
+.stepsNote {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-1);
+}
+
 .steps {
     display: flex;
     flex-direction: column;

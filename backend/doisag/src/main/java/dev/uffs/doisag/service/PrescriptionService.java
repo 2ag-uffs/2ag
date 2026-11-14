@@ -55,6 +55,10 @@ public class PrescriptionService {
             "A próxima consulta não pode ser antes desta consulta";
     public static final String DURATION_TOO_LONG_MESSAGE = "A duração do tratamento pode ser de até 730 dias";
 
+    public static String missingWeekMessage(int week) {
+        return "Preencha ou tire a semana " + week;
+    }
+
     private static final BigDecimal MAX_PERCENT = new BigDecimal("100");
     private static final int MAX_TREATMENT_DAYS = 730;
 
@@ -182,6 +186,7 @@ public class PrescriptionService {
     // a duracao vai ate dois anos e o retorno n fica antes da propria consulta
     private void checkPrescriptionData(PrescriptionCreateDTO prescriptionData, Appointment appointment) {
         checkComposition(prescriptionData.spectrum(), prescriptionData.components());
+        checkDoseWeeks(prescriptionData.escalationSteps());
 
         Integer durationDays = prescriptionData.treatmentDurationDays();
         if (durationDays != null && durationDays > MAX_TREATMENT_DAYS) {
@@ -213,6 +218,21 @@ public class PrescriptionService {
             if (component.unit() == ConcentrationUnit.PERCENTUAL
                     && component.concentration().compareTo(MAX_PERCENT) > 0) {
                 throw new InvalidFieldException(field + ".concentration", PERCENT_OVER_100_MESSAGE);
+            }
+        }
+    }
+
+    // RN02: o plano vai da semana 1 em diante sem pular semana. a semana vazia no meio era lida como
+    // parar a dose naquela semana, numa subida q precisa ser devagar (revisao das regras R23)
+    private void checkDoseWeeks(List<DoseEscalationStepDTO> steps) {
+        if (steps == null) {
+            return;
+        }
+        for (int index = 0; index < steps.size(); index++) {
+            int expectedWeek = index + 1;
+            if (steps.get(index).week() != expectedWeek) {
+                throw new InvalidFieldException("escalationSteps[" + index + "].week",
+                        missingWeekMessage(expectedWeek));
             }
         }
     }

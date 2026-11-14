@@ -58,22 +58,41 @@ describe("PrescriptionForm", () => {
         setLoggedUser(null);
     });
 
-    // a linha em branco no meio n pode adiantar a subida da dose (RN02)
-    it("cada dose vai com a semana q a prescritora viu na tela", async () => {
+    // a semana vazia no meio do plano era lida como parar a dose naquela semana (RN02, revisao das regras R23)
+    it("semana vazia no meio do plano pede pra preencher ou tirar e as vazias do fim ficam de fora", async () => {
         const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
         const user = userEvent.setup();
         renderForm();
 
         await fillRequiredFields();
-        await addWeeks(user, 3);
+        await addWeeks(user, 4);
         fireEvent.change(screen.getByLabelText("Semana 1"), {target: {value: "2 gotas à noite"}});
         fireEvent.change(screen.getByLabelText("Semana 3"), {target: {value: "4 gotas à noite"}});
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
+        expect(screen.getByLabelText("Semana 2")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByText("Preencha ou tire a semana")).toBeInTheDocument();
+        expect(screen.getByLabelText("Semana 4")).not.toHaveAttribute("aria-invalid");
+        expect(post).not.toHaveBeenCalled();
+
+        // tirar a semana vazia sobe as de baixo, e a vazia do fim fica de fora do plano
+        await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
         expect(post.mock.calls[0][1].escalationSteps).toEqual([
             {week: 1, dosage: "2 gotas à noite", note: null},
-            {week: 3, dosage: "4 gotas à noite", note: null},
+            {week: 2, dosage: "4 gotas à noite", note: null},
         ]);
+    });
+
+    it("o plano diz de quando conta a semana 1", async () => {
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addWeeks(user, 1);
+
+        expect(screen.getByText("Semana 1 = primeira semana de uso.")).toBeInTheDocument();
     });
 
     // a linha sem dose fica de fora, e a observacao escrita nela sumia calada da receita
@@ -106,17 +125,18 @@ describe("PrescriptionForm", () => {
         ]);
     });
 
-    // a api conta a posicao na lista enviada, q pula a semana 1 em branco
+    // a api conta a posicao na lista enviada, e o erro volta pra linha da semana na tela
     it("o erro da api aparece no campo dele e na linha certa do plano de dose", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
             {field: "brand", message: "A marca pode ter até 255 caracteres"},
-            {field: "escalationSteps[0].note", message: "A observação pode ter até 255 caracteres"},
+            {field: "escalationSteps[1].note", message: "A observação pode ter até 255 caracteres"},
         ]));
         const user = userEvent.setup();
         renderForm();
 
         await fillRequiredFields();
         await addWeeks(user, 2);
+        fireEvent.change(screen.getByLabelText("Semana 1"), {target: {value: "2 gotas"}});
         fireEvent.change(screen.getByLabelText("Semana 2"), {target: {value: "3 gotas"}});
         fireEvent.change(screen.getAllByLabelText("Observação (opcional)")[1], {target: {value: "dps do jantar"}});
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));

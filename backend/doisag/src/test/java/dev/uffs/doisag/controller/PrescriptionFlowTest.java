@@ -279,6 +279,27 @@ class PrescriptionFlowTest {
                 .andExpect(jsonPath("$.errors[0].field").value("escalationSteps[0]"));
     }
 
+    // a semana pulada no meio do plano era lida como parar a dose naquela semana (revisao das regras R23)
+    @Test
+    void doseStepThatSkipsAWeekIsRefusedWithTheMissingWeek() throws Exception {
+        Map<String, Object> skippedWeek = prescriptionWith("Oleo");
+        skippedWeek.put("escalationSteps", List.of(
+                Map.of("week", 1, "dosage", "2 gotas a noite"),
+                Map.of("week", 3, "dosage", "4 gotas a noite")));
+        issuePrescription(registeredConsultationId(), skippedWeek)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("escalationSteps[1].week"))
+                .andExpect(jsonPath("$.errors[0].message").value(PrescriptionService.missingWeekMessage(2)));
+
+        Map<String, Object> inOrder = prescriptionWith("Oleo");
+        inOrder.put("escalationSteps", List.of(
+                Map.of("week", 1, "dosage", "2 gotas a noite"),
+                Map.of("week", 2, "dosage", "4 gotas a noite")));
+        issuePrescription(registeredConsultationId(), inOrder)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.escalationSteps.length()").value(2));
+    }
+
     @Test
     void annulledConsultationDoesNotIssueAPrescription() throws Exception {
         Long appointmentId = registeredConsultationId();

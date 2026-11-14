@@ -72,6 +72,8 @@ export default function PrescriptionCard({prescription, actions}) {
             {prescription.escalationSteps.length > 0 && (
                 <div className={styles.block}>
                     <h4>Escalonamento de dose</h4>
+                    {/* o frasco pode chegar semanas dps da consulta (revisao das regras R23) */}
+                    <p className={styles.stepsNote}>Semana 1 = primeira semana de uso.</p>
                     <ol className={styles.steps}>
                         {prescription.escalationSteps.map((step) => (
                             <li key={step.week}>

@@ -86,11 +86,24 @@ function compositionErrorsOf(spectrum, components) {
 }
 
 // a linha sem dose fica de fora do plano, entao a observacao escrita nela sumiria calada da receita
+// e a semana vazia no meio era lida como parar a dose naquela semana (revisao das regras R23)
+// as vazias do fim continuam saindo caladas
 function stepErrorsOf(escalationSteps) {
+    let lastFilledIndex = -1;
+    escalationSteps.forEach((step, index) => {
+        if (step.dosage.trim() !== "") {
+            lastFilledIndex = index;
+        }
+    });
     const errors = {};
     escalationSteps.forEach((step, index) => {
-        if (step.dosage.trim() === "" && step.note.trim() !== "") {
+        if (step.dosage.trim() !== "") {
+            return;
+        }
+        if (step.note.trim() !== "") {
             errors["step-" + index + "-dosage"] = "Escreva a dose desta semana ou apague a observação";
+        } else if (index < lastFilledIndex) {
+            errors["step-" + index + "-dosage"] = "Preencha ou tire a semana";
         }
     });
     return errors;
@@ -161,7 +174,7 @@ function prescriptionBodyOf(form, components, escalationSteps) {
         volume: textOrNull(form.volume),
         posology: form.posology,
         administrationRoute: emptyToNull(form.administrationRoute),
-        // a semana eh a da linha q a prescritora ve na tela, e a linha sem dose fica de fora
+        // a semana eh a da linha q a prescritora ve na tela, e a linha sem dose q sobra no fim fica de fora
         escalationSteps: escalationSteps
             .map((step, index) => ({week: index + 1, dosage: step.dosage, note: textOrNull(step.note)}))
             .filter((step) => step.dosage.trim() !== ""),
@@ -501,6 +514,9 @@ export default function PrescriptionForm() {
                         <h3 className={styles.subTitle}>Escalonamento de dose</h3>
                         {escalationSteps.length === 0 && (
                             <p className={styles.hint}>Se a dose for subir aos poucos, adicione uma linha por semana.</p>
+                        )}
+                        {escalationSteps.length > 0 && (
+                            <p className={styles.hint}>Semana 1 = primeira semana de uso.</p>
                         )}
                         {escalationSteps.map((step, index) => (
                             <div key={index} className={styles.stepRow}>

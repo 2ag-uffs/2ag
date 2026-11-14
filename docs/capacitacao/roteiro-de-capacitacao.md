@@ -250,7 +250,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
   1. **Emitir prescrição**.
   2. Em **Produto**, preencha **Produto** e escolha o **Espectro**. Marca, lote e volume são opcionais.
   3. Em **Composição do óleo**, preencha **Canabinoide**, **Concentração** e **Unidade**. **Adicionar canabinoide** cria outra linha.
-  4. Em **Posologia**, escreva um texto de exemplo, como o que aparece em cinza no próprio campo. **Adicionar semana** monta um escalonamento de dose.
+  4. Em **Posologia**, escreva um texto de exemplo, como o que aparece em cinza no próprio campo. **Adicionar semana** monta um escalonamento de dose: a semana 1 é a primeira semana de uso, e uma semana vazia no meio do plano precisa ser preenchida ou tirada antes de emitir.
   5. Em **Acompanhamento**, preencha **Duração do tratamento em dias** e, se quiser, **Próxima consulta**.
   6. **Emitir prescrição**.
 - **Conferir:**
