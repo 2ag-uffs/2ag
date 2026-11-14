@@ -496,6 +496,70 @@ describe("Progresso", () => {
         expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
     });
 
+    // CT-40 com a internet lenta o catalogo e os comentarios demoram, e enquanto isso a tela dizia
+    // "Nenhum registro preenchido" e "Nenhum comentário", q eh falso: fica o esqueleto ate chegarem
+    it("com a internet lenta a paciente n ve nenhum registro nem nenhum comentario antes dos dados chegarem", async () => {
+        const slowCatalog = heldAnswer(ATTRIBUTES);
+        const slowComments = heldAnswer([{responseId: 1, itemLabel: "Observações", date: "2026-10-01",
+            scaleName: "Acompanhamento semanal", text: "dormi melhor essa semana"}]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return slowCatalog.answer;
+            }
+            if (path.startsWith("/patients/3/progress/comments?")) {
+                return slowComments.answer;
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByRole("heading", {name: "O que você escreveu"})).toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum registro/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+
+        await releaseAndWait([slowCatalog]);
+
+        expect(await screen.findByRole("application", {name: /Gráfico de Ansiedade/})).toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: "O que você escreveu"})).toBeInTheDocument();
+
+        await releaseAndWait([slowComments]);
+
+        expect(screen.getByText("dormi melhor essa semana")).toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: /^O que você escreveu\s*1$/})).toBeInTheDocument();
+    });
+
+    it("com a internet lenta a prescritora n ve nenhum registro nem nenhum comentario antes dos dados chegarem", async () => {
+        const slowCatalog = heldAnswer(PRESCRIBER_ATTRIBUTES);
+        const slowComments = heldAnswer([]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return slowCatalog.answer;
+            }
+            if (path.startsWith("/patients/3/progress/comments?")) {
+                return slowComments.answer;
+            }
+            if (path === "/patients/3") {
+                return Promise.resolve({id: 3, name: "Maria Souza", researchConsent: false});
+            }
+            return Promise.resolve([]);
+        });
+        renderPrescriberProgress("DOR");
+
+        expect(await screen.findByRole("heading", {level: 1, name: "Maria Souza"})).toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum registro/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+
+        await releaseAndWait([slowCatalog, slowComments]);
+
+        // com tudo carregado e sem dado nenhum ai sim a tela diz isso
+        expect(screen.getByText("Nenhum registro preenchido neste período.")).toBeInTheDocument();
+        expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
+    });
+
     // so os comentarios falharam: o cartao diz isso em vez de dizer q n tem comentario nenhum
     it("comentarios q n carregaram n viram nenhum comentario", async () => {
         apiService.get.mockImplementation((path) => {

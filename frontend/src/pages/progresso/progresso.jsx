@@ -73,6 +73,8 @@ export default function Progresso() {
     const [patientError, setPatientError] = useState(null);
 
     const [attributes, setAttributes] = useState([]);
+    // sem o catalogo a tela ainda n sabe o q mostrar, entao fica no esqueleto e n diz q n tem registro (CT-40)
+    const [isCatalogLoaded, setIsCatalogLoaded] = useState(false);
     const [chosenAttribute, setChosenAttribute] = useState(keptFilters.attribute || "");
     const [period, setPeriod] = useState(keptFilters.period || DEFAULT_PERIOD);
 
@@ -87,6 +89,8 @@ export default function Progresso() {
     const [comments, setComments] = useState([]);
     // comentario q n carregou n pode virar "nenhum comentario"
     const [commentsError, setCommentsError] = useState(null);
+    // os comentarios lembram de qual paciente e periodo sao, e enquanto os atuais n chegam o cartao fica no esqueleto
+    const [loadedCommentsKey, setLoadedCommentsKey] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
     const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
@@ -161,6 +165,7 @@ export default function Progresso() {
         apiService.get("/progress/attributes")
             .then((loadedAttributes) => {
                 setAttributes(loadedAttributes);
+                setIsCatalogLoaded(true);
                 // o atributo q veio da troca de paciente continua se ainda existir
                 setChosenAttribute((currentName) => {
                     if (loadedAttributes.some((attribute) => attribute.name === currentName)) {
@@ -193,10 +198,12 @@ export default function Progresso() {
     // como o MEEM q o paciente n ve, nem chega na api
     const isAttributeInCatalog = Boolean(currentAttribute);
 
-    // enquanto a serie da chave atual n chega a tela mostra o esqueleto
+    // enquanto o catalogo ou a serie da chave atual n chegam a tela mostra o esqueleto
     // sem o catalogo a serie n vem, entao fica so o erro
     const seriesKey = seriesKeyOf(patientId, chosenAttribute, period);
-    const isLoading = Boolean(patientId && chosenAttribute) && !loadError && loadedSeriesKey !== seriesKey;
+    const isSeriesLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
+    const isLoading = !loadError && (!isCatalogLoaded || isSeriesLoading);
+    const commentsKey = patientId + "|" + period;
     const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
 
     useEffect(() => {
@@ -268,6 +275,7 @@ export default function Progresso() {
         }
         // trocar o periodo com a internet lenta n pode deixar a lista do periodo anterior na tela
         let isCurrentRequest = true;
+        const requestKey = patientId + "|" + period;
 
         apiService.get("/patients/" + patientId + "/progress/appointments?period=" + period)
             .then((loadedAppointments) => {
@@ -287,6 +295,7 @@ export default function Progresso() {
                 if (isCurrentRequest) {
                     setComments(loadedComments);
                     setCommentsError(null);
+                    setLoadedCommentsKey(requestKey);
                 }
             })
             .catch((requestError) => {
@@ -294,6 +303,7 @@ export default function Progresso() {
                     setComments([]);
                     setCommentsError(errorMessageOf(requestError,
                         "Não foi possível carregar os comentários. Confira sua internet e tente de novo."));
+                    setLoadedCommentsKey(requestKey);
                 }
             });
 
@@ -608,7 +618,12 @@ export default function Progresso() {
                 />
             )}
 
-            <CommentsCard comments={comments} isPrescriber={isPrescriber} loadError={commentsError}/>
+            <CommentsCard
+                comments={comments}
+                isPrescriber={isPrescriber}
+                isLoading={loadedCommentsKey !== commentsKey}
+                loadError={commentsError}
+            />
         </section>
     );
 }
@@ -752,22 +767,25 @@ function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
 }
 
 // na tela do paciente o cartao fala com ele, como o resto da tela
-// o q n carregou diz isso, e sem o numero do lado do titulo, q seria zero
-function CommentsCard({comments, isPrescriber, loadError}) {
+// o q ainda esta chegando fica no esqueleto e o q n carregou diz isso, os dois sem o numero do lado
+// do titulo, q seria zero (CT-40)
+function CommentsCard({comments, isPrescriber, isLoading, loadError}) {
+    const isLoaded = !isLoading && !loadError;
     return (
         <Card
             title={isPrescriber ? "O que o paciente escreveu" : "O que você escreveu"}
-            count={loadError ? undefined : comments.length}
+            count={isLoaded ? comments.length : undefined}
         >
-            {loadError && <p className={styles.empty}>{loadError}</p>}
-            {!loadError && comments.length === 0 && (
+            {isLoading && <SkeletonBlock height="3rem"/>}
+            {!isLoading && loadError && <p className={styles.empty}>{loadError}</p>}
+            {isLoaded && comments.length === 0 && (
                 <p className={styles.empty}>
                     {isPrescriber
                         ? "Nenhum comentário nas escalas deste período."
                         : "Nenhum comentário seu nas escalas deste período."}
                 </p>
             )}
-            {!loadError && comments.length > 0 && (
+            {isLoaded && comments.length > 0 && (
                 <ul className={styles.comments}>
                     {comments.map((comment) => (
                         <li key={comment.responseId + "-" + comment.itemLabel} className={styles.comment}>
