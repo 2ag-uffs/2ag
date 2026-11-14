@@ -216,6 +216,8 @@ public class ScaleTaskService {
         }
         ScaleTask task = openTask.get();
         response.setTask(task);
+        // a tarefa q ja fechou so ganha a resposta como atraso (revisao das regras R6)
+        response.setFilledLate(task.getStatus() != ScaleTaskStatus.PENDENTE);
         // a nao respondida so ganha a resposta atrasada e fica como esta
         if (!daily && task.getStatus() == ScaleTaskStatus.PENDENTE) {
             closeAsAnswered(task, today);
@@ -244,7 +246,10 @@ public class ScaleTaskService {
         Long patientId = response.getPatient().getId();
         ScaleType scaleType = response.getScaleType();
         if (isDaily(scaleType)) {
-            return pendingTaskOfDay(patientId, scaleType, response.getPeriodStart());
+            Optional<ScaleTask> pendingOfDay = pendingTaskOfDay(patientId, scaleType, response.getPeriodStart());
+            return pendingOfDay.isPresent()
+                    ? pendingOfDay
+                    : closedTaskStillOnTheGrid(patientId, scaleType, response.getPeriodStart());
         }
         Optional<ScaleTask> taskOfDay = pendingTaskOfDay(patientId, scaleType, response.getPeriodEnd());
         if (taskOfDay.isPresent()) {
@@ -261,10 +266,25 @@ public class ScaleTaskService {
         return lateTaskOf(patientId, scaleType);
     }
 
+    // no diario a semana q fechou ontem continua na grade ate o fim de hoje (decisao de 14/11/2026, revisao R6)
+    // o dia preenchido nela fica com ela sem mudar a situacao: entra nos dias preenchidos, e a semana q fechou
+    // sem nenhum dia segue fora do prazo no indicador e sai das escalas vencidas, como na resposta atrasada
+    private Optional<ScaleTask> closedTaskStillOnTheGrid(Long patientId, ScaleType scaleType, LocalDate day) {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        for (ScaleTask task : taskRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(patientId,
+                scaleType)) {
+            if (task.getStatus() != ScaleTaskStatus.PENDENTE && task.coversDay(day)
+                    && !task.getPeriodEnd().isBefore(yesterday)) {
+                return Optional.of(task);
+            }
+        }
+        return Optional.empty();
+    }
+
     // a resposta q chega dps de o job fechar a tarefa como nao respondida ficava solta, e a tarefa ficava
     // nas escalas vencidas pra sempre. agora ela fica com a ultima tarefa da escala qnd essa fechou sem
     // resposta, sem mudar o status, entao o indicador segue contando fora do prazo
-    // o diario n chega aqui: la o indicador conta os dias ligados e o dia atrasado viraria no prazo
+    // o diario n chega aqui: o dia atrasado so fica com a semana q fechou ontem, a q ainda esta na grade
     private Optional<ScaleTask> lateTaskOf(Long patientId, ScaleType scaleType) {
         Optional<ScaleTask> lastTask = taskRepository.findFirstByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(
                 patientId, scaleType);
@@ -310,9 +330,10 @@ public class ScaleTaskService {
     // resposta anulada deixa de contar: sem nenhuma valida a tarefa volta a pendente
     // devolve se ela estava fechada e foi reaberta
     // a nao respondida q tinha resposta atrasada n reabre, so volta pras escalas vencidas
+    // o dia atrasado do diario n segura a semana: sem dia no prazo ela reabre (revisao das regras R6)
     @Transactional
     public boolean reopenIfWithoutAnswers(ScaleTask task) {
-        if (task == null || task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA || validAnswersOf(task) > 0) {
+        if (task == null || task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA || onTimeAnswersOf(task) > 0) {
             return false;
         }
         // a escala q o prescritor tirou do acompanhamento n volta a ser cobrada: fecha como na troca, sem
@@ -425,6 +446,11 @@ public class ScaleTaskService {
     // resposta anulada n conta, entao a tarefa dela continua precisando de resposta
     private long validAnswersOf(ScaleTask task) {
         return responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(task.getId());
+    }
+
+    // as validas q chegaram com a tarefa aberta, sem o dia atrasado do diario
+    private long onTimeAnswersOf(ScaleTask task) {
+        return responseRepository.countByTaskIdAndFilledLateFalseAndAnnulmentAnnulledAtIsNull(task.getId());
     }
 
     // a anamnese tem tela propria mas tbm eh uma tarefa (RF19)
@@ -542,8 +568,9 @@ public class ScaleTaskService {
         return closed;
     }
 
+    // a semana reaberta q so tem o dia atrasado fecha como nao respondida
     private void closeByAnswers(ScaleTask task, LocalDate answeredDay) {
-        boolean answered = validAnswersOf(task) > 0;
+        boolean answered = onTimeAnswersOf(task) > 0;
         task.setStatus(answered ? ScaleTaskStatus.RESPONDIDA : ScaleTaskStatus.NAO_RESPONDIDA);
         if (answered && task.getAnsweredAt() == null) {
             task.setAnsweredAt(answeredDay);

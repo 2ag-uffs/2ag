@@ -10,11 +10,14 @@ import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
+import dev.uffs.doisag.scale.ScaleCatalog;
+import dev.uffs.doisag.scale.ScaleDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,9 +32,9 @@ import java.util.List;
 
 // os lembretes automaticos (RF34)
 //
-// o job do dia manda dois: a consulta de amanha e o formulario q esta
-// perto de vencer. cada um sai uma vez so, pq a consulta e a tarefa
-// guardam a data em q o aviso foi criado
+// o job do dia manda tres: a consulta de amanha, o formulario q esta
+// perto de vencer e, no diario, os dois dias seguidos em branco. cada um
+// sai uma vez so, pq a consulta e a tarefa guardam a data em q o aviso foi criado
 //
 // o e-mail sai dps q o banco confirma. se ele falhar o aviso do sistema
 // continua valendo e o log diz de qual conta era
@@ -47,6 +50,8 @@ public class ReminderService {
 
     // o formulario avisa faltando dois dias pro prazo
     private static final int SCALE_REMINDER_DAYS = 2;
+    // no diario, quantos dias seguidos em branco viram lembrete (revisao das regras R6)
+    private static final int BLANK_DAYS_IN_A_ROW = 2;
 
     private final AppointmentRepository appointmentRepository;
     private final ScaleTaskRepository taskRepository;
@@ -54,6 +59,7 @@ public class ReminderService {
     private final PatientRepository patientRepository;
     private final NotificationService notificationService;
     private final BackgroundEmailSender backgroundEmailSender;
+    private final ScaleCatalog catalog;
     private final RowLock rowLock;
     private final TransactionTemplate transactionTemplate;
     private final String publicUrl;
@@ -64,6 +70,7 @@ public class ReminderService {
                            PatientRepository patientRepository,
                            NotificationService notificationService,
                            BackgroundEmailSender backgroundEmailSender,
+                           ScaleCatalog catalog,
                            RowLock rowLock,
                            PlatformTransactionManager transactionManager,
                            @Value("${api.public-url}") String publicUrl) {
@@ -73,6 +80,7 @@ public class ReminderService {
         this.patientRepository = patientRepository;
         this.notificationService = notificationService;
         this.backgroundEmailSender = backgroundEmailSender;
+        this.catalog = catalog;
         this.rowLock = rowLock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.publicUrl = InputCleaner.withoutTrailingSlash(publicUrl);
@@ -263,6 +271,119 @@ public class ReminderService {
 
         task.setReminderSentAt(LocalDateTime.now());
         taskRepository.save(task);
+    }
+
+    // no diario um dia preenchido calava a cobranca do periodo inteiro. agora dois dias seguidos em branco
+    // viram um lembrete, um so por sequencia de dias em branco (decisao de 14/11/2026, revisao das regras R6)
+    // os dois dias sao ontem e anteontem, dentro do periodo da tarefa aberta. roda dps do lembrete do prazo
+    public int sendBlankDaysReminders(LocalDate today) {
+        int sent = 0;
+        int failures = 0;
+        for (ScaleTask found : taskRepository.findByStatusAndPeriodStartLessThanEqual(ScaleTaskStatus.PENDENTE,
+                today.minusDays(BLANK_DAYS_IN_A_ROW))) {
+            if (!isDaily(found)) {
+                continue;
+            }
+            try {
+                Boolean wasSent = transactionTemplate.execute(status -> remindBlankDays(found.getId(), today));
+                if (Boolean.TRUE.equals(wasSent)) {
+                    sent++;
+                }
+            } catch (RuntimeException exception) {
+                failures++;
+                log.error("Tarefas do dia: falha no lembrete de dias em branco da tarefa {}", found.getId(), exception);
+            }
+        }
+        if (failures > 0) {
+            throw new IllegalStateException(failures + " lembrete(s) de dias em branco com falha, "
+                    + sent + " enviados nos outros");
+        }
+        return sent;
+    }
+
+    // na mesma ordem do lembrete do prazo: o paciente e dps a tarefa, lida de novo
+    private boolean remindBlankDays(Long taskId, LocalDate today) {
+        Long patientId = taskRepository.findPatientIdById(taskId).orElse(null);
+        if (patientId == null) {
+            return false;
+        }
+        patientRepository.lockById(patientId);
+        ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
+        LocalDate yesterday = today.minusDays(1);
+        LocalDate dayBefore = today.minusDays(BLANK_DAYS_IN_A_ROW);
+        boolean canBeReminded = task != null && task.getStatus() == ScaleTaskStatus.PENDENTE
+                && task.getPrescriber().isActive() && task.coversDay(dayBefore) && task.coversDay(yesterday);
+        if (!canBeReminded || isFilled(task, dayBefore) || isFilled(task, yesterday)
+                || isSameBlankStreak(task, today)) {
+            return false;
+        }
+        // o lembrete do prazo q saiu hoje ja cobrou essa tarefa, entao a sequencia conta como cobrada
+        boolean deadlineReminderToday = task.getReminderSentAt() != null
+                && task.getReminderSentAt().toLocalDate().equals(today);
+        task.setBlankDaysRemindedUntil(yesterday);
+        taskRepository.save(task);
+        if (deadlineReminderToday) {
+            return false;
+        }
+        sendBlankDaysReminder(task, dayBefore, yesterday);
+        return true;
+    }
+
+    // a mesma sequencia eh a q ja foi cobrada e continua em branco desde o dia cobrado ate ontem
+    private boolean isSameBlankStreak(ScaleTask task, LocalDate today) {
+        LocalDate remindedUntil = lastRemindedDayOf(task);
+        if (remindedUntil == null) {
+            return false;
+        }
+        return responseRepository
+                .findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(task.getPatient().getId(),
+                        task.getScaleType(), remindedUntil, today.minusDays(1))
+                .stream()
+                .allMatch(ScaleResponse::isAnnulled);
+    }
+
+    // a sequencia passa de uma semana pra seguinte, entao sem o dia cobrado na tarefa vale o das semanas
+    // anteriores desse diario, emendadas uma na outra. dps de dias sem tarefa nenhuma a sequencia eh nova
+    private LocalDate lastRemindedDayOf(ScaleTask task) {
+        LocalDate weekStart = task.getPeriodStart();
+        for (ScaleTask week : taskRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(
+                task.getPatient().getId(), task.getScaleType())) {
+            if (week.getPeriodStart().isAfter(task.getPeriodStart())) {
+                continue;
+            }
+            if (week.getPeriodEnd().isBefore(weekStart.minusDays(1))) {
+                return null;
+            }
+            if (week.getBlankDaysRemindedUntil() != null) {
+                return week.getBlankDaysRemindedUntil();
+            }
+            weekStart = week.getPeriodStart();
+        }
+        return null;
+    }
+
+    // dia so com resposta anulada continua em branco
+    private boolean isFilled(ScaleTask task, LocalDate day) {
+        return responseRepository.findByPatientIdAndScaleTypeAndPeriodStartAndAnnulmentAnnulledAtIsNull(
+                task.getPatient().getId(), task.getScaleType(), day).isPresent();
+    }
+
+    private boolean isDaily(ScaleTask task) {
+        return catalog.hasDefinition(task.getScaleType())
+                && catalog.definitionOf(task.getScaleType()).fillMode() == ScaleDefinition.FillMode.DIARIO;
+    }
+
+    private void sendBlankDaysReminder(ScaleTask task, LocalDate dayBefore, LocalDate yesterday) {
+        Patient patient = task.getPatient();
+        String days = BrazilianFormat.date(dayBefore) + " e " + BrazilianFormat.date(yesterday);
+        notificationService.createNotification(patient, "Dias em branco",
+                task.getScaleType().getDisplayName() + ": os dias " + days + " ficaram em branco. "
+                        + "Escolha o dia na grade e preencha o que você lembrar.",
+                Notification.TYPE_FORM, task.getScaleType().getPath() + "?data=" + dayBefore);
+        // o nome da escala eh dado clinico e fica so dentro do sistema
+        sendEmail(patient, "Você tem dias em branco no 2AG",
+                "Os dias " + days + " ficaram em branco num formulário diário. Entre no sistema para ver qual "
+                        + "e preencher.", Notification.patientScalesLink(patient.getId()));
     }
 
     // o e-mail so sai pra conta ativa q deixou ligado no perfil (RF18)

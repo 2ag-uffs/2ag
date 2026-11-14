@@ -245,6 +245,116 @@ class ReminderTest {
         assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
     }
 
+    // no diario um dia preenchido calava a cobranca da semana toda (decisao de 14/11/2026, revisao R6)
+    // agora dois dias seguidos em branco viram um lembrete, um so por sequencia de dias em branco
+    @Test
+    void doisDiasSeguidosEmBrancoNoDiarioViramUmLembretePorSequencia() {
+        ScaleTask task = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        saveDay(task, TODAY.minusDays(4));
+        saveDay(task, TODAY.minusDays(3));
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isEqualTo(1);
+
+        Notification notice = notificationsOf(patient).get(0);
+        assertThat(notice.getTitle()).isEqualTo("Dias em branco");
+        assertThat(notice.getMessage()).contains("Acompanhamento semanal")
+                .contains(formatDate(TODAY.minusDays(2))).contains(formatDate(TODAY.minusDays(1)));
+        assertThat(notice.getLink()).isEqualTo("/escalas/acompanhamento-semanal?data=" + TODAY.minusDays(2));
+        // o nome da escala eh dado clinico e n vai no e-mail
+        ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender).send(email.capture());
+        assertThat(email.getValue().text()).doesNotContain("Acompanhamento").contains("Entre no sistema");
+
+        // a mesma sequencia de dias em branco n cobra de novo
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
+        // um dia preenchido fecha a sequencia, e dois dias em branco depois dele cobram de novo
+        saveDay(task, TODAY);
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(2))).isZero();
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(3))).isEqualTo(1);
+        assertThat(notificationsOf(patient)).hasSize(2);
+    }
+
+    @Test
+    void umDiaPreenchidoEntreOsDoisNaoCobra() {
+        ScaleTask task = saveTask(ScaleType.REGISTRO_SONO, TODAY.plusDays(2));
+        saveDay(task, TODAY.minusDays(1));
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
+    }
+
+    // o dia antes de a tarefa comecar n eh dia em branco, e escala q n eh diario n entra
+    @Test
+    void foraDoDiarioOuAntesDoPeriodoNaoCobra() {
+        ScaleTask newWeek = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(5));
+        newWeek.setPeriodStart(TODAY.minusDays(1));
+        taskRepository.save(newWeek);
+        saveTask(ScaleType.ESCALA_HAMILTON, TODAY.plusDays(5));
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
+    }
+
+    // quem recebeu hoje o lembrete do prazo n ganha outro pela mesma sequencia, e a preferencia de e-mail vale
+    @Test
+    void oLembreteDoPrazoDoDiaJaContaPelaSequencia() {
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+        saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+
+        assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
+        assertThat(notificationsOf(patient)).hasSize(1);
+        verify(emailSender, never()).send(any());
+    }
+
+    // sem o prescritor ninguem le, como no lembrete do prazo (#148)
+    @Test
+    void comOPrescritorDesativadoODiarioNaoCobra() {
+        saveTask(ScaleType.REGISTRO_SONO, TODAY.plusDays(4));
+        prescriber.setActive(false);
+        prescriberRepository.save(prescriber);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
+    }
+
+    // a sequencia em branco q passa pra semana seguinte eh a mesma e n cobra de novo. ela so volta a cobrar
+    // dps de um dia preenchido (revisao das regras R6)
+    @Test
+    void aSequenciaEmBrancoQuePassaParaASemanaSeguinteNaoCobraDeNovo() {
+        ScaleTask firstWeek = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.minusDays(2))).isEqualTo(1);
+        // o job fecha a semana, lida de novo pq o lembrete trava e solta a tarefa
+        firstWeek = taskRepository.findById(firstWeek.getId()).orElseThrow();
+        firstWeek.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
+        taskRepository.save(firstWeek);
+        ScaleTask nextWeek = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(9));
+        nextWeek.setPeriodStart(TODAY.plusDays(3));
+        taskRepository.save(nextWeek);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(5))).isZero();
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(6))).isZero();
+
+        saveDay(nextWeek, TODAY.plusDays(6));
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(9))).isEqualTo(1);
+        assertThat(notificationsOf(patient)).hasSize(2);
+    }
+
+    // a semana q comeca dps de dias sem tarefa nenhuma comeca uma sequencia nova
+    @Test
+    void depoisDeDiasSemTarefaASequenciaComecaDeNovo() {
+        ScaleTask oldWeek = saveTask(ScaleType.REGISTRO_SONO, TODAY.minusDays(4));
+        oldWeek.setPeriodStart(TODAY.minusDays(20));
+        oldWeek.setPeriodEnd(TODAY.minusDays(14));
+        oldWeek.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
+        oldWeek.setBlankDaysRemindedUntil(TODAY.minusDays(19));
+        taskRepository.save(oldWeek);
+        ScaleTask newWeek = saveTask(ScaleType.REGISTRO_SONO, TODAY.plusDays(4));
+        newWeek.setPeriodStart(TODAY.minusDays(2));
+        taskRepository.save(newWeek);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isEqualTo(1);
+    }
+
     // a avulsa q vira rodada ganha o prazo da periodicidade, e o lembrete do prazo antigo
     // n pode calar o do novo (RF34)
     @Test
@@ -564,6 +674,21 @@ class ReminderTest {
         appointment.setStatus(status);
         appointment.setDurationMinutes(60);
         return appointmentRepository.save(appointment);
+    }
+
+    private void saveDay(ScaleTask task, LocalDate day) {
+        ScaleResponse response = new ScaleResponse();
+        response.setPatient(patient);
+        response.setScaleType(task.getScaleType());
+        response.setPeriodStart(day);
+        response.setPeriodEnd(day);
+        response.setTask(task);
+        response.setAnswers(new LinkedHashMap<>(Map.of("dor", 3)));
+        responseRepository.save(response);
+    }
+
+    private String formatDate(LocalDate date) {
+        return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
     }
 
     private ScaleTask saveTask(ScaleType scaleType, LocalDate deadline) {

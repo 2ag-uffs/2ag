@@ -102,6 +102,18 @@ describe("Indicadores", () => {
         expect(screen.getByText("0 de 2 no prazo · 0%")).toBeInTheDocument();
     });
 
+    // a regra do diario fica escrita na tela, com o dia preenchido dps de o periodo fechar
+    // (decisao de 14/11/2026, revisao das regras R6)
+    it("a tela diz q um dia basta pro diario e q o dia preenchido dps de fechar conta como atraso", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(INDICATORS);
+        renderPage();
+
+        expect(await screen.findByText("Um diário conta como respondido com pelo menos um dia preenchido."))
+            .toBeInTheDocument();
+        expect(screen.getByText(/O dia preenchido depois que o período do diário fechou conta como atraso/))
+            .toBeInTheDocument();
+    });
+
     it("sem formulario com prazo mostra o traco e a lista vazia", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({
             ...INDICATORS, formsDue: 0, formsOnTime: 0, onTimePercent: null,

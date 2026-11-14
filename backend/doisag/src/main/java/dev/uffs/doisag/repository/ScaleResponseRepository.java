@@ -56,6 +56,9 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     // resposta anulada n conta como respondida em lugar nenhum
     long countByTaskIdAndAnnulmentAnnulledAtIsNull(Long taskId);
 
+    // so as q chegaram com a tarefa aberta: o dia atrasado do diario n deixa a semana respondida
+    long countByTaskIdAndFilledLateFalseAndAnnulmentAnnulledAtIsNull(Long taskId);
+
     // um id de tarefa por resposta valida ligada a ela, pros indicadores contarem os dias do diario (RF39)
     @Query("select response.task.id from ScaleResponse response "
             + "where response.task.prescriber.id = :prescriberId "
@@ -64,4 +67,13 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     List<Long> findTaskIdsOfValidAnswers(@Param("prescriberId") Long prescriberId,
                                          @Param("from") LocalDate from,
                                          @Param("to") LocalDate to);
+
+    // o mesmo, sem o dia preenchido dps de a tarefa fechar, q conta como atraso (revisao das regras R6)
+    @Query("select response.task.id from ScaleResponse response "
+            + "where response.task.prescriber.id = :prescriberId "
+            + "and response.task.periodEnd between :from and :to "
+            + "and response.annulment.annulledAt is null and response.filledLate = false")
+    List<Long> findTaskIdsOfOnTimeAnswers(@Param("prescriberId") Long prescriberId,
+                                          @Param("from") LocalDate from,
+                                          @Param("to") LocalDate to);
 }

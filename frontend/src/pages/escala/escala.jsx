@@ -40,6 +40,14 @@ function localDateOf(dayIso) {
     return new Date(dayIso + "T00:00:00");
 }
 
+// a semana q fechou ontem continua na grade ate o fim de hoje, e o dia preenchido nela conta como atraso
+// (decisao de 14/11/2026, revisao das regras R6). a pendente q venceu ontem e o job ainda n fechou ja eh a aberta
+function closedTaskOfYesterday(tasks, slug, today) {
+    const yesterday = toIsoDate(addDays(localDateOf(today), -1));
+    return tasks.find((task) => task.path === "/escalas/" + slug && task.status !== "PENDENTE"
+        && task.periodEnd === yesterday) || null;
+}
+
 function daysBetween(firstDay, lastDay) {
     const days = [];
     let dayIso = firstDay;
@@ -55,7 +63,7 @@ function daysBetween(firstDay, lastDay) {
     return days;
 }
 
-function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, onChooseDay}) {
+function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, lateUntil, onChooseDay}) {
     const stripRef = useRef(null);
 
     // no celular a faixa rola de lado e o dia escolhido abria cortado, entao ela anda ate ele
@@ -79,6 +87,12 @@ function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, onCho
             {isInsideTask && (
                 <p className={styles.daysHint}>
                     Esqueceu algum dia? Escolha o dia na grade e preencha agora.
+                </p>
+            )}
+            {lateUntil && (
+                <p className={styles.daysHint}>
+                    Os dias até {formatDate(lateUntil)} são do período que já fechou: dá para preencher até o fim
+                    de hoje, e eles contam como preenchidos com atraso.
                 </p>
             )}
             <div
@@ -141,6 +155,8 @@ export default function Escala() {
     const [responses, setResponses] = useState([]);
     const [sleepSchedule, setSleepSchedule] = useState(null);
     const [openTask, setOpenTask] = useState(null);
+    // o periodo q fechou ontem, q ainda aparece na grade ate o fim de hoje
+    const [lateTask, setLateTask] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // o q a paciente mexeu fica guardado por dia ate salvar
     const [editsByDay, setEditsByDay] = useState({});
@@ -209,14 +225,22 @@ export default function Escala() {
         if (!isDiary) {
             return;
         }
-        apiService.get("/patients/" + loggedUser.id + "/scales/overview")
-            .then((page) => {
+        const patientPath = "/patients/" + loggedUser.id;
+        Promise.all([
+            apiService.get(patientPath + "/scales/overview"),
+            apiService.get(patientPath + "/scales").catch(() => []),
+        ])
+            .then(([page, tasks]) => {
                 const task = openTaskOf(page.pending, slug, startingDay);
+                const closedTask = closedTaskOfYesterday(tasks, slug, today);
                 setOpenTask(task);
+                setLateTask(closedTask);
                 // a pendente q ja venceu ainda aceita os dias dela (antes do job das 8h, ou qnd volta pela
                 // anulacao), entao a tela abre no ultimo dia dela e a grade mostra o periodo dela
-                if (task && task.periodEnd < today && !chosenDate) {
-                    setSelectedDay((currentDay) => (currentDay === today ? task.periodEnd : currentDay));
+                // sem nenhuma aberta, a tela abre no ultimo dia do periodo q fechou ontem
+                const lastDayToOpen = task ? task.periodEnd : (closedTask ? closedTask.periodEnd : today);
+                if (lastDayToOpen < today && !chosenDate) {
+                    setSelectedDay((currentDay) => (currentDay === today ? lastDayToOpen : currentDay));
                 }
             })
             .catch(() => setOpenTask(null));
@@ -225,21 +249,28 @@ export default function Escala() {
     const insideOpenTask = openTask !== null
         && selectedDay >= openTask.periodStart
         && selectedDay <= openTask.periodEnd;
+    const insideLateTask = lateTask !== null
+        && selectedDay >= lateTask.periodStart
+        && selectedDay <= lateTask.periodEnd;
+    // o periodo q fechou ontem vem junto do aberto, e escolher um dia dele deixa a mesma grade
+    const showsLateTask = lateTask !== null && (insideLateTask || insideOpenTask);
 
     // a grade cobre o periodo inteiro da tarefa aberta, pro paciente preencher de uma vez os dias q
     // esqueceu, mesmo qnd o periodo passa de uma semana (issue 71). fora da tarefa fica a semana do
     // dia escolhido, como no papel, pq eh por ela q o "ver e corrigir" do historico chega no dia antigo
     // dia q ainda n chegou nunca aparece
     const gridDays = useMemo(() => {
-        const firstDay = insideOpenTask
-            ? openTask.periodStart
-            : toIsoDate(mondayOf(localDateOf(selectedDay)));
-        const periodLastDay = insideOpenTask
-            ? openTask.periodEnd
-            : toIsoDate(addDays(localDateOf(firstDay), 6));
+        let firstDay = toIsoDate(mondayOf(localDateOf(selectedDay)));
+        let periodLastDay = toIsoDate(addDays(localDateOf(firstDay), 6));
+        if (insideOpenTask || showsLateTask) {
+            const shownTasks = [openTask, showsLateTask ? lateTask : null]
+                .filter((task) => task !== null && task.periodStart <= today);
+            firstDay = shownTasks.map((task) => task.periodStart).sort()[0];
+            periodLastDay = shownTasks.map((task) => task.periodEnd).sort()[shownTasks.length - 1];
+        }
         const lastDay = periodLastDay < today ? periodLastDay : today;
         return daysBetween(firstDay, lastDay);
-    }, [selectedDay, today, openTask, insideOpenTask]);
+    }, [selectedDay, today, openTask, lateTask, insideOpenTask, showsLateTask]);
 
     // resposta anulada fica so no historico: o dia dela abre em branco pro paciente responder de novo
     const currentResponse = useMemo(
@@ -443,7 +474,8 @@ export default function Escala() {
                     responses={responses}
                     selectedDay={selectedDay}
                     unsavedDays={unsavedDays}
-                    isInsideTask={insideOpenTask}
+                    isInsideTask={insideOpenTask || showsLateTask}
+                    lateUntil={showsLateTask ? lateTask.periodEnd : null}
                     onChooseDay={changeDay}
                 />
             )}

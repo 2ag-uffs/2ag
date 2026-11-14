@@ -155,7 +155,7 @@ class DailyStepIsolationTest {
         ScaleTask broken = saveTask(brokenPatient, TODAY.minusDays(2));
         ScaleTask healthy = saveTask(healthyPatient, TODAY.minusDays(1));
         doThrow(new IllegalStateException("falha de teste"))
-                .when(responseRepository).countByTaskIdAndAnnulmentAnnulledAtIsNull(broken.getId());
+                .when(responseRepository).countByTaskIdAndFilledLateFalseAndAnnulmentAnnulledAtIsNull(broken.getId());
 
         assertThatThrownBy(() -> scaleTaskService.closeOverdue(TODAY))
                 .isInstanceOf(IllegalStateException.class)

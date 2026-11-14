@@ -172,4 +172,16 @@ public class ScaleTask {
     public void setReminderSentAt(LocalDateTime reminderSentAt) {
         this.reminderSentAt = reminderSentAt;
     }
+
+    // no diario, o ultimo dia em branco da sequencia q ja foi cobrada, pra mesma sequencia n cobrar de novo
+    // (decisao de 14/11/2026, revisao das regras R6)
+    private LocalDate blankDaysRemindedUntil;
+
+    public LocalDate getBlankDaysRemindedUntil() {
+        return blankDaysRemindedUntil;
+    }
+
+    public void setBlankDaysRemindedUntil(LocalDate blankDaysRemindedUntil) {
+        this.blankDaysRemindedUntil = blankDaysRemindedUntil;
+    }
 }

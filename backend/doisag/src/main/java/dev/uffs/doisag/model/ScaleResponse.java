@@ -54,6 +54,11 @@ public class ScaleResponse {
     @JoinColumn(name = "task_id")
     private ScaleTask task;
 
+    // chegou dps de a tarefa fechar e ficou com ela como atraso: n conta pro prazo nem segura a tarefa
+    // respondida (revisao das regras R6)
+    @Column(nullable = false)
+    private boolean filledLate = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ScaleType scaleType;
@@ -127,6 +132,14 @@ public class ScaleResponse {
 
     public void setTask(ScaleTask task) {
         this.task = task;
+    }
+
+    public boolean isFilledLate() {
+        return filledLate;
+    }
+
+    public void setFilledLate(boolean filledLate) {
+        this.filledLate = filledLate;
     }
 
     public ScaleType getScaleType() {

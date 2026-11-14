@@ -134,6 +134,10 @@ export default function Indicadores() {
                     <li>Só entram formulários com o prazo já encerrado, por isso o período vai até ontem.</li>
                     <li>No prazo quer dizer respondido até o último dia do prazo.</li>
                     <li>Um diário conta como respondido com pelo menos um dia preenchido.</li>
+                    <li>
+                        O dia preenchido depois que o período do diário fechou conta como atraso: entra nos dias
+                        preenchidos, mas não deixa o diário no prazo.
+                    </li>
                     <li>Resposta anulada não conta.</li>
                     <li>Nos formulários, pacientes arquivados continuam na conta, para a desistência não sumir do número.</li>
                 </ul>

@@ -42,6 +42,12 @@ public interface ScaleTaskRepository extends JpaRepository<ScaleTask, Long> {
     List<ScaleTask> findByStatusAndPeriodEndLessThanEqualAndReminderSentAtIsNull(
             ScaleTaskStatus status, LocalDate day);
 
+    // as tarefas abertas q ja tem dois dias, pro lembrete dos dias em branco do diario (revisao das regras R6)
+    List<ScaleTask> findByStatusAndPeriodStartLessThanEqual(ScaleTaskStatus status, LocalDate day);
+
+    // todas as tarefas de uma escala, seja qual for a situacao
+    List<ScaleTask> findByPatientIdAndScaleTypeOrderByPeriodStartDesc(Long patientId, ScaleType scaleType);
+
     // so o paciente da tarefa, sem carregar ela: o job trava o paciente antes de ler a tarefa travada
     @Query("select task.patient.id from ScaleTask task where task.id = :id")
     Optional<Long> findPatientIdById(@Param("id") Long id);

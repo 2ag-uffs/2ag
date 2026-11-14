@@ -998,6 +998,76 @@ class ScaleDeliveryTest {
                 .andExpect(jsonPath("$.notifications[0].message").value(containsString("1 de 7 dias")));
     }
 
+    // a semana q fechou ontem continua na grade ate o fim de hoje (decisao de 14/11/2026, revisao R6)
+    // o dia preenchido nela fica com ela, sem mudar a situacao: conta nos dias e o indicador conta como atraso
+    @Test
+    void aDayOfTheWeekThatClosedYesterdayStaysWithThatWeekAsLate() throws Exception {
+        LocalDate today = LocalDate.now();
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(7), 7, true);
+        scaleTaskService.closeOverdue(today);
+        String patientToken = bearerTokenOf(patient);
+
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + today.minusDays(2) + "\",", patientToken)
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("NAO_RESPONDIDA"))
+                .andExpect(jsonPath("$[0].answeredDays").value(1));
+    }
+
+    // a semana q fechou antes de ontem ja saiu da grade, e o dia dela continua fora da tarefa
+    @Test
+    void aDayOfAWeekThatClosedBeforeYesterdayStaysOutOfIt() throws Exception {
+        LocalDate today = LocalDate.now();
+        scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(8), 7, true);
+        scaleTaskService.closeOverdue(today);
+        String patientToken = bearerTokenOf(patient);
+
+        answerScale("acompanhamento-semanal",
+                "{\"dor\":3}", "\"periodStart\":\"" + today.minusDays(3) + "\",", patientToken)
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales").header("Authorization", patientToken))
+                .andExpect(jsonPath("$[0].status").value("NAO_RESPONDIDA"))
+                .andExpect(jsonPath("$[0].answeredDays").value(0));
+    }
+
+    // o dia atrasado n segura a semana: anular o unico dia no prazo reabre ela e avisa o paciente, e o
+    // indicador n conta a semana no prazo so pelo dia atrasado (revisao das regras R6)
+    @Test
+    void theLateDayDoesNotKeepTheWeekOnTimeWhenTheOnTimeDayIsAnnulled() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(7), 7, true);
+        String patientToken = bearerTokenOf(patient);
+        Number onTimeDayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}",
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        scaleTaskService.closeOverdue(today);
+        answerScale("acompanhamento-semanal", "{\"dor\":2}", "\"periodStart\":\"" + today.minusDays(1) + "\",",
+                patientToken)
+                .andExpect(status().isCreated());
+
+        annul(onTimeDayId.longValue()).andExpect(status().isOk());
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNotNull();
+        mockMvc.perform(get("/indicators?from=" + today.minusDays(7) + "&to=" + today.minusDays(1))
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.formsDue").value(1))
+                .andExpect(jsonPath("$.formsOnTime").value(0))
+                .andExpect(jsonPath("$.diaryDaysFilled").value(1));
+
+        // sem o dia anulado de novo, o job de amanha fecha a semana sem nenhum dia no prazo
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+    }
+
     // o dia preenchido antes de existir a tarefa q cobre ele entra nela qnd ela eh criada
     @Test
     void aDayFilledBeforeTheTaskExistsCountsForTheNewTask() throws Exception {

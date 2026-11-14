@@ -24,7 +24,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 
 1. No **Início**, veja **Esperando resposta** e toque em **Responder**.
 2. Responda e toque em **Salvar respostas** (na Avaliação inicial, **Enviar anamnese**).
-3. Na ficha diária (**Acompanhamento semanal**), cada dia aparece como *preenchido*, *em branco* ou *não salvo*. Esqueceu um dia? Toque nele e preencha agora. Dá para preencher vários dias e tocar em **Salvar respostas** uma vez só: o aviso diz quantos dias foram salvos. Um dia *não salvo* ainda não foi enviado; se você sair da tela com um dia assim, por **Voltar**, pela seta do topo ou pelo menu, ela pergunta antes. Em branco não vale zero.
+3. Na ficha diária (**Acompanhamento semanal**), cada dia aparece como *preenchido*, *em branco* ou *não salvo*. Esqueceu um dia? Toque nele e preencha agora. No dia seguinte ao fim da semana, os dias dela ainda aparecem na grade até o fim do dia e contam como preenchidos com atraso. Dá para preencher vários dias e tocar em **Salvar respostas** uma vez só: o aviso diz quantos dias foram salvos. Um dia *não salvo* ainda não foi enviado; se você sair da tela com um dia assim, por **Voltar**, pela seta do topo ou pelo menu, ela pergunta antes. Em branco não vale zero.
 4. Errou? Em **Escalas** (no celular, **Ver todas as avaliações** no **Início**), na parte **Respondidas**, use **Ver e corrigir** enquanto o prescritor não analisar a resposta.
 
 ## pedir e cancelar consulta
@@ -36,7 +36,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 
 ## avisos e progresso
 
-1. Em **Avisos** chegam confirmações, remarcações, formulários novos e lembretes: um dia antes da consulta e dois dias antes do prazo de um formulário sem resposta. Para não receber por e-mail, use **Perfil**, **Avisos por e-mail**.
+1. Em **Avisos** chegam confirmações, remarcações, formulários novos e lembretes: um dia antes da consulta, dois dias antes do prazo de um formulário sem resposta e, na ficha diária e no diário do sono, quando dois dias seguidos ficam em branco. Para não receber por e-mail, use **Perfil**, **Avisos por e-mail**.
 2. Em **Progresso**, escolha o **Período**, dos últimos 15 dias a **Todo o tempo**, a **Escala** e **O que acompanhar**. Cada ponto é uma resposta sua, na data dela. Onde faltou resposta, a linha se interrompe.
 3. O **Mini-Exame do Estado Mental**, um teste que o prescritor aplica na consulta, não aparece no 2AG para você: nem em **Escalas**, nem no **Progresso**, nem nos arquivos que você baixa. O resultado é conversado com o prescritor na consulta. Para ter uma cópia do prontuário inteiro, peça à clínica.
 

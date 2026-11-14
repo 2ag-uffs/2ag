@@ -77,9 +77,11 @@ public class IndicatorsService {
         InviteCount invites = countInvites(prescriberId, from, to);
 
         Map<Long, Integer> validDaysByTask = countValidDaysByTask(prescriberId, from, to);
+        Set<Long> tasksWithOnTimeDay = new HashSet<>(responseRepository.findTaskIdsOfOnTimeAnswers(prescriberId,
+                from, to));
         List<ScaleTask> tasksDue = withoutRemovedScales(
                 taskRepository.findByPrescriberIdAndPeriodEndBetween(prescriberId, from, to));
-        Map<ScaleType, ScaleCount> countsByScale = countFormsByScale(tasksDue, validDaysByTask);
+        Map<ScaleType, ScaleCount> countsByScale = countFormsByScale(tasksDue, validDaysByTask, tasksWithOnTimeDay);
 
         long formsDue = 0;
         long formsOnTime = 0;
@@ -159,7 +161,8 @@ public class IndicatorsService {
     }
 
     private Map<ScaleType, ScaleCount> countFormsByScale(List<ScaleTask> tasksDue,
-                                                         Map<Long, Integer> validDaysByTask) {
+                                                         Map<Long, Integer> validDaysByTask,
+                                                         Set<Long> tasksWithOnTimeDay) {
         Map<ScaleType, ScaleCount> countsByScale = new EnumMap<>(ScaleType.class);
         for (ScaleTask task : tasksDue) {
             ScaleCount count = countsByScale.computeIfAbsent(task.getScaleType(), scaleType -> new ScaleCount());
@@ -167,8 +170,10 @@ public class IndicatorsService {
             int validDays = validDaysByTask.getOrDefault(task.getId(), 0);
             boolean onTime;
             if (scaleTaskService.isDaily(task.getScaleType())) {
-                // no diario basta um dia, a msm regra q fecha a tarefa como respondida
-                onTime = validDays > 0;
+                // no diario basta um dia no prazo, a msm regra q fecha a tarefa como respondida. o dia preenchido
+                // dps de o job fechar a semana conta nos dias, mas como atraso (decisao de 14/11/2026, R6)
+                onTime = tasksWithOnTimeDay.contains(task.getId())
+                        && task.getStatus() != ScaleTaskStatus.NAO_RESPONDIDA;
                 count.daysExpected += task.totalDays();
                 count.daysFilled += validDays;
             } else {

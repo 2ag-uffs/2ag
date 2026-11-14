@@ -126,6 +126,23 @@ class IndicatorsTest {
                 .andExpect(jsonPath("$.scales[0].daysFilled").value(3));
     }
 
+    // a semana q fechou sem nenhum dia continua aceitando os dias dela ate o fim do dia seguinte, e o dia
+    // preenchido ali conta como atraso: entra nos dias preenchidos e n deixa o diario no prazo
+    // (decisao de 14/11/2026, revisao das regras R6)
+    @Test
+    void oDiaPreenchidoDepoisDeOJobFecharASemanaContaComoAtraso() throws Exception {
+        ScaleTask lateWeek = saveTask(patient, ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.minusDays(9),
+                TODAY.minusDays(3), ScaleTaskStatus.NAO_RESPONDIDA, null);
+        saveDay(lateWeek, TODAY.minusDays(4), false);
+
+        indicators("")
+                .andExpect(jsonPath("$.formsDue").value(1))
+                .andExpect(jsonPath("$.formsOnTime").value(0))
+                .andExpect(jsonPath("$.diaryDaysFilled").value(1))
+                .andExpect(jsonPath("$.scales[0].formsOnTime").value(0))
+                .andExpect(jsonPath("$.scales[0].daysFilled").value(1));
+    }
+
     // a regra olha a data e os dias ligados, n a situacao: o job das 8h pode ainda n ter fechado a tarefa
     @Test
     void oPrazoNaoDependeDaSituacaoDaTarefa() throws Exception {

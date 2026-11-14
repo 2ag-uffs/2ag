@@ -484,6 +484,57 @@ describe("Escala diaria", () => {
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
+    // a semana q fechou ontem continua na grade ate o fim de hoje, antes do periodo aberto, e o dia
+    // preenchido nela conta como atraso (decisao de 14/11/2026, revisao das regras R6)
+    function mockClosedWeek(closedWeek) {
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: pendingTasks, history: []});
+            }
+            if (path === "/patients/3/scales") {
+                return Promise.resolve([...pendingTasks, closedWeek]);
+            }
+            return Promise.resolve([]);
+        });
+    }
+
+    it("a semana q fechou ontem aparece antes do periodo aberto e diz q conta como atraso", async () => {
+        pendingTasks = [{...pendingTasks[0], periodStart: dayFromToday(0), periodEnd: dayFromToday(6), totalDays: 7}];
+        mockClosedWeek({
+            id: 2, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: dayFromToday(-7), periodEnd: dayFromToday(-1), status: "NAO_RESPONDIDA", daily: true,
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await waitFor(() => expect(within(grid).getAllByRole("button")).toHaveLength(8));
+        expect(within(grid).getAllByRole("button")[0]).toHaveTextContent(formatWeekdayAndDate(dayFromToday(-7)));
+        expect(screen.getByText(/dá para preencher até o fim de hoje/)).toBeInTheDocument();
+
+        // escolher um dia da semana q fechou deixa a mesma grade
+        await user.click(within(grid).getAllByRole("button")[0]);
+        expect(within(grid).getAllByRole("button")).toHaveLength(8);
+        expect(within(grid).getAllByRole("button")[0]).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("a semana q fechou antes de ontem n volta pra grade", async () => {
+        pendingTasks = [{...pendingTasks[0], periodStart: dayFromToday(-1), periodEnd: dayFromToday(5), totalDays: 7}];
+        mockClosedWeek({
+            id: 2, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: dayFromToday(-8), periodEnd: dayFromToday(-2), status: "RESPONDIDA", daily: true,
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales"));
+        expect(within(grid).getAllByRole("button")).toHaveLength(2);
+        expect(screen.queryByText(/dá para preencher até o fim de hoje/)).not.toBeInTheDocument();
+    });
+
     // o "ver e corrigir" do historico abre um dia antigo, fora da tarefa aberta
     it("dia antigo fora da tarefa abre a semana civil dele", async () => {
         const oldDay = dayFromToday(-20);

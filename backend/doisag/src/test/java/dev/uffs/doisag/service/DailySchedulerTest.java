@@ -69,6 +69,8 @@ class DailySchedulerTest {
         verify(appointmentService).declineExpiredRequests(now);
         verify(reminderService).sendAppointmentReminders(TODAY);
         verify(reminderService).sendScaleReminders(TODAY);
+        // os dias em branco do diario saem dps do lembrete do prazo, q conta pela mesma sequencia (revisao R6)
+        verify(reminderService).sendBlankDaysReminders(TODAY);
         verify(cycleRepository, never()).save(any());
     }
 

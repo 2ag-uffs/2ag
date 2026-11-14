@@ -88,6 +88,7 @@ public class DailyScheduler {
         int unansweredRequests = 0;
         int appointmentReminders = 0;
         int scaleReminders = 0;
+        int blankDaysReminders = 0;
         boolean failed = false;
 
         try {
@@ -126,15 +127,23 @@ public class DailyScheduler {
             failed = true;
             log.error("Tarefas do dia: falha ao enviar os lembretes de formulário", exception);
         }
+        // dps do lembrete do prazo, q ja conta pela sequencia de dias em branco do diario (revisao das regras R6)
+        try {
+            blankDaysReminders = reminderService.sendBlankDaysReminders(today);
+        } catch (RuntimeException exception) {
+            failed = true;
+            log.error("Tarefas do dia: falha ao enviar os lembretes de dias em branco", exception);
+        }
 
         // so o ciclo q terminou inteiro conta como dia processado
         if (!failed) {
             saveCompletedDay(today);
         }
         log.info("Tarefas do dia: {} tarefas fechadas, {} escalas enviadas, {} pedidos de consulta vencidos, "
-                        + "{} pedidos ainda sem resposta avisados, {} lembretes de consulta e {} lembretes de formulário",
+                        + "{} pedidos ainda sem resposta avisados, {} lembretes de consulta, {} lembretes de formulário "
+                        + "e {} de dias em branco",
                 closedTasks, assignedScales, expiredRequests, unansweredRequests, appointmentReminders,
-                scaleReminders);
+                scaleReminders, blankDaysReminders);
     }
 
     private boolean isCompleted(LocalDate day) {

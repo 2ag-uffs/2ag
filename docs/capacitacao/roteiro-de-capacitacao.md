@@ -38,7 +38,7 @@ Bom saber sobre essa demonstração:
 - **Reiniciar a API apaga tudo e cria os dados de novo.** Ensaie a sessão no dia anterior e reinicie a API antes de começar, para partir do zero.
 - **As datas dos dados fictícios contam a partir do dia em que a API sobe.** Suba no dia da sessão para o painel mostrar consultas de hoje e escalas no prazo.
 - **Nenhum e-mail sai de verdade.** O link de primeiro acesso e o de **Senha nova** do prescritor aparecem na tela da administração. Os outros e-mails, como o de **Esqueci minha senha**, aparecem com o link no terminal da API.
-- **As tarefas automáticas do dia não rodam na demonstração.** No servidor de verdade elas rodam toda manhã, às 8h: lembretes de consulta e de formulário, envio das rodadas seguintes do acompanhamento e fechamento das escalas que passaram do prazo. Na demonstração só a primeira rodada do acompanhamento sai, na hora em que ele é criado.
+- **As tarefas automáticas do dia não rodam na demonstração.** No servidor de verdade elas rodam toda manhã, às 8h: lembretes de consulta, de formulário e de dois dias seguidos em branco na ficha diária e no diário do sono, envio das rodadas seguintes do acompanhamento e fechamento das escalas que passaram do prazo. Na demonstração só a primeira rodada do acompanhamento sai, na hora em que ele é criado.
 
 ### contas da demonstração
 
@@ -338,6 +338,7 @@ Janela anônima, paciente adulto.
   - A grade **Dias do período** mostra todos os dias desde o início do período até hoje, cada um como **preenchido**, **em branco** ou, enquanto não for salvo, **não salvo**, e o aviso *Esqueceu algum dia? Escolha o dia na grade e preencha agora.*
   - O paciente escolhe um dia em branco, preenche, passa para os outros dias esquecidos e clica em **Salvar respostas** uma vez só. Até salvar, cada dia preenchido aparece como **não salvo**; depois, o aviso diz quantos dias foram salvos (*Respostas de 2 dias salvas.*) e eles passam a **preenchido**. Com um dia **não salvo**, sair da tela pergunta antes (*Sair sem salvar*), seja pelo **Voltar**, pela seta do topo no celular ou pelo menu.
   - Dia que ainda não chegou nunca aparece na grade.
+  - No dia seguinte ao fim de uma semana, depois das 8h, a semana que fechou continua na grade, antes do período novo, até o fim do dia. O dia preenchido nela conta como atraso, e a grade avisa isso. Na demonstração as tarefas das 8h não rodam, então esse caso só aparece no servidor.
   - Na demonstração que subiu hoje, os dois primeiros dias do período da Maria já vêm preenchidos e só o de hoje está em branco. Mostre que qualquer dia da grade abre do mesmo jeito: o dia em branco de dias atrás seria preenchido como o de hoje.
 
 ### do lado do prescritor
