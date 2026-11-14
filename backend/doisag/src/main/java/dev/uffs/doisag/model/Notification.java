@@ -57,6 +57,11 @@ public class Notification {
         return "/paciente/" + patientId + "/historico";
     }
 
+    // a tela do acompanhamento automatico do paciente, onde o prescritor renova
+    public static String patientFollowUpLink(Long patientId) {
+        return "/paciente/" + patientId + "/acompanhamento";
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

@@ -16,6 +16,9 @@ public interface TreatmentProtocolRepository extends JpaRepository<TreatmentProt
     // o protocolo que esta valendo pra um paciente
     Optional<TreatmentProtocol> findFirstByPatientIdAndActiveTrue(Long patientId);
 
+    // o ultimo acompanhamento do paciente, valendo ou encerrado: so um vale por vez, entao eh o de id maior
+    Optional<TreatmentProtocol> findFirstByPatientIdOrderByIdDesc(Long patientId);
+
     List<TreatmentProtocol> findByActiveTrue();
 
     // os protocolos que o job diario precisa olhar, so o id pq cada um eh lido na propria transacao

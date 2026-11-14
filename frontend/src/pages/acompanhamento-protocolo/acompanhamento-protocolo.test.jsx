@@ -86,24 +86,99 @@ describe("AcompanhamentoProtocolo", () => {
         expect(await screen.findByText("Encerrado")).toBeInTheDocument();
         expect(screen.queryByText("Ativo")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Encerrar acompanhamento"})).not.toBeInTheDocument();
-        expect(screen.getByRole("button", {name: "Iniciar acompanhamento"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Renovar acompanhamento"})).toBeInTheDocument();
     });
 
-    it("acompanhamento dentro do prazo continua ativo", async () => {
+    it("acompanhamento longe do fim continua ativo e sem a renovacao", async () => {
         mockApiWithProtocol({
             id: 1,
             patientId: 5,
             patientName: "Paciente Teste",
-            startDate: toIsoDate(addDays(new Date(), -89)),
-            endDate: toIsoDate(new Date()),
+            startDate: toIsoDate(addDays(new Date(), -60)),
+            endDate: toIsoDate(addDays(new Date(), 29)),
             active: true,
             items: [{scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "SEMANAL"}],
         });
         renderPage();
 
         expect(await screen.findByText("Ativo")).toBeInTheDocument();
+        expect(apiService.get).toHaveBeenCalledWith("/patients/5/treatment-protocol/last");
         expect(screen.getByRole("button", {name: "Encerrar acompanhamento"})).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Iniciar acompanhamento"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Renovar acompanhamento"})).not.toBeInTheDocument();
+    });
+
+    // nos ultimos 7 dias, q eh qnd a prescritora recebe o aviso, a renovacao aparece ja preenchida com o
+    // acompanhamento de agora e sai com um clique. o novo comeca hoje (revisao das regras R5)
+    it("acompanhamento q termina nos proximos 7 dias mostra a renovacao ja preenchida", async () => {
+        const today = toIsoDate(new Date());
+        const endDate = toIsoDate(addDays(new Date(), 3));
+        mockApiWithProtocol({
+            id: 1,
+            patientId: 5,
+            patientName: "Paciente Teste",
+            startDate: toIsoDate(addDays(new Date(), -26)),
+            endDate,
+            active: true,
+            sleepBedTime: "22:30:00",
+            sleepWakeTime: "06:45:00",
+            items: [
+                {scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "QUINZENAL"},
+                {scaleType: "REGISTRO_SONO", scaleName: "Diário do sono", periodicity: "SEMANAL"},
+            ],
+        });
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({});
+        const user = userEvent.setup();
+        renderPage();
+
+        expect(await screen.findByText("Ativo")).toBeInTheDocument();
+        expect(screen.getByText(/Este acompanhamento termina em/)).toHaveTextContent(
+            "Este acompanhamento termina em " + endDate.split("-").reverse().join("/"));
+        expect(screen.getByRole("checkbox", {name: /Escala de Hamilton/})).toBeChecked();
+        expect(screen.getByLabelText("Frequência de Escala de Hamilton")).toHaveValue("QUINZENAL");
+        expect(screen.getByLabelText("Duração em dias")).toHaveValue(30);
+        expect(screen.getByLabelText("Começa em")).toHaveValue(today);
+        expect(screen.getByLabelText("Começa em")).toHaveAttribute("max", today);
+        expect(screen.getByLabelText("Ir dormir às")).toHaveValue("22:30");
+
+        await user.click(screen.getByRole("button", {name: "Renovar acompanhamento"}));
+
+        expect(post).toHaveBeenCalledWith("/patients/5/treatment-protocol", {
+            startDate: today,
+            durationDays: 30,
+            sleepBedTime: "22:30",
+            sleepWakeTime: "06:45",
+            items: [
+                {scaleType: "ESCALA_HAMILTON", periodicity: "QUINZENAL"},
+                {scaleType: "REGISTRO_SONO", periodicity: "SEMANAL"},
+            ],
+        });
+        expect(await screen.findByText("Acompanhamento renovado. O sistema continua enviando as escalas sozinho."))
+            .toBeInTheDocument();
+    });
+
+    // o job ja encerrou e a tela abria vazia: agora o formulario vem com o ultimo acompanhamento
+    it("depois de encerrado o formulario vem preenchido com o ultimo acompanhamento", async () => {
+        mockApiWithProtocol({
+            id: 1,
+            patientId: 5,
+            patientName: "Paciente Teste",
+            startDate: toIsoDate(addDays(new Date(), -100)),
+            endDate: toIsoDate(addDays(new Date(), -11)),
+            active: false,
+            items: [{scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "MENSAL"}],
+        });
+        renderPage();
+
+        expect(await screen.findByText("Preenchido com o último acompanhamento. Confira antes de renovar."))
+            .toBeInTheDocument();
+        expect(screen.queryByText("Ativo")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Encerrar acompanhamento"})).not.toBeInTheDocument();
+        expect(screen.getByRole("checkbox", {name: /Escala de Hamilton/})).toBeChecked();
+        expect(screen.getByLabelText("Frequência de Escala de Hamilton")).toHaveValue("MENSAL");
+        expect(screen.getByLabelText("Duração em dias")).toHaveValue(90);
+        expect(screen.getByLabelText("Começa em")).not.toHaveAttribute("max");
+        expect(screen.getByRole("button", {name: "Renovar acompanhamento"})).toBeInTheDocument();
     });
 
     it("mostra no campo por que a api recusou a duracao", async () => {

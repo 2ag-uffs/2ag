@@ -360,7 +360,9 @@ class PatientLinkTest {
                 "/scales/mental-state-exam/appointments/" + records.appointmentId(),
                 "/scales/responses/" + records.examId(),
                 "/patients/" + patientId + "/audit-events?from=" + LocalDate.now().minusDays(30)
-                        + "&to=" + LocalDate.now()
+                        + "&to=" + LocalDate.now(),
+                // o ultimo acompanhamento, q preenche a renovacao (revisao das regras R5)
+                "/patients/" + patientId + "/treatment-protocol/last"
         );
     }
 

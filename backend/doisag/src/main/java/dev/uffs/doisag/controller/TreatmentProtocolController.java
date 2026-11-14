@@ -48,6 +48,16 @@ public class TreatmentProtocolController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // o ultimo acompanhamento, valendo ou encerrado, q preenche a renovacao na tela (revisao das regras R5)
+    // so do prescritor: o paciente ve o q esta valendo na rota de cima
+    @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
+    @GetMapping("/last")
+    public ResponseEntity<TreatmentProtocolResponseDTO> getLast(@PathVariable Long patientId) {
+        return treatmentProtocolService.getLastByPatient(patientId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     // encerrar n apaga nada o protocolo fica guardado como inativo
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @PutMapping("/end")

@@ -49,6 +49,12 @@ public class TreatmentProtocol {
 
     private LocalTime sleepWakeTime;
 
+    // quando a prescritora foi avisada de q o acompanhamento esta acabando e de q acabou,
+    // pro job n mandar o mesmo aviso duas vezes (revisao das regras R5)
+    private LocalDateTime endingSoonNoticeAt;
+
+    private LocalDateTime lastDayNoticeAt;
+
     @OneToMany(mappedBy = "protocol", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProtocolItem> items = new ArrayList<>();
 
@@ -118,6 +124,22 @@ public class TreatmentProtocol {
 
     public void setSleepWakeTime(LocalTime sleepWakeTime) {
         this.sleepWakeTime = sleepWakeTime;
+    }
+
+    public LocalDateTime getEndingSoonNoticeAt() {
+        return endingSoonNoticeAt;
+    }
+
+    public void setEndingSoonNoticeAt(LocalDateTime endingSoonNoticeAt) {
+        this.endingSoonNoticeAt = endingSoonNoticeAt;
+    }
+
+    public LocalDateTime getLastDayNoticeAt() {
+        return lastDayNoticeAt;
+    }
+
+    public void setLastDayNoticeAt(LocalDateTime lastDayNoticeAt) {
+        this.lastDayNoticeAt = lastDayNoticeAt;
     }
 
     public List<ProtocolItem> getItems() {

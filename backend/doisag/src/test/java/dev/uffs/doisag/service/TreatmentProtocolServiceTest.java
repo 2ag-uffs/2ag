@@ -9,16 +9,19 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.AuditEvent;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.repository.AuditEventRepository;
+import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
@@ -58,6 +61,7 @@ class TreatmentProtocolServiceTest {
     @Autowired private ReminderService reminderService;
     @Autowired private AuditEventRepository auditEventRepository;
     @Autowired private IndicatorsService indicatorsService;
+    @Autowired private NotificationRepository notificationRepository;
 
     // comeca amanha: a primeira rodada fica pro job, q os testes chamam com a data na mao
     // uma data fixa vencia com o calendario, pq o acompanhamento q terminaria antes de hoje eh recusado
@@ -683,6 +687,145 @@ class TreatmentProtocolServiceTest {
         assertThat(eventos.get(0).getOperation()).isEqualTo(AuditOperation.CRIACAO);
         assertThat(eventos.get(0).getRecordType()).isEqualTo(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO);
         assertThat(eventos.get(0).getRecordId()).isEqualTo(criado.id());
+    }
+
+    // o acompanhamento acabava no dia 90 sem ninguem saber, e as escalas paravam de chegar. a prescritora
+    // recebe um aviso 7 dias antes e outro no dia do fim, cada um uma vez so, com o link pra renovar
+    // (decisao de 14/11/2026, revisao das regras R5)
+    @Test
+    void avisaAPrescritoraSeteDiasAntesDoFimENoDiaDoFim() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        LocalDate fim = INICIO.plusDays(89);
+
+        treatmentProtocolService.designarEscalasVencidas(fim.minusDays(8));
+        assertThat(avisosDaPrescritora()).isEmpty();
+
+        treatmentProtocolService.designarEscalasVencidas(fim.minusDays(7));
+        treatmentProtocolService.designarEscalasVencidas(fim.minusDays(6));
+        assertThat(avisosDaPrescritora()).hasSize(1);
+        Notification perto = avisosDaPrescritora().get(0);
+        assertThat(perto.getTitle()).isEqualTo("Acompanhamento perto do fim");
+        assertThat(perto.getMessage()).isEqualTo("O acompanhamento automático de Paciente do Protocolo termina em "
+                + BrazilianFormat.date(fim) + ". Renove para as escalas continuarem chegando.");
+        assertThat(perto.getLink()).isEqualTo("/paciente/" + paciente.getId() + "/acompanhamento");
+
+        treatmentProtocolService.designarEscalasVencidas(fim);
+        treatmentProtocolService.designarEscalasVencidas(fim);
+        assertThat(avisosDaPrescritora()).extracting(Notification::getTitle)
+                .containsExactlyInAnyOrder("Acompanhamento perto do fim", "Acompanhamento termina hoje");
+
+        // no dia seguinte o job encerra sem avisar de novo
+        treatmentProtocolService.designarEscalasVencidas(fim.plusDays(1));
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId())).isEmpty();
+        assertThat(avisosDaPrescritora()).hasSize(2);
+    }
+
+    // com a api fora do ar no dia do fim, o aviso sai no dia em q o job encerra, dizendo q ja terminou
+    @Test
+    void oAvisoDoFimSaiMesmoSeOJobNaoRodouNoDia() {
+        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
+        LocalDate fim = INICIO.plusDays(89);
+
+        treatmentProtocolService.designarEscalasVencidas(fim.plusDays(2));
+
+        assertThat(treatmentProtocolService.getActiveByPatient(paciente.getId())).isEmpty();
+        assertThat(avisosDaPrescritora()).extracting(Notification::getMessage)
+                .containsExactly("O acompanhamento automático de Paciente do Protocolo terminou em "
+                        + BrazilianFormat.date(fim) + ". Renove para as escalas voltarem a chegar.");
+    }
+
+    // o acompanhamento de 7 dias ja nasce na ultima semana, entao so recebe o aviso do dia do fim
+    @Test
+    void acompanhamentoDeUmaSemanaSoAvisaNoDiaDoFim() {
+        treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(INICIO, 7, null, null,
+                List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        for (int dia = 0; dia < 7; dia++) {
+            treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(dia));
+        }
+
+        assertThat(avisosDaPrescritora()).extracting(Notification::getTitle)
+                .containsExactly("Acompanhamento termina hoje");
+    }
+
+    // a renovacao abre nos ultimos 7 dias, junto com o aviso: o novo comeca hoje no lugar do atual, e a escala
+    // q fica com a mesma frequencia segue a rodada de agora, sem chegar de novo nem ganhar prazo novo
+    @Test
+    void renovaNosUltimosSeteDiasSemRepetirAEscala() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(hoje.minusDays(85), 90,
+                null, null, List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+        TreatmentProtocol atual = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
+                .orElseThrow();
+        treatmentProtocolService.designarEscalasVencidas(hoje);
+        marcaRespondida(tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH));
+
+        TreatmentProtocolResponseDTO novo = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
+                                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+
+        assertThat(protocolRepository.findById(atual.getId()).orElseThrow().isActive()).isFalse();
+        assertThat(novo.active()).isTrue();
+        assertThat(novo.endDate()).isEqualTo(hoje.plusDays(89));
+        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(1);
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(1);
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_HAMILTON).getPeriodEnd()).isEqualTo(hoje.plusDays(6));
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(6))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(7))).isEqualTo(1);
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(30))).isEqualTo(2);
+    }
+
+    // antes da ultima semana segue valendo um acompanhamento por vez
+    @Test
+    void naoRenovaAntesDosUltimosSeteDias() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(hoje.minusDays(81), 90,
+                null, null, List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora);
+
+        assertThatThrownBy(() -> treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje, 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("já tem um acompanhamento");
+    }
+
+    // o atual acaba na renovacao, entao o novo q comecasse dps de hoje deixava dias sem escala
+    @Test
+    void aRenovacaoAntesDoFimComecaHoje() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(hoje.minusDays(87), 90,
+                null, null, List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora);
+
+        assertThatThrownBy(() -> treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(hoje.plusDays(1), 90, null, null,
+                        List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL))), prescritora))
+                .isInstanceOf(InvalidFieldException.class)
+                .hasMessage(TreatmentProtocolService.RENEWAL_START_MESSAGE)
+                .extracting("field").isEqualTo("startDate");
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())).isPresent();
+    }
+
+    // a tela preenche a renovacao com o ultimo acompanhamento, mesmo qnd o job ja encerrou ele
+    @Test
+    void oUltimoAcompanhamentoVoltaMesmoEncerrado() {
+        assertThat(treatmentProtocolService.getLastByPatient(paciente.getId())).isEmpty();
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 90, LocalTime.of(22, 30), LocalTime.of(6, 45),
+                        List.of(item(ScaleType.REGISTRO_SONO, Periodicity.SEMANAL))), prescritora);
+        treatmentProtocolService.end(paciente.getId());
+
+        TreatmentProtocolResponseDTO ultimo = treatmentProtocolService.getLastByPatient(paciente.getId())
+                .orElseThrow();
+
+        assertThat(ultimo.active()).isFalse();
+        assertThat(ultimo.sleepBedTime()).isEqualTo(LocalTime.of(22, 30));
+        assertThat(ultimo.items()).extracting(ProtocolItemDTO::scaleType).containsExactly(ScaleType.REGISTRO_SONO);
+    }
+
+    private List<Notification> avisosDaPrescritora() {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(prescritora.getId());
     }
 
     @Test

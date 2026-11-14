@@ -11,5 +11,6 @@ class NotificationLinkTest {
     void patientLinksPointToTheFrontRoutes() {
         assertThat(Notification.patientScalesLink(7L)).isEqualTo("/pacientes/7/escalas");
         assertThat(Notification.patientHistoryLink(7L)).isEqualTo("/paciente/7/historico");
+        assertThat(Notification.patientFollowUpLink(7L)).isEqualTo("/paciente/7/acompanhamento");
     }
 }

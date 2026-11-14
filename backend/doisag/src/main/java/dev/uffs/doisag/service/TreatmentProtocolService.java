@@ -6,9 +6,11 @@ import dev.uffs.doisag.dto.TreatmentProtocolResponseDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ProtocolItem;
@@ -26,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +50,8 @@ public class TreatmentProtocolService {
 
     // o acompanhamento dura 90 dias por padrao (RN01)
     private static final int DEFAULT_DURATION_DAYS = 90;
+    // a prescritora eh avisada 7 dias antes do fim, e dai ate o fim ja pode renovar (revisao das regras R5)
+    public static final int RENEWAL_DAYS = 7;
 
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Paciente arquivado não recebe acompanhamento automático. Reative o paciente antes";
@@ -56,6 +62,9 @@ public class TreatmentProtocolService {
             "O acompanhamento terminaria antes de hoje. Confira a data de início";
     public static final String DUPLICATE_SCALE_MESSAGE =
             "A mesma escala não pode entrar duas vezes no acompanhamento";
+    public static final String RUNNING_MESSAGE = "Este paciente já tem um acompanhamento em andamento";
+    public static final String RENEWAL_START_MESSAGE =
+            "Para renovar antes do fim, comece o acompanhamento novo hoje";
 
     private final TreatmentProtocolRepository protocolRepository;
     private final PatientRepository patientRepository;
@@ -63,6 +72,7 @@ public class TreatmentProtocolService {
     private final ScaleTaskRepository taskRepository;
     private final ScaleTaskService scaleTaskService;
     private final AuditService auditService;
+    private final NotificationService notificationService;
     private final TransactionTemplate transactionTemplate;
 
     public TreatmentProtocolService(TreatmentProtocolRepository protocolRepository,
@@ -71,6 +81,7 @@ public class TreatmentProtocolService {
                                     ScaleTaskRepository taskRepository,
                                     ScaleTaskService scaleTaskService,
                                     AuditService auditService,
+                                    NotificationService notificationService,
                                     PlatformTransactionManager transactionManager) {
         this.protocolRepository = protocolRepository;
         this.patientRepository = patientRepository;
@@ -78,6 +89,7 @@ public class TreatmentProtocolService {
         this.taskRepository = taskRepository;
         this.scaleTaskService = scaleTaskService;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -110,17 +122,25 @@ public class TreatmentProtocolService {
         // dois protocolos ativos ao mesmo tempo designariam a mesma escala
         // duas vezes, entao o anterior precisa ser encerrado antes
         Optional<TreatmentProtocol> current = protocolRepository.findFirstByPatientIdAndActiveTrue(patientId);
+        List<ProtocolItem> previousItems = new ArrayList<>();
         if (current.isPresent()) {
             // o q ja passou do fim so espera o job das 8h encerrar, entao encerra aqui igual o job
             // e a renovacao do dia seguinte n depende do prescritor encerrar na mao
-            if (current.get().getEndDate().isBefore(today)) {
-                endProtocol(current.get());
-                // o insert do novo sai antes do update e o indice de um ativo por paciente do postgres
-                // recusava, entao o encerramento vai pro banco ja
-                protocolRepository.flush();
-            } else {
-                throw new BusinessException("Este paciente já tem um acompanhamento em andamento");
+            // nos ultimos 7 dias, q eh qnd chega o aviso, a renovacao tbm encerra o atual (revisao das regras R5)
+            LocalDate currentEnd = current.get().getEndDate();
+            boolean stillRunning = !currentEnd.isBefore(today);
+            if (stillRunning && today.isBefore(currentEnd.minusDays(RENEWAL_DAYS))) {
+                throw new BusinessException(RUNNING_MESSAGE);
             }
+            // o atual acaba agora, entao o novo q comecasse dps de hoje deixava dias sem escala
+            if (stillRunning && startDate.isAfter(today)) {
+                throw new InvalidFieldException("startDate", RENEWAL_START_MESSAGE);
+            }
+            previousItems.addAll(current.get().getItems());
+            endProtocol(current.get());
+            // o insert do novo sai antes do update e o indice de um ativo por paciente do postgres
+            // recusava, entao o encerramento vai pro banco ja
+            protocolRepository.flush();
         }
 
         TreatmentProtocol protocol = new TreatmentProtocol();
@@ -133,6 +153,7 @@ public class TreatmentProtocolService {
         protocol.setSleepBedTime(protocolData.sleepBedTime());
         protocol.setSleepWakeTime(protocolData.sleepWakeTime());
         Set<ScaleType> newScaleTypes = addItems(protocol, protocolData.items());
+        continueRounds(protocol, previousItems);
 
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);
         auditService.recordCreation(AuditRecordType.ACOMPANHAMENTO_AUTOMATICO, savedProtocol.getId(), patientId);
@@ -176,6 +197,20 @@ public class TreatmentProtocolService {
         return scaleTypes;
     }
 
+    // na renovacao a escala q fica com a mesma frequencia segue a rodada do acompanhamento q acabou de
+    // encerrar, senao a renovacao antes do fim mandava de novo a escala ja respondida e dava prazo novo pra
+    // q esta aberta. a q mudou de frequencia comeca o proprio ciclo, como na troca (revisao das regras R5)
+    private void continueRounds(TreatmentProtocol protocol, List<ProtocolItem> previousItems) {
+        for (ProtocolItem item : protocol.getItems()) {
+            for (ProtocolItem previous : previousItems) {
+                if (previous.getScaleType() == item.getScaleType()
+                        && previous.getPeriodicity() == item.getPeriodicity()) {
+                    item.setLastRoundEnd(previous.getLastRoundEnd());
+                }
+            }
+        }
+    }
+
     // abrir a pagina do acompanhamento conta como abrir o prontuario, mesmo sem acompanhamento
     // em andamento: por isso o "n tem" volta vazio em vez de erro, senao a transacao desfazia
     // a trilha gravada aqui
@@ -183,6 +218,15 @@ public class TreatmentProtocolService {
     public Optional<TreatmentProtocolResponseDTO> getActiveByPatient(Long patientId) {
         auditService.recordChartView(patientId);
         return protocolRepository.findFirstByPatientIdAndActiveTrue(patientId)
+                .map(TreatmentProtocolResponseDTO::new);
+    }
+
+    // o ultimo acompanhamento, valendo ou encerrado: a tela do prescritor preenche a renovacao com ele e ela
+    // sai com um clique, em vez de montar tudo de novo de memoria (revisao das regras R5)
+    @Transactional
+    public Optional<TreatmentProtocolResponseDTO> getLastByPatient(Long patientId) {
+        auditService.recordChartView(patientId);
+        return protocolRepository.findFirstByPatientIdOrderByIdDesc(patientId)
                 .map(TreatmentProtocolResponseDTO::new);
     }
 
@@ -256,6 +300,7 @@ public class TreatmentProtocolService {
         if (protocol == null || !protocol.isActive() || today.isBefore(protocol.getStartDate())) {
             return 0;
         }
+        warnPrescriberOfEnd(protocol, today);
         // passou dos 90 dias: encerra e n designa mais nada
         if (today.isAfter(protocol.getEndDate())) {
             endProtocol(protocol);
@@ -270,6 +315,51 @@ public class TreatmentProtocolService {
             return 0;
         }
         return assignRound(protocol, today);
+    }
+
+    // o acompanhamento acabava no dia do fim sem ninguem saber e as escalas paravam de chegar. a prescritora
+    // recebe um aviso 7 dias antes e outro no dia do fim, cada um uma vez so, com o link pra renovar. o de
+    // 7 dias so sai pro acompanhamento q comecou antes da ultima semana. com o job fora do ar no dia do fim,
+    // o aviso sai no dia em q o job encerra, dizendo q ja terminou. o aviso fica no sistema mesmo com a
+    // conta dela desativada, como os outros avisos (revisao das regras R5)
+    private void warnPrescriberOfEnd(TreatmentProtocol protocol, LocalDate today) {
+        Patient patient = protocol.getPatient();
+        Prescriber prescriber = patient.getPrescriber();
+        LocalDate endDate = protocol.getEndDate();
+        if (prescriber == null) {
+            return;
+        }
+        String about = "O acompanhamento automático de " + patient.getDisplayName();
+        String link = Notification.patientFollowUpLink(patient.getId());
+        if (!today.isBefore(endDate)) {
+            if (protocol.getLastDayNoticeAt() != null) {
+                return;
+            }
+            if (today.equals(endDate)) {
+                notificationService.createNotification(prescriber, "Acompanhamento termina hoje",
+                        about + " termina hoje. Renove para as escalas continuarem chegando.",
+                        Notification.TYPE_ALERT, link);
+            } else {
+                notificationService.createNotification(prescriber, "Acompanhamento encerrado",
+                        about + " terminou em " + BrazilianFormat.date(endDate)
+                                + ". Renove para as escalas voltarem a chegar.",
+                        Notification.TYPE_ALERT, link);
+            }
+            protocol.setLastDayNoticeAt(LocalDateTime.now());
+            protocolRepository.save(protocol);
+            return;
+        }
+        LocalDate warningDay = endDate.minusDays(RENEWAL_DAYS);
+        boolean startedBefore = protocol.getStartDate().isBefore(warningDay);
+        if (today.isBefore(warningDay) || !startedBefore || protocol.getEndingSoonNoticeAt() != null) {
+            return;
+        }
+        notificationService.createNotification(prescriber, "Acompanhamento perto do fim",
+                about + " termina em " + BrazilianFormat.date(endDate)
+                        + ". Renove para as escalas continuarem chegando.",
+                Notification.TYPE_ALERT, link);
+        protocol.setEndingSoonNoticeAt(LocalDateTime.now());
+        protocolRepository.save(protocol);
     }
 
     // manda as escalas do protocolo q estao na hora e devolve quantas foram

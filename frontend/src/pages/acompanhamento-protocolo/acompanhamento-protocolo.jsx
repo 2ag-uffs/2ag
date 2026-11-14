@@ -29,6 +29,11 @@ const PERIODICITIES = [
 // escala marcada agora comeca toda semana
 const DEFAULT_PERIODICITY = "SEMANAL";
 
+// nos ultimos 7 dias a prescritora recebe o aviso e ja pode renovar, igual a api (RENEWAL_DAYS)
+const RENEWAL_DAYS = 7;
+
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
 // so esses campos mostram o proprio erro no formulario
 const FIELDS_THAT_SHOW_ERROR = ["startDate", "durationDays"];
 
@@ -40,6 +45,27 @@ function earliestStartDate(durationDays) {
         days = MIN_DURATION_DAYS;
     }
     return toIsoDate(addDays(new Date(), 1 - days));
+}
+
+// quantos dias o acompanhamento durou, contando o primeiro e o ultimo
+function durationOf(protocol) {
+    const start = Date.parse(protocol.startDate + "T00:00:00Z");
+    const end = Date.parse(protocol.endDate + "T00:00:00Z");
+    return Math.round((end - start) / MILLISECONDS_PER_DAY) + 1;
+}
+
+// a renovacao vem com as escalas, as frequencias, a duracao e os horarios do ultimo acompanhamento
+function formValuesOf(protocol) {
+    const chosen = {};
+    protocol.items.forEach((item) => {
+        chosen[item.scaleType] = item.periodicity;
+    });
+    return {
+        chosen,
+        durationDays: durationOf(protocol),
+        sleepBedTime: shortTime(protocol.sleepBedTime),
+        sleepWakeTime: shortTime(protocol.sleepWakeTime),
+    };
 }
 
 function periodicityLabelOf(periodicity) {
@@ -59,7 +85,8 @@ export default function AcompanhamentoProtocolo() {
     const navigate = useNavigate();
     const {patientId} = useParams();
 
-    const [protocol, setProtocol] = useState(null);
+    // o ultimo acompanhamento, valendo ou encerrado: ele preenche a renovacao (revisao das regras R5)
+    const [lastProtocol, setLastProtocol] = useState(null);
     const [isArchived, setIsArchived] = useState(false);
     const [scales, setScales] = useState([]);
     const [chosen, setChosen] = useState({});
@@ -86,8 +113,8 @@ export default function AcompanhamentoProtocolo() {
             .then((allScales) => setScales(allScales.filter((scale) => scale.assignablePeriodically)))
             .catch(() => setScales([]));
 
-        // 404 aqui so quer dizer que ainda n existe acompanhamento
-        const protocolRequest = apiService.get("/patients/" + patientId + "/treatment-protocol")
+        // 404 aqui so quer dizer que o paciente nunca teve acompanhamento
+        const protocolRequest = apiService.get("/patients/" + patientId + "/treatment-protocol/last")
             .catch((requestError) => {
                 if (requestError instanceof ApiError && requestError.status === 404) {
                     return null;
@@ -100,7 +127,15 @@ export default function AcompanhamentoProtocolo() {
         Promise.all([apiService.get("/patients/" + patientId), protocolRequest])
             .then(([patient, foundProtocol]) => {
                 setIsArchived(patient.archived);
-                setProtocol(foundProtocol);
+                setLastProtocol(foundProtocol);
+                if (foundProtocol) {
+                    const values = formValuesOf(foundProtocol);
+                    setChosen(values.chosen);
+                    setDurationDays(values.durationDays);
+                    setSleepBedTime(values.sleepBedTime);
+                    setSleepWakeTime(values.sleepWakeTime);
+                    setStartDate(toIsoDate(new Date()));
+                }
             })
             .catch((requestError) => {
                 // 403 e 404 querem dizer q o paciente n eh dele, igual no progresso
@@ -165,7 +200,9 @@ export default function AcompanhamentoProtocolo() {
                 sleepWakeTime: emptyToNull(sleepWakeTime),
                 items,
             });
-            setNotice("Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
+            setNotice(lastProtocol !== null
+                ? "Acompanhamento renovado. O sistema continua enviando as escalas sozinho."
+                : "Acompanhamento iniciado. O sistema vai enviar as escalas sozinho.");
             load();
         } catch (requestError) {
             if (requestError instanceof ApiError) {
@@ -214,9 +251,16 @@ export default function AcompanhamentoProtocolo() {
         );
     }
 
+    const today = toIsoDate(new Date());
+    // so o q esta valendo aparece no quadro, o encerrado so preenche o formulario
+    const protocol = lastProtocol !== null && lastProtocol.active ? lastProtocol : null;
     // o job das 8h encerra o q passou do fim, mas ate la ele ja aparece encerrado
     // e o cadastro do novo encerra ele sozinho, entao o formulario de renovar aparece junto
-    const hasProtocolEnded = protocol !== null && protocol.endDate < toIsoDate(new Date());
+    const hasProtocolEnded = protocol !== null && protocol.endDate < today;
+    // nos ultimos 7 dias a renovacao tbm aparece, e o novo comeca hoje no lugar do atual (revisao das regras R5)
+    const isEndingSoon = protocol !== null && !hasProtocolEnded
+        && protocol.endDate <= toIsoDate(addDays(new Date(), RENEWAL_DAYS));
+    const isRenewal = lastProtocol !== null;
 
     return (
         <section className={styles.page}>
@@ -263,6 +307,13 @@ export default function AcompanhamentoProtocolo() {
                         )}
                     </div>
 
+                    {isEndingSoon && (
+                        <p className="aviso">
+                            Este acompanhamento termina em {formatDate(protocol.endDate)}. Renove abaixo para as
+                            escalas continuarem chegando: o novo começa hoje, no lugar deste.
+                        </p>
+                    )}
+
                     <div className={styles.tableWrap}>
                         <table className={styles.table}>
                             <thead>
@@ -289,15 +340,20 @@ export default function AcompanhamentoProtocolo() {
                 <p className="aviso">Paciente arquivado. Reative o paciente para começar um acompanhamento novo.</p>
             )}
 
-            {(!protocol || hasProtocolEnded) && !isArchived && (
+            {(!protocol || hasProtocolEnded || isEndingSoon) && !isArchived && (
                 <form className={styles.form} onSubmit={create}>
+                    {isRenewal && (
+                        <p className="aviso">Preenchido com o último acompanhamento. Confira antes de renovar.</p>
+                    )}
                     <FormSection title="Período" disabled={isSaving}>
                         <FieldRow>
+                            {/* a renovacao antes do fim encerra o atual, entao o novo comeca no maximo hoje */}
                             <TextField
                                 label="Começa em"
                                 name="startDate"
                                 type="date"
                                 min={earliestStartDate(durationDays)}
+                                max={isEndingSoon ? today : undefined}
                                 value={startDate}
                                 required={true}
                                 onChange={(event) => setStartDate(event.target.value)}
@@ -379,8 +435,13 @@ export default function AcompanhamentoProtocolo() {
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Cancelar
                         </button>
-                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Iniciando...">
-                            Iniciar acompanhamento
+                        <BusyButton
+                            type="submit"
+                            className="button"
+                            isBusy={isSaving}
+                            busyText={isRenewal ? "Renovando..." : "Iniciando..."}
+                        >
+                            {isRenewal ? "Renovar acompanhamento" : "Iniciar acompanhamento"}
                         </BusyButton>
                     </FormActions>
                 </form>
