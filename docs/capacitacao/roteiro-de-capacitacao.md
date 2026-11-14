@@ -414,6 +414,7 @@ Janela normal: saia da administração e entre de novo como a prescritora de tre
   - *O prontuário continua guardado na aba Arquivados.*
   - O acompanhamento automático foi encerrado e as escalas em aberto foram fechadas. O histórico do paciente mostra *No arquivo desde* com a data.
   - O paciente continua entrando no sistema e vendo o próprio histórico. Escala enviada à mão depois do arquivamento continua chegando para ele.
+  - A receita que estava em uso não aparece mais como **Vigente**: nas telas e na impressão ela vira **Última prescrição**, com a data em que o acompanhamento foi encerrado.
   - **Reativar** devolve o paciente para **Ativos**, mas não recria o acompanhamento automático: monte um novo, se precisar.
   - Diferença importante: **arquivar** é do prescritor e mexe na lista e no acompanhamento. **Desativar** a conta é da administração, em **Pacientes** no menu dela, e tira o acesso da pessoa na hora. Nos dois casos nada é apagado.
 - **Se der errado:** arquivou o paciente errado: **Arquivados** e **Reativar**.

@@ -19,12 +19,12 @@ const DONE = {
     prescriberName: "Ana Lima", annulled: false, evolution: "melhorou da dor",
 };
 
-function renderHistory(appointments, patient = PATIENT) {
+function renderHistory(appointments, patient = PATIENT, prescriptions = []) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
         const answers = {
             "/patients/5": patient,
             "/patients/5/appointments": appointments,
-            "/patients/5/prescriptions": [],
+            "/patients/5/prescriptions": prescriptions,
             "/patients/5/anamneses": [],
             "/patients/5/scales/overview": {pending: [], history: []},
         };
@@ -93,6 +93,32 @@ describe("HistoricoClinicoPrescritor", () => {
         expect(doneCard.getByRole("button", {name: "Emitir prescrição"})).toBeInTheDocument();
         expect(doneCard.getByRole("button", {name: "Mini-exame"})).toBeInTheDocument();
         expect(doneCard.getByRole("button", {name: "Anular"})).toBeInTheDocument();
+    });
+
+    // o arquivado n tem receita em uso, mas anular a ultima deixa ele sem nenhuma, tbm se for reativado, e a
+    // anterior n volta a valer (revisao das regras R2)
+    it("anular a ultima receita do paciente arquivado avisa q ele fica sem prescricao sem dizer em uso", async () => {
+        const user = userEvent.setup();
+        vi.spyOn(apiService, "put").mockResolvedValue({});
+        renderHistory([DONE], {...PATIENT, archived: true, archivedAt: "2026-11-10T15:00:00"}, [{
+            id: 4, status: "VIGENTE", current: true, annulled: false, productDescription: "Óleo de CBD 20%",
+            components: [], posology: "2 gotas à noite", escalationSteps: [],
+            appointmentDateTime: "2026-09-20T09:00:00", prescriberName: "Ana Lima", followUpEndedAt: "2026-11-10",
+        }]);
+
+        const prescriptionCard = within((await screen.findByText("Óleo de CBD 20%")).closest("article"));
+        await user.click(prescriptionCard.getByRole("button", {name: "Anular"}));
+
+        const dialog = within(screen.getByRole("dialog"));
+        expect(dialog.getByText("Esta é a última prescrição do paciente. Depois de anular, ele fica sem prescrição, "
+            + "também se for reativado. A anterior não volta a valer.")).toBeInTheDocument();
+        expect(dialog.queryByText(/em uso/)).not.toBeInTheDocument();
+
+        await user.type(dialog.getByLabelText(/Motivo da anulação/), "Lançada no paciente errado");
+        await user.click(dialog.getByRole("button", {name: "Anular registro"}));
+
+        expect(await screen.findByText("Prescrição anulada. O paciente fica sem prescrição, também se for "
+            + "reativado, até você emitir uma nova.")).toBeInTheDocument();
     });
 
     // a conta desligada pela administracao so aparecia na trilha (#153)

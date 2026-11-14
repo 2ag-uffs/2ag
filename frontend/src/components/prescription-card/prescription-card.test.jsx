@@ -32,6 +32,16 @@ describe("PrescriptionCard", () => {
         expect(screen.queryByText("Semana 1 = primeira semana de uso.")).not.toBeInTheDocument();
     });
 
+    // arquivar n mexe na receita, mas o paciente arquivado n tem receita em uso: a q valia vira a ultima, com o dia
+    // em q o acompanhamento acabou, pra quem le a impressao n achar q ele ainda toma (revisao das regras R2)
+    it("a receita do paciente arquivado diz q eh a ultima e quando o acompanhamento acabou", () => {
+        render(<PrescriptionCard prescription={{...PRESCRIPTION, followUpEndedAt: "2026-11-10"}}/>);
+
+        expect(screen.getByText("Última prescrição")).toBeInTheDocument();
+        expect(screen.getByText("Acompanhamento encerrado em 10/11/2026")).toBeInTheDocument();
+        expect(screen.queryByText("Vigente")).not.toBeInTheDocument();
+    });
+
     // a receita anulada pode ser de outra pessoa lancada no paciente errado, entao pro paciente a api manda so
     // a data, a marca e o motivo, e o cartao n mostra composicao nem posologia vazias (revisao das regras R7)
     it("receita anulada sem o conteudo mostra so a data, a marca e o motivo", () => {

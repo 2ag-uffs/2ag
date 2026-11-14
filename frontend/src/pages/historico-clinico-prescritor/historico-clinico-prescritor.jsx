@@ -439,21 +439,33 @@ function consultationAnnulmentOf(appointment) {
 }
 
 function prescriptionAnnulmentOf(prescription) {
-    return {
+    const annulment = {
         title: "Anular prescrição",
         recordDescription: prescription.productDescription + ", emitida em "
             + formatDate(prescription.appointmentDateTime),
         endpoint: "/prescriptions/" + prescription.id + "/annul",
         patientNote: HIDDEN_CONTENT_NOTE,
-        // a anterior n volta a valer sozinha entao o paciente fica sem prescricao em uso (NOOP-04)
-        warning: prescription.current
-            ? "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
-                + "até você emitir uma nova. A anterior não volta a valer."
-            : null,
-        annulledNotice: prescription.current
-            ? "Prescrição anulada. O paciente está sem prescrição em uso até você emitir uma nova."
-            : null,
+        warning: null,
+        annulledNotice: null,
     };
+    if (!prescription.current) {
+        return annulment;
+    }
+    // a anterior n volta a valer sozinha entao o paciente fica sem prescricao em uso (NOOP-04)
+    // a do paciente arquivado continua vigente mas n esta mais em uso, e anular deixa ele sem nenhuma,
+    // tbm se for reativado (revisao das regras R2)
+    if (prescription.followUpEndedAt) {
+        annulment.warning = "Esta é a última prescrição do paciente. Depois de anular, ele fica sem prescrição, "
+            + "também se for reativado. A anterior não volta a valer.";
+        annulment.annulledNotice = "Prescrição anulada. O paciente fica sem prescrição, também se for reativado, "
+            + "até você emitir uma nova.";
+    } else {
+        annulment.warning = "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
+            + "até você emitir uma nova. A anterior não volta a valer.";
+        annulment.annulledNotice = "Prescrição anulada. O paciente está sem prescrição em uso até você emitir "
+            + "uma nova.";
+    }
+    return annulment;
 }
 
 function anamnesisAnnulmentOf(anamnesis) {

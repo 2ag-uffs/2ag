@@ -5,6 +5,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {lastPrescriptionTitle} from "../../utils/prescription-labels.js";
 import styles from "./my-prescriptions.module.css";
 
 // prescricoes do proprio paciente (RF05 e RF12)
@@ -60,7 +61,11 @@ export default function MyPrescriptions() {
             {!errorMessage && (
                 <>
                     <section className={styles.section}>
-                        <h2 className={styles.sectionTitle}>Vigente</h2>
+                        <h2 className={styles.sectionTitle}>
+                            {currentPrescription && currentPrescription.followUpEndedAt
+                                ? lastPrescriptionTitle(currentPrescription.followUpEndedAt)
+                                : "Vigente"}
+                        </h2>
                         {currentPrescription ? (
                             <PrescriptionCard prescription={currentPrescription}/>
                         ) : (

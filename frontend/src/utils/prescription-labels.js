@@ -1,5 +1,7 @@
 // textos das opcoes da prescricao do jeito q a tela mostra (RF05)
 
+import {formatDate} from "./date-format.js";
+
 export const SPECTRUM_OPTIONS = [
     {value: "ISOLADO", label: "Isolado"},
     {value: "BROAD_SPECTRUM", label: "Broad spectrum"},
@@ -47,11 +49,20 @@ export function compositionSummary(components) {
         .join(" + ");
 }
 
+// o paciente arquivado n tem receita em uso: a q valia fica como a ultima (revisao das regras R2)
 export function prescriptionStatusLabel(prescription) {
     if (prescription.annulled) {
         return "Anulada";
     }
+    if (prescription.followUpEndedAt) {
+        return "Última prescrição";
+    }
     return prescription.status === "VIGENTE" ? "Vigente" : "Substituída";
+}
+
+// o titulo q troca o "em uso" e o "vigente" das telas e da impressao do paciente arquivado
+export function lastPrescriptionTitle(followUpEndedAt) {
+    return "Última prescrição, acompanhamento encerrado em " + formatDate(followUpEndedAt);
 }
 
 // a vigente aparece primeiro e as outras seguem na ordem da api

@@ -1,6 +1,7 @@
 package dev.uffs.doisag.dto;
 
 import dev.uffs.doisag.model.Annulment;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescription;
 
 import java.time.LocalDate;
@@ -37,7 +38,10 @@ public record PrescriptionResponseDTO(
         LocalDateTime annulledAt,
         String annulmentReason,
         String annulledByName,
-        boolean contentHidden
+        boolean contentHidden,
+        // a receita q estava em uso qnd o paciente foi arquivado continua vigente, mas as telas e a impressao
+        // dizem ultima prescricao com o dia em q o acompanhamento acabou (revisao das regras R2)
+        LocalDate followUpEndedAt
 ) {
     public PrescriptionResponseDTO(Prescription prescription) {
         this(
@@ -69,7 +73,8 @@ public record PrescriptionResponseDTO(
                 Annulment.annulledAtOf(prescription.getAnnulment()),
                 Annulment.reasonOf(prescription.getAnnulment()),
                 Annulment.annulledByNameOf(prescription.getAnnulment()),
-                false
+                false,
+                followUpEndedAtOf(prescription)
         );
     }
 
@@ -105,7 +110,16 @@ public record PrescriptionResponseDTO(
                 Annulment.annulledAtOf(prescription.getAnnulment()),
                 Annulment.reasonOf(prescription.getAnnulment()),
                 Annulment.annulledByNameOf(prescription.getAnnulment()),
-                true
+                true,
+                null
         );
+    }
+
+    private static LocalDate followUpEndedAtOf(Prescription prescription) {
+        Patient patient = prescription.getAppointment().getPatient();
+        if (!prescription.isCurrent() || !patient.isArchived()) {
+            return null;
+        }
+        return patient.getArchivedAt().toLocalDate();
     }
 }

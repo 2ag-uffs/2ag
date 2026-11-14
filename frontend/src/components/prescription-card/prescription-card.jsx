@@ -3,8 +3,13 @@ import {formatDate} from "../../utils/date-format.js";
 import {compositionSummary, labelOf, prescriptionStatusLabel, SPECTRUM_OPTIONS} from "../../utils/prescription-labels.js";
 import styles from "./prescription-card.module.css";
 
+// a receita do paciente arquivado continua vigente, mas n esta mais em uso (revisao das regras R2)
+function isInUse(prescription) {
+    return prescription.current && !prescription.followUpEndedAt;
+}
+
 function badgeClassOf(prescription) {
-    if (prescription.current) {
+    if (isInUse(prescription)) {
         return styles.badgeCurrent;
     }
     return prescription.annulled ? styles.badgeAnnulled : styles.badgeReplaced;
@@ -50,7 +55,7 @@ export default function PrescriptionCard({prescription, actions}) {
         .join(" · ");
 
     return (
-        <article className={prescription.current ? styles.card + " " + styles.cardCurrent : styles.card}>
+        <article className={isInUse(prescription) ? styles.card + " " + styles.cardCurrent : styles.card}>
             <header className={styles.header}>
                 <div>
                     <h3>{prescription.productDescription}</h3>
@@ -58,6 +63,11 @@ export default function PrescriptionCard({prescription, actions}) {
                         Emitida em {formatDate(prescription.appointmentDateTime)}
                         {prescription.prescriberName ? " por " + prescription.prescriberName : ""}
                     </p>
+                    {prescription.followUpEndedAt && (
+                        <p className={styles.meta}>
+                            Acompanhamento encerrado em {formatDate(prescription.followUpEndedAt)}
+                        </p>
+                    )}
                 </div>
                 <span className={badgeClassOf(prescription)}>{prescriptionStatusLabel(prescription)}</span>
             </header>

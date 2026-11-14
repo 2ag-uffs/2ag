@@ -39,7 +39,7 @@ export default function DashboardPaciente() {
             apiService.get("/patients/" + loggedUser.id),
         ])
             .then(([dashboard, patient]) => {
-                setPanel({...dashboard, isArchived: patient.archived});
+                setPanel({...dashboard, isArchived: patient.archived, archivedAt: patient.archivedAt});
             })
             .catch((requestError) => {
                 setLoadError(errorMessageOf(requestError,
@@ -141,8 +141,9 @@ export default function DashboardPaciente() {
                     )}
                 </Card>
 
+                {/* o arquivado n tem receita em uso, a q valia fica como a ultima (revisao das regras R2) */}
                 <Card
-                    title="Prescrição de agora"
+                    title={panel.isArchived ? "Última prescrição" : "Prescrição de agora"}
                     footer={<FooterButton path="/minhas-prescricoes">Ver prescrições</FooterButton>}
                 >
                     {panel.currentPrescription === null ? (
@@ -153,6 +154,9 @@ export default function DashboardPaciente() {
                             <p className={styles.posology}>{panel.currentPrescription.posology}</p>
                             <p className={styles.meta}>
                                 Prescrita em {formatDate(panel.currentPrescription.prescribedAt)}
+                                {panel.isArchived
+                                    ? " · acompanhamento encerrado em " + formatDate(panel.archivedAt)
+                                    : ""}
                             </p>
                         </div>
                     )}

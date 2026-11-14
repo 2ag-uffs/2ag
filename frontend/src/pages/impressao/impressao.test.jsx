@@ -69,6 +69,16 @@ describe("Impressao", () => {
         expect(screen.queryByText("Óleo antigo")).not.toBeInTheDocument();
     });
 
+    // o plantonista q recebe a impressao do paciente arquivado lia "Prescrição em uso" (revisao das regras R2)
+    it("do paciente arquivado a secao diz ultima prescricao e quando o acompanhamento acabou", async () => {
+        renderPrint([{...prescriptionOf(1, 200, true, "Óleo de CBD 20%"), followUpEndedAt: "2026-11-10"}]);
+
+        const heading = await screen.findByRole("heading",
+            {name: "Última prescrição, acompanhamento encerrado em 10/11/2026"});
+        expect(within(heading.closest("section")).getByText("Óleo de CBD 20%")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Prescrição em uso"})).not.toBeInTheDocument();
+    });
+
     it("sem prescricao em uso a secao diz isso", async () => {
         renderPrint([prescriptionOf(2, 200, false, "Óleo antigo")]);
 

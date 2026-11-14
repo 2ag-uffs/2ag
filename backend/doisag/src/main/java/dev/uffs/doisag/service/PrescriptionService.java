@@ -142,9 +142,12 @@ public class PrescriptionService {
         consultationService.reopenIfConcludedOnlyByPrescriptionOrExam(appointment);
         // anular a receita em uso deixa o paciente sem prescricao vigente, e quem toma a dose todo dia precisa
         // saber se para, segue ou espera (RF14). a q ja tinha sido substituida n muda nada pra ele
+        // o arquivado n tem receita em uso, a q valia eh a ultima (revisao das regras R2)
         if (wasCurrent) {
-            notificationService.createNotification(appointment.getPatient(), "Prescrição anulada",
-                    "Sua prescrição em uso foi anulada. Fale com a clínica antes de mudar a dose.",
+            String message = appointment.getPatient().isArchived()
+                    ? "Sua última prescrição foi anulada. Fale com a clínica antes de mudar a dose."
+                    : "Sua prescrição em uso foi anulada. Fale com a clínica antes de mudar a dose.";
+            notificationService.createNotification(appointment.getPatient(), "Prescrição anulada", message,
                     Notification.TYPE_ALERT, Notification.PATIENT_PRESCRIPTIONS_LINK);
         }
         return new PrescriptionResponseDTO(savedPrescription);

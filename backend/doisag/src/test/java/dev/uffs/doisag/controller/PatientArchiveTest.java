@@ -8,12 +8,14 @@ import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PatientArchiveService;
@@ -40,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -64,6 +67,7 @@ class PatientArchiveTest {
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private AppointmentRepository appointmentRepository;
+    @Autowired private PrescriptionRepository prescriptionRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private ReminderService reminderService;
     @Autowired private TokenService tokenService;
@@ -287,6 +291,53 @@ class PatientArchiveTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
                 .andExpect(status().isOk());
+    }
+
+    // arquivar n mexe na receita, mas a q estava em uso passa a levar o dia em q o acompanhamento acabou,
+    // pras telas e a impressao n dizerem mais q ela esta em uso (revisao das regras R2)
+    @Test
+    void theCurrentPrescriptionOfAnArchivedPatientCarriesTheDayTheFollowUpEnded() throws Exception {
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(saveAppointment(LocalDateTime.now().minusDays(20), AppointmentStatus.CONCLUIDA));
+        prescription.setProductDescription("Oleo do arquivo");
+        prescription.setPosology("2 gotas a noite");
+        prescriptionRepository.save(prescription);
+        String patientToken = bearerTokenOf(patient);
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
+                .andExpect(jsonPath("$[0].followUpEndedAt").value(nullValue()));
+
+        archive(patient, prescriber).andExpect(status().isOk());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
+                .andExpect(jsonPath("$[0].status").value("VIGENTE"))
+                .andExpect(jsonPath("$[0].current").value(true))
+                .andExpect(jsonPath("$[0].followUpEndedAt").value(LocalDate.now().toString()));
+
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
+                .andExpect(jsonPath("$[0].followUpEndedAt").value(nullValue()));
+    }
+
+    // o arquivado n tem receita em uso, entao o aviso de anular a ultima tbm n diz em uso (revisao das regras R2)
+    @Test
+    void annullingTheLastPrescriptionOfAnArchivedPatientSendsANoticeWithoutInUse() throws Exception {
+        Prescription prescription = new Prescription();
+        prescription.setAppointment(saveAppointment(LocalDateTime.now().minusDays(20), AppointmentStatus.CONCLUIDA));
+        prescription.setProductDescription("Oleo do arquivo");
+        prescription.setPosology("2 gotas a noite");
+        prescriptionRepository.save(prescription);
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        mockMvc.perform(put("/prescriptions/" + prescription.getId() + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Lancada no paciente errado\"}"))
+                .andExpect(status().isOk());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .filteredOn(notification -> notification.getTitle().equals("Prescrição anulada"))
+                .extracting(Notification::getMessage)
+                .containsExactly("Sua última prescrição foi anulada. Fale com a clínica antes de mudar a dose.");
     }
 
     @Test

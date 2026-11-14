@@ -8,6 +8,7 @@ import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {addDays, ageFrom, formatDate, formatNow, formatPeriod, toIsoDate} from "../../utils/date-format.js";
+import {lastPrescriptionTitle} from "../../utils/prescription-labels.js";
 import styles from "./impressao.module.css";
 
 // o tratamento todo n tem data de corte
@@ -151,7 +152,12 @@ export default function Impressao() {
             </PrintSection>
 
             <section className={styles.section}>
-                <h2>Prescrição em uso</h2>
+                {/* a do paciente arquivado n esta mais em uso (revisao das regras R2) */}
+                <h2>
+                    {currentPrescription && currentPrescription.followUpEndedAt
+                        ? lastPrescriptionTitle(currentPrescription.followUpEndedAt)
+                        : "Prescrição em uso"}
+                </h2>
                 {currentPrescription
                     ? <PrescriptionCard prescription={currentPrescription}/>
                     : <p className={styles.empty}>Nenhuma prescrição em uso.</p>}

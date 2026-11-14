@@ -113,4 +113,18 @@ describe("DashboardPaciente", () => {
         expect(screen.queryByText(/Você pode pedir um horário/)).not.toBeInTheDocument();
         expect(screen.getByText("Nenhuma consulta marcada.")).toBeInTheDocument();
     });
+
+    // a receita continua vigente, mas pro arquivado ela eh a ultima, e n a de agora (revisao das regras R2)
+    it("paciente arquivado ve a ultima prescricao com o dia em q o acompanhamento acabou", async () => {
+        apiService.get.mockImplementation((path) => Promise.resolve(path === "/patients/3"
+            ? {id: 3, archived: true, archivedAt: "2026-11-10T15:00:00"}
+            : {...PANEL, currentPrescription: {id: 4, productDescription: "Óleo de CBD", posology: "2 gotas",
+                prescribedAt: "2026-09-01"}}));
+        renderPanel();
+
+        expect(await screen.findByRole("heading", {name: "Última prescrição"})).toBeInTheDocument();
+        expect(screen.getByText("Prescrita em 01/09/2026 · acompanhamento encerrado em 10/11/2026"))
+            .toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Prescrição de agora"})).not.toBeInTheDocument();
+    });
 });
