@@ -235,13 +235,14 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
 - **Mostrar:** o registro de uma consulta que acabou de acontecer.
 - **Onde clicar:**
   1. **Pacientes** e, na linha do paciente adulto, **Nova consulta**.
-  2. Em **Quando e como**, confira **Data e hora** (vem com o momento atual e não aceita hora futura) e **Modalidade**.
+  2. Em **Quando e como**, confira **Data e hora** (vem com o momento atual e não aceita hora futura) e escolha a **Modalidade**, que vem sem nada marcado.
   3. Preencha alguns campos com texto inventado: **Queixa principal e observações**, **Exame físico**, **Evolução do quadro**, **Hipótese diagnóstica**, **Conduta e plano terapêutico**. Pressão, peso e altura são opcionais e somem na consulta **Remota**.
   4. **Salvar consulta**.
 - **Conferir:** aparece **Consulta registrada** com três caminhos: **Emitir prescrição**, **Aplicar mini-exame** e **Ver histórico do paciente**.
 - **Se der errado:**
   - *Preencha pelo menos um campo clínico da consulta*: escreva algo em pelo menos um dos campos de texto.
   - *A consulta registrada precisa já ter acontecido*: esta tela é para o atendimento que já aconteceu. Consulta futura se marca na **Agenda**.
+  - *Escolha se a consulta foi presencial ou remota*: a **Modalidade** vem sem nada marcado de propósito, porque a maioria das consultas é remota. Escolha uma; a **Nova consulta** da agenda e o pedido do paciente pedem o mesmo.
 
 ### emitir a prescrição
 
@@ -260,7 +261,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
 ### pedido de consulta pela agenda
 
 - **Onde clicar:**
-  1. Na janela do paciente, **Consultas**: **Escolha o dia**, **Escolha o horário** e, em **Confirme o pedido**, a **Modalidade** e o **Motivo da consulta (opcional)**. Depois, **Pedir consulta**.
+  1. Na janela do paciente, **Consultas**: **Escolha o dia**, **Escolha o horário** e, em **Confirme o pedido**, escolha a **Modalidade**, que vem sem nada marcado, e escreva o **Motivo da consulta (opcional)**. Depois, **Pedir consulta**.
   2. Na janela do prescritor, **Agenda**: o pedido está em **Pedidos aguardando resposta**. Clique em **Confirmar**.
 - **Conferir:**
   - Como o paciente já tem uma consulta registrada, o pedido sai do tamanho do **Retorno**, e a agenda mostra *Retorno · Presencial* (ou *Remota*).

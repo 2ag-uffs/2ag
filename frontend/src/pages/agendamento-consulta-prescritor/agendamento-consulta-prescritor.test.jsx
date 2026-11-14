@@ -49,6 +49,7 @@ async function fillNewAppointment(user) {
     await user.selectOptions(screen.getByLabelText("Paciente"), "5");
     fireEvent.change(screen.getByLabelText("Data"), {target: {value: TOMORROW}});
     fireEvent.change(screen.getByLabelText("Horário"), {target: {value: "09:00"}});
+    await user.selectOptions(screen.getByLabelText("Modalidade"), "REMOTA");
 }
 
 async function openReschedule(user) {
@@ -76,7 +77,7 @@ describe("AgendamentoPrescritor", () => {
         expect(post).toHaveBeenCalledWith("/appointments", {
             patientId: 5,
             dateTime: TOMORROW + "T09:00:00",
-            modality: "PRESENCIAL",
+            modality: "REMOTA",
             durationMinutes: null,
             appointmentType: null,
         });
@@ -152,6 +153,25 @@ describe("AgendamentoPrescritor", () => {
 
         expect(await screen.findByText("Primeira consulta · Presencial")).toBeInTheDocument();
         expect(screen.getByText("sem atendimento")).toBeInTheDocument();
+    });
+
+    // a modalidade vinha marcada como presencial numa clinica quase toda online: agora vem vazia e marcar sem
+    // escolher marca o campo e leva o foco pra ele (decisao de 14/11/2026, revisao das regras R24)
+    it("a nova consulta vem sem modalidade e marcar sem escolher leva o foco pra modalidade", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({id: 1});
+        const user = userEvent.setup();
+        renderAgenda();
+
+        await user.click(await screen.findByRole("button", {name: "Nova consulta"}));
+        await user.selectOptions(screen.getByLabelText("Paciente"), "5");
+        fireEvent.change(screen.getByLabelText("Horário"), {target: {value: "09:00"}});
+        const modality = screen.getByLabelText("Modalidade");
+        expect(modality).toHaveValue("");
+        await user.click(screen.getByRole("button", {name: "Marcar consulta"}));
+
+        expect(modality).toHaveFocus();
+        expect(modality).toHaveAccessibleDescription("Escolha se a consulta é presencial ou remota");
+        expect(post).not.toHaveBeenCalled();
     });
 
     // o erro aparecia do lado do campo, mas o foco ficava no botao e o leitor de tela n dizia nada (CT-39)

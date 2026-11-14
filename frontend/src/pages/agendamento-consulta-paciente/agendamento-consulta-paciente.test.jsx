@@ -31,9 +31,13 @@ function mockScreen(upcomingAppointments, freeSlots) {
     });
 }
 
-async function chooseFreeSlot(user, time) {
+// a modalidade vem sem nada marcado e o paciente escolhe (decisao de 14/11/2026, revisao das regras R24)
+async function chooseFreeSlot(user, time, modality = "PRESENCIAL") {
     const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
     await user.click(within(slots).getByRole("button", {name: time}));
+    if (modality) {
+        await user.selectOptions(screen.getByLabelText("Modalidade"), modality);
+    }
 }
 
 describe("AgendamentoConsultaPaciente", () => {
@@ -300,6 +304,34 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(await screen.findByRole("alert"))
             .toHaveTextContent("Escolha um horário com pelo menos 24 horas de antecedência");
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    // a modalidade vinha marcada como presencial e quem n mexia pedia presencial sem querer: agora vem vazia e
+    // pedir sem escolher marca o campo e leva o foco pra ele (decisao de 14/11/2026, revisao das regras R24)
+    it("a modalidade vem sem nada marcado e pedir sem escolher marca o campo e leva o foco pra ele", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT]);
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({...PENDING_REQUEST, id: 7});
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00", null);
+        const modality = screen.getByLabelText("Modalidade");
+        expect(modality).toHaveValue("");
+        await user.click(screen.getByRole("button", {name: "Pedir consulta"}));
+
+        expect(post).not.toHaveBeenCalled();
+        expect(modality).toHaveFocus();
+        expect(modality).toHaveAccessibleDescription("Escolha se a consulta é presencial ou remota");
+
+        await user.selectOptions(modality, "REMOTA");
+        expect(modality).not.toHaveAttribute("aria-invalid");
+        await user.click(screen.getByRole("button", {name: "Pedir consulta"}));
+        expect(post).toHaveBeenCalledWith("/appointments/requests", expect.objectContaining({modality: "REMOTA"}));
+        // o proximo pedido tbm comeca sem modalidade
+        await screen.findByRole("status");
+        await chooseFreeSlot(user, "14:00", null);
+        expect(screen.getByLabelText("Modalidade")).toHaveValue("");
     });
 
     // o motivo pode contar uma piora, e o pedido n tem prazo de resposta: o campo diz q n eh urgencia

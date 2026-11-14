@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -34,6 +35,9 @@ const PATIENT_CANCELLATION_HOURS = 24;
 
 // e pede so com essa antecedencia, igual a api, pro prescritor ter tempo de responder
 const MIN_REQUEST_HOURS = 24;
+
+// a mesma mensagem q a api manda no campo
+const MODALITY_MISSING_MESSAGE = "Escolha se a consulta é presencial ou remota";
 
 // a api ja manda so o q da pra pedir, mas a tela aberta ha horas ainda mostrava horario em cima da hora
 function isFarEnoughAhead(slot) {
@@ -131,7 +135,10 @@ export default function AgendamentoConsultaPaciente() {
     const [reloadCount, setReloadCount] = useState(0);
     const [selectedDay, setSelectedDay] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState(null);
-    const [modality, setModality] = useState("PRESENCIAL");
+    // vem sem nada marcado e o paciente escolhe, pq a que vinha marcada virava pedido presencial sem querer
+    // (decisao de 14/11/2026, revisao das regras R24)
+    const [modality, setModality] = useState("");
+    const [modalityError, setModalityError] = useState(null);
     const [patientNote, setPatientNote] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [cancelTarget, setCancelTarget] = useState(null);
@@ -139,6 +146,7 @@ export default function AgendamentoConsultaPaciente() {
     const [replacement, setReplacement] = useState(null);
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
     const noticeRef = useRef(null);
+    const [requestStepRef, focusFirstError] = useFocusFirstError();
 
     // o botao de pedir ou de cancelar some depois do envio e o foco ia pro body, entao ele vai pro aviso (CT-39)
     useEffect(() => {
@@ -214,6 +222,7 @@ export default function AgendamentoConsultaPaciente() {
             setNotice(sentNoticeOf(replacedRequests, page.patient.prescriberName)
                 + " O horário fica reservado e você recebe um aviso quando o pedido for respondido.");
             setSelectedSlot(null);
+            setModality("");
             setPatientNote("");
         } catch (requestError) {
             showActionError(requestError);
@@ -226,6 +235,11 @@ export default function AgendamentoConsultaPaciente() {
 
     // com um pedido esperando resposta o novo substitui ele, entao a troca so sai dps de confirmar
     const askForRequest = (slotStart) => {
+        if (modality === "") {
+            setModalityError(MODALITY_MISSING_MESSAGE);
+            focusFirstError();
+            return;
+        }
         const pendingRequests = findPendingRequests(page.upcomingAppointments);
         if (pendingRequests.length > 0) {
             setReplacement({slotStart, replacedRequests: pendingRequests});
@@ -370,7 +384,7 @@ export default function AgendamentoConsultaPaciente() {
                             </div>
 
                             {currentSlot && (
-                                <div className={styles.step}>
+                                <div className={styles.step} ref={requestStepRef}>
                                     <h3 className={styles.stepTitle}>
                                         <span className={styles.stepNumber}>3</span>
                                         Confirme o pedido
@@ -380,8 +394,13 @@ export default function AgendamentoConsultaPaciente() {
                                             label="Modalidade"
                                             name="modality"
                                             options={MODALITY_OPTIONS}
+                                            placeholder="Escolha a modalidade"
                                             value={modality}
-                                            onChange={(event) => setModality(event.target.value)}
+                                            onChange={(event) => {
+                                                setModality(event.target.value);
+                                                setModalityError(null);
+                                            }}
+                                            error={modalityError}
                                             disabled={isSending}
                                         />
                                     </div>

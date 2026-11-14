@@ -56,6 +56,10 @@ export default function AppointmentFormModal({
         if (values.time === "") {
             missingFields.time = "Escolha o horário";
         }
+        // a modalidade vem vazia na consulta nova e o prescritor escolhe (decisao de 14/11/2026, revisao das regras R24)
+        if (values.modality === "") {
+            missingFields.modality = "Escolha se a consulta é presencial ou remota";
+        }
         if (Object.keys(missingFields).length > 0) {
             setFieldErrors(missingFields);
             focusFirstError();
@@ -139,6 +143,7 @@ export default function AppointmentFormModal({
                     label="Modalidade"
                     name="modality"
                     options={MODALITY_OPTIONS}
+                    placeholder="Escolha a modalidade"
                     value={values.modality}
                     onChange={(event) => updateValue("modality", event.target.value)}
                     error={fieldErrors.modality}

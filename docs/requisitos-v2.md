@@ -278,6 +278,7 @@ O paciente agenda consulta visualizando a disponibilidade do seu prescritor. O s
 - O paciente pede horário com pelo menos 24 horas de antecedência, e a tela só oferece esses horários. O prescritor continua marcando direto sem antecedência mínima (decisão de 13/11/2026, §8.3)
 - O paciente tem um pedido esperando resposta por vez: o pedido novo substitui o anterior, que é cancelado e libera o horário (RN08, decisão de 13/11/2026, §8.3)
 - O sistema não é canal de urgência: junto de todo texto livre que o paciente escreve (motivo do pedido de consulta, observações das escalas e da ficha diária e cada parte da anamnese) fica o aviso fixo *Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um serviço de saúde.* E o pedido que chega na véspera do horário sem resposta avisa o paciente dentro do sistema, uma vez só, para ele falar com a clínica (decisão de 14/11/2026, revisão das regras R1)
+- A modalidade (presencial ou remota) vem sem nada marcado em toda tela que cria consulta: o pedido do paciente, a *Nova consulta* da agenda do prescritor e o registro de consulta. A pessoa escolhe, e enviar sem escolher marca o campo e leva o foco até ele. Antes vinha marcado *Presencial*, o contrário do que a clínica faz (a maioria das consultas é remota, RF04), e o paciente que não mexia na caixa pedia uma consulta presencial sem querer (decisão de 14/11/2026, revisão das regras R24)
 
 ---
 

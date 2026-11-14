@@ -451,7 +451,7 @@ export default function AgendamentoPrescritor() {
                         patientId: "",
                         date: toIsoDate(new Date()),
                         time: "",
-                        modality: "PRESENCIAL",
+                        modality: "",
                         appointmentType: "",
                         durationMinutes: "",
                     }}
@@ -470,7 +470,7 @@ export default function AgendamentoPrescritor() {
                     initialValues={{
                         date: rescheduleTarget.dateTime.slice(0, 10),
                         time: rescheduleTarget.dateTime.slice(11, 16),
-                        modality: rescheduleTarget.modality,
+                        modality: rescheduleTarget.modality || "",
                         appointmentType: rescheduleTarget.appointmentType || "",
                         durationMinutes: String(rescheduleTarget.durationMinutes),
                     }}

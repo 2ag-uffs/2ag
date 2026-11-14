@@ -29,7 +29,7 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 
 ## pedir e cancelar consulta
 
-1. Toque em **Consultas**, escolha o dia, o horário e a modalidade e, se quiser, escreva o motivo. Os horários começam pelo menos 24 horas depois de agora, para o prescritor ter tempo de responder.
+1. Toque em **Consultas**, escolha o dia, o horário e a modalidade (presencial ou remota, que vem sem nada marcado) e, se quiser, escreva o motivo. Os horários começam pelo menos 24 horas depois de agora, para o prescritor ter tempo de responder.
 2. Toque em **Pedir consulta**. O horário fica reservado até o prescritor responder. O pedido não é atendimento de urgência, como avisa a tela: se algo piorou, fale com a clínica. Se o pedido ainda estiver sem resposta na véspera, chega em **Avisos** *Pedido ainda sem resposta*, para você falar com a clínica.
 3. Você tem um pedido esperando resposta por vez. Para trocar de horário, escolha outro e toque em **Trocar pedido**: a tela pergunta antes e, com **Sim, trocar**, o pedido anterior é cancelado, o horário dele volta a ficar livre e o novo fica esperando resposta. Se o prescritor responder o pedido enquanto você escolhe, a troca não acontece e a tela mostra a resposta antes.
 4. Para cancelar, em **Próximas consultas e pedidos**: **Cancelar pedido** a qualquer hora, ou **Cancelar consulta** até 24 horas antes. Depois disso, a tela avisa *Faltam menos de 24 horas. Para cancelar, fale com o seu prescritor.*

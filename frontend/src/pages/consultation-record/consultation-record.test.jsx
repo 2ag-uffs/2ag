@@ -45,6 +45,7 @@ function renderInsideLayout(recordPath = "/paciente/5/consulta/nova") {
 
 async function saveNewConsultation() {
     fireEvent.change(await screen.findByLabelText("Evolução do quadro"), {target: {value: "melhorou da dor"}});
+    fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
     fireEvent.click(screen.getByRole("button", {name: "Salvar consulta"}));
     expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
 }
@@ -61,6 +62,27 @@ describe("ConsultationRecord", () => {
     afterEach(() => {
         vi.restoreAllMocks();
         setLoggedUser(null);
+    });
+
+    // a modalidade vinha marcada como presencial numa clinica quase toda online: a consulta nova vem sem ela, e
+    // salvar sem escolher marca o campo e leva o foco pra ele (decisao de 14/11/2026, revisao das regras R24)
+    it("a consulta nova vem sem modalidade e salvar sem escolher leva o foco pra modalidade", async () => {
+        renderNewConsultation();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Evolução do quadro"), "melhorou da dor");
+        const modality = screen.getByLabelText("Modalidade");
+        expect(modality).toHaveValue("");
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+
+        expect(post).not.toHaveBeenCalled();
+        expect(modality).toHaveFocus();
+        expect(modality).toHaveAccessibleDescription("Escolha se a consulta foi presencial ou remota");
+
+        await user.selectOptions(modality, "REMOTA");
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/patients/5/appointments", expect.objectContaining({modality: "REMOTA"}));
     });
 
     // o endereco de consulta nova n pode ficar no historico depois de salvar
@@ -151,6 +173,7 @@ describe("ConsultationRecord", () => {
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText("Evolução do quadro"), "melhorou da dor");
+        await user.selectOptions(screen.getByLabelText("Modalidade"), "PRESENCIAL");
         await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
         expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
         expect(router.state.location.pathname).toBe("/consulta/99/registro");

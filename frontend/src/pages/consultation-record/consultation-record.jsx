@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
@@ -18,9 +19,11 @@ import {numberOrNull, textOrNull} from "../../utils/form-values.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
 import styles from "./consultation-record.module.css";
 
+// a modalidade vem vazia e a prescritora escolhe, pq a que vinha marcada como presencial ficava sem ninguem
+// mexer numa clinica quase toda online (decisao de 14/11/2026, revisao das regras R24)
 const EMPTY_RECORD = {
     dateTime: "",
-    modality: "PRESENCIAL",
+    modality: "",
     clinicalObservation: "",
     physicalExam: "",
     bloodPressure: "",
@@ -49,7 +52,7 @@ function recordFromAppointment(appointment) {
     const scheduled = appointment.dateTime ? appointment.dateTime.slice(0, 16) : "";
     return {
         dateTime: scheduled > now ? now : scheduled,
-        modality: appointment.modality || "PRESENCIAL",
+        modality: appointment.modality || "",
         clinicalObservation: textOf(appointment.clinicalObservation),
         physicalExam: textOf(appointment.physicalExam),
         bloodPressure: textOf(appointment.bloodPressure),
@@ -117,6 +120,7 @@ export default function ConsultationRecord() {
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -176,8 +180,14 @@ export default function ConsultationRecord() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsSaving(true);
         setFormError(null);
+        // a mesma mensagem q a api manda no campo, e o foco vai pra ele como nos outros formularios
+        if (record.modality === "") {
+            setFieldErrors({modality: "Escolha se a consulta foi presencial ou remota"});
+            focusFirstError();
+            return;
+        }
+        setIsSaving(true);
         setFieldErrors({});
 
         const requestBody = requestBodyOf(record);
@@ -198,6 +208,7 @@ export default function ConsultationRecord() {
             if (errorInfo.message) {
                 setFormError(errorInfo.message);
             }
+            focusFirstError();
         } finally {
             setIsSaving(false);
         }
@@ -270,7 +281,7 @@ export default function ConsultationRecord() {
             {blockedMessage && <p className="aviso aviso--atencao">{blockedMessage}</p>}
             {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <FormSection title="Quando e como" disabled={areFieldsLocked}>
                     <FieldRow>
                         <TextField
@@ -286,6 +297,7 @@ export default function ConsultationRecord() {
                             label="Modalidade"
                             name="modality"
                             options={MODALITY_OPTIONS}
+                            placeholder="Escolha a modalidade"
                             value={record.modality}
                             onChange={(event) => updateField("modality", event.target.value)}
                             error={fieldErrors.modality}
