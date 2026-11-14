@@ -389,7 +389,7 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo, e o cartã
 | rota | o que faz |
 | :--- | :--- |
 | `GET /progress/attributes` | o que dá para acompanhar num gráfico, com a escala, os limites do eixo, as faixas do instrumento, as âncoras das pontas (`lowAnchor`, `highAnchor`) e qual lado é melhor (`higherIsBetter`). o do paciente vem sem o `ESCORE_MEEM` |
-| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento. no escore, cada ponto traz a faixa gravada (`band`) e, no MEEM, o ponto de corte da escolaridade do exame (`cutoff`), que vem nulo, junto com a faixa, no exame antigo sem escolaridade. o `ESCORE_MEEM` pedido pelo paciente responde 403 |
+| `GET /patients/{patientId}/progress?attribute=&period=` | a série do atributo no período, uma data e um valor por preenchimento. no escore, cada ponto traz a faixa gravada (`band`) e, no MEEM, o ponto de corte da escolaridade do exame (`cutoff`), que vem nulo, junto com a faixa, no exame antigo sem escolaridade. o `ESCORE_MEEM` pedido pelo paciente responde 403. o período `TUDO` vale também para o paciente nos dados dele mesmo: só a tela dele fica nos 15 a 90 dias (decisão de 13/11/2026) |
 | `GET /patients/{patientId}/progress/appointments?period=` | as consultas do período, para marcar no gráfico em que dia houve atendimento. `geraPrescricao` só conta prescrição não anulada |
 | `GET /patients/{patientId}/progress/comments?period=` | o que o paciente escreveu nas escalas do período, por data |
 
