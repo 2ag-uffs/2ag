@@ -85,6 +85,7 @@ public class DailyScheduler {
         int closedTasks = 0;
         int assignedScales = 0;
         int expiredRequests = 0;
+        int unansweredRequests = 0;
         int appointmentReminders = 0;
         int scaleReminders = 0;
         boolean failed = false;
@@ -108,6 +109,12 @@ public class DailyScheduler {
             log.error("Tarefas do dia: falha ao recusar os pedidos de consulta vencidos", exception);
         }
         try {
+            unansweredRequests = appointmentService.warnUnansweredRequests(now);
+        } catch (RuntimeException exception) {
+            failed = true;
+            log.error("Tarefas do dia: falha ao avisar os pedidos de consulta ainda sem resposta", exception);
+        }
+        try {
             appointmentReminders = reminderService.sendAppointmentReminders(today);
         } catch (RuntimeException exception) {
             failed = true;
@@ -125,8 +132,9 @@ public class DailyScheduler {
             saveCompletedDay(today);
         }
         log.info("Tarefas do dia: {} tarefas fechadas, {} escalas enviadas, {} pedidos de consulta vencidos, "
-                        + "{} lembretes de consulta e {} lembretes de formulário",
-                closedTasks, assignedScales, expiredRequests, appointmentReminders, scaleReminders);
+                        + "{} pedidos ainda sem resposta avisados, {} lembretes de consulta e {} lembretes de formulário",
+                closedTasks, assignedScales, expiredRequests, unansweredRequests, appointmentReminders,
+                scaleReminders);
     }
 
     private boolean isCompleted(LocalDate day) {

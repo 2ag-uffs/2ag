@@ -1,3 +1,4 @@
+import UrgencyNotice from "../urgency-notice/urgency-notice.jsx";
 import {formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./scale-form.module.css";
 
@@ -7,8 +8,9 @@ import styles from "./scale-form.module.css";
 // usar, e as ancoras as opcoes e as faixas vem prontas do servidor (RNF08)
 //
 // o erro de campo q a api manda (fieldErrors, pela chave do item) aparece no proprio item
+// na tela do paciente o texto livre vem com o aviso de q o sistema n eh urgencia (showsUrgencyNotice, R1)
 export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
-    fieldErrors = {}}) {
+    fieldErrors = {}, showsUrgencyNotice = false}) {
     return (
         <ol className={styles.items}>
             {items.map((item) => {
@@ -22,6 +24,7 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
                             onChange={onChange}
                             disabled={disabled}
                             error={fieldErrors[item.key]}
+                            showsUrgencyNotice={showsUrgencyNotice}
                         />
                     </li>
                 );
@@ -54,7 +57,7 @@ function scoresBetween(minValue, maxValue) {
     return scores;
 }
 
-function ScaleField({item, bands, values, onChange, disabled, error}) {
+function ScaleField({item, bands, values, onChange, disabled, error, showsUrgencyNotice}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -66,7 +69,10 @@ function ScaleField({item, bands, values, onChange, disabled, error}) {
             <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled} error={error}/>
         );
     }
-    return <TypedField item={item} value={value} onChange={change} disabled={disabled} error={error}/>;
+    return (
+        <TypedField item={item} value={value} onChange={change} disabled={disabled} error={error}
+            showsUrgencyNotice={showsUrgencyNotice}/>
+    );
 }
 
 // o id liga o erro ao campo pelo aria-describedby, entao o leitor de tela le junto
@@ -131,7 +137,13 @@ function ChoiceField({item, bands, value, onChange, disabled, error}) {
 }
 
 // texto livre hora ou numero digitado
-function TypedField({item, value, onChange, disabled, error}) {
+function TypedField({item, value, onChange, disabled, error, showsUrgencyNotice}) {
+    const noticeId = item.key + "-urgencia";
+    const hasNotice = showsUrgencyNotice && item.type === "TEXTO";
+    // o erro e o aviso de urgencia lidos junto com o campo
+    const describedBy = [error ? errorIdOf(item) : null, hasNotice ? noticeId : null]
+        .filter((id) => id !== null)
+        .join(" ");
     return (
         <div className={styles.field}>
             <label className={styles.labelBox} htmlFor={item.key}>
@@ -146,7 +158,7 @@ function TypedField({item, value, onChange, disabled, error}) {
                     value={value}
                     disabled={disabled}
                     aria-invalid={error ? "true" : undefined}
-                    aria-describedby={error ? errorIdOf(item) : undefined}
+                    aria-describedby={describedBy === "" ? undefined : describedBy}
                     onChange={(event) => onChange(event.target.value)}
                 />
             ) : (
@@ -165,6 +177,7 @@ function TypedField({item, value, onChange, disabled, error}) {
                 />
             )}
             <FieldError item={item} error={error}/>
+            {hasNotice && <UrgencyNotice id={noticeId}/>}
         </div>
     );
 }

@@ -302,6 +302,20 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
+    // o motivo pode contar uma piora, e o pedido n tem prazo de resposta: o campo diz q n eh urgencia
+    // (decisao de 14/11/2026, revisao das regras R1)
+    it("o motivo da consulta vem com o aviso de que o pedido nao e atendimento de urgencia", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT]);
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+
+        expect(screen.getByLabelText("Motivo da consulta (opcional)")).toHaveAccessibleDescription(
+            "Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um serviço de saúde.");
+    });
+
     // a api ja manda so o q da pra pedir, mas a tela aberta ha horas ficava com horario em cima da hora
     it("horario com menos de 24 horas de antecedencia n aparece pra pedir", async () => {
         vi.stubEnv("TZ", "America/Sao_Paulo");

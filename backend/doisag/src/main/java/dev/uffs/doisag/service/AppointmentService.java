@@ -352,6 +352,58 @@ public class AppointmentService {
         return true;
     }
 
+    // o pedido de amanha q ainda n teve resposta avisa o paciente na vespera pra falar com a clinica, senao ele
+    // so ficava sabendo dps q o horario passou (decisao de 14/11/2026, revisao das regras R1)
+    // so o pedido pra amanha, como a decisao diz. o pedido continua esperando a resposta
+    // um aviso so por pedido, e cada um na propria transacao com o pedido travado e lido de novo, igual na recusa
+    public int warnUnansweredRequests(LocalDateTime moment) {
+        LocalDate tomorrow = moment.toLocalDate().plusDays(1);
+        LocalDateTime startOfTomorrow = tomorrow.atStartOfDay();
+        LocalDateTime endOfTomorrow = tomorrow.atTime(LocalTime.MAX);
+        int warned = 0;
+        int failures = 0;
+        for (Appointment found : appointmentRepository.findByStatusAndDateTimeBetweenAndUnansweredNoticeSentAtIsNull(
+                AppointmentStatus.SOLICITADA, startOfTomorrow, endOfTomorrow)) {
+            try {
+                Boolean wasWarned = transactionTemplate.execute(
+                        status -> warnIfStillUnanswered(found.getId(), startOfTomorrow, endOfTomorrow));
+                if (Boolean.TRUE.equals(wasWarned)) {
+                    warned++;
+                }
+            } catch (RuntimeException exception) {
+                failures++;
+                log.error("Tarefas do dia: falha no aviso do pedido de consulta sem resposta {}", found.getId(),
+                        exception);
+            }
+        }
+        if (failures > 0) {
+            throw new IllegalStateException(failures + " aviso(s) de pedido sem resposta com falha, "
+                    + warned + " enviados nos outros");
+        }
+        return warned;
+    }
+
+    private boolean warnIfStillUnanswered(Long appointmentId, LocalDateTime startOfTomorrow,
+                                          LocalDateTime endOfTomorrow) {
+        Appointment request = rowLock.reload(Appointment.class, appointmentId).orElse(null);
+        if (request == null) {
+            return false;
+        }
+        boolean stillWaiting = !request.isAnnulled() && request.getStatus() == AppointmentStatus.SOLICITADA
+                && request.getUnansweredNoticeSentAt() == null
+                && !request.getDateTime().isBefore(startOfTomorrow) && !request.getDateTime().isAfter(endOfTomorrow);
+        if (!stillWaiting) {
+            return false;
+        }
+        notificationService.createNotification(request.getPatient(), "Pedido ainda sem resposta",
+                "Seu pedido de consulta para " + formatDateTime(request)
+                        + " ainda não foi confirmado. Fale com a clínica.",
+                Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
+        request.setUnansweredNoticeSentAt(LocalDateTime.now());
+        appointmentRepository.save(request);
+        return true;
+    }
+
     // o pedido recusado devolve o horario pra agenda
     @Transactional
     public AgendaAppointmentDTO decline(Long appointmentId, AppointmentDeclineDTO declineData) {

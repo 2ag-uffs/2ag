@@ -266,6 +266,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
   - Como o paciente já tem uma consulta registrada, o pedido sai do tamanho do **Retorno**, e a agenda mostra *Retorno · Presencial* (ou *Remota*).
   - O dia de folga do passo 4 não oferece horários.
   - O paciente recebe o aviso da confirmação em **Avisos**, e o pedido dele muda de **Aguardando resposta** para **Agendada**.
+  - Embaixo do **Motivo da consulta** a tela do paciente diz *Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um serviço de saúde.* O mesmo aviso aparece nas **Observações** das escalas e no alto de cada parte da anamnese. O pedido que chega na véspera sem resposta avisa o paciente para falar com a clínica.
 - **Se der errado:**
   - Não aparece horário para o paciente: confira se há período cadastrado e se os próximos 30 dias não caíram todos em folga. Só aparecem horários que começam pelo menos 24 horas depois de agora.
   - O botão diz **Trocar pedido** em vez de **Pedir consulta**: o paciente já tem um pedido esperando resposta, e cada paciente tem um por vez. A tela pergunta antes e, com **Sim, trocar**, o pedido anterior é cancelado e o novo fica esperando.

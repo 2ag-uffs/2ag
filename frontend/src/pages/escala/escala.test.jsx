@@ -43,6 +43,18 @@ describe("Escala", () => {
         window.history.replaceState(null, "", "/");
     });
 
+    // as observacoes do paciente n sao lidas na hora: o campo diz q o sistema n eh urgencia
+    // (decisao de 14/11/2026, revisao das regras R1)
+    it("o texto livre da escala vem com o aviso de que nao e atendimento de urgencia", async () => {
+        const withNotes = {...HAMILTON, items: [...HAMILTON.items, {key: "observacao", label: "Observações", type: "TEXTO"}]};
+        apiService.get.mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/hamilton" ? withNotes : []));
+        renderScale("/escalas/hamilton");
+
+        expect(await screen.findByLabelText("Observações")).toHaveAccessibleDescription(
+            "Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um serviço de saúde.");
+    });
+
     // corrigir pela data mexe na resposta q ja existe, mesmo trocando a data (issue 108)
     it("na correcao, mudar a data atualiza a mesma resposta em vez de criar outra", async () => {
         const moved = {...SAVED_RESPONSE, periodStart: "2026-09-21", periodEnd: "2026-09-21", answers: {humorAnsioso: 3}};

@@ -4,8 +4,11 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import AppLayout from "../../components/app-layout/app-layout.jsx";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, setLoggedUser} from "../../services/api.js";
 import Anamnese from "./anamnese.jsx";
+
+const URGENCY_NOTICE_TEXT = "Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um "
+    + "serviço de saúde.";
 
 function renderAnamnesis(fromPath, anamnesisPath) {
     const router = createMemoryRouter([
@@ -70,6 +73,32 @@ describe("Anamnese", () => {
         expect(router.state.location.pathname).not.toBe("/anamnese");
         expect(screen.queryByRole("button", {name: "Enviar anamnese"})).not.toBeInTheDocument();
         expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    // a ficha eh toda de texto livre e ninguem le na hora, entao cada parte dela diz q n eh canal de urgencia e o
+    // leitor de tela le o aviso junto de cada campo de texto (decisao de 14/11/2026, revisao das regras R1)
+    it("cada parte da ficha avisa que nao e atendimento de urgencia, junto dos campos de texto", async () => {
+        renderAnamnesis("/painel-paciente", "/anamnese");
+
+        expect(await screen.findByLabelText("Dor")).toHaveAccessibleDescription(URGENCY_NOTICE_TEXT);
+        expect(screen.getByLabelText("Diagnósticos anteriores")).toHaveAccessibleDescription(URGENCY_NOTICE_TEXT);
+        expect(screen.getByLabelText("Exercícios físicos")).toHaveAccessibleDescription(URGENCY_NOTICE_TEXT);
+        expect(screen.getByLabelText("Algo mais que queira contar")).toHaveAccessibleDescription(URGENCY_NOTICE_TEXT);
+        expect(screen.getAllByText(URGENCY_NOTICE_TEXT)).toHaveLength(5);
+    });
+
+    // na correcao o aviso continua, e o campo com erro le o erro e o aviso juntos
+    it("na correcao o campo com erro tbm le o aviso de que nao e atendimento de urgencia", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({id: 3, annulled: false, reasonForVisit: "dor", treatmentAwareness: "Sim"});
+        vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, "Dados inválidos",
+            [{field: "reasonForVisit", message: "Conte o motivo em menos palavras"}]));
+        renderAnamnesis("/historico-paciente", "/anamnese?id=3");
+
+        fireEvent.click(await screen.findByRole("button", {name: "Salvar correção"}));
+
+        expect(await screen.findByText("Conte o motivo em menos palavras")).toBeInTheDocument();
+        expect(screen.getByLabelText("Motivo principal da consulta")).toHaveAccessibleDescription(
+            "Conte o motivo em menos palavras " + URGENCY_NOTICE_TEXT);
     });
 
     it("correcao salva tbm sai do historico", async () => {

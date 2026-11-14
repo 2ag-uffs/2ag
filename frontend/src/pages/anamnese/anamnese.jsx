@@ -6,6 +6,7 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
+import UrgencyNotice from "../../components/urgency-notice/urgency-notice.jsx";
 import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
 import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {toIsoDate} from "../../utils/date-format.js";
@@ -222,6 +223,8 @@ export default function Anamnese() {
             <form className={styles.form} onSubmit={handleSubmit}>
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Sobre você</legend>
+                    {/* o aviso de urgencia vem em cada parte da ficha, ligado aos campos de texto dela (R1) */}
+                    <UrgencyNotice id="urgencia-sobre-voce"/>
                     <div className={styles.row}>
                         <TextField
                             label="Data de preenchimento"
@@ -243,6 +246,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Motivo principal da consulta"
                         name="reasonForVisit"
+                        noticeId="urgencia-sobre-voce"
                         rows={3}
                         value={answers.reasonForVisit}
                         onChange={updateAnswer}
@@ -253,9 +257,11 @@ export default function Anamnese() {
 
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Histórico de saúde</legend>
+                    <UrgencyNotice id="urgencia-historico"/>
                     <TextAreaField
                         label="Diagnósticos anteriores"
                         name="previousDiagnosis"
+                        noticeId="urgencia-historico"
                         rows={2}
                         value={answers.previousDiagnosis}
                         onChange={updateAnswer}
@@ -263,6 +269,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Tratamentos anteriores"
                         name="previousTreatment"
+                        noticeId="urgencia-historico"
                         rows={3}
                         value={answers.previousTreatment}
                         onChange={updateAnswer}
@@ -270,6 +277,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Medicações em uso"
                         name="currentMedication"
+                        noticeId="urgencia-historico"
                         rows={3}
                         value={answers.currentMedication}
                         onChange={updateAnswer}
@@ -277,6 +285,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Doenças importantes na família"
                         name="familyHistory"
+                        noticeId="urgencia-historico"
                         rows={2}
                         value={answers.familyHistory}
                         onChange={updateAnswer}
@@ -284,6 +293,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Reações ruins a medicamentos"
                         name="adverseReaction"
+                        noticeId="urgencia-historico"
                         rows={2}
                         value={answers.adverseReaction}
                         onChange={updateAnswer}
@@ -291,6 +301,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Condições genéticas conhecidas"
                         name="geneticCondition"
+                        noticeId="urgencia-historico"
                         rows={2}
                         value={answers.geneticCondition}
                         onChange={updateAnswer}
@@ -299,6 +310,7 @@ export default function Anamnese() {
 
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Hábitos</legend>
+                    <UrgencyNotice id="urgencia-habitos"/>
                     <TextField
                         label="Tipo de alimentação"
                         name="diet"
@@ -348,6 +360,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Uso de outras substâncias"
                         name="substanceUse"
+                        noticeId="urgencia-habitos"
                         rows={2}
                         value={answers.substanceUse}
                         onChange={updateAnswer}
@@ -355,6 +368,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Exercícios físicos"
                         name="physicalActivity"
+                        noticeId="urgencia-habitos"
                         hint="Conte qual exercício e quantas vezes por semana."
                         rows={2}
                         value={answers.physicalActivity}
@@ -364,9 +378,11 @@ export default function Anamnese() {
 
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Como você está hoje</legend>
+                    <UrgencyNotice id="urgencia-como-esta"/>
                     <TextAreaField
                         label="Sono"
                         name="sleepHabits"
+                        noticeId="urgencia-como-esta"
                         placeholder="Ex: durmo bem, tenho insônia ou acordo várias vezes"
                         rows={2}
                         value={answers.sleepHabits}
@@ -375,6 +391,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Ansiedade"
                         name="anxiety"
+                        noticeId="urgencia-como-esta"
                         hint="Com que frequência aparece e com que intensidade."
                         rows={2}
                         value={answers.anxiety}
@@ -383,6 +400,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Dor"
                         name="pain"
+                        noticeId="urgencia-como-esta"
                         hint="Onde dói, com que frequência e com que intensidade."
                         rows={2}
                         value={answers.pain}
@@ -392,9 +410,11 @@ export default function Anamnese() {
 
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Sobre o tratamento</legend>
+                    <UrgencyNotice id="urgencia-tratamento"/>
                     <TextAreaField
                         label="O que você espera do tratamento"
                         name="expectations"
+                        noticeId="urgencia-tratamento"
                         rows={3}
                         value={answers.expectations}
                         onChange={updateAnswer}
@@ -412,6 +432,7 @@ export default function Anamnese() {
                     <TextAreaField
                         label="Algo mais que queira contar"
                         name="observation"
+                        noticeId="urgencia-tratamento"
                         rows={3}
                         value={answers.observation}
                         onChange={updateAnswer}

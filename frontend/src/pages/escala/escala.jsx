@@ -518,6 +518,7 @@ export default function Escala() {
                     disabled={isReadOnly || isSaving}
                     missingKeys={missingKeys}
                     fieldErrors={fieldErrorsByDay[selectedDay] || {}}
+                    showsUrgencyNotice={true}
                 />
 
                 {!isDiary && currentResponse && (

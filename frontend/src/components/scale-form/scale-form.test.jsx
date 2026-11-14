@@ -51,6 +51,22 @@ describe("ScaleForm", () => {
         expect(onSubmit).not.toHaveBeenCalled();
     });
 
+    // o comentario do paciente n eh lido na hora, entao junto dele fica dito q o sistema n eh canal de urgencia
+    // o prescritor no mini-exame n ve o aviso (decisao de 14/11/2026, revisao das regras R1)
+    it("o texto livre do paciente vem com o aviso de que nao e atendimento de urgencia", () => {
+        const items = [...ITEMS, {key: "comentario", label: "Observações", type: "TEXTO"}];
+        const {rerender} = render(
+            <ScaleForm items={items} values={{}} onChange={() => {}} showsUrgencyNotice={true}/>);
+
+        const notice = "Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um "
+            + "serviço de saúde.";
+        expect(screen.getAllByText(notice)).toHaveLength(1);
+        expect(screen.getByLabelText("Observações")).toHaveAccessibleDescription(notice);
+
+        rerender(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
+        expect(screen.queryByText(notice)).not.toBeInTheDocument();
+    });
+
     it("so o item respondido tem o botao de limpar, e zero conta como resposta", () => {
         render(<FormWithValues initialValues={{dor: "0"}}/>);
 

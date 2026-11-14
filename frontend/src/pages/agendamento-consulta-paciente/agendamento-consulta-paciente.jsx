@@ -9,6 +9,7 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
+import UrgencyNotice from "../../components/urgency-notice/urgency-notice.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
@@ -393,7 +394,9 @@ export default function AgendamentoConsultaPaciente() {
                                         value={patientNote}
                                         onChange={(event) => setPatientNote(event.target.value)}
                                         disabled={isSending}
+                                        noticeId="patientNote-urgencia"
                                     />
+                                    <UrgencyNotice id="patientNote-urgencia"/>
                                     <p className={styles.summary}>
                                         <FiCalendar aria-hidden="true"/>
                                         Pedido para {formatDateTime(currentSlot)} até {formatTime(currentSlotEnd)}{brasiliaTimeNote()} com {patient.prescriberName}.

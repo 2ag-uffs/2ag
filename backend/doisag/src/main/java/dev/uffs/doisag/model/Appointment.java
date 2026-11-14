@@ -274,4 +274,15 @@ public class Appointment {
     public void setReminderSentAt(LocalDateTime reminderSentAt) {
         this.reminderSentAt = reminderSentAt;
     }
+
+    // quando o pedido ainda sem resposta na vespera avisou o paciente, pra ele n sair duas vezes (R1)
+    private LocalDateTime unansweredNoticeSentAt;
+
+    public LocalDateTime getUnansweredNoticeSentAt() {
+        return unansweredNoticeSentAt;
+    }
+
+    public void setUnansweredNoticeSentAt(LocalDateTime unansweredNoticeSentAt) {
+        this.unansweredNoticeSentAt = unansweredNoticeSentAt;
+    }
 }

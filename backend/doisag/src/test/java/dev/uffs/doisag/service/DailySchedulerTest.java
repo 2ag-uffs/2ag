@@ -51,6 +51,22 @@ class DailySchedulerTest {
 
         verify(treatmentProtocolService).designarEscalasVencidas(TODAY);
         verify(appointmentService).declineExpiredRequests(now);
+        verify(appointmentService).warnUnansweredRequests(now);
+        verify(reminderService).sendAppointmentReminders(TODAY);
+        verify(reminderService).sendScaleReminders(TODAY);
+        verify(cycleRepository, never()).save(any());
+    }
+
+    // o aviso do pedido ainda sem resposta vem dps da recusa dos vencidos e uma falha nele n segura os lembretes
+    // (decisao de 14/11/2026, revisao das regras R1)
+    @Test
+    void falhaNoAvisoDoPedidoSemRespostaNaoParaOsLembretes() {
+        LocalDateTime now = TODAY.atTime(8, 0);
+        when(appointmentService.warnUnansweredRequests(now)).thenThrow(new IllegalStateException("falha de teste"));
+
+        schedulerWith(EVERY_DAY_AT_EIGHT).runCycle(now);
+
+        verify(appointmentService).declineExpiredRequests(now);
         verify(reminderService).sendAppointmentReminders(TODAY);
         verify(reminderService).sendScaleReminders(TODAY);
         verify(cycleRepository, never()).save(any());

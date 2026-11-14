@@ -689,6 +689,52 @@ class AgendaTest {
         assertThat(notificationTitlesOf(patient)).contains("Pedido de consulta sem resposta");
     }
 
+    // o pedido de amanha ainda sem resposta avisa o paciente na vespera pra falar com a clinica, em vez de ele
+    // so saber dps q o horario passou. a decisao fala so do pedido de amanha, entao o de hoje mais tarde n entra,
+    // e cada pedido avisa uma vez so (decisao de 14/11/2026, revisao das regras R1)
+    @Test
+    void theDailyJobWarnsThePatientWhenTheRequestIsStillWithoutAnswerTheDayBefore() throws Exception {
+        LocalDateTime jobMoment = LocalDate.now().atTime(8, 0);
+        Appointment tomorrow = saveAppointment(patient, jobMoment.plusDays(1).withHour(10),
+                AppointmentStatus.SOLICITADA);
+        saveAppointment(otherPatient, jobMoment.withHour(15), AppointmentStatus.SOLICITADA);
+        saveAppointment(otherPatient, jobMoment.plusDays(2).withHour(10), AppointmentStatus.SOLICITADA);
+        saveAppointment(otherPatient, jobMoment.plusDays(1).withHour(9), AppointmentStatus.AGENDADA);
+        Appointment annulled = saveAppointment(otherPatient, jobMoment.plusDays(1).withHour(11),
+                AppointmentStatus.SOLICITADA);
+        annulled.setAnnulment(new Annulment(prescriber, "pedido lancado por engano"));
+        appointmentRepository.save(annulled);
+
+        assertThat(appointmentService.warnUnansweredRequests(jobMoment)).isEqualTo(1);
+
+        assertThat(notificationMessageOf(patient, "Pedido ainda sem resposta"))
+                .isEqualTo("Seu pedido de consulta para " + BrazilianFormat.dateTime(tomorrow.getDateTime())
+                        + " ainda não foi confirmado. Fale com a clínica.");
+        assertThat(notificationTypeOf(patient, "Pedido ainda sem resposta")).isEqualTo(Notification.TYPE_ALERT);
+        // o de hoje mais tarde, o de depois de amanha, a consulta ja marcada e o pedido anulado n ganham o aviso
+        assertThat(notificationTitlesOf(otherPatient)).doesNotContain("Pedido ainda sem resposta");
+        // o pedido continua esperando a resposta do prescritor
+        assertThat(appointmentRepository.findById(tomorrow.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.SOLICITADA);
+
+        // o ciclo q roda de novo no dia, ou o de amanha cedo, n repete o aviso
+        assertThat(appointmentService.warnUnansweredRequests(jobMoment)).isZero();
+        assertThat(appointmentService.warnUnansweredRequests(jobMoment.plusHours(1))).isZero();
+        assertThat(notificationTitlesOf(patient)).containsOnlyOnce("Pedido ainda sem resposta");
+    }
+
+    // o pedido respondido antes de o job chegar nele n ganha o aviso
+    @Test
+    void theRequestAnsweredBeforeTheJobIsNotWarned() throws Exception {
+        LocalDateTime jobMoment = LocalDate.now().atTime(8, 0);
+        Appointment request = saveAppointment(patient, LocalDate.now().plusDays(1).atTime(23, 0),
+                AppointmentStatus.SOLICITADA);
+        confirm(request.getId(), prescriber).andExpect(status().isOk());
+
+        assertThat(appointmentService.warnUnansweredRequests(jobMoment)).isZero();
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Pedido ainda sem resposta");
+    }
+
     // paciente arquivado saiu do acompanhamento: a agenda dele fica vazia e o pedido n passa
     @Test
     void theArchivedPatientDoesNotSeeSlotsNorRequestThem() throws Exception {

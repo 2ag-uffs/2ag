@@ -48,6 +48,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // pedidos q passaram da data e ninguem respondeu, q o job do dia fecha (RF11)
     List<Appointment> findByStatusAndDateTimeBefore(AppointmentStatus status, LocalDateTime moment);
 
+    // pedidos ainda sem resposta e sem o aviso da vespera num intervalo, q o job do dia avisa (R1)
+    List<Appointment> findByStatusAndDateTimeBetweenAndUnansweredNoticeSentAtIsNull(AppointmentStatus status,
+                                                                                   LocalDateTime start,
+                                                                                   LocalDateTime end);
+
     // se o paciente ja teve consulta atendida e valendo, pra separar primeira consulta de retorno
     boolean existsByPatientIdAndStatusAndAnnulmentAnnulledAtIsNull(Long patientId, AppointmentStatus status);
 

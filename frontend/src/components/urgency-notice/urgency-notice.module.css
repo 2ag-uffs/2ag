@@ -1,0 +1,8 @@
+/* aviso fixo junto do texto livre do paciente */
+
+.notice {
+    border-left: 3px solid var(--color-warning);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    padding-left: var(--space-3);
+}
