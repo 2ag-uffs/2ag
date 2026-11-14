@@ -291,6 +291,21 @@ describe("Progresso", () => {
         expect(screen.getByText("10/09/26")).toBeInTheDocument();
     });
 
+    // CT-33 o paciente tbm compara como esta hoje com o comeco do tratamento, como o prescritor
+    // (decisao de 14/11/2026, revisao das regras R27)
+    it("o paciente tbm escolhe todo o tempo", async () => {
+        const user = userEvent.setup();
+        renderProgress("DOR");
+        await screen.findByRole("application");
+
+        expect(screen.getByRole("option", {name: "Todo o tempo"})).toBeInTheDocument();
+        await user.selectOptions(screen.getByLabelText("Período"), "TUDO");
+
+        await vi.waitFor(() => expect(requestedPaths()).toContain("/patients/3/progress?attribute=DOR&period=TUDO"));
+        expect(requestedPaths()).toContain("/patients/3/progress/appointments?period=TUDO");
+        expect(requestedPaths()).toContain("/patients/3/progress/comments?period=TUDO");
+    });
+
     it("serie de mais de um ano mostra o ano em cada data do eixo", async () => {
         series = [
             {date: "2025-10-01", value: 6, band: null, cutoff: null},

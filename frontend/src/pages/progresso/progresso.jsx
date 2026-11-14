@@ -27,17 +27,17 @@ const dayAndMonth = (isoDate) => isoDate.slice(8, 10) + "/" + isoDate.slice(5, 7
 // e dd/mm/aa qnd a serie pega mais de um ano, senao 18/09 de dois anos ficava igual
 const dayMonthAndYear = (isoDate) => dayAndMonth(isoDate) + "/" + isoDate.slice(2, 4);
 
+// o todo o tempo vale pro paciente tbm, q ja via o periodo inteiro na impressao e no csv
+// (decisao de 14/11/2026, revisao das regras R27)
 const PERIODS = [
     {value: "DIAS_15", label: "Últimos 15 dias"},
     {value: "DIAS_30", label: "Últimos 30 dias"},
     {value: "DIAS_60", label: "Últimos 60 dias"},
     {value: "DIAS_90", label: "Últimos 90 dias"},
+    {value: "TUDO", label: "Todo o tempo"},
 ];
 
 const DEFAULT_PERIOD = "DIAS_30";
-
-// o periodo todo o tempo eh so do prescritor (RF28)
-const ALL_TIME_PERIOD = {value: "TUDO", label: "Todo o tempo"};
 
 // a ficha de acompanhamento eh a unica q registra a dose do dia
 const FOLLOW_UP_SCALE = "ACOMPANHAMENTO_SEMANAL";
@@ -52,7 +52,6 @@ const LONG_NAME_LENGTH = 40;
 //
 // serve pras telas do paciente e do prescritor
 // o paciente ve o proprio grafico e o prescritor escolhe de qual paciente
-// e ainda ganha o periodo todo o tempo
 export default function Progresso() {
     const {patientId: patientIdFromUrl} = useParams();
     const navigate = useNavigate();
@@ -97,8 +96,6 @@ export default function Progresso() {
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
     const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
     const [seriesError, setSeriesError] = useState(null);
-
-    const periods = isPrescriber ? [...PERIODS, ALL_TIME_PERIOD] : PERIODS;
 
     // o prescritor escolhe numa lista com os pacientes ativos dele
     useEffect(() => {
@@ -519,7 +516,7 @@ export default function Progresso() {
                         value={period}
                         onChange={(event) => setPeriod(event.target.value)}
                     >
-                        {periods.map((option) => (
+                        {PERIODS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                     </select>

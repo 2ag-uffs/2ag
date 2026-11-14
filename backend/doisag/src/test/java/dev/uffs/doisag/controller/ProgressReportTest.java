@@ -113,7 +113,7 @@ class ProgressReportTest {
                 .andExpect(jsonPath("$[0].value").value(4));
     }
 
-    // RF28 o prescritor tem o periodo todo o tempo, alem dos 90 dias
+    // RF27 e RF28 o paciente e o prescritor tem o periodo todo o tempo, alem dos 90 dias (revisao das regras R27)
     @Test
     void todoOTempoAlcancaOQueFicouForaDosNoventaDias() throws Exception {
         saveFollowUp(TODAY.minusDays(200), Map.of("dor", 10));
