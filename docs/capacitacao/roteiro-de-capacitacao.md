@@ -362,7 +362,7 @@ Janela normal. Saia da prescritora de treino e entre como `prescritor@email.com`
   4. Troque **Escala** para **Escala de ansiedade de Hamilton**.
 - **Conferir:**
   - Cada ponto é um preenchimento, na data dele. Onde faltou resposta, a linha se interrompe, em vez de cair para zero.
-  - As consultas viram linhas verticais no dia delas, mesmo sem preenchimento nesse dia, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas.
+  - As consultas viram linhas verticais no dia delas, mesmo sem preenchimento nesse dia, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas. O gráfico vai da primeira à última resposta: a consulta de antes ou de depois delas aparece só no quadro.
   - As gotas usam o eixo da direita, com os números na cor da linha delas. O dia em que só uma das doses foi anotada aparece com a bolinha vazada, e a dica do ponto diz qual dose ficou em branco.
   - Na Hamilton aparecem as linhas das faixas de interpretação, e a linha liga as três respostas da Maria, porque a Hamilton não tem frequência fixa.
   - O quadro **O que o paciente escreveu** junta os comentários das escalas no período, com a data e o nome da escala. Na tela do próprio paciente, ele se chama **O que você escreveu**.

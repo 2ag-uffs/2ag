@@ -107,12 +107,12 @@ export default function LineChart({
     const plotWidth = Math.max(40, width - LEFT - (showDose ? RIGHT_WITH_DOSE : RIGHT));
     const right = LEFT + plotWidth;
 
-    // o eixo vai do dia mais antigo ao mais novo, contando as consultas, entao a consulta em dia sem
-    // resposta tbm cai no dia dela. a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
+    // o eixo vai da primeira a ultima resposta e a consulta em dia sem resposta cai no dia dela. a consulta
+    // de antes ou de dps fica so na lista, senao esticava o eixo e espremia as respostas num canto
+    // a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
     const days = rows.map((row) => dayNumber(row.date));
-    const axisDays = [...days, ...appointmentMarks.map((mark) => dayNumber(mark.date))];
-    const firstDay = Math.min(...axisDays);
-    const lastDay = Math.max(...axisDays);
+    const firstDay = Math.min(...days);
+    const lastDay = Math.max(...days);
     const xAtDay = (day) => xOfDay(day, firstDay, lastDay, LEFT, plotWidth);
     const xs = days.map(xAtDay);
 
@@ -122,7 +122,11 @@ export default function LineChart({
 
     const marks = [];
     for (const mark of appointmentMarks) {
-        const x = xAtDay(dayNumber(mark.date));
+        const markDay = dayNumber(mark.date);
+        if (markDay < firstDay || markDay > lastDay) {
+            continue;
+        }
+        const x = xAtDay(markDay);
         const text = mark.geraPrescricao ? "consulta + receita" : "consulta";
         // uns 6px e meio por letra no texto de 12px e o nome n passa da borda
         const halfText = text.length * 3.3;

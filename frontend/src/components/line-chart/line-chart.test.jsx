@@ -193,16 +193,36 @@ describe("LineChart", () => {
         expect(screen.getByText("consulta + receita")).toBeInTheDocument();
     });
 
-    // a consulta q veio antes da primeira resposta tbm fica no dia dela, no comeco do eixo
-    it("a consulta antes do primeiro ponto estica o eixo ate o dia dela", () => {
+    // o eixo vai da primeira a ultima resposta. a consulta de antes ou de dps fica so na lista "Consultas no
+    // periodo": com ela o eixo esticava ate o dia dela e espremia as respostas num canto, sem data embaixo
+    it("a consulta fora das respostas n estica o eixo e so a de dentro vira linha", () => {
+        const rows = [
+            {date: "2026-09-10", label: "10/09", valor: 6, faixa: null, gotas: null},
+            {date: "2026-10-10", label: "10/10", valor: 5, faixa: null, gotas: null},
+            {date: "2026-11-10", label: "10/11", valor: 4, faixa: null, gotas: null},
+        ];
         const {container} = renderChart({
-            rows: ROWS_WITH_GAP,
-            appointmentMarks: [{id: 7, date: "2026-09-25", geraPrescricao: false}],
+            rows: rows,
+            frequencyDays: null,
+            appointmentMarks: [
+                {id: 7, date: "2025-09-18", geraPrescricao: false},
+                {id: 8, date: "2026-09-25", geraPrescricao: true},
+                {id: 9, date: "2026-11-12", geraPrescricao: false},
+            ],
         });
 
-        const line = container.querySelector("line[class*='appointment']");
-        expect(line.getAttribute("x1")).toBe("40");
-        expect(Number(container.querySelector("circle").getAttribute("cx"))).toBeGreaterThan(40);
+        // no jsdom o desenho vai de 40 a 620, e o eixo tem os 61 dias de 10/09 a 10/11
+        const dots = container.querySelectorAll("circle");
+        expect(dots[0].getAttribute("cx")).toBe("40");
+        expect(dots[2].getAttribute("cx")).toBe("620");
+        expect(screen.getByText("10/09")).toBeInTheDocument();
+        expect(screen.getByText("10/11")).toBeInTheDocument();
+        // a de 25/09 fica no dia dela, 15 dias dps da primeira resposta
+        const lines = container.querySelectorAll("line[class*='appointment']");
+        expect(lines).toHaveLength(1);
+        expect(lines[0].getAttribute("x1")).toBe("182.6");
+        expect(screen.getByText("consulta + receita")).toBeInTheDocument();
+        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
     });
 
     // 100 gotas no eixo da nota de 0 a 10 achatavam a curva do sintoma la embaixo (revisao das regras R13)

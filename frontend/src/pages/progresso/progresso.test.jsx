@@ -267,8 +267,9 @@ describe("Progresso", () => {
         expect(screen.queryByText(/não aparece no gráfico/)).not.toBeInTheDocument();
     });
 
-    // CT-32 no todo o tempo a consulta de um ano n cai no ponto do msm dia e mes do ano seguinte
-    it("a consulta fica no dia dela pela data inteira e n so pelo dia e mes", async () => {
+    // CT-32 no todo o tempo a consulta de um ano n cai no ponto do msm dia e mes do ano seguinte, e a do ano
+    // anterior, antes da primeira resposta, fica so na lista: o eixo vai da primeira a ultima resposta
+    it("a consulta fica no dia dela pela data inteira e a de antes das respostas fica so na lista", async () => {
         series = [
             {date: "2026-09-10", value: 6, band: null, cutoff: null},
             {date: "2026-09-18", value: 4, band: null, cutoff: null},
@@ -280,15 +281,17 @@ describe("Progresso", () => {
         renderPrescriberProgress("DOR", "TUDO");
 
         expect(await screen.findByText("consulta + receita")).toBeInTheDocument();
-        expect(screen.getByText("consulta")).toBeInTheDocument();
-        // a do ano anterior abre o eixo e a deste ano fica no ponto de 18/09/26
+        expect(screen.queryByText("consulta")).not.toBeInTheDocument();
+        expect(screen.getByText("18/09/2025")).toBeInTheDocument();
+        // a deste ano fica no ponto de 18/09 e a primeira resposta abre o eixo
         const chart = screen.getByRole("application");
         const lines = chart.querySelectorAll("line[class*='appointment']");
         const dots = chart.querySelectorAll("circle");
-        expect(lines[0].getAttribute("x1")).toBe("40");
-        expect(lines[1].getAttribute("x1")).toBe(dots[1].getAttribute("cx"));
-        // o eixo passa de um ano, entao as datas vem com o ano
-        expect(screen.getByText("10/09/26")).toBeInTheDocument();
+        expect(lines).toHaveLength(1);
+        expect(lines[0].getAttribute("x1")).toBe(dots[1].getAttribute("cx"));
+        expect(dots[0].getAttribute("cx")).toBe("40");
+        // as respostas sao todas de um ano so, entao as datas do eixo vem sem o ano
+        expect(screen.getByText("10/09")).toBeInTheDocument();
     });
 
     // CT-33 o paciente tbm compara como esta hoje com o comeco do tratamento, como o prescritor
@@ -419,6 +422,7 @@ describe("Progresso", () => {
         const slowSeries = heldAnswer([
             {date: "2026-09-18", value: 4, band: null, cutoff: null},
             {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-20", value: 5, band: null, cutoff: null},
         ]);
         apiService.get.mockImplementation((path) => {
             if (path === "/progress/attributes") {
@@ -454,9 +458,10 @@ describe("Progresso", () => {
         expect(screen.getByText("18/09/2026")).toBeInTheDocument();
         expect(screen.queryByText("consulta")).not.toBeInTheDocument();
 
-        // a de 16/10 cai num dia sem preenchimento e tbm vira marca, no dia dela (revisao das regras R3)
+        // a de 16/10 cai num dia sem preenchimento, entre as respostas, e tbm vira marca, no dia dela (revisao das
+        // regras R3)
         await releaseAndWait([slowSeries]);
-        expect(screen.getByRole("application", {name: /Gráfico de Ansiedade com 2 registros/})).toBeInTheDocument();
+        expect(screen.getByRole("application", {name: /Gráfico de Ansiedade com 3 registros/})).toBeInTheDocument();
         expect(screen.getByText("consulta")).toBeInTheDocument();
         expect(screen.getByText("consulta + receita")).toBeInTheDocument();
     });

@@ -326,9 +326,9 @@ export default function Progresso() {
     const rowDates = points.length > 0
         ? Array.from(new Set([...pointByDate.keys(), ...doseByDate.keys()])).sort()
         : [];
-    // o eixo vai pela data e pega tbm as consultas, entao o ano aparece qnd qualquer uma delas cai em outro ano
-    const axisDates = [...rowDates, ...appointmentMarks.map((mark) => mark.date)];
-    const hasManyYears = axisDates.some((date) => date.slice(0, 4) !== axisDates[0].slice(0, 4));
+    // o eixo vai da primeira a ultima resposta, entao o ano aparece qnd as respostas passam de um ano
+    // a consulta fora delas fica so na lista e n mexe no eixo
+    const hasManyYears = rowDates.some((date) => date.slice(0, 4) !== rowDates[0].slice(0, 4));
     const chartRows = rowDates.map((date) => {
         const point = pointByDate.get(date);
         const dose = doseByDate.get(date);
@@ -827,7 +827,8 @@ function sumByDate(morningPoints, afternoonPoints) {
     });
 }
 
-// o eixo x vai pela data, entao toda consulta vira marca no dia dela, tenha resposta ou n (revisao das regras R3)
+// o eixo x vai pela data, entao a consulta entre a primeira e a ultima resposta vira marca no dia dela, tenha
+// resposta ou n (revisao das regras R3). a de fora fica so na lista, e quem corta eh o grafico
 // duas consultas no msm dia viram uma marca so. a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
 function appointmentMarksOf(appointments) {
     const markedDays = new Set();
