@@ -424,8 +424,31 @@ describe("Escala diaria", () => {
 
         const grid = await screen.findByRole("group", {name: "Dias da semana"});
         await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales/overview"));
-        expect(within(grid).getAllByRole("button")).toHaveLength((new Date().getDay() + 6) % 7 + 1);
+        // o hoje eh o dia de brasilia, como na tela e na api, e n o dia do fuso da maquina
+        const today = dayFromToday(0);
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons).toHaveLength((new Date(today + "T00:00:00").getDay() + 6) % 7 + 1);
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(toIsoDate(mondayOf(new Date()))));
+        expect(buttons[buttons.length - 1]).toHaveTextContent(formatWeekdayAndDate(today));
         expect(screen.queryByText(/Esqueceu algum dia/)).not.toBeInTheDocument();
+    });
+
+    // o ci roda em utc e o teste contava o dia da semana pelo fuso da maquina: as 23h43 de sabado em brasilia,
+    // ja 02h43z de domingo, ele esperava 7 dias. a grade segue o dia de brasilia e vai de segunda ate o sabado
+    it("no runner em utc, sabado 23h43 em brasilia a grade eh a semana ate o sabado", async () => {
+        vi.stubEnv("TZ", "UTC");
+        vi.useFakeTimers({toFake: ["Date"]});
+        vi.setSystemTime(new Date("2026-11-15T02:43:00Z"));
+        pendingTasks = [];
+        renderScale("/escalas/acompanhamento-semanal");
+
+        const grid = await screen.findByRole("group", {name: "Dias da semana"});
+        await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales/overview"));
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons).toHaveLength(6);
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate("2026-11-09"));
+        expect(buttons[5]).toHaveTextContent(formatWeekdayAndDate("2026-11-14"));
+        expect(buttons[5]).toHaveAttribute("aria-pressed", "true");
     });
 
     // em beirute o horario de verao pula a meia noite e o dia 29/03 comeca a 1h
