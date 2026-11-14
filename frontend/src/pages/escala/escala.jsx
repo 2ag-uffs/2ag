@@ -6,7 +6,7 @@ import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "../../utils/scale-answers.js";
@@ -152,6 +152,8 @@ export default function Escala() {
     const [isSaving, setIsSaving] = useState(false);
     // itens da escala pontuada q ficaram em branco no ultimo envio
     const [missingKeys, setMissingKeys] = useState([]);
+    // o erro de campo q a api mandou no ultimo envio, por dia, como o horario de levantar igual ao de dormir
+    const [fieldErrorsByDay, setFieldErrorsByDay] = useState({});
     const [reloadCount, setReloadCount] = useState(0);
 
     useEffect(() => {
@@ -316,6 +318,7 @@ export default function Escala() {
         event.preventDefault();
         setFormError(null);
         setNotice(null);
+        setFieldErrorsByDay({});
 
         // no diario salvar manda cada dia editado, em ordem de data, pro dia preenchido n ficar pra tras
         // sem nenhum dia editado vai o dia da tela, como sempre foi
@@ -334,6 +337,7 @@ export default function Escala() {
         const savedDays = [];
         const savedResponses = [];
         const failures = [];
+        const fieldErrors = {};
         for (const dayIso of daysToSave) {
             try {
                 savedResponses.push(await sendResponse(dayIso));
@@ -344,9 +348,13 @@ export default function Escala() {
                 failures.push(isDiary
                     ? formatWeekdayAndDate(dayIso) + ": a resposta não foi salva. " + message
                     : message);
+                if (requestError instanceof ApiError) {
+                    fieldErrors[dayIso] = requestError.fieldErrors();
+                }
             }
         }
         setIsSaving(false);
+        setFieldErrorsByDay(fieldErrors);
         if (failures.length > 0) {
             setFormError(failures.join(" "));
         }
@@ -508,6 +516,7 @@ export default function Escala() {
                     onChange={changeAnswer}
                     disabled={isReadOnly || isSaving}
                     missingKeys={missingKeys}
+                    fieldErrors={fieldErrorsByDay[selectedDay] || {}}
                 />
 
                 {!isDiary && currentResponse && (

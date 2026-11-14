@@ -2,6 +2,7 @@ package dev.uffs.doisag.scale;
 
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -21,6 +22,8 @@ public class ScaleScorer {
 
     public static final String AWAKE_LONGER_THAN_BED_MESSAGE =
             "O tempo acordado passa do tempo na cama. Confira os horários e os minutos";
+    public static final String SAME_BED_AND_WAKE_TIME_MESSAGE =
+            "O horário em que se levantou é igual ao de dormir. Confira os dois horários";
 
     // pontos de corte do MEEM por anos de estudo (Brucki 2003)
     private static final double[] MEEM_CUTOFFS = {20, 25, 26.5, 28, 29};
@@ -217,6 +220,11 @@ public class ScaleScorer {
 
         LocalTime bedTime = timeOf(answers, "horarioDormir");
         LocalTime wakeUpTime = timeOf(answers, "horarioLevantar");
+        // o mesmo horario virava 24 horas na cama e quase sempre eh digitado errado (decisao de 13/11/2026)
+        // virar a meia noite continua valendo, so a diferenca zero eh recusada
+        if (bedTime != null && bedTime.equals(wakeUpTime)) {
+            throw new InvalidFieldException("horarioLevantar", SAME_BED_AND_WAKE_TIME_MESSAGE);
+        }
         Integer timeInBed = bedTime == null || wakeUpTime == null ? null : minutesBetween(bedTime, wakeUpTime);
         Integer totalAwake = sumOrNull(answers, List.of("tempoAteDormir", "tempoAcordadoNoite"));
 

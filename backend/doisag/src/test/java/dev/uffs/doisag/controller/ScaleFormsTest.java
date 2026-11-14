@@ -151,6 +151,21 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.answers.tempoTotalSono").value(0));
     }
 
+    // dormir e levantar no mesmo horario gravava 24 horas na cama (decisao de 13/11/2026)
+    // o erro vai no campo pra tela marcar onde esta, e virar a meia noite continua valendo
+    @Test
+    void diarioDoSonoComDormirIgualALevantarEhRecusadoNoCampo() throws Exception {
+        answerScale("diario-sono", "{\"horarioDormir\":\"23:00\",\"horarioLevantar\":\"23:00\",\"cansaco\":2}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.SAME_BED_AND_WAKE_TIME_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("horarioLevantar"))
+                .andExpect(jsonPath("$.errors[0].message").value(ScaleScorer.SAME_BED_AND_WAKE_TIME_MESSAGE));
+
+        answerScale("diario-sono", "{\"horarioDormir\":\"23:30\",\"horarioLevantar\":\"00:15\",\"cansaco\":2}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.tempoNaCama").value(45));
+    }
+
     // a semana respondida eh a q passou, entao o fim no futuro eh recusado como o inicio
     @Test
     void oFimDoPeriodoNoFuturoEhRecusado() throws Exception {

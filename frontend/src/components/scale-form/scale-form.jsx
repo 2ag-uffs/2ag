@@ -5,23 +5,27 @@ import styles from "./scale-form.module.css";
 //
 // a tela n sabe o nome de escala nenhuma: o tipo do item diz q campo
 // usar, e as ancoras as opcoes e as faixas vem prontas do servidor (RNF08)
-export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = []}) {
+//
+// o erro de campo q a api manda (fieldErrors, pela chave do item) aparece no proprio item
+export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
+    fieldErrors = {}}) {
     return (
         <ol className={styles.items}>
-            {items.map((item) => (
-                <li
-                    key={item.key}
-                    className={missingKeys.includes(item.key) ? styles.item + " " + styles.itemMissing : styles.item}
-                >
-                    <ScaleField
-                        item={item}
-                        bands={bandsOfItem(item, bands)}
-                        values={values}
-                        onChange={onChange}
-                        disabled={disabled}
-                    />
-                </li>
-            ))}
+            {items.map((item) => {
+                const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
+                return (
+                    <li key={item.key} className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}>
+                        <ScaleField
+                            item={item}
+                            bands={bandsOfItem(item, bands)}
+                            values={values}
+                            onChange={onChange}
+                            disabled={disabled}
+                            error={fieldErrors[item.key]}
+                        />
+                    </li>
+                );
+            })}
         </ol>
     );
 }
@@ -50,7 +54,7 @@ function scoresBetween(minValue, maxValue) {
     return scores;
 }
 
-function ScaleField({item, bands, values, onChange, disabled}) {
+function ScaleField({item, bands, values, onChange, disabled, error}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -58,9 +62,20 @@ function ScaleField({item, bands, values, onChange, disabled}) {
         return <ComputedField item={item} value={value}/>;
     }
     if (item.type === "NOTA" || item.type === "ESCOLHA" || item.type === "SIM_NAO") {
-        return <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled}/>;
+        return (
+            <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled} error={error}/>
+        );
     }
-    return <TypedField item={item} value={value} onChange={change} disabled={disabled}/>;
+    return <TypedField item={item} value={value} onChange={change} disabled={disabled} error={error}/>;
+}
+
+// o id liga o erro ao campo pelo aria-describedby, entao o leitor de tela le junto
+function errorIdOf(item) {
+    return item.key + "-error";
+}
+
+function FieldError({item, error}) {
+    return error ? <span id={errorIdOf(item)} className={styles.error}>{error}</span> : null;
 }
 
 // o sistema calcula e a pessoa n preenche
@@ -75,7 +90,7 @@ function ComputedField({item, value}) {
     );
 }
 
-function ChoiceField({item, bands, value, onChange, disabled}) {
+function ChoiceField({item, bands, value, onChange, disabled, error}) {
     // toque errado no celular n pode virar dado clinico (RN10)
     // o botao some dps de limpar, entao o foco volta pra primeira opcao
     const clearAnswer = (event) => {
@@ -91,11 +106,16 @@ function ChoiceField({item, bands, value, onChange, disabled}) {
     }
 
     return (
-        <fieldset className={styles.field} disabled={disabled}>
+        <fieldset
+            className={styles.field}
+            disabled={disabled}
+            aria-describedby={error ? errorIdOf(item) : undefined}
+        >
             <legend className={styles.legend}>
                 <Label item={item}/>
             </legend>
             {choices}
+            <FieldError item={item} error={error}/>
             {value !== "" && !disabled && (
                 <button
                     type="button"
@@ -111,7 +131,7 @@ function ChoiceField({item, bands, value, onChange, disabled}) {
 }
 
 // texto livre hora ou numero digitado
-function TypedField({item, value, onChange, disabled}) {
+function TypedField({item, value, onChange, disabled, error}) {
     return (
         <div className={styles.field}>
             <label className={styles.labelBox} htmlFor={item.key}>
@@ -125,6 +145,8 @@ function TypedField({item, value, onChange, disabled}) {
                     maxLength={2000}
                     value={value}
                     disabled={disabled}
+                    aria-invalid={error ? "true" : undefined}
+                    aria-describedby={error ? errorIdOf(item) : undefined}
                     onChange={(event) => onChange(event.target.value)}
                 />
             ) : (
@@ -137,9 +159,12 @@ function TypedField({item, value, onChange, disabled}) {
                     step={item.type === "HORAS" ? 0.5 : 1}
                     value={value}
                     disabled={disabled}
+                    aria-invalid={error ? "true" : undefined}
+                    aria-describedby={error ? errorIdOf(item) : undefined}
                     onChange={(event) => onChange(event.target.value)}
                 />
             )}
+            <FieldError item={item} error={error}/>
         </div>
     );
 }

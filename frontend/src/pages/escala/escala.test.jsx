@@ -849,4 +849,41 @@ describe("Escala diaria", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
     });
+
+    // CT-26 dormir e levantar no mesmo horario eh recusado pela api no campo (decisao de 13/11/2026)
+    // e o erro fica no proprio horario, ligado a ele, alem do aviso do dia
+    it("o erro de campo q a api manda aparece no item do diario do sono", async () => {
+        const message = "O horário em que se levantou é igual ao de dormir. Confira os dois horários";
+        const sleepDiary = {
+            type: "REGISTRO_SONO", slug: "diario-sono", title: "Diário do sono", instruction: "Preencha um dia.",
+            fillMode: "DIARIO", filledByPatient: true, maxScore: null,
+            items: [
+                {key: "horarioDormir", label: "Horário em que foi dormir", type: "HORA", options: []},
+                {key: "horarioLevantar", label: "Horário em que se levantou", type: "HORA", options: []},
+            ],
+        };
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/diario-sono") {
+                return Promise.resolve(sleepDiary);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: [], history: []});
+            }
+            return Promise.resolve([]);
+        });
+        vi.spyOn(apiService, "post").mockRejectedValue(
+            new ApiError(400, message, [{field: "horarioLevantar", message: message}]));
+        renderScale("/escalas/diario-sono");
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Horário em que foi dormir"), {target: {value: "23:00"}});
+        fireEvent.change(screen.getByLabelText("Horário em que se levantou"), {target: {value: "23:00"}});
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const wakeUpField = screen.getByLabelText("Horário em que se levantou");
+        await waitFor(() => expect(wakeUpField).toHaveAttribute("aria-invalid", "true"));
+        expect(wakeUpField).toHaveAccessibleDescription(message);
+        expect(screen.getByLabelText("Horário em que foi dormir")).not.toHaveAttribute("aria-invalid");
+        expect(screen.getByRole("alert")).toHaveTextContent("a resposta não foi salva. " + message);
+    });
 });

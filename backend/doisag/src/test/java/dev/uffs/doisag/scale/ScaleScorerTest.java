@@ -2,6 +2,7 @@ package dev.uffs.doisag.scale;
 
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -268,6 +269,31 @@ class ScaleScorerTest {
         assertThatThrownBy(() -> scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage(ScaleScorer.AWAKE_LONGER_THAN_BED_MESSAGE);
+    }
+
+    // o mesmo horario pra dormir e levantar n vira 24 horas na cama (decisao de 13/11/2026)
+    @Test
+    void diarioDoSonoRecusaDormirELevantarNoMesmoHorario() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "07:00");
+        answers.put("horarioLevantar", "07:00");
+
+        assertThatThrownBy(() -> scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers))
+                .isInstanceOf(InvalidFieldException.class)
+                .hasMessage(ScaleScorer.SAME_BED_AND_WAKE_TIME_MESSAGE)
+                .extracting("field").isEqualTo("horarioLevantar");
+    }
+
+    // um minuto de diferenca ja vale, mesmo virando a meia noite
+    @Test
+    void diarioDoSonoAceitaUmMinutoVirandoAMeiaNoite() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        answers.put("horarioDormir", "23:59");
+        answers.put("horarioLevantar", "00:00");
+
+        Map<String, Object> completed = scorer.withComputedAnswers(ScaleType.REGISTRO_SONO, answers);
+
+        assertThat(completed.get("tempoNaCama")).isEqualTo(1);
     }
 
     private String hamiltonBandOf(int valuePerItem) {

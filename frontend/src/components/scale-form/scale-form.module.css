@@ -65,6 +65,18 @@
     max-width: 12rem;
 }
 
+/* o erro q a api mandou pro item, igual ao dos outros formularios */
+.error {
+    color: var(--color-error);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+    border-color: var(--color-error);
+}
+
 .textarea {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
