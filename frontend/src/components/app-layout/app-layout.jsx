@@ -24,6 +24,7 @@ import {homePathFor} from "../../app/role-home.js";
 import LoginAgain from "../login-again/login-again.jsx";
 import TermUpdate from "../term-update/term-update.jsx";
 import {apiService, getLoggedUser, leaveExpiredSession, logout, setLoginAgainOpener} from "../../services/api.js";
+import {useFocusAboveBars} from "../../utils/focus-above-bars.js";
 import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
 
@@ -138,7 +139,7 @@ function SideMenu({items, activeItem, unreadCount}) {
 
 function BottomMenu({items, activeItem, unreadCount}) {
     return (
-        <nav className={styles.bottomMenu} aria-label="Menu">
+        <nav className={styles.bottomMenu} aria-label="Menu" data-bottom-bar="">
             {items.map((item) => {
                 const Icon = item.icon;
                 const active = item === activeItem;
@@ -244,6 +245,8 @@ export default function AppLayout() {
 
     const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
     const unreadCount = useUnreadCount(hasNotices, location.pathname);
+    // o campo com foco do tab n fica atras da barra de acoes nem do menu de baixo do celular
+    useFocusAboveBars();
 
     useEffect(() => {
         const openTerm = () => setIsTermPending(true);

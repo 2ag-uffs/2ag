@@ -418,7 +418,8 @@ export default function Anamnese() {
                     />
                 </fieldset>
 
-                <div className={styles.actions}>
+                {/* presa no pe da tela como a barra de acoes dos outros formularios */}
+                <div className={styles.actions} data-bottom-bar="">
                     <button
                         type="button"
                         className={styles.secondaryButton}

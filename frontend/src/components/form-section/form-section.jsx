@@ -19,6 +19,7 @@ export function FieldRow({children}) {
 
 // botoes do fim do formulario
 // ficam presos no pe da tela, entao salvar esta sempre a mao mesmo num formulario longo
+// o data-bottom-bar faz a pagina subir o campo com foco q fica atras deles (utils/focus-above-bars.js)
 export function FormActions({children}) {
-    return <div className={styles.actions}>{children}</div>;
+    return <div className={styles.actions} data-bottom-bar="">{children}</div>;
 }

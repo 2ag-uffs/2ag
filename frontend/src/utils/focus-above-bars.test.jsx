@@ -1,0 +1,148 @@
+import {act, render, screen, waitFor, within} from "@testing-library/react";
+import {createMemoryRouter} from "react-router";
+import {RouterProvider} from "react-router/dom";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import AppLayout from "../components/app-layout/app-layout.jsx";
+import FormSection, {FormActions} from "../components/form-section/form-section.jsx";
+import {apiService, setLoggedUser} from "../services/api.js";
+
+// o jsdom n desenha a tela, entao cada caixa recebe a posicao q o navegador mediu no reteste do CT-39
+
+function box(top, bottom, left, right) {
+    return {top, bottom, left, right, height: bottom - top, width: right - left, x: left, y: top};
+}
+
+function placeAt(element, rect) {
+    vi.spyOn(element, "getBoundingClientRect").mockReturnValue(rect);
+}
+
+// formulario comprido com a barra de acoes presa no pe da tela, como o registro da consulta
+function LongForm() {
+    return (
+        <form>
+            <FormSection title="Conduta">
+                <label htmlFor="plan">Conduta e plano terapêutico</label>
+                <textarea id="plan"/>
+                <label htmlFor="exams">Exames complementares</label>
+                <textarea id="exams"/>
+            </FormSection>
+            <FormActions>
+                <button type="button">Cancelar</button>
+                <button type="submit">Salvar consulta</button>
+            </FormActions>
+        </form>
+    );
+}
+
+function renderForm() {
+    const router = createMemoryRouter([
+        {element: <AppLayout/>, children: [{path: "/consulta/2/registro", element: <LongForm/>}]},
+    ], {initialEntries: ["/consulta/2/registro"]});
+    render(<RouterProvider router={router}/>);
+}
+
+// a barra de acoes eh a div em volta dos botoes do fim do formulario
+function actionsBar() {
+    return screen.getByRole("button", {name: "Salvar consulta"}).parentElement;
+}
+
+// espera o quadro em q a tela confere o campo com foco
+function nextFrame() {
+    return act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+}
+
+describe("campo com foco atras da barra presa no pe da tela", () => {
+    let scrollBy;
+    let windowHeight;
+
+    beforeEach(() => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        vi.spyOn(apiService, "get").mockResolvedValue({unread: 0});
+        scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+        windowHeight = window.innerHeight;
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        setLoggedUser(null);
+        window.innerHeight = windowHeight;
+    });
+
+    // em 1280x900 o campo ia de 769 a 891 com a barra comecando em 816: so 47 dos 122 px ficavam a vista
+    // o navegador n rola pq o campo ja esta dentro da janela, entao a tela sobe o q falta mais uma folga
+    it("no computador a pagina sobe so o bastante pro campo sair de baixo da barra de acoes", async () => {
+        window.innerHeight = 900;
+        renderForm();
+        const plan = await screen.findByLabelText("Conduta e plano terapêutico");
+        placeAt(actionsBar(), box(816, 900, 248, 1280));
+        placeAt(plan, box(769, 891, 280, 1240));
+
+        act(() => plan.focus());
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(0, 891 + 12 - 816);
+    });
+
+    // no celular a barra de acoes para em cima do menu de baixo, e o campo pode estar atras do menu
+    it("no celular desconta o menu de baixo e a barra de acoes q fica em cima dele", async () => {
+        window.innerHeight = 667;
+        renderForm();
+        const exams = await screen.findByLabelText("Exames complementares");
+        placeAt(screen.getByRole("navigation", {name: "Menu"}), box(602, 667, 0, 375));
+        placeAt(actionsBar(), box(512, 603, 16, 359));
+        placeAt(exams, box(610, 654, 16, 359));
+
+        act(() => exams.focus());
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(0, 654 + 12 - 512);
+    });
+
+    it("campo inteiro acima da barra fica onde esta", async () => {
+        window.innerHeight = 900;
+        renderForm();
+        const plan = await screen.findByLabelText("Conduta e plano terapêutico");
+        placeAt(actionsBar(), box(816, 900, 248, 1280));
+        placeAt(plan, box(500, 622, 280, 1240));
+
+        act(() => plan.focus());
+        await nextFrame();
+
+        expect(scrollBy).not.toHaveBeenCalled();
+    });
+
+    // a lateral fica parada do lado do formulario, entao a barra de acoes n cobre o Sair dela
+    // e os botoes da propria barra n tem como sair de baixo dela
+    it("a lateral e os botoes da propria barra n fazem a pagina rolar", async () => {
+        window.innerHeight = 900;
+        renderForm();
+        await screen.findByLabelText("Conduta e plano terapêutico");
+        placeAt(actionsBar(), box(816, 900, 248, 1280));
+        const sidebar = within(screen.getByRole("complementary"));
+        const logout = sidebar.getByRole("button", {name: "Sair"});
+        placeAt(logout, box(840, 880, 190, 230));
+        const save = screen.getByRole("button", {name: "Salvar consulta"});
+        placeAt(save, box(840, 884, 1100, 1240));
+
+        act(() => logout.focus());
+        await nextFrame();
+        act(() => save.focus());
+        await nextFrame();
+
+        expect(scrollBy).not.toHaveBeenCalled();
+    });
+
+    // campo mais alto q o espaco livre: sobe so ate o topo dele, onde fica o rotulo e o cursor
+    it("campo mais alto q o espaco livre sobe so ate o topo dele aparecer", async () => {
+        window.innerHeight = 900;
+        renderForm();
+        const plan = await screen.findByLabelText("Conduta e plano terapêutico");
+        placeAt(actionsBar(), box(816, 900, 248, 1280));
+        placeAt(plan, box(300, 1200, 280, 1240));
+
+        act(() => plan.focus());
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(0, 300 - 12);
+    });
+});
