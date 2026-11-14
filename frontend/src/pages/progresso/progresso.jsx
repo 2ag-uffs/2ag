@@ -845,17 +845,18 @@ function sumByDate(morningPoints, afternoonPoints) {
 // o eixo x vai pela data, entao a consulta entre a primeira e a ultima resposta vira marca no dia dela, tenha
 // resposta ou n (revisao das regras R3). a de fora fica so na lista, e quem corta eh o grafico
 // duas consultas no msm dia viram uma marca so. a data inteira pq no todo o tempo o 18/09 de um ano n eh o do outro
+// a marca do dia sai com receita se qualquer uma delas teve, senao a receita da segunda sumia do grafico
 function appointmentMarksOf(appointments) {
-    const markedDays = new Set();
-    return appointments
-        .map((appointment) => ({...appointment, date: appointment.data}))
-        .filter((appointment) => {
-            if (markedDays.has(appointment.date)) {
-                return false;
-            }
-            markedDays.add(appointment.date);
-            return true;
-        });
+    const markByDay = new Map();
+    for (const appointment of appointments) {
+        const mark = markByDay.get(appointment.data);
+        if (mark) {
+            mark.geraPrescricao = mark.geraPrescricao || appointment.geraPrescricao;
+        } else {
+            markByDay.set(appointment.data, {...appointment, date: appointment.data});
+        }
+    }
+    return Array.from(markByDay.values());
 }
 
 // cada serie eh de um paciente atributo e periodo

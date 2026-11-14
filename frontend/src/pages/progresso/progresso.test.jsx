@@ -294,6 +294,26 @@ describe("Progresso", () => {
         expect(screen.getByText("10/09")).toBeInTheDocument();
     });
 
+    // duas consultas no msm dia viram uma marca so, e a receita da segunda n pode sumir dela
+    it("duas consultas no msm dia viram uma marca com a receita de qualquer uma delas", async () => {
+        series = [
+            {date: "2026-09-25", value: 3, band: null, cutoff: null},
+            {date: "2026-10-05", value: 4, band: null, cutoff: null},
+        ];
+        // a api manda pela hora: a das 9h sem receita e a das 16h com receita
+        appointments = [
+            {id: 1, data: "2026-10-01", diagnosis: null, geraPrescricao: false},
+            {id: 2, data: "2026-10-01", diagnosis: null, geraPrescricao: true},
+        ];
+        renderProgress("ANSIEDADE");
+
+        const chart = await screen.findByRole("application");
+        expect(chart.querySelectorAll("line[class*='appointment']")).toHaveLength(1);
+        expect(within(chart).getByText("consulta + receita")).toBeInTheDocument();
+        expect(within(chart).queryByText("consulta")).not.toBeInTheDocument();
+        expect(screen.getByText("receita emitida")).toBeInTheDocument();
+    });
+
     // CT-33 o paciente tbm compara como esta hoje com o comeco do tratamento, como o prescritor
     // (decisao de 14/11/2026, revisao das regras R27)
     it("o paciente tbm escolhe todo o tempo", async () => {
