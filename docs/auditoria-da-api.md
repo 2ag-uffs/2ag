@@ -64,6 +64,8 @@ Em qualquer variante, o mesmo commit precisa levar `SESSION_SECURE_COOKIE=true` 
 
 **Nota de 14/10/2026 (#58).** Os passos 2 e 3 estão feitos: o `ConsentTermService` troca os dois marcadores por `CLINIC_NAME` e `CLINIC_DPO_CONTACT` e, com as variáveis vazias, mantém os colchetes e avisa no log. O novo aceite também existe: o paciente cujo último aceite é de uma versão antiga recebe `termPending` no login e no `GET /auth/me`, o front mostra o termo novo no lugar de qualquer tela até ele aceitar (`POST /consent-term/accept`), e a api recusa com 403 o que grava enquanto isso. Faltam os passos 1 e 4, que dependem da clínica.
 
+**Nota de 14/11/2026 (revisão das regras R21).** O passo 2 mudou de propósito: fora dos perfis `dev` e `test` a api não sobe mais com `CLINIC_NAME`, `CLINIC_CNPJ` ou `CLINIC_DPO_CONTACT` vazios, porque o piloto no ar com os colchetes deixaria os primeiros aceites sem prova. O perfil de teste e o desenvolvimento local continuam subindo com os colchetes e o aviso no log. E cada aceite passou a guardar o hash do texto mostrado, já com os dados da clínica.
+
 ---
 
 ## Altos

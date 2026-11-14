@@ -80,7 +80,7 @@ Abra o `.env` e preencha. O arquivo de exemplo explica cada linha; o que importa
 | `JWT_SECRET` | `openssl rand -base64 48`. nunca reaproveite uma chave que já apareceu em alguma versão antiga do repositório |
 | `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais, com letra maiúscula, número e símbolo. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não. se a senha não seguir a regra, a conta não é criada e o log da api diz por quê |
 | `PUBLIC_URL` | `https://2ag.clinica.com.br`, exatamente como as pessoas vão abrir, sem barra no fim |
-| `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` | a razão social da clínica, o CNPJ e o contato do encarregado de dados. entram no termo de consentimento no lugar dos colchetes. os valores da clínica do piloto ficam com a equipe, fora do repositório |
+| `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` | a razão social da clínica, o CNPJ e o contato do encarregado de dados. entram no termo de consentimento no lugar dos colchetes, e sem as três a api não sobe. os valores da clínica do piloto ficam com a equipe, fora do repositório |
 | `SESSION_SECURE_COOKIE` | `true`, que já é o valor do exemplo |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | os dados da conta SMTP. porta 587 com STARTTLS é o padrão |
 | `BACKUP_AGE_PUBKEY` | a chave pública do backup (`age1...`) |
@@ -90,7 +90,7 @@ O que **não** pode existir no `.env` do servidor:
 - `SEED_DADOS_TESTE`: nem a linha. O exemplo vem com ela comentada. Ligada, ela criaria contas de teste com uma senha que está no README. A api ignora o seed em qualquer endereço `https://` que não seja `localhost`, mas a primeira trava é a variável não existir.
 - `EMAIL_LOG_TEXT=true`: escreveria no log os links de senha nova.
 
-A api recusa subir, com a razão no log, quando: o `PUBLIC_URL` não é um endereço completo; o esquema do `PUBLIC_URL` não combina com `SESSION_SECURE_COOKIE` (`https` pede `true`); `MAIL_HOST` está preenchido sem `MAIL_FROM` nem `MAIL_USERNAME`; `JWT_SECRET` tem menos de 32 caracteres.
+A api recusa subir, com a razão no log, quando: o `PUBLIC_URL` não é um endereço completo; o esquema do `PUBLIC_URL` não combina com `SESSION_SECURE_COOKIE` (`https` pede `true`); `MAIL_HOST` está preenchido sem `MAIL_FROM` nem `MAIL_USERNAME`; `JWT_SECRET` tem menos de 32 caracteres; falta `CLINIC_NAME`, `CLINIC_CNPJ` ou `CLINIC_DPO_CONTACT` (revisão das regras R21).
 
 ---
 

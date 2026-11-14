@@ -52,7 +52,10 @@ export DATABASE_PASSWORD='<a senha que você criou para o admindoisag>'
 export JWT_SECRET="$(openssl rand -base64 48)"
 export SESSION_SECURE_COOKIE=false
 export PUBLIC_URL=http://localhost:5173
+export SPRING_PROFILES_ACTIVE=dev
 ```
+
+o perfil `dev` deixa a api subir sem os dados da clínica (`CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`), com os colchetes no termo. no servidor ele não existe e as três são obrigatórias.
 
 para ter contas de teste na primeira subida, exporte também:
 

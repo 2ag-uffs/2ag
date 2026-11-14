@@ -47,6 +47,10 @@ public class ConsentAcceptance {
     @Column(length = 60)
     private String guardianRelationship;
 
+    // sha-256 do texto q a pessoa leu, com os dados da clinica ja no lugar. nulo nos aceites de antes dele
+    @Column(length = 64)
+    private String termHash;
+
     public Long getId() {
         return id;
     }
@@ -105,5 +109,13 @@ public class ConsentAcceptance {
 
     public void setGuardianRelationship(String guardianRelationship) {
         this.guardianRelationship = guardianRelationship;
+    }
+
+    public String getTermHash() {
+        return termHash;
+    }
+
+    public void setTermHash(String termHash) {
+        this.termHash = termHash;
     }
 }

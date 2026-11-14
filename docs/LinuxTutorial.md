@@ -58,11 +58,12 @@ cp .env.example .env
 - `JWT_SECRET`: a chave que assina a sessão. para gerar uma, use `openssl rand -base64 48`
 - `ADMIN_EMAIL` e `ADMIN_PASSWORD`: a conta administrativa, criada na primeira subida. é ela que cria as contas de prescritor
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema, com https. vai nos links enviados por e-mail. no seu computador, `https://localhost`
+- `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`: a razão social, o CNPJ e o contato do encarregado de dados, que entram no termo de consentimento. no seu computador use valores de treino, que não são de clínica nenhuma, como os do `scripts/ci-compose-smoke.sh`: `Clinica de Teste do CI`, `00.000.000/0000-00` e `encarregado-ci@email.com`
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova e o link que confirma a troca do e-mail de acesso. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
 
 sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. o link de primeiro acesso de uma conta nova de prescritor funciona igual: sem e-mail, aparece na tela. para a senha do administrador não existe essa saída — ele troca em *Perfil* enquanto lembra a atual, e se esquecer só com `MAIL_HOST`.
 
-`POSTGRES_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão de propósito: sem elas a aplicação não sobe. o `PUBLIC_URL` precisa ser exatamente o endereço pelo qual as pessoas abrem o sistema — com ele errado, o login funciona e todo o resto responde `403`.
+`POSTGRES_PASSWORD`, `JWT_SECRET`, `PUBLIC_URL`, `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` não têm valor padrão de propósito: sem elas a aplicação não sobe. o `PUBLIC_URL` precisa ser exatamente o endereço pelo qual as pessoas abrem o sistema — com ele errado, o login funciona e todo o resto responde `403`.
 
 sem `ADMIN_EMAIL` e `ADMIN_PASSWORD` o sistema sobe normalmente, mas nenhuma conta é criada e ninguém consegue entrar: o autocadastro do paciente exige convite, o convite exige prescritor e o prescritor exige administrador. o log da api avisa quando isso acontece; preencha as duas e suba de novo.
 

@@ -48,9 +48,10 @@ export JWT_SECRET="$(openssl rand -base64 48)"
 export SESSION_SECURE_COOKIE=false
 export PUBLIC_URL=http://localhost:5173
 export SEED_DADOS_TESTE=true
+export SPRING_PROFILES_ACTIVE=dev
 ```
 
-`DATABASE_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão: a api não sobe sem elas, de propósito. Abra o sistema por `http://localhost:5173`, e não por `127.0.0.1`, senão o que grava recebe 403.
+`DATABASE_PASSWORD`, `JWT_SECRET` e `PUBLIC_URL` não têm valor padrão: a api não sobe sem elas, de propósito. Os dados da clínica no termo (`CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`) também são obrigatórios, menos no perfil `dev`, que sobe com os colchetes no lugar deles. Abra o sistema por `http://localhost:5173`, e não por `127.0.0.1`, senão o que grava recebe 403.
 
 ## subir a api
 

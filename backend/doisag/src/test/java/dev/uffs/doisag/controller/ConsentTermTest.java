@@ -12,6 +12,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.PatientInviteService;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -160,7 +162,7 @@ class ConsentTermTest {
     @Test
     void clinicDataFromTheServerReplacesTheMarkers() {
         String text = new ConsentTermService(null, null, null, " Instituto Exemplo Ltda ", " 00.000.000/0001-91 ",
-                "dados@exemplo.com.br").getCurrentTerm().text();
+                "dados@exemplo.com.br", environmentWithProfiles()).getCurrentTerm().text();
 
         assertThat(text).contains("Instituto Exemplo Ltda, CNPJ 00.000.000/0001-91, responsável pelo seu atendimento");
         assertThat(text).contains("dados@exemplo.com.br");
@@ -168,13 +170,68 @@ class ConsentTermTest {
                 .doesNotContain("[CONTATO DO ENCARREGADO");
     }
 
-    // sem as variaveis a api sobe e o termo continua com os colchetes
+    // no desenvolvimento e no teste a api sobe sem as variaveis e o termo continua com os colchetes
     @Test
-    void blankClinicDataKeepsTheMarkers() {
-        String text = new ConsentTermService(null, null, null, "", null, null).getCurrentTerm().text();
+    void blankClinicDataKeepsTheMarkersInDevAndTest() {
+        for (String profile : new String[]{"dev", "test"}) {
+            String text = new ConsentTermService(null, null, null, "", null, null, environmentWithProfiles(profile))
+                    .getCurrentTerm().text();
 
-        assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CNPJ DA CLÍNICA]")
-                .contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
+            assertThat(text).contains("[NOME DA CLÍNICA]").contains("[CNPJ DA CLÍNICA]")
+                    .contains("[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]");
+        }
+    }
+
+    // fora deles a api n sobe sem os tres dados, como ja era com JWT_SECRET e PUBLIC_URL: o piloto no ar
+    // com colchetes no termo deixava os primeiros aceites sem provar nada (revisao das regras R21)
+    @Test
+    void apiDoesNotStartWithoutTheClinicDataOutsideDevAndTest() {
+        assertThatThrownBy(() -> new ConsentTermService(null, null, null, "Instituto Exemplo Ltda", " ",
+                "dados@exemplo.com.br", environmentWithProfiles()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CLINIC_CNPJ");
+        assertThatThrownBy(() -> new ConsentTermService(null, null, null, null, null, null,
+                environmentWithProfiles("prod")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CLINIC_NAME").hasMessageContaining("CLINIC_DPO_CONTACT");
+    }
+
+    private MockEnvironment environmentWithProfiles(String... profiles) {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles(profiles);
+        return environment;
+    }
+
+    // cada aceite guarda o hash do texto mostrado, ja com os dados da clinica no lugar dos colchetes:
+    // trocar uma variavel muda o texto sem mudar a versao, e o hash prova qual texto a pessoa aceitou
+    // ninguem precisa aceitar de novo por isso (revisao das regras R21)
+    @Test
+    void acceptanceKeepsTheHashOfTheTextShown() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        acceptCurrentVersion();
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                .andExpect(status().isOk());
+
+        String termText = consentTermService.getCurrentTerm().text();
+        String researchText = consentTermService.getResearchTerm().text();
+        // a versao do termo e a da pesquisa tem o msm nome hoje, entao o tipo separa os dois
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .filteredOn(acceptance -> acceptance.getTermType() == ConsentType.REGISTRATION
+                        && acceptance.getTermVersion().equals(ConsentTermService.CURRENT_VERSION))
+                .singleElement()
+                .satisfies(acceptance -> assertThat(acceptance.getTermHash())
+                        .isEqualTo(SecureTokens.hashToken(termText))
+                        .hasSize(64));
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .filteredOn(acceptance -> acceptance.getTermType() == ConsentType.RESEARCH)
+                .singleElement()
+                .satisfies(acceptance -> assertThat(acceptance.getTermHash())
+                        .isEqualTo(SecureTokens.hashToken(researchText)));
+        // de uma versao q n eh a atual o texto mostrado n existe mais, entao fica sem hash
+        assertThat(acceptanceOfVersion("2026-01-versao-antiga").getTermHash()).isNull();
     }
 
     @Test

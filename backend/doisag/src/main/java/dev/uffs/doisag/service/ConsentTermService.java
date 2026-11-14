@@ -11,9 +11,12 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.security.SecureTokens;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +25,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 // termo de consentimento q o paciente aceita no cadastro (RF36)
@@ -64,21 +69,38 @@ public class ConsentTermService {
                               AuditService auditService,
                               @Value("${api.clinic.name:}") String clinicName,
                               @Value("${api.clinic.cnpj:}") String clinicCnpj,
-                              @Value("${api.clinic.dpo-contact:}") String dpoContact) {
+                              @Value("${api.clinic.dpo-contact:}") String dpoContact,
+                              Environment environment) {
         this.consentAcceptanceRepository = consentAcceptanceRepository;
         this.patientRepository = patientRepository;
         this.auditService = auditService;
-        if (!hasText(clinicName)) {
-            log.warn("CLINIC_NAME vazio: os termos saem com {}", CLINIC_NAME_MARKER);
-        }
-        if (!hasText(clinicCnpj)) {
-            log.warn("CLINIC_CNPJ vazio: os termos saem com {}", CLINIC_CNPJ_MARKER);
-        }
-        if (!hasText(dpoContact)) {
-            log.warn("CLINIC_DPO_CONTACT vazio: os termos saem com {}", DPO_CONTACT_MARKER);
-        }
+        checkClinicData(clinicName, clinicCnpj, dpoContact, environment);
         this.termText = fillClinicData(readFile(TERM_FILE), clinicName, clinicCnpj, dpoContact);
         this.researchText = fillClinicData(readFile(RESEARCH_FILE), clinicName, clinicCnpj, dpoContact);
+    }
+
+    // fora do desenvolvimento e do teste a api n sobe sem os tres dados da clinica, como sem JWT_SECRET e
+    // PUBLIC_URL: no ar com colchetes, os primeiros pacientes aceitavam um termo sem a clinica e nunca mais
+    // eram chamados a aceitar (revisao das regras R21). no dev e no teste ela sobe com os colchetes e avisa
+    private void checkClinicData(String clinicName, String clinicCnpj, String dpoContact, Environment environment) {
+        List<String> missing = new ArrayList<>();
+        if (!hasText(clinicName)) {
+            missing.add("CLINIC_NAME");
+        }
+        if (!hasText(clinicCnpj)) {
+            missing.add("CLINIC_CNPJ");
+        }
+        if (!hasText(dpoContact)) {
+            missing.add("CLINIC_DPO_CONTACT");
+        }
+        if (missing.isEmpty()) {
+            return;
+        }
+        if (!environment.acceptsProfiles(Profiles.of("dev", "test"))) {
+            throw new IllegalStateException("Falta preencher " + String.join(", ", missing) + ": sem elas o termo "
+                    + "de consentimento sai com colchetes no lugar dos dados da clínica");
+        }
+        log.warn("{} vazio: os termos saem com colchetes no lugar dos dados da clínica", String.join(", ", missing));
     }
 
     public ConsentTermDTO getCurrentTerm() {
@@ -105,6 +127,7 @@ public class ConsentTermService {
         acceptance.setTermType(termType);
         acceptance.setTermVersion(termVersion);
         acceptance.setAcceptedAt(LocalDateTime.now());
+        acceptance.setTermHash(hashOfTheTextShown(termType, termVersion));
         // menor de 18: o aceite eh do responsavel e o nome dele fica junto (LGPD art. 14)
         // adulto com cuidador aceita sozinho, entao ai fica nulo
         if (user instanceof Patient patient && patient.isMinor()) {
@@ -115,6 +138,15 @@ public class ConsentTermService {
             acceptance.setGuardianRelationship(patient.getGuardianRelationship());
         }
         consentAcceptanceRepository.save(acceptance);
+    }
+
+    // o sha-256 do texto q a tela mostrou pra essa versao, ja com os dados da clinica no lugar dos colchetes
+    // so a versao atual tem texto conhecido, entao a de outra versao fica sem (revisao das regras R21)
+    private String hashOfTheTextShown(ConsentType termType, String termVersion) {
+        if (termType == ConsentType.RESEARCH) {
+            return RESEARCH_VERSION.equals(termVersion) ? SecureTokens.hashToken(researchText) : null;
+        }
+        return CURRENT_VERSION.equals(termVersion) ? SecureTokens.hashToken(termText) : null;
     }
 
     // paciente q aceitou uma versao antiga do termo do cadastro precisa aceitar a atual
