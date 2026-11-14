@@ -78,12 +78,16 @@ public class ProgressReportService {
 
     // o escore vai com a faixa q foi gravada na resposta, e o MEEM ainda leva
     // o corte da escolaridade daquele exame (RN14). item da ficha n tem faixa
+    // o MEEM de quem tinha menos de 18 anos foi gravado sem faixa e fica sem corte tbm (revisao das regras R14)
     private ProgressDataPointDTO pointOf(ScaleResponse response, TrackableAttribute attribute) {
         if (!attribute.isScore()) {
             return new ProgressDataPointDTO(response.getPeriodStart(), valueOf(response, attribute), null, null);
         }
+        Double cutoff = ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND.equals(response.getScoreBand())
+                ? null
+                : scorer.cutoffOf(response.getScaleType(), response.getAnswers());
         return new ProgressDataPointDTO(response.getPeriodStart(), response.getScore(), response.getScoreBand(),
-                scorer.cutoffOf(response.getScaleType(), response.getAnswers()));
+                cutoff);
     }
 
     // o q o paciente escreveu nas escalas do periodo, do mais antigo pro

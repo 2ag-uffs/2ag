@@ -28,6 +28,8 @@ public class ScaleScorer {
             "O tempo na cama passa de 16 horas. Confira os horários de dormir e de levantar";
     public static final String SLEPT_LONGER_THAN_BED_MESSAGE =
             "As horas de sono passam do tempo na cama. Confira os horários e as horas de sono";
+    // vai no lugar da faixa do MEEM de quem tinha menos de 18 anos na consulta (revisao das regras R14)
+    public static final String NOT_VALIDATED_FOR_AGE_BAND = "Instrumento não validado para a idade";
 
     // mais q isso na cama quase sempre eh horario digitado errado (decisao de 14/11/2026, revisao R13)
     private static final int MAX_MINUTES_IN_BED = 16 * 60;

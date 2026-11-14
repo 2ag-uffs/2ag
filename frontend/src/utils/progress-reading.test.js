@@ -64,6 +64,18 @@ describe("corte do MEEM", () => {
         expect(countWithoutCutoff(points)).toBe(2);
     });
 
+    // o exame de quem tinha menos de 18 anos vem sem corte, com a faixa dizendo q o instrumento n eh
+    // validado pra idade, e n eh exame sem escolaridade (revisao das regras R14)
+    it("exame de quem tinha menos de 18 anos n conta como sem escolaridade", () => {
+        const points = [{value: 21, band: "Instrumento não validado para a idade", cutoff: null},
+            {value: 27, band: "Dentro", cutoff: 25}];
+
+        expect(countWithoutCutoff(points)).toBe(0);
+        expect(sharedCutoffOf(points)).toBeNull();
+        expect(hasVaryingCutoff(points)).toBe(false);
+        expect(bandTextOf(points[0], true)).toBe("Instrumento não validado para a idade");
+    });
+
     it("so dois cortes diferentes contam como escolaridade mudada", () => {
         expect(hasVaryingCutoff([{value: 25, cutoff: 25}, {value: 26, cutoff: 25}, {value: 20, cutoff: null}]))
             .toBe(false);

@@ -91,6 +91,8 @@ a correção do paciente guarda a versão anterior (decisão de 14/11/2026, revi
 
 o acompanhamento automático (`pages/acompanhamento-protocolo`) lê o último acompanhamento do paciente (`/treatment-protocol/last`), em andamento ou encerrado, e preenche com ele o formulário: escalas, frequências, duração e horários do sono. o quadro *Em andamento* só aparece para o que está valendo. nos últimos 7 dias dele, quando a prescritora recebe o aviso, o formulário aparece embaixo do quadro com a data de início em hoje, no máximo hoje, e o botão vira **Renovar acompanhamento**; depois de encerrado, o formulário também volta preenchido. assim a renovação sai com um clique, em vez de montar tudo de novo de memória (revisão das regras R5, 14/11/2026).
 
+o MEEM de quem tinha menos de 18 anos no dia da consulta vem da api com "Instrumento não validado para a idade" no lugar da faixa e sem corte. o resultado do exame, o ponto do gráfico e a impressão mostram esse texto ao lado do escore, e o progresso não conta esse exame como sem escolaridade (`utils/progress-reading.js`, decisão de 14/11/2026, revisão das regras R14).
+
 ## padrão de código
 
 vale para todo código novo ou reescrito:

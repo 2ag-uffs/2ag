@@ -528,6 +528,43 @@ class ScaleFormsTest {
                         + ": Escolaridade"));
     }
 
+    // os cortes do MEEM sao de adulto, entao o exame de quem tinha menos de 18 anos no dia da consulta sai
+    // sem faixa e sem a linha do corte no grafico (revisao das regras R14). o escore continua gravado
+    @Test
+    void miniExameDeQuemTinhaMenosDe18AnosNaConsultaSaiSemFaixa() throws Exception {
+        // fez 18 anos dps da consulta, entao hj eh adulto mas na consulta era menor
+        patient.setBirthDate(TODAY.minusDays(5).minusYears(18));
+        patientRepository.save(patient);
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, TODAY.minusDays(10).atTime(9, 0));
+
+        applyMentalStateExam(appointmentId, prescriber)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.score").value(30))
+                .andExpect(jsonPath("$.scoreBand").value(ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND))
+                .andExpect(jsonPath("$.result").value("30 de 30 · " + ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress")
+                        .param("attribute", "ESCORE_MEEM")
+                        .param("period", "DIAS_30")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].value").value(30))
+                .andExpect(jsonPath("$[0].band").value(ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND))
+                .andExpect(jsonPath("$[0].cutoff").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    // quem ja tinha 18 anos no dia da consulta continua com a faixa da escolaridade
+    @Test
+    void miniExameDeQuemFez18AnosAntesDaConsultaTemFaixa() throws Exception {
+        patient.setBirthDate(TODAY.minusDays(10).minusYears(18));
+        patientRepository.save(patient);
+        Long appointmentId = saveAppointment(AppointmentStatus.CONCLUIDA, TODAY.minusDays(2).atTime(9, 0));
+
+        applyMentalStateExam(appointmentId, prescriber)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.scoreBand").value("Dentro do esperado para a escolaridade (corte 25)"));
+    }
+
     // a tela precisa saber q ja tem exame pra abrir no resultado
     @Test
     void aConsultaDevolveOMiniExameJaAplicado() throws Exception {

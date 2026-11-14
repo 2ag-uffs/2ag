@@ -203,6 +203,11 @@ public class ScaleResponseService {
         response.setPeriodEnd(examDay);
         fillAnswersAndScore(response, definition, answerData.answers());
         checkCompleteExam(definition, response.getAnswers());
+        // os cortes do meem sao de adulto: quem tinha menos de 18 anos no dia da consulta fica com o escore e sem a
+        // faixa, em vez de sair abaixo do esperado com o nome do instrumento validado (RN13, revisao das regras R14)
+        if (Patient.isMinor(appointment.getPatient().getBirthDate(), examDay)) {
+            response.setScoreBand(ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND);
+        }
 
         ScaleResponse savedResponse = responseRepository.save(response);
         Long patientId = appointment.getPatient().getId();

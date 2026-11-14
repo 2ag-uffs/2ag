@@ -29,9 +29,10 @@ function hasCutoff(point) {
     return point.cutoff !== null && point.cutoff !== undefined;
 }
 
-// exame com escore mas sem corte, q eh o MEEM antigo sem escolaridade
+// exame com escore mas sem corte e sem faixa, q eh o MEEM antigo sem escolaridade
+// o de quem tinha menos de 18 anos tbm vem sem corte, mas a faixa diz q o instrumento n eh validado pra idade (R14)
 function hasScoreWithoutCutoff(point) {
-    return point.value !== null && point.value !== undefined && !hasCutoff(point);
+    return point.value !== null && point.value !== undefined && !hasCutoff(point) && !point.band;
 }
 
 // a linha do corte so vale qnd todo ponto tem o mesmo. no MEEM o corte muda
