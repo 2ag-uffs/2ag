@@ -278,33 +278,75 @@ class ConsultationRecordTest {
                 .andExpect(jsonPath("$.message").value(ConsultationService.HAS_PRESCRIPTION_MESSAGE));
     }
 
-    // a receita vigente sai da consulta mais recente: mudar a data com a receita dentro deixava
-    // valendo a receita de uma consulta q ficou mais antiga (RF05)
+    // a receita vigente sai da consulta mais recente: a data so n muda qnd passa para antes ou depois de outra
+    // consulta do paciente com receita, pq ai valia a receita de uma consulta q ficou mais antiga (RF05)
+    // sem passar por nenhuma, a ordem fica a mesma e a data muda sem anular a receita
+    // (decisao de 14/11/2026, revisao das regras R26)
     @Test
-    void theDateOfAConsultationWithPrescriptionDoesNotChange() throws Exception {
-        LocalDateTime yesterday = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MINUTES);
-        Long appointmentId = registeredConsultationAt(yesterday);
-        issuePrescription(appointmentId).andExpect(status().isCreated());
+    void theDateOfAConsultationWithPrescriptionDoesNotPassAnotherWithPrescription() throws Exception {
+        LocalDateTime tenDaysAgo = LocalDate.now().minusDays(10).atTime(10, 0);
+        LocalDateTime yesterday = LocalDate.now().minusDays(1).atTime(10, 0);
+        Long olderId = registeredConsultationAt(tenDaysAgo);
+        issuePrescription(olderId).andExpect(status().isCreated());
+        Long newerId = registeredConsultationAt(yesterday);
+        issuePrescription(newerId).andExpect(status().isCreated());
 
-        Map<String, Object> movedRecord = clinicalRecord();
-        movedRecord.put("dateTime", yesterday.minusDays(10).toString());
-        updateRecord(appointmentId, movedRecord)
+        Map<String, Object> newerBeforeOlder = clinicalRecord();
+        newerBeforeOlder.put("dateTime", tenDaysAgo.minusDays(5).toString());
+        updateRecord(newerId, newerBeforeOlder)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE));
-        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getDateTime()).isEqualTo(yesterday);
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_PASSES_PRESCRIPTION_MESSAGE));
+        Map<String, Object> olderAfterNewer = clinicalRecord();
+        olderAfterNewer.put("dateTime", yesterday.plusHours(2).toString());
+        updateRecord(olderId, olderAfterNewer)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.DATE_PASSES_PRESCRIPTION_MESSAGE));
+        assertThat(appointmentRepository.findById(newerId).orElseThrow().getDateTime()).isEqualTo(yesterday);
+        assertThat(appointmentRepository.findById(olderId).orElseThrow().getDateTime()).isEqualTo(tenDaysAgo);
+
+        // sem passar pela outra a data muda e a receita da mais nova continua a vigente
+        Map<String, Object> newerStillAfter = clinicalRecord();
+        newerStillAfter.put("dateTime", yesterday.minusDays(3).toString());
+        updateRecord(newerId, newerStillAfter).andExpect(status().isOk());
+        Map<String, Object> olderStillBefore = clinicalRecord();
+        olderStillBefore.put("dateTime", tenDaysAgo.minusDays(2).toString());
+        updateRecord(olderId, olderStillBefore).andExpect(status().isOk());
+        assertThat(appointmentRepository.findById(newerId).orElseThrow().getDateTime())
+                .isEqualTo(yesterday.minusDays(3));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[0].appointmentId").value(newerId))
+                .andExpect(jsonPath("$[0].current").value(true))
+                .andExpect(jsonPath("$[1].current").value(false));
 
         // o resto do registro continua corrigindo, com a mesma data ou sem ela
-        Map<String, Object> sameDateRecord = clinicalRecord();
-        sameDateRecord.put("dateTime", yesterday.toString());
-        sameDateRecord.put("evolution", "Melhorou do sono");
-        updateRecord(appointmentId, sameDateRecord).andExpect(status().isOk());
-        updateRecord(appointmentId, clinicalRecord()).andExpect(status().isOk());
+        updateRecord(newerId, clinicalRecord()).andExpect(status().isOk());
     }
 
-    // o meem fica no dia da consulta, entao com ele a data tbm fica
+    // corrigir so a hora no mesmo dia n mexe em nada do q a regra protege, e antes obrigava a anular a receita
+    // e emitir de novo (decisao de 14/11/2026, revisao das regras R26)
     @Test
-    void theDateOfAConsultationWithAMiniExamDoesNotChange() throws Exception {
-        LocalDateTime yesterday = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MINUTES);
+    void correctingOnlyTheTimeOfAConsultationWithPrescriptionIsAccepted() throws Exception {
+        LocalDateTime yesterdayEvening = LocalDate.now().minusDays(1).atTime(18, 0);
+        Long appointmentId = registeredConsultationAt(yesterdayEvening);
+        issuePrescription(appointmentId).andExpect(status().isCreated());
+
+        Map<String, Object> morningRecord = clinicalRecord();
+        morningRecord.put("dateTime", yesterdayEvening.withHour(10).toString());
+        updateRecord(appointmentId, morningRecord).andExpect(status().isOk());
+
+        assertThat(appointmentRepository.findById(appointmentId).orElseThrow().getDateTime())
+                .isEqualTo(yesterdayEvening.withHour(10));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[0].current").value(true))
+                .andExpect(jsonPath("$[0].annulled").value(false));
+    }
+
+    // o meem fica no dia da consulta, entao com ele o dia tbm fica. a hora no mesmo dia muda (R26)
+    @Test
+    void theDayOfAConsultationWithAMiniExamDoesNotChange() throws Exception {
+        LocalDateTime yesterday = LocalDate.now().minusDays(1).atTime(18, 0);
         Long appointmentId = registeredConsultationAt(yesterday);
         mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointmentId)
                         .header("Authorization", bearerTokenOf(prescriber))
@@ -317,6 +359,10 @@ class ConsultationRecordTest {
         updateRecord(appointmentId, movedRecord)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(ConsultationService.DATE_WITH_EXAM_MESSAGE));
+
+        Map<String, Object> sameDayRecord = clinicalRecord();
+        sameDayRecord.put("dateTime", yesterday.withHour(9).toString());
+        updateRecord(appointmentId, sameDayRecord).andExpect(status().isOk());
     }
 
     // consulta anulada n aconteceu entao sai do grafico de evolucao

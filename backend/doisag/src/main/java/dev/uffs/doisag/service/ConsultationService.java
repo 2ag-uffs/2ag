@@ -16,6 +16,7 @@ import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 // registro clinico da consulta (RF04)
 // marcar horario continua no AppointmentService e aqui fica o q aconteceu na consulta
@@ -47,6 +49,9 @@ public class ConsultationService {
             "Esta consulta tem prescrição. Anule a prescrição antes de mudar a data da consulta";
     public static final String DATE_WITH_EXAM_MESSAGE =
             "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de mudar a data da consulta";
+    public static final String DATE_PASSES_PRESCRIPTION_MESSAGE = "Esta consulta tem prescrição e a nova data a "
+            + "coloca antes ou depois de outra consulta com prescrição, o que muda a prescrição em uso. "
+            + "Anule a prescrição antes de mudar a data da consulta";
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
@@ -169,17 +174,58 @@ public class ConsultationService {
         return new AppointmentResponseDTO(savedAppointment);
     }
 
-    // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta
-    // entao mudar a data com eles deixava a receita de uma consulta antiga valendo (RF05)
-    // vale pra correcao do registro e pra remarcacao na agenda
+    // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta (RF05)
+    // na correcao do registro isso so prende o q eles protegem (decisao de 14/11/2026, revisao das regras R26):
+    // com receita a data so n muda qnd passa para antes ou depois de outra consulta do paciente com receita, e
+    // com meem o dia n muda. antes trocar 18h por 10h no mesmo dia obrigava a anular a receita e emitir de novo
     // a tela manda a hora sem os segundos por isso a comparacao eh no minuto
     public void checkDateCanChange(Appointment appointment, LocalDateTime newDateTime) {
-        boolean sameMinute = newDateTime.truncatedTo(ChronoUnit.MINUTES)
-                .equals(appointment.getDateTime().truncatedTo(ChronoUnit.MINUTES));
-        if (sameMinute) {
+        if (isSameMinute(appointment.getDateTime(), newDateTime)) {
+            return;
+        }
+        if (prescriptionRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            // o paciente vem dps da consulta, como no lancamento da receita: a receita lancada no mesmo instante
+            // em outra consulta dele espera ou aparece aqui
+            patientRepository.lockById(appointment.getPatient().getId());
+            if (passesAnotherPrescription(appointment, newDateTime)) {
+                throw new BusinessException(DATE_PASSES_PRESCRIPTION_MESSAGE);
+            }
+        }
+        boolean sameDay = newDateTime.toLocalDate().equals(appointment.getDateTime().toLocalDate());
+        if (!sameDay && responseRepository.existsByAppointmentIdAndAnnulmentAnnulledAtIsNull(appointment.getId())) {
+            throw new BusinessException(DATE_WITH_EXAM_MESSAGE);
+        }
+    }
+
+    // a remarcacao leva a consulta pro futuro, e receita e meem so existem em consulta q ja aconteceu: com eles
+    // nem a hora muda, senao a receita ia pra uma consulta futura e virava a vigente pela data errada (RF05)
+    public void checkCanBeRescheduled(Appointment appointment, LocalDateTime newDateTime) {
+        if (isSameMinute(appointment.getDateTime(), newDateTime)) {
             return;
         }
         checkHasNoPrescriptionOrExam(appointment.getId(), DATE_WITH_PRESCRIPTION_MESSAGE, DATE_WITH_EXAM_MESSAGE);
+    }
+
+    private boolean isSameMinute(LocalDateTime first, LocalDateTime second) {
+        return first.truncatedTo(ChronoUnit.MINUTES).equals(second.truncatedTo(ChronoUnit.MINUTES));
+    }
+
+    // a nova data troca de lado com alguma outra consulta do paciente q tem receita valendo, vigente ou substituida
+    private boolean passesAnotherPrescription(Appointment appointment, LocalDateTime newDateTime) {
+        List<Prescription> prescriptions = prescriptionRepository
+                .findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(appointment.getPatient().getId());
+        for (Prescription prescription : prescriptions) {
+            Appointment other = prescription.getAppointment();
+            if (prescription.isAnnulled() || other.getId().equals(appointment.getId())) {
+                continue;
+            }
+            boolean wasBefore = appointment.getDateTime().isBefore(other.getDateTime());
+            boolean willBeBefore = newDateTime.isBefore(other.getDateTime());
+            if (wasBefore != willBeBefore) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // receita ou meem n anulados mostram q a consulta aconteceu e prendem ela ao dia dela

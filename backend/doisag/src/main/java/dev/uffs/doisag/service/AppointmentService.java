@@ -521,9 +521,9 @@ public class AppointmentService {
         AppointmentType newType = rescheduleData.appointmentType();
         int durationMinutes = durationAfterReschedule(appointment, rescheduleData);
         checkNotInThePast(rescheduleData.dateTime());
-        // consulta q ja passou pode ter receita ou meem, e a data dela segue a mesma regra da correcao
+        // consulta q ja passou pode ter receita ou meem, e com eles a remarcacao, q leva pro futuro, n muda a hora
         // vem dps do passado pra n mandar anular a receita por uma remarcacao q ia ser recusada de qq jeito
-        consultationService.checkDateCanChange(appointment, rescheduleData.dateTime());
+        consultationService.checkCanBeRescheduled(appointment, rescheduleData.dateTime());
         checkSlotIsFree(appointment.getPrescriber().getId(), rescheduleData.dateTime(), durationMinutes,
                 appointment.getId());
 

@@ -227,9 +227,11 @@ class ClinicalRecordRaceTest {
         assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().isAnnulled()).isFalse();
     }
 
-    // a correcao do registro tbm trava a consulta: com a receita gravada no meio tempo a data fica
+    // a correcao do registro tbm trava a consulta: com a receita gravada no meio tempo a data q passaria pela
+    // outra consulta com receita fica (R26)
     @Test
     void correctingTheDateWaitsForTheConsultationAndFindsThePrescriptionSavedMeanwhile() throws Exception {
+        savePrescriptionOf(saveAppointmentOn(TODAY.minusDays(5)));
         Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
         ConsultationRecordDTO recordData = new ConsultationRecordDTO(TODAY.minusDays(10).atTime(10, 0),
                 AppointmentModality.PRESENCIAL, null, null, null, "Dor crônica", null, null, null, null, null);
@@ -240,7 +242,28 @@ class ClinicalRecordRaceTest {
                 () -> consultationService.updateRecord(appointment.getId(), recordData));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
-                .hasMessage(ConsultationService.DATE_WITH_PRESCRIPTION_MESSAGE);
+                .hasMessage(ConsultationService.DATE_PASSES_PRESCRIPTION_MESSAGE);
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getDateTime())
+                .isEqualTo(TODAY.minusDays(1).atTime(10, 0));
+    }
+
+    // a correcao da data trava o paciente dps da consulta, como o lancamento da receita: a receita lancada no
+    // mesmo instante em outra consulta dele aparece, e a data q passaria por ela fica (R26)
+    @Test
+    void correctingTheDateWaitsForThePatientAndFindsThePrescriptionOnAnotherConsultation() throws Exception {
+        Appointment other = saveAppointmentOn(TODAY.minusDays(5));
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+        savePrescriptionOf(appointment);
+        ConsultationRecordDTO recordData = new ConsultationRecordDTO(TODAY.minusDays(10).atTime(10, 0),
+                AppointmentModality.PRESENCIAL, null, null, null, "Dor crônica", null, null, null, null, null);
+
+        HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> savePrescriptionOf(other),
+                () -> consultationService.updateRecord(appointment.getId(), recordData));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(ConsultationService.DATE_PASSES_PRESCRIPTION_MESSAGE);
         assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getDateTime())
                 .isEqualTo(TODAY.minusDays(1).atTime(10, 0));
     }
