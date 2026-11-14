@@ -142,7 +142,6 @@ class ProfileRaceTest {
 
         Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
         assertThat(savedPatient.isActive()).isFalse();
-        assertThat(savedPatient.getSessionsEndedAt()).isNotNull();
         assertThat(savedPatient.getName()).isEqualTo(NEW_NAME);
         assertThat(savedPatient.getPhone()).isEqualTo(NEW_PHONE);
     }
@@ -198,7 +197,6 @@ class ProfileRaceTest {
 
         Prescriber savedPrescriber = prescriberRepository.findById(prescriber.getId()).orElseThrow();
         assertThat(savedPrescriber.isActive()).isFalse();
-        assertThat(savedPrescriber.getSessionsEndedAt()).isNotNull();
         assertThat(savedPrescriber.getName()).isEqualTo(NEW_NAME);
     }
 
@@ -253,7 +251,6 @@ class ProfileRaceTest {
 
         Patient savedPatient = patientRepository.findById(patient.getId()).orElseThrow();
         assertThat(savedPatient.isActive()).isFalse();
-        assertThat(savedPatient.getSessionsEndedAt()).isNotNull();
         assertThat(savedPatient.getGuardianRelationship()).isEqualTo("mãe");
         List<ConsentAcceptance> acceptances = consentAcceptanceRepository
                 .findAllByUserIdOrderByAcceptedAtDesc(patient.getId());

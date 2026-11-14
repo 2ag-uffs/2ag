@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.RegisterDTO;
 import dev.uffs.doisag.dto.SessionUserDTO;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.security.SecurityFilter;
 import dev.uffs.doisag.security.SessionCookieService;
 import dev.uffs.doisag.service.AuthService;
 import dev.uffs.doisag.service.ConsentTermService;
@@ -54,9 +55,14 @@ public class AuthenticationController {
     // encerra as sessoes abertas de quem esta saindo e apaga o cookie
     // sem sessao valida so apaga o cookie
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal Users loggedUser, HttpServletResponse response) {
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal Users loggedUser, HttpServletRequest request,
+                                       HttpServletResponse response) {
         if (loggedUser != null) {
             authService.endSessions(loggedUser.getId());
+        } else if (request.getAttribute(SecurityFilter.DEACTIVATED_ACCOUNT_ATTRIBUTE) instanceof Long deactivatedUserId) {
+            // a sessao da conta desativada n entra, mas sair por ela tbm encerra as sessoes. senao o valor
+            // do cookie copiado antes continuava dizendo q a conta foi desativada (CT-41)
+            authService.endSessions(deactivatedUserId);
         }
         sessionCookieService.clearSession(response);
         return ResponseEntity.noContent().build();

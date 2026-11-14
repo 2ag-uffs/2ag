@@ -8,6 +8,7 @@ import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.enums.UserRole;
+import dev.uffs.doisag.infra.ErrorHandler;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -16,6 +17,7 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
+import dev.uffs.doisag.security.SecurityErrorHandler;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PrescriberService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
@@ -44,6 +46,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -339,8 +342,11 @@ class AdminPrescribersTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
 
+        // a tela aberta fica sabendo q a conta foi desativada, e n q a sessao venceu (CT-41)
         mockMvc.perform(get("/profile").header("Authorization", prescriberToken))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(ErrorHandler.DEACTIVATED_ACCOUNT_MESSAGE));
     }
 
     private ResultActions changeActive(Long prescriberId, boolean active) throws Exception {
@@ -363,6 +369,24 @@ class AdminPrescribersTest {
 
         mockMvc.perform(get("/profile").header("Authorization", oldToken))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // o prescritor saiu da conta e o token esquecido ficou em outro aparelho: a desativacao feita dps
+    // n pode contar pra quem estiver com ele q a conta foi desativada (CT-41)
+    @Test
+    void theSessionEndedByALogoutIsNotToldAboutTheDeactivation() throws Exception {
+        Prescriber prescriber = savePrescriber("admin-saiu@email.com", "ADM19");
+        String forgottenToken = "Bearer " + tokenService.generateToken(prescriber);
+        String phoneToken = "Bearer " + tokenService.generateToken(prescriber);
+        mockMvc.perform(post("/auth/logout").header("Authorization", phoneToken))
+                .andExpect(status().isNoContent());
+
+        changeActive(prescriber.getId(), false).andExpect(status().isOk());
+
+        mockMvc.perform(get("/profile").header("Authorization", forgottenToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
     }
 
     // sem o prescritor ninguem le as escalas, entao o envio automatico para e n volta sozinho

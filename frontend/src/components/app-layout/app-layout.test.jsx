@@ -241,6 +241,8 @@ describe("AppLayout", () => {
         const calledPaths = fetchSpy.mock.calls.map((call) => call[0]);
         expect(calledPaths).not.toContain("/api/auth/login");
         expect(calledPaths.filter((path) => path === "/api/scales/answers")).toHaveLength(1);
+        // o cookie de agora pode ser de quem entrou em outra aba, entao a sessao vencida sai sem encerrar ele
+        expect(calledPaths).not.toContain("/api/auth/logout");
     });
 
     // a tela de consultas le o id de quem esta logado ao desenhar, e o erro do envio q esperava fazia ela
@@ -304,6 +306,73 @@ describe("AppLayout", () => {
         await user.click(dialog.getByRole("button", {name: "Sair"}));
         expect(await screen.findByText("tela de login")).toBeInTheDocument();
         expect(router.state.location.pathname).toBe("/entrar");
+    });
+
+    // a conta foi desativada com a tela aberta: a api diz o motivo no 401 e o aviso por cima mostra o msm
+    // texto do login, sem pedir a senha e sem prometer enviar o q estava na tela (decisao de 13/11/2026, CT-41)
+    it("conta desativada com a tela aberta ve o motivo e n o login de sessao vencida", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/auth/logout") {
+                return Promise.resolve(new Response(null, {status: 204}));
+            }
+            return Promise.resolve(new Response(JSON.stringify({message: "Conta desativada. Fale com a clínica"}),
+                {status: 401, headers: {"X-Account-Deactivated": "true"}}));
+        });
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        const router = openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.click(screen.getByRole("button", {name: "Enviar"}));
+
+        const dialog = within(await screen.findByRole("dialog", {name: "Acesso encerrado"}));
+        expect(dialog.getByText("Conta desativada. Fale com a clínica")).toBeInTheDocument();
+        expect(dialog.queryByLabelText("Senha")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Sua sessão venceu/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/enviado depois de entrar/)).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Resposta")).not.toBeVisible();
+        expect(dialog.getByRole("button", {name: "Sair"})).toHaveFocus();
+
+        await user.click(dialog.getByRole("button", {name: "Sair"}));
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/entrar");
+        expect(getLoggedUser()).toBeNull();
+        const calledPaths = fetchSpy.mock.calls.map((call) => call[0]);
+        expect(calledPaths).not.toContain("/api/auth/login");
+        expect(calledPaths.filter((path) => path === "/api/scales/answers")).toHaveLength(1);
+        // o cookie dessa sessao ainda diria o motivo pra quem abrir o sistema nesse computador, entao sair apaga ele
+        expect(fetchSpy).toHaveBeenCalledWith("/api/auth/logout", expect.objectContaining({method: "POST"}));
+    });
+
+    // a sessao venceu sozinha e a conta foi desativada nesse meio tempo: a senha certa recebe o 403 do login
+    // e o login por cima vira o msm aviso, sem a promessa de enviar o q estava na tela (CT-41)
+    it("login por cima de conta desativada vira o aviso de acesso encerrado", async () => {
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/auth/login") {
+                return Promise.resolve(apiResponse(403, {message: "Conta desativada. Fale com a clínica"}));
+            }
+            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+        });
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.click(screen.getByRole("button", {name: "Enviar"}));
+        const loginDialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        await user.type(loginDialog.getByLabelText("Senha"), "Senha#2026");
+        await user.click(loginDialog.getByRole("button", {name: "Entrar"}));
+
+        const dialog = within(await screen.findByRole("dialog", {name: "Acesso encerrado"}));
+        expect(dialog.getByText("Conta desativada. Fale com a clínica")).toBeInTheDocument();
+        expect(screen.queryByText(/enviado depois de entrar/)).not.toBeInTheDocument();
     });
 
     it("paciente com termo antigo ve o aceite no lugar da tela e volta pra ela depois de aceitar", async () => {

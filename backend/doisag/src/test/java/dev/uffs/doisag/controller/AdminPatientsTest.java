@@ -4,6 +4,7 @@ import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.TreatmentProtocolCreateDTO;
 import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.ErrorHandler;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
@@ -12,6 +13,7 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
+import dev.uffs.doisag.security.SecurityErrorHandler;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.PatientAccountService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
@@ -35,6 +37,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -168,7 +171,11 @@ class AdminPatientsTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
 
-        mockMvc.perform(get("/profile").header("Authorization", patientToken)).andExpect(status().isUnauthorized());
+        // a tela aberta fica sabendo q a conta foi desativada, e n q a sessao venceu (CT-41)
+        mockMvc.perform(get("/profile").header("Authorization", patientToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(ErrorHandler.DEACTIVATED_ACCOUNT_MESSAGE));
         login().andExpect(status().isForbidden());
     }
 

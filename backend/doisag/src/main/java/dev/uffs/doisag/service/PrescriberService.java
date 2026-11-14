@@ -161,9 +161,10 @@ public class PrescriberService {
             return prescriber;
         }
         prescriber.setActive(active);
-        if (!active) {
-            // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
+        if (active) {
+            // as sessoes de antes caem na reativacao e n na desativacao, igual ao paciente (PatientAccountService)
             prescriber.endSessionsNow();
+        } else {
             // sem o prescritor ninguem le as escalas, entao o envio automatico dos pacientes dele para
             treatmentProtocolService.endActiveProtocolsOfPrescriber(prescriberId);
         }

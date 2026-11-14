@@ -254,9 +254,16 @@ export default function AppLayout() {
     // a sessao venceu com a tela aberta: o login abre por cima, a tela fica como estava e o envio q parou
     // segue depois de entrar de novo (#151). fora do layout a api recarrega no login como sempre
     const [isSessionExpired, setIsSessionExpired] = useState(false);
+    // a conta desativada n entra de novo, entao no lugar do login aparece o motivo q a api mandou (CT-41)
+    const [deactivatedMessage, setDeactivatedMessage] = useState(null);
 
     useEffect(() => {
-        setLoginAgainOpener(() => setIsSessionExpired(true));
+        setLoginAgainOpener((message) => {
+            setIsSessionExpired(true);
+            if (message) {
+                setDeactivatedMessage(message);
+            }
+        });
         return () => setLoginAgainOpener(null);
     }, []);
 
@@ -273,10 +280,17 @@ export default function AppLayout() {
     // do envio q esperava ou a troca de tela fazem ela desenhar de novo sem ninguem logado e quebrar
     const [isLeavingSession, setIsLeavingSession] = useState(false);
 
-    const handleLeaveExpiredSession = () => {
+    const handleLeaveExpiredSession = async () => {
         flushSync(() => setIsLeavingSession(true));
         leaveExpiredSession();
         setIsSessionExpired(false);
+        setDeactivatedMessage(null);
+        // o cookie da conta desativada ainda diria o motivo pra quem abrir o sistema dps nesse navegador,
+        // entao sair apaga ele na api. na sessao q so venceu o cookie ja n vale, e sair por ela derrubaria
+        // quem entrou de novo em outra aba (CT-41)
+        if (deactivatedMessage) {
+            await logout();
+        }
         navigate("/entrar", {replace: true});
     };
 
@@ -415,7 +429,8 @@ export default function AppLayout() {
                 <ScrollRestoration/>
             </div>
             {isSessionExpired && (
-                <LoginAgain onLoggedIn={handleLoggedInAgain} onLeave={handleLeaveExpiredSession}/>
+                <LoginAgain deactivatedMessage={deactivatedMessage} onLoggedIn={handleLoggedInAgain}
+                            onLeave={handleLeaveExpiredSession}/>
             )}
         </>
     );

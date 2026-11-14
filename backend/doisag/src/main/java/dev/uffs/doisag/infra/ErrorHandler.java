@@ -39,6 +39,7 @@ public class ErrorHandler {
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
     public static final String INVALID_REQUEST_MESSAGE = "Requisição inválida. Confira os dados enviados";
+    public static final String DEACTIVATED_ACCOUNT_MESSAGE = "Conta desativada. Fale com a clínica";
 
     // registro q n existe
     // a mensagem tecnica traz id interno, entao ela fica no log e a tela recebe
@@ -159,7 +160,7 @@ public class ErrorHandler {
     // conta desativada tentando entrar com a senha certa
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponseDTO> handleDisabledAccount(DisabledException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.FORBIDDEN, "Conta desativada. Fale com a clínica", request);
+        return buildResponse(HttpStatus.FORBIDDEN, DEACTIVATED_ACCOUNT_MESSAGE, request);
     }
 
     // muitas senhas erradas seguidas

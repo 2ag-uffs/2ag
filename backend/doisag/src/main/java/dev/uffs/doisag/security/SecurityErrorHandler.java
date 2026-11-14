@@ -22,6 +22,10 @@ import java.time.LocalDateTime;
 @Component
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
+    public static final String INVALID_SESSION_MESSAGE = "Sessão inválida ou expirada. Faça login novamente!";
+    // o front le esse cabecalho pra trocar o login por cima pelo aviso de conta desativada
+    public static final String DEACTIVATED_ACCOUNT_HEADER = "X-Account-Deactivated";
+
     private final ObjectMapper objectMapper;
 
     public SecurityErrorHandler(ObjectMapper objectMapper) {
@@ -34,8 +38,13 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        writeError(request, response, HttpStatus.UNAUTHORIZED,
-                "Sessão inválida ou expirada. Faça login novamente!");
+        // so a sessao da propria conta desativada chega aqui marcada, entao o motivo n vaza pra mais ninguem
+        if (request.getAttribute(SecurityFilter.DEACTIVATED_ACCOUNT_ATTRIBUTE) != null) {
+            response.setHeader(DEACTIVATED_ACCOUNT_HEADER, "true");
+            writeError(request, response, HttpStatus.UNAUTHORIZED, ErrorHandler.DEACTIVATED_ACCOUNT_MESSAGE);
+            return;
+        }
+        writeError(request, response, HttpStatus.UNAUTHORIZED, INVALID_SESSION_MESSAGE);
     }
 
     // logado mas sem permissao pra esse recurso responde 403

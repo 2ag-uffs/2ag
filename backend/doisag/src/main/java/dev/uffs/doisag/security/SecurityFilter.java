@@ -27,6 +27,9 @@ public class SecurityFilter extends OncePerRequestFilter {
     // assim quem esta usando o sistema n eh derrubado no meio de um formulario
     private static final Duration RENEW_AFTER = Duration.ofMinutes(10);
     private static final String BEARER_PREFIX = "Bearer ";
+    // marca a requisicao da sessao de uma conta desativada com o id dela
+    // o SecurityErrorHandler responde com o motivo e o logout encerra as sessoes dessa conta
+    public static final String DEACTIVATED_ACCOUNT_ATTRIBUTE = "deactivatedAccountId";
 
     private final TokenService tokenService;
     private final SessionCookieService sessionCookieService;
@@ -44,21 +47,25 @@ public class SecurityFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String cookieToken = sessionCookieService.readToken(request);
         if (cookieToken != null) {
-            authenticate(cookieToken, response, true);
+            authenticate(cookieToken, request, response, true);
         } else {
             String headerToken = readBearerToken(request);
             if (headerToken != null) {
-                authenticate(headerToken, response, false);
+                authenticate(headerToken, request, response, false);
             }
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private void authenticate(String token, HttpServletResponse response, boolean cameFromCookie) {
+    private void authenticate(String token, HttpServletRequest request, HttpServletResponse response,
+                              boolean cameFromCookie) {
         try {
             SessionToken sessionToken = tokenService.readToken(token);
             Users user = usersRepository.findById(sessionToken.userId()).orElse(null);
+            if (user != null && !user.isActive() && isOwnSessionOfDeactivatedAccount(sessionToken, user)) {
+                request.setAttribute(DEACTIVATED_ACCOUNT_ATTRIBUTE, user.getId());
+            }
             if (!isSessionStillValid(sessionToken, user)) {
                 return;
             }
@@ -98,10 +105,23 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
 
         // mesmo renovada a cada uso a sessao acaba no prazo maximo contado do login
-        if (sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now())) {
+        if (isPastMaxDuration(sessionToken)) {
             return false;
         }
         return true;
+    }
+
+    // a sessao q so caiu pela desativacao eh da propria pessoa, entao ela pode saber o motivo (CT-41)
+    // a de antes da troca de senha, a encerrada pela saida da conta e a vencida continuam com o 401
+    // generico, pq podem estar com outra pessoa. por isso a desativacao n encerra as sessoes, so a reativacao
+    private boolean isOwnSessionOfDeactivatedAccount(SessionToken sessionToken, Users user) {
+        return !wasIssuedBefore(sessionToken, user.getPasswordChangedAt())
+                && !wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())
+                && !isPastMaxDuration(sessionToken);
+    }
+
+    private boolean isPastMaxDuration(SessionToken sessionToken) {
+        return sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now());
     }
 
     private boolean wasIssuedBefore(SessionToken sessionToken, LocalDateTime moment) {

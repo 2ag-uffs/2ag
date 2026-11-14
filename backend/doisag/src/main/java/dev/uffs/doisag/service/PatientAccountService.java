@@ -63,8 +63,9 @@ public class PatientAccountService {
             throw new BusinessException(active ? ALREADY_ACTIVE_MESSAGE : ALREADY_INACTIVE_MESSAGE);
         }
         patient.setActive(active);
-        if (!active) {
-            // sem isso a sessao aberta voltava a valer se a conta fosse reativada logo depois
+        if (active) {
+            // sem isso a sessao de antes da desativacao voltava a valer. a conta desativada ja n entra,
+            // e encerrar na desativacao apagava a hora da saida da conta q a sessao esquecida precisa (CT-41)
             patient.endSessionsNow();
         }
         auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId, active);

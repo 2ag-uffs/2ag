@@ -102,18 +102,26 @@ export function setLoginAgainOpener(opener) {
 }
 
 // guarda o envio e abre o login por cima. a promessa so termina qnd a pessoa entra de novo ou sai
-function waitForLoginAgain(retry) {
+function waitForLoginAgain(retry, deactivatedMessage) {
     return new Promise((resolve, reject) => {
         pendingRequests.push({retry, resolve, reject});
-        loginAgainOpener();
+        loginAgainOpener(deactivatedMessage);
     });
+}
+
+// a sessao caiu pq a conta foi desativada: a api avisa no cabecalho e a mensagem dela eh o motivo (CT-41)
+function deactivatedMessageOf(response, body) {
+    if (response.headers.get("X-Account-Deactivated") === "true" && body && body.message) {
+        return body.message;
+    }
+    return null;
 }
 
 // sem o layout montado (link de senha nova aberto com alguem logado) n tem onde abrir o login por cima,
 // entao a pagina recarrega no login como sempre
-function handleExpiredSession(retry) {
+function handleExpiredSession(retry, deactivatedMessage = null) {
     if (loginAgainOpener) {
-        return waitForLoginAgain(retry);
+        return waitForLoginAgain(retry, deactivatedMessage);
     }
     loggedUser = null;
     goToLoginWithExpiredSession();
@@ -185,7 +193,7 @@ async function request(path, options = {}) {
             loggedUser = null;
             throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
         }
-        return handleExpiredSession(() => request(path, options));
+        return handleExpiredSession(() => request(path, options), deactivatedMessageOf(response, body));
     }
 
     // o termo ficou pendente com a sessao aberta (versao nova ou aniversario de 18 anos)
@@ -260,7 +268,7 @@ export async function download(path, fallbackName) {
     if (!response.ok) {
         const body = await readBody(response);
         if (response.status === 401) {
-            return handleExpiredSession(() => download(path, fallbackName));
+            return handleExpiredSession(() => download(path, fallbackName), deactivatedMessageOf(response, body));
         }
         if (isApiDown(response, body)) {
             throw new Error(CONNECTION_ERROR_MESSAGE);

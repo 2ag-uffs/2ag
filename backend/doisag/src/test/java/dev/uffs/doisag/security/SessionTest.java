@@ -1,9 +1,11 @@
 package dev.uffs.doisag.security;
 
+import dev.uffs.doisag.infra.ErrorHandler;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.service.PatientAccountService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.Cookie;
@@ -24,11 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -51,6 +55,7 @@ class SessionTest {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private TokenService tokenService;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
+    @Autowired private PatientAccountService patientAccountService;
 
     @Value("${api.security.token.secret}")
     private String tokenSecret;
@@ -253,6 +258,95 @@ class SessionTest {
         patientRepository.save(patient);
 
         mockMvc.perform(get("/auth/me").cookie(sessionCookie)).andExpect(status().isUnauthorized());
+    }
+
+    // a desativacao derruba a sessao, e quem estava com a tela aberta fica sabendo o motivo de vdd,
+    // com o msm texto do login, em vez de achar q a sessao venceu (decisao de 13/11/2026, CT-41)
+    @Test
+    void deactivatedAccountSessionSaysTheAccountWasDeactivated() throws Exception {
+        Cookie sessionCookie = loginAndGetSessionCookie();
+
+        patientAccountService.changeActive(patient.getId(), false);
+
+        mockMvc.perform(get("/auth/me").cookie(sessionCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(ErrorHandler.DEACTIVATED_ACCOUNT_MESSAGE));
+    }
+
+    // o motivo so vai pra sessao q ainda valeria: sem sessao, com a de antes da troca de senha
+    // ou com a q passou do prazo maximo a resposta continua a generica
+    @Test
+    void deactivatedAccountIsNotRevealedToAnyOtherSession() throws Exception {
+        Cookie beforePasswordChange = cookieWithToken(30, 30);
+        Cookie pastMaximumTime = cookieWithToken(1, 13 * 60);
+
+        patient.setActive(false);
+        patient.setPasswordChangedAt(LocalDateTime.now().minusMinutes(10));
+        patientRepository.save(patient);
+
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
+        mockMvc.perform(get("/auth/me").cookie(beforePasswordChange))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
+        mockMvc.perform(get("/auth/me").cookie(pastMaximumTime))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
+    }
+
+    // a pessoa saiu da conta pelo celular e o cookie ficou num pc dos outros: a desativacao
+    // feita dps n pode contar pra quem pegar esse pc q a conta foi desativada
+    @Test
+    void deactivationAfterALogoutIsNotRevealedToTheSessionThatWasEnded() throws Exception {
+        Cookie forgottenCookie = loginAndGetSessionCookie();
+        Cookie phoneCookie = loginAndGetSessionCookie();
+        mockMvc.perform(post("/auth/logout").cookie(phoneCookie).header("Origin", SYSTEM_ORIGIN))
+                .andExpect(status().isNoContent());
+
+        patientAccountService.changeActive(patient.getId(), false);
+
+        mockMvc.perform(get("/auth/me").cookie(forgottenCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
+    }
+
+    // o Sair do aviso de acesso encerrado apaga o cookie da conta desativada, q ainda diria o motivo
+    // pra quem abrisse o sistema dps nesse navegador (CT-41)
+    @Test
+    void deactivatedAccountLeavingExpiresTheCookie() throws Exception {
+        Cookie sessionCookie = loginAndGetSessionCookie();
+        patientAccountService.changeActive(patient.getId(), false);
+
+        MvcResult result = mockMvc.perform(post("/auth/logout").cookie(sessionCookie).header("Origin", SYSTEM_ORIGIN))
+                .andExpect(status().isNoContent())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andReturn();
+
+        assertThat(result.getResponse().getHeader("Set-Cookie"))
+                .contains("session=")
+                .contains("Max-Age=0");
+    }
+
+    // o Sair do aviso tbm conta como saida da conta: quem tinha copiado o valor do cookie e manda ele
+    // de novo recebe o 401 generico e n o motivo, pq esse cookie pode estar com outra pessoa (CT-41)
+    @Test
+    void deactivatedAccountLeavingEndsTheSessionOfACopiedCookie() throws Exception {
+        Cookie sessionCookie = loginAndGetSessionCookie();
+        patientAccountService.changeActive(patient.getId(), false);
+
+        mockMvc.perform(post("/auth/logout").cookie(sessionCookie).header("Origin", SYSTEM_ORIGIN))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/auth/me").cookie(sessionCookie))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
     }
 
     @Test
