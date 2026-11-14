@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
 import {FiPlus, FiTrash2} from "react-icons/fi";
 import FormSection, {FormActions} from "../../components/form-section/form-section.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -373,9 +374,9 @@ export default function AgendaDisponibilidade() {
                 </FormSection>
 
                 <FormActions>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Salvando..." : "Salvar horários"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                        Salvar horários
+                    </BusyButton>
                 </FormActions>
             </form>
 

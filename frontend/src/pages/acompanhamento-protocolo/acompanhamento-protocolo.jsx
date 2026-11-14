@@ -6,6 +6,7 @@ import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -378,9 +379,9 @@ export default function AcompanhamentoProtocolo() {
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Cancelar
                         </button>
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Iniciando..." : "Iniciar acompanhamento"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Iniciando...">
+                            Iniciar acompanhamento
+                        </BusyButton>
                     </FormActions>
                 </form>
             )}

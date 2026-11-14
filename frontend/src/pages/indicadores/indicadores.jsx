@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import Card from "../../components/card/card.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -121,7 +122,7 @@ export default function Indicadores() {
                     onChange={(event) => setToDate(event.target.value)}
                     required={true}
                 />
-                <button type="submit" className="button-secondary" disabled={isLoading}>Filtrar</button>
+                <BusyButton type="submit" className="button-secondary" isBusy={isLoading}>Filtrar</BusyButton>
             </form>
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}

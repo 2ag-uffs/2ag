@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {apiService, errorMessageOf, setLoggedUser} from "../../services/api.js";
 import styles from "./confirm-email.module.css";
 
@@ -64,9 +65,10 @@ export default function ConfirmEmail() {
                 Você pediu para usar este e-mail como acesso da sua conta no 2AG. Ao confirmar, o e-mail antigo
                 deixa de entrar e as sessões abertas são encerradas: entre de novo com o e-mail novo.
             </p>
-            <button type="button" className={styles.submitButton} onClick={handleConfirm} disabled={isSubmitting}>
-                {isSubmitting ? "Confirmando..." : "Confirmar e-mail novo"}
-            </button>
+            <BusyButton type="button" className={styles.submitButton} onClick={handleConfirm} isBusy={isSubmitting}
+                        busyText="Confirmando...">
+                Confirmar e-mail novo
+            </BusyButton>
         </AuthLayout>
     );
 }

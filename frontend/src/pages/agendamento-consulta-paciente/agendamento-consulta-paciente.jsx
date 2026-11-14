@@ -1,9 +1,10 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {FiCalendar, FiUserX} from "react-icons/fi";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -136,6 +137,14 @@ export default function AgendamentoConsultaPaciente() {
     // o horario escolhido e os pedidos q ele substitui, enquanto a troca espera a confirmacao
     const [replacement, setReplacement] = useState(null);
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
+    const noticeRef = useRef(null);
+
+    // o botao de pedir ou de cancelar some depois do envio e o foco ia pro body, entao ele vai pro aviso (CT-39)
+    useEffect(() => {
+        if (notice && noticeRef.current) {
+            noticeRef.current.focus();
+        }
+    }, [notice]);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -281,7 +290,7 @@ export default function AgendamentoConsultaPaciente() {
                     : "Acompanhe seus pedidos e consultas."}
             />
 
-            {notice && <p className="aviso" role="status">{notice}</p>}
+            {notice && <p className="aviso" role="status" tabIndex={-1} ref={noticeRef}>{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
             {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
@@ -390,14 +399,15 @@ export default function AgendamentoConsultaPaciente() {
                                         Pedido para {formatDateTime(currentSlot)} até {formatTime(currentSlotEnd)}{brasiliaTimeNote()} com {patient.prescriberName}.
                                     </p>
                                     <div className={styles.actions}>
-                                        <button
+                                        <BusyButton
                                             type="button"
                                             className="button"
                                             onClick={() => askForRequest(currentSlot)}
-                                            disabled={isSending}
+                                            isBusy={isSending}
+                                            busyText="Enviando..."
                                         >
-                                            {isSending ? "Enviando..." : sendLabel}
-                                        </button>
+                                            {sendLabel}
+                                        </BusyButton>
                                     </div>
                                 </div>
                             )}

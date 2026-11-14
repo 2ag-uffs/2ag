@@ -1,4 +1,5 @@
 import {useState} from "react";
+import BusyButton from "../../components/form/busy-button.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import {apiService, errorMessageOf} from "../../services/api.js";
@@ -48,9 +49,9 @@ export default function DeclineRequestModal({request, onClose, onDeclined}) {
                     <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
                         Voltar
                     </button>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Recusando..." : "Recusar pedido"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Recusando...">
+                        Recusar pedido
+                    </BusyButton>
                 </div>
             </form>
         </Modal>

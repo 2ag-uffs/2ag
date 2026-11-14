@@ -1,4 +1,5 @@
 import {useState} from "react";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -147,9 +148,9 @@ export default function AppointmentFormModal({
                     <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
                         Voltar
                     </button>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Salvando..." : submitLabel}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                        {submitLabel}
+                    </BusyButton>
                 </div>
             </form>
         </Modal>

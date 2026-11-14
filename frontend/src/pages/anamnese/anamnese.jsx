@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useBlocker, useNavigate, useSearchParams} from "react-router";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -426,9 +427,9 @@ export default function Anamnese() {
                     >
                         Cancelar
                     </button>
-                    <button type="submit" className={styles.primaryButton} disabled={isSaving}>
+                    <BusyButton type="submit" className={styles.primaryButton} isBusy={isSaving}>
                         {submitText}
-                    </button>
+                    </BusyButton>
                 </div>
             </form>
 

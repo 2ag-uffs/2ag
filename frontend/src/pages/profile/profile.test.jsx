@@ -66,6 +66,77 @@ describe("Profile", () => {
         });
     });
 
+    // o botao desabilitado enquanto salvava perdia o foco, q ia pro body e sumia da tela (CT-39)
+    it("salvar os dados pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);
+        let finishSaving;
+        const put = vi.spyOn(apiService, "put").mockImplementation(() => new Promise((resolve) => {
+            finishSaving = resolve;
+        }));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        (await screen.findByRole("button", {name: "Salvar dados"})).focus();
+        await user.keyboard("{Enter}");
+
+        const saving = screen.getByRole("button", {name: "Salvando..."});
+        expect(saving).toHaveFocus();
+        expect(saving).toBeEnabled();
+        expect(saving).toHaveAttribute("aria-disabled", "true");
+        // apertar de novo enquanto salva n manda outra vez
+        await user.keyboard("{Enter}");
+        await user.type(screen.getByLabelText(/Nome completo/), "{Enter}");
+        expect(put).toHaveBeenCalledTimes(1);
+
+        finishSaving(ADMIN_PROFILE);
+        expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Salvar dados"})).not.toHaveAttribute("aria-disabled");
+    });
+
+    // os botoes da pesquisa ficavam desabilitados enquanto salvavam e o foco ia pro body (CT-39)
+    it("retirar o consentimento pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({
+            ...PATIENT_PROFILE, birthDate: "1990-01-01",
+            researchConsent: {active: true, acceptedAt: "2026-10-01T10:00:00", termChanged: false},
+        });
+        const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        (await screen.findByRole("button", {name: "Retirar consentimento"})).focus();
+        await user.keyboard("{Enter}");
+
+        const saving = screen.getByRole("button", {name: "Salvando..."});
+        expect(saving).toHaveFocus();
+        expect(saving).toBeEnabled();
+        expect(saving).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it("aceitar a pesquisa pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        const profile = {
+            ...PATIENT_PROFILE, birthDate: "1990-01-01",
+            researchConsent: {active: false, acceptedAt: null, termChanged: false},
+        };
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/consent-term/research" ? {version: "1.0", text: "Texto do termo de pesquisa."} : profile));
+        const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        await user.click(await screen.findByRole("button", {name: "Ler o termo e decidir"}));
+        (await screen.findByRole("button", {name: "Aceito participar"})).focus();
+        await user.keyboard("{Enter}");
+
+        const saving = screen.getByRole("button", {name: "Salvando..."});
+        expect(saving).toHaveFocus();
+        expect(saving).toBeEnabled();
+        expect(saving).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+    });
+
     // a senha atual errada voltava da api e o foco ficava no botao, sem o leitor de tela dizer nada (CT-39)
     it("a senha atual recusada pela api leva o foco pro campo com o erro", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);

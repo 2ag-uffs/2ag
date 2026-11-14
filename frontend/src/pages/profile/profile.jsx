@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import Modal from "../../components/modal/modal.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
@@ -330,9 +331,9 @@ function PersonalDataCard({profile, onSaved}) {
                     />
                 )}
                 <div className={styles.actions}>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Salvando..." : "Salvar dados"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                        Salvar dados
+                    </BusyButton>
                 </div>
             </form>
         </Card>
@@ -410,9 +411,9 @@ function EmailCard({profile, onSaved}) {
                     required={true}
                 />
                 <div className={styles.actions}>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Trocando..." : "Trocar e-mail"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Trocando...">
+                        Trocar e-mail
+                    </BusyButton>
                 </div>
             </form>
         </Card>
@@ -509,9 +510,9 @@ function PasswordCard({onPasswordChanged}) {
                     required={true}
                 />
                 <div className={styles.actions}>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Trocando..." : "Trocar senha"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Trocando...">
+                        Trocar senha
+                    </BusyButton>
                 </div>
             </form>
         </Card>
@@ -633,9 +634,10 @@ function ResearchCard({profile, onChanged}) {
                     {consent.active ? "Ler o termo" : "Ler o termo e decidir"}
                 </button>
                 {consent.active && (
-                    <button type="button" className="button-danger" onClick={revoke} disabled={isSaving}>
-                        {isSaving ? "Salvando..." : "Retirar consentimento"}
-                    </button>
+                    <BusyButton type="button" className="button-danger" onClick={revoke} isBusy={isSaving}
+                                busyText="Salvando...">
+                        Retirar consentimento
+                    </BusyButton>
                 )}
             </div>
 
@@ -644,9 +646,10 @@ function ResearchCard({profile, onChanged}) {
                 <CardMessage message={message}/>
                 {!consent.active && (
                     <div className={styles.actions}>
-                        <button type="button" className="button" onClick={accept} disabled={isSaving}>
-                            {isSaving ? "Salvando..." : "Aceito participar"}
-                        </button>
+                        <BusyButton type="button" className="button" onClick={accept} isBusy={isSaving}
+                                    busyText="Salvando...">
+                            Aceito participar
+                        </BusyButton>
                     </div>
                 )}
             </Modal>

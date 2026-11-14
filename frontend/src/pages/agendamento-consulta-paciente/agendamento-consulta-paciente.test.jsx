@@ -1,4 +1,4 @@
-import {render, screen, within} from "@testing-library/react";
+import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
@@ -237,6 +237,52 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(post).toHaveBeenCalledWith("/appointments/requests",
             expect.objectContaining({dateTime: FREE_SLOT.start, replacedRequestIds: []}));
         expect(await screen.findByRole("status")).toHaveTextContent("Pedido enviado para Dra Ana.");
+    });
+
+    // o botao ficava desabilitado e dps sumia, e o foco ia pro body: o tab seguinte saia da pagina (CT-39)
+    it("pedir pelo teclado segura o foco no botao enquanto envia e dps leva ele pro aviso do pedido", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([APPOINTMENT], [FREE_SLOT]);
+        let finishRequest;
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => new Promise((resolve) => {
+            finishRequest = resolve;
+        }));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        screen.getByRole("button", {name: "Pedir consulta"}).focus();
+        await user.keyboard("{Enter}");
+
+        const sending = screen.getByRole("button", {name: "Enviando..."});
+        expect(sending).toHaveFocus();
+        expect(sending).toBeEnabled();
+        expect(sending).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+
+        finishRequest({...PENDING_REQUEST, id: 7});
+        const notice = await screen.findByRole("status");
+        expect(notice).toHaveTextContent("Pedido enviado para Dra Ana.");
+        await waitFor(() => expect(notice).toHaveFocus());
+    });
+
+    // o modal fecha e devolve o foco pro botao q abriu, q estava desabilitado, e o foco ia pro body (CT-39)
+    it("confirmar a troca devolve o foco pro botao enquanto o pedido vai", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([PENDING_REQUEST], [FREE_SLOT]);
+        vi.spyOn(apiService, "post").mockImplementation(() => new Promise(() => {}));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        screen.getByRole("button", {name: "Trocar pedido"}).focus();
+        await user.keyboard("{Enter}");
+        within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}).focus();
+        await user.keyboard("{Enter}");
+
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Enviando..."})).toHaveFocus();
     });
 
     it("a troca recusada pela api mostra a mensagem dela", async () => {

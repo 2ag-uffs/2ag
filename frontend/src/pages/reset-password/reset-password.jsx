@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
@@ -142,9 +143,9 @@ export default function ResetPassword() {
                     error={fieldErrors.passwordConfirmation}
                     required={true}
                 />
-                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-                    {isSubmitting ? "Salvando..." : "Salvar senha nova"}
-                </button>
+                <BusyButton type="submit" className={styles.submitButton} isBusy={isSubmitting} busyText="Salvando...">
+                    Salvar senha nova
+                </BusyButton>
             </form>
         </AuthLayout>
     );

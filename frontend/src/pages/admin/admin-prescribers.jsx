@@ -2,6 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import {FiUserPlus, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -603,9 +604,9 @@ export default function AdminPrescribers() {
                         <button type="button" className="button-secondary" onClick={closeForm} disabled={isSaving}>
                             Cancelar
                         </button>
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Criando..." : "Criar conta"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Criando...">
+                            Criar conta
+                        </BusyButton>
                     </div>
                 </form>
             </Modal>
@@ -645,9 +646,9 @@ export default function AdminPrescribers() {
                                     disabled={isResetting}>
                                 Cancelar
                             </button>
-                            <button type="submit" className="button" disabled={isResetting}>
-                                {isResetting ? "Gerando..." : "Gerar link"}
-                            </button>
+                            <BusyButton type="submit" className="button" isBusy={isResetting} busyText="Gerando...">
+                                Gerar link
+                            </BusyButton>
                         </div>
                     </form>
                 ) : (
@@ -709,9 +710,10 @@ export default function AdminPrescribers() {
                                     disabled={isChangingEmail}>
                                 Cancelar
                             </button>
-                            <button type="submit" className="button" disabled={isChangingEmail}>
-                                {isChangingEmail ? "Corrigindo..." : "Corrigir e reenviar o link"}
-                            </button>
+                            <BusyButton type="submit" className="button" isBusy={isChangingEmail}
+                                        busyText="Corrigindo...">
+                                Corrigir e reenviar o link
+                            </BusyButton>
                         </div>
                     </form>
                 ) : (
@@ -770,9 +772,9 @@ export default function AdminPrescribers() {
                         <button type="button" className="button-secondary" onClick={closeFix} disabled={isFixing}>
                             Cancelar
                         </button>
-                        <button type="submit" className="button" disabled={isFixing}>
-                            {isFixing ? "Salvando..." : "Salvar correção"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isFixing} busyText="Salvando...">
+                            Salvar correção
+                        </BusyButton>
                     </div>
                 </form>
             </Modal>

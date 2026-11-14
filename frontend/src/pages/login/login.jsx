@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {Link, useLocation, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import {hasKnownRole, homePathFor} from "../../app/role-home.js";
@@ -96,9 +97,9 @@ export default function Login() {
                     required={true}
                 />
                 <Link to="/esqueci-senha" className={styles.forgotLink}>Esqueci minha senha</Link>
-                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-                    {isSubmitting ? "Entrando..." : "Entrar"}
-                </button>
+                <BusyButton type="submit" className={styles.submitButton} isBusy={isSubmitting} busyText="Entrando...">
+                    Entrar
+                </BusyButton>
             </form>
 
             <p className={styles.signUpNote}>

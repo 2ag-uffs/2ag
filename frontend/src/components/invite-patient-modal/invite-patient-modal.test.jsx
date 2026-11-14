@@ -23,6 +23,24 @@ describe("InvitePatientModal", () => {
         expect(hint).toHaveTextContent("Vale até 23/10/2026 às 18:38" + brasiliaTimeNote() + ".");
     });
 
+    // o botao desabilitado enquanto gerava perdia o foco, q ia pro body (CT-39)
+    it("gerar o link pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([]);
+        const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
+        const user = userEvent.setup();
+        render(<InvitePatientModal show={true} onClose={() => {}}/>);
+
+        screen.getByRole("button", {name: "Gerar link de convite"}).focus();
+        await user.keyboard("{Enter}");
+
+        const creating = screen.getByRole("button", {name: "Gerando link..."});
+        expect(creating).toHaveFocus();
+        expect(creating).toBeEnabled();
+        expect(creating).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+    });
+
     it("a lista de convites em aberto mostra a data e a hora em q cada um vence", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue([
             {id: 1, createdAt: "2026-10-16T18:38:20.302023", expiresAt: "2026-10-23T18:38:20.302023"},

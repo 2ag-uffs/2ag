@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {FiCopy, FiMessageCircle, FiRefreshCw} from "react-icons/fi";
+import BusyButton from "../form/busy-button.jsx";
 import Modal from "../modal/modal.jsx";
 import {apiService, errorMessageOf} from "../../services/api.js";
 import {formatDateTime, formatDateTimeWithZone} from "../../utils/date-format.js";
@@ -153,9 +154,10 @@ export default function InvitePatientModal({show, onClose}) {
                 )}
 
                 {!invite && (
-                    <button type="button" className={styles.generateButton} onClick={createInvite} disabled={isCreating}>
-                        {isCreating ? "Gerando link..." : "Gerar link de convite"}
-                    </button>
+                    <BusyButton type="button" className={styles.generateButton} onClick={createInvite}
+                                isBusy={isCreating} busyText="Gerando link...">
+                        Gerar link de convite
+                    </BusyButton>
                 )}
 
                 {invite && (

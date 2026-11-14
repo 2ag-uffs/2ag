@@ -1,4 +1,5 @@
 import {useEffect, useState} from "react";
+import BusyButton from "../form/busy-button.jsx";
 import {useFocusFirstError} from "../form/focus-first-error.js";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
@@ -124,9 +125,9 @@ function BirthDateFix({profile, onFixed}) {
                 required={true}
             />
             <div>
-                <button type="submit" className="button-secondary" disabled={isSaving}>
-                    {isSaving ? "Salvando..." : "Corrigir a data"}
-                </button>
+                <BusyButton type="submit" className="button-secondary" isBusy={isSaving} busyText="Salvando...">
+                    Corrigir a data
+                </BusyButton>
             </div>
         </form>
     );
@@ -288,9 +289,10 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                     )}
                     {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
                     <div className={styles.actions}>
-                        <button type="button" className="button" onClick={handleAccept} disabled={isSaving}>
-                            {isSaving ? "Salvando..." : ACCEPT_BUTTON_TEXT[ageBand]}
-                        </button>
+                        <BusyButton type="button" className="button" onClick={handleAccept} isBusy={isSaving}
+                                    busyText="Salvando...">
+                            {ACCEPT_BUTTON_TEXT[ageBand]}
+                        </BusyButton>
                     </div>
                 </>
             )}

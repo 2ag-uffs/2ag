@@ -1,5 +1,6 @@
 import {useState} from "react";
 import {useFocusFirstError} from "../form/focus-first-error.js";
+import BusyButton from "../form/busy-button.jsx";
 import TextAreaField from "../form/text-area-field.jsx";
 import Modal from "../modal/modal.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE} from "../../services/api.js";
@@ -72,9 +73,9 @@ export default function AnnulmentModal({title, recordDescription, warning, endpo
                     <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
                         Voltar
                     </button>
-                    <button type="submit" className="button" disabled={isSaving}>
-                        {isSaving ? "Anulando..." : "Anular registro"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Anulando...">
+                        Anular registro
+                    </BusyButton>
                 </div>
             </form>
         </Modal>

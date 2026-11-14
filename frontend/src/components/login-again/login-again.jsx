@@ -1,4 +1,5 @@
 import {useState} from "react";
+import BusyButton from "../form/busy-button.jsx";
 import PasswordField from "../form/password-field.jsx";
 import TextField from "../form/text-field.jsx";
 import {errorMessageOf, getLoggedUser, loginAgain} from "../../services/api.js";
@@ -83,9 +84,9 @@ export default function LoginAgain({deactivatedMessage, onLoggedIn, onLeave}) {
                 />
                 <div className={styles.actions}>
                     <button type="button" className="button-secondary" onClick={onLeave}>Sair</button>
-                    <button type="submit" className="button" disabled={isSubmitting}>
-                        {isSubmitting ? "Entrando..." : "Entrar"}
-                    </button>
+                    <BusyButton type="submit" className="button" isBusy={isSubmitting} busyText="Entrando...">
+                        Entrar
+                    </BusyButton>
                 </div>
             </form>
         </div>

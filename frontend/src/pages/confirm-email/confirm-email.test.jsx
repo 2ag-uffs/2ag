@@ -64,4 +64,21 @@ describe("ConfirmEmail", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("Este link não vale mais.");
         expect(screen.getByRole("link", {name: "Pedir a troca de novo"})).toBeInTheDocument();
     });
+
+    // o botao desabilitado enquanto confirmava perdia o foco, q ia pro body (CT-39)
+    it("confirmar pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
+        const user = userEvent.setup();
+        renderConfirmPage("/confirmar-email?token=abc");
+
+        (await screen.findByRole("button", {name: "Confirmar e-mail novo"})).focus();
+        await user.keyboard("{Enter}");
+
+        const confirming = screen.getByRole("button", {name: "Confirmando..."});
+        expect(confirming).toHaveFocus();
+        expect(confirming).toBeEnabled();
+        expect(confirming).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+    });
 });

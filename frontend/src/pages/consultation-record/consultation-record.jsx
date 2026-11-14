@@ -3,6 +3,7 @@ import {useLocation, useNavigate, useParams} from "react-router";
 import {FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -360,9 +361,9 @@ export default function ConsultationRecord() {
                         Voltar
                     </button>
                     {!isReadOnly && (
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Salvando..." : "Salvar consulta"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                            Salvar consulta
+                        </BusyButton>
                     )}
                 </FormActions>
             </form>

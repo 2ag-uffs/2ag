@@ -3,6 +3,7 @@ import {useNavigate, useParams} from "react-router";
 import {FiAlertCircle, FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -185,9 +186,9 @@ export default function MiniExame() {
                         <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                             Voltar
                         </button>
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Salvando..." : "Salvar exame"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                            Salvar exame
+                        </BusyButton>
                     </FormActions>
                 </form>
             )}

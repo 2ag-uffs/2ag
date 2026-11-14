@@ -83,4 +83,23 @@ describe("SelecaoEscalas", () => {
         expect(hamilton).toBeEnabled();
         expect(hamilton).toBeChecked();
     });
+
+    // o botao desabilitado enquanto enviava perdia o foco, q ia pro body (CT-39)
+    it("enviar pelo teclado deixa o foco no botao enquanto a api responde", async () => {
+        const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
+        renderPage();
+        const user = userEvent.setup();
+
+        expect(await screen.findByRole("button", {name: "Enviar ao paciente"})).toBeDisabled();
+        await user.click(screen.getByRole("checkbox", {name: /Escala de ansiedade de Hamilton/}));
+        screen.getByRole("button", {name: "Enviar ao paciente"}).focus();
+        await user.keyboard("{Enter}");
+
+        const sending = screen.getByRole("button", {name: "Enviando..."});
+        expect(sending).toHaveFocus();
+        expect(sending).toBeEnabled();
+        expect(sending).toHaveAttribute("aria-disabled", "true");
+        await user.keyboard("{Enter}");
+        expect(post).toHaveBeenCalledTimes(1);
+    });
 });

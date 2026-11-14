@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {apiService, ApiError, errorMessageOf} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
@@ -141,9 +142,9 @@ export default function AdminPatients() {
                         onChange={(event) => setEmail(event.target.value)}
                     />
                 </div>
-                <button type="submit" className="button" disabled={isSearching}>
-                    {isSearching ? "Buscando..." : "Buscar"}
-                </button>
+                <BusyButton type="submit" className="button" isBusy={isSearching} busyText="Buscando...">
+                    Buscar
+                </BusyButton>
             </form>
             {searchError && <p className="aviso aviso--atencao" role="alert">{searchError}</p>}
 

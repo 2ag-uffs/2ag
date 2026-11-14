@@ -3,6 +3,7 @@ import {useNavigate, useParams} from "react-router";
 import {FiSearch} from "react-icons/fi";
 import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -173,14 +174,16 @@ export default function SelecaoEscalas() {
                 <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
                     Voltar
                 </button>
-                <button
+                <BusyButton
                     type="button"
                     className="button"
                     onClick={send}
-                    disabled={scalesToSend.length === 0 || isSending}
+                    disabled={scalesToSend.length === 0}
+                    isBusy={isSending}
+                    busyText="Enviando..."
                 >
-                    {isSending ? "Enviando..." : "Enviar ao paciente"}
-                </button>
+                    Enviar ao paciente
+                </BusyButton>
             </FormActions>
         </section>
     );

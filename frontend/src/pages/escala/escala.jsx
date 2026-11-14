@@ -3,6 +3,7 @@ import {useBlocker, useLocation, useNavigate, useParams, useSearchParams} from "
 import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -541,9 +542,9 @@ export default function Escala() {
                         Voltar
                     </button>
                     {!isReadOnly && (
-                        <button type="submit" className="button" disabled={isSaving}>
-                            {isSaving ? "Salvando..." : "Salvar respostas"}
-                        </button>
+                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                            Salvar respostas
+                        </BusyButton>
                     )}
                 </FormActions>
             </form>

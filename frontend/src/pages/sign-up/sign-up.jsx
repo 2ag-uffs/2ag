@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import {homePathFor} from "../../app/role-home.js";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import {focusFirstInvalidField} from "../../components/form/focus-first-error.js";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
@@ -632,9 +633,10 @@ export default function SignUp() {
                     </label>
                 )}
 
-                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
-                    {isSubmitting ? "Criando conta..." : "Criar conta"}
-                </button>
+                <BusyButton type="submit" className={styles.submitButton} isBusy={isSubmitting}
+                            busyText="Criando conta...">
+                    Criar conta
+                </BusyButton>
             </form>
 
             <p className={styles.loginNote}>
