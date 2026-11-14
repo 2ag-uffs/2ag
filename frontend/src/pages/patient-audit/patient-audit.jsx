@@ -15,7 +15,7 @@ export default function PatientAudit() {
             <PageHeader
                 title="Histórico de acesso"
                 subtitle={(patientName ? "Prontuário de " + patientName + ". " : "")
-                    + "Quem criou, alterou ou abriu os registros, e quando."}
+                    + "Quem criou, alterou, abriu ou baixou os registros, e quando."}
             />
             <AuditTrail endpoint={"/patients/" + patientId + "/audit-events"} showPatientNumber={false}/>
         </section>

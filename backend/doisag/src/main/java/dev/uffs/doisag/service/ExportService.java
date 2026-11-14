@@ -116,7 +116,7 @@ public class ExportService {
 
     @Transactional
     public String appointmentsCsv(Long patientId, boolean deidentified, Users loggedUser) {
-        Patient patient = startExport(patientId, deidentified, loggedUser);
+        Patient patient = startExport(patientId, deidentified, loggedUser, "Consultas (appointments.csv)");
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Hora", "Modalidade",
                 "Código da modalidade", "Situação", "Código da situação", "Prescritor", "Queixa e observações",
                 "Exame físico", "Evolução", "Hipótese diagnóstica", "Conduta", "Exames complementares",
@@ -168,7 +168,7 @@ public class ExportService {
     // prescreveu, senao a linha com posologia "conforme o plano" ficava sem dose nenhuma
     @Transactional
     public String prescriptionsCsv(Long patientId, boolean deidentified, Users loggedUser) {
-        Patient patient = startExport(patientId, deidentified, loggedUser);
+        Patient patient = startExport(patientId, deidentified, loggedUser, "Prescrições (prescriptions.csv)");
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação",
                 "Código da situação", "Prescritor", "Produto", "Espectro", "Código do espectro", "Composição",
                 "Marca", "Lote", "Volume", "Posologia", "Plano de dose", "Via", "Duração em dias", "Próxima consulta",
@@ -248,7 +248,7 @@ public class ExportService {
     // e agrupa sem precisar de uma coluna por escala
     @Transactional
     public String scaleResponsesCsv(Long patientId, boolean deidentified, Users loggedUser) {
-        Patient patient = startExport(patientId, deidentified, loggedUser);
+        Patient patient = startExport(patientId, deidentified, loggedUser, "Escalas respondidas (scales.csv)");
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Início do período", "Fim do período",
                 "Escore", "Faixa", "Item", "Resposta", "Código", "Anulada", "Motivo da anulação");
 
@@ -349,12 +349,14 @@ public class ExportService {
     @Transactional
     public String progressCsv(Long patientId, TrackableAttribute attribute, TimePeriod period,
                               boolean deidentified, Users loggedUser) {
-        Patient patient = startExport(patientId, deidentified, loggedUser);
+        // o MEEM q o paciente pede eh recusado antes da linha da trilha, como o arquivo sem consentimento
+        attribute.getScaleType().checkShownTo(loggedUser.getRole());
+        Patient patient = startExport(patientId, deidentified, loggedUser, "Evolução (progress.csv)");
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Código do atributo",
                 "Data", "Valor", "Faixa", "Significado do mínimo", "Significado do máximo", "Maior é melhor");
         TrackableAttributeDTO reading = progressReportService.attributeOf(attribute);
 
-        progressReportService.getPatientProgress(patientId, attribute, period, loggedUser)
+        progressReportService.exportSeries(patientId, attribute, period, loggedUser)
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
                         reading.displayName(),
@@ -378,7 +380,7 @@ public class ExportService {
 
     @Transactional
     public String anamnesisCsv(Long patientId, boolean deidentified, Users loggedUser) {
-        Patient patient = startExport(patientId, deidentified, loggedUser);
+        Patient patient = startExport(patientId, deidentified, loggedUser, "Anamnese (anamneses.csv)");
         CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Pergunta", "Resposta", "Anulada",
                 "Motivo da anulação");
 
@@ -404,8 +406,9 @@ public class ExportService {
         return content + "-" + owner + "-" + LocalDate.now() + ".csv";
     }
 
-    // toda exportacao eh leitura de prontuario e entra na trilha (RF31)
-    private Patient startExport(Long patientId, boolean deidentified, Users loggedUser) {
+    // todo arquivo baixado entra na trilha como exportacao, uma linha por arquivo, com o tipo e a marca
+    // da pesquisa, sem a janela de 30 minutos da abertura de tela (RF31, revisao das regras R19)
+    private Patient startExport(Long patientId, boolean deidentified, Users loggedUser, String file) {
         if (deidentified && !(loggedUser instanceof Prescriber)) {
             throw new BusinessException(DEIDENTIFIED_IS_FOR_PRESCRIBER_MESSAGE);
         }
@@ -415,7 +418,8 @@ public class ExportService {
         if (deidentified && !consentTermService.hasResearchConsent(patient)) {
             throw new BusinessException(NO_RESEARCH_CONSENT_MESSAGE);
         }
-        auditService.recordChartView(patientId);
+        auditService.recordExport(patientId,
+                file + (deidentified ? ", sem identificação, para pesquisa" : ", com identificação"));
         return patient;
     }
 

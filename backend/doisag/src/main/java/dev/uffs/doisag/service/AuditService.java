@@ -120,6 +120,13 @@ public class AuditService {
                 patientId, AuditOperation.ALTERACAO, AuditRecordType.CONTA_DE_PACIENTE, BIRTH_DATE_DETAIL, moment);
     }
 
+    // um arquivo do prontuario baixado, por qualquer pessoa, sem a janela de 30 minutos da abertura de tela:
+    // a clinica precisa dizer quem tirou o prontuario do sistema, qnd, e se foi pra pesquisa (revisao das regras R19)
+    @Transactional
+    public void recordExport(Long patientId, String fileDetail) {
+        saveLoggedUserEvent(AuditOperation.EXPORTACAO, AuditRecordType.PRONTUARIO, null, patientId, fileDetail);
+    }
+
     // conta ligada ou desligada pela administracao
     // a de paciente leva o paciente junto pra aparecer tbm na trilha do prontuario dele
     @Transactional

@@ -61,6 +61,18 @@ public class ProgressReportService {
         // a serie do MEEM pedida pelo paciente vale pro grafico e pro progress.csv
         attribute.getScaleType().checkShownTo(loggedUser.getRole());
         auditService.recordChartView(patientId);
+        return seriesOf(patientId, attribute, period);
+    }
+
+    // a msm serie pro progress.csv, q grava a propria linha de exportacao na trilha em vez do acesso
+    @Transactional
+    public List<ProgressDataPointDTO> exportSeries(Long patientId, TrackableAttribute attribute,
+                                                   TimePeriod period, Users loggedUser) {
+        attribute.getScaleType().checkShownTo(loggedUser.getRole());
+        return seriesOf(patientId, attribute, period);
+    }
+
+    private List<ProgressDataPointDTO> seriesOf(Long patientId, TrackableAttribute attribute, TimePeriod period) {
         LocalDate today = LocalDate.now();
 
         return responseRepository

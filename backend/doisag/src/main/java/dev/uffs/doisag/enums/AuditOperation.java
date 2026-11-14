@@ -9,7 +9,9 @@ public enum AuditOperation {
     ARQUIVAMENTO("Arquivamento"),
     REATIVACAO("Reativação"),
     REDEFINICAO_DE_SENHA("Redefinição de senha"),
-    DESATIVACAO("Desativação");
+    DESATIVACAO("Desativação"),
+    // um arquivo do prontuario baixado, uma linha por arquivo (revisao das regras R19)
+    EXPORTACAO("Exportação");
 
     private final String label;
 
