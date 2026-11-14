@@ -20,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 // acesso ao prontuario gravado uma vez so por janela (RF31)
 // o repositorio falso sempre responde q n tem acesso gravado
@@ -82,6 +83,19 @@ class AuditServiceTest {
         finishTransaction(TransactionSynchronization.STATUS_COMMITTED);
 
         auditService.recordChartView(1L);
+
+        verify(auditEventRepository, times(1)).save(any(AuditEvent.class));
+    }
+
+    // dps de reiniciar a api a memoria comeca vazia e o banco ja tem a linha de 29 minutos atras
+    // na abertura seguinte essa linha ja saiu da janela entao o acesso tem q ser gravado
+    @Test
+    void chartViewAfterRestartIsRecordedWhenTheOldLineLeavesTheWindow() {
+        when(auditEventRepository.existsByActorIdAndPatientIdAndOperationAndOccurredAtAfter(any(), any(), any(), any()))
+                .thenReturn(true, false);
+
+        auditService.recordChartView(7L);
+        auditService.recordChartView(7L);
 
         verify(auditEventRepository, times(1)).save(any(AuditEvent.class));
     }

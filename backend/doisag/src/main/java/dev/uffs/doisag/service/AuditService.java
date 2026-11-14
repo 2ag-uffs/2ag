@@ -172,9 +172,11 @@ public class AuditService {
         forgetChartViewIfRolledBack(viewKey);
 
         // dps de reiniciar a api a memoria comeca vazia mas o banco ainda lembra do acesso
+        // a memoria esquece essa abertura q n virou linha, senao a janela contava dela e n da linha do banco
         boolean alreadyRecorded = auditEventRepository.existsByActorIdAndPatientIdAndOperationAndOccurredAtAfter(
                 loggedUser.getId(), patientId, AuditOperation.VISUALIZACAO, windowStart);
         if (alreadyRecorded) {
+            forgetChartView(viewKey);
             return;
         }
         auditEventRepository.save(

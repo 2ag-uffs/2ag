@@ -99,4 +99,30 @@ class ChartViewAuditWithoutTestTransactionTest {
         assertThat(views).hasSize(1);
         assertThat(views.get(0).getActor().getId()).isEqualTo(prescriber.getId());
     }
+
+    // a linha de antes do reinicio da api esta no banco e a memoria comeca vazia
+    // qnd essa linha sai da janela de 30 minutos a abertura seguinte grava de novo
+    @Test
+    void chartViewAfterRestartIsRecordedWhenTheOldLineLeavesTheWindow() throws Exception {
+        String prescriberToken = "Bearer " + tokenService.generateToken(prescriber);
+        jdbcTemplate.update("insert into audit_event (occurred_at, actor_id, actor_role, operation, record_type, "
+                        + "patient_id) values (?, ?, 'PRESCRIBER', 'VISUALIZACAO', 'PRONTUARIO', ?)",
+                LocalDateTime.now().minusMinutes(29), prescriber.getId(), patient.getId());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", prescriberToken))
+                .andExpect(status().isOk());
+        assertThat(countChartViews()).isEqualTo(1);
+
+        jdbcTemplate.update("update audit_event set occurred_at = ? where patient_id = ?",
+                LocalDateTime.now().minusMinutes(31), patient.getId());
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", prescriberToken))
+                .andExpect(status().isOk());
+
+        assertThat(countChartViews()).isEqualTo(2);
+    }
+
+    private int countChartViews() {
+        return jdbcTemplate.queryForObject("select count(*) from audit_event where patient_id = ? "
+                + "and operation = 'VISUALIZACAO' and record_type = 'PRONTUARIO'", Integer.class, patient.getId());
+    }
 }
