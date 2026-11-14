@@ -1015,6 +1015,8 @@ Faixas interpretativas, **conforme o formulário aplicado pela clínica** (`docs
 
 > Existem outras faixas em circulação para o HAM-A. O sistema deve usar as do instrumento que a prescritora efetivamente aplica, porque é contra elas que ela interpreta o resultado.
 
+> Hoje a HAM-A é de autoaplicação no sistema (RN09): ela chega ao paciente como tarefa e é respondida em casa, inclusive o item 14, *Comportamento na entrevista*, que no papel é observado por quem entrevista. Sem o item 14 não sai escore, então o paciente, ou o responsável, se avalia num item que não existe fora da entrevista, e lê o escore com a faixa. Fica registrado assim até a clínica dizer quem aplica a HAM-A (decisão de 14/11/2026, revisão das regras R15).
+
 *Atendido desde 12/09/2026:* o item 14, que faltava na v1.0 e na primeira implementação, está no formulário como "Comportamento na entrevista" (`ScaleCatalog.hamilton()`), e o escore soma os 14 itens, de 0 a 56 (`ScaleScorer.hamiltonScore`, coberto pelo `ScaleScorerTest`).
 
 ---
