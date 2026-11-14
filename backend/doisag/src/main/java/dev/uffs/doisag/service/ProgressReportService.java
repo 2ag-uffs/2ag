@@ -136,6 +136,11 @@ public class ProgressReportService {
         return attribute.isScore() ? response.getScore() : response.valueOf(attribute.getItemKey());
     }
 
+    // o nome, as pontas e o lado melhor de um atributo, os msm da tela, pro progress.csv
+    public TrackableAttributeDTO attributeOf(TrackableAttribute attribute) {
+        return attributeDtoOf(attribute);
+    }
+
     private TrackableAttributeDTO attributeDtoOf(TrackableAttribute attribute) {
         ScaleDefinition definition = catalog.definitionOf(attribute.getScaleType());
         // no escore as pontas sao a primeira e a ultima faixa do instrumento,

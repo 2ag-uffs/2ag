@@ -166,24 +166,26 @@ class ExportTest {
         assertThat(csv).contains("Dor lombar crônica").contains("faltou na consulta").contains("marcada e ja passou");
         assertThat(csv).contains("atendimento anulado").contains("\"sim\";\"Registro de outro paciente\"");
         // a anulacao n troca a situacao da consulta, entao a anulada segue concluida e a marca fica na coluna Anulada
-        assertThat(csv).contains("\"Remota\";\"Concluída\";\"Dra. Exportação\";\"atendimento anulado\"");
+        assertThat(csv).contains("\"Remota\";\"REMOTA\";\"Concluída\";\"CONCLUIDA\";\"Dra. Exportação\";"
+                + "\"atendimento anulado\"");
         assertThat(csv).doesNotContain("consulta cancelada").doesNotContain("pedido recusado")
                 .doesNotContain("pedido esperando resposta").doesNotContain("marcada pro futuro");
         // o cabecalho e as quatro consultas q entram no historico
         assertThat(csv.lines().count()).isEqualTo(5);
     }
 
-    // o csv traz o texto q a tela mostra e n o codigo do banco, igual as respostas do scales.csv (#96)
+    // o csv traz o texto q a tela mostra, com o codigo do lado, igual as respostas do scales.csv (#96):
+    // quem le entende a palavra e quem filtra na planilha usa o codigo, q n muda (revisao das regras R16)
     @Test
-    void appointmentsCsvHasTheScreenText() throws Exception {
+    void appointmentsCsvHasTheScreenTextWithTheCodeNextToIt() throws Exception {
         saveAppointment(TODAY.minusDays(5).atTime(10, 0), AppointmentStatus.NAO_COMPARECEU, "faltou na consulta");
 
         String csv = download("appointments.csv", "", prescriber);
 
-        assertThat(csv).contains("\"09:00\";\"Presencial\";\"Concluída\"");
-        assertThat(csv).contains("\"10:00\";\"Remota\";\"Falta\"");
-        assertThat(csv).doesNotContain("PRESENCIAL").doesNotContain("REMOTA").doesNotContain("CONCLUIDA")
-                .doesNotContain("NAO_COMPARECEU");
+        assertThat(csv).contains("\"Hora\";\"Modalidade\";\"Código da modalidade\";\"Situação\";"
+                + "\"Código da situação\";\"Prescritor\"");
+        assertThat(csv).contains("\"09:00\";\"Presencial\";\"PRESENCIAL\";\"Concluída\";\"CONCLUIDA\"");
+        assertThat(csv).contains("\"10:00\";\"Remota\";\"REMOTA\";\"Falta\";\"NAO_COMPARECEU\"");
     }
 
     // com ponto a planilha em portugues le 72.5 como texto e n soma nem tira media do peso
@@ -379,6 +381,34 @@ class ExportTest {
         assertThat(csv).contains("\"Ruim\";\"2\"");
     }
 
+    // as horas aceitam meia hora e o banco guarda 6.5 e 7.0, q a planilha em portugues lia como texto ou data
+    @Test
+    void hoursComeOutWithADecimalComma() throws Exception {
+        ScaleResponse pittsburgh = new ScaleResponse();
+        pittsburgh.setPatient(patient);
+        pittsburgh.setScaleType(ScaleType.ESCALA_PITTSBURGH);
+        pittsburgh.setPeriodStart(TODAY.minusDays(2));
+        pittsburgh.setPeriodEnd(TODAY.minusDays(2));
+        pittsburgh.setAnswers(new LinkedHashMap<>(Map.of("horasDeSono", 6.5)));
+        responseRepository.save(pittsburgh);
+
+        ScaleResponse diary = new ScaleResponse();
+        diary.setPatient(patient);
+        diary.setScaleType(ScaleType.REGISTRO_SONO);
+        diary.setPeriodStart(TODAY.minusDays(1));
+        diary.setPeriodEnd(TODAY.minusDays(1));
+        diary.setAnswers(new LinkedHashMap<>(Map.of("tempoForaDeCasa", 7.0)));
+        responseRepository.save(diary);
+        entityManager.flush();
+        entityManager.clear();
+
+        String csv = download("scales.csv", "", patient);
+
+        assertThat(csv).contains("\"Horas de sono por noite\";\"6,5\";\"6,5\"");
+        assertThat(csv).contains("\"Tempo fora de casa\";\"7\";\"7\"");
+        assertThat(csv).doesNotContain("6.5").doesNotContain("7.0");
+    }
+
     @Test
     void aAnamneseSaiComPerguntaEResposta() throws Exception {
         String csv = download("anamneses.csv", "", patient);
@@ -449,11 +479,37 @@ class ExportTest {
     void aEvolucaoSaiComDataEValor() throws Exception {
         String csv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
 
-        assertThat(csv).contains("\"Atributo\";\"Data\";\"Valor\"");
-        // o atributo com o nome q o seletor do grafico mostra, n o codigo
-        assertThat(csv).contains("\"Acompanhamento semanal\";\"Dor\";");
-        assertThat(csv).doesNotContain("\"DOR\"");
+        assertThat(csv).contains("\"Atributo\";\"Código do atributo\";\"Data\";\"Valor\"");
+        // o atributo com o nome q o seletor do grafico mostra e o codigo do lado
+        assertThat(csv).contains("\"Acompanhamento semanal\";\"Dor\";\"DOR\";");
         assertThat(csv).contains("\"7\"");
+    }
+
+    // em ansiedade o 10 eh tranquilo e em dor o 10 eh dor intensa: sem dizer isso o medico q recebe o
+    // arquivo le a curva ao contrario (RF27, revisao das regras R16)
+    @Test
+    void progressCsvSaysWhatTheEndsMeanAndWhichSideIsBetter() throws Exception {
+        ScaleResponse anxiety = new ScaleResponse();
+        anxiety.setPatient(patient);
+        anxiety.setScaleType(ScaleType.ACOMPANHAMENTO_SEMANAL);
+        anxiety.setPeriodStart(TODAY.minusDays(2));
+        anxiety.setPeriodEnd(TODAY.minusDays(2));
+        anxiety.setAnswers(new LinkedHashMap<>(Map.of("ansiedade", 8)));
+        responseRepository.save(anxiety);
+        saveScore(ScaleType.ESCALA_HAMILTON, TODAY.minusDays(2), 30, "Ansiedade grave");
+
+        String anxietyCsv = download("progress.csv", "?attribute=ANSIEDADE&period=DIAS_30", patient);
+        assertThat(anxietyCsv).contains("\"Valor\";\"Faixa\";\"Significado do mínimo\";\"Significado do máximo\";"
+                + "\"Maior é melhor\"");
+        assertThat(anxietyCsv).contains("\"8\";\"\";\"0 = muito ansioso\";\"10 = tranquilo\";\"sim\"");
+
+        String painCsv = download("progress.csv", "?attribute=DOR&period=DIAS_30", patient);
+        assertThat(painCsv).contains("\"7\";\"\";\"0 = sem dor\";\"10 = dor intensa\";\"não\"");
+
+        // no escore as pontas sao a primeira e a ultima faixa do instrumento, como na tela
+        String scoreCsv = download("progress.csv", "?attribute=ESCORE_HAMILTON&period=DIAS_30", prescriber);
+        assertThat(scoreCsv).contains("\"30\";\"Ansiedade grave\";\"0 = Sem ansiedade\";\"56 = Ansiedade grave\";"
+                + "\"não\"");
     }
 
     @Test
@@ -475,14 +531,15 @@ class ExportTest {
                 "Abaixo do esperado para a escolaridade (corte 25)");
 
         String csv = download("progress.csv", "?attribute=ESCORE_HAMILTON&period=DIAS_30", patient);
-        assertThat(csv).contains("\"Paciente\";\"Escala\";\"Atributo\";\"Data\";\"Valor\";\"Faixa\"");
-        assertThat(csv).contains("\"Escala de ansiedade de Hamilton\";\"Escore total\";")
+        assertThat(csv).contains("\"Paciente\";\"Escala\";\"Atributo\";\"Código do atributo\";\"Data\";\"Valor\";"
+                + "\"Faixa\"");
+        assertThat(csv).contains("\"Escala de ansiedade de Hamilton\";\"Escore total\";\"ESCORE_HAMILTON\";")
                 .contains("\"30\";\"Ansiedade grave\"");
-        assertThat(csv).doesNotContain("ESCORE_HAMILTON");
 
         String deidentified = download("progress.csv", "?attribute=ESCORE_MEEM&period=DIAS_30&deidentified=true",
                 prescriber);
-        assertThat(deidentified).contains("\"Identificador\";\"Escala\";\"Atributo\";\"Data\";\"Valor\";\"Faixa\"");
+        assertThat(deidentified).contains("\"Identificador\";\"Escala\";\"Atributo\";\"Código do atributo\";"
+                + "\"Data\";\"Valor\";\"Faixa\"");
         assertThat(deidentified).contains("\"24\";\"Abaixo do esperado para a escolaridade (corte 25)\"");
         assertThat(deidentified).contains("paciente " + patient.getId());
         assertThat(deidentified).doesNotContain("Paciente da exportação");
@@ -602,20 +659,21 @@ class ExportTest {
 
         String csv = download("prescriptions.csv", "", patient);
 
-        assertThat(csv).contains("\"Paciente\";\"Data da consulta\";\"Situação\";\"Prescritor\";\"Produto\";"
-                + "\"Espectro\";\"Composição\";\"Marca\";\"Lote\";\"Volume\";\"Posologia\";\"Plano de dose\";\"Via\";"
+        assertThat(csv).contains("\"Paciente\";\"Data da consulta\";\"Situação\";\"Código da situação\";"
+                + "\"Prescritor\";\"Produto\";\"Espectro\";\"Código do espectro\";\"Composição\";\"Marca\";\"Lote\";\"Volume\";\"Posologia\";\"Plano de dose\";\"Via\";"
                 + "\"Duração em dias\";\"Próxima consulta\";\"Instruções de uso\";\"Precauções e contraindicações\";"
                 + "\"Efeitos esperados\";\"Observações\";\"Anulada\";\"Motivo da anulação\"");
         assertThat(csv).contains("\"Paciente da exportação\";\"" + BrazilianFormat.date(TODAY.minusDays(10))
-                + "\";\"Vigente\";\"Dra. Exportação\";\"Óleo de CBD 20%\";\"\";\"\";\"\";\"\";\"\";\"Conforme o plano\";"
+                + "\";\"Vigente\";\"VIGENTE\";\"Dra. Exportação\";\"Óleo de CBD 20%\";\"\";\"\";\"\";\"\";\"\";\"\";"
+                + "\"Conforme o plano\";"
                 + "\"Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite\";\"Sublingual\";\"90\";"
                 + "\"\";\"Pingar embaixo da língua e esperar um minuto\";\"Não dirigir nas primeiras semanas\";"
                 + "\"Sono melhor em duas semanas\";\"Rever a dose no retorno\";\"não\";\"\"");
     }
 
-    // situacao e espectro com o texto da tela, sem o codigo do banco
+    // situacao e espectro com o texto da tela e o codigo do lado (revisao das regras R16)
     @Test
-    void prescriptionsCsvHasTheScreenText() throws Exception {
+    void prescriptionsCsvHasTheScreenTextWithTheCodeNextToIt() throws Exception {
         Prescription replaced = new Prescription();
         replaced.setAppointment(appointment);
         replaced.setProductDescription("Óleo full spectrum");
@@ -626,13 +684,13 @@ class ExportTest {
 
         String csv = download("prescriptions.csv", "", prescriber);
 
-        assertThat(csv).contains("\";\"Vigente\";\"Dra. Exportação\";\"Óleo de CBD 10%\";");
-        assertThat(csv).contains("\";\"Substituída\";\"Dra. Exportação\";\"Óleo full spectrum\";\"Full spectrum\";");
-        assertThat(csv).doesNotContain("VIGENTE").doesNotContain("SUBSTITUIDA").doesNotContain("FULL_SPECTRUM");
+        assertThat(csv).contains("\";\"Vigente\";\"VIGENTE\";\"Dra. Exportação\";\"Óleo de CBD 10%\";");
+        assertThat(csv).contains("\";\"Substituída\";\"SUBSTITUIDA\";\"Dra. Exportação\";\"Óleo full spectrum\";"
+                + "\"Full spectrum\";\"FULL_SPECTRUM\";");
     }
 
     // anular a vigente troca o status pra SUBSTITUIDA, pra ela n contar como vigente (NOOP-04),
-    // mas ninguem substituiu ela. a situacao diz anulada, como a tela
+    // mas ninguem substituiu ela. a situacao diz anulada, como a tela, e o codigo tbm
     @Test
     void annulledCurrentPrescriptionComesOutAsAnnulled() throws Exception {
         Prescription current = new Prescription();
@@ -651,7 +709,7 @@ class ExportTest {
 
         String csv = download("prescriptions.csv", "", prescriber);
 
-        assertThat(csv).contains("\";\"Anulada\";\"Dra. Exportação\";\"Óleo full spectrum\";");
+        assertThat(csv).contains("\";\"Anulada\";\"ANULADA\";\"Dra. Exportação\";\"Óleo full spectrum\";");
         assertThat(csv).contains("\"sim\";\"Receita do paciente errado\"");
         assertThat(csv).doesNotContain("SUBSTITUIDA").doesNotContain("Substituída");
     }
@@ -694,7 +752,8 @@ class ExportTest {
     void deidentifiedPrescriptionsCarryOnlyThePrescriberNumber() throws Exception {
         String csv = download("prescriptions.csv", "?deidentified=true", prescriber);
 
-        assertThat(csv).contains("\"Identificador\";\"Data da consulta\";\"Situação\";\"Prescritor\"");
+        assertThat(csv).contains("\"Identificador\";\"Data da consulta\";\"Situação\";\"Código da situação\";"
+                + "\"Prescritor\"");
         assertThat(csv).contains("\"prescritor " + prescriber.getId() + "\"");
         assertThat(csv).doesNotContain("Dra. Exportação");
     }

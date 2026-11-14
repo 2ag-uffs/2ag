@@ -1,5 +1,6 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.TrackableAttributeDTO;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.Cannabinoid;
@@ -29,8 +30,8 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
-import dev.uffs.doisag.scale.ScaleDefinition;
 import dev.uffs.doisag.scale.ScaleItem;
+import dev.uffs.doisag.scale.ScaleItemType;
 import dev.uffs.doisag.scale.ScaleOption;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,10 +117,10 @@ public class ExportService {
     @Transactional
     public String appointmentsCsv(Long patientId, boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Hora", "Modalidade", "Situação",
-                "Prescritor", "Queixa e observações", "Exame físico", "Evolução", "Hipótese diagnóstica",
-                "Conduta", "Exames complementares", "Pressão arterial", "Peso", "Altura", "Anulada",
-                "Motivo da anulação");
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data", "Hora", "Modalidade",
+                "Código da modalidade", "Situação", "Código da situação", "Prescritor", "Queixa e observações",
+                "Exame físico", "Evolução", "Hipótese diagnóstica", "Conduta", "Exames complementares",
+                "Pressão arterial", "Peso", "Altura", "Anulada", "Motivo da anulação");
 
         for (Appointment appointment : appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)) {
             if (!belongsToHistory(appointment)) {
@@ -135,7 +136,9 @@ public class ExportService {
                     BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
                     BrazilianFormat.time(appointment.getDateTime()),
                     modalityText(appointment.getModality()),
+                    codeOf(appointment.getModality()),
                     statusText(appointment.getStatus()),
+                    codeOf(appointment.getStatus()),
                     prescriberCell(appointment.getPrescriber(), deidentified),
                     appointment.getClinicalObservation(),
                     appointment.getPhysicalExam(),
@@ -166,10 +169,11 @@ public class ExportService {
     @Transactional
     public String prescriptionsCsv(Long patientId, boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação", "Prescritor",
-                "Produto", "Espectro", "Composição", "Marca", "Lote", "Volume", "Posologia", "Plano de dose", "Via",
-                "Duração em dias", "Próxima consulta", "Instruções de uso", "Precauções e contraindicações",
-                "Efeitos esperados", "Observações", "Anulada", "Motivo da anulação");
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Data da consulta", "Situação",
+                "Código da situação", "Prescritor", "Produto", "Espectro", "Código do espectro", "Composição",
+                "Marca", "Lote", "Volume", "Posologia", "Plano de dose", "Via", "Duração em dias", "Próxima consulta",
+                "Instruções de uso", "Precauções e contraindicações", "Efeitos esperados", "Observações", "Anulada",
+                "Motivo da anulação");
 
         for (Prescription prescription
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
@@ -182,9 +186,11 @@ public class ExportService {
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()),
                     prescriptionStatusText(prescription),
+                    prescriptionStatusCode(prescription),
                     prescriberCell(prescription.getAppointment().getPrescriber(), deidentified),
                     prescription.getProductDescription(),
                     spectrumText(prescription.getSpectrum()),
+                    codeOf(prescription.getSpectrum()),
                     composition(prescription),
                     prescription.getBrand(),
                     prescription.getBatch(),
@@ -267,7 +273,7 @@ public class ExportService {
                         response.getScoreBand(),
                         item.label(),
                         answerText(item, answer),
-                        answer,
+                        answerCode(item, answer),
                         yesOrNo(response.isAnnulled()),
                         Annulment.reasonOf(response.getAnnulment()));
             }
@@ -282,8 +288,23 @@ public class ExportService {
             case SIM_NAO -> Boolean.parseBoolean(String.valueOf(answer)) ? "Sim" : "Não";
             case ESCOLHA -> optionLabel(item, answer);
             case MINUTOS, CALCULADO -> minutesText(answer);
+            case HORAS -> hoursText(answer);
             default -> String.valueOf(answer);
         };
+    }
+
+    // o codigo eh a resposta como o banco guarda, so as horas trocam o ponto pela virgula
+    private Object answerCode(ScaleItem item, Object answer) {
+        return item.type() == ScaleItemType.HORAS ? hoursText(answer) : answer;
+    }
+
+    // as horas aceitam meia hora e o banco guarda 6.5 e 7.0, q a planilha em portugues le como texto ou data
+    // saem como 6,5 e 7, com a virgula e sem o zero a toa (revisao das regras R16)
+    private String hoursText(Object answer) {
+        if (answer instanceof Number number) {
+            return BrazilianFormat.decimal(number);
+        }
+        return String.valueOf(answer);
     }
 
     private String optionLabel(ScaleItem item, Object answer) {
@@ -323,21 +344,36 @@ public class ExportService {
 
     // o escore de escala validada sai com a faixa do lado, igual no scales.csv,
     // pq numero sozinho n quer dizer nada (RN14). item da ficha fica com a faixa em branco
+    // e cada linha diz o q o minimo e o maximo querem dizer e se o maior eh melhor, como a tela, pq em
+    // ansiedade o 10 eh tranquilo e em dor eh dor intensa (RF27, revisao das regras R16)
     @Transactional
     public String progressCsv(Long patientId, TrackableAttribute attribute, TimePeriod period,
                               boolean deidentified, Users loggedUser) {
         Patient patient = startExport(patientId, deidentified, loggedUser);
-        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Data", "Valor", "Faixa");
-        String attributeName = attributeText(attribute);
+        CsvBuilder csv = new CsvBuilder(patientColumn(deidentified), "Escala", "Atributo", "Código do atributo",
+                "Data", "Valor", "Faixa", "Significado do mínimo", "Significado do máximo", "Maior é melhor");
+        TrackableAttributeDTO reading = progressReportService.attributeOf(attribute);
 
         progressReportService.getPatientProgress(patientId, attribute, period, loggedUser)
                 .forEach(point -> csv.line(patientCell(patient, deidentified),
                         attribute.getScaleType().getDisplayName(),
-                        attributeName,
+                        reading.displayName(),
+                        attribute.name(),
                         BrazilianFormat.date(point.date()),
                         point.value(),
-                        point.band()));
+                        point.band(),
+                        anchorText(reading.minValue(), reading.lowAnchor()),
+                        anchorText(reading.maxValue(), reading.highAnchor()),
+                        reading.higherIsBetter() == null ? null : yesOrNo(reading.higherIsBetter())));
         return csv.build();
+    }
+
+    // tipo "0 = muito ansioso", igual embaixo do nome do atributo na tela. contagem e minutos n tem ancora
+    private String anchorText(Integer value, String anchor) {
+        if (anchor == null) {
+            return null;
+        }
+        return value + " = " + anchor;
     }
 
     @Transactional
@@ -388,7 +424,12 @@ public class ExportService {
     }
 
     // modalidade, situacao, espectro e atributo saem com o texto q a tela mostra,
-    // pq o codigo do banco tipo NAO_COMPARECEU so quem fez o sistema entende
+    // pq o codigo do banco tipo NAO_COMPARECEU so quem fez o sistema entende.
+    // o codigo vai na coluna do lado, q eh o q n muda pra quem filtra na planilha (revisao das regras R16)
+    private String codeOf(Enum<?> value) {
+        return value == null ? null : value.name();
+    }
+
     private String modalityText(AppointmentModality modality) {
         if (modality == null) {
             return null;
@@ -417,6 +458,14 @@ public class ExportService {
         return prescription.getStatus() == PrescriptionStatus.VIGENTE ? "Vigente" : "Substituída";
     }
 
+    // pelo msm motivo o codigo da anulada eh ANULADA e n o SUBSTITUIDA q ficou gravado
+    private String prescriptionStatusCode(Prescription prescription) {
+        if (prescription.isAnnulled()) {
+            return "ANULADA";
+        }
+        return prescription.getStatus().name();
+    }
+
     private String spectrumText(Spectrum spectrum) {
         if (spectrum == null) {
             return null;
@@ -426,17 +475,6 @@ public class ExportService {
             case BROAD_SPECTRUM -> "Broad spectrum";
             case FULL_SPECTRUM -> "Full spectrum";
         };
-    }
-
-    // o nome q o seletor do grafico mostra: o rotulo do escore ou o do item da ficha
-    private String attributeText(TrackableAttribute attribute) {
-        ScaleDefinition definition = catalog.definitionOf(attribute.getScaleType());
-        if (attribute.isScore()) {
-            return definition.scoreLabel();
-        }
-        return definition.itemOf(attribute.getItemKey())
-                .map(ScaleItem::label)
-                .orElse(attribute.name());
     }
 
     private String patientColumn(boolean deidentified) {
