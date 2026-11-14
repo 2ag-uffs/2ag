@@ -121,7 +121,7 @@ Janela normal, conta `admin@email.com`.
   - O link venceu ou se perdeu: **Senha nova**, digite a senha da administração em **Sua senha de administrador** e **Gerar link**. Esse link vale só 30 minutos, e não 48 horas como o de primeiro acesso: entregue e use na hora. Para quem ainda não criou a senha, a janela e o e-mail dizem que é esse link que cria a primeira senha.
   - O e-mail foi digitado errado: **Corrigir e-mail** (só aparece enquanto a pessoa ainda não criou a senha).
   - O registro, a profissão ou o CPF foram digitados errado: **Corrigir dados**. O CPF guardado não aparece na janela: preencha só se for corrigir.
-  - **Desativar** tira o acesso na hora e encerra o acompanhamento automático dos pacientes daquele prescritor. Não clique na sessão sem explicar isso.
+  - **Desativar** tira o acesso na hora e pausa o acompanhamento automático dos pacientes daquele prescritor. **Reativar** retoma o acompanhamento de onde parou. Não clique na sessão sem explicar isso.
 
 ## 3. primeiro acesso do prescritor (5 min)
 

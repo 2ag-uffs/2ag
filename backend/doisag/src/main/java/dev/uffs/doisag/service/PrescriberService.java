@@ -48,13 +48,11 @@ public class PrescriberService {
     private final PasswordResetService passwordResetService;
     private final AuditService auditService;
     private final PasswordService passwordService;
-    private final TreatmentProtocolService treatmentProtocolService;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
                              ScaleTaskRepository taskRepository, AppointmentRepository appointmentRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
-                             AuditService auditService, PasswordService passwordService,
-                             TreatmentProtocolService treatmentProtocolService) {
+                             AuditService auditService, PasswordService passwordService) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
         this.taskRepository = taskRepository;
@@ -63,7 +61,6 @@ public class PrescriberService {
         this.passwordResetService = passwordResetService;
         this.auditService = auditService;
         this.passwordService = passwordService;
-        this.treatmentProtocolService = treatmentProtocolService;
     }
 
     // o administrador cria a conta de um prescritor (RF02.2)
@@ -153,7 +150,8 @@ public class PrescriberService {
 
     // ativa ou desativa a conta sem apagar nada
     // conta desativada perde o acesso na proxima requisicao
-    // reativar n traz de volta o acompanhamento automatico q foi encerrado
+    // o acompanhamento automatico dos pacientes so pausa, igual na conta do paciente: o job n manda rodada
+    // pra prescritor desativado e reativar retoma de onde parou (revisao das regras R18)
     @Transactional
     public Prescriber changeActive(Long prescriberId, boolean active) {
         Prescriber prescriber = getById(prescriberId);
@@ -164,9 +162,6 @@ public class PrescriberService {
         if (active) {
             // as sessoes de antes caem na reativacao e n na desativacao, igual ao paciente (PatientAccountService)
             prescriber.endSessionsNow();
-        } else {
-            // sem o prescritor ninguem le as escalas, entao o envio automatico dos pacientes dele para
-            treatmentProtocolService.endActiveProtocolsOfPrescriber(prescriberId);
         }
         auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PRESCRITOR, prescriberId, null, active);
         return prescriberRepository.save(prescriber);

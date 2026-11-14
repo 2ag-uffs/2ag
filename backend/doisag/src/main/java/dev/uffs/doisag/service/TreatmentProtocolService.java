@@ -204,14 +204,6 @@ public class TreatmentProtocolService {
         protocolRepository.findFirstByPatientIdAndActiveTrue(patientId).ifPresent(this::endProtocol);
     }
 
-    // desativar o prescritor encerra o acompanhamento automatico dos pacientes dele
-    @Transactional
-    public void endActiveProtocolsOfPrescriber(Long prescriberId) {
-        for (Patient patient : patientRepository.findAllByPrescriberIdAndArchivedAtIsNullOrderByNameAsc(prescriberId)) {
-            endActiveProtocolIfAny(patient.getId());
-        }
-    }
-
     // encerrar n apaga nada e o protocolo fica guardado como inativo
     private TreatmentProtocol endProtocol(TreatmentProtocol protocol) {
         protocol.setActive(false);
@@ -269,7 +261,8 @@ public class TreatmentProtocolService {
             endProtocol(protocol);
             return 0;
         }
-        // conta desativada n recebe escala nova. se a do paciente for reativada o envio continua
+        // conta desativada n recebe escala nova. reativada, a do paciente ou a do prescritor, o envio continua
+        // de onde parou (revisao das regras R18)
         Patient patient = protocol.getPatient();
         Prescriber prescriber = patient.getPrescriber();
         boolean bothAccountsActive = patient.isActive() && prescriber != null && prescriber.isActive();

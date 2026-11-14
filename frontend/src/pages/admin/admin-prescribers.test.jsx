@@ -33,6 +33,9 @@ describe("AdminPrescribers", () => {
         await user.click(buttons[0]);
         const dialog = screen.getByRole("dialog");
         expect(dialog).toHaveTextContent(/sem lembrete para os pacientes enquanto a conta estiver desativada/);
+        // desativar so pausa o acompanhamento automatico (revisao das regras R18)
+        expect(dialog).toHaveTextContent(/o acompanhamento automático dos pacientes dela fica pausado/);
+        expect(dialog).not.toHaveTextContent(/encerrado/);
         await user.click(within(dialog).getByRole("button", {name: "Sim, desativar"}));
 
         expect(put).toHaveBeenCalledWith("/admin/prescribers/1/active", {active: false});

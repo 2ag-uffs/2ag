@@ -389,19 +389,26 @@ class AdminPrescribersTest {
                 .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
     }
 
-    // sem o prescritor ninguem le as escalas, entao o envio automatico para e n volta sozinho
+    // sem o prescritor ninguem le as escalas, entao o envio automatico pausa, igual na conta do paciente, e
+    // reativar retoma de onde parou. antes desativar encerrava e uma desativacao de dias zerava todos os ciclos
+    // (decisao de 14/11/2026, revisao das regras R18)
     @Test
-    void deactivatingThePrescriberEndsTheFollowUpOfTheirPatients() throws Exception {
+    void deactivatingThePrescriberPausesTheFollowUpOfTheirPatients() throws Exception {
         Prescriber prescriber = savePrescriber("admin-acompanhamento@email.com", "ADM15");
         Patient patient = savePatient(prescriber);
-        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null,
+        LocalDate today = LocalDate.now();
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(today, 90, null,
                 null, List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
 
         changeActive(prescriber.getId(), false).andExpect(status().isOk());
-        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isPresent();
+        // desativada, a rodada da semana seguinte n sai
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(7))).isZero();
 
         changeActive(prescriber.getId(), true).andExpect(status().isOk());
-        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isEmpty();
+        assertThat(protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())).isPresent();
+        // reativada, a rodada q ficou parada sai no job seguinte
+        assertThat(treatmentProtocolService.designarEscalasVencidas(today.plusDays(8))).isEqualTo(1);
     }
 
     @Test

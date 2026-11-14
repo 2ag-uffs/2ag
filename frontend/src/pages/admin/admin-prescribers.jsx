@@ -803,12 +803,12 @@ export default function AdminPrescribers() {
                 title={isDeactivating ? "Desativar prescritor" : "Reativar prescritor"}
                 message={
                     isDeactivating
-                        ? "A pessoa perde o acesso na hora e o acompanhamento automático dos pacientes dela é"
-                            + " encerrado. As escalas esperando resposta e as consultas marcadas ficam como estão,"
+                        ? "A pessoa perde o acesso na hora e o acompanhamento automático dos pacientes dela fica"
+                            + " pausado. As escalas esperando resposta e as consultas marcadas ficam como estão,"
                             + " sem lembrete para os pacientes enquanto a conta estiver desativada. Os pacientes e"
                             + " o histórico continuam guardados."
                         : "A pessoa volta a conseguir entrar no sistema. O acompanhamento automático dos pacientes"
-                            + " não volta sozinho, e os lembretes de escala e de consulta voltam a sair."
+                            + " continua de onde parou, e os lembretes de escala e de consulta voltam a sair."
                 }
                 confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
                 cancelText="Voltar"
