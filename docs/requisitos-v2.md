@@ -218,6 +218,7 @@ Registro de observações clínicas, diagnósticos, condutas e plano terapêutic
 - Campos de texto clínico aceitam **no mínimo 10.000 caracteres** sem truncamento (ver RN11)
 - Toda alteração gera registro de auditoria (RF31)
 - Sair do registro da consulta, da prescrição (RF05) ou do Mini-Exame (RF26) com algo digitado e ainda não salvo pergunta antes, pelo botão Voltar, pelo menu ou pelo navegador, como a anamnese e as escalas já faziam. Antes o que foi digitado se perdia sem aviso (13/11/2026)
+- O formulário diz, em cada bloco de texto (*Queixa e exame*, *Avaliação* e *Conduta*), que o paciente lê aquele texto em Meu histórico clínico, e o responsável também quando o paciente é menor de idade, porque o menor usa a conta que o responsável opera (16/10/2026) e o paciente vê o próprio histórico completo (RF12). Assim a prescritora escreve sabendo quem lê. Um campo que o paciente não vê fica para a clínica decidir (decisão de 14/11/2026, revisão das regras R8)
 
 ---
 

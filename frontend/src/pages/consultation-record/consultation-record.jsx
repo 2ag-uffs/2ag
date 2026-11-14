@@ -81,6 +81,11 @@ function requestBodyOf(record) {
     };
 }
 
+// o paciente le o registro em Meu historico clinico, e o menor usa a conta q o responsavel opera
+// entao a prescritora escreve sabendo quem le (revisao das regras R8)
+const WHO_READS_NOTE = "O paciente lê este texto em Meu histórico clínico, e o responsável também, "
+    + "quando o paciente é menor de idade.";
+
 // o motivo da tela abrir so pra leitura ou null qnd a consulta recebe registro
 function blockedMessageOf(appointment) {
     if (appointment.annulled) {
@@ -305,7 +310,7 @@ export default function ConsultationRecord() {
                     </FieldRow>
                 </FormSection>
 
-                <FormSection title="Queixa e exame" disabled={areFieldsLocked}>
+                <FormSection title="Queixa e exame" description={WHO_READS_NOTE} disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Queixa principal e observações"
                         name="clinicalObservation"
@@ -353,7 +358,7 @@ export default function ConsultationRecord() {
                     )}
                 </FormSection>
 
-                <FormSection title="Avaliação" disabled={areFieldsLocked}>
+                <FormSection title="Avaliação" description={WHO_READS_NOTE} disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Evolução do quadro"
                         name="evolution"
@@ -371,7 +376,7 @@ export default function ConsultationRecord() {
                     />
                 </FormSection>
 
-                <FormSection title="Conduta" disabled={areFieldsLocked}>
+                <FormSection title="Conduta" description={WHO_READS_NOTE} disabled={areFieldsLocked}>
                     <TextAreaField
                         label="Conduta e plano terapêutico"
                         name="therapeuticPlan"

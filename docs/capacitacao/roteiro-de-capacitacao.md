@@ -236,7 +236,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
 - **Onde clicar:**
   1. **Pacientes** e, na linha do paciente adulto, **Nova consulta**.
   2. Em **Quando e como**, confira **Data e hora** (vem com o momento atual e não aceita hora futura) e escolha a **Modalidade**, que vem sem nada marcado.
-  3. Preencha alguns campos com texto inventado: **Queixa principal e observações**, **Exame físico**, **Evolução do quadro**, **Hipótese diagnóstica**, **Conduta e plano terapêutico**. Pressão, peso e altura são opcionais e somem na consulta **Remota**.
+  3. Preencha alguns campos com texto inventado: **Queixa principal e observações**, **Exame físico**, **Evolução do quadro**, **Hipótese diagnóstica**, **Conduta e plano terapêutico**. Pressão, peso e altura são opcionais e somem na consulta **Remota**. Cada bloco de texto avisa que o paciente lê o que se escreve ali, e o responsável também quando o paciente é menor de idade.
   4. **Salvar consulta**.
 - **Conferir:** aparece **Consulta registrada** com três caminhos: **Emitir prescrição**, **Aplicar mini-exame** e **Ver histórico do paciente**.
 - **Se der errado:**

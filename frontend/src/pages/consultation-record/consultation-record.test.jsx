@@ -85,6 +85,18 @@ describe("ConsultationRecord", () => {
         expect(post).toHaveBeenCalledWith("/patients/5/appointments", expect.objectContaining({modality: "REMOTA"}));
     });
 
+    // a prescritora escreve sabendo quem le: o paciente, e o responsavel qnd ele eh menor (revisao das regras R8)
+    it("cada bloco de texto da consulta diz q o paciente e o responsavel leem", async () => {
+        renderNewConsultation();
+
+        const note = "O paciente lê este texto em Meu histórico clínico, e o responsável também, "
+            + "quando o paciente é menor de idade.";
+        expect(await screen.findByRole("group", {name: "Queixa e exame"})).toHaveAccessibleDescription(note);
+        expect(screen.getByRole("group", {name: "Avaliação"})).toHaveAccessibleDescription(note);
+        expect(screen.getByRole("group", {name: "Conduta"})).toHaveAccessibleDescription(note);
+        expect(screen.getByRole("group", {name: "Quando e como"})).not.toHaveAccessibleDescription();
+    });
+
     // o endereco de consulta nova n pode ficar no historico depois de salvar
     it("consulta nova salva troca o endereco pelo da consulta salva", async () => {
         const router = renderNewConsultation();

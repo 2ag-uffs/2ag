@@ -1,12 +1,20 @@
+import {useId} from "react";
 import styles from "./form-section.module.css";
 
 // bloco de um formulario comprido, tipo "Queixa e exame" no registro da consulta
 // eh um fieldset de verdade entao o disabled trava todos os campos de dentro de uma vez
+// a descricao fica ligada ao bloco pro leitor de tela ler junto com o titulo
 export default function FormSection({title, description, disabled = false, children}) {
+    const descriptionId = useId();
+
     return (
-        <fieldset className={styles.section} disabled={disabled}>
+        <fieldset
+            className={styles.section}
+            disabled={disabled}
+            aria-describedby={description ? descriptionId : undefined}
+        >
             <legend className={styles.legend}>{title}</legend>
-            {description && <p className={styles.description}>{description}</p>}
+            {description && <p id={descriptionId} className={styles.description}>{description}</p>}
             {children}
         </fieldset>
     );
