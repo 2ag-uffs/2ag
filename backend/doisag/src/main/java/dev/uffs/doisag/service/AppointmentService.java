@@ -548,7 +548,12 @@ public class AppointmentService {
         // remarcada pra amanha, o lembrete do horario novo sai agora: o job de amanha ja olha o dia seguinte,
         // e quem recebeu o e-mail do horario antigo ficava so com ele. a q ja tem lembrete (mesmo horario) n
         // ganha outro, e o pedido q vira consulta no mesmo horario ganha o primeiro
-        reminderService.remindNowIfTomorrow(savedAppointment);
+        boolean newReminderSent = reminderService.remindNowIfTomorrow(savedAppointment);
+        // o paciente ja recebeu por e-mail o horario antigo e o novo, em outro dia, n ganhou lembrete agora, entao
+        // a remarcacao tbm vai por e-mail (R11)
+        if (!newReminderSent) {
+            reminderService.emailRescheduleIfEmailed(savedAppointment);
+        }
         return new AgendaAppointmentDTO(savedAppointment);
     }
 
@@ -599,6 +604,8 @@ public class AppointmentService {
                     "Sua consulta com " + savedAppointment.getPrescriber().getName() + " de "
                             + formatDateTime(savedAppointment) + " foi cancelada.",
                     Notification.TYPE_ALERT, Notification.PATIENT_AGENDA_LINK);
+            // o paciente q recebeu a consulta por e-mail recebe o cancelamento por e-mail tbm (R11)
+            reminderService.emailCancellationIfEmailed(savedAppointment);
         }
         return new AgendaAppointmentDTO(savedAppointment);
     }

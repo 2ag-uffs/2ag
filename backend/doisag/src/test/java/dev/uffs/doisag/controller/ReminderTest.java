@@ -9,6 +9,7 @@ import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Notification;
@@ -345,6 +346,142 @@ class ReminderTest {
                 TODAY.plusDays(1).atTime(16, 0), AppointmentModality.REMOTA, null, null));
 
         assertThat(notificationsOf(patient)).extracting(Notification::getTitle).contains("Consulta amanhã");
+        verify(emailSender, never()).send(any());
+    }
+
+    // o e-mail disse "sua consulta eh amanha" e a prescritora cancelou: o cancelamento tbm vai por e-mail,
+    // com o mesmo tipo de conteudo do lembrete (decisao de 14/11/2026, revisao das regras R11)
+    @Test
+    void aConsultaQueJaRecebeuOLembreteECanceladaGanhaEmailDoCancelamento() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.cancel(appointment.getId(), prescriber);
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emails.capture());
+        EmailMessage cancellation = emails.getAllValues().get(1);
+        assertThat(cancellation.to()).isEqualTo("lembrete-paciente@email.com");
+        assertThat(cancellation.subject()).isEqualTo("Sua consulta no 2AG foi cancelada");
+        assertThat(cancellation.text()).contains("Sua consulta com Dra. Lembrete de "
+                        + BrazilianFormat.dateTime(TODAY.plusDays(1).atTime(9, 0)) + " foi cancelada.")
+                .contains(Notification.PATIENT_AGENDA_LINK);
+    }
+
+    // remarcada pra outro dia dps do lembrete: o horario novo n ganha lembrete hoje, entao o e-mail diz o novo
+    @Test
+    void aConsultaQueJaRecebeuOLembreteERemarcadaParaOutroDiaGanhaEmailDaRemarcacao() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.REMOTA, null, null));
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emails.capture());
+        EmailMessage reschedule = emails.getAllValues().get(1);
+        assertThat(reschedule.subject()).isEqualTo("Sua consulta no 2AG foi remarcada");
+        assertThat(reschedule.text()).contains("Sua consulta com Dra. Lembrete de "
+                + BrazilianFormat.dateTime(TODAY.plusDays(1).atTime(9, 0)) + " foi remarcada para "
+                + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + ".");
+        // o horario novo continua com o lembrete dele na vespera
+        assertThat(reminderService.sendAppointmentReminders(TODAY.plusDays(3))).isEqualTo(1);
+    }
+
+    // sem o lembrete o e-mail nunca disse nada dessa consulta, e o aviso fica so no sistema como antes
+    @Test
+    void consultaSemLembreteCanceladaOuRemarcadaNaoGanhaEmail() {
+        Appointment canceled = saveAppointment(TODAY.plusDays(3).atTime(9, 0), AppointmentStatus.AGENDADA);
+        Appointment moved = saveAppointment(TODAY.plusDays(3).atTime(14, 0), AppointmentStatus.AGENDADA);
+
+        appointmentService.cancel(canceled.getId(), prescriber);
+        appointmentService.reschedule(moved.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(5).atTime(14, 0), AppointmentModality.PRESENCIAL, null, null));
+
+        assertThat(notificationsOf(patient)).extracting(Notification::getTitle)
+                .contains("Consulta cancelada", "Consulta remarcada");
+        verify(emailSender, never()).send(any());
+    }
+
+    // o e-mail do cancelamento segue a preferencia de e-mail igual o lembrete
+    @Test
+    void oEmailDoCancelamentoRespeitaAPreferenciaDeEmail() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.cancel(appointment.getId(), prescriber);
+
+        assertThat(notificationsOf(patient)).extracting(Notification::getTitle)
+                .contains("Consulta amanhã", "Consulta cancelada");
+        verify(emailSender, never()).send(any());
+    }
+
+    // quem cancelou foi o proprio paciente, entao n tem o q corrigir por e-mail
+    @Test
+    void oPacienteQueCancelaAConsultaLembradaNaoGanhaEmail() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(3).atTime(9, 0), AppointmentStatus.AGENDADA);
+        appointment.setReminderSentAt(LocalDateTime.now());
+        appointment.setEmailedDateTime(appointment.getDateTime());
+        appointmentRepository.save(appointment);
+
+        appointmentService.cancel(appointment.getId(), patient);
+
+        verify(emailSender, never()).send(any());
+    }
+
+    // o e-mail da remarcacao tbm disse um horario, entao cancelar dps dele vai por e-mail de novo
+    @Test
+    void depoisDoEmailDaRemarcacaoOCancelamentoTambemVaiPorEmail() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.REMOTA, null, null));
+
+        appointmentService.cancel(appointment.getId(), prescriber);
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(3)).send(emails.capture());
+        assertThat(emails.getAllValues()).extracting(EmailMessage::subject).containsExactly(
+                "Sua consulta no 2AG é amanhã", "Sua consulta no 2AG foi remarcada", "Sua consulta no 2AG foi cancelada");
+        assertThat(emails.getAllValues().get(2).text()).contains(
+                BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + " foi cancelada.");
+    }
+
+    // a decisao manda e-mail so no cancelamento e na remarcacao pra outro dia. mudar so a hora no mesmo dia q o
+    // e-mail disse, inclusive no proprio dia da consulta, fica so com o aviso no sistema (revisao das regras R11)
+    @Test
+    void aConsultaQueMudaSoDeHoraNoMesmoDiaDoEmailNaoGanhaEmailDaRemarcacao() {
+        LocalDateTime emailedTime = TODAY.plusDays(3).atTime(10, 0);
+        Appointment appointment = saveAppointment(emailedTime, AppointmentStatus.AGENDADA);
+        appointment.setEmailedDateTime(emailedTime);
+        appointmentRepository.save(appointment);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(3).atTime(15, 0), AppointmentModality.REMOTA, null, null));
+
+        verify(emailSender, never()).send(any());
+        assertThat(notificationsOf(patient)).extracting(Notification::getTitle)
+                .containsExactly("Consulta remarcada");
+        // o horario do ultimo e-mail continua guardado, entao cancelar ou mudar de dia dps ainda vai por e-mail
+        assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getEmailedDateTime())
+                .isEqualTo(emailedTime);
+    }
+
+    // o lembrete saiu so no sistema pq o e-mail estava desligado: nenhum e-mail disse nada dessa consulta, entao
+    // o cancelamento fica no sistema mesmo com o e-mail ligado dps
+    @Test
+    void consultaLembradaSoNoSistemaNaoGanhaEmailDoCancelamento() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+        reminderService.sendAppointmentReminders(TODAY);
+        patient.setEmailNotificationsEnabled(true);
+        patientRepository.save(patient);
+
+        appointmentService.cancel(appointment.getId(), prescriber);
+
         verify(emailSender, never()).send(any());
     }
 

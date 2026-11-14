@@ -275,6 +275,17 @@ public class Appointment {
         this.reminderSentAt = reminderSentAt;
     }
 
+    // o horario q o ultimo e-mail desta consulta disse pro paciente, pra cancelar ou remarcar por e-mail tbm (R11)
+    private LocalDateTime emailedDateTime;
+
+    public LocalDateTime getEmailedDateTime() {
+        return emailedDateTime;
+    }
+
+    public void setEmailedDateTime(LocalDateTime emailedDateTime) {
+        this.emailedDateTime = emailedDateTime;
+    }
+
     // quando o pedido ainda sem resposta na vespera avisou o paciente, pra ele n sair duas vezes (R1)
     private LocalDateTime unansweredNoticeSentAt;
 

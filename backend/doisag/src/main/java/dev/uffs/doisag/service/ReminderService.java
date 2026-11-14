@@ -157,10 +157,46 @@ public class ReminderService {
 
         notificationService.createNotification(patient, "Consulta amanhã", message,
                 Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
-        sendEmail(patient, "Sua consulta no 2AG é amanhã", message, Notification.PATIENT_AGENDA_LINK);
+        if (sendEmail(patient, "Sua consulta no 2AG é amanhã", message, Notification.PATIENT_AGENDA_LINK)) {
+            appointment.setEmailedDateTime(appointment.getDateTime());
+        }
 
         appointment.setReminderSentAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
+    }
+
+    // o lembrete disse por e-mail "sua consulta eh amanha", e o cancelamento ou a remarcacao so apareciam no
+    // sistema, q quem le e-mail n abre. so a consulta q o paciente ja recebeu por e-mail ganha esses, com o mesmo
+    // tipo de conteudo do lembrete e a mesma preferencia de e-mail (decisao de 14/11/2026, revisao das regras R11)
+    // quem chama ja gravou a mudanca e o aviso no sistema, e o e-mail so sai dps q o banco confirma
+    public void emailCancellationIfEmailed(Appointment appointment) {
+        if (appointment.getEmailedDateTime() == null) {
+            return;
+        }
+        sendEmail(appointment.getPatient(), "Sua consulta no 2AG foi cancelada",
+                "Sua consulta com " + appointment.getPrescriber().getName() + " de "
+                        + BrazilianFormat.dateTime(appointment.getDateTime()) + " foi cancelada.",
+                Notification.PATIENT_AGENDA_LINK);
+    }
+
+    // o ultimo e-mail disse outro dia e o horario novo n ganhou lembrete agora. so a hora mudando no mesmo dia
+    // fica no sistema, pq a decisao manda e-mail so pra outro dia. o horario novo fica guardado, entao cancelar ou
+    // remarcar dps tbm vai por e-mail
+    public void emailRescheduleIfEmailed(Appointment appointment) {
+        LocalDateTime emailedDateTime = appointment.getEmailedDateTime();
+        if (emailedDateTime == null
+                || emailedDateTime.toLocalDate().equals(appointment.getDateTime().toLocalDate())) {
+            return;
+        }
+        boolean wasSent = sendEmail(appointment.getPatient(), "Sua consulta no 2AG foi remarcada",
+                "Sua consulta com " + appointment.getPrescriber().getName() + " de "
+                        + BrazilianFormat.dateTime(emailedDateTime) + " foi remarcada para "
+                        + BrazilianFormat.dateTime(appointment.getDateTime()) + ".",
+                Notification.PATIENT_AGENDA_LINK);
+        if (wasSent) {
+            appointment.setEmailedDateTime(appointment.getDateTime());
+            appointmentRepository.save(appointment);
+        }
     }
 
     // o formulario q vence logo e ainda n teve resposta nenhuma
@@ -230,13 +266,15 @@ public class ReminderService {
     }
 
     // o e-mail so sai pra conta ativa q deixou ligado no perfil (RF18)
-    private void sendEmail(Patient patient, String subject, String message, String path) {
+    // diz se o e-mail foi pra fila de envio
+    private boolean sendEmail(Patient patient, String subject, String message, String path) {
         if (!patient.isActive() || !patient.isEmailNotificationsEnabled() || patient.getEmail() == null) {
-            return;
+            return false;
         }
         String text = "Olá, " + patient.getDisplayName() + ".\n\n" + message
                 + "\n\nAcesse o sistema em " + publicUrl + path
                 + "\n\nSe não quiser mais receber estes e-mails, desligue os avisos por e-mail no seu perfil.";
         backgroundEmailSender.sendLater(new EmailMessage(patient.getEmail(), subject, text), patient.getId());
+        return true;
     }
 }
