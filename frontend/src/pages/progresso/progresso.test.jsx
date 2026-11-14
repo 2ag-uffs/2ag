@@ -338,8 +338,9 @@ describe("Progresso", () => {
     it("na tela do paciente o cartao dos comentarios fala com ele", async () => {
         renderProgress("ANSIEDADE");
 
+        // o titulo aparece ja com o esqueleto, entao o texto vazio tem q ser esperado e n procurado na hora
         expect(await screen.findByRole("heading", {name: /^O que você escreveu/})).toBeInTheDocument();
-        expect(screen.getByText("Nenhum comentário seu nas escalas deste período.")).toBeInTheDocument();
+        expect(await screen.findByText("Nenhum comentário seu nas escalas deste período.")).toBeInTheDocument();
         expect(screen.queryByText(/O que o paciente escreveu/)).not.toBeInTheDocument();
     });
 
@@ -347,7 +348,7 @@ describe("Progresso", () => {
         renderPrescriberProgress("DOR");
 
         expect(await screen.findByRole("heading", {name: /^O que o paciente escreveu/})).toBeInTheDocument();
-        expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
+        expect(await screen.findByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
     });
 
     // CT-09 o prescritor q troca o numero no endereco n ve filtro grafico nem cartao do paciente de outro
@@ -688,7 +689,8 @@ describe("Progresso", () => {
         expect(await screen.findByRole("application", {name: /Gráfico de Dor/})).toBeInTheDocument();
         expect(screen.getByRole("alert")).toHaveTextContent("Muitos pedidos seguidos");
         expect(screen.getByLabelText("Período")).toBeInTheDocument();
-        expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
+        // os comentarios chegam por conta deles, dps do grafico ou antes
+        expect(await screen.findByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
     });
 
     // CT-40 com a internet lenta o catalogo e os comentarios demoram, e enquanto isso a tela dizia
