@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
-import {useNavigate, useParams} from "react-router";
+import {useBlocker, useNavigate, useParams} from "react-router";
 import {FiCheckCircle, FiPlus} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
@@ -9,10 +10,11 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
 import {isConfirmed} from "../../utils/appointment-labels.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {emptyToNull, numberOrNull, textOrNull} from "../../utils/form-values.js";
+import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {
     ADMINISTRATION_ROUTE_OPTIONS,
     CANNABINOID_OPTIONS,
@@ -45,6 +47,17 @@ function newComponent() {
 
 function newEscalationStep() {
     return {dosage: "", note: ""};
+}
+
+// so conta o q a prescritora escreveu ou escolheu, a linha nova em branco n conta
+function hasTypedSomething(form, components, escalationSteps) {
+    const startingComponent = newComponent();
+    const formChanged = Object.keys(EMPTY_FORM).some((fieldName) => form[fieldName] !== EMPTY_FORM[fieldName]);
+    const componentChanged = components.some((component) => component.concentration !== ""
+        || component.cannabinoid !== startingComponent.cannabinoid
+        || component.unit !== startingComponent.unit);
+    const stepTyped = escalationSteps.some((step) => step.dosage !== "" || step.note !== "");
+    return formChanged || componentChanged || stepTyped;
 }
 
 // as mesmas regras da api (RN03): isolado tem um canabinoide so, broad spectrum n tem THC,
@@ -250,6 +263,15 @@ export default function PrescriptionForm() {
     const removeEscalationStep = (index) => {
         setEscalationSteps((currentSteps) => currentSteps.filter((step, stepIndex) => stepIndex !== index));
     };
+
+    // sair com algo digitado e n emitido pergunta antes, como no registro da consulta e na anamnese
+    // enquanto emite n pergunta, a receita emitida sai direto e sair da conta tbm n pergunta
+    const hasUnsavedChanges = !isSaving && issuedPrescription === null
+        && hasTypedSomething(form, components, escalationSteps);
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(hasUnsavedChanges);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -582,6 +604,16 @@ export default function PrescriptionForm() {
                     </FormActions>
                 </form>
             )}
+
+            <ConfirmModal
+                show={exitBlocker.state === "blocked"}
+                title="Sair sem salvar"
+                message="O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
+            />
         </section>
     );
 }

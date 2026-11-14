@@ -79,6 +79,8 @@ a tela de escala (`pages/escala`) monta o formulário com a definição que vem 
 
 a anamnese (`pages/anamnese`) segue a mesma regra: com algo digitado, ou mudado na correção, o **Cancelar** do formulário, a seta e o **Voltar** do layout e o menu perguntam antes com o modal *Sair sem enviar* (*Sair sem salvar* na correção), e recarregar ou fechar a aba faz o navegador perguntar. a ficha sem nada digitado e a ficha enviada saem sem perguntar.
 
+o registro da consulta (`pages/consultation-record`), a prescrição (`pages/prescription-form`) e o Mini-Exame (`pages/mini-exame`) do prescritor seguem a mesma regra desde 13/11/2026: com algo digitado ou marcado, ou mudado no registro de uma consulta já salva, o **Voltar** do formulário, a seta e o **Voltar** do layout e o menu perguntam antes com o modal *Sair sem salvar*, e recarregar ou fechar a aba faz o navegador perguntar. enquanto o envio está em andamento, depois de salvar e sem nada digitado a saída não pergunta. antes as três telas saíam caladas e o que foi digitado se perdia.
+
 o paciente não vê o Mini-Exame do Estado Mental (decisão de 13/11/2026): a api deixa o exame de fora das listas dele e recusa com 403 o que ele pede direto, então as telas do paciente (central de escalas, histórico, resposta, progresso, impressão e painel) só mostram o que vem e nenhuma fala do exame. a tela de escala perdeu o aviso que só existia para o paciente que abria o endereço do mini-exame. o progresso só pede a série de um atributo que veio no catálogo, então o atributo do MEEM num link antigo nem chega na api e a tela abre no primeiro atributo do paciente. as telas do prescritor (mini-exame, histórico, progresso, exportação e impressão) continuam com o exame.
 
 ## padrão de código

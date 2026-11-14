@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
-import {useLocation, useNavigate, useParams} from "react-router";
+import {useBlocker, useLocation, useNavigate, useParams} from "react-router";
 import {FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
@@ -9,10 +10,11 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
 import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import {numberOrNull, textOrNull} from "../../utils/form-values.js";
+import {useLeaveWarning} from "../../utils/leave-warning.js";
 import styles from "./consultation-record.module.css";
 
 const EMPTY_RECORD = {
@@ -104,6 +106,8 @@ export default function ConsultationRecord() {
 
     const [patient, setPatient] = useState(null);
     const [record, setRecord] = useState(() => ({...EMPTY_RECORD, dateTime: nowForInput()}));
+    // como o registro abriu ou foi salvo, pra saber se a prescritora mexeu em algo
+    const [startingRecord, setStartingRecord] = useState(record);
     // consulta anulada ou cancelada abre so pra leitura
     const [blockedMessage, setBlockedMessage] = useState(null);
     const [isUpdated, setIsUpdated] = useState(false);
@@ -127,7 +131,9 @@ export default function ConsultationRecord() {
                     return;
                 }
                 setPatient({id: appointment.patientId, name: appointment.patientName, birthDate: null});
-                setRecord(recordFromAppointment(appointment));
+                const loadedRecord = recordFromAppointment(appointment);
+                setRecord(loadedRecord);
+                setStartingRecord(loadedRecord);
                 const message = blockedMessageOf(appointment);
                 if (message !== null) {
                     setBlockedMessage(message);
@@ -156,6 +162,16 @@ export default function ConsultationRecord() {
         setRecord((currentRecord) => ({...currentRecord, [fieldName]: value}));
     };
 
+    // sair com algo digitado e n salvo pergunta antes, como na anamnese e nas escalas
+    // vale pra qqr saida: o Voltar do formulario, a seta e o Voltar de cima e o menu
+    // enquanto salva n pergunta, e sair da conta tbm n pq a sessao ja acabou
+    const hasUnsavedChanges = !isSaving
+        && Object.keys(record).some((fieldName) => record[fieldName] !== startingRecord[fieldName]);
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(hasUnsavedChanges);
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsSaving(true);
@@ -171,6 +187,7 @@ export default function ConsultationRecord() {
                 navigate("/consulta/" + savedAppointment.id + "/registro", {replace: true, state: {registered: true}});
             } else {
                 await apiService.put("/appointments/" + appointmentId + "/clinical-record", requestBody);
+                setStartingRecord(record);
                 setIsUpdated(true);
             }
         } catch (requestError) {
@@ -367,6 +384,18 @@ export default function ConsultationRecord() {
                     )}
                 </FormActions>
             </form>
+
+            <ConfirmModal
+                show={exitBlocker.state === "blocked"}
+                title="Sair sem salvar"
+                message={isNewConsultation
+                    ? "O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"
+                    : "O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"}
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
+            />
         </section>
     );
 }

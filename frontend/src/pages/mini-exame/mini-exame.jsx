@@ -1,14 +1,16 @@
 import {useEffect, useState} from "react";
-import {useNavigate, useParams} from "react-router";
+import {useBlocker, useNavigate, useParams} from "react-router";
 import {FiAlertCircle, FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
+import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
 
@@ -93,6 +95,15 @@ export default function MiniExame() {
         setValues((currentValues) => ({...currentValues, [key]: value}));
         setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
     };
+
+    // sair com alguma resposta marcada e n salva pergunta antes, como no registro da consulta
+    // a resposta limpa volta a ficar em branco, e enquanto salva ou dps de salvo n pergunta
+    const hasUnsavedChanges = !isSaving && savedExam === null
+        && Object.values(values).some((value) => String(value).trim() !== "");
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(hasUnsavedChanges);
 
     const save = async (event) => {
         event.preventDefault();
@@ -192,6 +203,16 @@ export default function MiniExame() {
                     </FormActions>
                 </form>
             )}
+
+            <ConfirmModal
+                show={exitBlocker.state === "blocked"}
+                title="Sair sem salvar"
+                message="O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
+            />
         </section>
     );
 }

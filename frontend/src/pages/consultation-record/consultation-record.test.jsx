@@ -1,8 +1,10 @@
-import {act, fireEvent, render, screen} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService} from "../../services/api.js";
+import AppLayout from "../../components/app-layout/app-layout.jsx";
+import {apiService, setLoggedUser} from "../../services/api.js";
 import ConsultationRecord from "./consultation-record.jsx";
 
 const PATIENT = {id: 5, name: "Joana Paciente", birthDate: "1990-01-01"};
@@ -17,6 +19,26 @@ function renderNewConsultation() {
         {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
         {path: "/consulta/:appointmentId/prescricao", element: <p>tela da prescricao</p>},
     ], {initialEntries: ["/paciente/5/consulta/nova"]});
+    render(<RouterProvider router={router}/>);
+    return router;
+}
+
+// o registro dentro do layout de vdd, com a seta do topo, o Voltar de cima e o menu
+// a tela de antes eh o historico do paciente, de onde a prescritora abriu o registro
+function renderInsideLayout(recordPath = "/paciente/5/consulta/nova") {
+    const router = createMemoryRouter([
+        {path: "/entrar", element: <p>tela de login</p>},
+        {
+            element: <AppLayout/>,
+            children: [
+                {path: "/painel-prescritor", element: <p>painel da prescritora</p>},
+                {path: "/paciente/:patientId/historico", element: <p>historico do paciente</p>},
+                {path: "/agendamento-prescritor", element: <p>agenda</p>},
+                {path: "/paciente/:patientId/consulta/nova", element: <ConsultationRecord/>},
+                {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
+            ],
+        },
+    ], {initialEntries: ["/paciente/5/historico", recordPath], initialIndex: 1});
     render(<RouterProvider router={router}/>);
     return router;
 }
@@ -38,6 +60,7 @@ describe("ConsultationRecord", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        setLoggedUser(null);
     });
 
     // o endereco de consulta nova n pode ficar no historico depois de salvar
@@ -79,5 +102,101 @@ describe("ConsultationRecord", () => {
         fireEvent.click(screen.getByRole("button", {name: "Emitir prescrição"}));
         expect(await screen.findByText("tela da prescricao")).toBeInTheDocument();
         expect(router.state.location.pathname).toBe("/consulta/99/prescricao");
+    });
+
+    // o registro saia calado pelo Voltar, pela seta, pelo Voltar de cima e pelo menu e a queixa sumia (CT-39)
+    it("sair com algo digitado pergunta antes, pelo Voltar do formulario, pelo layout e pelo menu", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        renderInsideLayout();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Queixa principal e observações"), "dor lombar pior a noite");
+
+        // a seta do topo do celular, o Voltar de cima da tela e o Voltar do formulario
+        const backButtons = screen.getAllByRole("button", {name: "Voltar"});
+        expect(backButtons).toHaveLength(3);
+        for (const backButton of backButtons) {
+            await user.click(backButton);
+            const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+            await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+            expect(screen.getByLabelText("Queixa principal e observações")).toHaveValue("dor lombar pior a noite");
+        }
+
+        const sideMenu = within(screen.getByRole("navigation", {name: "Menu principal"}));
+        await user.click(sideMenu.getByRole("link", {name: "Agenda"}));
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/O que você preencheu ainda não foi salvo e vai se perder/);
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("agenda")).toBeInTheDocument();
+    });
+
+    // sem nada digitado n tem o q perder
+    it("sem nada digitado o Voltar sai direto", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        renderInsideLayout();
+        const user = userEvent.setup();
+
+        await screen.findByLabelText("Queixa principal e observações");
+        await user.click(screen.getAllByRole("button", {name: "Voltar"})[2]);
+
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // salvar troca o endereco da consulta nova e dps os botoes levam pra frente, nada disso pergunta
+    it("salvar a consulta nova e seguir dps de salvo n pergunta", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const router = renderInsideLayout();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText("Evolução do quadro"), "melhorou da dor");
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/consulta/99/registro");
+
+        await user.click(screen.getByRole("button", {name: "Ver histórico do paciente"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // na consulta q ja existe conta o q mudou: o registro so aberto sai direto e o atualizado tbm
+    it("no registro de uma consulta salva so o q mudou pergunta antes de sair", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        vi.spyOn(apiService, "put").mockResolvedValue({});
+        renderInsideLayout("/consulta/99/registro");
+        const user = userEvent.setup();
+
+        const evolution = await screen.findByLabelText("Evolução do quadro");
+        expect(evolution).toHaveValue("melhorou da dor");
+        await user.type(evolution, " e dorme melhor");
+        await user.click(screen.getAllByRole("button", {name: "Voltar"})[1]);
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/O que você mudou ainda não foi salvo/);
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByText("Registro atualizado")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Ver histórico do paciente"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // recarregar ou fechar a aba n passa pelo router, entao o navegador pergunta
+    it("com algo digitado recarregar ou fechar a aba pede pro navegador perguntar antes", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        renderNewConsultation();
+        const user = userEvent.setup();
+
+        const complaint = await screen.findByLabelText("Queixa principal e observações");
+        const before = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(before);
+        expect(before.defaultPrevented).toBe(false);
+
+        await user.type(complaint, "dor");
+        const after = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(after);
+        expect(after.defaultPrevented).toBe(true);
     });
 });

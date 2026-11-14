@@ -217,6 +217,7 @@ Registro de observações clínicas, diagnósticos, condutas e plano terapêutic
 - **Status** é um conjunto fechado: `SOLICITADA`, `AGENDADA`, `EM_ANDAMENTO`, `CONCLUIDA`, `CANCELADA`, `RECUSADA`, `NAO_COMPARECEU`
 - Campos de texto clínico aceitam **no mínimo 10.000 caracteres** sem truncamento (ver RN11)
 - Toda alteração gera registro de auditoria (RF31)
+- Sair do registro da consulta, da prescrição (RF05) ou do Mini-Exame (RF26) com algo digitado e ainda não salvo pergunta antes, pelo botão Voltar, pelo menu ou pelo navegador, como a anamnese e as escalas já faziam. Antes o que foi digitado se perdia sem aviso (13/11/2026)
 
 ---
 

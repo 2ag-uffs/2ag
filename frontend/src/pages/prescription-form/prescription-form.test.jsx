@@ -1,9 +1,9 @@
-import {fireEvent, render, screen} from "@testing-library/react";
+import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, ApiError} from "../../services/api.js";
+import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
 import PrescriptionForm from "./prescription-form.jsx";
 
 const APPOINTMENT = {
@@ -15,6 +15,15 @@ function renderForm() {
     const router = createMemoryRouter([
         {path: "/consulta/:appointmentId/prescricao", element: <PrescriptionForm/>},
     ], {initialEntries: ["/consulta/7/prescricao"]});
+    render(<RouterProvider router={router}/>);
+}
+
+// a prescricao aberta do historico do paciente, q eh a tela de antes na aba
+function renderFormAfterHistory() {
+    const router = createMemoryRouter([
+        {path: "/paciente/:patientId/historico", element: <p>historico do paciente</p>},
+        {path: "/consulta/:appointmentId/prescricao", element: <PrescriptionForm/>},
+    ], {initialEntries: ["/paciente/5/historico", "/consulta/7/prescricao"], initialIndex: 1});
     render(<RouterProvider router={router}/>);
 }
 
@@ -46,6 +55,7 @@ describe("PrescriptionForm", () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
+        setLoggedUser(null);
     });
 
     // a linha em branco no meio n pode adiantar a subida da dose (RN02)
@@ -233,5 +243,101 @@ describe("PrescriptionForm", () => {
         expect(await screen.findByText("Confira os campos destacados.")).toBeInTheDocument();
         expect(screen.getByLabelText("Próxima consulta")).toHaveAttribute("aria-invalid", "true");
         expect(screen.getByText("A próxima consulta não pode ser antes desta consulta")).toBeInTheDocument();
+    });
+
+    // a prescricao saia calada pelo Voltar e a receita digitada sumia (CT-39)
+    it("sair com algo digitado pergunta antes e dps de emitir sai direto", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await user.type(await screen.findByLabelText("Produto"), "Óleo full spectrum");
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/O que você preencheu ainda não foi salvo e vai se perder/);
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+        expect(screen.getByLabelText("Produto")).toHaveValue("Óleo full spectrum");
+
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Ver histórico do paciente"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("sem nada digitado o Voltar sai direto", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await user.click(await screen.findByRole("button", {name: "Voltar"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // a linha nova vem em branco, entao so adicionar semana ou canabinoide n eh nada digitado
+    it("so adicionar semana e canabinoide sem escrever nada o Voltar sai direto", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await screen.findByLabelText("Produto");
+        await addWeeks(user, 2);
+        await user.click(screen.getByRole("button", {name: "Adicionar canabinoide"}));
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("dose escrita numa semana ou canabinoide trocado pergunta antes de sair", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await screen.findByLabelText("Produto");
+        await addWeeks(user, 1);
+        await user.type(screen.getByLabelText("Semana 1"), "3 gotas");
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        let dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+        await user.click(screen.getByRole("button", {name: "Tirar a semana 1"}));
+        fireEvent.change(screen.getByLabelText("Canabinoide"), {target: {value: "THC"}});
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        expect(dialog).toHaveTextContent(/O que você preencheu ainda não foi salvo e vai se perder/);
+    });
+
+    it("com algo digitado o Sim, sair volta pra tela de antes", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await user.type(await screen.findByLabelText("Posologia"), "2 gotas");
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("historico do paciente")).toBeInTheDocument();
+    });
+
+    // recarregar ou fechar a aba n passa pelo router, entao o navegador pergunta
+    it("com algo digitado recarregar ou fechar a aba pede pro navegador perguntar antes", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        const user = userEvent.setup();
+        renderForm();
+
+        const product = await screen.findByLabelText("Produto");
+        const before = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(before);
+        expect(before.defaultPrevented).toBe(false);
+
+        await user.type(product, "Óleo");
+        const after = new Event("beforeunload", {cancelable: true});
+        window.dispatchEvent(after);
+        expect(after.defaultPrevented).toBe(true);
     });
 });
