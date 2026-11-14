@@ -386,6 +386,7 @@ Janela normal, Ana Lima.
   - **Esse modo não é anônimo.** A clínica sabe de quem é cada número, as datas saem como estão e o texto livre, como queixa e observação, sai como foi escrito e pode citar nomes. Pela LGPD o arquivo continua sendo dado de saúde: guarde e envie com o mesmo cuidado do prontuário.
   - Na Maria Souza a caixa fica desligada: ela não aceitou participar da pesquisa, então o arquivo sem identificação não sai. O paciente pode aceitar no **Perfil** dele.
   - A série de um gráfico sai na tela **Progresso**, em **Baixar esta série em CSV**, com a caixa **Baixar o CSV sem identificação, para pesquisa**.
+  - A versão para impressão traz **Prescrição em uso** e **Anamnese mais recente** mesmo quando a receita e a ficha são de antes do período escolhido, com a data de cada uma.
   - O paciente que baixa os próprios arquivos recebe **Escalas respondidas** sem o Mini-Exame. Quando o paciente ou o responsável pede o prontuário inteiro (LGPD, art. 18), o prescritor baixa ou imprime por aqui, com o exame.
 - **Se der errado:** a caixa do modo sem identificação não marca: o paciente não aceitou a pesquisa. Isso é o esperado.
 

@@ -86,6 +86,40 @@ describe("Impressao", () => {
         expect(screen.getByText("Nenhuma prescrição em uso.")).toBeInTheDocument();
     });
 
+    // a ficha de maio lista varfarina e alergia, e o papel de novembro dizia so "Nenhuma anamnese no periodo"
+    // a mais recente sai sempre, como a receita em uso, com a data de preenchimento a vista (revisao das regras R10)
+    it("a anamnese mais recente aparece msm preenchida antes do periodo", async () => {
+        const oldAnamnesis = {
+            id: 4, assessmentDate: toIsoDate(addDays(new Date(), -200)), annulled: false,
+            currentMedication: "Varfarina 5 mg",
+        };
+        renderPrint([], [], [oldAnamnesis]);
+
+        const section = (await screen.findByRole("heading", {name: "Anamnese mais recente"})).closest("section");
+        expect(within(section).getByText("Varfarina 5 mg")).toBeInTheDocument();
+        expect(within(section).getByRole("heading", {name: /^Preenchida em /})).toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: "Anamnese (0)"})).toBeInTheDocument();
+        expect(screen.getByText("Nenhuma anamnese no período.")).toBeInTheDocument();
+    });
+
+    // a anulada n vale como relato, entao a secao fica com a anterior valida
+    it("a anamnese anulada n conta como a mais recente", async () => {
+        const annulled = {id: 5, assessmentDate: toIsoDate(addDays(new Date(), -5)), annulled: true, pain: "Ficha errada"};
+        const valid = {id: 4, assessmentDate: toIsoDate(addDays(new Date(), -200)), annulled: false, pain: "Dor no joelho"};
+        renderPrint([], [], [annulled, valid]);
+
+        const section = (await screen.findByRole("heading", {name: "Anamnese mais recente"})).closest("section");
+        expect(within(section).getByText("Dor no joelho")).toBeInTheDocument();
+        expect(within(section).queryByText("Ficha errada")).not.toBeInTheDocument();
+    });
+
+    it("sem anamnese a secao diz isso", async () => {
+        renderPrint([]);
+
+        await screen.findByRole("heading", {name: "Anamnese mais recente"});
+        expect(screen.getByText("Nenhuma anamnese preenchida.")).toBeInTheDocument();
+    });
+
     // o chrome quebrava a folha dentro da borda e do espaco de cima do cartao, antes do topo, e o titulo
     // ficava sozinho no pe da folha com a moldura vazia embaixo. o jsdom n monta folha, entao o teste
     // confere o q a regra de impressao precisa: todo cartao comeca pelo topo e no papel n tem borda
@@ -95,7 +129,8 @@ describe("Impressao", () => {
 
         await screen.findByRole("heading", {name: "Prescrição em uso"});
         const cards = document.querySelectorAll("section section article");
-        expect(cards).toHaveLength(4);
+        // a anamnese do periodo sai tbm na secao da mais recente, como a receita em uso
+        expect(cards).toHaveLength(5);
         cards.forEach((card) => expect(card.firstElementChild.tagName).toBe("HEADER"));
 
         const css = readFileSync(import.meta.dirname + "/impressao.module.css", "utf8");

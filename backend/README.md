@@ -343,7 +343,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - o arquivo que o paciente baixa sai sem o MEEM: o `scales.csv` dele não tem as linhas do exame e o `progress.csv` do `ESCORE_MEEM` responde 403. o direito de acesso ao prontuário inteiro (LGPD, art. 18) é atendido pela clínica: a pedido do paciente, o prescritor exporta ou imprime o prontuário completo, com o MEEM (decisão de 13/11/2026)
 - exportar é leitura de prontuário e entra na trilha de auditoria
-- não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF. a impressão traz a seção *Prescrição em uso* com a prescrição vigente, independentemente do período escolhido, porque a receita em uso é estado e não histórico: a vigente emitida antes do período continua valendo e sumia da impressão de 90 dias (07/11/2026, #171)
+- não há geração de PDF no servidor: o front tem uma página de impressão que o navegador salva em PDF. a impressão traz a seção *Prescrição em uso* com a prescrição vigente, independentemente do período escolhido, porque a receita em uso é estado e não histórico: a vigente emitida antes do período continua valendo e sumia da impressão de 90 dias (07/11/2026, #171). pelo mesmo motivo ela traz a seção *Anamnese mais recente*, com a última ficha não anulada da lista `GET /patients/{patientId}/anamneses`, também fora do período e com a data de preenchimento à vista (revisão das regras R10)
 
 ## avisos e lembretes
 

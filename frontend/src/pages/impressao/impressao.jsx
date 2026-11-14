@@ -90,6 +90,9 @@ export default function Impressao() {
     // o medico q recebe a impressao de 90 dias conclui q o paciente n toma nada
     const currentPrescription = prescriptions.find((prescription) => prescription.current);
     const anamnesesInPeriod = anamneses.filter((anamnesis) => insidePeriod(anamnesis.assessmentDate));
+    // a ficha mais recente tbm sai sempre: o remedio em uso e a alergia de maio continuam valendo em novembro
+    // a api manda da mais recente pra mais antiga, e a anulada n vale como relato (revisao das regras R10)
+    const latestAnamnesis = anamneses.find((anamnesis) => !anamnesis.annulled);
     const scalesInPeriod = scales.filter((scale) => insidePeriod(scale.periodStart));
 
     return (
@@ -161,6 +164,19 @@ export default function Impressao() {
                 {currentPrescription
                     ? <PrescriptionCard prescription={currentPrescription}/>
                     : <p className={styles.empty}>Nenhuma prescrição em uso.</p>}
+            </section>
+
+            <section className={styles.section}>
+                <h2>Anamnese mais recente</h2>
+                {latestAnamnesis ? (
+                    <>
+                        <p className={styles.empty}>
+                            Sai mesmo quando foi preenchida antes do período: é o relato do paciente na data de
+                            preenchimento.
+                        </p>
+                        <AnamnesisView anamnesis={latestAnamnesis}/>
+                    </>
+                ) : <p className={styles.empty}>Nenhuma anamnese preenchida.</p>}
             </section>
 
             <PrintSection
