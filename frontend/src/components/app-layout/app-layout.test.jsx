@@ -777,6 +777,21 @@ describe("AppLayout", () => {
         expect(declarationsOf(layoutCss, ".account")["align-items"]).toBe("center");
     });
 
+    // em 1280 o nome comprido virava "Renata Dias Carv..." e o nome inteiro n estava em lugar nenhum (CT-38)
+    it("o nome comprido na lateral quebra em ate duas linhas e o nome inteiro fica no title", () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({unread: 0});
+        setLoggedUser({id: 3, name: "Renata Dias Carvalho", role: "PATIENT", termPending: false});
+        openLayoutAt("/painel-paciente");
+
+        const name = within(screen.getByRole("complementary")).getByText("Renata Dias Carvalho");
+        expect(name).toHaveAttribute("title", "Renata Dias Carvalho");
+
+        const accountName = declarationsOf(readCss(import.meta.url, "./app-layout.module.css"), ".accountName");
+        expect(accountName["white-space"]).toBeUndefined();
+        expect(accountName["-webkit-line-clamp"]).toBe("2");
+        expect(accountName["overflow-wrap"]).toBe("anywhere");
+    });
+
     it("o nome salvo no perfil aparece no menu lateral na hora", async () => {
         const profile = {
             id: 1, role: "ADMIN", name: "Administrador", email: "admin@clinica.com", pendingEmail: null, cpf: null,

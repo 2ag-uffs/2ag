@@ -377,7 +377,9 @@ export default function AppLayout() {
 
                     <div className={styles.account}>
                         <div className={styles.accountText}>
-                            <span className={styles.accountName}>{loggedUser ? loggedUser.name : ""}</span>
+                            <span className={styles.accountName} title={loggedUser ? loggedUser.name : undefined}>
+                                {loggedUser ? loggedUser.name : ""}
+                            </span>
                             <span className={styles.accountRole}>{loggedUser ? ROLE_LABELS[loggedUser.role] : ""}</span>
                         </div>
                         <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
