@@ -3,6 +3,7 @@ import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import Modal from "../../components/modal/modal.jsx";
 import PasswordChecklist from "../../components/form/password-checklist.jsx";
 import PasswordField from "../../components/form/password-field.jsx";
@@ -75,14 +76,20 @@ function profileRequestBody(formData, isPatient) {
 }
 
 // aviso de sucesso ou de erro dentro de cada cartao
-function CardMessage({message}) {
+// o noticeRef eh pro aviso de sucesso q recebe o foco qnd o botao usado some
+function CardMessage({message, noticeRef}) {
     if (!message) {
         return null;
     }
     if (message.isError) {
         return <p className={"aviso aviso--atencao " + styles.cardMessage} role="alert">{message.text}</p>;
     }
-    return <p className={"aviso " + styles.cardMessage} role="status">{message.text}</p>;
+    return (
+        <p className={"aviso " + styles.cardMessage} role="status" tabIndex={noticeRef ? -1 : undefined}
+           ref={noticeRef}>
+            {message.text}
+        </p>
+    );
 }
 
 // titulo do cartao com o icone do lado
@@ -580,10 +587,14 @@ function ResearchCard({profile, onChanged}) {
     const [isTermOpen, setIsTermOpen] = useState(false);
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    // retirar tira o botao da tela e o foco ia pro body, entao o aviso de retirado recebe o foco (CT-39)
+    const [wasRevokedNow, setWasRevokedNow] = useState(false);
+    const revokedNoticeRef = useFocusWhenShown(wasRevokedNow);
     const consent = profile.researchConsent;
 
     const openTerm = async () => {
         setMessage(null);
+        setWasRevokedNow(false);
         try {
             setTerm(await apiService.get("/consent-term/research"));
             setIsTermOpen(true);
@@ -622,13 +633,16 @@ function ResearchCard({profile, onChanged}) {
             // o erro do aceite ja esta na tela
         }
     };
-    const revoke = () => saveChoice("/consent-term/research/revoke", undefined,
-        "Consentimento retirado. Seus dados não entram em novas exportações para pesquisa.");
+    const revoke = async () => {
+        const isSaved = await saveChoice("/consent-term/research/revoke", undefined,
+            "Consentimento retirado. Seus dados não entram em novas exportações para pesquisa.");
+        setWasRevokedNow(isSaved);
+    };
 
     return (
         <Card title={cardTitle(FiBookOpen, "Pesquisa")}>
             <p className={styles.cardText}>{researchStatusText(consent)}</p>
-            {!isTermOpen && <CardMessage message={message}/>}
+            {!isTermOpen && <CardMessage message={message} noticeRef={revokedNoticeRef}/>}
             <div className={styles.actions}>
                 <button type="button" className="button-secondary" onClick={openTerm} disabled={isSaving}>
                     {consent.active ? "Ler o termo" : "Ler o termo e decidir"}

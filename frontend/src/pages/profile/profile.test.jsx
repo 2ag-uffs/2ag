@@ -114,6 +114,42 @@ describe("Profile", () => {
         expect(post).toHaveBeenCalledTimes(1);
     });
 
+    // o botao de retirar some dps de salvar e o foco ia pro body, e o proximo tab saia da pagina (CT-39)
+    it("retirar o consentimento pelo teclado leva o foco pro aviso de retirado", async () => {
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/consent-term/research" ? {version: "1.0", text: "Texto do termo de pesquisa."} : {
+                ...PATIENT_PROFILE, birthDate: "1990-01-01",
+                researchConsent: {active: true, acceptedAt: "2026-10-01T10:00:00", termChanged: false},
+            }));
+        vi.spyOn(apiService, "post").mockImplementation((path) => Promise.resolve(
+            path === "/consent-term/research/accept"
+                ? {active: true, acceptedAt: "2026-11-14T10:00:00", termChanged: false}
+                : {active: false, acceptedAt: null, termChanged: false}));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        (await screen.findByRole("button", {name: "Retirar consentimento"})).focus();
+        await user.keyboard("{Enter}");
+
+        const notice = await screen.findByText(/^Consentimento retirado/);
+        expect(notice).toHaveAttribute("role", "status");
+        expect(notice).toHaveFocus();
+        expect(screen.queryByRole("button", {name: "Retirar consentimento"})).not.toBeInTheDocument();
+
+        // aceitar de novo devolve o foco pro botao q abriu o termo, e o aviso n puxa ele
+        const readTerm = screen.getByRole("button", {name: "Ler o termo e decidir"});
+        readTerm.focus();
+        await user.keyboard("{Enter}");
+        await user.click(await screen.findByRole("button", {name: "Aceito participar"}));
+        expect(await screen.findByText(/^Obrigado/)).toBeInTheDocument();
+        expect(readTerm).toHaveFocus();
+
+        // e retirar outra vez leva o foco pro aviso de novo
+        screen.getByRole("button", {name: "Retirar consentimento"}).focus();
+        await user.keyboard("{Enter}");
+        expect(await screen.findByText(/^Consentimento retirado/)).toHaveFocus();
+    });
+
     it("aceitar a pesquisa pelo teclado deixa o foco no botao enquanto a api responde", async () => {
         const profile = {
             ...PATIENT_PROFILE, birthDate: "1990-01-01",
