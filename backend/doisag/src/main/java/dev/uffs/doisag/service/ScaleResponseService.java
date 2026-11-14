@@ -9,6 +9,7 @@ import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
@@ -66,10 +67,14 @@ public class ScaleResponseService {
             "No diário a data é o dia escolhido na grade e não muda na correção";
     public static final String PERIOD_START_TAKEN_MESSAGE = "Já existe uma resposta dessa escala começando nesse dia";
     public static final String EMPTY_ANSWERS_MESSAGE = "Responda ao menos um item da escala";
+    public static final String MAX_MINUTES_MESSAGE = "Passa de um dia inteiro. O máximo é 1.440 minutos";
+    public static final String MAX_COUNT_MESSAGE = "Número alto demais para este campo. O máximo é 200";
 
     private static final int MAX_TEXT_LENGTH = 2000;
-    // teto das contagens e dos minutos so p/ barrar numero absurdo
-    private static final int MAX_COUNT_VALUE = 10000;
+    // o limite q ainda da pra acontecer num dia: minutos ate o dia inteiro e contagem (gotas, xicaras,
+    // despertares) ate 200. o 100 digitado no lugar de 10 achatava a curva (decisao de 14/11/2026, revisao R13)
+    private static final int MAX_MINUTES_VALUE = 1440;
+    private static final int MAX_COUNT_VALUE = 200;
     private static final int HOURS_IN_DAY = 24;
     // o horario chega como hh:mm ou hh:mm:ss e os segundos caem fora
     private static final int HOUR_MINUTE_LENGTH = 5;
@@ -399,7 +404,8 @@ public class ScaleResponseService {
             case CALCULADO -> throw new BusinessException(COMPUTED_ITEM_MESSAGE + ": " + item.label());
             case NOTA -> wholeNumberInRange(item, value, item.minValue(), item.maxValue());
             case ESCOLHA -> optionValue(item, value);
-            case NUMERO, MINUTOS -> wholeNumberInRange(item, value, 0, MAX_COUNT_VALUE);
+            case NUMERO -> wholeNumberUpTo(item, value, MAX_COUNT_VALUE, MAX_COUNT_MESSAGE);
+            case MINUTOS -> wholeNumberUpTo(item, value, MAX_MINUTES_VALUE, MAX_MINUTES_MESSAGE);
             case HORAS -> decimalHours(item, value);
             case HORA -> timeValue(item, value);
             case SIM_NAO -> value instanceof Boolean flag ? flag : throwInvalidValue(item);
@@ -411,6 +417,18 @@ public class ScaleResponseService {
         Long wholeNumber = wholeNumberOf(value);
         if (wholeNumber == null || wholeNumber < minValue || wholeNumber > maxValue) {
             return throwInvalidValue(item);
+        }
+        return wholeNumber.intValue();
+    }
+
+    // o numero quebrado ou negativo segue fora da escala, e o acima do limite volta pro campo dele
+    private Object wholeNumberUpTo(ScaleItem item, Object value, int maxValue, String tooHighMessage) {
+        Long wholeNumber = wholeNumberOf(value);
+        if (wholeNumber == null || wholeNumber < 0) {
+            return throwInvalidValue(item);
+        }
+        if (wholeNumber > maxValue) {
+            throw new InvalidFieldException(item.key(), tooHighMessage);
         }
         return wholeNumber.intValue();
     }

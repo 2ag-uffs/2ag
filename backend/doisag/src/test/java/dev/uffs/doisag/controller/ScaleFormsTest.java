@@ -166,6 +166,71 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.answers.tempoNaCama").value(45));
     }
 
+    // horario digitado errado virava quase um dia na cama no grafico (decisao de 14/11/2026, revisao R13)
+    // 16 horas ainda vale, e o erro vai no campo do horario de levantar
+    @Test
+    void tempoNaCamaAcimaDe16HorasEhRecusadoNoCampo() throws Exception {
+        answerScale("diario-sono", "{\"horarioDormir\":\"20:00\",\"horarioLevantar\":\"12:01\",\"cansaco\":2}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.TOO_LONG_IN_BED_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("horarioLevantar"));
+        answerScale("pittsburgh", "{\"horaDeitar\":\"22:00\",\"horaLevantar\":\"16:00\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.TOO_LONG_IN_BED_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("horaLevantar"));
+
+        answerScale("diario-sono", "{\"horarioDormir\":\"20:00\",\"horarioLevantar\":\"12:00\",\"cansaco\":2}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.tempoNaCama").value(960));
+    }
+
+    // no pittsburgh o mesmo horario pra deitar e levantar tbm volta pro campo, como no diario
+    @Test
+    void pittsburghComDeitarIgualALevantarEhRecusadoNoCampo() throws Exception {
+        answerScale("pittsburgh", "{\"horaDeitar\":\"23:00\",\"horaLevantar\":\"23:00\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.SAME_BED_AND_WAKE_TIME_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("horaLevantar"));
+    }
+
+    // o pittsburgh aceitava mais horas de sono do q de cama e o indice mudava de faixa
+    // agora recusa como o diario ja recusa o tempo acordado (decisao de 14/11/2026, revisao R13)
+    @Test
+    void pittsburghComMaisHorasDeSonoQueNaCamaEhRecusadoNoCampo() throws Exception {
+        answerScale("pittsburgh", "{\"horaDeitar\":\"23:00\",\"horaLevantar\":\"05:00\",\"horasDeSono\":6.5}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleScorer.SLEPT_LONGER_THAN_BED_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("horasDeSono"));
+
+        answerScale("pittsburgh", "{\"horaDeitar\":\"23:00\",\"horaLevantar\":\"05:00\",\"horasDeSono\":6}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.horasDeSono").value(6.0));
+    }
+
+    // 100 digitado no lugar de 10 achatava a curva: minutos ate um dia inteiro e contagem ate 200,
+    // recusados no campo e nunca trocados por outro valor (decisao de 14/11/2026, revisao R13)
+    @Test
+    void minutosEContagensAcimaDoPossivelSaoRecusadosNoCampo() throws Exception {
+        answerScale("acompanhamento-semanal", "{\"gotasManha\":201}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.MAX_COUNT_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("gotasManha"));
+        answerScale("diario-sono", "{\"tempoAtividadeFisica\":1441}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.MAX_MINUTES_MESSAGE))
+                .andExpect(jsonPath("$.errors[0].field").value("tempoAtividadeFisica"));
+        answerScale("pittsburgh", "{\"minutosParaDormir\":1441}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("minutosParaDormir"));
+
+        answerScale("acompanhamento-semanal", "{\"gotasManha\":200,\"gotasTarde\":200}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.gotasManha").value(200));
+        answerScale("diario-sono", "{\"tempoAtividadeFisica\":1440}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.answers.tempoAtividadeFisica").value(1440));
+    }
+
     // a semana respondida eh a q passou, entao o fim no futuro eh recusado como o inicio
     @Test
     void oFimDoPeriodoNoFuturoEhRecusado() throws Exception {

@@ -24,6 +24,13 @@ public class ScaleScorer {
             "O tempo acordado passa do tempo na cama. Confira os horários e os minutos";
     public static final String SAME_BED_AND_WAKE_TIME_MESSAGE =
             "O horário em que se levantou é igual ao de dormir. Confira os dois horários";
+    public static final String TOO_LONG_IN_BED_MESSAGE =
+            "O tempo na cama passa de 16 horas. Confira os horários de dormir e de levantar";
+    public static final String SLEPT_LONGER_THAN_BED_MESSAGE =
+            "As horas de sono passam do tempo na cama. Confira os horários e as horas de sono";
+
+    // mais q isso na cama quase sempre eh horario digitado errado (decisao de 14/11/2026, revisao R13)
+    private static final int MAX_MINUTES_IN_BED = 16 * 60;
 
     // pontos de corte do MEEM por anos de estudo (Brucki 2003)
     private static final double[] MEEM_CUTOFFS = {20, 25, 26.5, 28, 29};
@@ -209,7 +216,12 @@ public class ScaleScorer {
 
     // o diario do sono tem tres campos q saem de conta e a pessoa n
     // preenche: tempo na cama, total acordado e tempo total de sono
+    // o pittsburgh n ganha campo nenhum, so passa pelas mesmas conferencias dos horarios
     public Map<String, Object> withComputedAnswers(ScaleType type, Map<String, Object> answers) {
+        if (type == ScaleType.ESCALA_PITTSBURGH) {
+            checkPittsburghTimes(answers);
+            return answers;
+        }
         if (type != ScaleType.REGISTRO_SONO) {
             return answers;
         }
@@ -218,14 +230,7 @@ public class ScaleScorer {
         completed.remove("totalAcordado");
         completed.remove("tempoTotalSono");
 
-        LocalTime bedTime = timeOf(answers, "horarioDormir");
-        LocalTime wakeUpTime = timeOf(answers, "horarioLevantar");
-        // o mesmo horario virava 24 horas na cama e quase sempre eh digitado errado (decisao de 13/11/2026)
-        // virar a meia noite continua valendo, so a diferenca zero eh recusada
-        if (bedTime != null && bedTime.equals(wakeUpTime)) {
-            throw new InvalidFieldException("horarioLevantar", SAME_BED_AND_WAKE_TIME_MESSAGE);
-        }
-        Integer timeInBed = bedTime == null || wakeUpTime == null ? null : minutesBetween(bedTime, wakeUpTime);
+        Integer timeInBed = checkedTimeInBed(answers, "horarioDormir", "horarioLevantar");
         Integer totalAwake = sumOrNull(answers, List.of("tempoAteDormir", "tempoAcordadoNoite"));
 
         if (timeInBed != null) {
@@ -242,6 +247,36 @@ public class ScaleScorer {
             completed.put("tempoTotalSono", timeInBed - totalAwake);
         }
         return completed;
+    }
+
+    // no pittsburgh mais horas de sono do q de cama mudava o indice de faixa, entao volta pra pessoa
+    // conferir, como o diario faz com o tempo acordado (decisao de 14/11/2026, revisao R13)
+    private void checkPittsburghTimes(Map<String, Object> answers) {
+        Integer timeInBed = checkedTimeInBed(answers, "horaDeitar", "horaLevantar");
+        Double sleptHours = doubleOf(answers, "horasDeSono");
+        if (timeInBed != null && sleptHours != null && sleptHours * 60 > timeInBed) {
+            throw new InvalidFieldException("horasDeSono", SLEPT_LONGER_THAN_BED_MESSAGE);
+        }
+    }
+
+    // o tempo na cama dos dois horarios, ou nulo qnd falta um deles
+    // o mesmo horario virava 24 horas na cama e quase sempre eh digitado errado (decisao de 13/11/2026), e mais
+    // de 16 horas tbm (decisao de 14/11/2026). virar a meia noite continua valendo
+    // o erro vai no campo do horario de levantar pra tela marcar onde esta
+    private Integer checkedTimeInBed(Map<String, Object> answers, String bedKey, String wakeUpKey) {
+        LocalTime bedTime = timeOf(answers, bedKey);
+        LocalTime wakeUpTime = timeOf(answers, wakeUpKey);
+        if (bedTime == null || wakeUpTime == null) {
+            return null;
+        }
+        if (bedTime.equals(wakeUpTime)) {
+            throw new InvalidFieldException(wakeUpKey, SAME_BED_AND_WAKE_TIME_MESSAGE);
+        }
+        int timeInBed = minutesBetween(bedTime, wakeUpTime);
+        if (timeInBed > MAX_MINUTES_IN_BED) {
+            throw new InvalidFieldException(wakeUpKey, TOO_LONG_IN_BED_MESSAGE);
+        }
+        return timeInBed;
     }
 
     // minutos entre dois horarios, somando um dia quando vira a noite
