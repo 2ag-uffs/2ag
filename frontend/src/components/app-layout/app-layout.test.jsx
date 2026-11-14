@@ -478,6 +478,57 @@ describe("AppLayout", () => {
         expect(post).toHaveBeenCalledWith("/consent-term/accept", {termVersion: "v2"});
     });
 
+    // o termo abre no lugar do perfil e o Salvar dados, q tinha o foco, fica escondido embaixo dele:
+    // o foco ia pro body e o primeiro tab saia da pagina (CT-39). como nos modais, ele entra no termo
+    // e volta pro botao qnd o termo fecha
+    it("o termo q abre dps de salvar pelo teclado leva o foco pra ele e o aceite devolve pro Salvar dados", async () => {
+        mockPatientApi(minorPatientProfile());
+        vi.spyOn(apiService, "post")
+            .mockResolvedValue({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        openLayoutWithLoginAt("/perfil");
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Data de nascimento"), {target: {value: "1990-01-01"}});
+        screen.getByRole("button", {name: "Salvar dados"}).focus();
+        await user.keyboard("{Enter}");
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByText(/Leia o termo e aceite de novo/)).toHaveFocus());
+
+        await user.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        await waitFor(() => expect(screen.getByRole("heading", {name: "Meu perfil"})).toBeVisible());
+        expect(screen.getByRole("button", {name: "Salvar dados"})).toHaveFocus();
+    });
+
+    // corrigir a data monta o perfil de novo e o botao q abriu o termo n existe mais,
+    // entao o foco vai pro comeco do conteudo e n fica perdido no body
+    it("corrigir a data no termo leva o foco pro comeco do conteudo", async () => {
+        const realBirthDate = minorPatientProfile().birthDate;
+        mockPatientApi(minorPatientProfile());
+        setLoggedUser({id: 3, name: "Lucas Souza", role: "PATIENT", termPending: false});
+        openLayoutWithLoginAt("/perfil");
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Data de nascimento"), {target: {value: "1990-01-01"}});
+        screen.getByRole("button", {name: "Salvar dados"}).focus();
+        await user.keyboard("{Enter}");
+
+        const fixButton = await screen.findByRole("button", {name: "Corrigir a data"});
+        fireEvent.change(within(fixButton.closest("form")).getByLabelText("Data de nascimento"),
+            {target: {value: realBirthDate}});
+        await user.click(fixButton);
+
+        await waitFor(() => expect(screen.getByRole("heading", {name: "Meu perfil"})).toBeVisible());
+        const main = screen.getByRole("main");
+        expect(main).toHaveFocus();
+        // o main so recebe o foco dessa vez, senao clicar no meio da tela ia focar ele
+        await user.tab();
+        expect(main).not.toHaveFocus();
+        expect(main).not.toHaveAttribute("tabindex");
+    });
+
     // a data errada q cruzou os 18 anos se corrige na tela do termo, sem gravar um aceite na faixa errada,
     // e o perfil de baixo volta com a data certa, senao salvar de novo cruzava os 18 anos outra vez (#163)
     it("a data de nascimento errada se corrige na tela do termo sem aceitar", async () => {

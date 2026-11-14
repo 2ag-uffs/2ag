@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import BusyButton from "../form/busy-button.jsx";
 import {useFocusFirstError} from "../form/focus-first-error.js";
 import TextField from "../form/text-field.jsx";
@@ -145,6 +145,13 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [guardianFieldsRef, focusFirstGuardianError] = useFocusFirstError();
+    const introRef = useRef(null);
+
+    // o termo abre no lugar da tela e o foco q estava nela ficava escondido embaixo dele (CT-39)
+    // entao, como nos modais, o foco entra no termo, e o layout devolve ele qnd o termo fecha
+    useEffect(() => {
+        introRef.current.focus();
+    }, []);
 
     useEffect(() => {
         let isCurrentPage = true;
@@ -250,7 +257,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                 title="Termo de consentimento"
                 subtitle="O texto do termo ou a sua faixa de idade mudou desde o último aceite"
             />
-            <p className="aviso">
+            <p className="aviso" tabIndex={-1} ref={introRef}>
                 Leia o termo e aceite de novo para continuar usando o 2AG. Se não concordar, fale com a clínica.
             </p>
 

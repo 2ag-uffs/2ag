@@ -219,6 +219,13 @@ function hasPendingTerm(user) {
     return Boolean(user && user.role === "PATIENT" && user.termPending);
 }
 
+// o main recebe o foco so dessa vez, senao clicar no meio da tela tbm ia focar ele
+function focusContentStart(main) {
+    main.setAttribute("tabindex", "-1");
+    main.focus();
+    main.addEventListener("blur", () => main.removeAttribute("tabindex"), {once: true});
+}
+
 // moldura de todas as telas de quem esta logado
 // no computador o menu fica na lateral, no tablet a lateral mostra so os
 // icones e no celular o menu vai pra barra de baixo
@@ -238,9 +245,26 @@ export default function AppLayout() {
     // senao o perfil continuava com a data errada no formulario e salvar de novo cruzava os 18 anos outra vez
     const [pageReloads, setPageReloads] = useState(0);
 
-    const handleBirthDateFixed = () => {
-        setIsTermPending(false);
-        setPageReloads((count) => count + 1);
+    // quem tinha o foco qnd o termo abriu por cima da tela, pra ele voltar pra la qnd o termo fechar (CT-39)
+    const focusBeforeTermRef = useRef(null);
+    const mainRef = useRef(null);
+
+    // como nos modais o foco volta pra onde estava. se a tela de baixo montou de novo, o q tinha o foco
+    // n existe mais, entao ele vai pro comeco do conteudo em vez de ficar perdido no body
+    const closeTerm = (reloadsPage) => {
+        flushSync(() => {
+            setIsTermPending(false);
+            if (reloadsPage) {
+                setPageReloads((count) => count + 1);
+            }
+        });
+        const previousFocus = focusBeforeTermRef.current;
+        focusBeforeTermRef.current = null;
+        if (previousFocus && previousFocus.isConnected && previousFocus !== document.body) {
+            previousFocus.focus();
+        } else if (mainRef.current) {
+            focusContentStart(mainRef.current);
+        }
     };
 
     const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
@@ -249,7 +273,10 @@ export default function AppLayout() {
     useFocusAboveBars();
 
     useEffect(() => {
-        const openTerm = () => setIsTermPending(true);
+        const openTerm = () => {
+            focusBeforeTermRef.current = document.activeElement;
+            setIsTermPending(true);
+        };
         window.addEventListener("term-pending", openTerm);
         return () => window.removeEventListener("term-pending", openTerm);
     }, []);
@@ -404,7 +431,7 @@ export default function AppLayout() {
                     </div>
                 </header>
 
-                <main className={styles.content}>
+                <main className={styles.content} ref={mainRef}>
                     {logoutError && (
                         <p className={"aviso aviso--atencao " + styles.logoutError} role="alert" ref={logoutErrorRef}>
                             {logoutError.message}
@@ -419,7 +446,7 @@ export default function AppLayout() {
                     {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
                     <div key={location.pathname} className={styles.page}>
                         {isTermPending && (
-                            <TermUpdate onAccepted={() => setIsTermPending(false)} onBirthDateFixed={handleBirthDateFixed}/>
+                            <TermUpdate onAccepted={() => closeTerm(false)} onBirthDateFixed={() => closeTerm(true)}/>
                         )}
                         {/* a tela continua montada por baixo pra n perder o q a pessoa ja preencheu */}
                         {/* e com o login por cima fica escondida, pq o computador pode ser de mais gente */}
