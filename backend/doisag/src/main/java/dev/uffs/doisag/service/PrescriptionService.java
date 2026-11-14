@@ -11,6 +11,7 @@ import dev.uffs.doisag.enums.Cannabinoid;
 import dev.uffs.doisag.enums.ConcentrationUnit;
 import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.enums.Spectrum;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.InvalidFieldException;
@@ -23,6 +24,7 @@ import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Prescription;
 import dev.uffs.doisag.model.PrescriptionComponent;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import org.springframework.stereotype.Service;
@@ -149,12 +151,16 @@ public class PrescriptionService {
     }
 
     // prescricoes de um paciente da consulta mais recente pra mais antiga
+    // da receita anulada o paciente recebe so a data, a marca e o motivo (revisao das regras R7)
     @Transactional
-    public List<PrescriptionResponseDTO> getByPatientId(Long patientId) {
+    public List<PrescriptionResponseDTO> getByPatientId(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
+        boolean isPatient = loggedUser.getRole() == UserRole.PATIENT;
         return prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(patientId)
                 .stream()
-                .map(PrescriptionResponseDTO::new)
+                .map(prescription -> isPatient && prescription.isAnnulled()
+                        ? PrescriptionResponseDTO.withoutClinicalContent(prescription)
+                        : new PrescriptionResponseDTO(prescription))
                 .toList();
     }
 

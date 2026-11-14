@@ -346,6 +346,7 @@ export default function HistoricoClinicoPrescritor() {
                     title={annulmentTarget.title}
                     recordDescription={annulmentTarget.recordDescription}
                     warning={annulmentTarget.warning}
+                    patientNote={annulmentTarget.patientNote}
                     endpoint={annulmentTarget.endpoint}
                     onClose={() => setAnnulmentTarget(null)}
                     onAnnulled={handleAnnulled}
@@ -420,12 +421,20 @@ function nextAppointmentOf(appointments) {
     return upcomingAppointments.length > 0 ? upcomingAppointments[upcomingAppointments.length - 1] : null;
 }
 
+// o paciente le o motivo da anulacao (revisao das regras R7). da consulta e da receita anuladas ele ve so a data,
+// a marca e o motivo, pq elas podem ser de outra pessoa lancadas no paciente errado. a anamnese e a resposta de
+// escala foi ele q preencheu e continuam na tela dele, e o MEEM ele n ve
+const HIDDEN_CONTENT_NOTE = "O paciente lê o motivo. Ele vê só a data, a marca de anulado e o motivo, sem o conteúdo "
+    + "do registro. Não escreva no motivo o nome nem dados de outra pessoa.";
+const SHOWN_CONTENT_NOTE = "O paciente lê o motivo. O registro continua na tela dele, marcado como anulado.";
+
 // o q o modal de anulacao mostra e pra onde manda cada tipo de registro
 function consultationAnnulmentOf(appointment) {
     return {
         title: "Anular consulta",
         recordDescription: "Consulta de " + formatDateTime(appointment.dateTime),
         endpoint: "/appointments/" + appointment.id + "/annul",
+        patientNote: HIDDEN_CONTENT_NOTE,
     };
 }
 
@@ -435,6 +444,7 @@ function prescriptionAnnulmentOf(prescription) {
         recordDescription: prescription.productDescription + ", emitida em "
             + formatDate(prescription.appointmentDateTime),
         endpoint: "/prescriptions/" + prescription.id + "/annul",
+        patientNote: HIDDEN_CONTENT_NOTE,
         // a anterior n volta a valer sozinha entao o paciente fica sem prescricao em uso (NOOP-04)
         warning: prescription.current
             ? "Esta é a prescrição em uso. Depois de anular, o paciente fica sem prescrição em uso "
@@ -451,6 +461,7 @@ function anamnesisAnnulmentOf(anamnesis) {
         title: "Anular anamnese",
         recordDescription: "Anamnese preenchida em " + formatDate(anamnesis.assessmentDate),
         endpoint: "/anamneses/" + anamnesis.id + "/annul",
+        patientNote: SHOWN_CONTENT_NOTE,
     };
 }
 
@@ -459,5 +470,6 @@ function scaleAnnulmentOf(response) {
         title: "Anular escala respondida",
         recordDescription: response.scaleName + " de " + formatDate(response.periodStart),
         endpoint: "/scales/responses/" + response.id + "/annul",
+        patientNote: response.scaleType === "MINI_EXAME_ESTADO_MENTAL" ? null : SHOWN_CONTENT_NOTE,
     };
 }

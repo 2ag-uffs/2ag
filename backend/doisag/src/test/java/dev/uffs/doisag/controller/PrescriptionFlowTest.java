@@ -35,6 +35,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -532,6 +533,56 @@ class PrescriptionFlowTest {
         annulPrescription(prescriptionId, "Prescricao lancada no paciente errado").andExpect(status().isOk());
 
         annulConsultation(appointmentId, "Consulta lancada no paciente errado").andExpect(status().isOk());
+    }
+
+    // o registro anulado pode ser de outra pessoa lancado no paciente errado, entao o paciente recebe dele so a
+    // data, a marca de anulado e o motivo. a prescritora continua vendo tudo (revisao das regras R7)
+    @Test
+    void patientGetsOnlyTheDateTheMarkAndTheReasonOfAnAnnulledRecord() throws Exception {
+        Long appointmentId = registeredConsultationId();
+        Long prescriptionId = issuedPrescriptionId(appointmentId, "Oleo de outra pessoa");
+        annulPrescription(prescriptionId, "Lancada no paciente errado").andExpect(status().isOk());
+        annulConsultation(appointmentId, "Consulta lancada no paciente errado").andExpect(status().isOk());
+        String patientToken = bearerTokenOf(patient);
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].annulled").value(true))
+                .andExpect(jsonPath("$[0].contentHidden").value(true))
+                .andExpect(jsonPath("$[0].annulmentReason").value("Lancada no paciente errado"))
+                .andExpect(jsonPath("$[0].appointmentDateTime").isNotEmpty())
+                .andExpect(jsonPath("$[0].productDescription").value(nullValue()))
+                .andExpect(jsonPath("$[0].posology").value(nullValue()))
+                .andExpect(jsonPath("$[0].batch").value(nullValue()))
+                .andExpect(jsonPath("$[0].components.length()").value(0));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].annulled").value(true))
+                .andExpect(jsonPath("$[0].contentHidden").value(true))
+                .andExpect(jsonPath("$[0].annulmentReason").value("Consulta lancada no paciente errado"))
+                .andExpect(jsonPath("$[0].dateTime").isNotEmpty())
+                .andExpect(jsonPath("$[0].diagnosis").value(nullValue()));
+
+        String prescriberToken = bearerTokenOf(prescriber);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", prescriberToken))
+                .andExpect(jsonPath("$[0].contentHidden").value(false))
+                .andExpect(jsonPath("$[0].productDescription").value("Oleo de outra pessoa"));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", prescriberToken))
+                .andExpect(jsonPath("$[0].contentHidden").value(false))
+                .andExpect(jsonPath("$[0].diagnosis").value("Dor cronica"));
+    }
+
+    // o q n foi anulado o paciente continua vendo inteiro
+    @Test
+    void patientStillGetsTheWholeRecordThatWasNotAnnulled() throws Exception {
+        issuedPrescriptionId(registeredConsultationId(), "Oleo do paciente");
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$[0].contentHidden").value(false))
+                .andExpect(jsonPath("$[0].productDescription").value("Oleo do paciente"));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$[0].contentHidden").value(false))
+                .andExpect(jsonPath("$[0].diagnosis").value("Dor cronica"));
     }
 
     // mudar a prescricao eh emitir uma nova entao a anterior nunca eh editada

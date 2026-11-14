@@ -21,6 +21,33 @@ describe("AnnulmentModal", () => {
         vi.restoreAllMocks();
     });
 
+    // o paciente le o motivo, e no MEEM, q ele n ve, quem usa n manda nada (revisao das regras R7)
+    it("mostra o q o paciente ve do registro so qnd quem usa manda", () => {
+        const {unmount} = render(
+            <AnnulmentModal
+                title="Anular escala respondida"
+                recordDescription="Mini-Exame de 10/11/2026"
+                endpoint="/scales/responses/1/annul"
+                onClose={() => {}}
+                onAnnulled={() => {}}
+            />
+        );
+        expect(screen.queryByText(/O paciente lê o motivo/)).not.toBeInTheDocument();
+        unmount();
+
+        render(
+            <AnnulmentModal
+                title="Anular prescrição"
+                recordDescription="Prescrição de 10/11/2026"
+                patientNote="O paciente lê o motivo."
+                endpoint="/prescriptions/1/annul"
+                onClose={() => {}}
+                onAnnulled={() => {}}
+            />
+        );
+        expect(screen.getByText("O paciente lê o motivo.")).toBeInTheDocument();
+    });
+
     // o erro aparecia do lado do campo, mas o foco ficava no botao e o leitor de tela n dizia nada (CT-39)
     it("anular sem o motivo leva o foco pro campo do motivo, q le o erro junto", async () => {
         const put = vi.spyOn(apiService, "put").mockResolvedValue({});

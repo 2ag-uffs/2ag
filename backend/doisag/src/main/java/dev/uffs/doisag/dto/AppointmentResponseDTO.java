@@ -32,7 +32,8 @@ public record AppointmentResponseDTO(
         boolean annulled,
         LocalDateTime annulledAt,
         String annulmentReason,
-        String annulledByName
+        String annulledByName,
+        boolean contentHidden
 ) {
     public AppointmentResponseDTO(Appointment appointment) {
         this(
@@ -58,7 +59,39 @@ public record AppointmentResponseDTO(
                 appointment.isAnnulled(),
                 Annulment.annulledAtOf(appointment.getAnnulment()),
                 Annulment.reasonOf(appointment.getAnnulment()),
-                Annulment.annulledByNameOf(appointment.getAnnulment())
+                Annulment.annulledByNameOf(appointment.getAnnulment()),
+                false
+        );
+    }
+
+    // a consulta anulada pode ser de outra pessoa lancada no paciente errado, entao o paciente recebe dela so
+    // a data, a marca de anulado e o motivo, sem o registro clinico (revisao das regras R7)
+    public static AppointmentResponseDTO withoutClinicalContent(Appointment appointment) {
+        return new AppointmentResponseDTO(
+                appointment.getId(),
+                appointment.getDateTime(),
+                appointment.getModality(),
+                appointment.getStatus(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                appointment.getDurationMinutes(),
+                null,
+                appointment.getPatient().getId(),
+                appointment.getPatient().getDisplayName(),
+                appointment.getPrescriber().getId(),
+                appointment.getPrescriber().getName(),
+                appointment.isAnnulled(),
+                Annulment.annulledAtOf(appointment.getAnnulment()),
+                Annulment.reasonOf(appointment.getAnnulment()),
+                Annulment.annulledByNameOf(appointment.getAnnulment()),
+                true
         );
     }
 }

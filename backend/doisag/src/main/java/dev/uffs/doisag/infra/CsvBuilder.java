@@ -10,9 +10,15 @@ public class CsvBuilder {
     private static final String UTF8_MARK = "\uFEFF";
 
     private final StringBuilder content = new StringBuilder();
+    private final int columnCount;
 
     public CsvBuilder(String... headers) {
+        columnCount = headers.length;
         line((Object[]) headers);
+    }
+
+    public int columnCount() {
+        return columnCount;
     }
 
     public CsvBuilder line(Object... values) {

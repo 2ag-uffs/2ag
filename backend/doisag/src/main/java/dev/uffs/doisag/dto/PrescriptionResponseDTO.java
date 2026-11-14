@@ -36,7 +36,8 @@ public record PrescriptionResponseDTO(
         boolean annulled,
         LocalDateTime annulledAt,
         String annulmentReason,
-        String annulledByName
+        String annulledByName,
+        boolean contentHidden
 ) {
     public PrescriptionResponseDTO(Prescription prescription) {
         this(
@@ -67,7 +68,44 @@ public record PrescriptionResponseDTO(
                 prescription.isAnnulled(),
                 Annulment.annulledAtOf(prescription.getAnnulment()),
                 Annulment.reasonOf(prescription.getAnnulment()),
-                Annulment.annulledByNameOf(prescription.getAnnulment())
+                Annulment.annulledByNameOf(prescription.getAnnulment()),
+                false
+        );
+    }
+
+    // a receita anulada pode ser de outra pessoa lancada no paciente errado, entao o paciente recebe dela so
+    // a data, a marca de anulado e o motivo, sem o oleo, a dose e as orientacoes (revisao das regras R7)
+    public static PrescriptionResponseDTO withoutClinicalContent(Prescription prescription) {
+        return new PrescriptionResponseDTO(
+                prescription.getId(),
+                prescription.getStatus().name(),
+                prescription.isCurrent(),
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                null,
+                null,
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                prescription.getCreatedAt(),
+                prescription.getAppointment().getId(),
+                prescription.getAppointment().getDateTime(),
+                prescription.getAppointment().getPatient().getId(),
+                prescription.getAppointment().getPatient().getDisplayName(),
+                prescription.getAppointment().getPrescriber().getName(),
+                prescription.isAnnulled(),
+                Annulment.annulledAtOf(prescription.getAnnulment()),
+                Annulment.reasonOf(prescription.getAnnulment()),
+                Annulment.annulledByNameOf(prescription.getAnnulment()),
+                true
         );
     }
 }

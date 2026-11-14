@@ -256,7 +256,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
 - **Conferir:**
   - *A prescrição agora é a vigente do paciente.*
   - Na janela do paciente, o **Início** mostra **Prescrição de agora**, e o menu **Prescrições** mostra a mesma receita em **Vigente**.
-  - No histórico do paciente, a consulta tem os botões **Editar registro**, **Emitir prescrição**, **Mini-exame** e **Anular**. Nada é apagado: o registro feito por engano é anulado com o motivo e continua no histórico.
+  - No histórico do paciente, a consulta tem os botões **Editar registro**, **Emitir prescrição**, **Mini-exame** e **Anular**. Nada é apagado: o registro feito por engano é anulado com o motivo e continua no histórico. O paciente lê o motivo, e da consulta e da prescrição anuladas vê só a data, a marca de anulada e o motivo, então o motivo não deve citar o nome nem dados de outra pessoa.
 
 ### pedido de consulta pela agenda
 

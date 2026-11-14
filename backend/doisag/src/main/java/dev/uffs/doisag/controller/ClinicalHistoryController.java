@@ -42,13 +42,15 @@ public class ClinicalHistoryController {
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/appointments")
-    public List<AppointmentResponseDTO> getAppointments(@PathVariable Long patientId) {
-        return appointmentService.getByPatientId(patientId);
+    public List<AppointmentResponseDTO> getAppointments(@PathVariable Long patientId,
+                                                        @AuthenticationPrincipal Users loggedUser) {
+        return appointmentService.getByPatientId(patientId, loggedUser);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/prescriptions")
-    public List<PrescriptionResponseDTO> getPrescriptions(@PathVariable Long patientId) {
-        return prescriptionService.getByPatientId(patientId);
+    public List<PrescriptionResponseDTO> getPrescriptions(@PathVariable Long patientId,
+                                                          @AuthenticationPrincipal Users loggedUser) {
+        return prescriptionService.getByPatientId(patientId, loggedUser);
     }
 }

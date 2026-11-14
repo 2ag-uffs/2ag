@@ -35,4 +35,20 @@ describe("ConsultationCard", () => {
         const header = screen.getByText("Presencial com Dra. Teste").closest("header");
         expect(header.nextElementSibling.tagName).toBe("DL");
     });
+
+    // a consulta anulada pode ser de outra pessoa lancada no paciente errado, entao pro paciente a api manda so
+    // a data, a marca e o motivo, e o cartao n diz q a consulta ficou sem registro (revisao das regras R7)
+    it("consulta anulada sem o conteudo mostra so a data, a marca e o motivo", () => {
+        render(<ConsultationCard appointment={{
+            id: 2, dateTime: "2026-10-01T09:00:00", modality: "PRESENCIAL", status: "CONCLUIDA",
+            prescriberName: "Dra. Teste", annulled: true, contentHidden: true, annulledAt: "2026-10-02T10:00:00",
+            annulledByName: "Dra. Teste", annulmentReason: "Lançada no paciente errado",
+        }}/>);
+
+        expect(screen.getByRole("heading", {name: "01/10/2026 às 09:00"})).toBeInTheDocument();
+        expect(screen.getByText("Anulada")).toBeInTheDocument();
+        expect(screen.getByText(/Motivo: Lançada no paciente errado/)).toBeInTheDocument();
+        expect(screen.queryByText("Nenhum registro clínico nesta consulta.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Presencial com Dra. Teste")).not.toBeInTheDocument();
+    });
 });

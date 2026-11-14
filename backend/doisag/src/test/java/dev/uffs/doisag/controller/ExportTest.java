@@ -161,7 +161,7 @@ class ExportTest {
         saveAppointment(TODAY.plusDays(2).atTime(10, 0), AppointmentStatus.SOLICITADA, "pedido esperando resposta");
         saveAppointment(TODAY.plusDays(3).atTime(10, 0), AppointmentStatus.AGENDADA, "marcada pro futuro");
 
-        String csv = download("appointments.csv", "", patient);
+        String csv = download("appointments.csv", "", prescriber);
 
         assertThat(csv).contains("Dor lombar crônica").contains("faltou na consulta").contains("marcada e ja passou");
         assertThat(csv).contains("atendimento anulado").contains("\"sim\";\"Registro de outro paciente\"");
@@ -654,6 +654,39 @@ class ExportTest {
         assertThat(csv).contains("\";\"Anulada\";\"Dra. Exportação\";\"Óleo full spectrum\";");
         assertThat(csv).contains("\"sim\";\"Receita do paciente errado\"");
         assertThat(csv).doesNotContain("SUBSTITUIDA").doesNotContain("Substituída");
+    }
+
+    // o registro anulado pode ser de outra pessoa lancado no paciente errado, entao o arquivo do paciente traz
+    // dele so a data, a marca e o motivo. o arquivo do prescritor continua inteiro (revisao das regras R7)
+    @Test
+    void annulledRecordsComeOutWithoutTheClinicalContentInThePatientsFile() throws Exception {
+        Appointment annulled = saveAppointment(TODAY.minusDays(6).atTime(10, 0), AppointmentStatus.CONCLUIDA,
+                "queixa de outra pessoa");
+        annulled.setAnnulment(new Annulment(prescriber, "Registro de outro paciente"));
+        appointmentRepository.save(annulled);
+        Prescription annulledPrescription = new Prescription();
+        annulledPrescription.setAppointment(annulled);
+        annulledPrescription.setProductDescription("Óleo de outra pessoa");
+        annulledPrescription.setPosology("5 gotas de manhã");
+        annulledPrescription.setAnnulment(new Annulment(prescriber, "Receita de outro paciente"));
+        prescriptionRepository.save(annulledPrescription);
+        String annulledDay = BrazilianFormat.date(TODAY.minusDays(6));
+
+        String appointments = download("appointments.csv", "", patient);
+        assertThat(appointments).doesNotContain("queixa de outra pessoa");
+        assertThat(appointments).contains("\"" + annulledDay + "\";\"10:00\";\"\";\"\";\"\";\"\";");
+        assertThat(appointments).contains("\"sim\";\"Registro de outro paciente\"");
+        // a consulta q n foi anulada sai inteira
+        assertThat(appointments).contains("Dor lombar crônica");
+
+        String prescriptions = download("prescriptions.csv", "", patient);
+        assertThat(prescriptions).doesNotContain("Óleo de outra pessoa").doesNotContain("5 gotas de manhã");
+        assertThat(prescriptions).contains("\"" + annulledDay + "\";\"\";\"\";\"\";");
+        assertThat(prescriptions).contains("\"sim\";\"Receita de outro paciente\"");
+        assertThat(prescriptions).contains("Óleo de CBD 10%");
+
+        assertThat(download("appointments.csv", "", prescriber)).contains("queixa de outra pessoa");
+        assertThat(download("prescriptions.csv", "", prescriber)).contains("Óleo de outra pessoa");
     }
 
     // no modo sem identificacao o prescritor da receita vira numero, igual no appointments.csv

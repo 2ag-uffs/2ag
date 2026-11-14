@@ -31,4 +31,21 @@ describe("PrescriptionCard", () => {
 
         expect(screen.queryByText("Semana 1 = primeira semana de uso.")).not.toBeInTheDocument();
     });
+
+    // a receita anulada pode ser de outra pessoa lancada no paciente errado, entao pro paciente a api manda so
+    // a data, a marca e o motivo, e o cartao n mostra composicao nem posologia vazias (revisao das regras R7)
+    it("receita anulada sem o conteudo mostra so a data, a marca e o motivo", () => {
+        render(<PrescriptionCard prescription={{
+            id: 2, status: "SUBSTITUIDA", current: false, productDescription: null, components: [], posology: null,
+            escalationSteps: [], appointmentDateTime: "2026-10-01T09:00:00", prescriberName: "Dra. Teste",
+            annulled: true, contentHidden: true, annulledAt: "2026-10-02T10:00:00", annulledByName: "Dra. Teste",
+            annulmentReason: "Lançada no paciente errado",
+        }}/>);
+
+        expect(screen.getByRole("heading", {name: "Prescrição emitida em 01/10/2026"})).toBeInTheDocument();
+        expect(screen.getByText("Anulada")).toBeInTheDocument();
+        expect(screen.getByText(/Motivo: Lançada no paciente errado/)).toBeInTheDocument();
+        expect(screen.queryByText("Composição")).not.toBeInTheDocument();
+        expect(screen.queryByText("Posologia")).not.toBeInTheDocument();
+    });
 });

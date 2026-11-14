@@ -31,6 +31,20 @@ function TextBlock({title, text}) {
 // cartao de uma prescricao usado pelo paciente e pelo prescritor
 // o actions deixa quem usa colocar botoes como o de anular
 export default function PrescriptionCard({prescription, actions}) {
+    // a receita anulada pode ser de outra pessoa lancada no paciente errado, entao pro paciente a api
+    // manda so a data, a marca e o motivo (revisao das regras R7)
+    if (prescription.contentHidden) {
+        return (
+            <article className={styles.card}>
+                <header className={styles.header}>
+                    <h3>Prescrição emitida em {formatDate(prescription.appointmentDateTime)}</h3>
+                    <span className={badgeClassOf(prescription)}>{prescriptionStatusLabel(prescription)}</span>
+                </header>
+                <AnnulmentNotice record={prescription}/>
+            </article>
+        );
+    }
+
     const brandAndBatch = [prescription.brand, prescription.batch ? "lote " + prescription.batch : null]
         .filter(Boolean)
         .join(" · ");

@@ -197,10 +197,12 @@ o aceite que vale é o último `REGISTRATION` da versão atual, e ele precisa co
 | rota | o que faz |
 | :--- | :--- |
 | `GET /patients/{patientId}/anamneses` | resumo das anamneses do paciente, da mais recente para a mais antiga. na mesma data vem antes a preenchida por último, então a refeita depois de anular aparece antes da anulada. para o prescritor cada ficha traz em `corrections` as versões que as correções do paciente substituíram, da mais velha para a mais nova. para o paciente a lista vem vazia |
-| `GET /patients/{patientId}/appointments` | consultas do paciente |
-| `GET /patients/{patientId}/prescriptions` | prescrições do paciente, com a data da consulta que gerou cada uma |
+| `GET /patients/{patientId}/appointments` | consultas do paciente. para o próprio paciente, a anulada vem sem o registro clínico (veja abaixo) |
+| `GET /patients/{patientId}/prescriptions` | prescrições do paciente, com a data da consulta que gerou cada uma. para o próprio paciente, a anulada vem sem o conteúdo (veja abaixo) |
 
 nenhuma rota lista registros do sistema inteiro: toda lista sai filtrada pelo paciente ou pelo prescritor logado.
+
+a consulta e a prescrição anuladas podem ser de outra pessoa lançada no paciente errado, então quando quem pede é o paciente as duas listas mandam delas só a data, a marca e o motivo: `contentHidden: true`, o registro clínico (queixa, exame físico, evolução, hipótese, conduta, exames, pressão, peso, altura e a nota do pedido) e o conteúdo da receita (produto, marca, lote, espectro, composição, volume, posologia, via, plano de dose, orientações, duração e próxima consulta) nulos ou vazios. a data, a situação, quem prescreveu e a anulação (data, autor e motivo) continuam. o prescritor recebe tudo, com `contentHidden: false`, e a anamnese e as respostas de escala, que o paciente preencheu, não mudam (decisão de 14/11/2026, revisão das regras R7).
 
 a receita (`POST /appointments/{appointmentId}/prescriptions`) recusa o plano de dose que pula semana: os degraus vão da semana 1 em diante, um por semana, e o primeiro fora disso recebe 400 no campo `escalationSteps[i].week` ("Preencha ou tire a semana 3"). a semana 1 é a primeira semana de uso (RN02, decisão de 14/11/2026, revisão das regras R23).
 
@@ -334,6 +336,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 - o `Peso (kg)` e a `Altura (cm)` do `anamneses.csv` seguem a mesma regra desde 13/11/2026: a ficha guarda a resposta como texto, do jeito que o campo numérico do navegador manda (`68.5`), e a resposta que é só um número com ponto sai com vírgula (`68,5`), por `BrazilianFormat.decimalAnswer`. a resposta escrita de outro jeito sai como está. o banco e a api continuam com o ponto, que é o que o campo numérico da correção da ficha lê
 - o `prescriptions.csv` leva a receita inteira (RF05): `Prescritor` traz o nome de quem prescreveu (no modo sem identificação só o número dele), `Plano de dose` traz os degraus numa célula só, como `Semana 1: 2 gotas à noite · começar devagar; Semana 2: 4 gotas à noite`, e `Instruções de uso`, `Precauções e contraindicações` e `Efeitos esperados` saem como foram escritos. texto que começa como fórmula ganha o apóstrofo, como nas outras colunas (07/11/2026, #146)
 - os quatro arquivos do histórico têm `Anulada` e `Motivo da anulação`. no `scales.csv` e no `anamneses.csv`, que têm uma linha por item, o motivo se repete em cada linha do registro anulado
+- no `appointments.csv` e no `prescriptions.csv` que o paciente baixa, a consulta e a prescrição anuladas saem só com o paciente, a data (e a hora, na consulta), `Anulada` e `Motivo da anulação`, com as outras colunas em branco, pela mesma regra do histórico. o arquivo do prescritor continua inteiro (decisão de 14/11/2026, revisão das regras R7)
 - no `progress.csv` a coluna `Faixa` traz a faixa gravada do escore (HAM-A, PSQI, MEEM e intensidade da dor), igual à do `scales.csv`, e fica em branco nos itens da ficha, que não têm faixa publicada (RN13 e RN14)
 - o paciente exporta os próprios dados e o prescritor os dos pacientes vinculados, pela mesma regra de vínculo das outras rotas (RF30)
 - o arquivo que o paciente baixa sai sem o MEEM: o `scales.csv` dele não tem as linhas do exame e o `progress.csv` do `ESCORE_MEEM` responde 403. o direito de acesso ao prontuário inteiro (LGPD, art. 18) é atendido pela clínica: a pedido do paciente, o prescritor exporta ou imprime o prontuário completo, com o MEEM (decisão de 13/11/2026)

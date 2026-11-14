@@ -8,6 +8,7 @@ import dev.uffs.doisag.enums.PrescriptionStatus;
 import dev.uffs.doisag.enums.Spectrum;
 import dev.uffs.doisag.enums.TimePeriod;
 import dev.uffs.doisag.enums.TrackableAttribute;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.CsvBuilder;
@@ -124,6 +125,12 @@ public class ExportService {
             if (!belongsToHistory(appointment)) {
                 continue;
             }
+            if (appointment.isAnnulled() && isPatient(loggedUser)) {
+                annulledLine(csv, appointment.getAnnulment(), patientCell(patient, deidentified),
+                        BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
+                        BrazilianFormat.time(appointment.getDateTime()));
+                continue;
+            }
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(appointment.getDateTime().toLocalDate()),
                     BrazilianFormat.time(appointment.getDateTime()),
@@ -167,6 +174,11 @@ public class ExportService {
         for (Prescription prescription
                 : prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
                         patientId)) {
+            if (prescription.isAnnulled() && isPatient(loggedUser)) {
+                annulledLine(csv, prescription.getAnnulment(), patientCell(patient, deidentified),
+                        BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()));
+                continue;
+            }
             csv.line(patientCell(patient, deidentified),
                     BrazilianFormat.date(prescription.getAppointment().getDateTime().toLocalDate()),
                     prescriptionStatusText(prescription),
@@ -190,6 +202,23 @@ public class ExportService {
                     Annulment.reasonOf(prescription.getAnnulment()));
         }
         return csv.build();
+    }
+
+    // a consulta e a receita anuladas podem ser de outra pessoa lancadas no paciente errado, entao o arquivo do
+    // paciente traz delas so a data, a marca de anulada e o motivo, com o resto da linha em branco. o do prescritor
+    // continua inteiro (revisao das regras R7). a marca e o motivo sao sempre as duas ultimas colunas
+    private void annulledLine(CsvBuilder csv, Annulment annulment, Object... firstCells) {
+        Object[] cells = new Object[csv.columnCount()];
+        for (int index = 0; index < firstCells.length; index++) {
+            cells[index] = firstCells[index];
+        }
+        cells[cells.length - 2] = yesOrNo(true);
+        cells[cells.length - 1] = Annulment.reasonOf(annulment);
+        csv.line(cells);
+    }
+
+    private boolean isPatient(Users loggedUser) {
+        return loggedUser.getRole() == UserRole.PATIENT;
     }
 
     // o plano de subida de dose numa celula so, um degrau atras do outro do jeito q a tela mostra,

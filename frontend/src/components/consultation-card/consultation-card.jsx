@@ -38,6 +38,20 @@ function vitalSignsOf(appointment) {
 // cartao de uma consulta usado no historico do paciente e do prescritor
 // o actions deixa quem usa colocar botoes como o de anular
 export default function ConsultationCard({appointment, actions}) {
+    // a consulta anulada pode ser de outra pessoa lancada no paciente errado, entao pro paciente a api
+    // manda so a data, a marca e o motivo (revisao das regras R7)
+    if (appointment.contentHidden) {
+        return (
+            <article className={styles.card}>
+                <header className={styles.header}>
+                    <h3>{formatDateTime(appointment.dateTime)}</h3>
+                    <span className={styles.badgeAnnulled}>{statusLabelOf(appointment)}</span>
+                </header>
+                <AnnulmentNotice record={appointment}/>
+            </article>
+        );
+    }
+
     const vitalSigns = vitalSignsOf(appointment);
     const filledFields = CLINICAL_FIELDS.filter((field) => appointment[field.name]);
 

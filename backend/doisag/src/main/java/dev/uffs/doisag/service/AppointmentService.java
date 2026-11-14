@@ -12,6 +12,7 @@ import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.TimePeriod;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
@@ -723,12 +724,16 @@ public class AppointmentService {
     }
 
     // consultas de um paciente da mais recente pra mais antiga
+    // da consulta anulada o paciente recebe so a data, a marca e o motivo (revisao das regras R7)
     @Transactional
-    public List<AppointmentResponseDTO> getByPatientId(Long patientId) {
+    public List<AppointmentResponseDTO> getByPatientId(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
+        boolean isPatient = loggedUser.getRole() == UserRole.PATIENT;
         return appointmentRepository.findByPatientIdOrderByDateTimeDesc(patientId)
                 .stream()
-                .map(AppointmentResponseDTO::new)
+                .map(appointment -> isPatient && appointment.isAnnulled()
+                        ? AppointmentResponseDTO.withoutClinicalContent(appointment)
+                        : new AppointmentResponseDTO(appointment))
                 .toList();
     }
 

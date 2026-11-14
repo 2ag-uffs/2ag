@@ -72,6 +72,19 @@ describe("HistoricoClinicoPrescritor", () => {
         expect(within(screen.getByRole("dialog")).getByText("Anular consulta")).toBeInTheDocument();
     });
 
+    // o paciente le o motivo, entao o modal avisa antes de a prescritora escrever (revisao das regras R7)
+    it("o modal de anular a consulta diz o q o paciente ve do registro anulado", async () => {
+        const user = userEvent.setup();
+        renderHistory([MISSED, DONE]);
+
+        const doneCard = await cardWithStatus("Concluída");
+        await user.click(doneCard.getByRole("button", {name: "Anular"}));
+
+        expect(within(screen.getByRole("dialog")).getByText("O paciente lê o motivo. Ele vê só a data, a marca "
+            + "de anulado e o motivo, sem o conteúdo do registro. Não escreva no motivo o nome nem dados de outra pessoa."))
+            .toBeInTheDocument();
+    });
+
     it("a consulta concluida continua com registro, receita, mini-exame e anular", async () => {
         renderHistory([MISSED, DONE]);
 
