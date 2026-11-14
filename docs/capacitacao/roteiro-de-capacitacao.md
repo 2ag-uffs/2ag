@@ -400,7 +400,7 @@ Ao fim da sessão, apague os arquivos baixados. Mesmo com dados inventados, arqu
   - Cada linha diz quando, o que foi feito, em qual registro e quem fez (com o perfil: paciente, prescritor ou administrador).
   - A abertura do histórico que acabou de acontecer já está na trilha: abrir o prontuário também fica registrado, não só criar e alterar.
   - No histórico do João Pedro Almeida, cada arquivo baixado no passo 11 aparece como **Exportação**, com o tipo do arquivo e, no modo sem identificação, *para pesquisa*.
-  - Na **Auditoria** da administração, o paciente aparece só como *paciente nº*, sem nome e sem conteúdo clínico. A criação da conta da prescritora de treino, do passo 2, também está lá.
+  - Na **Auditoria** da administração, o paciente aparece só como *paciente nº*, sem nome e sem conteúdo clínico, e só nos eventos de conta: a abertura do prontuário aparece como *Prontuário*, sem número. A busca de uma conta pelo e-mail em **Pacientes** também fica lá. A criação da conta da prescritora de treino, do passo 2, também está lá.
 - **Se der errado:** *Nenhum registro nesse período*: a trilha abre nos últimos 30 dias. Amplie o período em **De**.
 
 ## 13. arquivar paciente (3 min)

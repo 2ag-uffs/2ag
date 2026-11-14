@@ -23,26 +23,27 @@ public record AuditEventDTO(
         String detail
 ) {
     public static AuditEventDTO from(AuditEvent auditEvent) {
-        return from(auditEvent, auditEvent.getRecordType(), null, auditEvent.getDetail());
+        return from(auditEvent, auditEvent.getRecordType(), auditEvent.getPatientId(), null, auditEvent.getDetail());
     }
 
     // o administrador n acessa dado clinico (RF30) e o numero do paciente eh o msm da busca dele,
-    // entao a escala, o MEEM ou a anamnese q a pessoa fez vira so "Prontuário" pra ele
-    // evento de conta continua com o tipo, ele n diz nada clinico
+    // entao a escala, o MEEM ou a anamnese q a pessoa fez vira so "Prontuário" pra ele, e sem o numero:
+    // com ele a linha do tempo do tratamento de quem a busca achou ficava a vista (revisao das regras R20)
+    // evento de conta continua com o tipo e o numero, ele n diz nada clinico
     // o nome do prescritor ele ja ve na lista de prescritores
     public static AuditEventDTO forAdmin(AuditEvent auditEvent, String prescriberName) {
         AuditRecordType recordType = auditEvent.getRecordType();
         boolean accountEvent = recordType == AuditRecordType.CONTA_DE_PACIENTE
                 || recordType == AuditRecordType.CONTA_DE_PRESCRITOR;
         if (!accountEvent) {
-            recordType = AuditRecordType.PRONTUARIO;
+            return from(auditEvent, AuditRecordType.PRONTUARIO, null, prescriberName, null);
         }
-        // o detalhe de um registro clinico diria o q foi, entao so o de conta aparece
-        return from(auditEvent, recordType, prescriberName, accountEvent ? auditEvent.getDetail() : null);
+        return from(auditEvent, recordType, auditEvent.getPatientId(), prescriberName, auditEvent.getDetail());
     }
 
-    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType, String prescriberName,
-                                      String detail) {
+    // o detalhe de um registro clinico diria o q foi, entao ele tbm so aparece no evento de conta
+    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType, Long patientId,
+                                      String prescriberName, String detail) {
         Users actor = auditEvent.getActor();
         return new AuditEventDTO(
                 auditEvent.getOccurredAt(),
@@ -52,7 +53,7 @@ public record AuditEventDTO(
                 auditEvent.getOperation().getLabel(),
                 recordType.name(),
                 recordType.getLabel(),
-                auditEvent.getPatientId(),
+                patientId,
                 prescriberName,
                 detail
         );

@@ -122,7 +122,7 @@ export default function AdminPatients() {
         <section className={styles.page}>
             <PageHeader
                 title="Pacientes"
-                subtitle="Desativar tira o acesso da conta na hora. O prontuário continua guardado, e arquivar o paciente continua sendo com o prescritor."
+                subtitle="Desativar tira o acesso da conta na hora. O prontuário continua guardado, e arquivar o paciente continua sendo com o prescritor. A busca pelo e-mail e a lista das contas desativadas ficam registradas na auditoria."
             />
 
             {notice && <p className="aviso" role="status">{notice}</p>}

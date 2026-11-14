@@ -127,6 +127,22 @@ public class AuditService {
         saveLoggedUserEvent(AuditOperation.EXPORTACAO, AuditRecordType.PRONTUARIO, null, patientId, fileDetail);
     }
 
+    // a busca por e-mail devolve o numero e o nome do paciente, entao fica registrada, na trilha da
+    // administracao e na do prontuario dele, senao dava pra descobrir de quem eh cada numero sem deixar rastro
+    // (revisao das regras R20)
+    @Transactional
+    public void recordAdminLookup(Long patientId) {
+        saveLoggedUserEvent(AuditOperation.VISUALIZACAO, AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId,
+                "Busca da conta pelo e-mail");
+    }
+
+    // a lista das contas desativadas mostra nome e e-mail de todas, entao cada abertura tbm fica, sem paciente
+    @Transactional
+    public void recordDeactivatedListView() {
+        saveLoggedUserEvent(AuditOperation.VISUALIZACAO, AuditRecordType.CONTA_DE_PACIENTE, null, null,
+                "Lista das contas desativadas");
+    }
+
     // conta ligada ou desligada pela administracao
     // a de paciente leva o paciente junto pra aparecer tbm na trilha do prontuario dele
     @Transactional

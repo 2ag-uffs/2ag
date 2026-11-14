@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -322,6 +323,47 @@ class AdminPatientsTest {
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath(filter, hasSize(1)));
+    }
+
+    // a busca devolve o numero e o nome do paciente, entao fica na trilha da administracao e na do prontuario
+    // dele, senao dava pra descobrir de quem eh cada numero sem deixar rastro (revisao das regras R20)
+    @Test
+    void lookUpByEmailGoesToBothAuditTrails() throws Exception {
+        lookUp(PATIENT_EMAIL, adminToken()).andExpect(status().isOk());
+        String today = LocalDate.now().toString();
+        String filter = "$.events[?(@.operation == 'VISUALIZACAO' && @.recordType == 'CONTA_DE_PACIENTE' "
+                + "&& @.patientId == " + patient.getId() + ")]";
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", today).param("to", today)
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(filter + ".detail", contains("Busca da conta pelo e-mail")))
+                .andExpect(jsonPath(filter + ".actorName", contains("Administrador")));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/audit-events")
+                        .param("from", today).param("to", today)
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(filter + ".detail", contains("Busca da conta pelo e-mail")));
+    }
+
+    // a lista das desativadas traz nome e e-mail de todas, entao cada abertura fica na trilha, sem numero
+    @Test
+    void openingTheDeactivatedListGoesToTheTrail() throws Exception {
+        mockMvc.perform(get("/admin/patients/deactivated").header("Authorization", adminToken()))
+                .andExpect(status().isOk());
+        String today = LocalDate.now().toString();
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", today).param("to", today)
+                        .header("Authorization", adminToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.detail == 'Lista das contas desativadas')].operation",
+                        contains("VISUALIZACAO")))
+                .andExpect(jsonPath("$.events[?(@.detail == 'Lista das contas desativadas')].recordType",
+                        contains("CONTA_DE_PACIENTE")))
+                .andExpect(jsonPath("$.events[?(@.detail == 'Lista das contas desativadas')].actorName",
+                        contains("Administrador")));
     }
 
     // ativar a conta q ja esta ativa devolvia nome e e-mail sem ir pra trilha, e o administrador

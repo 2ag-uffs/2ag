@@ -32,16 +32,22 @@ public class PatientAccountService {
     }
 
     // a busca eh pelo e-mail inteiro pq a administracao n tem lista de paciente
-    @Transactional(readOnly = true)
+    // e vai pra trilha, pq devolve de quem eh o numero (revisao das regras R20). sem transacao readOnly:
+    // no postgres ela recusa o insert da trilha
+    @Transactional
     public Patient findByEmail(String email) {
-        return patientRepository.findByEmail(InputCleaner.normalizeEmail(email))
+        Patient patient = patientRepository.findByEmail(InputCleaner.normalizeEmail(email))
                 .orElseThrow(() -> NotFoundException.forUser(PATIENT_NOT_FOUND_MESSAGE));
+        auditService.recordAdminLookup(patient.getId());
+        return patient;
     }
 
     // pra administracao achar de novo quem ela desativou e poder reativar
     // a ordem eh pelo nome q a tela mostra, e o banco so sabe ordenar pelo civil (RN15)
-    @Transactional(readOnly = true)
+    // cada abertura da lista vai pra trilha, como a busca (revisao das regras R20)
+    @Transactional
     public List<Patient> listDeactivated() {
+        auditService.recordDeactivatedListView();
         // collator do portugues pra letra com acento n ir pro fim da lista
         Collator collator = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
         return patientRepository.findAllByActiveFalseOrderByNameAsc()

@@ -30,4 +30,14 @@ describe("AdminPatients", () => {
         // a conta sem nome social n mostra o nome civil
         expect(screen.getAllByText(/Nome civil/)).toHaveLength(1);
     });
+
+    // a busca e a lista devolvem de quem eh cada numero, entao vao pra auditoria, e a tela diz isso
+    // (revisao das regras R20)
+    it("avisa q a busca e a lista das desativadas ficam na auditoria", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([]);
+        render(<AdminPatients/>);
+
+        expect(await screen.findByText(/A busca pelo e-mail e a lista das contas desativadas ficam registradas na auditoria/))
+            .toBeInTheDocument();
+    });
 });

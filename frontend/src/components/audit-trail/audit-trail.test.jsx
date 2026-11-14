@@ -12,13 +12,20 @@ const ADMIN_TRAIL = {
             prescriberName: "Ana Lima",
         },
         {
+            occurredAt: "2026-11-13T12:45:00", actorName: "Administrador de Teste", actorRole: "ADMIN",
+            operation: "VISUALIZACAO", operationLabel: "Acesso",
+            recordType: "CONTA_DE_PACIENTE", recordLabel: "Conta de paciente", patientId: 3, prescriberName: null,
+            detail: "Busca da conta pelo e-mail",
+        },
+        // na administracao o registro clinico vem sem o numero do paciente (revisao das regras R20)
+        {
             occurredAt: "2026-11-13T12:40:00", actorName: "Ana Lima", actorRole: "PRESCRIBER",
-            operation: "VISUALIZACAO", operationLabel: "Visualização",
-            recordType: "PRONTUARIO", recordLabel: "Prontuário", patientId: 3, prescriberName: null,
+            operation: "VISUALIZACAO", operationLabel: "Acesso",
+            recordType: "PRONTUARIO", recordLabel: "Prontuário", patientId: null, prescriberName: null,
         },
     ],
     totalPages: 1,
-    totalElements: 2,
+    totalElements: 3,
 };
 
 describe("AuditTrail", () => {
@@ -33,7 +40,9 @@ describe("AuditTrail", () => {
 
         expect(await screen.findByText("Administrador de Teste (Administrador) · conta de Ana Lima"))
             .toBeInTheDocument();
-        expect(screen.getByText("Ana Lima (Prescritor) · paciente nº 3")).toBeInTheDocument();
+        expect(screen.getByText("Administrador de Teste (Administrador) · paciente nº 3")).toBeInTheDocument();
+        expect(screen.getByText("Busca da conta pelo e-mail")).toBeInTheDocument();
+        expect(screen.getByText("Ana Lima (Prescritor)")).toBeInTheDocument();
     });
 
     // a troca da data de nascimento aparece com a data antiga e a nova (revisao das regras R9)

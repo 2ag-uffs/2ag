@@ -278,14 +278,44 @@ class AuditTrailTest {
                         .param("to", TODAY.toString())
                         .header("Authorization", bearerTokenOf(savedAdmin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")]", hasSize(1)))
-                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].operation",
+                .andExpect(jsonPath("$.events[?(@.actorName == 'Dra Auditoria')]", hasSize(1)))
+                .andExpect(jsonPath("$.events[?(@.actorName == 'Dra Auditoria')].operation",
                         contains("VISUALIZACAO")))
-                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].actorName",
-                        contains("Dra Auditoria")))
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(body).doesNotContain("Paciente Auditado");
+    }
+
+    // o numero do paciente eh o msm da busca por e-mail, entao junto da linha do tempo do tratamento
+    // ele contava de quem era cada abertura, anulacao e arquivamento. na administracao o registro clinico
+    // vem sem o numero, q fica so nos eventos de conta (revisao das regras R20)
+    @Test
+    void adminSeesClinicalEventsWithoutThePatientNumber() throws Exception {
+        mockMvc.perform(get("/patients/" + patient.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+        auditService.recordArchiving(patient.getId());
+        auditService.recordAccountActiveChange(AuditRecordType.CONTA_DE_PACIENTE, patient.getId(), patient.getId(),
+                false);
+
+        Admin admin = new Admin();
+        admin.setName("Administrador da auditoria");
+        admin.setEmail("auditoria-admin@email.com");
+        admin.setPassword("hash");
+        Users savedAdmin = usersRepository.save(admin);
+
+        mockMvc.perform(get("/admin/audit-events")
+                        .param("from", TODAY.toString())
+                        .param("to", TODAY.toString())
+                        .header("Authorization", bearerTokenOf(savedAdmin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].recordType",
+                        contains("CONTA_DE_PACIENTE")))
+                .andExpect(jsonPath("$.events[?(@.actorName == 'Dra Auditoria' && @.operation == 'VISUALIZACAO')]",
+                        hasSize(1)));
+
+        // o prescritor do paciente continua vendo o numero em tudo
+        readPatientTrail(TODAY, TODAY, 0)
+                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")]", hasSize(3)));
     }
 
     // o numero do paciente na trilha eh o msm q a busca por e-mail da administracao devolve,
@@ -314,9 +344,9 @@ class AuditTrailTest {
                         .param("to", TODAY.toString())
                         .header("Authorization", bearerTokenOf(savedAdmin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].operation",
+                .andExpect(jsonPath("$.events[?(@.actorName == 'Dra Auditoria')].operation",
                         contains("ALTERACAO")))
-                .andExpect(jsonPath("$.events[?(@.patientId == " + patient.getId() + ")].recordType",
+                .andExpect(jsonPath("$.events[?(@.actorName == 'Dra Auditoria')].recordType",
                         contains("PRONTUARIO")))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat(body).contains("Prontuário")
