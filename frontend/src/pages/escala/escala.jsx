@@ -172,6 +172,9 @@ export default function Escala() {
     // o erro de campo q a api mandou no ultimo envio, por dia, como o horario de levantar igual ao de dormir
     const [fieldErrorsByDay, setFieldErrorsByDay] = useState({});
     const [reloadCount, setReloadCount] = useState(0);
+    // a escala q ja abriu na tela. a recarga q falha dps (a rede caiu no meio do salvar) n troca a tela pelo
+    // aviso de erro, senao somem a grade, os dias n salvos e o erro de cada um
+    const loadedSlugRef = useRef(null);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -182,6 +185,7 @@ export default function Escala() {
         ])
             .then(([loadedDefinition, loadedResponses]) => {
                 if (isCurrentRequest) {
+                    loadedSlugRef.current = slug;
                     setDefinition(loadedDefinition);
                     setResponses(loadedResponses);
                     setLoadError(null);
@@ -193,7 +197,13 @@ export default function Escala() {
                 }
             })
             .catch((requestError) => {
-                if (isCurrentRequest) {
+                if (!isCurrentRequest) {
+                    return;
+                }
+                if (loadedSlugRef.current === slug) {
+                    setFormError((currentError) => (currentError ? currentError + " " : "")
+                        + "Não foi possível atualizar a tela agora. As respostas salvas continuam salvas.");
+                } else {
                     setLoadError(errorMessageOf(requestError,
                         "Não foi possível abrir a escala. Confira sua internet e tente de novo."));
                 }
@@ -451,8 +461,29 @@ export default function Escala() {
         }
     };
 
+    // o modal existe tbm no aviso de erro, pq blocker armado sem modal deixa a tela sem nenhuma saida
+    const exitModal = (
+        <ConfirmModal
+            show={exitBlocker.state === "blocked"}
+            title="Sair sem salvar"
+            message={isDiary && unsavedDays.length > 1
+                ? "Você preencheu " + unsavedDays.length + " dias que ainda não foram salvos e vão se perder. "
+                    + "Quer mesmo sair?"
+                : "O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"}
+            confirmText="Sim, sair"
+            cancelText="Continuar preenchendo"
+            onConfirm={() => exitBlocker.proceed()}
+            onCancel={() => exitBlocker.reset()}
+        />
+    );
+
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return (
+            <>
+                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+                {exitModal}
+            </>
+        );
     }
 
     if (!definition) {
@@ -590,18 +621,7 @@ export default function Escala() {
                 </FormActions>
             </form>
 
-            <ConfirmModal
-                show={exitBlocker.state === "blocked"}
-                title="Sair sem salvar"
-                message={isDiary && unsavedDays.length > 1
-                    ? "Você preencheu " + unsavedDays.length + " dias que ainda não foram salvos e vão se perder. "
-                        + "Quer mesmo sair?"
-                    : "O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"}
-                confirmText="Sim, sair"
-                cancelText="Continuar preenchendo"
-                onConfirm={() => exitBlocker.proceed()}
-                onCancel={() => exitBlocker.reset()}
-            />
+            {exitModal}
         </section>
     );
 }

@@ -1,4 +1,4 @@
-import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createBrowserRouter, createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -804,6 +804,70 @@ describe("Escala diaria", () => {
         await user.click(within(grid).getAllByRole("button")[0]);
         expect(screen.getByRole("radio", {name: "6"})).toBeChecked();
     });
+
+    // a rede cai no meio do salvar: a recarga dps do primeiro dia salvo tbm falha, e isso n pode trocar a
+    // tela ja carregada pelo aviso de erro, senao somem a grade, o erro do dia e o modal de sair
+    it("rede q cai no meio do salvar n tira a grade e sair com o dia n salvo ainda pergunta", async () => {
+        const getCount = {};
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: pendingTasks, history: []});
+            }
+            if (path === "/patients/3/scales") {
+                return Promise.resolve([]);
+            }
+            getCount[path] = (getCount[path] || 0) + 1;
+            if (getCount[path] > 1) {
+                return Promise.reject(new TypeError("Failed to fetch"));
+            }
+            return Promise.resolve(path === "/scales/definitions/acompanhamento-semanal" ? DIARY : []);
+        });
+        let postCount = 0;
+        vi.spyOn(apiService, "post").mockImplementation((path, body) => {
+            postCount += 1;
+            if (postCount > 1) {
+                return Promise.reject(new TypeError("Failed to fetch"));
+            }
+            return Promise.resolve({
+                id: 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal",
+                periodStart: body.periodStart, periodEnd: body.periodEnd, answers: body.answers, result: null,
+                reviewed: false, annulled: false, editableByPatient: true,
+            });
+        });
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/painel-paciente", "/escalas/acompanhamento-semanal"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const days = within(grid).getAllByRole("button");
+        await user.click(days[0]);
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        await user.click(days[1]);
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        // espera a recarga dps do salvar terminar (e falhar)
+        await waitFor(() => expect(getCount["/scales/" + DIARY.slug + "/responses"]).toBe(2));
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+
+        expect(screen.getByRole("alert")).toHaveTextContent(formatWeekdayAndDate(dayFromToday(-8))
+            + ": a resposta não foi salva. Não foi possível falar com o servidor");
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Não foi possível atualizar a tela agora. As respostas salvas continuam salvas.");
+        const gridAfter = screen.getByRole("group", {name: "Dias do período"});
+        expect(within(gridAfter).getAllByRole("button")[0]).toHaveTextContent("preenchido");
+        expect(within(gridAfter).getAllByRole("button")[1]).toHaveTextContent("não salvo");
+
+        // o blocker segura a saida, entao a navegacao fica esperando a resposta do modal
+        act(() => {
+            router.navigate("/painel-paciente");
+        });
+        expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/escalas/acompanhamento-semanal");
+    }, 20000);
 
     // voltar com dia preenchido e ainda n salvo pergunta antes, igual a anamnese, pra resposta n sumir calada
     it("voltar com dia preenchido e n salvo pergunta antes de sair", async () => {
