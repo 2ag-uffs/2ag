@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.DayOffDTO;
 import dev.uffs.doisag.dto.DayOffResponseDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.infra.BusinessException;
+import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.PrescriberAvailability;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +36,11 @@ public class AvailabilityService {
     public static final String PAST_DAY_OFF_MESSAGE = "Escolha um dia a partir de hoje";
     public static final String DAY_OFF_TAKEN_MESSAGE = "Esse dia já está marcado como sem atendimento";
     public static final String DAY_OFF_NOT_FOUND_MESSAGE = "Esse dia não está marcado como sem atendimento";
+
+    // o minimo eh a consulta mais curta entre primeira e retorno, senao o periodo nunca daria horario livre
+    public static String periodTooShortMessage(int minutes) {
+        return "O período precisa ter pelo menos " + minutes + " minutos para caber uma consulta";
+    }
 
     private final PrescriberAvailabilityRepository availabilityRepository;
     private final PrescriberRepository prescriberRepository;
@@ -66,15 +73,16 @@ public class AvailabilityService {
     // consulta ja marcada continua valendo mesmo fora dos periodos novos
     @Transactional
     public AvailabilityDTO replaceAvailability(Long prescriberId, AvailabilityDTO availabilityData) {
-        checkPeriods(availabilityData.periods());
-
-        Prescriber prescriber = findPrescriber(prescriberId);
-        prescriber.setAppointmentDurationMinutes(availabilityData.appointmentDurationMinutes());
         // sem a duracao da primeira consulta ela fica igual a do retorno
         Integer firstDurationMinutes = availabilityData.firstAppointmentDurationMinutes();
         if (firstDurationMinutes == null) {
             firstDurationMinutes = availabilityData.appointmentDurationMinutes();
         }
+        int shortestMinutes = Math.min(firstDurationMinutes, availabilityData.appointmentDurationMinutes());
+        checkPeriods(availabilityData.periods(), shortestMinutes);
+
+        Prescriber prescriber = findPrescriber(prescriberId);
+        prescriber.setAppointmentDurationMinutes(availabilityData.appointmentDurationMinutes());
         prescriber.setFirstAppointmentDurationMinutes(firstDurationMinutes);
         prescriberRepository.save(prescriber);
 
@@ -146,10 +154,20 @@ public class AvailabilityService {
                 List.of(AppointmentStatus.SOLICITADA, AppointmentStatus.AGENDADA));
     }
 
-    private void checkPeriods(List<AvailabilityPeriodDTO> periods) {
+    private void checkPeriods(List<AvailabilityPeriodDTO> periods, int shortestMinutes) {
         for (AvailabilityPeriodDTO period : periods) {
             if (!period.startTime().isBefore(period.endTime())) {
                 throw new BusinessException(INVALID_PERIOD_MESSAGE);
+            }
+        }
+
+        // o erro vai no campo do periodo pra tela mostrar na linha certa
+        for (int index = 0; index < periods.size(); index++) {
+            AvailabilityPeriodDTO period = periods.get(index);
+            long periodMinutes = ChronoUnit.MINUTES.between(period.startTime(), period.endTime());
+            if (periodMinutes < shortestMinutes) {
+                throw new InvalidFieldException("periods[" + index + "].endTime",
+                        periodTooShortMessage(shortestMinutes));
             }
         }
 

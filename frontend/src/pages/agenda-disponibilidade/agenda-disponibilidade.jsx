@@ -6,7 +6,7 @@ import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
 import {DURATION_OPTIONS, WEEKDAYS} from "../../utils/appointment-labels.js";
 import {formatDate, formatWeekdayAndDate, shortTime, toIsoDate} from "../../utils/date-format.js";
 import styles from "./agenda-disponibilidade.module.css";
@@ -15,12 +15,48 @@ import styles from "./agenda-disponibilidade.module.css";
 const NEW_PERIOD_START = "08:00";
 const NEW_PERIOD_END = "12:00";
 
+const CHECK_PERIODS_MESSAGE = "Confira os períodos destacados.";
+
 // cada periodo ganha uma chave so da tela pro react saber qual linha eh qual
 let lastPeriodKey = 0;
 
 function newPeriod(dayOfWeek, startTime, endTime) {
     lastPeriodKey = lastPeriodKey + 1;
     return {key: lastPeriodKey, dayOfWeek, startTime, endTime};
+}
+
+function periodErrorId(periodKey) {
+    return "period-" + periodKey + "-error";
+}
+
+// "08:30" vira 510 minutos desde a meia noite
+function minutesOf(time) {
+    const [hours, minutes] = time.split(":");
+    return Number(hours) * 60 + Number(minutes);
+}
+
+// periodo q n cabe nem a consulta mais curta nunca daria horario livre, igual a api confere
+function tooShortPeriodErrors(periods, shortestMinutes) {
+    const errorsByKey = {};
+    periods.forEach((period) => {
+        if (minutesOf(period.endTime) - minutesOf(period.startTime) < shortestMinutes) {
+            errorsByKey[period.key] = "O período precisa ter pelo menos " + shortestMinutes
+                + " minutos para caber uma consulta.";
+        }
+    });
+    return errorsByKey;
+}
+
+// a api aponta o periodo pela posicao na lista enviada, q eh a mesma da tela
+function periodErrorsFromApi(periods, fieldErrors) {
+    const errorsByKey = {};
+    periods.forEach((period, index) => {
+        const message = fieldErrors["periods[" + index + "].endTime"];
+        if (message) {
+            errorsByKey[period.key] = message;
+        }
+    });
+    return errorsByKey;
 }
 
 // a folga n cancela nada, entao o prescritor precisa saber o q ficou marcado no dia
@@ -53,6 +89,7 @@ export default function AgendaDisponibilidade() {
     const [isSavingDayOff, setIsSavingDayOff] = useState(false);
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
+    const [periodErrors, setPeriodErrors] = useState({});
     const [notice, setNotice] = useState(null);
     const [dayOffError, setDayOffError] = useState(null);
     const [dayOffNotice, setDayOffNotice] = useState(null);
@@ -96,14 +133,25 @@ export default function AgendaDisponibilidade() {
         setPeriods((currentPeriods) => [...currentPeriods, newPeriod(dayOfWeek, NEW_PERIOD_START, NEW_PERIOD_END)]);
     };
 
+    // mexer no periodo tira o erro dele, q volta a ser conferido no salvar
+    const clearPeriodError = (periodKey) => {
+        setPeriodErrors((currentErrors) => {
+            const otherErrors = {...currentErrors};
+            delete otherErrors[periodKey];
+            return otherErrors;
+        });
+    };
+
     const updatePeriod = (periodKey, fieldName, value) => {
         setNotice(null);
+        clearPeriodError(periodKey);
         setPeriods((currentPeriods) => currentPeriods.map((period) =>
             period.key === periodKey ? {...period, [fieldName]: value} : period));
     };
 
     const removePeriod = (periodKey) => {
         setNotice(null);
+        clearPeriodError(periodKey);
         setPeriods((currentPeriods) => currentPeriods.filter((period) => period.key !== periodKey));
     };
 
@@ -111,12 +159,21 @@ export default function AgendaDisponibilidade() {
         event.preventDefault();
         setFormError(null);
         setNotice(null);
+        setPeriodErrors({});
 
         // hora no formato hora e minuto da pra comparar como texto
         const hasInvalidPeriod = periods.some((period) =>
             !period.startTime || !period.endTime || period.startTime >= period.endTime);
         if (hasInvalidPeriod) {
             setFormError("Em cada período, o horário de fim precisa ser depois do início.");
+            return;
+        }
+
+        const shortestMinutes = Math.min(Number(firstDurationMinutes), Number(returnDurationMinutes));
+        const tooShortErrors = tooShortPeriodErrors(periods, shortestMinutes);
+        if (Object.keys(tooShortErrors).length > 0) {
+            setPeriodErrors(tooShortErrors);
+            setFormError(CHECK_PERIODS_MESSAGE);
             return;
         }
 
@@ -136,7 +193,13 @@ export default function AgendaDisponibilidade() {
                 ? "Horários salvos. Sem nenhum período, seus pacientes não conseguem pedir consulta."
                 : "Horários salvos. Seus pacientes já podem pedir consulta nesses períodos.");
         } catch (requestError) {
-            setFormError(errorMessageOf(requestError));
+            const apiPeriodErrors = periodErrorsFromApi(periods, readRequestError(requestError).fieldErrors);
+            if (Object.keys(apiPeriodErrors).length > 0) {
+                setPeriodErrors(apiPeriodErrors);
+                setFormError(CHECK_PERIODS_MESSAGE);
+            } else {
+                setFormError(errorMessageOf(requestError));
+            }
         } finally {
             setIsSaving(false);
         }
@@ -221,6 +284,7 @@ export default function AgendaDisponibilidade() {
                             value={firstDurationMinutes}
                             onChange={(event) => {
                                 setNotice(null);
+                                setPeriodErrors({});
                                 setFirstDurationMinutes(event.target.value);
                             }}
                         />
@@ -231,6 +295,7 @@ export default function AgendaDisponibilidade() {
                             value={returnDurationMinutes}
                             onChange={(event) => {
                                 setNotice(null);
+                                setPeriodErrors({});
                                 setReturnDurationMinutes(event.target.value);
                             }}
                         />
@@ -268,6 +333,8 @@ export default function AgendaDisponibilidade() {
                                                     step="300"
                                                     value={period.startTime}
                                                     aria-label={"Início do período de " + weekday.label}
+                                                    aria-invalid={periodErrors[period.key] ? "true" : undefined}
+                                                    aria-describedby={periodErrors[period.key] ? periodErrorId(period.key) : undefined}
                                                     onChange={(event) => updatePeriod(period.key, "startTime", event.target.value)}
                                                 />
                                             </label>
@@ -278,6 +345,8 @@ export default function AgendaDisponibilidade() {
                                                     step="300"
                                                     value={period.endTime}
                                                     aria-label={"Fim do período de " + weekday.label}
+                                                    aria-invalid={periodErrors[period.key] ? "true" : undefined}
+                                                    aria-describedby={periodErrors[period.key] ? periodErrorId(period.key) : undefined}
                                                     onChange={(event) => updatePeriod(period.key, "endTime", event.target.value)}
                                                 />
                                             </label>
@@ -290,6 +359,11 @@ export default function AgendaDisponibilidade() {
                                             >
                                                 <FiTrash2 aria-hidden="true"/>
                                             </button>
+                                            {periodErrors[period.key] && (
+                                                <span id={periodErrorId(period.key)} className={styles.periodError}>
+                                                    {periodErrors[period.key]}
+                                                </span>
+                                            )}
                                         </div>
                                     ))}
                                 </li>

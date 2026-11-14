@@ -13,9 +13,9 @@ const AVAILABILITY = {
     periods: [{dayOfWeek: 1, startTime: "08:00:00", endTime: "12:00:00"}],
 };
 
-function renderPage(daysOff) {
+function renderPage(daysOff, availability = AVAILABILITY) {
     vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
-        path === "/availability/days-off" ? daysOff : AVAILABILITY));
+        path === "/availability/days-off" ? daysOff : availability));
     const router = createMemoryRouter([{path: "/agenda/disponibilidade", element: <AgendaDisponibilidade/>}],
         {initialEntries: ["/agenda/disponibilidade"]});
     render(<RouterProvider router={router}/>);
@@ -45,6 +45,58 @@ describe("AgendaDisponibilidade", () => {
             periods: [{dayOfWeek: 1, startTime: "08:00", endTime: "12:00"}],
         });
         expect(await screen.findByText(/Horários salvos/)).toBeInTheDocument();
+    });
+
+    // periodo q n cabe nem a consulta mais curta nunca daria horario livre (decisao de 13/11/2026)
+    it("recusa na propria linha o periodo mais curto q a consulta, sem enviar", async () => {
+        const put = vi.spyOn(apiService, "put").mockResolvedValue(AVAILABILITY);
+        const user = userEvent.setup();
+        renderPage([]);
+
+        await user.click((await screen.findAllByRole("button", {name: "Adicionar período"}))[1]);
+        fireEvent.change(screen.getByLabelText("Fim do período de Terça-feira"), {target: {value: "08:45"}});
+        await user.click(screen.getByRole("button", {name: "Salvar horários"}));
+
+        expect(put).not.toHaveBeenCalled();
+        const tuesdayEnd = screen.getByLabelText("Fim do período de Terça-feira");
+        expect(tuesdayEnd).toHaveAttribute("aria-invalid", "true");
+        expect(tuesdayEnd).toHaveAccessibleDescription("O período precisa ter pelo menos 60 minutos para caber uma consulta.");
+        expect(screen.getByLabelText("Fim do período de Segunda-feira")).not.toHaveAttribute("aria-invalid");
+        expect(screen.queryByText(/Horários salvos/)).not.toBeInTheDocument();
+
+        // mudar o periodo tira o erro e salva
+        fireEvent.change(tuesdayEnd, {target: {value: "09:00"}});
+        expect(tuesdayEnd).not.toHaveAttribute("aria-invalid");
+        await user.click(screen.getByRole("button", {name: "Salvar horários"}));
+        expect(put).toHaveBeenCalledTimes(1);
+    });
+
+    it("aumentar a duracao acima de um periodo q ja existia tbm eh recusado", async () => {
+        const put = vi.spyOn(apiService, "put").mockResolvedValue(AVAILABILITY);
+        const user = userEvent.setup();
+        renderPage([], {...AVAILABILITY, periods: [{dayOfWeek: 1, startTime: "08:00:00", endTime: "09:00:00"}]});
+
+        await user.selectOptions(await screen.findByLabelText("Retorno"), "90");
+        await user.click(screen.getByRole("button", {name: "Salvar horários"}));
+
+        expect(put).not.toHaveBeenCalled();
+        expect(screen.getByLabelText("Fim do período de Segunda-feira"))
+            .toHaveAccessibleDescription("O período precisa ter pelo menos 90 minutos para caber uma consulta.");
+    });
+
+    it("o erro do periodo q vem da api aparece na linha dele", async () => {
+        const message = "O período precisa ter pelo menos 60 minutos para caber uma consulta";
+        vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, message,
+            [{field: "periods[0].endTime", message}]));
+        const user = userEvent.setup();
+        renderPage([]);
+
+        await user.click(await screen.findByRole("button", {name: "Salvar horários"}));
+
+        const mondayEnd = screen.getByLabelText("Fim do período de Segunda-feira");
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        expect(mondayEnd).toHaveAttribute("aria-invalid", "true");
+        expect(mondayEnd).toHaveAccessibleDescription(message);
     });
 
     // a folga n cancela nada, entao a tela avisa o q continua marcado no dia

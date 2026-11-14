@@ -162,6 +162,7 @@ Janela normal, prescritora de treino.
   - A folga não cancela nada: se já houver consulta ou pedido no dia, a tela avisa quantos são, para remarcar ou cancelar na **Agenda**.
 - **Se der errado:**
   - *Em cada período, o horário de fim precisa ser depois do início*: confira os horários do período.
+  - *O período precisa ter pelo menos 60 minutos para caber uma consulta*: o período destacado é mais curto que a consulta mais curta e nunca daria horário. Aumente o período ou diminua a duração.
   - Folga marcada no dia errado: clique na lixeira ao lado do dia (*Voltar a atender nesse dia*).
   - Salvar sem nenhum período fecha a agenda para os pacientes. A tela avisa quando isso acontece.
 

@@ -284,6 +284,7 @@ Visualização e gestão da própria agenda, criação e edição de consultas, 
 *Critérios de aceite:*
 - Alteração ou cancelamento notifica o paciente (RF14)
 - Só é possível agendar para pacientes vinculados (RF30)
+- Período de atendimento em que não cabe nem a consulta mais curta (primeira consulta ou retorno) é recusado ao salvar, com o erro na linha do período, porque nunca daria horário livre. Vale também quando a duração sobe acima de um período que já existia (decisão de 13/11/2026, §8.3)
 
 ---
 
@@ -703,6 +704,7 @@ Os registros do Anexo B ficam como histórico. O andamento passa a seguir a orde
 | RF07 | Consolidado com o RF28 em uma página única do paciente |
 | RF10/RF11 | O prescritor cadastra a disponibilidade, o paciente solicita o horário e o prescritor confirma |
 | RF10 e RN08 | *Decisão de 13/11/2026:* o paciente tem um pedido de consulta esperando resposta por vez, o pedido novo substitui o anterior, e todo pedido do paciente é para um horário com pelo menos 24 horas de antecedência. A QA achou um paciente segurando três horários do mesmo dia com o limite antigo de 3 pedidos em aberto. O pedido continua segurando o horário até o prescritor confirmar ou recusar, para ninguém perder um horário que já pediu; com um pedido por paciente, uma pessoa só não segura vários horários da agenda; e as 24 horas, as mesmas do cancelamento pelo paciente, dão ao prescritor tempo de responder. A troca é feita de uma vez: o horário novo é conferido como antes e, só se ele passar, o pedido anterior é cancelado como no cancelamento pelo paciente e o novo é gravado, então o pedido novo recusado deixa o anterior como estava. A consulta já confirmada não conta como pedido, e o prescritor continua marcando consulta direto sem antecedência mínima |
+| RF11 | *Decisão de 13/11/2026:* cada período de atendimento precisa caber pelo menos a consulta mais curta, entre a primeira consulta e o retorno. A QA salvou um período menor que a consulta, a tela respondeu que os pacientes já podiam pedir consulta nele, e ele nunca gerou horário livre. A API recusa com 400 no campo do período, inclusive quando a duração enviada sobe acima de um período que já existia, e a tela mostra o mesmo erro na linha antes de enviar. O período em que só cabe a mais curta das duas continua valendo, com horários só daquele tipo |
 | RF18 | Restrito a dados pessoais, senha e preferência de e-mail, sem escolha de idioma |
 | RF26 | *Critério acrescentado:* a escolaridade usada no ponto de corte e a data da avaliação são registradas |
 | RF31 | Tabela de auditoria somente de inserção, gravada pelos serviços |
@@ -827,7 +829,7 @@ A exportação sem identificação não leva nenhum dos dois. Nome social em bra
 
 **Agenda concluída em 13/09/2026:** RF10 e RF11.
 
-- **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração.
+- **Horários de atendimento:** o prescritor cadastra os períodos da semana em que atende e a duração padrão das consultas. Os horários livres saem da divisão desses períodos pela duração. O período em que não cabe nem a consulta mais curta é recusado ao salvar, com o erro na linha dele: antes ele era salvo com *Seus pacientes já podem pedir consulta nesses períodos* e nunca gerava horário (13/11/2026, §8.3).
 - **Pedido do paciente:**
   - o paciente escolhe um horário livre dos próximos 30 dias e pode escrever o motivo da consulta, que fica fora dos campos clínicos;
   - a API segue a mesma janela de 30 dias contando o dia de hoje e recusa o pedido para depois dela (16/10/2026);

@@ -127,6 +127,36 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AvailabilityService.OVERLAPPING_PERIODS_MESSAGE));
     }
 
+    // periodo q n cabe nem a consulta mais curta nunca daria horario livre, entao eh recusado no campo dele
+    // o q so cabe o retorno continua valendo (decisao de 13/11/2026)
+    @Test
+    void periodShorterThanTheShortestConsultationIsRejected() throws Exception {
+        saveAvailability(60, 90, List.of(period(1, "08:00", "12:00"), period(2, "08:00", "08:45")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("periods[1].endTime"))
+                .andExpect(jsonPath("$.errors[0].message").value(AvailabilityService.periodTooShortMessage(60)));
+
+        saveAvailability(60, 90, List.of(period(2, "08:00", "09:00"))).andExpect(status().isOk());
+        // primeira consulta mais curta q o retorno: o periodo q cabe a primeira tbm vale
+        saveAvailability(60, 30, List.of(period(2, "08:00", "08:30"))).andExpect(status().isOk());
+    }
+
+    // aumentar a duracao no msm envio confere de novo os periodos q ja existiam e nada muda
+    @Test
+    void raisingTheDurationAboveAPeriodIsRejected() throws Exception {
+        saveAvailability(60, 60, List.of(period(1, "08:00", "12:00"), period(3, "14:00", "15:00")))
+                .andExpect(status().isOk());
+
+        saveAvailability(90, 90, List.of(period(1, "08:00", "12:00"), period(3, "14:00", "15:00")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("periods[1].endTime"))
+                .andExpect(jsonPath("$.errors[0].message").value(AvailabilityService.periodTooShortMessage(90)));
+
+        mockMvc.perform(get("/availability").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.appointmentDurationMinutes").value(60))
+                .andExpect(jsonPath("$.periods.length()").value(2));
+    }
+
     @Test
     void newWeekReplacesTheOldOne() throws Exception {
         saveAvailability(30, List.of(period(5, "13:00", "17:00"))).andExpect(status().isOk());

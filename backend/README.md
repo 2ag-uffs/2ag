@@ -209,7 +209,7 @@ corrigir e anular a anamnese travam o paciente e depois a própria anamnese, lid
 | rota | o que faz |
 | :--- | :--- |
 | `GET /availability` | horários de atendimento da semana e duração da primeira consulta e do retorno do prescritor logado |
-| `PUT /availability` | troca os horários de atendimento e as durações, de 15 a 240 minutos. `appointmentDurationMinutes` é a do retorno; sem `firstAppointmentDurationMinutes`, a primeira consulta fica com a mesma duração do retorno |
+| `PUT /availability` | troca os horários de atendimento e as durações, de 15 a 240 minutos. `appointmentDurationMinutes` é a do retorno; sem `firstAppointmentDurationMinutes`, a primeira consulta fica com a mesma duração do retorno. cada período precisa caber pelo menos a consulta mais curta das duas, senão nunca daria horário livre: o que não cabe recebe 400 no campo `periods[i].endTime` ("O período precisa ter pelo menos 60 minutos para caber uma consulta", com a duração da mais curta), também quando a duração enviada sobe acima de um período que já existia, e nada é gravado (decisão de 13/11/2026) |
 | `GET /availability/days-off` | dias sem atendimento do prescritor logado, de hoje em diante, cada um com quantos pedidos (`SOLICITADA`) e consultas (`AGENDADA`) não anulados ainda estão por vir nele |
 | `POST /availability/days-off` | marca um dia sem atendimento (`date`), de hoje em diante. a resposta conta os pedidos e consultas do dia que ainda estão por vir, do mesmo jeito |
 | `DELETE /availability/days-off?date=` | o dia volta a ter atendimento |

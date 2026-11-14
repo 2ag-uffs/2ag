@@ -88,6 +88,19 @@
     width: 8rem;
 }
 
+/* periodo recusado ganha a borda de erro e a mensagem embaixo, na linha toda */
+.timeField input[aria-invalid="true"] {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 3px var(--color-error-soft);
+}
+
+.periodError {
+    color: var(--color-error);
+    flex-basis: 100%;
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
 .removeButton {
     color: var(--color-error);
 }
