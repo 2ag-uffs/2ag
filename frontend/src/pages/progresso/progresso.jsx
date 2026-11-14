@@ -322,17 +322,28 @@ export default function Progresso() {
 
     // a gota so entra no grafico qdo esta marcada e a escala eh o acompanhamento semanal
     const shownDosePoints = showDose && isFollowUpScale ? dosePoints : [];
-    const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point.value]));
+    const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point]));
+    const pointByDate = new Map(points.map((point) => [point.date, point]));
+    // o dia com gota e com o item em branco tbm entra, senao a gota sumia e a linha delas cortava num dia em q
+    // elas foram anotadas. sem nenhum ponto do item o grafico continua vazio. aaaa-mm-dd ja ordena pela data
+    const rowDates = points.length > 0
+        ? Array.from(new Set([...pointByDate.keys(), ...doseByDate.keys()])).sort()
+        : [];
     // o eixo vai pela data e pega tbm as consultas, entao o ano aparece qnd qualquer uma delas cai em outro ano
-    const axisDates = [...points.map((point) => point.date), ...appointmentMarks.map((mark) => mark.date)];
+    const axisDates = [...rowDates, ...appointmentMarks.map((mark) => mark.date)];
     const hasManyYears = axisDates.some((date) => date.slice(0, 4) !== axisDates[0].slice(0, 4));
-    const chartRows = points.map((point) => ({
-        date: point.date,
-        label: hasManyYears ? dayMonthAndYear(point.date) : dayAndMonth(point.date),
-        valor: point.value,
-        faixa: bandTextOf(point, isMentalStateExam),
-        gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
-    }));
+    const chartRows = rowDates.map((date) => {
+        const point = pointByDate.get(date);
+        const dose = doseByDate.get(date);
+        return {
+            date: date,
+            label: hasManyYears ? dayMonthAndYear(date) : dayAndMonth(date),
+            valor: point ? point.value : null,
+            faixa: point ? bandTextOf(point, isMentalStateExam) : null,
+            gotas: dose ? dose.value : null,
+            partialDoseNote: dose ? dose.partialNote : null,
+        };
+    });
 
     // a faixa interpretativa vira linha de corte no grafico pq escore
     // sem faixa n quer dizer nada (RN14)
@@ -801,13 +812,22 @@ function CommentsCard({comments, isPrescriber, isLoading, loadError}) {
 }
 
 // as gotas da manha e as da tarde viram a dose do dia
-// dia com uma das duas em branco fica sem ponto, pq em branco n vale zero (RN10, decisao de 13/11/2026)
-// senao so a dose preenchida parecia o total e lia como reducao de dose
+// o dia com uma das duas em branco mostra so a preenchida e vai marcado como parcial, pq em branco n vale zero
+// (RN10) e sem a marca a dose preenchida parecia o total e lia como reducao de dose. sem o ponto, a linha de
+// quem toma uma dose so por dia sumia inteira (revisao das regras R12)
 function sumByDate(morningPoints, afternoonPoints) {
+    const morningByDate = new Map(morningPoints.map((point) => [point.date, point.value]));
     const afternoonByDate = new Map(afternoonPoints.map((point) => [point.date, point.value]));
-    return morningPoints
-        .filter((point) => afternoonByDate.has(point.date))
-        .map((point) => ({date: point.date, value: point.value + afternoonByDate.get(point.date)}));
+    const dates = new Set([...morningByDate.keys(), ...afternoonByDate.keys()]);
+    return Array.from(dates, (date) => {
+        if (!afternoonByDate.has(date)) {
+            return {date: date, value: morningByDate.get(date), partialNote: "só a manhã, a tarde ficou em branco"};
+        }
+        if (!morningByDate.has(date)) {
+            return {date: date, value: afternoonByDate.get(date), partialNote: "só a tarde, a manhã ficou em branco"};
+        }
+        return {date: date, value: morningByDate.get(date) + afternoonByDate.get(date), partialNote: null};
+    });
 }
 
 // o eixo x vai pela data, entao toda consulta vira marca no dia dela, tenha resposta ou n (revisao das regras R3)

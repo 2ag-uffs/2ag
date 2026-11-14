@@ -23,10 +23,27 @@ const DATE_GAP = 44;
 // a data com o ano tem 8 letras em vez de 5 e precisa de mais espaco
 const DATE_WITH_YEAR_GAP = 64;
 const DOSE_NAME = "Gotas no dia";
+const PARTIAL_DOSE_NAME = "Dia com uma das doses em branco";
 
 // o escore vai com a faixa do lado como em todo lugar q ele aparece RN14
+// o dia q so tem a gota deixou o item em branco, e em branco n vira zero (RN10)
 function scoreText(row) {
+    if (row.valor === null) {
+        return "em branco";
+    }
     return row.faixa ? valueWithBand(row.valor, row.faixa) : row.valor;
+}
+
+// o dia com uma das doses em branco diz qual ficou em branco, pq o numero eh so a dose preenchida
+function doseText(row) {
+    return row.partialDoseNote ? row.gotas + " (" + row.partialDoseNote + ")" : row.gotas;
+}
+
+function doseDotClass(row, isActive) {
+    if (row.partialDoseNote) {
+        return isActive ? styles.activePartialDoseDot : styles.partialDoseDot;
+    }
+    return isActive ? styles.activeDoseDot : styles.doseDot;
 }
 
 function summaryOf(rows, valueName) {
@@ -190,6 +207,7 @@ export default function LineChart({
     const activeRow = activeIndex !== null && activeIndex < rows.length ? rows[activeIndex] : null;
     const activeX = activeRow ? xs[activeIndex] : 0;
     const hasActiveDose = Boolean(activeRow && showDose && activeRow.gotas !== null);
+    const hasPartialDose = showDose && rows.some((row) => row.gotas !== null && row.partialDoseNote);
 
     // o tooltip fica do lado do ponto q tem mais espaco
     let tooltipStyle = {top: top, left: activeX + 12, maxWidth: Math.min(288, width - activeX - 16)};
@@ -296,7 +314,7 @@ export default function LineChart({
                         {dosePoints.map((point, index) => point.y !== null && (
                             <circle
                                 key={"d" + index}
-                                className={index === activeIndex ? styles.activeDoseDot : styles.doseDot}
+                                className={doseDotClass(rows[index], index === activeIndex)}
                                 cx={point.x}
                                 cy={point.y}
                                 r={index === activeIndex ? 5 : 3}
@@ -316,7 +334,7 @@ export default function LineChart({
                             {hasActiveDose && (
                                 <p className={styles.tooltipItem}>
                                     <span className={styles.doseSwatch} aria-hidden="true"/>
-                                    {DOSE_NAME + " : " + activeRow.gotas}
+                                    {DOSE_NAME + " : " + doseText(activeRow)}
                                 </p>
                             )}
                         </div>
@@ -327,6 +345,9 @@ export default function LineChart({
             <ul className={styles.legend}>
                 <li><span className={styles.scoreSwatch} aria-hidden="true"/>{valueName}</li>
                 {showDose && <li><span className={styles.doseSwatch} aria-hidden="true"/>{DOSE_NAME}</li>}
+                {hasPartialDose && (
+                    <li><span className={styles.partialDoseSwatch} aria-hidden="true"/>{PARTIAL_DOSE_NAME}</li>
+                )}
             </ul>
         </div>
     );

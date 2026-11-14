@@ -111,6 +111,14 @@
     stroke-width: 2;
 }
 
+/* dia com uma das doses em branco: bolinha vazada, pq o numero eh so a dose preenchida (revisao das regras R12) */
+.partialDoseDot,
+.activePartialDoseDot {
+    fill: var(--color-surface);
+    stroke: var(--color-secondary);
+    stroke-width: 2;
+}
+
 .tooltip {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -179,4 +187,14 @@
 
 .doseSwatch::after {
     background-color: var(--color-secondary);
+}
+
+.partialDoseSwatch {
+    background-color: var(--color-surface);
+    border: 2px solid var(--color-secondary);
+    border-radius: var(--radius-pill);
+    display: inline-block;
+    flex-shrink: 0;
+    height: 0.625rem;
+    width: 0.625rem;
 }

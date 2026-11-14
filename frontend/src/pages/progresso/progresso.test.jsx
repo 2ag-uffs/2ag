@@ -488,9 +488,9 @@ describe("Progresso", () => {
         expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(4);
     });
 
-    // CT-32 a dose em branco n vale zero (RN10): o dia com so uma das doses fica sem ponto de gotas, como o dia
-    // sem resposta, em vez de mostrar so a dose preenchida como se fosse o total (decisao de 13/11/2026)
-    it("dia com uma das doses em branco fica sem ponto na linha das gotas", async () => {
+    // CT-32 a dose em branco n vale zero (RN10), mas o dia n perde o ponto: ele mostra a dose preenchida com a bolinha
+    // vazada e a dica diz qual dose ficou em branco (revisao das regras R12, q troca a decisao de 13/11/2026)
+    it("dia com uma das doses em branco mostra a dose preenchida marcada como parcial", async () => {
         const user = userEvent.setup();
         series = [
             {date: "2026-10-01", value: 3, band: null, cutoff: null},
@@ -516,9 +516,98 @@ describe("Progresso", () => {
 
         await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
 
-        // dois pontos do escore e uma gota so, a do dia com as duas doses
-        await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(3));
-        expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
+        // dois pontos do escore e duas gotas, a de 02/10 com a bolinha vazada
+        const chart = screen.getByRole("application");
+        await vi.waitFor(() => expect(chart.querySelectorAll("circle")).toHaveLength(4));
+        expect(chart.querySelectorAll("circle[class*='partialDoseDot']")).toHaveLength(1);
+        expect(screen.getByText("Dia com uma das doses em branco")).toBeInTheDocument();
+
+        await user.click(chart);
+        await user.keyboard("{End}");
+        expect(screen.getByText("Gotas no dia : 5 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
+        await user.keyboard("{Home}");
+        expect(screen.getByText("Gotas no dia : 8")).toBeInTheDocument();
+    });
+
+    // CT-32 o item em branco num dia com as gotas preenchidas n tira a gota do grafico nem corta a linha delas,
+    // pq a gota foi respondida naquele dia. so a linha da dor corta ali (RN10, revisao das regras R3 e R12)
+    it("dia com as gotas e a dor em branco mantem a gota e a linha das gotas", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-03", value: 5, band: null, cutoff: null},
+        ];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_MANHA") {
+                return Promise.resolve([
+                    {date: "2026-10-01", value: 5}, {date: "2026-10-02", value: 5}, {date: "2026-10-03", value: 5},
+                ]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.resolve([
+                    {date: "2026-10-01", value: 3}, {date: "2026-10-02", value: 3}, {date: "2026-10-03", value: 3},
+                ]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("DOR");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+
+        // dois pontos da dor e as tres gotas
+        const chart = screen.getByRole("application");
+        await vi.waitFor(() => expect(chart.querySelectorAll("circle")).toHaveLength(5));
+        expect(chart.querySelector("path[class*='doseLine']").getAttribute("d"))
+            .toMatch(/^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+        expect(chart.querySelector("path[class*='scoreLine']").getAttribute("d"))
+            .toMatch(/^M[\d.]+ [\d.]+ M[\d.]+ [\d.]+$/);
+
+        // a dica do 02/10 diz q a dor ficou em branco, sem virar zero
+        await user.click(chart);
+        await user.keyboard("{Home}{ArrowRight}");
+        expect(screen.getByText("Dor : em branco")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia : 8")).toBeInTheDocument();
+    });
+
+    // com a decisao de 13/11/2026 a linha das gotas de quem toma uma dose so por dia sumia inteira
+    it("quem anota so a dose da tarde continua com a linha das gotas", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-02", value: 4, band: null, cutoff: null},
+        ];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-10-01", value: 12}, {date: "2026-10-02", value: 12}]);
+            }
+            if (path.startsWith("/patients/3/progress?period=")) {
+                return Promise.resolve([]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+
+        const chart = screen.getByRole("application");
+        await vi.waitFor(() => expect(chart.querySelectorAll("circle[class*='partialDoseDot']")).toHaveLength(2));
+        await user.click(chart);
+        await user.keyboard("{End}");
+        expect(screen.getByText("Gotas no dia : 12 (só a tarde, a manhã ficou em branco)")).toBeInTheDocument();
     });
 
     // CT-40 sem servidor o api.js lanca o erro de sem conexao, e a tela n pode dizer q n tem dado nenhum

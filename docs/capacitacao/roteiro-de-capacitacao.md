@@ -360,6 +360,7 @@ Janela normal. Saia da prescritora de treino e entre como `prescritor@email.com`
 - **Conferir:**
   - Cada ponto é um preenchimento, na data dele. Onde faltou resposta, a linha se interrompe, em vez de cair para zero.
   - As consultas viram linhas verticais no dia delas, mesmo sem preenchimento nesse dia, escritas *consulta* ou *consulta + receita*, e o quadro **Consultas no período** lista as datas.
+  - Nas gotas, o dia em que só uma das doses foi anotada aparece com a bolinha vazada, e a dica do ponto diz qual dose ficou em branco.
   - Na Hamilton aparecem as linhas das faixas de interpretação, e a linha liga as três respostas da Maria, porque a Hamilton não tem frequência fixa.
   - O quadro **O que o paciente escreveu** junta os comentários das escalas no período, com a data e o nome da escala. Na tela do próprio paciente, ele se chama **O que você escreveu**.
   - O mesmo gráfico abre pelo histórico do paciente, no botão **Progresso**. O paciente vê o dele no menu **Progresso**, sem o **Mini-Exame do Estado Mental**, que só o prescritor vê: a Maria fez o exame na primeira consulta, e a escala aparece para a Ana e não aparece para a Maria.

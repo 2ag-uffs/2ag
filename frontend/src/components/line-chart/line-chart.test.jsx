@@ -124,6 +124,34 @@ describe("LineChart", () => {
         expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
     });
 
+    // a dose em branco n vale zero, mas o dia mostra a dose preenchida com a bolinha vazada e a dica diz qual
+    // dose ficou em branco (revisao das regras R12)
+    it("dia com uma das doses em branco tem a bolinha vazada e a dica diz qual dose ficou em branco", async () => {
+        const user = userEvent.setup();
+        const rows = [
+            {date: "2026-10-01", label: "01/10", valor: 3, faixa: null, gotas: 20, partialDoseNote: null},
+            {date: "2026-10-02", label: "02/10", valor: 4, faixa: null, gotas: 10,
+                partialDoseNote: "só a manhã, a tarde ficou em branco"},
+        ];
+        const {container} = renderChart({rows: rows, showDose: true});
+
+        expect(container.querySelectorAll("circle")).toHaveLength(4);
+        expect(container.querySelectorAll("circle[class*='partialDoseDot']")).toHaveLength(1);
+        expect(screen.getByText("Dia com uma das doses em branco")).toBeInTheDocument();
+
+        await user.tab();
+        await user.keyboard("{End}");
+        expect(screen.getByText("Gotas no dia : 10 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
+        await user.keyboard("{Home}");
+        expect(screen.getByText("Gotas no dia : 20")).toBeInTheDocument();
+    });
+
+    it("sem dia com dose em branco a legenda n fala dele", () => {
+        renderChart({showDose: true});
+
+        expect(screen.queryByText("Dia com uma das doses em branco")).not.toBeInTheDocument();
+    });
+
     // RF27 o eixo x vai pela data e a linha corta onde passou mais q a frequencia sem resposta (revisao das regras R3)
     it("tres semanas sem resposta ocupam o espaco de tres semanas e a linha corta nelas", () => {
         const {container} = renderChart({rows: ROWS_WITH_GAP, valueName: "Dor"});
