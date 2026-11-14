@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {FiCopy, FiMessageCircle, FiRefreshCw} from "react-icons/fi";
 import BusyButton from "../form/busy-button.jsx";
+import {useFocusWhenShown} from "../form/focus-when-shown.js";
 import Modal from "../modal/modal.jsx";
 import {apiService, errorMessageOf} from "../../services/api.js";
 import {formatDateTime, formatDateTimeWithZone} from "../../utils/date-format.js";
@@ -47,7 +48,7 @@ function OpenInviteList({openInvites, shownInviteId, onCancel}) {
                                 type="button"
                                 className="button-danger button-small"
                                 aria-label={"Cancelar convite gerado em " + createdText + (isShown ? ", o link acima" : "")}
-                                onClick={() => onCancel(openInvite.id)}
+                                onClick={() => onCancel(openInvite.id, createdText)}
                             >
                                 Cancelar
                             </button>
@@ -67,6 +68,11 @@ export default function InvitePatientModal({show, onClose}) {
     const [isCopied, setIsCopied] = useState(false);
     const [openInvites, setOpenInvites] = useState([]);
     const [cancelError, setCancelError] = useState(null);
+    const [cancelledInvite, setCancelledInvite] = useState(null);
+    // o botao usado some (o de gerar ou a linha cancelada) e o foco ia pro body (CT-39)
+    // entao cada link novo recebe o foco, e o cancelado leva o foco pro aviso
+    const linkRef = useFocusWhenShown(invite ? invite.id : null);
+    const cancelledNoticeRef = useFocusWhenShown(cancelledInvite ? cancelledInvite.id : null);
 
     const loadOpenInvites = () => {
         apiService.get("/invites")
@@ -82,11 +88,14 @@ export default function InvitePatientModal({show, onClose}) {
         }
     }, [show]);
 
-    const cancelInvite = async (inviteId) => {
+    // createdText eh o gerado em da linha, pro aviso dizer qual link foi cancelado
+    const cancelInvite = async (inviteId, createdText) => {
         setCancelError(null);
+        setCancelledInvite(null);
         try {
             await apiService.put("/invites/" + inviteId + "/cancel");
             setOpenInvites((current) => current.filter((openInvite) => openInvite.id !== inviteId));
+            setCancelledInvite({id: inviteId, createdText: createdText});
             // o link q acabou de ser gerado n pode continuar na tela depois de cancelado
             if (invite && invite.id === inviteId) {
                 setInvite(null);
@@ -101,6 +110,7 @@ export default function InvitePatientModal({show, onClose}) {
     const createInvite = async () => {
         setIsCreating(true);
         setErrorMessage(null);
+        setCancelledInvite(null);
         setIsCopied(false);
         try {
             const createdInvite = await apiService.post("/invites");
@@ -119,6 +129,7 @@ export default function InvitePatientModal({show, onClose}) {
         setInvite(null);
         setErrorMessage(null);
         setCancelError(null);
+        setCancelledInvite(null);
         setIsCopied(false);
         onClose();
     };
@@ -152,6 +163,13 @@ export default function InvitePatientModal({show, onClose}) {
                 {cancelError && (
                     <p className={"aviso aviso--atencao " + styles.message} role="alert">{cancelError}</p>
                 )}
+                {/* o link da tela pode continuar valendo, entao o aviso diz qual foi o cancelado */}
+                {cancelledInvite && (
+                    <p className={"aviso " + styles.message} role="status" tabIndex={-1} ref={cancelledNoticeRef}>
+                        Convite cancelado. O link gerado em {cancelledInvite.createdText} não serve mais para criar a
+                        conta.{invite && " O link de convite abaixo continua valendo."}
+                    </p>
+                )}
 
                 {!invite && (
                     <BusyButton type="button" className={styles.generateButton} onClick={createInvite}
@@ -168,6 +186,7 @@ export default function InvitePatientModal({show, onClose}) {
                             className={styles.linkInput}
                             value={inviteLink}
                             readOnly={true}
+                            ref={linkRef}
                             onFocus={(event) => event.target.select()}
                         />
                         {/* o link vence na hora em q foi gerado, 7 dias dps, e n no fim do dia */}
