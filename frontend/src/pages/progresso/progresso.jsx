@@ -45,6 +45,9 @@ const FOLLOW_UP_SCALE = "ACOMPANHAMENTO_SEMANAL";
 // so o escore do MEEM tem a faixa pela escolaridade de cada exame
 const MENTAL_STATE_EXAM_SCORE = "ESCORE_MEEM";
 
+// nome q passa disso n cabe numa linha do seletor no celular (uns 260px)
+const LONG_NAME_LENGTH = 40;
+
 // evolucao do tratamento (RF07 RF27 e RF28)
 //
 // serve pras telas do paciente e do prescritor
@@ -495,7 +498,7 @@ export default function Progresso() {
                     </select>
                 </div>
 
-                <div className={styles.filter}>
+                <div className={styles.filter + " " + styles.scaleFilter}>
                     <label htmlFor="escala">Escala</label>
                     <select
                         id="escala"
@@ -507,9 +510,10 @@ export default function Progresso() {
                             <option key={scale.value} value={scale.value}>{scale.label}</option>
                         ))}
                     </select>
+                    <FullName name={currentAttribute ? currentAttribute.scaleName : ""}/>
                 </div>
 
-                <div className={styles.filter}>
+                <div className={styles.filter + " " + styles.attributeFilter}>
                     <label htmlFor="atributo">O que acompanhar</label>
                     <select
                         id="atributo"
@@ -521,6 +525,7 @@ export default function Progresso() {
                             <option key={attribute.name} value={attribute.name}>{attribute.displayName}</option>
                         ))}
                     </select>
+                    <FullName name={currentAttribute ? currentAttribute.displayName : ""}/>
                 </div>
 
                 <div className={styles.checks}>
@@ -635,6 +640,15 @@ function PatientFilter({patients, currentPatient, patientId, onChange}) {
             </select>
         </div>
     );
+}
+
+// o seletor corta o nome escolhido q passa da largura dele, e no celular o mais comprido n cabe nem com o
+// seletor na linha toda, entao ele aparece inteiro embaixo. o leitor de tela ja le o nome no seletor
+function FullName({name}) {
+    if (name.length <= LONG_NAME_LENGTH) {
+        return null;
+    }
+    return <span className={styles.fullName} aria-hidden="true">{name}</span>;
 }
 
 function DeidentifiedChoice({isDeidentified, lacksResearchConsent, onChange}) {

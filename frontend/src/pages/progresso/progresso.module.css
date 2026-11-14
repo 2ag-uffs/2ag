@@ -33,6 +33,22 @@
     flex: 2 1 16rem;
 }
 
+/* escala e o q acompanhar tem nome comprido, como o indice de qualidade do sono de pittsburgh e a
+   diminuicao de maconha fumada ou outra substancia, entao pedem o espaco dele e descem pra linha de
+   baixo qnd n cabem, em vez de cortar o nome escolhido */
+.scaleFilter {
+    flex: 1 1 22rem;
+}
+
+.attributeFilter {
+    flex: 1 1 26rem;
+}
+
+/* o nome inteiro embaixo do seletor so aparece no celular, onde nem a linha toda cabe ele */
+.fullName {
+    display: none;
+}
+
 .filter label {
     font-size: var(--text-sm);
     font-weight: 500;
@@ -182,5 +198,11 @@
 @media (max-width: 47.99rem) {
     .filters {
         padding: var(--space-4);
+    }
+
+    .fullName {
+        color: var(--color-text-secondary);
+        display: block;
+        font-size: var(--text-sm);
     }
 }

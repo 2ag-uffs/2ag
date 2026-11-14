@@ -1,9 +1,10 @@
-import {act, render, screen} from "@testing-library/react";
+import {act, render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {ApiError, apiService, CONNECTION_ERROR_MESSAGE, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Progresso from "./progresso.jsx";
 
 // o catalogo do jeito q a api manda pro paciente, com as ancoras e o lado bom de cada atributo
@@ -517,6 +518,39 @@ describe("Progresso", () => {
             .toBeInTheDocument();
         expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
         expect(screen.getByRole("heading", {name: "O que você escreveu"})).toBeInTheDocument();
+    });
+
+    // CT-38 com os filtros dividindo a linha o nome escolhido cortava em 1280 e 768 ("Acompanhamento seman",
+    // "Índice de qualidade do s"): escala e o q acompanhar pedem o espaco do nome mais comprido e descem pra
+    // linha de baixo qnd n cabem. o jsdom n desenha, entao a largura vem do css
+    it("os filtros de escala e do q acompanhar pedem espaco pro nome inteiro", async () => {
+        renderProgress("ANSIEDADE");
+
+        expect((await screen.findByLabelText("Escala")).parentElement.className).toMatch(/scaleFilter/);
+        expect(screen.getByLabelText("O que acompanhar").parentElement.className).toMatch(/attributeFilter/);
+        const css = readCss(import.meta.url, "./progresso.module.css");
+        expect(declarationsOf(css, ".scaleFilter").flex).toBe("1 1 22rem");
+        expect(declarationsOf(css, ".attributeFilter").flex).toBe("1 1 26rem");
+    });
+
+    // no celular "Diminuição de maconha fumada ou outra substância" n cabe nem com o seletor na linha toda,
+    // entao o nome inteiro aparece embaixo dele. o nome curto cabe e n repete
+    it("nome comprido demais pra uma linha aparece inteiro embaixo do seletor no celular", async () => {
+        const longName = "Diminuição de maconha fumada ou outra substância";
+        catalog = [...ATTRIBUTES, {name: "REDUCAO_SUBSTANCIA", displayName: longName,
+            scaleType: "ACOMPANHAMENTO_SEMANAL", scaleName: "Acompanhamento semanal", minValue: 0, maxValue: 10,
+            bands: [], lowAnchor: "não diminuiu", highAnchor: "diminuiu muito", higherIsBetter: true}];
+        renderProgress("REDUCAO_SUBSTANCIA");
+
+        const attributeFilter = (await screen.findByLabelText("O que acompanhar")).parentElement;
+        const fullName = await within(attributeFilter).findByText(longName, {selector: "span"});
+        expect(fullName.className).toMatch(/fullName/);
+        expect(within(screen.getByLabelText("Escala").parentElement)
+            .queryByText("Acompanhamento semanal", {selector: "span"})).not.toBeInTheDocument();
+
+        const css = readCss(import.meta.url, "./progresso.module.css");
+        expect(declarationsOf(css, ".fullName").display).toBe("none");
+        expect(declarationsOf(mediaRules(css, "@media (max-width: 47.99rem)"), ".fullName").display).toBe("block");
     });
 
     // sem o layout, q no app ja remonta a tela qnd o endereco muda, a propria tela tem q descartar o nome atrasado
