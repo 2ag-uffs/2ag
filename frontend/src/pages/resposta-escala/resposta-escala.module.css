@@ -73,6 +73,24 @@
     text-align: right;
 }
 
+/* cada versao q uma correcao do paciente substituiu, so com o q mudou */
+.versions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.version {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.versionTitle {
+    color: var(--color-text-headings);
+    font-size: var(--text-md);
+}
+
 @media (max-width: 47.99rem) {
     .answer dd {
         text-align: left;

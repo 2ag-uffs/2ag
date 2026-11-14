@@ -342,7 +342,7 @@ Janela anônima, paciente adulto.
 
 ### do lado do prescritor
 
-- **Conferir:** na janela do prescritor, no histórico do paciente adulto, a Hamilton está em **Respondidas** com **Ver respostas**, **Marcar como analisada** e **Anular**. Clique em **Marcar como analisada**: a partir daí o paciente não corrige mais aquela resposta. Em **Avisos**, o prescritor recebeu o aviso da escala respondida. Nas fichas diárias, o aviso chega uma vez só, quando o período fecha.
+- **Conferir:** na janela do prescritor, no histórico do paciente adulto, a Hamilton está em **Respondidas** com **Ver respostas**, **Marcar como analisada** e **Anular**. Clique em **Marcar como analisada**: a partir daí o paciente não corrige mais aquela resposta. A resposta que o paciente corrigiu antes da análise aparece com *corrigida em* e o resultado de antes, e **Ver respostas** mostra no fim o cartão **Antes das correções**, com o que mudou em cada correção. Na anamnese corrigida, o selo **Corrigida em** e o que estava antes aparecem embaixo da ficha. Em **Avisos**, o prescritor recebeu o aviso da escala respondida. Nas fichas diárias, o aviso chega uma vez só, quando o período fecha.
 - **Se der errado:**
   - *Falta preencher*: a escala com escore só salva com todos os itens respondidos.
   - *O prescritor já analisou esta resposta. Para corrigir, fale com ele*: o prescritor clica em **Anular**, escreve o **Motivo da anulação** e confirma em **Anular registro**. A escala volta para **Esperando resposta** do paciente e, em **Responder**, abre em branco com o aviso *A resposta desta data foi anulada pelo prescritor e continua no histórico. Você pode responder de novo.* O paciente responde outra vez, mesmo que seja no mesmo dia.

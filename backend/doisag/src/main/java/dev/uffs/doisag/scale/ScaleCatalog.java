@@ -4,6 +4,7 @@ import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.ScaleResponseCorrection;
 import dev.uffs.doisag.scale.ScaleDefinition.FillMode;
 import org.springframework.stereotype.Component;
 
@@ -107,6 +108,12 @@ public class ScaleCatalog {
     public String resultTextOf(ScaleResponse response) {
         return resultTextOf(response.getScaleType(), response.getScore(), response.getScoreBand(),
                 response.getAnswers());
+    }
+
+    // o resultado da versao q a correcao substituiu, pelo escore e a faixa gravados nela (revisao das regras R4)
+    public String resultTextOf(ScaleResponseCorrection correction) {
+        return resultTextOf(correction.getResponse().getScaleType(), correction.getScore(),
+                correction.getScoreBand(), correction.getAnswers());
     }
 
     // ficha de acompanhamento semanal (RF06 e RF20)

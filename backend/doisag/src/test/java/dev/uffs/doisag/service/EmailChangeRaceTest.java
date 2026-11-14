@@ -144,9 +144,13 @@ class EmailChangeRaceTest {
         jdbcTemplate.update("delete from password_reset where user_id = ?", patient.getId());
         jdbcTemplate.update("delete from consent_acceptance where user_id = ?", patient.getId());
         jdbcTemplate.update("delete from notification where user_id in (?, ?)", prescriber.getId(), patient.getId());
+        jdbcTemplate.update("delete from scale_response_correction where scale_response_id in "
+                + "(select id from scale_response where patient_id = ?)", patient.getId());
         jdbcTemplate.update("delete from scale_response where patient_id = ?", patient.getId());
         jdbcTemplate.update("delete from scale_task where patient_id = ?", patient.getId());
         jdbcTemplate.update("delete from appointment where patient_id = ?", patient.getId());
+        jdbcTemplate.update("delete from anamnesis_correction where anamnesis_id in "
+                + "(select id from anamnesis where patient_id = ?)", patient.getId());
         jdbcTemplate.update("delete from anamnesis where patient_id = ?", patient.getId());
         patientRepository.deleteById(patient.getId());
         prescriberRepository.deleteById(prescriber.getId());

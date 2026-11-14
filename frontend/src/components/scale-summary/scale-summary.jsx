@@ -51,6 +51,12 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                                             <span className={styles.date}>analisada</span>
                                         )}
                                     </span>
+                                    {/* a api so manda a correcao pra prescritora (revisao das regras R4) */}
+                                    {response.correctedAt && (
+                                        <span className={styles.corrected}>
+                                            corrigida em {formatDate(response.correctedAt)} · antes: {response.previousResult}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className={styles.actions}>
                                     {onOpenResponse && (

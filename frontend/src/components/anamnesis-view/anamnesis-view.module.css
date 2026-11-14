@@ -23,6 +23,30 @@
     font-size: var(--text-lg);
 }
 
+.badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: flex-end;
+}
+
+/* a correcao do paciente, q so a prescritora ve (revisao das regras R4) */
+.badgeCorrected {
+    background-color: var(--color-highlight-surface);
+    border-radius: var(--radius-pill);
+    color: var(--color-highlight-text);
+    flex: 0 0 auto;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    padding: 0.125rem var(--space-3);
+}
+
+/* o q estava antes de cada correcao, com a linha separando da ficha de agora */
+.version {
+    border-top: 1px solid var(--color-border-light);
+    padding-top: var(--space-3);
+}
+
 .badgeAnnulled {
     background-color: var(--color-error-soft);
     border-radius: var(--radius-pill);

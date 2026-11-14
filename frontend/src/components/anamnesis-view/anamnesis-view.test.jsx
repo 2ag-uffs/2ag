@@ -28,4 +28,36 @@ describe("AnamnesisView", () => {
         expect(answerOf("Altura (cm)")).toHaveTextContent(/^165$/);
         expect(answerOf("Sono")).toHaveTextContent(/^Durmo 6.5 horas por noite$/);
     });
+
+    // a correcao gravava por cima e os remedios de antes sumiam (decisao de 14/11/2026, revisao das regras R4)
+    // so o q mudou aparece, inclusive o campo q a correcao deixou em branco
+    it("anamnese corrigida mostra a data da correcao e o q estava antes", () => {
+        const corrected = {
+            ...ANAMNESIS, currentMedication: "Nenhuma",
+            corrections: [{
+                correctedAt: "2026-11-20T10:05:00", assessmentDate: "2026-11-02",
+                answers: {
+                    reasonForVisit: "Dor nas costas", weight: "68.5", height: "165",
+                    sleepHabits: "Durmo 6.5 horas por noite", currentMedication: "Paracetamol", pain: "Lombar",
+                },
+            }],
+        };
+        render(<AnamnesisView anamnesis={corrected}/>);
+
+        expect(screen.getByText("Corrigida em 20/11/2026")).toBeInTheDocument();
+        const before = screen.getByRole("region", {name: "Antes da correção de 20/11/2026 às 10:05"});
+        expect(before).toHaveTextContent("Medicações em uso");
+        expect(before).toHaveTextContent("Paracetamol");
+        expect(before).toHaveTextContent("Dor");
+        expect(before).toHaveTextContent("Lombar");
+        // o q n mudou fica so na ficha de cima
+        expect(before).not.toHaveTextContent("Dor nas costas");
+    });
+
+    it("sem correcao n aparece nada de versao anterior", () => {
+        render(<AnamnesisView anamnesis={{...ANAMNESIS, corrections: []}}/>);
+
+        expect(screen.queryByText(/Corrigida em/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Antes da correção/)).not.toBeInTheDocument();
+    });
 });

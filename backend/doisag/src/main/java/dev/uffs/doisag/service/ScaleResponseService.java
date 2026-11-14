@@ -1,12 +1,14 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.AnnulmentDTO;
+import dev.uffs.doisag.dto.ScaleCorrectionDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
 import dev.uffs.doisag.dto.ScaleResponseDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.InvalidFieldException;
@@ -17,10 +19,12 @@ import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.ScaleResponseCorrection;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleResponseCorrectionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.scale.ScaleDefinition;
@@ -82,6 +86,7 @@ public class ScaleResponseService {
     private static final int DEFAULT_PERIOD_DAYS = 7;
 
     private final ScaleResponseRepository responseRepository;
+    private final ScaleResponseCorrectionRepository correctionRepository;
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
     private final ScaleTaskService taskService;
@@ -92,6 +97,7 @@ public class ScaleResponseService {
     private final RowLock rowLock;
 
     public ScaleResponseService(ScaleResponseRepository responseRepository,
+                                ScaleResponseCorrectionRepository correctionRepository,
                                 PatientRepository patientRepository,
                                 PrescriberRepository prescriberRepository,
                                 ScaleTaskService taskService,
@@ -101,6 +107,7 @@ public class ScaleResponseService {
                                 AuditService auditService,
                                 RowLock rowLock) {
         this.responseRepository = responseRepository;
+        this.correctionRepository = correctionRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
         this.taskService = taskService;
@@ -138,6 +145,7 @@ public class ScaleResponseService {
             checkCanBeChanged(response);
         }
         boolean wasComplete = !isNew && !definition.isIncomplete(response.getScore());
+        ScaleResponseCorrection previousVersion = isNew ? null : new ScaleResponseCorrection(response);
 
         response.setPatient(patient);
         response.setScaleType(scaleType);
@@ -151,6 +159,7 @@ public class ScaleResponseService {
             taskService.linkResponse(savedResponse);
             auditService.recordCreation(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         } else {
+            keepPreviousVersion(previousVersion, savedResponse);
             linkOrUnlinkAfterCorrection(savedResponse, wasComplete, isComplete);
             auditService.recordChange(scaleType.getAuditRecordType(), savedResponse.getId(), patientId);
         }
@@ -267,10 +276,12 @@ public class ScaleResponseService {
 
         ScaleDefinition definition = catalog.definitionOf(response.getScaleType());
         boolean wasComplete = !definition.isIncomplete(response.getScore());
+        ScaleResponseCorrection previousVersion = new ScaleResponseCorrection(response);
         changePeriod(response, definition, answerData);
         fillAnswersAndScore(response, definition, answerData.answers());
 
         ScaleResponse savedResponse = responseRepository.save(response);
+        keepPreviousVersion(previousVersion, savedResponse);
         auditService.recordChange(response.getScaleType().getAuditRecordType(), savedResponse.getId(),
                 savedResponse.getPatient().getId());
         boolean isComplete = !definition.isIncomplete(savedResponse.getScore());
@@ -279,6 +290,16 @@ public class ScaleResponseService {
             taskService.notifyPrescriberOfAnswer(savedResponse.getPatient(), savedResponse.getScaleType());
         }
         return dtoOf(savedResponse);
+    }
+
+    // a correcao gravava por cima e o valor q embasou um ajuste de dose sumia: agora a versao de antes
+    // fica guardada e a prescritora ve corrigida em dd/mm com ela (decisao de 14/11/2026, revisao R4)
+    // mandar de novo o mesmo conteudo n vira versao. a resposta ja esta travada (ou o paciente, no envio
+    // do mesmo dia), entao o insert q aponta pra ela segue a ordem das travas
+    private void keepPreviousVersion(ScaleResponseCorrection previousVersion, ScaleResponse savedResponse) {
+        if (previousVersion.differsFrom(savedResponse)) {
+            correctionRepository.save(previousVersion);
+        }
     }
 
     // a escala pela metade q foi completada na correcao passa a valer pra tarefa, e a completa q ficou
@@ -337,21 +358,33 @@ public class ScaleResponseService {
         return dtoOf(response);
     }
 
+    // as versoes de antes das correcoes vao so pra prescritora, a tela do paciente n precisa delas
     @Transactional
-    public ScaleResponseDTO getById(Long responseId) {
+    public ScaleResponseDTO getById(Long responseId, Users loggedUser) {
         ScaleResponse response = findResponse(responseId);
         auditService.recordChartView(response.getPatient().getId());
-        return dtoOf(response);
+        if (loggedUser.getRole() != UserRole.PRESCRIBER) {
+            return dtoOf(response);
+        }
+        List<ScaleCorrectionDTO> corrections = correctionRepository
+                .findByResponseIdOrderByCorrectedAtAscIdAsc(responseId)
+                .stream()
+                .map(this::correctionDtoOf)
+                .toList();
+        return new ScaleResponseDTO(response, catalog.resultTextOf(response), corrections);
     }
 
     @Transactional
     public List<ScaleResponseSummaryDTO> getByPatientId(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
+        Map<Long, ScaleResponseCorrection> lastCorrections = loggedUser.getRole() == UserRole.PRESCRIBER
+                ? correctionRepository.findLastByResponseOfPatient(patientId)
+                : Map.of();
         // o MEEM fica so com o prescritor, o paciente conversa o resultado na consulta
         return responseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
                 .filter(response -> !response.getScaleType().isHiddenFrom(loggedUser.getRole()))
-                .map(this::summaryOf)
+                .map(response -> taskService.summaryOf(response, lastCorrections.get(response.getId())))
                 .toList();
     }
 
@@ -583,8 +616,8 @@ public class ScaleResponseService {
         return new ScaleResponseDTO(response, catalog.resultTextOf(response));
     }
 
-    private ScaleResponseSummaryDTO summaryOf(ScaleResponse response) {
-        return new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response));
+    private ScaleCorrectionDTO correctionDtoOf(ScaleResponseCorrection correction) {
+        return new ScaleCorrectionDTO(correction, catalog.resultTextOf(correction));
     }
 
     private ScaleResponse findResponse(Long responseId) {

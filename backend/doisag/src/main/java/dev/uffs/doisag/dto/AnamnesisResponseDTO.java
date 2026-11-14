@@ -5,6 +5,7 @@ import dev.uffs.doisag.model.Annulment;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 // o q a api devolve de uma anamnese sem a entidade crua (RF19)
 public record AnamnesisResponseDTO(
@@ -36,9 +37,16 @@ public record AnamnesisResponseDTO(
         boolean annulled,
         LocalDateTime annulledAt,
         String annulmentReason,
-        String annulledByName
+        String annulledByName,
+        // as versoes q as correcoes do paciente substituiram, da mais velha pra mais nova
+        // vem so pra prescritora na leitura, e vazio no resto (revisao das regras R4)
+        List<AnamnesisCorrectionDTO> corrections
 ) {
     public AnamnesisResponseDTO(Anamnesis anamnesis) {
+        this(anamnesis, List.of());
+    }
+
+    public AnamnesisResponseDTO(Anamnesis anamnesis, List<AnamnesisCorrectionDTO> corrections) {
         this(
                 anamnesis.getId(),
                 anamnesis.getAssessmentDate(),
@@ -68,7 +76,8 @@ public record AnamnesisResponseDTO(
                 anamnesis.isAnnulled(),
                 Annulment.annulledAtOf(anamnesis.getAnnulment()),
                 Annulment.reasonOf(anamnesis.getAnnulment()),
-                Annulment.annulledByNameOf(anamnesis.getAnnulment())
+                Annulment.annulledByNameOf(anamnesis.getAnnulment()),
+                corrections
         );
     }
 }

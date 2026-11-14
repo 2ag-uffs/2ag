@@ -162,6 +162,36 @@ class AnamnesisTest {
                 .andExpect(jsonPath("$.currentMedication").value("Nenhuma"));
     }
 
+    // a correcao gravava por cima e os remedios de antes sumiam (decisao de 14/11/2026, revisao das regras R4)
+    // a prescritora ve a versao anterior com a data da correcao, e o paciente segue so com a ficha de agora
+    @Test
+    void theCorrectionKeepsThePreviousVersionForThePrescriber() throws Exception {
+        Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        Map<String, Object> correctedAnswers = answers();
+        correctedAnswers.put("currentMedication", "Nenhuma");
+        correctedAnswers.remove("pain");
+        updateAnamnesis(anamnesisId, correctedAnswers, patient).andExpect(status().isOk());
+        // mandar de novo o mesmo conteudo n vira outra versao
+        updateAnamnesis(anamnesisId, correctedAnswers, patient).andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/anamneses").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].currentMedication").value("Nenhuma"))
+                .andExpect(jsonPath("$[0].corrections", hasSize(1)))
+                .andExpect(jsonPath("$[0].corrections[0].correctedAt").exists())
+                .andExpect(jsonPath("$[0].corrections[0].assessmentDate").value(LocalDate.now().toString()))
+                .andExpect(jsonPath("$[0].corrections[0].answers.currentMedication")
+                        .value("Paracetamol quando a dor aperta"))
+                .andExpect(jsonPath("$[0].corrections[0].answers.pain").value("Lombar todos os dias"));
+        mockMvc.perform(get("/anamneses/" + anamnesisId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.corrections", hasSize(1)));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/anamneses").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$[0].corrections", hasSize(0)));
+        mockMvc.perform(get("/anamneses/" + anamnesisId).header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.corrections", hasSize(0)));
+    }
+
     @Test
     void prescriberAnnulsTheAnamnesisAndItStaysInTheHistory() throws Exception {
         Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));

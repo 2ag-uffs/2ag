@@ -287,6 +287,54 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("já analisou")));
     }
 
+    // a correcao gravava por cima e o 9 q embasou o ajuste de dose sumia (decisao de 14/11/2026, revisao R4)
+    // a prescritora ve a versao de antes com a data da correcao, na resposta e no historico. o paciente n
+    @Test
+    void aCorrecaoGuardaAVersaoAnteriorParaOPrescritor() throws Exception {
+        Long responseId = idOf(answerScale("registro-dor", "{\"intensidadeDor\":9}")
+                .andExpect(status().isCreated()));
+        updateResponse(responseId, "{\"intensidadeDor\":4}", patient).andExpect(status().isOk());
+
+        mockMvc.perform(get("/scales/responses/" + responseId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answers.intensidadeDor").value(4))
+                .andExpect(jsonPath("$.corrections.length()").value(1))
+                .andExpect(jsonPath("$.corrections[0].correctedAt").exists())
+                .andExpect(jsonPath("$.corrections[0].answers.intensidadeDor").value(9))
+                .andExpect(jsonPath("$.corrections[0].result").value("9 de 10 · Dor intensa"))
+                .andExpect(jsonPath("$.corrections[0].periodStart").value(TODAY.minusDays(6).toString()));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.history[0].correctedAt").exists())
+                .andExpect(jsonPath("$.history[0].previousResult").value("9 de 10 · Dor intensa"));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/responses")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[0].previousResult").value("9 de 10 · Dor intensa"));
+
+        // a tela do paciente n precisa do valor antigo
+        mockMvc.perform(get("/scales/responses/" + responseId).header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.corrections.length()").value(0));
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview")
+                        .header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.history[0].correctedAt").doesNotExist())
+                .andExpect(jsonPath("$.history[0].previousResult").doesNotExist());
+    }
+
+    // no diario responder de novo o mesmo dia eh a correcao, e ela tbm guarda o dia de antes
+    // o mesmo conteudo mandado de novo n vira versao
+    @Test
+    void noDiarioResponderDeNovoOMesmoDiaGuardaAVersaoAnterior() throws Exception {
+        Long responseId = idOf(answerScale("acompanhamento-semanal", "{\"dor\":8,\"gotasManha\":10}")
+                .andExpect(status().isCreated()));
+        answerScale("acompanhamento-semanal", "{\"dor\":5,\"gotasManha\":10}").andExpect(status().isOk());
+        answerScale("acompanhamento-semanal", "{\"dor\":5,\"gotasManha\":10}").andExpect(status().isOk());
+
+        mockMvc.perform(get("/scales/responses/" + responseId).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.answers.dor").value(5))
+                .andExpect(jsonPath("$.corrections.length()").value(1))
+                .andExpect(jsonPath("$.corrections[0].answers.dor").value(8));
+    }
+
     // corrigir o periodo mexe na resposta q ja existe: pelo envio, a data nova virava
     // uma segunda resposta e a errada ficava no historico (issue 108)
     @Test

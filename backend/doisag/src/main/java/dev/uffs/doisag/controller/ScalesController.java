@@ -86,8 +86,8 @@ public class ScalesController {
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @scaleAccess.canAccess(#id, authentication)")
     @GetMapping("/responses/{id}")
-    public ScaleResponseDTO getResponse(@PathVariable Long id) {
-        return responseService.getById(id);
+    public ScaleResponseDTO getResponse(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {
+        return responseService.getById(id, loggedUser);
     }
 
     // o paciente corrige enquanto o prescritor n analisou

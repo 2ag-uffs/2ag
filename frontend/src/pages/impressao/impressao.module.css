@@ -114,6 +114,13 @@
     font-weight: 600;
 }
 
+/* a correcao da escala embaixo do resultado, so pra prescritora */
+.corrected {
+    color: var(--color-text-secondary);
+    display: block;
+    font-size: var(--text-sm);
+}
+
 @media (max-width: 47.99rem) {
     .toolbarActions {
         width: 100%;

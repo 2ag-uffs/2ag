@@ -3,10 +3,12 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.AnamnesisResponseDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.AnamnesisService;
 import dev.uffs.doisag.service.AppointmentService;
 import dev.uffs.doisag.service.PrescriptionService;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,8 +35,9 @@ public class ClinicalHistoryController {
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @GetMapping("/anamneses")
-    public List<AnamnesisResponseDTO> getAnamneses(@PathVariable Long patientId) {
-        return anamnesisService.getByPatientId(patientId);
+    public List<AnamnesisResponseDTO> getAnamneses(@PathVariable Long patientId,
+                                                   @AuthenticationPrincipal Users loggedUser) {
+        return anamnesisService.getByPatientId(patientId, loggedUser);
     }
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")

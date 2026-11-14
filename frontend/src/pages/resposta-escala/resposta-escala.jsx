@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useId, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import Card from "../../components/card/card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
@@ -7,6 +7,48 @@ import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {formatDateTime, formatPeriod} from "../../utils/date-format.js";
 import {formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./resposta-escala.module.css";
+
+// as versoes q as correcoes do paciente substituiram, da mais nova pra mais velha, cada uma so com o q
+// mudou dela pra seguinte. a api so manda pra prescritora (decisao de 14/11/2026, revisao das regras R4)
+function previousVersionsOf(items, response) {
+    const corrections = response.corrections || [];
+    const versions = corrections.map((correction, index) => {
+        const next = index + 1 < corrections.length ? corrections[index + 1] : response;
+        return {
+            correction,
+            changedItems: items.filter((item) => formatAnswer(item, correction.answers[item.key])
+                !== formatAnswer(item, next.answers[item.key])),
+            resultChanged: correction.result !== next.result,
+            periodChanged: correction.periodStart !== next.periodStart || correction.periodEnd !== next.periodEnd,
+        };
+    });
+    return versions.reverse();
+}
+
+function PreviousVersion({version}) {
+    const titleId = useId();
+    const correction = version.correction;
+
+    return (
+        <section className={styles.version} aria-labelledby={titleId}>
+            <h3 id={titleId} className={styles.versionTitle}>
+                Antes da correção de {formatDateTime(correction.correctedAt)}
+            </h3>
+            {version.resultChanged && correction.result && <p>Resultado: {correction.result}</p>}
+            {version.periodChanged && <p>Período: {formatPeriod(correction.periodStart, correction.periodEnd)}</p>}
+            {version.changedItems.length > 0 && (
+                <dl className={styles.answers}>
+                    {version.changedItems.map((item) => (
+                        <div key={item.key} className={styles.answer}>
+                            <dt>{item.label}</dt>
+                            <dd>{formatAnswer(item, correction.answers[item.key])}</dd>
+                        </div>
+                    ))}
+                </dl>
+            )}
+        </section>
+    );
+}
 
 // uma escala respondida, so pra leitura (RF12 e RF13)
 //
@@ -62,6 +104,7 @@ export default function RespostaEscala() {
 
     // o paciente corrige enquanto o prescritor n analisou e a tela de responder ja abre no dia certo
     const canCorrect = loggedUser.role === "PATIENT" && response.editableByPatient;
+    const previousVersions = previousVersionsOf(definition.items, response);
 
     return (
         <section className={styles.page}>
@@ -98,6 +141,13 @@ export default function RespostaEscala() {
                 <p className={styles.meta}>Analisada pelo prescritor em {formatDateTime(response.reviewedAt)}.</p>
             )}
 
+            {previousVersions.length > 0 && (
+                <p className="aviso">
+                    Corrigida pelo paciente em {formatDateTime(previousVersions[0].correction.correctedAt)}. O que
+                    estava antes de cada correção aparece no fim da página.
+                </p>
+            )}
+
             <Card title="Respostas">
                 <dl className={styles.answers}>
                     {definition.items.map((item) => (
@@ -108,6 +158,16 @@ export default function RespostaEscala() {
                     ))}
                 </dl>
             </Card>
+
+            {previousVersions.length > 0 && (
+                <Card title="Antes das correções">
+                    <div className={styles.versions}>
+                        {previousVersions.map((version) => (
+                            <PreviousVersion key={version.correction.correctedAt} version={version}/>
+                        ))}
+                    </div>
+                </Card>
+            )}
         </section>
     );
 }

@@ -7,7 +7,7 @@ import PrescriptionCard from "../../components/prescription-card/prescription-ca
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
-import {addDays, ageFrom, formatNow, formatPeriod, toIsoDate} from "../../utils/date-format.js";
+import {addDays, ageFrom, formatDate, formatNow, formatPeriod, toIsoDate} from "../../utils/date-format.js";
 import styles from "./impressao.module.css";
 
 // o tratamento todo n tem data de corte
@@ -186,7 +186,15 @@ export default function Impressao() {
                             <tr key={scale.id}>
                                 <td>{scale.scaleName}</td>
                                 <td>{formatPeriod(scale.periodStart, scale.periodEnd)}</td>
-                                <td>{scale.annulled ? "anulada" : scale.result}</td>
+                                <td>
+                                    {scale.annulled ? "anulada" : scale.result}
+                                    {/* a api so manda a correcao pra prescritora (revisao das regras R4) */}
+                                    {scale.correctedAt && (
+                                        <span className={styles.corrected}>
+                                            corrigida em {formatDate(scale.correctedAt)} · antes: {scale.previousResult}
+                                        </span>
+                                    )}
+                                </td>
                             </tr>
                         ))}
                         </tbody>

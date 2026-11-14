@@ -109,6 +109,8 @@ class ClinicalActionsWithoutTestTransactionTest {
         jdbcTemplate.update("delete from audit_event where patient_id = ? or actor_id in (?, ?, ?)",
                 patientId, prescriberId, patientId, admin.getId());
         jdbcTemplate.update("delete from notification where user_id in (?, ?, ?)", prescriberId, patientId, admin.getId());
+        jdbcTemplate.update("delete from scale_response_correction where scale_response_id in "
+                + "(select id from scale_response where patient_id = ?)", patientId);
         jdbcTemplate.update("delete from scale_response where patient_id = ?", patientId);
         jdbcTemplate.update("delete from scale_task where patient_id = ?", patientId);
         jdbcTemplate.update("delete from protocol_item where protocol_id in "
@@ -122,6 +124,8 @@ class ClinicalActionsWithoutTestTransactionTest {
                 patientId);
         jdbcTemplate.update("delete from prescription where appointment_id in "
                 + "(select id from appointment where patient_id = ?)", patientId);
+        jdbcTemplate.update("delete from anamnesis_correction where anamnesis_id in "
+                + "(select id from anamnesis where patient_id = ?)", patientId);
         jdbcTemplate.update("delete from anamnesis where patient_id = ?", patientId);
         jdbcTemplate.update("delete from appointment where patient_id = ?", patientId);
         jdbcTemplate.update("delete from patient_invite where prescriber_id = ?", prescriberId);

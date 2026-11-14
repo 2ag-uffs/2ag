@@ -6,6 +6,8 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Entity
 public class Anamnesis extends BaseAssessment {
@@ -260,6 +262,41 @@ public class Anamnesis extends BaseAssessment {
 
     public void setPhysicalActivity(String physicalActivity) {
         this.physicalActivity = physicalActivity;
+    }
+
+    // as respostas como o par campo e texto, com o nome q a api usa, pra guardar a versao de antes
+    // da correcao (revisao das regras R4). campo em branco n entra
+    @JsonIgnore
+    public Map<String, Object> answersByField() {
+        Map<String, Object> answers = new LinkedHashMap<>();
+        putIfFilled(answers, "profession", profession);
+        putIfFilled(answers, "reasonForVisit", reasonForVisit);
+        putIfFilled(answers, "previousDiagnosis", previousDiagnosis);
+        putIfFilled(answers, "previousTreatment", previousTreatment);
+        putIfFilled(answers, "currentMedication", currentMedication);
+        putIfFilled(answers, "familyHistory", familyHistory);
+        putIfFilled(answers, "adverseReaction", adverseReaction);
+        putIfFilled(answers, "geneticCondition", geneticCondition);
+        putIfFilled(answers, "diet", diet);
+        putIfFilled(answers, "smokingHabits", smokingHabits);
+        putIfFilled(answers, "alcoholConsumption", alcoholConsumption);
+        putIfFilled(answers, "weight", weight);
+        putIfFilled(answers, "height", height);
+        putIfFilled(answers, "substanceUse", substanceUse);
+        putIfFilled(answers, "physicalActivity", physicalActivity);
+        putIfFilled(answers, "sleepHabits", sleepHabits);
+        putIfFilled(answers, "anxiety", anxiety);
+        putIfFilled(answers, "pain", pain);
+        putIfFilled(answers, "expectations", expectations);
+        putIfFilled(answers, "treatmentAwareness", treatmentAwareness);
+        putIfFilled(answers, "observation", observation);
+        return answers;
+    }
+
+    private void putIfFilled(Map<String, Object> answers, String field, String value) {
+        if (value != null && !value.isBlank()) {
+            answers.put(field, value);
+        }
     }
 
     // a anulacao sai na resposta pelos dtos e n pela entidade crua

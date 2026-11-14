@@ -55,6 +55,16 @@
     font-weight: 600;
 }
 
+/* a correcao do paciente e o resultado de antes, q so a prescritora ve */
+.corrected {
+    align-self: flex-start;
+    background-color: var(--color-highlight-surface);
+    border-radius: var(--radius-sm);
+    color: var(--color-highlight-text);
+    font-size: var(--text-sm);
+    padding: 0 var(--space-2);
+}
+
 /* nome em cima e data resultado e situacao numa linha embaixo */
 .responseText {
     display: flex;

@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.AnamnesisResponseDTO;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.service.AnamnesisService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -42,8 +43,8 @@ public class AnamnesisController {
 
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @assessmentAccess.canAccess('ANAMNESE', #id, authentication)")
     @GetMapping("/{id}")
-    public AnamnesisResponseDTO getById(@PathVariable Long id) {
-        return anamnesisService.getById(id);
+    public AnamnesisResponseDTO getById(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {
+        return anamnesisService.getById(id, loggedUser);
     }
 
     // so o paciente corrige o q ele mesmo respondeu

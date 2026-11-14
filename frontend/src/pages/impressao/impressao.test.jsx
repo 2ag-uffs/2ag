@@ -4,7 +4,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService} from "../../services/api.js";
-import {addDays, toIsoDate} from "../../utils/date-format.js";
+import {addDays, formatDate, toIsoDate} from "../../utils/date-format.js";
 import Impressao from "./impressao.jsx";
 
 const PATIENT = {id: 5, name: "Maria Souza", birthDate: "1990-01-01", prescriberName: "Ana Lima", archived: false};
@@ -27,14 +27,14 @@ function prescriptionOf(id, daysAgo, current, productDescription) {
     };
 }
 
-function renderPrint(prescriptions, appointments = [], anamneses = []) {
+function renderPrint(prescriptions, appointments = [], anamneses = [], scales = []) {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
         const answers = {
             "/patients/5": PATIENT,
             "/patients/5/appointments": appointments,
             "/patients/5/prescriptions": prescriptions,
             "/patients/5/anamneses": anamneses,
-            "/patients/5/scales/responses": [],
+            "/patients/5/scales/responses": scales,
         };
         return Promise.resolve(answers[path]);
     });
@@ -93,5 +93,29 @@ describe("Impressao", () => {
         expect(printRules).toMatch(/\.section article \{[^}]*border: 0;[^}]*padding: 0 /);
         expect(printRules).toMatch(/\.section article > header \{[^}]*padding-top: /);
         expect(printRules).toMatch(/\.section article dl \{[^}]*display: block;/);
+    });
+
+    // a impressao da prescritora mostra a correcao da escala com o resultado de antes, como o historico.
+    // a api so manda a correcao pra prescritora, entao a do paciente fica como antes (revisao das regras R4)
+    it("a escala corrigida sai com a data da correcao e o resultado de antes", async () => {
+        const day = toIsoDate(addDays(new Date(), -10));
+        const correctedAt = toIsoDate(addDays(new Date(), -2)) + "T10:00:00";
+        renderPrint([], [], [], [
+            {
+                id: 9, scaleName: "Escala de ansiedade de Hamilton", periodStart: day, periodEnd: day,
+                annulled: false, result: "12 pontos", correctedAt, previousResult: "30 pontos",
+            },
+            {
+                id: 10, scaleName: "Acompanhamento semanal", periodStart: day, periodEnd: day,
+                annulled: false, result: "Dor 3 de 10", correctedAt: null, previousResult: null,
+            },
+        ]);
+
+        const corrected = (await screen.findByText("Escala de ansiedade de Hamilton")).closest("tr");
+        expect(within(corrected).getByText("12 pontos", {exact: false})).toBeInTheDocument();
+        expect(within(corrected).getByText("corrigida em " + formatDate(correctedAt) + " · antes: 30 pontos"))
+            .toBeInTheDocument();
+        const notCorrected = screen.getByText("Acompanhamento semanal").closest("tr");
+        expect(within(notCorrected).queryByText(/corrigida em/)).not.toBeInTheDocument();
     });
 });

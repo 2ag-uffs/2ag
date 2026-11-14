@@ -73,4 +73,20 @@ describe("ScaleSummary", () => {
         expect(screen.getByText("anulada")).toBeInTheDocument();
         expect(screen.getAllByRole("button", {name: "Anular"})).toHaveLength(2);
     });
+
+    // a correcao do paciente gravava por cima e o 30 sumia (decisao de 14/11/2026, revisao das regras R4)
+    // a api so manda a correcao pra prescritora, entao a linha do paciente segue sem ela
+    it("resposta corrigida diz quando e qual era o resultado de antes", () => {
+        const corrected = {
+            id: 4, scaleName: "Escala de ansiedade de Hamilton", periodStart: "2026-10-01", periodEnd: "2026-10-01",
+            result: "12 de 56 · Ansiedade temporária", reviewed: false, annulled: false,
+            correctedAt: "2026-11-20T10:05:00", previousResult: "30 de 56 · Ansiedade grave",
+        };
+        render(<ScaleSummary scalesPage={{pending: [], history: [corrected, SCALES_PAGE.history[0]]}}
+                             pendingTitle="Aguardando o paciente"/>);
+
+        expect(screen.getByText("corrigida em 20/11/2026 · antes: 30 de 56 · Ansiedade grave"))
+            .toBeInTheDocument();
+        expect(screen.getAllByText(/corrigida em/)).toHaveLength(1);
+    });
 });

@@ -1,11 +1,13 @@
 package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.PatientScalesPageDTO;
+import dev.uffs.doisag.dto.ScaleCorrectionDTO;
 import dev.uffs.doisag.dto.ScaleResponseSummaryDTO;
 import dev.uffs.doisag.dto.ScaleTaskDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
@@ -15,12 +17,14 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.ProtocolItem;
 import dev.uffs.doisag.model.ScaleResponse;
+import dev.uffs.doisag.model.ScaleResponseCorrection;
 import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleResponseCorrectionRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.TreatmentProtocolRepository;
@@ -37,6 +41,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -66,6 +71,7 @@ public class ScaleTaskService {
 
     private final ScaleTaskRepository taskRepository;
     private final ScaleResponseRepository responseRepository;
+    private final ScaleResponseCorrectionRepository correctionRepository;
     private final AnamnesisRepository anamnesisRepository;
     private final PatientRepository patientRepository;
     private final PrescriberRepository prescriberRepository;
@@ -78,6 +84,7 @@ public class ScaleTaskService {
 
     public ScaleTaskService(ScaleTaskRepository taskRepository,
                             ScaleResponseRepository responseRepository,
+                            ScaleResponseCorrectionRepository correctionRepository,
                             AnamnesisRepository anamnesisRepository,
                             PatientRepository patientRepository,
                             PrescriberRepository prescriberRepository,
@@ -88,6 +95,7 @@ public class ScaleTaskService {
                             PlatformTransactionManager transactionManager) {
         this.taskRepository = taskRepository;
         this.responseRepository = responseRepository;
+        this.correctionRepository = correctionRepository;
         this.anamnesisRepository = anamnesisRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
@@ -589,12 +597,16 @@ public class ScaleTaskService {
                 .map(task -> dtoOf(task, today))
                 .toList();
 
+        // a prescritora ve a ultima correcao do paciente com o resultado de antes (revisao das regras R4)
+        Map<Long, ScaleResponseCorrection> lastCorrections = loggedUser.getRole() == UserRole.PRESCRIBER
+                ? correctionRepository.findLastByResponseOfPatient(patientId)
+                : Map.of();
         // o MEEM fica so com o prescritor, o paciente conversa o resultado na consulta
         List<ScaleResponseSummaryDTO> history = responseRepository
                 .findByPatientIdOrderByPeriodStartDescIdDesc(patientId)
                 .stream()
                 .filter(response -> !response.getScaleType().isHiddenFrom(loggedUser.getRole()))
-                .map(response -> new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response)))
+                .map(response -> summaryOf(response, lastCorrections.get(response.getId())))
                 .toList();
 
         return new PatientScalesPageDTO(patient.getDisplayName(), pending, history);
@@ -607,6 +619,15 @@ public class ScaleTaskService {
                 .stream()
                 .map(task -> dtoOf(task, today))
                 .toList();
+    }
+
+    // a linha do historico, com a ultima correcao e o resultado de antes dela qnd tem
+    // a lista de respostas do ScaleResponseService monta a linha por aqui tbm
+    public ScaleResponseSummaryDTO summaryOf(ScaleResponse response, ScaleResponseCorrection lastCorrection) {
+        ScaleCorrectionDTO correction = lastCorrection == null
+                ? null
+                : new ScaleCorrectionDTO(lastCorrection, catalog.resultTextOf(lastCorrection));
+        return new ScaleResponseSummaryDTO(response, catalog.resultTextOf(response), correction);
     }
 
     private ScaleTaskDTO dtoOf(ScaleTask task, LocalDate today) {

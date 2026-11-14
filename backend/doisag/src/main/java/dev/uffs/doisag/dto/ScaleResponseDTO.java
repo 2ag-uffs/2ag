@@ -6,6 +6,7 @@ import dev.uffs.doisag.model.ScaleResponse;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 // uma escala respondida com o resultado pronto pra tela
@@ -32,9 +33,16 @@ public record ScaleResponseDTO(
         boolean annulled,
         LocalDateTime annulledAt,
         String annulmentReason,
-        String annulledByName
+        String annulledByName,
+        // as versoes q as correcoes do paciente substituiram, da mais velha pra mais nova
+        // vem so pra prescritora na leitura da resposta, e vazio no resto (revisao das regras R4)
+        List<ScaleCorrectionDTO> corrections
 ) {
     public ScaleResponseDTO(ScaleResponse response, String result) {
+        this(response, result, List.of());
+    }
+
+    public ScaleResponseDTO(ScaleResponse response, String result, List<ScaleCorrectionDTO> corrections) {
         this(
                 response.getId(),
                 response.getScaleType(),
@@ -57,7 +65,8 @@ public record ScaleResponseDTO(
                 response.isAnnulled(),
                 Annulment.annulledAtOf(response.getAnnulment()),
                 Annulment.reasonOf(response.getAnnulment()),
-                Annulment.annulledByNameOf(response.getAnnulment())
+                Annulment.annulledByNameOf(response.getAnnulment()),
+                corrections
         );
     }
 

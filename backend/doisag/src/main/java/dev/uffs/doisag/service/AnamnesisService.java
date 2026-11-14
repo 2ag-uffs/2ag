@@ -1,24 +1,32 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.dto.AnamnesisCorrectionDTO;
 import dev.uffs.doisag.dto.AnamnesisResponseDTO;
 import dev.uffs.doisag.dto.AnamnesisDTO;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Anamnesis;
+import dev.uffs.doisag.model.AnamnesisCorrection;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.AnamnesisCorrectionRepository;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 // ficha de anamnese (RF19)
 // o paciente preenche e corrige e o prescritor anula quando o registro foi feito por engano
@@ -31,14 +39,18 @@ public class AnamnesisService {
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta anamnese já foi anulada";
 
     private final AnamnesisRepository anamnesisRepository;
+    private final AnamnesisCorrectionRepository correctionRepository;
     private final PatientRepository patientRepository;
     private final AuditService auditService;
     private final ScaleTaskService scaleTaskService;
     private final RowLock rowLock;
 
-    public AnamnesisService(AnamnesisRepository anamnesisRepository, PatientRepository patientRepository,
+    public AnamnesisService(AnamnesisRepository anamnesisRepository,
+                            AnamnesisCorrectionRepository correctionRepository,
+                            PatientRepository patientRepository,
                             AuditService auditService, ScaleTaskService scaleTaskService, RowLock rowLock) {
         this.anamnesisRepository = anamnesisRepository;
+        this.correctionRepository = correctionRepository;
         this.patientRepository = patientRepository;
         this.auditService = auditService;
         this.scaleTaskService = scaleTaskService;
@@ -72,6 +84,7 @@ public class AnamnesisService {
     }
 
     // o paciente corrige o q ele mesmo respondeu e o dono do registro nunca muda
+    // a versao de antes fica guardada pra prescritora, em vez de sumir (decisao de 14/11/2026, revisao R4)
     @Transactional
     public AnamnesisResponseDTO update(Long anamnesisId, AnamnesisDTO anamnesisData) {
         Anamnesis anamnesis = findAnamnesisForUpdate(anamnesisId);
@@ -79,12 +92,16 @@ public class AnamnesisService {
             throw new BusinessException(ANNULLED_MESSAGE);
         }
 
+        AnamnesisCorrection previousVersion = new AnamnesisCorrection(anamnesis);
         if (anamnesisData.assessmentDate() != null) {
             anamnesis.setAssessmentDate(anamnesisData.assessmentDate());
         }
         copyAnswers(anamnesisData, anamnesis);
 
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
+        if (previousVersion.differsFrom(savedAnamnesis)) {
+            correctionRepository.save(previousVersion);
+        }
         auditService.recordChange(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());
         return new AnamnesisResponseDTO(savedAnamnesis);
@@ -106,20 +123,37 @@ public class AnamnesisService {
     }
 
     // anamneses de um paciente da mais recente pra mais antiga
+    // as versoes de antes das correcoes vao so pra prescritora, a tela do paciente n precisa delas
     @Transactional
-    public List<AnamnesisResponseDTO> getByPatientId(Long patientId) {
+    public List<AnamnesisResponseDTO> getByPatientId(Long patientId, Users loggedUser) {
         auditService.recordChartView(patientId);
+        Map<Long, List<AnamnesisCorrectionDTO>> correctionsByAnamnesis = new HashMap<>();
+        if (loggedUser.getRole() == UserRole.PRESCRIBER) {
+            for (AnamnesisCorrection correction : correctionRepository.findByPatientId(patientId)) {
+                correctionsByAnamnesis.computeIfAbsent(correction.getAnamnesis().getId(), id -> new ArrayList<>())
+                        .add(new AnamnesisCorrectionDTO(correction));
+            }
+        }
         return anamnesisRepository.findByPatientIdOrderByAssessmentDateDescIdDesc(patientId)
                 .stream()
-                .map(AnamnesisResponseDTO::new)
+                .map(anamnesis -> new AnamnesisResponseDTO(anamnesis,
+                        correctionsByAnamnesis.getOrDefault(anamnesis.getId(), List.of())))
                 .toList();
     }
 
     @Transactional
-    public AnamnesisResponseDTO getById(Long anamnesisId) {
+    public AnamnesisResponseDTO getById(Long anamnesisId, Users loggedUser) {
         Anamnesis anamnesis = findAnamnesis(anamnesisId);
         auditService.recordChartView(anamnesis.getPatient().getId());
-        return new AnamnesisResponseDTO(anamnesis);
+        if (loggedUser.getRole() != UserRole.PRESCRIBER) {
+            return new AnamnesisResponseDTO(anamnesis);
+        }
+        List<AnamnesisCorrectionDTO> corrections = correctionRepository
+                .findByAnamnesisIdOrderByCorrectedAtAscIdAsc(anamnesisId)
+                .stream()
+                .map(AnamnesisCorrectionDTO::new)
+                .toList();
+        return new AnamnesisResponseDTO(anamnesis, corrections);
     }
 
     private Anamnesis findAnamnesis(Long anamnesisId) {
