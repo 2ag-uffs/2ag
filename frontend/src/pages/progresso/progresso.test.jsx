@@ -360,6 +360,58 @@ describe("Progresso", () => {
         expect(screen.queryByText("Consultas no período")).not.toBeInTheDocument();
     });
 
+    // CT-40 com a internet lenta, ao trocar o periodo o cartao das consultas continuava com a lista e o numero
+    // do periodo anterior embaixo do grafico ja no esqueleto
+    it("trocar o periodo com a internet lenta n deixa as consultas do periodo anterior na tela", async () => {
+        const user = userEvent.setup();
+        const slowAppointments = heldAnswer([
+            {id: 2, data: "2026-09-18", diagnosis: null, geraPrescricao: false},
+            {id: 1, data: "2026-10-16", diagnosis: null, geraPrescricao: true},
+        ]);
+        const slowSeries = heldAnswer([
+            {date: "2026-09-18", value: 4, band: null, cutoff: null},
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+        ]);
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress/appointments?period=DIAS_30") {
+                return Promise.resolve([{id: 1, data: "2026-10-16", diagnosis: null, geraPrescricao: true}]);
+            }
+            if (path === "/patients/3/progress/appointments?period=DIAS_90") {
+                return slowAppointments.answer;
+            }
+            if (path === "/patients/3/progress?attribute=ANSIEDADE&period=DIAS_90") {
+                return slowSeries.answer;
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        expect(await screen.findByRole("heading", {name: /^Consultas no período\s*1$/})).toBeInTheDocument();
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+
+        // tudo chegando: nem a consulta dos 30 dias nem o numero dela sob o periodo novo
+        expect(screen.queryByText("Consultas no período")).not.toBeInTheDocument();
+        expect(screen.queryByText("16/10/2026")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Consulta em dia sem preenchimento/)).not.toBeInTheDocument();
+
+        // as consultas chegam antes do grafico: a lista aparece, mas o aviso de consulta sem ponto espera o grafico
+        await releaseAndWait([slowAppointments]);
+        expect(screen.getByRole("heading", {name: /^Consultas no período\s*2$/})).toBeInTheDocument();
+        expect(screen.getByText("18/09/2026")).toBeInTheDocument();
+        expect(screen.queryByText(/Consulta em dia sem preenchimento/)).not.toBeInTheDocument();
+
+        await releaseAndWait([slowSeries]);
+        expect(screen.getByRole("application", {name: /Gráfico de Ansiedade com 2 registros/})).toBeInTheDocument();
+        expect(screen.getByText("consulta")).toBeInTheDocument();
+        expect(screen.getByText(/Consulta em dia sem preenchimento/)).toBeInTheDocument();
+    });
+
     // as gotas dos 30 dias chegam dps das dos 90 e n podem apagar as dos dias mais antigos
     it("gotas de um periodo antigo q chegam atrasadas n passam por cima do atual", async () => {
         const user = userEvent.setup();

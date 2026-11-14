@@ -82,6 +82,8 @@ export default function Progresso() {
     const [dosePoints, setDosePoints] = useState([]);
     const [showDose, setShowDose] = useState(Boolean(keptFilters.showDose));
     const [appointments, setAppointments] = useState([]);
+    // as consultas tbm lembram de qual paciente e periodo sao, senao as do periodo anterior ficavam na tela (CT-40)
+    const [loadedAppointmentsKey, setLoadedAppointmentsKey] = useState(null);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
     const [isDeidentified, setIsDeidentified] = useState(Boolean(keptFilters.isDeidentified));
     const [isDownloading, setIsDownloading] = useState(false);
@@ -203,7 +205,7 @@ export default function Progresso() {
     const seriesKey = seriesKeyOf(patientId, chosenAttribute, period);
     const isSeriesLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
     const isLoading = !loadError && (!isCatalogLoaded || isSeriesLoading);
-    const commentsKey = patientId + "|" + period;
+    const periodKey = patientId + "|" + period;
     const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
 
     useEffect(() => {
@@ -281,12 +283,14 @@ export default function Progresso() {
             .then((loadedAppointments) => {
                 if (isCurrentRequest) {
                     setAppointments(loadedAppointments);
+                    setLoadedAppointmentsKey(requestKey);
                 }
             })
             // se as consultas falharem o grafico ainda serve pq elas sao contexto e n o dado principal
             .catch(() => {
                 if (isCurrentRequest) {
                     setAppointments([]);
+                    setLoadedAppointmentsKey(requestKey);
                 }
             });
 
@@ -326,7 +330,9 @@ export default function Progresso() {
         gotas: doseByDate.has(point.date) ? doseByDate.get(point.date) : null,
     }));
 
-    const appointmentMarks = showAppointments ? appointmentMarksOf(appointments, chartRows) : [];
+    // so as consultas do periodo escolhido: enquanto elas chegam o cartao n aparece
+    const periodAppointments = loadedAppointmentsKey === periodKey ? appointments : [];
+    const appointmentMarks = showAppointments ? appointmentMarksOf(periodAppointments, chartRows) : [];
 
     // a faixa interpretativa vira linha de corte no grafico pq escore
     // sem faixa n quer dizer nada (RN14)
@@ -611,17 +617,19 @@ export default function Progresso() {
                 )}
             </Card>
 
-            {showAppointments && appointments.length > 0 && (
+            {/* o aviso de consulta sem ponto espera o grafico do periodo, senao comparava com os pontos do anterior */}
+            {showAppointments && periodAppointments.length > 0 && (
                 <AppointmentsCard
-                    appointments={appointments}
-                    hasUnmarkedAppointments={chartRows.length > 0 && appointmentMarks.length < appointments.length}
+                    appointments={periodAppointments}
+                    hasUnmarkedAppointments={!isLoading && chartRows.length > 0
+                        && appointmentMarks.length < periodAppointments.length}
                 />
             )}
 
             <CommentsCard
                 comments={comments}
                 isPrescriber={isPrescriber}
-                isLoading={loadedCommentsKey !== commentsKey}
+                isLoading={loadedCommentsKey !== periodKey}
                 loadError={commentsError}
             />
         </section>
