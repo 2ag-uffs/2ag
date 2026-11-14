@@ -521,6 +521,32 @@ describe("Escala diaria", () => {
         expect(within(grid).getAllByRole("button")[0]).toHaveAttribute("aria-pressed", "true");
     });
 
+    // sem periodo aberto a grade era a semana civil ate hoje, e o R6 so acrescenta a semana q fechou ontem:
+    // hoje e os dias da semana de hoje nunca saem da grade
+    it("sem periodo aberto a semana q fechou ontem entra na grade e hoje continua nela", async () => {
+        pendingTasks = [];
+        mockClosedWeek({
+            id: 2, scaleType: "ACOMPANHAMENTO_SEMANAL", path: "/escalas/acompanhamento-semanal",
+            periodStart: dayFromToday(-7), periodEnd: dayFromToday(-1), status: "NAO_RESPONDIDA", daily: true,
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await waitFor(() => expect(within(grid).getAllByRole("button")).toHaveLength(8));
+        const buttons = within(grid).getAllByRole("button");
+        expect(buttons[0]).toHaveTextContent(formatWeekdayAndDate(dayFromToday(-7)));
+        expect(buttons[7]).toHaveTextContent(formatWeekdayAndDate(dayFromToday(0)));
+        expect(within(grid).getByRole("button", {pressed: true})).toHaveTextContent(formatWeekdayAndDate(dayFromToday(-1)));
+        expect(screen.getByText(/dá para preencher até o fim de hoje/)).toBeInTheDocument();
+
+        // escolher hoje deixa a mesma grade, com a semana q fechou antes dele
+        await user.click(buttons[7]);
+        expect(within(grid).getAllByRole("button")).toHaveLength(8);
+        expect(within(grid).getAllByRole("button")[7]).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByText(/dá para preencher até o fim de hoje/)).toBeInTheDocument();
+    });
+
     it("a semana q fechou antes de ontem n volta pra grade", async () => {
         pendingTasks = [{...pendingTasks[0], periodStart: dayFromToday(-1), periodEnd: dayFromToday(5), totalDays: 7}];
         mockClosedWeek({

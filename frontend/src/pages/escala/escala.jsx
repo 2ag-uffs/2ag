@@ -252,8 +252,12 @@ export default function Escala() {
     const insideLateTask = lateTask !== null
         && selectedDay >= lateTask.periodStart
         && selectedDay <= lateTask.periodEnd;
-    // o periodo q fechou ontem vem junto do aberto, e escolher um dia dele deixa a mesma grade
-    const showsLateTask = lateTask !== null && (insideLateTask || insideOpenTask);
+    // sem periodo aberto a grade continua sendo a semana de hoje ate hoje, e a semana q fechou ontem entra antes
+    // dela: o R6 so acrescenta dias e hoje nunca sai da grade
+    const currentWeekStart = toIsoDate(mondayOf(localDateOf(today)));
+    const insideCurrentWeek = openTask === null && selectedDay >= currentWeekStart;
+    // o periodo q fechou ontem vem junto do aberto (ou da semana de hoje), e escolher um dia dele deixa a mesma grade
+    const showsLateTask = lateTask !== null && (insideLateTask || insideOpenTask || insideCurrentWeek);
 
     // a grade cobre o periodo inteiro da tarefa aberta, pro paciente preencher de uma vez os dias q
     // esqueceu, mesmo qnd o periodo passa de uma semana (issue 71). fora da tarefa fica a semana do
@@ -267,10 +271,14 @@ export default function Escala() {
                 .filter((task) => task !== null && task.periodStart <= today);
             firstDay = shownTasks.map((task) => task.periodStart).sort()[0];
             periodLastDay = shownTasks.map((task) => task.periodEnd).sort()[shownTasks.length - 1];
+            if (openTask === null) {
+                firstDay = firstDay < currentWeekStart ? firstDay : currentWeekStart;
+                periodLastDay = today;
+            }
         }
         const lastDay = periodLastDay < today ? periodLastDay : today;
         return daysBetween(firstDay, lastDay);
-    }, [selectedDay, today, openTask, lateTask, insideOpenTask, showsLateTask]);
+    }, [selectedDay, today, openTask, lateTask, insideOpenTask, showsLateTask, currentWeekStart]);
 
     // resposta anulada fica so no historico: o dia dela abre em branco pro paciente responder de novo
     const currentResponse = useMemo(

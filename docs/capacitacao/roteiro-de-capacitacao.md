@@ -340,7 +340,7 @@ Janela anônima, paciente adulto.
   - A grade **Dias do período** mostra todos os dias desde o início do período até hoje, cada um como **preenchido**, **em branco** ou, enquanto não for salvo, **não salvo**, e o aviso *Esqueceu algum dia? Escolha o dia na grade e preencha agora.*
   - O paciente escolhe um dia em branco, preenche, passa para os outros dias esquecidos e clica em **Salvar respostas** uma vez só. Até salvar, cada dia preenchido aparece como **não salvo**; depois, o aviso diz quantos dias foram salvos (*Respostas de 2 dias salvas.*) e eles passam a **preenchido**. Com um dia **não salvo**, sair da tela pergunta antes (*Sair sem salvar*), seja pelo **Voltar**, pela seta do topo no celular ou pelo menu.
   - Dia que ainda não chegou nunca aparece na grade.
-  - No dia seguinte ao fim de uma semana, depois das 8h, a semana que fechou continua na grade, antes do período novo, até o fim do dia. O dia preenchido nela conta como atraso, e a grade avisa isso. Na demonstração as tarefas das 8h não rodam, então esse caso só aparece no servidor.
+  - No dia seguinte ao fim de uma semana, depois das 8h, a semana que fechou continua na grade, antes do período novo, até o fim do dia. Sem período novo, ela aparece antes dos dias desta semana, e hoje continua na grade. O dia preenchido nela conta como atraso, e a grade avisa isso. Na demonstração as tarefas das 8h não rodam, então esse caso só aparece no servidor.
   - Na demonstração que subiu hoje, os dois primeiros dias do período da Maria já vêm preenchidos e só o de hoje está em branco. Mostre que qualquer dia da grade abre do mesmo jeito: o dia em branco de dias atrás seria preenchido como o de hoje.
 
 ### do lado do prescritor
