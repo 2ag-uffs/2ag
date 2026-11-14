@@ -377,6 +377,9 @@ describe("Progresso", () => {
             if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_MANHA") {
                 return Promise.resolve([{date: "2026-09-01", value: 8}, {date: "2026-11-10", value: 5}]);
             }
+            if (path === "/patients/3/progress?period=DIAS_90&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-09-01", value: 4}, {date: "2026-11-10", value: 5}]);
+            }
             if (path.startsWith("/patients/3/progress?period=")) {
                 return Promise.resolve([]);
             }
@@ -396,6 +399,39 @@ describe("Progresso", () => {
         await releaseAndWait([oldMorning]);
 
         expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(4);
+    });
+
+    // CT-32 a dose em branco n vale zero (RN10): o dia com so uma das doses fica sem ponto de gotas, como o dia
+    // sem resposta, em vez de mostrar so a dose preenchida como se fosse o total (decisao de 13/11/2026)
+    it("dia com uma das doses em branco fica sem ponto na linha das gotas", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-02", value: 4, band: null, cutoff: null},
+        ];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_MANHA") {
+                return Promise.resolve([{date: "2026-10-01", value: 5}, {date: "2026-10-02", value: 5}]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-10-01", value: 3}]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+
+        // dois pontos do escore e uma gota so, a do dia com as duas doses
+        await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(3));
+        expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
     });
 
     // sem o layout, q no app ja remonta a tela qnd o endereco muda, a propria tela tem q descartar o nome atrasado

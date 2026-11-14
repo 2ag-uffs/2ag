@@ -740,14 +740,13 @@ function CommentsCard({comments, isPrescriber}) {
 }
 
 // as gotas da manha e as da tarde viram a dose do dia
-// dia q so tem uma das duas conta o q tem em vez de sumir
+// dia com uma das duas em branco fica sem ponto, pq em branco n vale zero (RN10, decisao de 13/11/2026)
+// senao so a dose preenchida parecia o total e lia como reducao de dose
 function sumByDate(morningPoints, afternoonPoints) {
-    const totalByDate = new Map();
-    [...morningPoints, ...afternoonPoints].forEach((point) => {
-        const current = totalByDate.get(point.date);
-        totalByDate.set(point.date, current === undefined ? point.value : current + point.value);
-    });
-    return Array.from(totalByDate, ([date, value]) => ({date, value}));
+    const afternoonByDate = new Map(afternoonPoints.map((point) => [point.date, point.value]));
+    return morningPoints
+        .filter((point) => afternoonByDate.has(point.date))
+        .map((point) => ({date: point.date, value: point.value + afternoonByDate.get(point.date)}));
 }
 
 // o eixo x eh categorico entao so da pra marcar consulta em dia q tem ponto no grafico
