@@ -62,6 +62,8 @@ export default function Progresso() {
     const keptFilters = location.state || {};
 
     const [patients, setPatients] = useState(null);
+    // a lista so serve pra trocar de paciente, entao o erro dela n esconde o grafico do q esta aberto
+    const [patientsError, setPatientsError] = useState(null);
     const [currentPatient, setCurrentPatient] = useState(null);
     const [isPatientLoading, setIsPatientLoading] = useState(isPrescriber && Boolean(patientId));
     // o erro lembra de qual paciente ele eh, entao voltar pra um paciente dele n fica preso no aviso
@@ -80,6 +82,8 @@ export default function Progresso() {
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
     const [comments, setComments] = useState([]);
+    // comentario q n carregou n pode virar "nenhum comentario"
+    const [commentsError, setCommentsError] = useState(null);
     const [loadError, setLoadError] = useState(null);
     // a serie do grafico lembra de qual paciente atributo e periodo ela eh
     const [loadedSeriesKey, setLoadedSeriesKey] = useState(null);
@@ -94,9 +98,10 @@ export default function Progresso() {
         }
         apiService.get("/patients?archived=false")
             .then(setPatients)
-            .catch(() => {
+            .catch((requestError) => {
                 setPatients([]);
-                setLoadError("Não foi possível carregar seus pacientes.");
+                // sem servidor vai o mesmo aviso de conexao das outras telas
+                setPatientsError(errorMessageOf(requestError));
             });
     }, [isPrescriber]);
 
@@ -123,13 +128,15 @@ export default function Progresso() {
                 // 403 e 404 querem dizer q o paciente n eh dele
                 const isNotTheirs = requestError instanceof ApiError
                     && (requestError.status === 403 || requestError.status === 404);
-                setPatientError({
-                    patientId: patientId,
-                    message: isNotTheirs
-                        ? "Acesso negado. Esse paciente não está na sua lista de pacientes."
-                        : errorMessageOf(requestError,
-                            "Não foi possível carregar o paciente. Confira sua internet e tente de novo."),
-                });
+                if (isNotTheirs) {
+                    setPatientError({
+                        patientId: patientId,
+                        message: "Acesso negado. Esse paciente não está na sua lista de pacientes.",
+                    });
+                } else {
+                    // sem servidor (ou outro erro) n quer dizer q o paciente n eh dele, entao vai so o aviso
+                    setLoadError(errorMessageOf(requestError));
+                }
             })
             .finally(() => {
                 if (isCurrentRequest) {
@@ -160,7 +167,7 @@ export default function Progresso() {
                 });
             })
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError, "Não foi possível carregar as escalas."));
+                setLoadError(errorMessageOf(requestError));
             });
     }, [patientId]);
 
@@ -208,10 +215,7 @@ export default function Progresso() {
             .catch((requestError) => {
                 if (isCurrentRequest) {
                     setPoints([]);
-                    setSeriesError({
-                        key: requestKey,
-                        message: errorMessageOf(requestError, "Não foi possível carregar o progresso."),
-                    });
+                    setSeriesError({key: requestKey, message: errorMessageOf(requestError)});
                 }
             })
             .finally(() => {
@@ -279,11 +283,14 @@ export default function Progresso() {
             .then((loadedComments) => {
                 if (isCurrentRequest) {
                     setComments(loadedComments);
+                    setCommentsError(null);
                 }
             })
-            .catch(() => {
+            .catch((requestError) => {
                 if (isCurrentRequest) {
                     setComments([]);
+                    setCommentsError(errorMessageOf(requestError,
+                        "Não foi possível carregar os comentários. Confira sua internet e tente de novo."));
                 }
             });
 
@@ -358,7 +365,7 @@ export default function Progresso() {
 
     // o prescritor abriu o progresso pelo menu e ainda n escolheu ninguem
     if (isPrescriber && !patientId) {
-        const hasNoPatients = patients !== null && patients.length === 0 && !loadError;
+        const hasNoPatients = patients !== null && patients.length === 0;
         return (
             <section className={styles.page}>
                 <PageHeader
@@ -366,17 +373,21 @@ export default function Progresso() {
                     subtitle="Escolha um paciente para ver como o tratamento está evoluindo."
                 />
 
-                <div className={styles.filters}>{patientFilter}</div>
+                {/* sem a lista n tem quem escolher, entao fica so o aviso */}
+                {patientsError ? (
+                    <p className="aviso aviso--atencao" role="alert">{patientsError}</p>
+                ) : (
+                    <div className={styles.filters}>{patientFilter}</div>
+                )}
 
-                {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
-
-                {hasNoPatients ? (
+                {!patientsError && hasNoPatients && (
                     <EmptyState
                         icon={FiUsers}
                         message="Você ainda não tem pacientes ativos."
                         action={<Link to="/lista-paciente" className="button-secondary">Ver pacientes</Link>}
                     />
-                ) : (
+                )}
+                {!patientsError && !hasNoPatients && (
                     <EmptyState
                         icon={FiTrendingUp}
                         message="O gráfico aparece aqui assim que você escolher um paciente."
@@ -438,6 +449,18 @@ export default function Progresso() {
             setIsDownloading(false);
         }
     };
+
+    // sem o catalogo (ou sem o paciente) n tem filtro nem grafico pra mostrar, e cartao
+    // vazio ia dizer q n tem dado nenhum, entao fica so o aviso (CT-40)
+    if (loadError) {
+        return (
+            <section className={styles.page}>
+                <PageHeader title={pageTitle} actions={historyLink}/>
+                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+            </section>
+        );
+    }
+
     const csvLink = chartRows.length > 0 ? (
         <button type="button" className="button-secondary" onClick={downloadCsv} disabled={isDownloading}>
             <FiDownload aria-hidden="true"/>
@@ -530,6 +553,7 @@ export default function Progresso() {
             </div>
 
             {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
+            {patientsError && <p className="aviso aviso--atencao" role="alert">{patientsError}</p>}
             {downloadError && <p className="aviso aviso--atencao" role="alert">{downloadError}</p>}
 
             <Card title={currentAttribute ? currentAttribute.displayName : "Gráfico"}>
@@ -579,7 +603,7 @@ export default function Progresso() {
                 />
             )}
 
-            <CommentsCard comments={comments} isPrescriber={isPrescriber}/>
+            <CommentsCard comments={comments} isPrescriber={isPrescriber} loadError={commentsError}/>
         </section>
     );
 }
@@ -714,16 +738,22 @@ function AppointmentsCard({appointments, hasUnmarkedAppointments}) {
 }
 
 // na tela do paciente o cartao fala com ele, como o resto da tela
-function CommentsCard({comments, isPrescriber}) {
+// o q n carregou diz isso, e sem o numero do lado do titulo, q seria zero
+function CommentsCard({comments, isPrescriber, loadError}) {
     return (
-        <Card title={isPrescriber ? "O que o paciente escreveu" : "O que você escreveu"} count={comments.length}>
-            {comments.length === 0 ? (
+        <Card
+            title={isPrescriber ? "O que o paciente escreveu" : "O que você escreveu"}
+            count={loadError ? undefined : comments.length}
+        >
+            {loadError && <p className={styles.empty}>{loadError}</p>}
+            {!loadError && comments.length === 0 && (
                 <p className={styles.empty}>
                     {isPrescriber
                         ? "Nenhum comentário nas escalas deste período."
                         : "Nenhum comentário seu nas escalas deste período."}
                 </p>
-            ) : (
+            )}
+            {!loadError && comments.length > 0 && (
                 <ul className={styles.comments}>
                     {comments.map((comment) => (
                         <li key={comment.responseId + "-" + comment.itemLabel} className={styles.comment}>

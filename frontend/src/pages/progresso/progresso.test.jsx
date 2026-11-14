@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {ApiError, apiService, setLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, CONNECTION_ERROR_MESSAGE, setLoggedUser} from "../../services/api.js";
 import Progresso from "./progresso.jsx";
 
 // o catalogo do jeito q a api manda pro paciente, com as ancoras e o lado bom de cada atributo
@@ -432,6 +432,91 @@ describe("Progresso", () => {
         // dois pontos do escore e uma gota so, a do dia com as duas doses
         await vi.waitFor(() => expect(screen.getByRole("application").querySelectorAll("circle")).toHaveLength(3));
         expect(screen.getByText("Gotas no dia")).toBeInTheDocument();
+    });
+
+    // CT-40 sem servidor o api.js lanca o erro de sem conexao, e a tela n pode dizer q n tem dado nenhum
+    it("sem servidor a paciente ve o aviso de conexao e nenhum cartao vazio", async () => {
+        apiService.get.mockRejectedValue(new Error(CONNECTION_ERROR_MESSAGE));
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(CONNECTION_ERROR_MESSAGE);
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/escreveu/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", {name: "Gráfico"})).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Escala")).not.toBeInTheDocument();
+    });
+
+    it("sem servidor a prescritora ve o aviso de conexao no lugar da lista de pacientes", async () => {
+        setLoggedUser({id: 9, name: "Ana Lima", role: "PRESCRIBER"});
+        apiService.get.mockRejectedValue(new Error(CONNECTION_ERROR_MESSAGE));
+        const router = createMemoryRouter([{path: "/progresso-pacientes", element: <Progresso/>}], {
+            initialEntries: ["/progresso-pacientes"],
+        });
+        render(<RouterProvider router={router}/>);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(CONNECTION_ERROR_MESSAGE);
+        expect(screen.queryByText(/O gráfico aparece aqui/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Paciente")).not.toBeInTheDocument();
+    });
+
+    // sem servidor o paciente n carrega, mas isso n quer dizer q ele n eh dela (CT-09 eh so o 403 e o 404)
+    it("sem servidor o progresso de um paciente mostra o aviso de conexao e n manda escolher outro", async () => {
+        apiService.get.mockRejectedValue(new Error(CONNECTION_ERROR_MESSAGE));
+        renderPrescriberProgress("DOR");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(CONNECTION_ERROR_MESSAGE);
+        expect(screen.queryByText(/Escolha um dos seus pacientes/)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Período")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+    });
+
+    // so a lista pra trocar de paciente falhou: o grafico do paciente aberto continua
+    it("lista de pacientes q n carregou n esconde o grafico do paciente aberto", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients?archived=false") {
+                return Promise.reject(new ApiError(429, "Muitos pedidos seguidos. Espere um pouco e tente de novo."));
+            }
+            if (path === "/progress/attributes") {
+                return Promise.resolve(PRESCRIBER_ATTRIBUTES);
+            }
+            if (path === "/patients/3") {
+                return Promise.resolve({id: 3, name: "Maria Souza", researchConsent: false});
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderPrescriberProgress("DOR");
+
+        expect(await screen.findByRole("application", {name: /Gráfico de Dor/})).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Muitos pedidos seguidos");
+        expect(screen.getByLabelText("Período")).toBeInTheDocument();
+        expect(screen.getByText("Nenhum comentário nas escalas deste período.")).toBeInTheDocument();
+    });
+
+    // so os comentarios falharam: o cartao diz isso em vez de dizer q n tem comentario nenhum
+    it("comentarios q n carregaram n viram nenhum comentario", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path.startsWith("/patients/3/progress/comments?")) {
+                return Promise.reject(new Error(CONNECTION_ERROR_MESSAGE));
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+
+        // o grafico continua, so o cartao dos comentarios avisa q eles n carregaram
+        expect(await screen.findByRole("application", {name: /Gráfico de Ansiedade/})).toBeInTheDocument();
+        expect(await screen.findByText("Não foi possível carregar os comentários. Confira sua internet e tente de novo."))
+            .toBeInTheDocument();
+        expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: "O que você escreveu"})).toBeInTheDocument();
     });
 
     // sem o layout, q no app ja remonta a tela qnd o endereco muda, a propria tela tem q descartar o nome atrasado
