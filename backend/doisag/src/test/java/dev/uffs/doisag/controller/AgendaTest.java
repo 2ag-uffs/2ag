@@ -701,6 +701,27 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.ARCHIVED_PATIENT_MESSAGE));
     }
 
+    // a tela n oferece o arquivado, mas a chamada montada a mao marcava e ele recebia "Consulta marcada"
+    // a consulta marcada antes do arquivamento continua sendo remarcada e cancelada (decisao de 13/11/2026)
+    @Test
+    void thePrescriberDoesNotBookANewConsultationForTheArchivedPatient() throws Exception {
+        Long bookedId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+        long noticesBefore = notificationTitlesOf(patient).size();
+
+        schedule(patient, AGENDA_DAY.atTime(11, 0), null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.ARCHIVED_SCHEDULE_MESSAGE));
+        assertThat(appointmentRepository.findByPrescriberIdAndDateTimeBetween(prescriber.getId(),
+                AGENDA_DAY.atTime(11, 0), AGENDA_DAY.atTime(11, 0))).isEmpty();
+        assertThat(notificationTitlesOf(patient)).hasSize((int) noticesBefore);
+
+        reschedule(bookedId, AGENDA_DAY.atTime(10, 0), "PRESENCIAL").andExpect(status().isOk());
+        cancel(bookedId, prescriber).andExpect(status().isOk());
+    }
+
     // prescritor desativado n entra mais no sistema, entao ninguem responderia o pedido
     @Test
     void theInactivePrescriberDoesNotOfferSlots() throws Exception {

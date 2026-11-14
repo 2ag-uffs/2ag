@@ -62,6 +62,8 @@ public class AppointmentService {
     public static final String NO_PRESCRIBER_MESSAGE = "Você ainda não tem um prescritor vinculado";
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Seu acompanhamento está encerrado. Fale com a clínica para voltar a marcar consulta";
+    public static final String ARCHIVED_SCHEDULE_MESSAGE =
+            "Paciente arquivado não recebe consulta nova. Reative o paciente antes de marcar";
     public static final String INACTIVE_PRESCRIBER_MESSAGE =
             "Seu prescritor não está mais atendendo pelo sistema. Fale com a clínica";
     public static final String ALREADY_ANSWERED_MESSAGE = "Este pedido de consulta já foi respondido";
@@ -145,9 +147,13 @@ public class AppointmentService {
 
     // o prescritor marca direto pra paciente da carteira dele e a consulta ja nasce confirmada
     // ele pode marcar fora dos periodos e em dia de folga, a agenda eh dele
+    // paciente arquivado n recebe consulta nova, igual o pedido dele. a q ja estava marcada continua valendo
     @Transactional
     public AgendaAppointmentDTO schedule(AppointmentScheduleDTO scheduleData, Long prescriberId) {
         Patient patient = findPatient(scheduleData.patientId());
+        if (patient.isArchived()) {
+            throw new BusinessException(ARCHIVED_SCHEDULE_MESSAGE);
+        }
         Prescriber prescriber = findPrescriber(prescriberId);
         AppointmentType type = scheduleData.appointmentType() == null
                 ? typeFor(patient.getId())
@@ -159,6 +165,12 @@ public class AppointmentService {
 
         checkNotInThePast(scheduleData.dateTime());
         checkSlotIsFree(prescriberId, scheduleData.dateTime(), durationMinutes, null);
+        // o paciente vem dps do prescritor na ordem das travas: o arquivamento gravado enquanto a marcacao
+        // esperava aparece aqui e a consulta nova eh recusada
+        patientRepository.lockById(patient.getId());
+        if (patientRepository.existsByIdAndArchivedAtIsNotNull(patient.getId())) {
+            throw new BusinessException(ARCHIVED_SCHEDULE_MESSAGE);
+        }
 
         Appointment appointment = new Appointment();
         appointment.setPatient(patient);

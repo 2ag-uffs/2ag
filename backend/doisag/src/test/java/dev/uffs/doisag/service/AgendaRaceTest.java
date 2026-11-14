@@ -391,6 +391,21 @@ class AgendaRaceTest {
         assertThat(openRequestsOf(patient)).isEmpty();
     }
 
+    // a marcacao do prescritor faz o msm: trava o paciente dps da agenda e o arquivamento gravado enquanto
+    // ela esperava recusa a consulta nova (decisao de 13/11/2026)
+    @Test
+    void thePrescriberMarkingWaitsForTheArchivingAndIsRefused() throws Exception {
+        HeldLock.Outcome<AgendaAppointmentDTO> outcome = heldAgenda.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> appointmentService.schedule(new AppointmentScheduleDTO(patient.getId(), DISPUTED_SLOT,
+                        AppointmentModality.PRESENCIAL, null, null), prescriber.getId()));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(AppointmentService.ARCHIVED_SCHEDULE_MESSAGE);
+        assertThat(appointmentsAt(DISPUTED_SLOT)).isEmpty();
+    }
+
     // o lembrete trava a consulta e dps o paciente antes de olhar o arquivamento: o arquivamento gravado
     // no meio tempo aparece e o arquivado n recebe "consulta amanha" (#170)
     @Test
