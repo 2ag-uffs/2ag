@@ -100,15 +100,15 @@ Acesso por e-mail e senha previamente cadastrados. Em caso de sucesso, o usuári
 
 **RF02.1 — Cadastro de paciente** · `mantido` · **E** · Paciente
 
-Autoatendimento. O paciente informa nome completo, CPF, e-mail, data de nascimento, telefone, endereço, senha e o **código do prescritor** que o acompanhará.
+Autoatendimento, pelo **link de convite** do prescritor que o acompanhará (RN06). O paciente informa nome completo, CPF, e-mail, data de nascimento, telefone, endereço e senha. *Corrigido (decisão de 14/11/2026, revisão das regras R17): o texto falava de um código do prescritor, que saiu em 13/09/2026.*
 
 *Critérios de aceite:*
 - E-mail e CPF são únicos no sistema (ver RN04)
 - Senha com mínimo de 8 caracteres, uma maiúscula, um número e um caractere especial
 - CPF validado pelos dois dígitos verificadores (módulo 11), conferidos pelo próprio sistema, sem biblioteca: o navegador avisa no campo antes de enviar e a API confere de novo. Sequência de um número só repetido (111.111.111-11) é recusada mesmo fechando a conta (23/10/2026)
 - E-mail sem ponto depois do @ (`maria@gmail`) é recusado no campo, porque o link de senha nova e os lembretes nunca chegariam. A mesma regra vale na troca de e-mail do perfil e na conta de prescritor criada ou corrigida pela administração (16/10/2026)
-- Código de prescritor inexistente rejeita o cadastro com **400** e mensagem clara
-- O vínculo paciente→prescritor é criado no cadastro e é imutável pelo próprio paciente (ver RN05)
+- Convite inexistente, vencido, cancelado ou já usado rejeita o cadastro com **400** e mensagem clara
+- O vínculo paciente→prescritor é criado no cadastro, pelo convite, e hoje é fixo: nem o paciente nem a administração o alteram (ver RN05)
 
 ---
 
@@ -122,7 +122,7 @@ Dados obrigatórios: nome completo, CPF, e-mail, profissão e registro profissio
 - A combinação tipo + número de registro é única. *O conselho é comparado e guardado em maiúsculas e o número sem espaço nas pontas, então "crbm" e "77777 " são o mesmo registro que "CRBM" e "77777" (16/10/2026)*
 - O CPF passa pela mesma conferência dos dois dígitos verificadores do cadastro do paciente (RF02.1), feita pelo próprio sistema (23/10/2026). A tela da administração faz a mesma conferência antes de enviar, no cadastro e na correção, então o CPF digitado com letras é recusado como inválido, e não como em branco nem ignorado na correção (13/11/2026)
 - A administração corrige o registro profissional, a profissão e o CPF de um prescritor digitados errado, com a mesma conferência de CPF e de unicidade do cadastro; a correção fica na trilha de auditoria como alteração de conta de prescritor (07/11/2026)
-- O sistema gera um **código de vínculo** único por prescritor (ver RN06)
+- O prescritor vincula pacientes por links de convite de uso único (ver RN06). O código de vínculo fixo por prescritor saiu em 13/09/2026, e hoje não existe transferência de paciente de um prescritor para outro: os pacientes do prescritor desativado continuam vinculados a ele (RN05, decisão de 14/11/2026, revisão das regras R17)
 - Requisição anônima a qualquer rota de criação de prescritor retorna **401/403**
 - O administrador **não escolhe nem conhece** a senha do prescritor: a conta nasce com um link de primeiro acesso de uso único (48 h), enviado por e-mail ou, sem SMTP, mostrado ao administrador para entregar. Quem cria a senha é o próprio prescritor
 - O seed de desenvolvimento roda **somente** no profile `dev` e nunca em produção
@@ -624,7 +624,7 @@ Nenhum segredo ou endereço de ambiente no código versionado.
 | **RN02** | A conduta terapêutica segue escalonamento gradual de dose (*start low, go slow*): toda prescrição inicia na menor dose eficaz e é ajustada conforme resposta clínica. *Desde 14/11/2026 o plano de dose vai da semana 1 em diante sem pular semana, e a semana 1 é a primeira semana de uso (decisão de 14/11/2026, revisão das regras R23, §8.6)* |
 | **RN03** | Formulações possíveis: **isolado** (CBD, THC, CBG), **broad spectrum** (sem THC) e **full spectrum**. A concentração de cada canabinoide é definida **caso a caso**, porque a resposta varia por paciente e por condição tratada — não existe formulação padrão. *Desde 13/09/2026 o espectro é um campo próprio e o óleo é descrito por uma lista de canabinoides, cada um com a sua concentração e unidade, mg/mL ou % (`PrescriptionComponent`); desde 02/10/2026 a tela abre em mg/mL, que é como a clínica cadastra hoje. Segue em aberto se o mg/mL é de cada canabinoide ou do produto: está nas perguntas para a clínica. Desde 30/10/2026 a prescrição recusa isolado com mais de um canabinoide e broad spectrum com THC (RF05)* |
 | **RN04** | E-mail e CPF são únicos em todo o sistema. *Atendido em 12/09/2026: o CPF é único na entidade (`Users`) e na migração base (`V1__esquema_base.sql`), e o cadastro confere e-mail e CPF antes de gravar, recusando com uma mensagem só, sem dizer qual dos dois já tem conta (#82)* |
-| **RN05** | Cada paciente está vinculado a exatamente um prescritor. O vínculo é estabelecido no cadastro pelo código do prescritor e só pode ser alterado por administrador |
+| **RN05** | Cada paciente está vinculado a exatamente um prescritor. O vínculo é estabelecido no cadastro, pelo convite do prescritor (RN06), e hoje é fixo: não existe tela nem rota que o altere, nem para a administração, então não há transferência de pacientes entre prescritores e um prescritor novo não vê os pacientes de outro (RF30). *Reescrita (decisão de 14/11/2026, revisão das regras R17): o texto anterior dizia que o administrador podia alterar o vínculo, o que nunca existiu. A transferência de um paciente por vez, feita pela administração com registro na trilha e sem dar a ela acesso a dado clínico, fica para antes de entrar um segundo prescritor* |
 | **RN06** | O código de vínculo do prescritor é único e **não é adivinhável**. *Alterado em 13/09/2026 (§8.3): o código de três letras e dois dígitos, que oferecia 90 combinações por prefixo, saiu do banco (`V3__remove_codigo_do_prescritor.sql`), e o vínculo passou a ser feito por convite de uso único, com 32 bytes sorteados e validade de 7 dias (`PatientInviteService`, `SecureTokens`). Desde 02/10/2026 o prescritor também lista e cancela os convites em aberto* |
 | **RN07** | O prescritor não comercializa produtos. O sistema registra orientação quanto a marca, lote e concentração, sem função de venda |
 | **RN08** | Dois agendamentos do mesmo prescritor não podem ocupar o mesmo horário |
