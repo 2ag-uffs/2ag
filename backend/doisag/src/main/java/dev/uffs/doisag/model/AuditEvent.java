@@ -54,6 +54,9 @@ public class AuditEvent {
     // nulo no evento de conta, q n fala de prontuario nenhum
     private Long patientId;
 
+    // texto curto do q mudou, tipo a data de nascimento antiga e a nova. nulo na maioria dos eventos
+    private String detail;
+
     // o jpa precisa de um construtor vazio
     protected AuditEvent() {
     }
@@ -67,6 +70,12 @@ public class AuditEvent {
         this.recordType = recordType;
         this.recordId = recordId;
         this.patientId = patientId;
+    }
+
+    public AuditEvent(Users actor, AuditOperation operation, AuditRecordType recordType, Long recordId,
+                      Long patientId, String detail) {
+        this(actor, operation, recordType, recordId, patientId);
+        this.detail = detail;
     }
 
     public Long getId() {
@@ -99,5 +108,9 @@ public class AuditEvent {
 
     public Long getPatientId() {
         return patientId;
+    }
+
+    public String getDetail() {
+        return detail;
     }
 }

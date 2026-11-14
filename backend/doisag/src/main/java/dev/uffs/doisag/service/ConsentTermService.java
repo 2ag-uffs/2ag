@@ -55,16 +55,19 @@ public class ConsentTermService {
 
     private final ConsentAcceptanceRepository consentAcceptanceRepository;
     private final PatientRepository patientRepository;
+    private final AuditService auditService;
     private final String termText;
     private final String researchText;
 
     public ConsentTermService(ConsentAcceptanceRepository consentAcceptanceRepository,
                               PatientRepository patientRepository,
+                              AuditService auditService,
                               @Value("${api.clinic.name:}") String clinicName,
                               @Value("${api.clinic.cnpj:}") String clinicCnpj,
                               @Value("${api.clinic.dpo-contact:}") String dpoContact) {
         this.consentAcceptanceRepository = consentAcceptanceRepository;
         this.patientRepository = patientRepository;
+        this.auditService = auditService;
         if (!hasText(clinicName)) {
             log.warn("CLINIC_NAME vazio: os termos saem com {}", CLINIC_NAME_MARKER);
         }
@@ -129,12 +132,24 @@ public class ConsentTermService {
 
     // termo pendente so pela faixa de idade: o texto atual ja foi aceito, mas por outra faixa
     // ai a data de nascimento errada ainda pode ser corrigida no perfil, sem gravar um aceite na faixa errada
+    // a pendencia q veio do aniversario de 18 anos n entra: a data n mudou e n tem o q corrigir, e o
+    // responsavel q ainda usa a conta n pode voltar a data pra fugir do aceite de adulto (revisao das regras R9)
     public boolean isPendingOnlyByAge(Users user) {
         if (!(user instanceof Patient patient)) {
             return false;
         }
         Optional<ConsentAcceptance> lastAcceptance = lastCurrentAcceptance(patient);
-        return lastAcceptance.isPresent() && !isFromTheAgeBandOf(lastAcceptance.get(), patient);
+        return lastAcceptance.isPresent() && !isFromTheAgeBandOf(lastAcceptance.get(), patient)
+                && !cameFromTheBirthday(lastAcceptance.get(), patient);
+    }
+
+    // aceite de menor q pela data de hoje ainda era de menor qnd foi feito, com a data igual desde o aceite:
+    // quem mudou foi a idade. a data trocada no perfil dps do aceite pode ser o ano digitado errado, tipo 2008
+    // no lugar de 2018, e ai a pendencia eh da data e ela ainda se corrige
+    private boolean cameFromTheBirthday(ConsentAcceptance acceptance, Patient patient) {
+        return hasText(acceptance.getGuardianName()) && !patient.isMinor()
+                && Patient.isMinor(patient.getBirthDate(), acceptance.getAcceptedAt().toLocalDate())
+                && !auditService.birthDateChangedAfter(patient.getId(), acceptance.getAcceptedAt());
     }
 
     // o ultimo aceite da versao atual precisa ser da faixa de idade de hoje

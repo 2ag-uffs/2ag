@@ -16,8 +16,10 @@ import dev.uffs.doisag.repository.UsersRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 // perfil da propria conta (RF18)
 // quem chama passa o id da sessao entao ninguem mexe no perfil de outra pessoa
@@ -28,13 +30,18 @@ public class ProfileService {
     private final PatientRepository patientRepository;
     private final EmailChangeRepository emailChangeRepository;
     private final ConsentTermService consentTermService;
+    private final AuditService auditService;
+    private final AgeGroupNoticeService ageGroupNoticeService;
 
     public ProfileService(UsersRepository usersRepository, PatientRepository patientRepository,
-                          EmailChangeRepository emailChangeRepository, ConsentTermService consentTermService) {
+                          EmailChangeRepository emailChangeRepository, ConsentTermService consentTermService,
+                          AuditService auditService, AgeGroupNoticeService ageGroupNoticeService) {
         this.usersRepository = usersRepository;
         this.patientRepository = patientRepository;
         this.emailChangeRepository = emailChangeRepository;
         this.consentTermService = consentTermService;
+        this.auditService = auditService;
+        this.ageGroupNoticeService = ageGroupNoticeService;
     }
 
     @Transactional(readOnly = true)
@@ -54,6 +61,7 @@ public class ProfileService {
             checkPatientRequiredData(profileData);
         }
 
+        LocalDate oldBirthDate = user.getBirthDate();
         user.setName(profileData.name().trim());
         user.setBirthDate(profileData.birthDate());
         user.setPhone(profileData.phone());
@@ -65,6 +73,11 @@ public class ProfileService {
             // a pesquisa n abre pra menor de 18: a data nova retira o aceite como se o paciente tivesse retirado
             if (patient.isMinor()) {
                 consentTermService.revokeResearch(patient);
+            }
+            // a faixa de idade sai da data, entao a troca vai pra trilha e a q cruza os 18 anos avisa a prescritora
+            if (!Objects.equals(oldBirthDate, patient.getBirthDate())) {
+                auditService.recordBirthDateChange(patient.getId(), oldBirthDate, patient.getBirthDate());
+                ageGroupNoticeService.noticeBirthDateChange(patient, oldBirthDate);
             }
         }
         return profileOf(usersRepository.save(user));

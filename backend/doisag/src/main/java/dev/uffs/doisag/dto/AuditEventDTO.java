@@ -18,10 +18,12 @@ public record AuditEventDTO(
         String recordLabel,
         Long patientId,
         // so no evento de conta de prescritor da trilha da administracao: de quem era a conta
-        String prescriberName
+        String prescriberName,
+        // o q mudou, tipo a data de nascimento antiga e a nova. nulo qnd o evento n tem
+        String detail
 ) {
     public static AuditEventDTO from(AuditEvent auditEvent) {
-        return from(auditEvent, auditEvent.getRecordType(), null);
+        return from(auditEvent, auditEvent.getRecordType(), null, auditEvent.getDetail());
     }
 
     // o administrador n acessa dado clinico (RF30) e o numero do paciente eh o msm da busca dele,
@@ -35,10 +37,12 @@ public record AuditEventDTO(
         if (!accountEvent) {
             recordType = AuditRecordType.PRONTUARIO;
         }
-        return from(auditEvent, recordType, prescriberName);
+        // o detalhe de um registro clinico diria o q foi, entao so o de conta aparece
+        return from(auditEvent, recordType, prescriberName, accountEvent ? auditEvent.getDetail() : null);
     }
 
-    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType, String prescriberName) {
+    private static AuditEventDTO from(AuditEvent auditEvent, AuditRecordType recordType, String prescriberName,
+                                      String detail) {
         Users actor = auditEvent.getActor();
         return new AuditEventDTO(
                 auditEvent.getOccurredAt(),
@@ -49,7 +53,8 @@ public record AuditEventDTO(
                 recordType.name(),
                 recordType.getLabel(),
                 auditEvent.getPatientId(),
-                prescriberName
+                prescriberName,
+                detail
         );
     }
 }

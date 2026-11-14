@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Collator;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -125,9 +126,31 @@ public class PatientService {
         }
 
         notificationService.createNotification(prescriber, "Novo paciente vinculado",
-                savedPatient.getDisplayName() + " criou a conta pelo seu convite.", Notification.TYPE_ALERT,
-                Notification.PRESCRIBER_PATIENT_LIST_LINK);
+                newPatientMessage(savedPatient), Notification.TYPE_ALERT, Notification.PRESCRIBER_PATIENT_LIST_LINK);
         return savedPatient;
+    }
+
+    // a idade vai no aviso, e o responsavel do menor tbm, pra prescritora conferir a data q o paciente digitou
+    // (revisao das regras R9). quem erra o ano no cadastro do filho ja nasce com a conta de adulto
+    private String newPatientMessage(Patient patient) {
+        String message = patient.getDisplayName() + " criou a conta pelo seu convite. Idade: "
+                + ageText(Patient.ageOn(patient.getBirthDate(), LocalDate.now()));
+        if (patient.isMinor()) {
+            message = message + ", com o responsável legal " + patient.getGuardianName() + " ("
+                    + patient.getGuardianRelationship() + ")";
+        }
+        return message + ".";
+    }
+
+    // 1 ano no singular, e o bebe q ainda n fez um ano n aparece com 0 anos
+    private String ageText(int age) {
+        if (age == 0) {
+            return "menos de 1 ano";
+        }
+        if (age == 1) {
+            return "1 ano";
+        }
+        return age + " anos";
     }
 
     // tudo q da pra recusar so c/ o formulario antes de gastar o convite
@@ -182,6 +205,10 @@ public class PatientService {
         GuardianDTO.applyTo(patient, registerData.guardian());
         patient.setPassword(passwordEncoder.encode(registerData.password()));
         patient.setPrescriber(prescriber);
+        // o aviso do cadastro ja diz a idade, entao quem fez 18 anos na semana n ganha outro aviso no job
+        if (!patient.isMinor()) {
+            patient.setAdultNoticeOn(LocalDate.now());
+        }
         return patient;
     }
 }

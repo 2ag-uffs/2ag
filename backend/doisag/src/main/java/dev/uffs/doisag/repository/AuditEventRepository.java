@@ -1,6 +1,7 @@
 package dev.uffs.doisag.repository;
 
 import dev.uffs.doisag.enums.AuditOperation;
+import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.UserRole;
 import dev.uffs.doisag.model.AuditEvent;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,11 @@ public interface AuditEventRepository extends Repository<AuditEvent, Long> {
     boolean existsByActorIdAndPatientIdAndOperationAndOccurredAtAfter(Long actorId, Long patientId,
                                                                       AuditOperation operation,
                                                                       LocalDateTime moment);
+
+    // se o paciente trocou a data de nascimento no perfil dps de um momento
+    boolean existsByPatientIdAndOperationAndRecordTypeAndDetailStartingWithAndOccurredAtAfter(
+            Long patientId, AuditOperation operation, AuditRecordType recordType, String detailStart,
+            LocalDateTime moment);
 
     @EntityGraph(attributePaths = {"actor"})
     @Query(value = "select e from AuditEvent e where e.patientId = :patientId"

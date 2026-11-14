@@ -5,6 +5,7 @@ import dev.uffs.doisag.dto.AuditPageDTO;
 import dev.uffs.doisag.enums.AuditOperation;
 import dev.uffs.doisag.enums.AuditRecordType;
 import dev.uffs.doisag.enums.UserRole;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.model.AuditEvent;
@@ -38,6 +39,9 @@ public class AuditService {
 
     // abrir o mesmo prontuario de novo dentro desse tempo n gera outra linha
     public static final int CHART_VIEW_WINDOW_MINUTES = 30;
+
+    // comeco do detail da troca da data de nascimento, q tbm serve pra achar ela na trilha
+    public static final String BIRTH_DATE_DETAIL = "Data de nascimento: ";
 
     private final AuditEventRepository auditEventRepository;
     private final PrescriberRepository prescriberRepository;
@@ -97,6 +101,23 @@ public class AuditService {
                 : AuditRecordType.CONTA_DE_PRESCRITOR;
         auditEventRepository.save(new AuditEvent(user, AuditOperation.ALTERACAO, accountType, user.getId(),
                 isPatient ? user.getId() : null));
+    }
+
+    // o paciente trocou a data de nascimento no perfil. a faixa de idade sai dela (responsavel no termo e
+    // pesquisa fechada pro menor), entao a trilha guarda a antiga e a nova (revisao das regras R9)
+    @Transactional
+    public void recordBirthDateChange(Long patientId, LocalDate oldDate, LocalDate newDate) {
+        String oldText = oldDate == null ? "em branco" : BrazilianFormat.date(oldDate);
+        String detail = BIRTH_DATE_DETAIL + oldText + " → " + BrazilianFormat.date(newDate);
+        saveLoggedUserEvent(AuditOperation.ALTERACAO, AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId,
+                detail);
+    }
+
+    // se a data de nascimento foi trocada no perfil dps desse momento, tipo dps do ultimo aceite do termo
+    @Transactional(readOnly = true)
+    public boolean birthDateChangedAfter(Long patientId, LocalDateTime moment) {
+        return auditEventRepository.existsByPatientIdAndOperationAndRecordTypeAndDetailStartingWithAndOccurredAtAfter(
+                patientId, AuditOperation.ALTERACAO, AuditRecordType.CONTA_DE_PACIENTE, BIRTH_DATE_DETAIL, moment);
     }
 
     // conta ligada ou desligada pela administracao
@@ -221,7 +242,13 @@ public class AuditService {
 
     private void saveLoggedUserEvent(AuditOperation operation, AuditRecordType recordType, Long recordId,
                                      Long patientId) {
-        auditEventRepository.save(new AuditEvent(findLoggedUser(), operation, recordType, recordId, patientId));
+        saveLoggedUserEvent(operation, recordType, recordId, patientId, null);
+    }
+
+    private void saveLoggedUserEvent(AuditOperation operation, AuditRecordType recordType, Long recordId,
+                                     Long patientId, String detail) {
+        auditEventRepository.save(
+                new AuditEvent(findLoggedUser(), operation, recordType, recordId, patientId, detail));
     }
 
     private Users findLoggedUser() {

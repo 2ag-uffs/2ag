@@ -44,6 +44,9 @@ public class Patient extends Users {
     // nome social, opcional (RN15)
     private String socialName;
 
+    // dia em q a prescritora soube q o paciente virou adulto, pra o aviso dos 18 anos sair uma vez so
+    private LocalDate adultNoticeOn;
+
     public Patient() {
     }
 
@@ -109,6 +112,15 @@ public class Patient extends Users {
         this.socialName = socialName;
     }
 
+    @JsonIgnore
+    public LocalDate getAdultNoticeOn() {
+        return adultNoticeOn;
+    }
+
+    public void setAdultNoticeOn(LocalDate adultNoticeOn) {
+        this.adultNoticeOn = adultNoticeOn;
+    }
+
     // qnd tem nome social eh ele q aparece, o civil fica so onde identifica a pessoa
     @JsonIgnore
     @Override
@@ -143,6 +155,11 @@ public class Patient extends Users {
     @JsonIgnore
     public boolean isMinor() {
         return isMinor(getBirthDate());
+    }
+
+    // idade em anos completos no dia, pela msm conta do isMinor
+    public static int ageOn(LocalDate birthDate, LocalDate day) {
+        return Period.between(birthDate, day).getYears();
     }
 
     @Override

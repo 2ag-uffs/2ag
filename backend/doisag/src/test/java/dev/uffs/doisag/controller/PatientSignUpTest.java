@@ -190,6 +190,45 @@ class PatientSignUpTest {
                 .anyMatch(notification -> notification.getMessage().startsWith("Ana Souza criou a conta"));
     }
 
+    // o aviso do cadastro diz a idade, e a do menor vem com o responsavel, pra prescritora conferir a data
+    // q a familia digitou (revisao das regras R9)
+    @Test
+    void newPatientNoticeShowsTheAgeAndTheGuardianOfAMinor() throws Exception {
+        signUp(signUpBody(newInviteToken(), "adulta@email.com", VALID_CPF, VALID_PASSWORD))
+                .andExpect(status().isCreated());
+        int adultAge = java.time.Period.between(LocalDate.of(1990, 4, 12), LocalDate.now()).getYears();
+        signUp(withGuardian(minorSignUpBody(newInviteToken(), "menor@email.com").replace(VALID_CPF, OTHER_VALID_CPF),
+                "{\"name\":\"Joana Souza\",\"relationship\":\"mãe\"}"))
+                .andExpect(status().isCreated());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(prescriber.getId()))
+                .extracting("message")
+                .containsExactlyInAnyOrder(
+                        "Maria da Silva criou a conta pelo seu convite. Idade: " + adultAge + " anos.",
+                        "Maria da Silva criou a conta pelo seu convite. Idade: 10 anos, com o responsável legal "
+                                + "Joana Souza (mãe).");
+    }
+
+    // um ano no singular, e o bebe q ainda n fez um ano n vira "0 anos"
+    @Test
+    void newPatientNoticeWritesTheAgeOfABabyRight() throws Exception {
+        String guardian = "{\"name\":\"Joana Souza\",\"relationship\":\"mãe\"}";
+        signUp(withGuardian(withBirthDate(signUpBody(newInviteToken(), "um-ano@email.com", VALID_CPF,
+                VALID_PASSWORD), LocalDate.now().minusYears(1).minusDays(3)), guardian))
+                .andExpect(status().isCreated());
+        signUp(withGuardian(withBirthDate(signUpBody(newInviteToken(), "bebe@email.com", OTHER_VALID_CPF,
+                VALID_PASSWORD), LocalDate.now().minusMonths(5)), guardian))
+                .andExpect(status().isCreated());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(prescriber.getId()))
+                .extracting("message")
+                .containsExactlyInAnyOrder(
+                        "Maria da Silva criou a conta pelo seu convite. Idade: 1 ano, com o responsável legal "
+                                + "Joana Souza (mãe).",
+                        "Maria da Silva criou a conta pelo seu convite. Idade: menos de 1 ano, com o responsável "
+                                + "legal Joana Souza (mãe).");
+    }
+
     // em branco ou igual ao nome civil n muda nada na tela, entao fica nulo
     @Test
     void blankSocialNameOrTheSameAsTheCivilNameIsStoredAsNull() throws Exception {

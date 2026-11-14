@@ -53,6 +53,8 @@ function AuditEventItem({auditEvent, showPatientNumber}) {
                     {/* so a trilha da administracao manda de quem era a conta de prescritor */}
                     {auditEvent.prescriberName && " · conta de " + auditEvent.prescriberName}
                 </span>
+                {/* o q mudou, tipo a data de nascimento antiga e a nova */}
+                {auditEvent.detail && <span>{auditEvent.detail}</span>}
             </div>
         </li>
     );

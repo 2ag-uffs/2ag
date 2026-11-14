@@ -29,6 +29,7 @@ public class DailyScheduler {
     private final ScaleTaskService scaleTaskService;
     private final ReminderService reminderService;
     private final AppointmentService appointmentService;
+    private final AgeGroupNoticeService ageGroupNoticeService;
     private final DailyCycleRepository cycleRepository;
     private final String cron;
 
@@ -36,12 +37,14 @@ public class DailyScheduler {
                           ScaleTaskService scaleTaskService,
                           ReminderService reminderService,
                           AppointmentService appointmentService,
+                          AgeGroupNoticeService ageGroupNoticeService,
                           DailyCycleRepository cycleRepository,
                           @Value(CRON) String cron) {
         this.treatmentProtocolService = treatmentProtocolService;
         this.scaleTaskService = scaleTaskService;
         this.reminderService = reminderService;
         this.appointmentService = appointmentService;
+        this.ageGroupNoticeService = ageGroupNoticeService;
         this.cycleRepository = cycleRepository;
         this.cron = cron;
     }
@@ -133,6 +136,13 @@ public class DailyScheduler {
         } catch (RuntimeException exception) {
             failed = true;
             log.error("Tarefas do dia: falha ao enviar os lembretes de dias em branco", exception);
+        }
+        // o aviso dos 18 anos conta os proprios envios no log
+        try {
+            ageGroupNoticeService.sendEighteenthBirthdayNotices(today);
+        } catch (RuntimeException exception) {
+            failed = true;
+            log.error("Tarefas do dia: falha ao avisar dos pacientes que fizeram 18 anos", exception);
         }
 
         // so o ciclo q terminou inteiro conta como dia processado

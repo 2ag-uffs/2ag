@@ -29,11 +29,12 @@ class DailySchedulerTest {
     private final ScaleTaskService scaleTaskService = mock(ScaleTaskService.class);
     private final ReminderService reminderService = mock(ReminderService.class);
     private final AppointmentService appointmentService = mock(AppointmentService.class);
+    private final AgeGroupNoticeService ageGroupNoticeService = mock(AgeGroupNoticeService.class);
     private final DailyCycleRepository cycleRepository = mock(DailyCycleRepository.class);
 
     private DailyScheduler schedulerWith(String cron) {
         return new DailyScheduler(treatmentProtocolService, scaleTaskService, reminderService, appointmentService,
-                cycleRepository, cron);
+                ageGroupNoticeService, cycleRepository, cron);
     }
 
     private void lastCompletedDayIs(LocalDate day) {
@@ -53,6 +54,19 @@ class DailySchedulerTest {
         verify(appointmentService).declineExpiredRequests(now);
         verify(appointmentService).warnUnansweredRequests(now);
         verify(reminderService).sendAppointmentReminders(TODAY);
+        verify(reminderService).sendScaleReminders(TODAY);
+        verify(ageGroupNoticeService).sendEighteenthBirthdayNotices(TODAY);
+        verify(cycleRepository, never()).save(any());
+    }
+
+    // o aviso dos 18 anos eh a ultima etapa e a falha dele tbm deixa o dia sem concluir (revisao das regras R9)
+    @Test
+    void avisoDos18AnosQueQuebraNaoMarcaODia() {
+        when(ageGroupNoticeService.sendEighteenthBirthdayNotices(TODAY))
+                .thenThrow(new IllegalStateException("falha de teste"));
+
+        schedulerWith(EVERY_DAY_AT_EIGHT).runCycle(TODAY.atTime(8, 0));
+
         verify(reminderService).sendScaleReminders(TODAY);
         verify(cycleRepository, never()).save(any());
     }

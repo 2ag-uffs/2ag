@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,6 +37,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     Optional<Patient> findByEmail(String email);
 
     List<Patient> findAllByActiveFalseOrderByNameAsc();
+
+    // quem nasceu nesses dias, pro aviso dos 18 anos
+    List<Patient> findAllByBirthDateBetween(LocalDate first, LocalDate last);
 
     // so o prescritor do paciente, sem carregar o paciente: quem trava os dois trava o prescritor primeiro
     @Query("select patient.prescriber.id from Patient patient where patient.id = :id")
