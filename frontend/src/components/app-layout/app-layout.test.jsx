@@ -5,6 +5,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import AgendamentoConsultaPaciente from "../../pages/agendamento-consulta-paciente/agendamento-consulta-paciente.jsx";
+import AnnulmentModal from "../annulment-modal/annulment-modal.jsx";
 import Profile from "../../pages/profile/profile.jsx";
 import {
     apiService,
@@ -306,6 +307,45 @@ describe("AppLayout", () => {
         await user.click(dialog.getByRole("button", {name: "Sair"}));
         expect(await screen.findByText("tela de login")).toBeInTheDocument();
         expect(router.state.location.pathname).toBe("/entrar");
+    });
+
+    // o modal da tela de baixo continua montado com o login por cima, e as teclas dele n podem valer ali:
+    // o esc n fecha o modal escondido e o tab anda pelos controles do login (CT-39)
+    it("com o login por cima o modal da tela de baixo n fecha com esc nem prende o tab", async () => {
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+        });
+        const onClose = vi.fn();
+        const router = createMemoryRouter([
+            {
+                element: <AppLayout/>,
+                children: [{
+                    path: "/historico",
+                    element: <AnnulmentModal title="Anular receita" recordDescription="Receita de teste"
+                                             endpoint="/prescriptions/1/annul" onClose={onClose} onAnnulled={() => {}}/>,
+                }],
+            },
+        ], {initialEntries: ["/historico"]});
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        render(<RouterProvider router={router}/>);
+
+        await user.type(await screen.findByLabelText("Motivo da anulação"), "receita lancada errada");
+        await user.click(screen.getByRole("button", {name: "Anular registro"}));
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        expect(dialog.getByLabelText("Senha")).toHaveFocus();
+
+        await user.keyboard("{Escape}");
+        expect(onClose).not.toHaveBeenCalled();
+
+        await user.tab();
+        expect(dialog.getByRole("button", {name: "Mostrar senha"})).toHaveFocus();
+        await user.tab({shift: true});
+        await user.tab({shift: true});
+        expect(dialog.getByLabelText("E-mail")).toHaveFocus();
     });
 
     // a conta foi desativada com a tela aberta: a api diz o motivo no 401 e o aviso por cima mostra o msm

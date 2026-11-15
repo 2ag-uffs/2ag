@@ -41,6 +41,11 @@ export default function Modal({show, title, children, onClickClose}) {
             return;
         }
         const handleKeyDown = (event) => {
+            // com o login de novo ou o termo por cima, a tela de baixo fica escondida e o modal dela tbm:
+            // as teclas sao da camada de cima e o esc n fecha o q a pessoa nem ve
+            if (dialogRef.current && dialogRef.current.closest("[inert], [hidden]")) {
+                return;
+            }
             if (event.key === "Escape") {
                 onClickClose();
             }

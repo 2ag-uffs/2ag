@@ -1,7 +1,7 @@
 import {render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {useState} from "react";
-import {describe, expect, it} from "vitest";
+import {describe, expect, it, vi} from "vitest";
 import ConfirmModal from "../confirm-modal/confirm-modal.jsx";
 
 // tela com um link antes e outro depois, pra ver se o tab escapa da caixa
@@ -70,5 +70,28 @@ describe("Modal", () => {
         await openDialog(user);
         await user.click(screen.getByRole("button", {name: "Voltar"}));
         expect(screen.getByRole("button", {name: "Arquivar"})).toHaveFocus();
+    });
+
+    // com o termo por cima a tela de baixo fica escondida, e o modal dela n reage as teclas (CT-39)
+    it("modal numa tela escondida n fecha com esc nem puxa o tab", async () => {
+        const onCancel = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <>
+                <div hidden={true}>
+                    <ConfirmModal show={true} title="Arquivar paciente" message="Tem certeza?"
+                                  confirmText="Sim, arquivar" onConfirm={() => {}} onCancel={onCancel}/>
+                </div>
+                <button type="button">Li e aceito</button>
+                <a href="#rodape">Início</a>
+            </>,
+        );
+        screen.getByRole("button", {name: "Li e aceito"}).focus();
+
+        await user.keyboard("{Escape}");
+        await user.tab();
+
+        expect(onCancel).not.toHaveBeenCalled();
+        expect(screen.getByRole("link", {name: "Início"})).toHaveFocus();
     });
 });
