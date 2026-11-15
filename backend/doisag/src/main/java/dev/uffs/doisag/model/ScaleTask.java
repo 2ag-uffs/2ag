@@ -154,6 +154,13 @@ public class ScaleTask {
         return ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
     }
 
+    // a tarefa ja existia qnd o paciente foi arquivado, entao o arquivamento encerrou ela
+    // a enviada a mao dps do arquivamento eh mais nova q ele e segue a regra de sempre
+    public boolean existedBeforeArchive() {
+        LocalDateTime archivedAt = patient.getArchivedAt();
+        return archivedAt != null && !createdAt.isAfter(archivedAt);
+    }
+
     // quando o aviso de lembrete desta tarefa foi criado, pra ele n sair duas vezes (RF34)
     private LocalDateTime reminderSentAt;
 

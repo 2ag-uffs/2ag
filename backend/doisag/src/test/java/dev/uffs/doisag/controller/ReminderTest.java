@@ -24,6 +24,7 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.service.AppointmentService;
+import dev.uffs.doisag.service.PatientArchiveService;
 import dev.uffs.doisag.service.ReminderService;
 import dev.uffs.doisag.dto.ProtocolItemDTO;
 import dev.uffs.doisag.dto.ScaleResponseCreateDTO;
@@ -76,6 +77,7 @@ class ReminderTest {
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private AppointmentService appointmentService;
+    @Autowired private PatientArchiveService patientArchiveService;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @MockitoBean private EmailSender emailSender;
@@ -270,8 +272,92 @@ class ReminderTest {
         // um dia preenchido fecha a sequencia, e dois dias em branco depois dele cobram de novo
         saveDay(task, TODAY);
         assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(2))).isZero();
+        // na ordem do job: o closeOverdue fecha a semana antes da etapa dos dias em branco
+        scaleTaskService.closeOverdue(TODAY.plusDays(3));
         assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(3))).isEqualTo(1);
         assertThat(notificationsOf(patient)).hasSize(2);
+    }
+
+    // na ordem do job: o closeOverdue fecha a semana antes da etapa dos dias em branco, e os dois
+    // ultimos dias do periodo em branco tbm viram lembrete (revisao das regras R6)
+    @Test
+    void osDoisUltimosDiasEmBrancoDoPeriodoTambemViramLembrete() {
+        ScaleTask task = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        for (LocalDate day = TODAY.minusDays(4); !day.isAfter(TODAY); day = day.plusDays(1)) {
+            saveDay(task, day);
+        }
+
+        assertThat(scaleTaskService.closeOverdue(TODAY.plusDays(3))).isEqualTo(1);
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(3))).isEqualTo(1);
+
+        Notification notice = notificationsOf(patient).get(0);
+        assertThat(notice.getTitle()).isEqualTo("Dias em branco");
+        assertThat(notice.getMessage()).contains(formatDate(TODAY.plusDays(1))).contains(formatDate(TODAY.plusDays(2)));
+        assertThat(notice.getLink()).isEqualTo("/escalas/acompanhamento-semanal?data=" + TODAY.plusDays(1));
+    }
+
+    // o ultimo dia de uma semana e o primeiro da seguinte em branco tbm sao dois dias seguidos
+    @Test
+    void oUltimoDiaDaSemanaEOPrimeiroDaSeguinteEmBrancoViramLembrete() {
+        ScaleTask firstWeek = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        for (LocalDate day = TODAY.minusDays(4); !day.isAfter(TODAY.plusDays(1)); day = day.plusDays(1)) {
+            saveDay(firstWeek, day);
+        }
+        scaleTaskService.closeOverdue(TODAY.plusDays(3));
+        ScaleTask nextWeek = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(9));
+        nextWeek.setPeriodStart(TODAY.plusDays(3));
+        taskRepository.save(nextWeek);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(3))).isZero();
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(4))).isEqualTo(1);
+        Notification notice = notificationsOf(patient).get(0);
+        assertThat(notice.getMessage())
+                .contains(formatDate(TODAY.plusDays(2))).contains(formatDate(TODAY.plusDays(3)));
+        // a semana anterior ja saiu da grade, entao o link abre ontem, na semana de agora
+        assertThat(notice.getLink()).isEqualTo("/escalas/acompanhamento-semanal?data=" + TODAY.plusDays(3));
+        // a mesma sequencia n cobra de novo
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(5))).isZero();
+    }
+
+    // a semana q o arquivamento fechou n cobra os dias em branco dela, pq o arquivado n eh mais cobrado
+    @Test
+    void aSemanaFechadaPeloArquivamentoNaoCobraOsDiasEmBranco() {
+        saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        patientArchiveService.archive(patient.getId(), prescriber);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
+    }
+
+    // o diario enviado a mao dps do arquivamento n foi interrompido por ele: os dois ultimos dias em branco
+    // cobram como em qualquer semana
+    @Test
+    void oDiarioEnviadoDepoisDoArquivamentoCobraOsDoisUltimosDiasEmBranco() {
+        patientArchiveService.archive(patient.getId(), prescriber);
+        // o envio vem um segundo dps do arquivamento, senao os dois podiam cair no mesmo instante do relogio
+        patient.setArchivedAt(patient.getArchivedAt().minusSeconds(1));
+        patientRepository.save(patient);
+        ScaleTask task = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        for (LocalDate day = TODAY.minusDays(4); !day.isAfter(TODAY); day = day.plusDays(1)) {
+            saveDay(task, day);
+        }
+
+        assertThat(scaleTaskService.closeOverdue(TODAY.plusDays(3))).isEqualTo(1);
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(3))).isEqualTo(1);
+        assertThat(notificationsOf(patient).get(0).getTitle()).isEqualTo("Dias em branco");
+    }
+
+    // a semana q fechou na troca, com o diario fora do acompanhamento novo, tbm n cobra
+    @Test
+    void aSemanaDoDiarioTiradoDoAcompanhamentoNaoCobraOsDiasEmBranco() {
+        ScaleTask week = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.minusDays(1));
+        week.setFromProtocol(true);
+        week.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
+        week.setAnsweredAt(TODAY.minusDays(1));
+        taskRepository.save(week);
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY, 90, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
     }
 
     @Test

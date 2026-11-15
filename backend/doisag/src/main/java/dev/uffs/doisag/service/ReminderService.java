@@ -60,6 +60,7 @@ public class ReminderService {
     private final NotificationService notificationService;
     private final BackgroundEmailSender backgroundEmailSender;
     private final ScaleCatalog catalog;
+    private final ScaleTaskService scaleTaskService;
     private final RowLock rowLock;
     private final TransactionTemplate transactionTemplate;
     private final String publicUrl;
@@ -71,6 +72,7 @@ public class ReminderService {
                            NotificationService notificationService,
                            BackgroundEmailSender backgroundEmailSender,
                            ScaleCatalog catalog,
+                           ScaleTaskService scaleTaskService,
                            RowLock rowLock,
                            PlatformTransactionManager transactionManager,
                            @Value("${api.public-url}") String publicUrl) {
@@ -81,6 +83,7 @@ public class ReminderService {
         this.notificationService = notificationService;
         this.backgroundEmailSender = backgroundEmailSender;
         this.catalog = catalog;
+        this.scaleTaskService = scaleTaskService;
         this.rowLock = rowLock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.publicUrl = InputCleaner.withoutTrailingSlash(publicUrl);
@@ -275,12 +278,15 @@ public class ReminderService {
 
     // no diario um dia preenchido calava a cobranca do periodo inteiro. agora dois dias seguidos em branco
     // viram um lembrete, um so por sequencia de dias em branco (decisao de 14/11/2026, revisao das regras R6)
-    // os dois dias sao ontem e anteontem, dentro do periodo da tarefa aberta. roda dps do lembrete do prazo
+    // os dois dias sao ontem e anteontem. ontem eh da tarefa aberta ou da semana q fechou ontem, q o job fecha
+    // antes desta etapa e continua na grade ate o fim de hoje, senao os dois ultimos dias do periodo nunca
+    // cobravam. anteontem pode ser da semana anterior, emendada nela. roda dps do lembrete do prazo
     public int sendBlankDaysReminders(LocalDate today) {
+        LocalDate yesterday = today.minusDays(1);
         int sent = 0;
         int failures = 0;
-        for (ScaleTask found : taskRepository.findByStatusAndPeriodStartLessThanEqual(ScaleTaskStatus.PENDENTE,
-                today.minusDays(BLANK_DAYS_IN_A_ROW))) {
+        for (ScaleTask found : taskRepository.findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(yesterday,
+                yesterday)) {
             if (!isDaily(found)) {
                 continue;
             }
@@ -311,8 +317,8 @@ public class ReminderService {
         ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
         LocalDate yesterday = today.minusDays(1);
         LocalDate dayBefore = today.minusDays(BLANK_DAYS_IN_A_ROW);
-        boolean canBeReminded = task != null && task.getStatus() == ScaleTaskStatus.PENDENTE
-                && task.getPrescriber().isActive() && task.coversDay(dayBefore) && task.coversDay(yesterday);
+        boolean canBeReminded = task != null && task.getPrescriber().isActive() && isStillCharged(task, yesterday)
+                && coversDayBefore(task, dayBefore);
         if (!canBeReminded || isFilled(task, dayBefore) || isFilled(task, yesterday)
                 || isSameBlankStreak(task, today)) {
             return false;
@@ -327,6 +333,35 @@ public class ReminderService {
         }
         sendBlankDaysReminder(task, dayBefore, yesterday);
         return true;
+    }
+
+    // o dia ainda eh cobrado na tarefa aberta, ou na semana q fechou nele pelo prazo, q segue na grade ate o fim
+    // do dia seguinte (revisao das regras R6). a semana q o arquivamento encerrou e a da escala tirada do
+    // acompanhamento n cobram mais, pq quem interrompeu foi o prescritor. o diario enviado a mao dps do
+    // arquivamento cobra como qualquer outro
+    private boolean isStillCharged(ScaleTask task, LocalDate day) {
+        if (!task.coversDay(day)) {
+            return false;
+        }
+        if (task.getStatus() == ScaleTaskStatus.PENDENTE) {
+            return true;
+        }
+        return task.getPeriodEnd().equals(day) && !task.existedBeforeArchive()
+                && !scaleTaskService.isRemovedFromProtocol(task);
+    }
+
+    // anteontem eh da mesma tarefa, ou da semana anterior do mesmo diario qnd a tarefa comecou ontem
+    private boolean coversDayBefore(ScaleTask task, LocalDate dayBefore) {
+        if (task.coversDay(dayBefore)) {
+            return true;
+        }
+        for (ScaleTask week : taskRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDesc(
+                task.getPatient().getId(), task.getScaleType())) {
+            if (!week.getId().equals(task.getId()) && isStillCharged(week, dayBefore)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // a mesma sequencia eh a q ja foi cobrada e continua em branco desde o dia cobrado ate ontem
@@ -373,13 +408,15 @@ public class ReminderService {
                 && catalog.definitionOf(task.getScaleType()).fillMode() == ScaleDefinition.FillMode.DIARIO;
     }
 
+    // anteontem da semana anterior ja saiu da grade hoje, entao o link abre ontem, na semana de agora
     private void sendBlankDaysReminder(ScaleTask task, LocalDate dayBefore, LocalDate yesterday) {
         Patient patient = task.getPatient();
         String days = BrazilianFormat.date(dayBefore) + " e " + BrazilianFormat.date(yesterday);
+        LocalDate dayToOpen = task.coversDay(dayBefore) ? dayBefore : yesterday;
         notificationService.createNotification(patient, "Dias em branco",
                 task.getScaleType().getDisplayName() + ": os dias " + days + " ficaram em branco. "
                         + "Escolha o dia na grade e preencha o que você lembrar.",
-                Notification.TYPE_FORM, task.getScaleType().getPath() + "?data=" + dayBefore);
+                Notification.TYPE_FORM, task.getScaleType().getPath() + "?data=" + dayToOpen);
         // o nome da escala eh dado clinico e fica so dentro do sistema
         sendEmail(patient, "Você tem dias em branco no 2AG",
                 "Os dias " + days + " ficaram em branco num formulário diário. Entre no sistema para ver qual "

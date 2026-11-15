@@ -426,7 +426,8 @@ public class ScaleTaskService {
 
     // a tarefa do acompanhamento cuja escala ficou de fora do acompanhamento q vale agora
     // sem nenhum valendo segue a regra de sempre, pq encerrar so para de mandar rodada nova
-    private boolean isRemovedFromProtocol(ScaleTask task) {
+    // o lembrete dos dias em branco tbm usa: a semana q fechou na troca n cobra mais
+    public boolean isRemovedFromProtocol(ScaleTask task) {
         if (!task.isFromProtocol()) {
             return false;
         }
