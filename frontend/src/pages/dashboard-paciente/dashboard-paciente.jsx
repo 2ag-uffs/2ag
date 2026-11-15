@@ -107,7 +107,7 @@ export default function DashboardPaciente() {
                                         </span>
                                     )}
                                     aside={(
-                                        <button type="button" className="button button-small" onClick={() => navigate(scale.path)}>
+                                        <button type="button" className="button button-small" onClick={() => navigate(scale.answerPath)}>
                                             Responder
                                         </button>
                                     )}

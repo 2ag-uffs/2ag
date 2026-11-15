@@ -35,6 +35,25 @@ function ProgressProbe() {
     return <p>progresso de {location.state.attribute} em {location.state.period}</p>;
 }
 
+function ScaleProbe() {
+    const location = useLocation();
+    return <p>tela {location.pathname + location.search}</p>;
+}
+
+// a reaberta pela anulacao e a rodada nova da mesma escala, como a api manda: so a reaberta vem com a data
+const REOPENED_AND_NEW_ROUND = [
+    {
+        id: 7, scaleType: "ESCALA_HAMILTON", scaleName: "Escala de ansiedade de Hamilton", path: "/escalas/hamilton",
+        answerPath: "/escalas/hamilton?data=2026-11-06", periodStart: "2026-11-04", periodEnd: "2026-11-16",
+        status: "PENDENTE", answeredDays: 0, totalDays: 13, daily: false, late: false,
+    },
+    {
+        id: 8, scaleType: "ESCALA_HAMILTON", scaleName: "Escala de ansiedade de Hamilton", path: "/escalas/hamilton",
+        answerPath: "/escalas/hamilton", periodStart: "2026-11-13", periodEnd: "2026-11-19",
+        status: "PENDENTE", answeredDays: 0, totalDays: 7, daily: false, late: false,
+    },
+];
+
 describe("CentralEscalas", () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -68,5 +87,38 @@ describe("CentralEscalas", () => {
 
         expect(await screen.findByText("Escala de ansiedade de Hamilton")).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Ver progresso"})).not.toBeInTheDocument();
+    });
+
+    // sem a data a tela respondia com hoje, e a resposta de hoje fechava a rodada nova e n a reaberta
+    it("o responder da tarefa reaberta pela anulacao abre a escala na data dela", async () => {
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/progress/attributes" ? ATTRIBUTES : {...SCALES_PAGE, pending: REOPENED_AND_NEW_ROUND}));
+        const router = createMemoryRouter([
+            {path: "/pacientes/:patientId/escalas", element: <CentralEscalas/>},
+            {path: "/escalas/:slug", element: <ScaleProbe/>},
+        ], {initialEntries: ["/pacientes/3/escalas"]});
+        const user = userEvent.setup();
+        render(<RouterProvider router={router}/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Responder"});
+        await user.click(buttons[0]);
+
+        expect(await screen.findByText("tela /escalas/hamilton?data=2026-11-06")).toBeInTheDocument();
+    });
+
+    it("o responder da rodada de hoje abre a escala sem data", async () => {
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/progress/attributes" ? ATTRIBUTES : {...SCALES_PAGE, pending: REOPENED_AND_NEW_ROUND}));
+        const router = createMemoryRouter([
+            {path: "/pacientes/:patientId/escalas", element: <CentralEscalas/>},
+            {path: "/escalas/:slug", element: <ScaleProbe/>},
+        ], {initialEntries: ["/pacientes/3/escalas"]});
+        const user = userEvent.setup();
+        render(<RouterProvider router={router}/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Responder"});
+        await user.click(buttons[1]);
+
+        expect(await screen.findByText("tela /escalas/hamilton")).toBeInTheDocument();
     });
 });

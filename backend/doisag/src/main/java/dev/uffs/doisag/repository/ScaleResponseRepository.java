@@ -63,6 +63,10 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
     // a tarefa teve uma resposta anulada desde aquela hora, pro job n fechar na mesma manha a semana reaberta
     boolean existsByTaskIdAndAnnulmentAnnulledAtGreaterThanEqual(Long taskId, LocalDateTime from);
 
+    // a ultima resposta anulada da tarefa, q da a data em q a tela abre a tarefa reaberta
+    Optional<ScaleResponse> findFirstByTaskIdAndAnnulmentAnnulledAtIsNotNullOrderByAnnulmentAnnulledAtDesc(
+            Long taskId);
+
     // um id de tarefa por resposta valida ligada a ela, pros indicadores contarem os dias do diario (RF39)
     @Query("select response.task.id from ScaleResponse response "
             + "where response.task.prescriber.id = :prescriberId "

@@ -248,7 +248,7 @@ public class ReminderService {
         if (responseRepository.countByTaskIdAndAnnulmentAnnulledAtIsNull(taskId) > 0) {
             return false;
         }
-        sendTaskReminder(task);
+        sendTaskReminder(task, today);
         return true;
     }
 
@@ -262,14 +262,18 @@ public class ReminderService {
                 && task.getPrescriber().isActive();
     }
 
-    private void sendTaskReminder(ScaleTask task) {
+    // a tarefa reaberta pela anulacao leva pra tela ja na data dela, como o cartao da central, senao a resposta
+    // de hoje fechava a rodada nova. o e-mail leva pra central, pq o link da tela diz o nome da escala
+    private void sendTaskReminder(ScaleTask task, LocalDate today) {
         Patient patient = task.getPatient();
         String scaleName = task.getScaleType().getDisplayName();
         String message = scaleName + " esperando resposta até " + BrazilianFormat.date(task.getPeriodEnd()) + ".";
         String link = Notification.patientScalesLink(patient.getId());
+        LocalDate dayToOpen = scaleTaskService.dayToOpenOf(task, today);
+        String noticeLink = dayToOpen == null ? link : task.getScaleType().getPath() + "?data=" + dayToOpen;
 
         notificationService.createNotification(patient, "Formulário para responder", message,
-                Notification.TYPE_FORM, link);
+                Notification.TYPE_FORM, noticeLink);
         // o nome da escala eh dado clinico e fica so dentro do sistema
         sendEmail(patient, "Você tem formulário para responder no 2AG",
                 "Você tem um formulário esperando resposta até " + BrazilianFormat.date(task.getPeriodEnd())

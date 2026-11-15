@@ -514,6 +514,76 @@ class ScaleDeliveryTest {
         assertThat(noticeOf(patient, "Formulário para responder")).isNull();
     }
 
+    // o cartao da central e do painel abre a tela pelo link da tarefa, e sem ?data= a tela responde com hoje. com a
+    // rodada seguinte aberta a resposta de hoje fechava ela e a reaberta seguia pendente, como no aviso da anulacao.
+    // o path continua so o da escala, pq a tela acha a pendente da escala por ele
+    @Test
+    void theCardOfTheReopenedTaskLeadsToADateOfItWhenTheNextRoundIsOpen() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask oldTask = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(10),
+                7, true);
+        String patientToken = bearerTokenOf(patient);
+        Number firstId = JsonPath.read(answerScale("hamilton", HAMILTON_ANSWERS,
+                "\"periodStart\":\"" + today.minusDays(8) + "\",", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        ScaleTask newRound = scaleTaskService.assign(patient.getId(), ScaleType.ESCALA_HAMILTON, today.minusDays(1),
+                7, true);
+        annul(firstId.longValue()).andExpect(status().isOk());
+
+        String overview = mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview")
+                        .header("Authorization", patientToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pending[?(@.id == " + oldTask.getId() + ")].path").value("/escalas/hamilton"))
+                .andExpect(jsonPath("$.pending[?(@.id == " + newRound.getId() + ")].answerPath")
+                        .value("/escalas/hamilton"))
+                .andReturn().getResponse().getContentAsString();
+        mockMvc.perform(get("/dashboard/patient/" + patient.getId()).header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pendingScales[?(@.taskId == " + oldTask.getId() + ")].answerPath")
+                        .value("/escalas/hamilton?data=" + today.minusDays(8)))
+                .andExpect(jsonPath("$.pendingScales[?(@.taskId == " + newRound.getId() + ")].answerPath")
+                        .value("/escalas/hamilton"));
+        // o lembrete do prazo da reaberta leva pra mesma data, e o e-mail continua sem o nome da escala
+        assertThat(reminderService.sendScaleReminders(today)).isEqualTo(1);
+        assertThat(noticeOf(patient, "Formulário para responder").getLink())
+                .isEqualTo("/escalas/hamilton?data=" + today.minusDays(8));
+
+        List<String> paths = JsonPath.read(overview, "$.pending[?(@.id == " + oldTask.getId() + ")].answerPath");
+        String path = paths.get(0);
+        // como a tela: a data da url, ou hoje sem ela
+        String day = path.contains("?data=") ? path.substring(path.indexOf("?data=") + 6) : today.toString();
+        answerScale("hamilton", HAMILTON_ANSWERS, "\"periodStart\":\"" + day + "\",\"periodEnd\":\"" + day + "\",",
+                patientToken).andExpect(status().isCreated());
+
+        assertThat(taskRepository.findById(oldTask.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(taskRepository.findById(newRound.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+    }
+
+    // no diario o cartao da semana reaberta abre a grade no dia anulado, e o da semana de hoje abre em hoje
+    @Test
+    void theCardOfTheReopenedDiaryWeekLeadsToTheAnnulledDay() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask reopenedWeek = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(9), 7, true);
+        String patientToken = bearerTokenOf(patient);
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}",
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        scaleTaskService.closeOverdue(today.minusDays(1));
+        ScaleTask currentWeek = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(2), 7, true);
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/scales/overview").header("Authorization", patientToken))
+                .andExpect(jsonPath("$.pending[?(@.id == " + reopenedWeek.getId() + ")].answerPath")
+                        .value("/escalas/acompanhamento-semanal?data=" + today.minusDays(5)))
+                .andExpect(jsonPath("$.pending[?(@.id == " + currentWeek.getId() + ")].answerPath")
+                        .value("/escalas/acompanhamento-semanal"));
+    }
+
     // na escala de periodo o aviso diz o periodo inteiro, pq a tela pede o inicio e o fim
     @Test
     void theAnnulmentNoticeOfAPeriodScaleSaysThePeriodWhenTheNextRoundIsOpen() throws Exception {

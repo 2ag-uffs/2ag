@@ -34,7 +34,9 @@ public record PatientDashboardDTO(
             String name,
             LocalDate deadline,
             boolean late,
-            String path
+            String path,
+            // o link do botao responder, com a data da tarefa reaberta pela anulacao como na central
+            String answerPath
     ) {}
 
     // a prescricao q esta valendo, pra ele n precisar procurar a dose

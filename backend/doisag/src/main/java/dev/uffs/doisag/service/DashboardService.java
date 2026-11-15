@@ -42,19 +42,22 @@ public class DashboardService {
     private final PrescriptionRepository prescriptionRepository;
     private final NotificationRepository notificationRepository;
     private final AuditService auditService;
+    private final ScaleTaskService scaleTaskService;
 
     public DashboardService(PatientRepository patientRepository,
                             AppointmentRepository appointmentRepository,
                             ScaleTaskRepository taskRepository,
                             PrescriptionRepository prescriptionRepository,
                             NotificationRepository notificationRepository,
-                            AuditService auditService) {
+                            AuditService auditService,
+                            ScaleTaskService scaleTaskService) {
         this.patientRepository = patientRepository;
         this.appointmentRepository = appointmentRepository;
         this.taskRepository = taskRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.notificationRepository = notificationRepository;
         this.auditService = auditService;
+        this.scaleTaskService = scaleTaskService;
     }
 
     @Transactional(readOnly = true)
@@ -189,7 +192,8 @@ public class DashboardService {
                 task.getScaleType().getDisplayName(),
                 task.getPeriodEnd(),
                 task.getPeriodEnd().isBefore(today),
-                task.getScaleType().getPath());
+                task.getScaleType().getPath(),
+                scaleTaskService.answerPathOf(task, today));
     }
 
     private PatientDashboardDTO.CurrentPrescriptionDTO currentPrescriptionOf(Prescription prescription) {

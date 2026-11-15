@@ -1,5 +1,6 @@
 import {render, screen} from "@testing-library/react";
-import {createMemoryRouter} from "react-router";
+import userEvent from "@testing-library/user-event";
+import {createMemoryRouter, useLocation} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {apiService, setLoggedUser} from "../../services/api.js";
@@ -25,9 +26,16 @@ function fiveItemsOf(makeItem) {
     return [1, 2, 3, 4, 5].map(makeItem);
 }
 
+function ScaleProbe() {
+    const location = useLocation();
+    return <p>tela {location.pathname + location.search}</p>;
+}
+
 function renderPanel() {
-    const router = createMemoryRouter([{path: "/painel", element: <DashboardPaciente/>}],
-        {initialEntries: ["/painel"]});
+    const router = createMemoryRouter([
+        {path: "/painel", element: <DashboardPaciente/>},
+        {path: "/escalas/:slug", element: <ScaleProbe/>},
+    ], {initialEntries: ["/painel"]});
     render(<RouterProvider router={router}/>);
 }
 
@@ -82,6 +90,25 @@ describe("DashboardPaciente", () => {
         expect(screen.getByRole("heading", {name: /Esperando resposta/})).toHaveTextContent("Esperando resposta7");
         expect(screen.getByText("Mostrando 5 de 8.")).toBeInTheDocument();
         expect(screen.getByText("Mostrando 5 de 7.")).toBeInTheDocument();
+    });
+
+    // a tarefa reaberta pela anulacao abre na data dela, como na central, senao a resposta de hoje fechava a
+    // rodada nova da mesma escala
+    it("o responder da escala reaberta pela anulacao abre a tela na data dela", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: [{
+                taskId: 7, name: "Escala de ansiedade de Hamilton", deadline: "2026-11-16", late: false,
+                path: "/escalas/hamilton", answerPath: "/escalas/hamilton?data=2026-11-06",
+            }],
+            pendingScalesTotal: 1,
+        });
+        const user = userEvent.setup();
+        renderPanel();
+
+        await user.click(await screen.findByRole("button", {name: "Responder"}));
+
+        expect(await screen.findByText("tela /escalas/hamilton?data=2026-11-06")).toBeInTheDocument();
     });
 
     it("qnd a lista cabe inteira no cartao n aparece o mostrando", async () => {

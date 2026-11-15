@@ -21,9 +21,11 @@ public record ScaleTaskDTO(
         // so o diario tem grade de dias pra preencher
         boolean daily,
         boolean late,
-        String patientName
+        String patientName,
+        // o link do botao responder: o path, e na tarefa reaberta pela anulacao com a data dela (?data=)
+        String answerPath
 ) {
-    public ScaleTaskDTO(ScaleTask task, long answeredDays, LocalDate today, boolean daily) {
+    public ScaleTaskDTO(ScaleTask task, long answeredDays, LocalDate today, boolean daily, String answerPath) {
         this(
                 task.getId(),
                 task.getScaleType(),
@@ -36,7 +38,8 @@ public record ScaleTaskDTO(
                 (int) task.totalDays(),
                 daily,
                 task.getStatus().isOpen() && task.getPeriodEnd().isBefore(today),
-                task.getPatient().getDisplayName()
+                task.getPatient().getDisplayName(),
+                answerPath
         );
     }
 }

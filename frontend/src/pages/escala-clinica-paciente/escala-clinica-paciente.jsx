@@ -128,8 +128,10 @@ export default function CentralEscalas() {
                     />
                 ) : (
                     <ul className={styles.cards}>
+                        {/* o link da api ja vem com a data da tarefa reaberta pela anulacao, senao a resposta de
+                            hoje fechava a rodada nova da mesma escala */}
                         {page.pending.map((task) => (
-                            <PendingTaskCard key={task.id} task={task} onAnswer={() => navigate(task.path)}/>
+                            <PendingTaskCard key={task.id} task={task} onAnswer={() => navigate(task.answerPath)}/>
                         ))}
                     </ul>
                 )}

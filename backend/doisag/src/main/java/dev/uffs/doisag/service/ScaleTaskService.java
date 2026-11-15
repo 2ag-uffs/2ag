@@ -397,6 +397,28 @@ public class ScaleTaskService {
                 Notification.TYPE_FORM, scaleType.getPath() + "?data=" + annulledDay);
     }
 
+    // o link do botao responder da pendente, na central e no painel, e do lembrete do prazo
+    // a reaberta pela anulacao abre na data anulada, como o aviso da anulacao, qnd hoje eh de outra pendente da
+    // mesma escala ou fica fora dela (a semana do diario reaberta): a tela sem data responde com hoje, e a resposta
+    // de hoje fechava a rodada nova enquanto a reaberta seguia pendente ate virar nao respondida
+    public String answerPathOf(ScaleTask task, LocalDate today) {
+        LocalDate day = dayToOpenOf(task, today);
+        String path = task.getScaleType().getPath();
+        return day == null ? path : path + "?data=" + day;
+    }
+
+    // sem data a tela abre em hoje
+    public LocalDate dayToOpenOf(ScaleTask task, LocalDate today) {
+        if (task.getStatus() != ScaleTaskStatus.PENDENTE
+                || (task.coversDay(today) && !anotherPendingCoversToday(task, today))) {
+            return null;
+        }
+        return responseRepository.findFirstByTaskIdAndAnnulmentAnnulledAtIsNotNullOrderByAnnulmentAnnulledAtDesc(
+                        task.getId())
+                .map(ScaleResponse::getPeriodStart)
+                .orElse(null);
+    }
+
     // a pendente q cobre hoje eh outra q n a reaberta (a rodada seguinte, ou uma avulsa enviada depois)
     private boolean anotherPendingCoversToday(ScaleTask reopened, LocalDate today) {
         Optional<ScaleTask> taskOfToday = pendingTaskOfDay(reopened.getPatient().getId(), reopened.getScaleType(),
@@ -671,7 +693,8 @@ public class ScaleTaskService {
     }
 
     private ScaleTaskDTO dtoOf(ScaleTask task, LocalDate today) {
-        return new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType()));
+        return new ScaleTaskDTO(task, validAnswersOf(task), today, isDaily(task.getScaleType()),
+                answerPathOf(task, today));
     }
 
     // a tarefa q ja existia na hora da rodada passa a ser a rodada, com o prazo dela: a avulsa aberta
