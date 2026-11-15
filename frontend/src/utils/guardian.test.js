@@ -91,11 +91,23 @@ describe("findGuardianErrors", () => {
 describe("isMinorPatient", () => {
     afterEach(() => {
         vi.useRealTimers();
+        vi.unstubAllEnvs();
+    });
+
+    // a idade conta o dia de brasilia, entao o relogio do teste tbm eh fixado em brasilia: pela hora local,
+    // as 10h de 16/10 em toquio ainda sao 22h de 15/10 em brasilia e o teste falhava na maquina de la
+    it("no dia do aniversario de 18 ja eh adulto msm com a maquina em toquio", () => {
+        vi.stubEnv("TZ", "Asia/Tokyo");
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-16T10:00:00-03:00"));
+
+        expect(isMinorPatient("2008-10-16")).toBe(false);
+        expect(isMinorPatient("2008-10-17")).toBe(true);
     });
 
     it("no dia do aniversario de 18 ja eh adulto e na vespera ainda eh menor", () => {
         vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 9, 16, 10, 0));
+        vi.setSystemTime(new Date("2026-10-16T10:00:00-03:00"));
 
         expect(isMinorPatient("2008-10-16")).toBe(false);
         expect(isMinorPatient("2008-10-17")).toBe(true);
@@ -105,10 +117,10 @@ describe("isMinorPatient", () => {
     it("quem nasceu em 29 de fevereiro faz 18 em 1o de marco", () => {
         vi.useFakeTimers();
 
-        vi.setSystemTime(new Date(2026, 1, 28, 10, 0));
+        vi.setSystemTime(new Date("2026-02-28T10:00:00-03:00"));
         expect(isMinorPatient("2008-02-29")).toBe(true);
 
-        vi.setSystemTime(new Date(2026, 2, 1, 10, 0));
+        vi.setSystemTime(new Date("2026-03-01T10:00:00-03:00"));
         expect(isMinorPatient("2008-02-29")).toBe(false);
     });
 
@@ -126,7 +138,7 @@ describe("ageBandOf", () => {
     // menor de 16 eh representado pelo responsavel, com 16 e 17 eh assistido (Codigo Civil arts. 3 e 4)
     it("separa adulto, 16 e 17 anos e menor de 16", () => {
         vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 9, 16, 10, 0));
+        vi.setSystemTime(new Date("2026-10-16T10:00:00-03:00"));
 
         expect(ageBandOf("2008-10-16")).toBe("adult");
         expect(ageBandOf("2008-10-17")).toBe("16-17");
