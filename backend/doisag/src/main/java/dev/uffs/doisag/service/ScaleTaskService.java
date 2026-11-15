@@ -515,6 +515,14 @@ public class ScaleTaskService {
         if (!stillOverdue) {
             return false;
         }
+        // a semana do diario reaberta pela anulacao de hoje, antes do job das 8h, aceita os dias dela ate o job
+        // de amanha, como o aviso diz. senao ela fechava minutos dps da anulacao e o dia preenchido de novo
+        // ficava solto. a reaberta eh a q ficou sem dia no prazo, e a q ainda tem um fecha agora como sempre
+        if (isDaily(task.getScaleType()) && onTimeAnswersOf(task) == 0
+                && responseRepository.existsByTaskIdAndAnnulmentAnnulledAtGreaterThanEqual(taskId,
+                today.atStartOfDay())) {
+            return false;
+        }
         closeByAnswers(task, task.getPeriodEnd());
         // no diario o prescritor recebe um aviso por periodo e n um por dia (RF15)
         if (isDaily(task.getScaleType())) {

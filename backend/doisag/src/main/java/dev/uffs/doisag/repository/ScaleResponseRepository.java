@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,6 +59,9 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
 
     // so as q chegaram com a tarefa aberta: o dia atrasado do diario n deixa a semana respondida
     long countByTaskIdAndFilledLateFalseAndAnnulmentAnnulledAtIsNull(Long taskId);
+
+    // a tarefa teve uma resposta anulada desde aquela hora, pro job n fechar na mesma manha a semana reaberta
+    boolean existsByTaskIdAndAnnulmentAnnulledAtGreaterThanEqual(Long taskId, LocalDateTime from);
 
     // um id de tarefa por resposta valida ligada a ela, pros indicadores contarem os dias do diario (RF39)
     @Query("select response.task.id from ScaleResponse response "

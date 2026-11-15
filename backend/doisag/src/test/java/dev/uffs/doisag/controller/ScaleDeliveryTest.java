@@ -11,6 +11,7 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.scale.ScaleCatalog;
 import dev.uffs.doisag.security.TokenService;
@@ -56,6 +57,7 @@ class ScaleDeliveryTest {
     @Autowired private TokenService tokenService;
     @Autowired private ScaleTaskService scaleTaskService;
     @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
     @Autowired private ReminderService reminderService;
     @Autowired private NotificationRepository notificationRepository;
@@ -372,6 +374,69 @@ class ScaleDeliveryTest {
         assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
                 .isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
         assertThat(noticeOf(patient, "Formulário para responder")).isNull();
+    }
+
+    // a anulacao q chega antes do job das 8h: o job desse dia n fecha a semana reaberta, so o de amanha
+    @Test
+    void annullingADiaryDayBeforeTheMorningJobKeepsTheWeekOpenUntilTheNextMorning() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(9), 7, true);
+        String annulledDay = "\"periodStart\":\"" + today.minusDays(5) + "\",";
+        String patientToken = bearerTokenOf(patient);
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", annulledDay, patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        // o job de ontem fecha a semana
+        scaleTaskService.closeOverdue(today.minusDays(1));
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+        assertThat(noticeOf(patient, "Escala para responder de novo").getMessage())
+                .contains("Preencha o dia " + formatDate(today.minusDays(5)) + " de novo até amanhã de manhã.");
+
+        // o job de hoje roda dps da anulacao, e o lembrete do prazo n cobra a semana q ja passou do prazo
+        scaleTaskService.closeOverdue(today);
+        reminderService.sendScaleReminders(today);
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(noticeOf(patient, "Formulário para responder")).isNull();
+
+        Number newDayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":2}", annulledDay,
+                patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        // o dia preenchido de novo fica com a semana reaberta
+        assertThat(responseRepository.findById(newDayId.longValue()).orElseThrow().getTask().getId())
+                .isEqualTo(task.getId());
+        scaleTaskService.closeOverdue(today.plusDays(1));
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+    }
+
+    // a semana q segue com dia no prazo n foi reaberta: anular outro dia dela antes do job das 8h n segura a
+    // semana, e o job dessa manha fecha ela como sempre
+    @Test
+    void annullingOneOfSeveralDiaryDaysBeforeTheMorningJobStillClosesTheWeekThatMorning() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(7), 7, true);
+        String patientToken = bearerTokenOf(patient);
+        answerScale("acompanhamento-semanal", "{\"dor\":3}", "\"periodStart\":\"" + today.minusDays(6) + "\",",
+                patientToken).andExpect(status().isCreated());
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":2}",
+                "\"periodStart\":\"" + today.minusDays(5) + "\",", patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+        scaleTaskService.closeOverdue(today);
+
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
     }
 
     // a tarefa q continua aberta n foi reaberta, entao a anulacao de um dia dela n vira aviso

@@ -218,7 +218,7 @@ public class ReminderService {
         for (ScaleTask found : taskRepository.findByStatusAndPeriodEndLessThanEqualAndReminderSentAtIsNull(
                 ScaleTaskStatus.PENDENTE, lastDay)) {
             try {
-                Boolean wasSent = transactionTemplate.execute(status -> remindTask(found.getId(), lastDay));
+                Boolean wasSent = transactionTemplate.execute(status -> remindTask(found.getId(), today));
                 if (Boolean.TRUE.equals(wasSent)) {
                     sent++;
                 }
@@ -234,14 +234,14 @@ public class ReminderService {
         return sent;
     }
 
-    private boolean remindTask(Long taskId, LocalDate lastDay) {
+    private boolean remindTask(Long taskId, LocalDate today) {
         Long patientId = taskRepository.findPatientIdById(taskId).orElse(null);
         if (patientId == null) {
             return false;
         }
         patientRepository.lockById(patientId);
         ScaleTask task = rowLock.reload(ScaleTask.class, taskId).orElse(null);
-        if (task == null || !canTaskBeReminded(task, lastDay)) {
+        if (task == null || !canTaskBeReminded(task, today)) {
             return false;
         }
         // quem ja comecou a responder n precisa de cobranca
@@ -253,9 +253,12 @@ public class ReminderService {
     }
 
     // sem o prescritor ninguem le a resposta, entao o lembrete espera a conta dele voltar (#148)
-    private boolean canTaskBeReminded(ScaleTask task, LocalDate lastDay) {
+    // o prazo q ja passou n vira "esperando resposta ate" uma data de antes de hoje: a semana do diario reaberta
+    // antes do job das 8h fica pendente ate o job de amanha, sem lembrete
+    private boolean canTaskBeReminded(ScaleTask task, LocalDate today) {
         return task.getStatus() == ScaleTaskStatus.PENDENTE && task.getReminderSentAt() == null
-                && !task.getPeriodEnd().isAfter(lastDay)
+                && !task.getPeriodEnd().isBefore(today)
+                && !task.getPeriodEnd().isAfter(today.plusDays(SCALE_REMINDER_DAYS))
                 && task.getPrescriber().isActive();
     }
 
