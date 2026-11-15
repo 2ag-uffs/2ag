@@ -71,9 +71,11 @@ class ConsentTermRaceTest {
     void theSecondTabWaitsForTheFirstAcceptanceAndKeepsOneRecord() throws Exception {
         HeldLock.Outcome<Object> outcome = heldLock.run(
                 () -> patientRepository.lockById(patient.getId()),
-                () -> consentTermService.acceptNewVersion(patient.getId(), ConsentTermService.CURRENT_VERSION, null),
+                () -> consentTermService.acceptNewVersion(patient.getId(), ConsentTermService.CURRENT_VERSION,
+                        consentTermService.getCurrentTerm().textHash(), null),
                 () -> {
-                    consentTermService.acceptNewVersion(patient.getId(), ConsentTermService.CURRENT_VERSION, null);
+                    consentTermService.acceptNewVersion(patient.getId(), ConsentTermService.CURRENT_VERSION,
+                            consentTermService.getCurrentTerm().textHash(), null);
                     return null;
                 });
 

@@ -12,11 +12,13 @@ import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.ConsentTermService;
 import dev.uffs.doisag.service.PatientInviteService;
 import dev.uffs.doisag.service.PatientService;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +27,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,6 +67,9 @@ class ConsentTermTest {
     @Autowired private ConsentTermService consentTermService;
     @Autowired private PatientInviteService patientInviteService;
     @Autowired private TokenService tokenService;
+    @Autowired private UsersRepository usersRepository;
+
+    private static final String DPO_MARKER = "[CONTATO DO ENCARREGADO DE DADOS DA CLÍNICA]";
 
     private Prescriber prescriber;
     private Patient patient;
@@ -105,11 +114,22 @@ class ConsentTermTest {
                 + guardian + "}";
     }
 
+    // o aceite manda a versao e o hash do texto q a tela mostrou, como o front faz
+    private String currentTermJson() {
+        return "\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\",\"termHash\":\""
+                + consentTermService.getCurrentTerm().textHash() + "\"";
+    }
+
+    private String researchTermJson() {
+        return "\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\",\"termHash\":\""
+                + consentTermService.getResearchTerm().textHash() + "\"";
+    }
+
     private void acceptCurrentVersion() throws Exception {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.termPending").value(false));
     }
@@ -143,7 +163,32 @@ class ConsentTermTest {
         mockMvc.perform(get("/consent-term"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(ConsentTermService.CURRENT_VERSION))
-                .andExpect(jsonPath("$.text").value(containsString("13.709/2018")));
+                .andExpect(jsonPath("$.text").value(containsString("13.709/2018")))
+                // o aceite manda de volta o hash do texto q a tela mostrou
+                .andExpect(jsonPath("$.textHash")
+                        .value(SecureTokens.hashToken(consentTermService.getCurrentTerm().text())));
+    }
+
+    // sem o hash a api n sabe qual texto a pessoa leu, entao o aceite volta como versao desatualizada
+    @Test
+    void acceptanceWithoutTheHashOfTheTextShownIsRefused() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsentTermService.OUTDATED_RESEARCH_MESSAGE));
+
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termVersion").containsExactly("2026-01-versao-antiga");
     }
 
     // clausula em destaque pro responsavel legal do menor de 18 (LGPD art. 14 e Codigo Civil)
@@ -212,7 +257,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/research/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                        .content("{" + researchTermJson() + "}"))
                 .andExpect(status().isOk());
 
         String termText = consentTermService.getCurrentTerm().text();
@@ -265,7 +310,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("PATIENT"))
                 .andExpect(jsonPath("$.termPending").value(false));
@@ -305,7 +350,7 @@ class ConsentTermTest {
     @Test
     void acceptingTwiceKeepsOneRecordOfTheVersion() throws Exception {
         consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
-        String body = "{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}";
+        String body = "{" + currentTermJson() + "}";
 
         for (int attempt = 0; attempt < 2; attempt++) {
             mockMvc.perform(post("/consent-term/accept")
@@ -329,7 +374,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.termPending").value(false));
 
@@ -348,15 +393,15 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("guardian.name"))
                 .andExpect(jsonPath("$.errors[0].message").value(GuardianDTO.LEGAL_GUARDIAN_NAME_MESSAGE));
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
-                                + "\",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\" \"}}"))
+                        .content("{" + currentTermJson()
+                                + ",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\" \"}}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"));
 
@@ -375,8 +420,8 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
-                                + "\",\"guardian\":{\"name\":\" Joana Souza \",\"relationship\":\"mãe\"}}"))
+                        .content("{" + currentTermJson()
+                                + ",\"guardian\":{\"name\":\" Joana Souza \",\"relationship\":\"mãe\"}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.termPending").value(false));
 
@@ -401,7 +446,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("guardian.relationship"))
                 .andExpect(jsonPath("$.errors[0].message").value(GuardianDTO.LEGAL_GUARDIAN_RELATIONSHIP_MESSAGE));
@@ -412,8 +457,8 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
-                                + "\",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\"mãe\","
+                        .content("{" + currentTermJson()
+                                + ",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\"mãe\","
                                 + "\"phone\":\"49988776655\"}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.termPending").value(false));
@@ -448,8 +493,8 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
-                                + "\",\"guardian\":{\"name\":\"Outra Pessoa\",\"relationship\":\"tia\"}}"))
+                        .content("{" + currentTermJson()
+                                + ",\"guardian\":{\"name\":\"Outra Pessoa\",\"relationship\":\"tia\"}}"))
                 .andExpect(status().isOk());
 
         assertThat(patientRepository.findById(patient.getId()).orElseThrow().getGuardianName())
@@ -481,8 +526,8 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
-                                + "\",\"guardian\":{\"phone\":\"49911112222\"}}"))
+                        .content("{" + currentTermJson()
+                                + ",\"guardian\":{\"phone\":\"49911112222\"}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.termPending").value(false));
 
@@ -592,7 +637,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(jsonPath("$.termPending").value(false));
 
         assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
@@ -606,12 +651,14 @@ class ConsentTermTest {
         mockMvc.perform(get("/consent-term/research"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(ConsentTermService.RESEARCH_VERSION))
-                .andExpect(jsonPath("$.text").value(containsString("opcional")));
+                .andExpect(jsonPath("$.text").value(containsString("opcional")))
+                .andExpect(jsonPath("$.textHash")
+                        .value(SecureTokens.hashToken(consentTermService.getResearchTerm().text())));
     }
 
     @Test
     void patientAcceptsAndRevokesTheResearchAndTheHistoryStays() throws Exception {
-        String body = "{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}";
+        String body = "{" + researchTermJson() + "}";
 
         mockMvc.perform(post("/consent-term/research/accept")
                         .header("Authorization", bearerTokenOf(patient))
@@ -663,7 +710,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/research/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                        .content("{" + researchTermJson() + "}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(ConsentTermService.MINOR_RESEARCH_MESSAGE));
 
@@ -675,7 +722,7 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/research/accept")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION + "\"}"))
+                        .content("{" + researchTermJson() + "}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/consent-term/research/revoke").header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isForbidden());
@@ -688,11 +735,104 @@ class ConsentTermTest {
         mockMvc.perform(post("/consent-term/accept")
                         .header("Authorization", bearerTokenOf(prescriber))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/consent-term/accept")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
+                        .content("{" + currentTermJson() + "}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private String textOf(String path) throws Exception {
+        String body = mockMvc.perform(get(path)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        return JsonPath.read(body, "$.text");
+    }
+
+    // simula a clinica trocando o CLINIC_DPO_CONTACT e reiniciando a api: o texto muda e a versao n
+    private void restartWithAnotherDpoContact(String field, String textShown) {
+        assertThat(textShown).contains(DPO_MARKER);
+        ReflectionTestUtils.setField(consentTermService, field, textShown.replace(DPO_MARKER, "contato-b@exemplo.com"));
+    }
+
+    // o aceite q passou tem q guardar o hash do texto q a pessoa leu, e o q n bate volta como versao desatualizada
+    private void expectNoHashOfAnUnseenText(MvcResult result, List<ConsentAcceptance> acceptances, String textShown,
+                                            String outdatedMessage) throws Exception {
+        assertThat(acceptances).allSatisfy(acceptance -> assertThat(acceptance.getTermHash())
+                .as("hash gravado tem q ser o do texto q a pessoa leu")
+                .isEqualTo(SecureTokens.hashToken(textShown)));
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(result.getResponse().getContentAsString(StandardCharsets.UTF_8)).contains(outdatedMessage);
+    }
+
+    // a tela do cadastro pegou o texto e a api reiniciou com outro contato antes do envio (revisao das regras R21)
+    @Test
+    void signUpAfterTheTextChangedDoesNotKeepTheHashOfAnUnseenText() throws Exception {
+        String textShown = textOf("/consent-term");
+        String email = "termo-trocado@email.com";
+        String body = """
+                {"inviteToken":"%s","name":"Maria da Silva","cpf":"16899535009","birthDate":"1990-04-12",
+                 "phone":"49999887766","email":"%s","password":"Minha#Senha1","consentTermVersion":"%s",
+                 "consentTermHash":"%s",
+                 "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"sc"}}
+                """.formatted(patientInviteService.createInvite(prescriber.getId()).token(), email,
+                ConsentTermService.CURRENT_VERSION, SecureTokens.hashToken(textShown));
+        restartWithAnotherDpoContact("termText", textShown);
+        try {
+            MvcResult result = mockMvc.perform(post("/auth/register")
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andReturn();
+
+            List<ConsentAcceptance> acceptances = usersRepository.findByEmail(email)
+                    .map(user -> consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(user.getId()))
+                    .orElse(List.of());
+            expectNoHashOfAnUnseenText(result, acceptances, textShown, PatientService.OUTDATED_TERM_MESSAGE);
+        } finally {
+            ReflectionTestUtils.setField(consentTermService, "termText", textShown);
+        }
+    }
+
+    @Test
+    void acceptingTheNewVersionAfterTheTextChangedDoesNotKeepTheHashOfAnUnseenText() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        String textShown = textOf("/consent-term");
+        restartWithAnotherDpoContact("termText", textShown);
+        try {
+            MvcResult result = mockMvc.perform(post("/consent-term/accept")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                    + "\",\"termHash\":\"" + SecureTokens.hashToken(textShown) + "\"}"))
+                    .andReturn();
+
+            List<ConsentAcceptance> acceptances = consentAcceptanceRepository
+                    .findAllByUserIdOrderByAcceptedAtDesc(patient.getId()).stream()
+                    .filter(acceptance -> acceptance.getTermVersion().equals(ConsentTermService.CURRENT_VERSION))
+                    .toList();
+            expectNoHashOfAnUnseenText(result, acceptances, textShown, PatientService.OUTDATED_TERM_MESSAGE);
+        } finally {
+            ReflectionTestUtils.setField(consentTermService, "termText", textShown);
+        }
+    }
+
+    @Test
+    void acceptingTheResearchAfterTheTextChangedDoesNotKeepTheHashOfAnUnseenText() throws Exception {
+        String textShown = textOf("/consent-term/research");
+        restartWithAnotherDpoContact("researchText", textShown);
+        try {
+            MvcResult result = mockMvc.perform(post("/consent-term/research/accept")
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"termVersion\":\"" + ConsentTermService.RESEARCH_VERSION
+                                    + "\",\"termHash\":\"" + SecureTokens.hashToken(textShown) + "\"}"))
+                    .andReturn();
+
+            List<ConsentAcceptance> acceptances = consentAcceptanceRepository
+                    .findAllByUserIdOrderByAcceptedAtDesc(patient.getId()).stream()
+                    .filter(acceptance -> acceptance.getTermType() == ConsentType.RESEARCH)
+                    .toList();
+            expectNoHashOfAnUnseenText(result, acceptances, textShown, ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
+        } finally {
+            ReflectionTestUtils.setField(consentTermService, "researchText", textShown);
+        }
     }
 }

@@ -364,6 +364,7 @@ class EmailChangeRaceTest {
                 () -> emailChangeService.confirm(token),
                 () -> {
                     consentTermService.acceptNewVersion(patient.getId(), ConsentTermService.CURRENT_VERSION,
+                            consentTermService.getCurrentTerm().textHash(),
                             new GuardianDTO("Joana Souza", "mãe", "49988776655"));
                     return null;
                 });

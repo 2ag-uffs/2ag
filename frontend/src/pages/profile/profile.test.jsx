@@ -173,6 +173,28 @@ describe("Profile", () => {
         expect(post).toHaveBeenCalledTimes(1);
     });
 
+    // o aceite manda o hash do texto q o modal mostrou, e a api recusa se o texto mudou dps (revisao das regras R21)
+    it("aceitar a pesquisa manda a versao e o hash do texto mostrado", async () => {
+        const profile = {
+            ...PATIENT_PROFILE, birthDate: "1990-01-01",
+            researchConsent: {active: false, acceptedAt: null, termChanged: false},
+        };
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(path === "/consent-term/research"
+            ? {version: "1.0", text: "Texto do termo de pesquisa.", textHash: "hash do termo de pesquisa"}
+            : profile));
+        const post = vi.spyOn(apiService, "post")
+            .mockResolvedValue({active: true, acceptedAt: "2026-11-14T10:00:00", termChanged: false});
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        await user.click(await screen.findByRole("button", {name: "Ler o termo e decidir"}));
+        await user.click(await screen.findByRole("button", {name: "Aceito participar"}));
+
+        expect(await screen.findByText(/^Obrigado/)).toBeInTheDocument();
+        expect(post).toHaveBeenCalledWith("/consent-term/research/accept",
+            {termVersion: "1.0", termHash: "hash do termo de pesquisa"});
+    });
+
     // a senha atual errada voltava da api e o foco ficava no botao, sem o leitor de tela dizer nada (CT-39)
     it("a senha atual recusada pela api leva o foco pro campo com o erro", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);

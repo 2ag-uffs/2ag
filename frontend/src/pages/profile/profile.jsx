@@ -621,7 +621,8 @@ function ResearchCard({profile, onChanged}) {
     };
 
     const accept = async () => {
-        const isSaved = await saveChoice("/consent-term/research/accept", {termVersion: term.version},
+        const isSaved = await saveChoice("/consent-term/research/accept",
+            {termVersion: term.version, termHash: term.textHash},
             "Obrigado. Você aceitou participar da pesquisa.");
         if (isSaved) {
             return;

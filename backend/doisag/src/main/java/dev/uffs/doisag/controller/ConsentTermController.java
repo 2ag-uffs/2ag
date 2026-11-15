@@ -38,7 +38,7 @@ public class ConsentTermController {
     public SessionUserDTO acceptNewVersion(@RequestBody @Valid TermAcceptanceDTO acceptanceData,
                                            @AuthenticationPrincipal Patient loggedPatient) {
         consentTermService.acceptNewVersion(loggedPatient.getId(), acceptanceData.termVersion(),
-                acceptanceData.guardian());
+                acceptanceData.termHash(), acceptanceData.guardian());
         return new SessionUserDTO(loggedPatient);
     }
 
@@ -52,7 +52,7 @@ public class ConsentTermController {
     @PostMapping("/research/accept")
     public ResearchConsentDTO acceptResearch(@RequestBody @Valid TermAcceptanceDTO acceptanceData,
                                              @AuthenticationPrincipal Patient loggedPatient) {
-        consentTermService.acceptResearch(loggedPatient, acceptanceData.termVersion());
+        consentTermService.acceptResearch(loggedPatient, acceptanceData.termVersion(), acceptanceData.termHash());
         return consentTermService.researchConsentOf(loggedPatient.getId());
     }
 

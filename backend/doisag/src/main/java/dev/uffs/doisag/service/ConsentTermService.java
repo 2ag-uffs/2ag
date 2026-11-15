@@ -104,16 +104,22 @@ public class ConsentTermService {
     }
 
     public ConsentTermDTO getCurrentTerm() {
-        return new ConsentTermDTO(CURRENT_VERSION, termText);
+        return new ConsentTermDTO(CURRENT_VERSION, termText, SecureTokens.hashToken(termText));
     }
 
     public ConsentTermDTO getResearchTerm() {
-        return new ConsentTermDTO(RESEARCH_VERSION, researchText);
+        return new ConsentTermDTO(RESEARCH_VERSION, researchText, SecureTokens.hashToken(researchText));
     }
 
-    // o cadastro so vale com a versao do termo q esta valendo agora
-    public boolean isCurrentVersion(String termVersion) {
-        return CURRENT_VERSION.equals(termVersion);
+    // o aceite so vale com a versao e o texto q estao valendo agora. a clinica pode trocar um dado dela e
+    // reiniciar a api com a tela aberta: o texto muda e a versao n, e sem conferir o hash o aceite guardava
+    // o de um texto q a pessoa nunca leu. a recusa eh a msm da versao desatualizada (revisao das regras R21)
+    public boolean isCurrentTerm(String termVersion, String termHash) {
+        return CURRENT_VERSION.equals(termVersion) && SecureTokens.hashToken(termText).equals(termHash);
+    }
+
+    public boolean isCurrentResearchTerm(String termVersion, String termHash) {
+        return RESEARCH_VERSION.equals(termVersion) && SecureTokens.hashToken(researchText).equals(termHash);
     }
 
     // guarda quem aceitou qual versao e quando
@@ -202,8 +208,8 @@ public class ConsentTermService {
     }
 
     @Transactional
-    public void acceptNewVersion(Long patientId, String termVersion, GuardianDTO guardian) {
-        if (!isCurrentVersion(termVersion)) {
+    public void acceptNewVersion(Long patientId, String termVersion, String termHash, GuardianDTO guardian) {
+        if (!isCurrentTerm(termVersion, termHash)) {
             throw new BusinessException(PatientService.OUTDATED_TERM_MESSAGE);
         }
         // o paciente vem do banco e n da sessao: salvar o objeto da sessao gravava por cima
@@ -258,8 +264,8 @@ public class ConsentTermService {
     }
 
     @Transactional
-    public void acceptResearch(Patient patient, String termVersion) {
-        if (!RESEARCH_VERSION.equals(termVersion)) {
+    public void acceptResearch(Patient patient, String termVersion, String termHash) {
+        if (!isCurrentResearchTerm(termVersion, termHash)) {
             throw new BusinessException(OUTDATED_RESEARCH_MESSAGE);
         }
         if (patient.isMinor()) {

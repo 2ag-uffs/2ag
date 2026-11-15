@@ -834,6 +834,45 @@ describe("AppLayout", () => {
         expect(post).toHaveBeenLastCalledWith("/consent-term/accept", {termVersion: "v3"});
     });
 
+    // a clinica troca o contato do encarregado e reinicia a api com o aceite aberto: o texto muda e a versao n
+    it("o aceite busca o termo de novo qnd so o texto mudou com a tela aberta", async () => {
+        let termText = "texto do termo com contato-a";
+        vi.spyOn(apiService, "get").mockImplementation((path) => {
+            if (path === "/profile") {
+                return Promise.resolve({id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null});
+            }
+            if (path === "/auth/me") {
+                return Promise.resolve({
+                    id: 3, name: "Maria Souza", role: "PATIENT", termPending: true, termPendingByAge: false,
+                });
+            }
+            return Promise.resolve({version: "v2", text: termText, textHash: "hash de " + termText});
+        });
+        const post = vi.spyOn(apiService, "post").mockImplementation((path, body) => {
+            if (body.termHash !== "hash de " + termText) {
+                return Promise.reject(new ApiError(400,
+                    "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar", null));
+            }
+            return Promise.resolve({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});
+        });
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: true});
+        openLayoutAt("/painel-paciente");
+
+        expect(await screen.findByText("texto do termo com contato-a")).toBeInTheDocument();
+        termText = "texto do termo com contato-b";
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("O termo de consentimento foi atualizado");
+        expect(screen.getByText("texto do termo com contato-b")).toBeInTheDocument();
+        expect(screen.queryByText("texto do termo com contato-a")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        expect(await screen.findByText("conteudo da tela")).toBeVisible();
+        expect(post).toHaveBeenLastCalledWith("/consent-term/accept",
+            {termVersion: "v2", termHash: "hash de texto do termo com contato-b"});
+    });
+
     it("no progresso de um paciente o menu lateral marca Progresso e n Pacientes", async () => {
         setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
         openLayoutAt("/paciente/5/progresso");

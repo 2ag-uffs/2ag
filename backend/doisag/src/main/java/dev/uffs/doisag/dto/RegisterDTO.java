@@ -58,8 +58,14 @@ public record RegisterDTO(
         @NotBlank(message = "Para criar a conta, leia e aceite o termo de consentimento")
         String consentTermVersion,
 
+        // hash do texto do termo q a tela mostrou (o textHash do GET /consent-term)
+        String consentTermHash,
+
         // versao do termo de pesquisa qnd a pessoa marcou q aceita participar, opcional (RF37)
         String researchTermVersion,
+
+        // hash do texto de pesquisa q a tela mostrou, junto com a versao dele
+        String researchTermHash,
 
         // campo escondido na tela, pessoa n ve e robo preenche
         String site

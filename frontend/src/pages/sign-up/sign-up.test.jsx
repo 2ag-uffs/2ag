@@ -306,6 +306,32 @@ describe("SignUp", () => {
         expect(post).toHaveBeenLastCalledWith("/auth/register", expect.objectContaining({consentTermVersion: "termo-2"}));
     }, TYPING_TIMEOUT);
 
+    // a clinica troca o contato do encarregado e reinicia a api com a tela aberta: o texto muda e a versao n
+    it("qnd so o texto do termo muda com a tela aberta, o texto novo aparece e o aceite desmarca", async () => {
+        let termText = "Texto do termo com contato-a";
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(path === "/consent-term"
+            ? {version: "termo-1", text: termText, textHash: "hash de " + termText}
+            : {version: "pesquisa-1", text: "Texto da pesquisa", textHash: "hash da pesquisa"}));
+        const post = vi.spyOn(apiService, "post").mockImplementation((path) => path === "/invites/lookup"
+            ? Promise.resolve(INVITE)
+            : Promise.reject(new ApiError(400, OUTDATED_TERM_MESSAGE)));
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        termText = "Texto do termo com contato-b";
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText(OUTDATED_TERM_MESSAGE)).toBeInTheDocument();
+        // a api confere o hash do texto q a tela mostrou
+        expect(post).toHaveBeenCalledWith("/auth/register", expect.objectContaining({
+            consentTermVersion: "termo-1", consentTermHash: "hash de Texto do termo com contato-a",
+        }));
+        expect(screen.getByRole("checkbox", {name: /termo de consentimento/})).not.toBeChecked();
+        await user.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        expect(screen.getByText("Texto do termo com contato-b")).toBeInTheDocument();
+    }, TYPING_TIMEOUT);
+
     // a msg manda entrar ou usar o esqueci minha senha, entao o caminho fica logo embaixo dela (pedido da qa)
     // ela continua sem dizer se foi o e-mail ou o cpf, e o q foi digitado fica pq a pessoa pode so ter errado
     it("e-mail ou cpf q ja tem conta mostra os links de entrar e de senha nova sem apagar o formulario", async () => {

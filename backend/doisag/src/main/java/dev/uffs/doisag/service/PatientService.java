@@ -163,15 +163,15 @@ public class PatientService {
         if (!PasswordRules.fitsInBcrypt(registerData.password())) {
             throw new InvalidFieldException("password", PasswordRules.TOO_LONG_MESSAGE);
         }
-        // o termo aceito precisa ser o q esta valendo agora (RF36)
-        if (!consentTermService.isCurrentVersion(registerData.consentTermVersion())) {
+        // o termo aceito precisa ser o q esta valendo agora (RF36), com o msm texto q a tela mostrou
+        if (!consentTermService.isCurrentTerm(registerData.consentTermVersion(), registerData.consentTermHash())) {
             throw new BusinessException(OUTDATED_TERM_MESSAGE);
         }
         // menor de 18 so cria a conta com o responsavel legal
         GuardianDTO.checkLegalGuardian(registerData.guardian(), registerData.birthDate());
         GuardianDTO.checkName(registerData.guardian());
-        if (acceptsResearch(registerData)
-                && !ConsentTermService.RESEARCH_VERSION.equals(registerData.researchTermVersion())) {
+        if (acceptsResearch(registerData) && !consentTermService.isCurrentResearchTerm(
+                registerData.researchTermVersion(), registerData.researchTermHash())) {
             throw new BusinessException(ConsentTermService.OUTDATED_RESEARCH_MESSAGE);
         }
         if (acceptsResearch(registerData) && Patient.isMinor(registerData.birthDate())) {

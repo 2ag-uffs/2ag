@@ -62,6 +62,7 @@ class PatientSignUpTest {
     @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
+    @Autowired private ConsentTermService consentTermService;
 
     private Prescriber prescriber;
 
@@ -95,8 +96,10 @@ class PatientSignUpTest {
         return """
                 {"inviteToken":"%s","name":"Maria da Silva","cpf":"%s","birthDate":"1990-04-12",
                  "phone":"49999887766","email":"%s","password":"%s","consentTermVersion":%s,
+                 "consentTermHash":"%s",
                  "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"sc"}}
-                """.formatted(inviteToken, cpf, email, password, termVersionJson);
+                """.formatted(inviteToken, cpf, email, password, termVersionJson,
+                consentTermService.getCurrentTerm().textHash());
     }
 
     private String withGuardian(String body, String guardianJson) {
@@ -109,7 +112,7 @@ class PatientSignUpTest {
 
     private String withResearch(String body) {
         return body.replace("\"address\":", "\"researchTermVersion\":\"" + ConsentTermService.RESEARCH_VERSION
-                + "\",\"address\":");
+                + "\",\"researchTermHash\":\"" + consentTermService.getResearchTerm().textHash() + "\",\"address\":");
     }
 
     // cadastro de alguem com 10 anos, quem preenche eh o responsavel
@@ -293,10 +296,11 @@ class PatientSignUpTest {
         String body = """
                 {"inviteToken":"%s","name":"Maria da Silva","cpf":"%s","birthDate":"1990-04-12",
                  "phone":"49999887766","email":"campo-extra@email.com","password":"%s","consentTermVersion":"%s",
+                 "consentTermHash":"%s",
                  "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"sc"},
                  "role":"ADMIN","active":false,"prescriberId":%d,"id":987654321}
                 """.formatted(newInviteToken(), VALID_CPF, VALID_PASSWORD, ConsentTermService.CURRENT_VERSION,
-                otherPrescriber.getId());
+                consentTermService.getCurrentTerm().textHash(), otherPrescriber.getId());
 
         signUp(body)
                 .andExpect(status().isCreated())

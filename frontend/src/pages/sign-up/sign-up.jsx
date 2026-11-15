@@ -234,18 +234,19 @@ export default function SignUp() {
         }
     };
 
-    // se o termo mudou com a tela aberta a versao nova entra no lugar e o aceite desmarca pra ler de novo
+    // se o termo mudou com a tela aberta o texto novo entra no lugar e o aceite desmarca pra ler de novo
+    // o texto pode mudar sem a versao, qnd a clinica troca um dado dela e reinicia a api
     const reloadChangedTerms = async () => {
         try {
             const [term, research] = await Promise.all([
                 apiService.get("/consent-term"),
                 apiService.get("/consent-term/research"),
             ]);
-            if (term.version !== consentTerm.version) {
+            if (term.version !== consentTerm.version || term.text !== consentTerm.text) {
                 setConsentTerm(term);
                 setHasAcceptedConsent(false);
             }
-            if (research.version !== researchTerm.version) {
+            if (research.version !== researchTerm.version || research.text !== researchTerm.text) {
                 setResearchTerm(research);
                 setAcceptsResearch(false);
             }
@@ -314,8 +315,11 @@ export default function SignUp() {
             guardian: guardianBody(formData),
             email: formData.email,
             password: formData.password,
+            // a versao e o hash do texto q a tela mostrou, pra api saber qual texto a pessoa leu
             consentTermVersion: consentTerm.version,
+            consentTermHash: consentTerm.textHash,
             researchTermVersion: acceptsResearch && !isMinor ? researchTerm.version : null,
+            researchTermHash: acceptsResearch && !isMinor ? researchTerm.textHash : null,
             site: site,
         };
 

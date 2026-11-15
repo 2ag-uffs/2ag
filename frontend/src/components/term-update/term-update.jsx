@@ -188,11 +188,12 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
         setGuardianData((currentData) => ({...currentData, [fieldName]: value}));
     };
 
-    // se a versao mudou com a tela aberta o texto novo entra no lugar e o proximo aceite manda a versao nova
+    // se o termo mudou com a tela aberta o texto novo entra no lugar e o proximo aceite manda o novo
+    // o texto pode mudar sem a versao, qnd a clinica troca um dado dela e reinicia a api
     const reloadChangedTerm = async () => {
         try {
             const currentTerm = await apiService.get("/consent-term");
-            if (currentTerm.version !== term.version) {
+            if (currentTerm.version !== term.version || currentTerm.text !== term.text) {
                 setTerm(currentTerm);
             }
         } catch {
@@ -202,7 +203,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
 
     const handleAccept = async () => {
         setErrorMessage(null);
-        const requestBody = {termVersion: term.version};
+        const requestBody = {termVersion: term.version, termHash: term.textHash};
         if (needsGuardian) {
             const errors = findGuardianErrors(guardianData, true);
             setFieldErrors(errors);

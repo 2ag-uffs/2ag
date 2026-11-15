@@ -72,6 +72,7 @@ class ProfileRaceTest {
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private ConsentTermService consentTermService;
 
     private TransactionTemplate newTransaction;
     private Prescriber prescriber;
@@ -245,6 +246,7 @@ class ProfileRaceTest {
                         .with(user(patientOfTheSession))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION
+                                + "\",\"termHash\":\"" + consentTermService.getCurrentTerm().textHash()
                                 + "\",\"guardian\":{\"name\":\"Joana Souza\",\"relationship\":\"mãe\","
                                 + "\"phone\":\"49988776655\"}}"))
                 .andExpect(status().isOk());

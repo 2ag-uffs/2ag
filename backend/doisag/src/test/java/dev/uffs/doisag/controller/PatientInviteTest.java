@@ -46,6 +46,7 @@ class PatientInviteTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private PatientInviteRepository patientInviteRepository;
     @Autowired private TokenService tokenService;
+    @Autowired private ConsentTermService consentTermService;
 
     private Prescriber prescriber;
 
@@ -238,9 +239,10 @@ class PatientInviteTest {
                 .content("""
                         {"inviteToken":"%s","name":"Maria da Silva","cpf":"52998224725","birthDate":"1990-04-12",
                          "phone":"49999887766","email":"convite-cancelado@email.com","password":"Minha#Senha1",
-                         "consentTermVersion":"%s",
+                         "consentTermVersion":"%s","consentTermHash":"%s",
                          "address":{"street":"Rua das Flores","number":"120","city":"Chapeco","state":"SC"}}
-                        """.formatted(token, ConsentTermService.CURRENT_VERSION)));
+                        """.formatted(token, ConsentTermService.CURRENT_VERSION,
+                        consentTermService.getCurrentTerm().textHash())));
     }
 
     private ResultActions lookUp(String token) throws Exception {
