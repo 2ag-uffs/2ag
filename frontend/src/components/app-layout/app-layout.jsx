@@ -251,6 +251,14 @@ export default function AppLayout() {
 
     // como nos modais o foco volta pra onde estava. se a tela de baixo montou de novo, o q tinha o foco
     // n existe mais, entao ele vai pro comeco do conteudo em vez de ficar perdido no body
+    const restoreFocus = (previousFocus) => {
+        if (previousFocus && previousFocus.isConnected && previousFocus !== document.body) {
+            previousFocus.focus();
+        } else if (mainRef.current) {
+            focusContentStart(mainRef.current);
+        }
+    };
+
     const closeTerm = (reloadsPage) => {
         flushSync(() => {
             setIsTermPending(false);
@@ -260,11 +268,7 @@ export default function AppLayout() {
         });
         const previousFocus = focusBeforeTermRef.current;
         focusBeforeTermRef.current = null;
-        if (previousFocus && previousFocus.isConnected && previousFocus !== document.body) {
-            previousFocus.focus();
-        } else if (mainRef.current) {
-            focusContentStart(mainRef.current);
-        }
+        restoreFocus(previousFocus);
     };
 
     const hasNotices = Boolean(loggedUser && (loggedUser.role === "PATIENT" || loggedUser.role === "PRESCRIBER"));
@@ -273,8 +277,12 @@ export default function AppLayout() {
     useFocusAboveBars();
 
     useEffect(() => {
+        // o termo q abriu pelo login de novo ja guardou o botao q enviou, e o 403 do envio reenviado
+        // n troca ele pelo aviso do termo, q tem o foco agora
         const openTerm = () => {
-            focusBeforeTermRef.current = document.activeElement;
+            if (!focusBeforeTermRef.current) {
+                focusBeforeTermRef.current = document.activeElement;
+            }
             setIsTermPending(true);
         };
         window.addEventListener("term-pending", openTerm);
@@ -286,9 +294,15 @@ export default function AppLayout() {
     const [isSessionExpired, setIsSessionExpired] = useState(false);
     // a conta desativada n entra de novo, entao no lugar do login aparece o motivo q a api mandou (CT-41)
     const [deactivatedMessage, setDeactivatedMessage] = useState(null);
+    // quem tinha o foco qnd o login por cima abriu, pra ele voltar pra la dps de entrar de novo (CT-39)
+    const focusBeforeLoginRef = useRef(null);
 
     useEffect(() => {
         setLoginAgainOpener((message) => {
+            // so o primeiro envio q deu 401 guarda, nos outros o foco ja esta no login
+            if (!focusBeforeLoginRef.current) {
+                focusBeforeLoginRef.current = document.activeElement;
+            }
             setIsSessionExpired(true);
             if (message) {
                 setDeactivatedMessage(message);
@@ -299,10 +313,21 @@ export default function AppLayout() {
 
     // o termo pode ter ficado pendente enquanto a sessao estava vencida, e uma leitura reenviada
     // passa sem o 403 q abriria ele, entao o login de novo confere como o login da tela de entrar
+    // o foco volta pra onde estava, e o termo q abre agora leva o foco pra ele e devolve pra la qnd fechar
     const handleLoggedInAgain = () => {
-        setIsSessionExpired(false);
-        if (hasPendingTerm(getLoggedUser())) {
-            setIsTermPending(true);
+        const previousFocus = focusBeforeLoginRef.current;
+        focusBeforeLoginRef.current = null;
+        const opensTerm = !isTermPending && hasPendingTerm(getLoggedUser());
+        flushSync(() => {
+            setIsSessionExpired(false);
+            if (opensTerm) {
+                setIsTermPending(true);
+            }
+        });
+        if (opensTerm) {
+            focusBeforeTermRef.current = previousFocus;
+        } else {
+            restoreFocus(previousFocus);
         }
     };
 
@@ -312,6 +337,7 @@ export default function AppLayout() {
 
     const handleLeaveExpiredSession = async () => {
         flushSync(() => setIsLeavingSession(true));
+        focusBeforeLoginRef.current = null;
         leaveExpiredSession();
         setIsSessionExpired(false);
         setDeactivatedMessage(null);

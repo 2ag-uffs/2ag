@@ -187,6 +187,80 @@ describe("AppLayout", () => {
         expect(JSON.parse(loginCall[1].body)).toEqual({email: "maria@email.com", password: "Senha#2026"});
     });
 
+    // quem usa so o teclado volta pro botao q enviou dps de entrar de novo, como no termo e nos modais,
+    // e o foco n se perde no body (CT-39)
+    it("dps de entrar de novo pelo login por cima o foco volta pro botao q enviou", async () => {
+        mockExpiredSessionApi();
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Enviar"})).toHaveFocus();
+        await user.keyboard("{Enter}");
+
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        await user.type(dialog.getByLabelText("Senha"), "Senha#2026{Enter}");
+
+        expect(await screen.findByText("Salvo: dormi bem")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Enviar"})).toHaveFocus();
+    });
+
+    // o termo q abre dps do login por cima leva o foco pra ele, e o aceite devolve pro botao q enviou
+    // o envio reenviado leva o 403 do termo pendente como na api, e esse 403 n troca pra onde o foco volta
+    it("o termo q abre dps do login por cima devolve o foco pro botao q enviou qnd aceita", async () => {
+        let isSessionExpired = true;
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/auth/login") {
+                isSessionExpired = false;
+                return Promise.resolve(apiResponse(200, {...MARIA, termPending: true}));
+            }
+            if (isSessionExpired) {
+                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            }
+            if (url === "/api/profile") {
+                return Promise.resolve(apiResponse(200, {id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null}));
+            }
+            if (url === "/api/auth/me") {
+                return Promise.resolve(apiResponse(200, {...MARIA, termPending: true, termPendingByAge: false}));
+            }
+            if (url === "/api/consent-term/accept") {
+                return Promise.resolve(apiResponse(200, MARIA));
+            }
+            if (url === "/api/consent-term") {
+                return Promise.resolve(apiResponse(200, {version: "v2", text: "texto do termo novo"}));
+            }
+            // a resposta da escala reenviada, q a api recusa enquanto o termo esta pendente
+            const refusal = {message: "Leia e aceite o termo de consentimento para continuar"};
+            return Promise.resolve(new Response(JSON.stringify(refusal), {
+                status: 403,
+                headers: {"X-Term-Pending": "true"},
+            }));
+        });
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        openLayoutWithLoginAt("/escalas/diario-sono");
+
+        await user.type(await screen.findByLabelText("Resposta"), "dormi bem");
+        await user.tab();
+        await user.keyboard("{Enter}");
+        const dialog = within(await screen.findByRole("dialog", {name: "Sua sessão venceu"}));
+        await user.type(dialog.getByLabelText("Senha"), "Senha#2026{Enter}");
+
+        expect(await screen.findByText("texto do termo novo")).toBeInTheDocument();
+        expect(await screen.findByText("Leia e aceite o termo de consentimento para continuar")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByText(/Leia o termo e aceite de novo/)).toHaveFocus());
+        await user.click(screen.getByRole("button", {name: "Li e aceito"}));
+
+        await waitFor(() => expect(screen.getByLabelText("Resposta")).toBeVisible());
+        expect(screen.getByRole("button", {name: "Enviar"})).toHaveFocus();
+    });
+
     // o termo ficou pendente enquanto a sessao estava vencida (versao nova ou 18 anos): quem entra de novo
     // por cima ve o aceite no lugar da tela, igual a quem entra pela tela de login
     it("paciente q entra de novo por cima com o termo pendente ve o aceite no lugar da tela", async () => {
