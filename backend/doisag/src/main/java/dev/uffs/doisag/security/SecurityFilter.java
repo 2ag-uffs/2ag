@@ -30,6 +30,9 @@ public class SecurityFilter extends OncePerRequestFilter {
     // marca a requisicao da sessao de uma conta desativada com o id dela
     // o SecurityErrorHandler responde com o motivo e o logout encerra as sessoes dessa conta
     public static final String DEACTIVATED_ACCOUNT_ATTRIBUTE = "deactivatedAccountId";
+    // a aba diz de qual conta eh a tela aberta. o cookie eh um so pra todas as abas
+    // e pode ser de outra conta q entrou em outra aba (responsavel com dois filhos)
+    public static final String SESSION_USER_HEADER = "X-Session-User";
 
     private final TokenService tokenService;
     private final SessionCookieService sessionCookieService;
@@ -62,6 +65,11 @@ public class SecurityFilter extends OncePerRequestFilter {
                               boolean cameFromCookie) {
         try {
             SessionToken sessionToken = tokenService.readToken(token);
+            // tela aberta pra outra conta segue sem sessao e recebe o 401 generico, entao o q foi
+            // digitado pra uma conta n cai na ficha da outra. o cabecalho so tira a sessao, nunca cria
+            if (isScreenOfAnotherAccount(request, sessionToken)) {
+                return;
+            }
             Users user = usersRepository.findById(sessionToken.userId()).orElse(null);
             if (user != null && !user.isActive() && isOwnSessionOfDeactivatedAccount(sessionToken, user)) {
                 request.setAttribute(DEACTIVATED_ACCOUNT_ATTRIBUTE, user.getId());
@@ -83,6 +91,11 @@ public class SecurityFilter extends OncePerRequestFilter {
             // a requisicao segue sem login e o SecurityErrorHandler responde 401
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private boolean isScreenOfAnotherAccount(HttpServletRequest request, SessionToken sessionToken) {
+        String screenUser = request.getHeader(SESSION_USER_HEADER);
+        return screenUser != null && !screenUser.equals(String.valueOf(sessionToken.userId()));
     }
 
     private boolean isSessionStillValid(SessionToken sessionToken, Users user) {

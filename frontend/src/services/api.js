@@ -177,8 +177,19 @@ function openPendingTerm(user) {
     window.dispatchEvent(new Event("term-pending"));
 }
 
+// o cookie eh um so pra todas as abas, e outra aba pode ter saido e entrado em outra conta
+// (responsavel com dois filhos). cada envio diz de qual conta eh a tela aberta e, se o cookie for de outra,
+// a api responde 401 e o login por cima abre travado nessa conta: nada vai pra ficha da outra
+// o login e o cadastro n mandam pq eles q trocam a conta
+function sessionUserHeader(path) {
+    if (loggedUser === null || path === "/auth/login" || path === "/auth/register") {
+        return {};
+    }
+    return {"X-Session-User": String(loggedUser.id)};
+}
+
 async function request(path, options = {}) {
-    const headers = {"Content-Type": "application/json", ...(options.headers || {})};
+    const headers = {"Content-Type": "application/json", ...sessionUserHeader(path), ...(options.headers || {})};
     const response = await fetch(BASE_URL + path, {...options, headers});
     const body = await readBody(response);
 
@@ -264,7 +275,7 @@ function saveFile(blob, fileName) {
 // baixa um arquivo pela api em vez de deixar o navegador navegar ate ele
 // assim sessao vencida e erro viram mensagem na tela, e n um arquivo com o json do erro dentro
 export async function download(path, fallbackName) {
-    const response = await fetch(BASE_URL + path);
+    const response = await fetch(BASE_URL + path, {headers: sessionUserHeader(path)});
     if (!response.ok) {
         const body = await readBody(response);
         if (response.status === 401) {

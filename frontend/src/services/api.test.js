@@ -464,3 +464,73 @@ describe("sessao vencida com a tela aberta", () => {
         expect(openLoginAgain).not.toHaveBeenCalled();
     });
 });
+
+// responsavel com dois filhos (#152): a aba 2 sai da conta de A e entra na de B com a tela de A aberta na aba 1
+describe("conta trocada em outra aba", () => {
+    afterEach(() => {
+        leaveExpiredSession();
+        setLoginAgainOpener(null);
+        setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    const CHILD_A = {id: 11, name: "Filho A", email: "filho-a@email.com", role: "PATIENT", termPending: false};
+
+    // o cookie eh um so pra todas as abas e so a api sabe de quem ele eh
+    function mockSharedCookie(state) {
+        return vi.spyOn(globalThis, "fetch").mockImplementation((url, options = {}) => {
+            if (url === "/api/auth/me") {
+                return Promise.resolve(apiResponse(200, {...CHILD_A, id: state.cookieOwner}));
+            }
+            if (url === "/api/auth/login") {
+                state.cookieOwner = CHILD_A.id;
+                return Promise.resolve(apiResponse(200, CHILD_A));
+            }
+            const sentUser = new Headers(options.headers).get("X-Session-User");
+            if (sentUser !== null && sentUser !== String(state.cookieOwner)) {
+                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            }
+            state.savedFor.push(state.cookieOwner);
+            return Promise.resolve(apiResponse(201, {id: 1, patientId: state.cookieOwner}));
+        });
+    }
+
+    it("a tela aberta pra uma conta n grava nada com a sessao de outra", async () => {
+        const state = {cookieOwner: 11, savedFor: []};
+        mockSharedCookie(state);
+        const openLoginAgain = vi.fn();
+        setLoginAgainOpener(openLoginAgain);
+        await loadSession();
+
+        state.cookieOwner = 12;
+        const saving = apiService.post("/scales/acompanhamento-semanal/responses", {answers: {dor: 3}});
+        await flushPromises();
+
+        // a resposta digitada pra A n pode ficar na ficha de B
+        expect(state.savedFor).toEqual([]);
+        expect(getLoggedUser()).toEqual(CHILD_A);
+        // o login por cima abre travado na conta de A e o envio espera
+        expect(openLoginAgain).toHaveBeenCalledTimes(1);
+
+        await loginAgain("Senha#2026");
+
+        expect(await saving).toEqual({id: 1, patientId: 11});
+        expect(state.savedFor).toEqual([11]);
+    });
+
+    it("o envio e o download dizem de qual conta eh a tela, e o login e o cadastro n", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(apiResponse(200, {})));
+        URL.createObjectURL = vi.fn(() => "blob:arquivo");
+        URL.revokeObjectURL = vi.fn();
+        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+        setLoggedUser(CHILD_A);
+
+        await apiService.put("/profile", {name: "Filho A"});
+        await download("/patients/11/export/progress.csv", "progresso.csv");
+        await apiService.post("/auth/login", {email: "filho-a@email.com", password: "x"});
+        await apiService.post("/auth/register", {email: "filho-b@email.com"});
+
+        const sentUsers = fetchSpy.mock.calls.map((call) => new Headers(call[1] && call[1].headers).get("X-Session-User"));
+        expect(sentUsers).toEqual(["11", "11", null, null]);
+    });
+});

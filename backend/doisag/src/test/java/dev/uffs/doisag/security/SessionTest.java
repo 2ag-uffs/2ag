@@ -5,6 +5,7 @@ import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.service.PatientAccountService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -32,6 +33,7 @@ import java.util.Date;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +58,7 @@ class SessionTest {
     @Autowired private TokenService tokenService;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
     @Autowired private PatientAccountService patientAccountService;
+    @Autowired private ScaleResponseRepository scaleResponseRepository;
 
     @Value("${api.security.token.secret}")
     private String tokenSecret;
@@ -417,6 +420,77 @@ class SessionTest {
         assertThat(renewedCookie).isNotNull();
         assertThat(tokenService.readToken(renewedCookie.getValue()).loginAt())
                 .isEqualTo(tokenService.readToken(oldCookie.getValue()).loginAt());
+    }
+
+    // responsavel com dois filhos (#152): a aba 1 ainda mostra a conta de A, a aba 2 saiu e entrou na de B
+    // o cookie do navegador agora eh o de B, mas o q foi digitado na tela de A n pode cair na ficha de B
+    @Test
+    void screenOpenedForOneAccountCannotWriteWithTheSessionOfAnother() throws Exception {
+        Patient otherChild = new Patient();
+        otherChild.setName("Outro filho da sessao");
+        otherChild.setEmail("sessao-outro-filho@email.com");
+        otherChild.setPassword(passwordEncoder.encode(PATIENT_PASSWORD));
+        otherChild.setPrescriber(patient.getPrescriber());
+        otherChild = patientRepository.save(otherChild);
+        Cookie cookieOfOtherChild = login("sessao-outro-filho@email.com", PATIENT_PASSWORD)
+                .andReturn().getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+
+        // a aba 1 diz pra quem a tela foi aberta
+        MvcResult answer = mockMvc.perform(post("/scales/acompanhamento-semanal/responses")
+                        .cookie(cookieOfOtherChild)
+                        .header("Origin", SYSTEM_ORIGIN)
+                        .header("X-Session-User", String.valueOf(patient.getId()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"dor\":3}}"))
+                .andReturn();
+        MvcResult profile = mockMvc.perform(put("/profile")
+                        .cookie(cookieOfOtherChild)
+                        .header("Origin", SYSTEM_ORIGIN)
+                        .header("X-Session-User", String.valueOf(patient.getId()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Paciente da sessao\",\"birthDate\":\"1990-04-12\",\"phone\":\"49988887777\","
+                                + "\"address\":{\"street\":\"Rua Nova\",\"number\":\"45\",\"city\":\"Chapeco\",\"state\":\"SC\"}}"))
+                .andReturn();
+
+        assertThat(scaleResponseRepository.findByPatientIdOrderByPeriodStartDescIdDesc(otherChild.getId()))
+                .as("resposta digitada na tela de A gravada na ficha de B").isEmpty();
+        assertThat(patientRepository.findById(otherChild.getId()).orElseThrow().getName())
+                .as("perfil de B sobrescrito com o de A").isEqualTo("Outro filho da sessao");
+        assertThat(answer.getResponse().getStatus()).isEqualTo(401);
+        assertThat(profile.getResponse().getStatus()).isEqualTo(401);
+        // o 401 eh o generico de sempre, e a tela abre o login por cima travado na conta de A
+        assertThat(answer.getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .contains(SecurityErrorHandler.INVALID_SESSION_MESSAGE);
+
+        // a tela aberta pra B continua gravando com a sessao de B
+        mockMvc.perform(post("/scales/acompanhamento-semanal/responses")
+                        .cookie(cookieOfOtherChild)
+                        .header("Origin", SYSTEM_ORIGIN)
+                        .header("X-Session-User", String.valueOf(otherChild.getId()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"answers\":{\"dor\":3}}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.patientId").value(otherChild.getId()));
+    }
+
+    // o cabecalho so tira a sessao: sem cookie ele n faz ninguem entrar
+    @Test
+    void sessionUserHeaderAloneDoesNotLogAnyoneIn() throws Exception {
+        mockMvc.perform(get("/auth/me").header("X-Session-User", String.valueOf(patient.getId())))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
+    }
+
+    // a conta desativada n conta o motivo pra tela aberta de outra conta, q recebe o 401 generico
+    @Test
+    void deactivatedAccountIsNotRevealedToTheScreenOfAnotherAccount() throws Exception {
+        Cookie sessionCookie = loginAndGetSessionCookie();
+        patientAccountService.changeActive(patient.getId(), false);
+
+        mockMvc.perform(get("/auth/me").cookie(sessionCookie).header("X-Session-User", "999999"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist(SecurityErrorHandler.DEACTIVATED_ACCOUNT_HEADER))
+                .andExpect(jsonPath("$.message").value(SecurityErrorHandler.INVALID_SESSION_MESSAGE));
     }
 
     // monta na mao um token emitido e c/ login no passado
