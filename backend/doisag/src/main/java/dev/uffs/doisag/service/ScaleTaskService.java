@@ -336,9 +336,10 @@ public class ScaleTaskService {
         if (task == null || task.getStatus() == ScaleTaskStatus.NAO_RESPONDIDA || onTimeAnswersOf(task) > 0) {
             return false;
         }
-        // a escala q o prescritor tirou do acompanhamento n volta a ser cobrada: fecha como na troca, sem
-        // resposta e com o dia marcado, e o paciente n recebe o aviso de responder de novo
-        if (isRemovedFromProtocol(task)) {
+        // a escala q o prescritor tirou do acompanhamento, ou a tarefa q o arquivamento encerrou, do acompanhamento
+        // ou enviada a mao antes dele, n volta a ser cobrada: fecha como na troca, sem resposta e com o dia marcado,
+        // e o paciente n recebe o aviso de responder de novo
+        if (isRemovedFromProtocol(task) || task.existedBeforeArchive()) {
             LocalDate today = LocalDate.now();
             if (task.getPeriodEnd().isAfter(today)) {
                 task.setPeriodEnd(today);

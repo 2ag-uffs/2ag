@@ -656,6 +656,92 @@ class ScaleDeliveryTest {
                 .isEmpty();
     }
 
+    // arquivar encerra o acompanhamento, e anular dps a resposta de uma rodada dele n volta a cobrar o
+    // arquivado: a tarefa fecha como a escala tirada do acompanhamento, sem aviso e sem lembrete
+    @Test
+    void annullingAnAnswerAfterArchivingDoesNotChargeTheArchivedPatientAgain() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUp("ESCALA_HAMILTON", "SEMANAL").andExpect(status().isCreated());
+        Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        archivePatient();
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(task.getAnsweredAt()).isEqualTo(today);
+        assertThat(task.getPeriodEnd()).isEqualTo(today);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+        assertThat(reminderService.sendScaleReminders(today)).isZero();
+    }
+
+    // a semana do diario q o arquivamento fechou respondida n reabre qnd o unico dia eh anulado dps
+    @Test
+    void annullingTheOnlyDiaryDayAfterArchivingDoesNotReopenTheWeek() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUp("ACOMPANHAMENTO_SEMANAL", "SEMANAL").andExpect(status().isCreated());
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        archivePatient();
+        ScaleTask week = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(week.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+        assertThat(taskRepository.findById(week.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+        scaleTaskService.closeOverdue(today.plusDays(1));
+
+        // com o dia marcado o indicador deixa a semana de fora, sem ele contava como atraso
+        ScaleTask closedWeek = taskRepository.findById(week.getId()).orElseThrow();
+        assertThat(closedWeek.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(closedWeek.getAnsweredAt()).isEqualTo(today);
+    }
+
+    // a semana do diario enviada a mao q estava aberta no arquivamento tbm foi fechada por ele: anular dps o
+    // unico dia dela n volta a cobrar o arquivado
+    @Test
+    void annullingTheOnlyDayOfAHandSentDiaryWeekAfterArchivingDoesNotReopenIt() throws Exception {
+        LocalDate today = LocalDate.now();
+        sendScale("ACOMPANHAMENTO_SEMANAL").andExpect(status().isCreated());
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        archivePatient();
+        ScaleTask week = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(week.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        ScaleTask closedWeek = taskRepository.findById(week.getId()).orElseThrow();
+        assertThat(closedWeek.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(closedWeek.getAnsweredAt()).isEqualTo(today);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+    }
+
+    // a avulsa enviada dps do arquivamento segue a regra de sempre: anulada, volta a ser cobrada
+    @Test
+    void aScaleSentAfterArchivingStillReopensWhenItsAnswerIsAnnulled() throws Exception {
+        archivePatient();
+        // o envio vem um segundo dps do arquivamento, senao os dois podiam cair no mesmo instante do relogio
+        Patient archived = patientRepository.findById(patient.getId()).orElseThrow();
+        archived.setArchivedAt(archived.getArchivedAt().minusSeconds(1));
+        patientRepository.saveAndFlush(archived);
+        sendScale("ESCALA_HAMILTON").andExpect(status().isCreated());
+        Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        annul(answerId.longValue()).andExpect(status().isOk());
+
+        ScaleTask task = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(task.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNotNull();
+    }
+
     // a avulsa no dia em q a escala ja foi respondida ficava pendente sem jeito de fechar no dia: a resposta
     // do paciente com a data de hoje so corrigia a primeira. o envio eh recusado e diz onde ver a resposta
     // a de periodo vai com o corpo da tela, a semana q termina hoje, ou sem data nenhuma
@@ -1240,6 +1326,12 @@ class ScaleDeliveryTest {
                 .header("Authorization", bearerTokenOf(prescriber))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"items\":" + itemsJson + "}"));
+    }
+
+    private void archivePatient() throws Exception {
+        mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
     }
 
     private ResultActions annul(Long responseId) throws Exception {
