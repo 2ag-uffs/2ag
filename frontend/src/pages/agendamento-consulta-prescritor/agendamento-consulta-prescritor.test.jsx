@@ -146,7 +146,7 @@ describe("AgendamentoPrescritor", () => {
         renderAgenda({
             weekAppointments: [{
                 id: 9, dateTime: monday + "T08:00:00", durationMinutes: 90, appointmentType: "PRIMEIRA_CONSULTA",
-                modality: "PRESENCIAL", status: "CANCELADA", patientId: 5, patientName: "Maria Souza",
+                modality: "PRESENCIAL", status: "CONCLUIDA", patientId: 5, patientName: "Maria Souza",
                 prescriberName: "Ana Lima", patientNote: null, annulled: false,
             }],
             daysOff: [{date: monday, appointmentsOnTheDay: 0}],
@@ -293,5 +293,67 @@ describe("AgendamentoPrescritor", () => {
         const upcoming = within(screen.getByText("Paulo Lima").closest("li"));
         expect(upcoming.getByRole("button", {name: "Remarcar"})).toBeInTheDocument();
         expect(upcoming.getByRole("button", {name: "Cancelar"})).toBeInTheDocument();
+    });
+
+    // o paciente q pede de novo deixava o pedido recusado do lado do novo e a grade enchia: recusados e cancelados
+    // ficam escondidos ate o prescritor pedir pra ver. o resto aparece como antes (decisao de 17/11/2026)
+    it("a semana esconde recusados e cancelados e o botao mostra os dois de volta no lugar", async () => {
+        const user = userEvent.setup();
+        const monday = toIsoDate(mondayOf(new Date()));
+        const tuesday = toIsoDate(addDays(mondayOf(new Date()), 1));
+        renderAgenda({
+            weekAppointments: [
+                {...SCHEDULED_RETURN, id: 1, dateTime: monday + "T08:00:00", status: "RECUSADA",
+                    patientName: "Rita Recusada"},
+                {...SCHEDULED_RETURN, id: 2, dateTime: monday + "T09:00:00", status: "CONCLUIDA",
+                    patientName: "Carla Concluida"},
+                {...SCHEDULED_RETURN, id: 3, dateTime: monday + "T10:00:00", status: "NAO_COMPARECEU",
+                    patientName: "Fabio Falta"},
+                {...SCHEDULED_RETURN, id: 4, dateTime: monday + "T11:00:00", status: "CANCELADA", annulled: true,
+                    patientName: "Ana Anulada"},
+                {...SCHEDULED_RETURN, id: 8, dateTime: monday + "T12:00:00", patientName: "Gabi Agendada"},
+                {...SCHEDULED_RETURN, id: 5, dateTime: tuesday + "T08:00:00", status: "CANCELADA",
+                    patientName: "Caio Cancelado"},
+                {...SCHEDULED_RETURN, id: 6, dateTime: tuesday + "T09:00:00", status: "RECUSADA",
+                    patientName: "Rui Recusado"},
+            ],
+            waitingRequests: [{...SCHEDULED_RETURN, id: 7, status: "SOLICITADA", patientName: "Pedro Pedido"}],
+        });
+
+        const toggle = await screen.findByRole("button", {name: "Mostrar recusados e cancelados (3)"});
+        const week = within(screen.getByRole("region", {name: /Semana de/}));
+        expect(week.getByText("Carla Concluida")).toBeInTheDocument();
+        expect(week.getByText("Fabio Falta")).toBeInTheDocument();
+        expect(week.getByText("Ana Anulada")).toBeInTheDocument();
+        expect(week.getByText("Gabi Agendada")).toBeInTheDocument();
+        expect(week.queryByText("Rita Recusada")).not.toBeInTheDocument();
+        expect(week.queryByText("Caio Cancelado")).not.toBeInTheDocument();
+        expect(week.queryByText("Rui Recusado")).not.toBeInTheDocument();
+        // a terca so tinha escondidos e fica como o dia sem consulta
+        expect(week.getAllByText("Nenhuma consulta.")).toHaveLength(6);
+        expect(screen.getByText("Pedro Pedido")).toBeInTheDocument();
+
+        // pelo teclado tbm
+        toggle.focus();
+        await user.keyboard("{Enter}");
+        expect(toggle).toHaveAccessibleName("Esconder recusados e cancelados");
+        expect(toggle).toHaveFocus();
+        const refused = week.getByText("Rita Recusada").closest("li");
+        expect(within(refused).getByText("Recusada")).toBeInTheDocument();
+        expect(refused.previousElementSibling).toBeNull();
+        expect(refused.nextElementSibling).toHaveTextContent("Carla Concluida");
+        expect(week.getByText("Caio Cancelado")).toBeInTheDocument();
+        expect(week.getByText("Rui Recusado")).toBeInTheDocument();
+        expect(week.getAllByText("Nenhuma consulta.")).toHaveLength(5);
+
+        await user.click(toggle);
+        expect(toggle).toHaveAccessibleName("Mostrar recusados e cancelados (3)");
+        expect(week.queryByText("Rita Recusada")).not.toBeInTheDocument();
+    });
+
+    it("sem recusado nem cancelado na semana o botao vem sem contagem", async () => {
+        renderAgenda({weekAppointments: [SCHEDULED_RETURN]});
+
+        expect(await screen.findByRole("button", {name: "Mostrar recusados e cancelados"})).toBeInTheDocument();
     });
 });

@@ -223,7 +223,7 @@ corrigir e anular a anamnese travam o paciente e depois a própria anamnese, lid
 | `GET /availability/days-off` | dias sem atendimento do prescritor logado, de hoje em diante, cada um com quantos pedidos (`SOLICITADA`) e consultas (`AGENDADA`) não anulados ainda estão por vir nele |
 | `POST /availability/days-off` | marca um dia sem atendimento (`date`), de hoje em diante. a resposta conta os pedidos e consultas do dia que ainda estão por vir, do mesmo jeito |
 | `DELETE /availability/days-off?date=` | o dia volta a ter atendimento |
-| `GET /appointments?from=&to=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira |
+| `GET /appointments?from=&to=` | agenda do prescritor logado entre as duas datas. sem as datas, vem a agenda inteira. vêm todas as situações, inclusive os pedidos recusados e as consultas canceladas, que a tela da agenda esconde até o prescritor pedir para ver (decisão de 17/11/2026) |
 | `GET /appointments/requests` | pedidos esperando a resposta do prescritor logado |
 | `POST /appointments` | o prescritor marca consulta, já confirmada, para um paciente dele. sem `appointmentType`, o tipo sai do histórico do paciente, e sem `durationMinutes`, vale a duração do tipo. paciente arquivado recebe 400 ("Paciente arquivado não recebe consulta nova. Reative o paciente antes de marcar", decisão de 13/11/2026) |
 | `GET /appointments/{id}` | uma consulta com os campos clínicos, para o prescritor do paciente |

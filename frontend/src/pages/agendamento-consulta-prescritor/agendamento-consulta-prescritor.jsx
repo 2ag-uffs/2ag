@@ -49,6 +49,23 @@ function weekDaysFrom(monday) {
     return days;
 }
 
+// pedido recusado e consulta cancelada n tem botao nenhum e enchiam a grade da semana, entao ficam escondidos ate
+// o prescritor pedir pra ver (decisao de 17/11/2026). a anulada continua aparecendo com o selo dela
+function isRefusedOrCanceled(appointment) {
+    return !appointment.annulled && (appointment.status === "RECUSADA" || appointment.status === "CANCELADA");
+}
+
+// a contagem so aparece qnd a semana tem algum escondido
+function toggleLabelOf(showsRefusedAndCanceled, refusedAndCanceledCount) {
+    if (showsRefusedAndCanceled) {
+        return "Esconder recusados e cancelados";
+    }
+    if (refusedAndCanceledCount === 0) {
+        return "Mostrar recusados e cancelados";
+    }
+    return "Mostrar recusados e cancelados (" + refusedAndCanceledCount + ")";
+}
+
 // agenda do prescritor (RF11)
 // pedidos dos pacientes pra responder e as consultas da semana com atalho pros horarios de atendimento
 export default function AgendamentoPrescritor() {
@@ -67,6 +84,8 @@ export default function AgendamentoPrescritor() {
     const [noShowTarget, setNoShowTarget] = useState(null);
     // consulta com pedido em andamento pra n mandar duas vezes
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
+    // a escolha vale enquanto a tela esta aberta, tbm qnd troca de semana
+    const [showsRefusedAndCanceled, setShowsRefusedAndCanceled] = useState(false);
 
     const weekStartIso = toIsoDate(weekStart);
     const weekEndIso = toIsoDate(addDays(weekStart, 6));
@@ -186,6 +205,10 @@ export default function AgendamentoPrescritor() {
 
     const {weekAppointments, waitingRequests, availability, patients, daysOff} = agenda;
     const daysOffDates = daysOff.map((dayOff) => dayOff.date);
+    const refusedAndCanceledCount = weekAppointments.filter(isRefusedOrCanceled).length;
+    const shownAppointments = showsRefusedAndCanceled
+        ? weekAppointments
+        : weekAppointments.filter((appointment) => !isRefusedOrCanceled(appointment));
     // a duracao q o modal preenche qnd o prescritor escolhe o tipo
     const durationsByType = {
         PRIMEIRA_CONSULTA: availability.firstAppointmentDurationMinutes,
@@ -331,7 +354,7 @@ export default function AgendamentoPrescritor() {
     );
 
     const renderDay = (dayIso) => {
-        const dayAppointments = weekAppointments.filter((appointment) => appointment.dateTime.slice(0, 10) === dayIso);
+        const dayAppointments = shownAppointments.filter((appointment) => appointment.dateTime.slice(0, 10) === dayIso);
         const isToday = dayIso === todayIso;
         const isDayOff = daysOffDates.includes(dayIso);
         return (
@@ -443,6 +466,15 @@ export default function AgendamentoPrescritor() {
                             <FiChevronRight aria-hidden="true"/>
                         </button>
                     </div>
+                </div>
+                <div>
+                    <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => setShowsRefusedAndCanceled(!showsRefusedAndCanceled)}
+                    >
+                        {toggleLabelOf(showsRefusedAndCanceled, refusedAndCanceledCount)}
+                    </button>
                 </div>
                 <div className={styles.days}>
                     {weekDaysFrom(weekStart).map((dayIso) => renderDay(dayIso))}
