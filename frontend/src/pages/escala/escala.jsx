@@ -4,6 +4,7 @@ import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
@@ -172,6 +173,8 @@ export default function Escala() {
     // o erro de campo q a api mandou no ultimo envio, por dia, como o horario de levantar igual ao de dormir
     const [fieldErrorsByDay, setFieldErrorsByDay] = useState({});
     const [reloadCount, setReloadCount] = useState(0);
+    // salvar com item q falta ou com erro de campo leva o foco e a rolagem pro primeiro deles
+    const [formRef, focusFirstError] = useFocusFirstError();
     // a escala q ja abriu na tela. a recarga q falha dps (a rede caiu no meio do salvar) n troca a tela pelo
     // aviso de erro, senao somem a grade, os dias n salvos e o erro de cada um
     const loadedSlugRef = useRef(null);
@@ -379,6 +382,7 @@ export default function Escala() {
             if (missingItems.length > 0) {
                 setSelectedDay(dayIso);
                 setMissingKeys(missingItems.map((item) => item.key));
+                focusFirstError();
                 return;
             }
         }
@@ -407,6 +411,9 @@ export default function Escala() {
         setFieldErrorsByDay(fieldErrors);
         if (failures.length > 0) {
             setFormError(failures.join(" "));
+        }
+        if (fieldErrors[selectedDay] && Object.keys(fieldErrors[selectedDay]).length > 0) {
+            focusFirstError();
         }
         if (savedResponses.length === 0) {
             return;
@@ -519,7 +526,7 @@ export default function Escala() {
                 />
             )}
 
-            <form className={styles.form} onSubmit={save}>
+            <form ref={formRef} className={styles.form} onSubmit={save}>
                 {!isDiary && (
                     <div className={styles.period}>
                         <div className={styles.dateField}>

@@ -84,6 +84,19 @@ describe("MiniExame", () => {
         expect(result).toHaveFocus();
     });
 
+    // salvar com item em branco n envia, lista o q falta e leva o foco pro primeiro item q falta
+    it("salvar com item em branco leva o foco pro primeiro item q falta", async () => {
+        const post = vi.spyOn(apiService, "post");
+        const user = userEvent.setup();
+        renderExam();
+
+        await user.click(await screen.findByRole("button", {name: "Salvar exame"}));
+
+        await waitFor(() => expect(screen.getByRole("radio", {name: "0"})).toHaveFocus());
+        expect(screen.getByRole("alert")).toHaveTextContent("Falta preencher: Orientação temporal.");
+        expect(post).not.toHaveBeenCalled();
+    });
+
     // o exame aplicado antes abre direto no resultado e ai n tem pq tirar o foco de onde estava
     it("exame ja aplicado abre no resultado sem mexer no foco", async () => {
         apiService.get.mockImplementation((path) => {

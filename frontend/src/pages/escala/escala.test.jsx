@@ -332,6 +332,30 @@ describe("Escala", () => {
         expect(screen.getAllByRole("radio")).toHaveLength(11);
     });
 
+    // escala pontuada salva com item em branco: o foco e a rolagem vao pro primeiro q falta, como no erro de campo
+    it("salvar com item em branco leva o foco pro primeiro item q falta", async () => {
+        const noteItem = (key, label) => ({key, label, type: "NOTA", minValue: 0, maxValue: 4, lowAnchor: "ausente",
+            highAnchor: "muito grave", options: []});
+        const scored = {...HAMILTON, maxScore: 8,
+            items: [noteItem("humorAnsioso", "Humor ansioso"), noteItem("tensao", "Tensão")]};
+        apiService.get.mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/hamilton" ? scored : []));
+        const post = vi.spyOn(apiService, "post");
+        renderScale("/escalas/hamilton");
+        const user = userEvent.setup();
+
+        const tension = await screen.findByRole("group", {name: "Tensão"});
+        await user.click(within(tension).getByRole("radio", {name: "2"}));
+        expect(screen.getByText("1 de 2 respondidas")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const anxious = screen.getByRole("group", {name: "Humor ansioso"});
+        await waitFor(() => expect(within(anxious).getByRole("radio", {name: "0"})).toHaveFocus());
+        expect(within(anxious).getByRole("radio", {name: "0"})).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("alert")).toHaveTextContent("Falta preencher: Humor ansioso.");
+        expect(post).not.toHaveBeenCalled();
+    });
+
     // a semana respondida eh a q passou, entao o fim n vai alem de hoje nem antes do inicio
     it("na escala de periodo, o fim do periodo vai do inicio ate hoje", async () => {
         const periodStart = toIsoDate(addDays(new Date(), -6));
@@ -1059,6 +1083,8 @@ describe("Escala diaria", () => {
         const wakeUpField = screen.getByLabelText("Horário em que se levantou");
         await waitFor(() => expect(wakeUpField).toHaveAttribute("aria-invalid", "true"));
         expect(wakeUpField).toHaveAccessibleDescription(message);
+        // o foco vai pro campo errado, do msm jeito q vai pro item q falta
+        await waitFor(() => expect(wakeUpField).toHaveFocus());
         expect(screen.getByLabelText("Horário em que foi dormir")).not.toHaveAttribute("aria-invalid");
         expect(screen.getByRole("alert")).toHaveTextContent("a resposta não foi salva. " + message);
     });

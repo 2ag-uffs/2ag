@@ -5,6 +5,7 @@ import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
@@ -62,6 +63,8 @@ export default function MiniExame() {
     const [formError, setFormError] = useState(null);
     const [missingKeys, setMissingKeys] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    // salvar com item em branco leva o foco pro primeiro q falta, como na escala do paciente
+    const [formRef, focusFirstError] = useFocusFirstError();
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -116,6 +119,7 @@ export default function MiniExame() {
         const missingItems = missingItemsOf(definition.items, values);
         if (missingItems.length > 0) {
             setMissingKeys(missingItems.map((item) => item.key));
+            focusFirstError();
             return;
         }
 
@@ -178,7 +182,7 @@ export default function MiniExame() {
                     </div>
                 </Card>
             ) : (
-                <form className={styles.form} onSubmit={save}>
+                <form ref={formRef} className={styles.form} onSubmit={save}>
                     <p className={styles.hint}>{definition.instruction}</p>
 
                     <ScaleForm

@@ -4,6 +4,7 @@ import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import AppLayout from "../components/app-layout/app-layout.jsx";
 import FormSection, {FormActions} from "../components/form-section/form-section.jsx";
+import ScaleForm from "../components/scale-form/scale-form.jsx";
 import {apiService, setLoggedUser} from "../services/api.js";
 
 // o jsdom n desenha a tela, entao cada caixa recebe a posicao q o navegador mediu no reteste do CT-39
@@ -38,6 +39,24 @@ function renderForm() {
     const router = createMemoryRouter([
         {element: <AppLayout/>, children: [{path: "/consulta/2/registro", element: <LongForm/>}]},
     ], {initialEntries: ["/consulta/2/registro"]});
+    render(<RouterProvider router={router}/>);
+}
+
+// escala com o contador preso no alto do formulario
+function ScaleFormPage() {
+    const items = [{key: "dor", label: "Dor", type: "NOTA", minValue: 0, maxValue: 10, lowAnchor: "sem dor",
+        highAnchor: "pior dor"}, {key: "comentario", label: "Observações", type: "TEXTO"}];
+    return (
+        <form aria-label="Escala">
+            <ScaleForm items={items} values={{}} onChange={() => {}}/>
+        </form>
+    );
+}
+
+function renderScale() {
+    const router = createMemoryRouter([
+        {element: <AppLayout/>, children: [{path: "/escalas/registro-dor", element: <ScaleFormPage/>}]},
+    ], {initialEntries: ["/escalas/registro-dor"]});
     render(<RouterProvider router={router}/>);
 }
 
@@ -127,6 +146,36 @@ describe("campo com foco atras da barra presa no pe da tela", () => {
         act(() => logout.focus());
         await nextFrame();
         act(() => save.focus());
+        await nextFrame();
+
+        expect(scrollBy).not.toHaveBeenCalled();
+    });
+
+    // o contador das escalas fica preso no alto e o campo q o shift+tab alcanca podia parar atras dele
+    it("campo atras do contador preso no alto desce so o bastante pra aparecer", async () => {
+        window.innerHeight = 900;
+        renderScale();
+        const notes = await screen.findByLabelText("Observações");
+        const counter = within(screen.getByRole("form", {name: "Escala"})).getByRole("status").closest("[data-top-bar]");
+        placeAt(counter, box(0, 52, 248, 1280));
+        placeAt(notes, box(20, 100, 280, 1240));
+
+        act(() => notes.focus());
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(0, 20 - 52 - 12);
+    });
+
+    // o contador ainda no lugar dele fica em cima dos itens e n cobre nada
+    it("contador fora do alto da tela n mexe na pagina", async () => {
+        window.innerHeight = 900;
+        renderScale();
+        const notes = await screen.findByLabelText("Observações");
+        const counter = within(screen.getByRole("form", {name: "Escala"})).getByRole("status").closest("[data-top-bar]");
+        placeAt(counter, box(300, 352, 248, 1280));
+        placeAt(notes, box(400, 480, 280, 1240));
+
+        act(() => notes.focus());
         await nextFrame();
 
         expect(scrollBy).not.toHaveBeenCalled();

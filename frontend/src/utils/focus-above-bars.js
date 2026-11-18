@@ -25,10 +25,31 @@ function coveredTopOf(fieldBox) {
     return coveredTop;
 }
 
+// as barras presas no alto tem o data-top-bar, como o contador das escalas
+// so conta a q ja esta colada no cabecalho (ou no alto da janela no computador): a q ainda esta no lugar
+// dela fica em cima dos campos q vem depois e n cobre nenhum
+function coveredBottomOf(fieldBox, headerBottom) {
+    const barBoxes = Array.from(document.querySelectorAll("[data-top-bar]"))
+        .map((bar) => bar.getBoundingClientRect())
+        .filter((barBox) => barBox.height > 0 && barBox.left < fieldBox.right && barBox.right > fieldBox.left);
+    let coveredBottom = headerBottom;
+    let foundBar = true;
+    while (foundBar) {
+        foundBar = false;
+        for (const barBox of barBoxes) {
+            if (barBox.bottom > coveredBottom && barBox.top <= coveredBottom + 2) {
+                coveredBottom = barBox.bottom;
+                foundBar = true;
+            }
+        }
+    }
+    return coveredBottom;
+}
+
 // sobe a pagina so o bastante pro elemento com foco sair de baixo das barras
 function showAboveBars(element) {
     // o botao da propria barra n tem como sair de baixo dela, e o modal fica parado por cima da pagina
-    if (document.activeElement !== element || element.closest("[data-bottom-bar], [role='dialog']")) {
+    if (document.activeElement !== element || element.closest("[data-bottom-bar], [data-top-bar], [role='dialog']")) {
         return;
     }
     const fieldBox = element.getBoundingClientRect();
@@ -38,10 +59,14 @@ function showAboveBars(element) {
     const hiddenPart = fieldBox.bottom + GAP - coveredTopOf(fieldBox);
     // no celular o cabecalho fica preso em cima, e o index.css ja desconta ele no scroll-padding-top
     const headerBottom = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    const topCovered = coveredBottomOf(fieldBox, headerBottom);
     // campo mais alto q o espaco livre sobe so ate o topo dele, onde ficam o rotulo e o cursor
-    const distance = Math.min(hiddenPart, fieldBox.top - headerBottom - GAP);
+    const distance = Math.min(hiddenPart, fieldBox.top - topCovered - GAP);
     if (distance > 0) {
         window.scrollBy(0, distance);
+    } else if (fieldBox.top < topCovered) {
+        // o campo atras da barra de cima desce so o bastante pra aparecer
+        window.scrollBy(0, fieldBox.top - topCovered - GAP);
     }
 }
 

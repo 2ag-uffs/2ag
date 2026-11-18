@@ -2,6 +2,7 @@ import {useState} from "react";
 import {render, screen, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe, expect, it, vi} from "vitest";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import {answersPayload} from "../../utils/scale-answers.js";
 import ScaleForm from "./scale-form.jsx";
 
@@ -90,6 +91,69 @@ describe("ScaleForm", () => {
     });
 });
 
+// o contador fica no alto do formulario e conta so o q a pessoa respondeu
+describe("ScaleForm com o contador de respondidas", () => {
+    it("conta as respostas e o item limpo deixa de contar", async () => {
+        const user = userEvent.setup();
+        render(<FormWithValues initialValues={{dor: "7"}}/>);
+
+        const counter = screen.getByRole("status");
+        expect(counter).toHaveTextContent("1 de 3 respondidas");
+
+        await user.click(screen.getByRole("radio", {name: "Às vezes"}));
+        expect(counter).toHaveTextContent("2 de 3 respondidas");
+
+        await user.click(screen.getByRole("button", {name: "Limpar resposta de Dor"}));
+        expect(counter).toHaveTextContent("1 de 3 respondidas");
+    });
+
+    // o valor q o sistema calcula n eh pergunta, entao fica fora da conta
+    it("o item calculado fica fora da conta e o texto livre conta como os outros", () => {
+        const items = [...ITEMS,
+            {key: "tempoNaCama", label: "Tempo na cama", type: "CALCULADO"},
+            {key: "comentario", label: "Observações", type: "TEXTO"}];
+        render(<ScaleForm items={items} values={{tempoNaCama: "480", comentario: "dormi mal"}} onChange={() => {}}/>);
+
+        expect(screen.getByRole("status")).toHaveTextContent("1 de 4 respondidas");
+    });
+
+    // o leitor de tela ouve a conta qnd ela muda, e n a cada letra do texto livre
+    it("o leitor de tela ouve a conta mudar so no primeiro caractere do texto livre", async () => {
+        const items = [{key: "comentario", label: "Observações", type: "TEXTO"}];
+        function TextForm() {
+            const [values, setValues] = useState({});
+            return <ScaleForm items={items} values={values}
+                onChange={(key, value) => setValues((current) => ({...current, [key]: value}))}/>;
+        }
+        const user = userEvent.setup();
+        render(<TextForm/>);
+
+        const counter = screen.getByRole("status");
+        expect(counter).toHaveTextContent("0 de 1 respondidas");
+        const changes = [];
+        const observer = new MutationObserver((records) => changes.push(...records));
+        observer.observe(counter, {characterData: true, childList: true, subtree: true});
+
+        await user.type(screen.getByLabelText("Observações"), "dor de cabeça");
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        observer.disconnect();
+
+        expect(counter).toHaveTextContent("1 de 1 respondidas");
+        expect(changes).toHaveLength(1);
+    });
+
+    // o item q falta fica marcado como invalido, e eh por ai q a tela acha o primeiro pra levar o foco
+    it("o item q falta fica marcado como invalido nas opcoes e no campo digitado", () => {
+        const items = [...ITEMS, {key: "horas", label: "Horas de sono", type: "HORAS"}];
+        render(<ScaleForm items={items} values={{}} onChange={() => {}} missingKeys={["frequencia", "horas"]}/>);
+
+        expect(screen.getByRole("radio", {name: "Nunca"})).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("radio", {name: "Às vezes"})).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByLabelText("Horas de sono")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("radio", {name: "7"})).not.toHaveAttribute("aria-invalid");
+    });
+});
+
 // a intensidade da dor eh o proprio escore do registro de dor, entao a regua
 // dela ganha as faixas da escala visual do papel (RF25)
 const PAIN_ITEM = {
@@ -145,5 +209,23 @@ describe("ScaleForm com as faixas da escala", () => {
         expect(screen.queryByText("Sem ansiedade")).not.toBeInTheDocument();
         expect(screen.getAllByRole("radio")).toHaveLength(5);
         expect(screen.getByText("4 muito grave")).toBeInTheDocument();
+    });
+});
+
+// o jsdom n desenha a tela, entao o lugar do contador sai do css
+describe("contador preso no alto do formulario", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+
+    it("fica preso no alto, embaixo das barras do layout, e no celular para embaixo do cabecalho", () => {
+        const progress = declarationsOf(css, ".progress");
+        const mobile = declarationsOf(mediaRules(css, "@media (max-width: 47.99rem)"), ".progress");
+
+        expect(progress.position).toBe("sticky");
+        expect(progress.top).toBe("0");
+        // abaixo do menu e do cabecalho do layout, q ficam na camada de navegacao
+        expect(progress["z-index"]).toBe("var(--layer-sticky)");
+        expect(mobile.top).toBe("calc(var(--mobile-header-height) + env(safe-area-inset-top))");
+        // o fundo cobre o item q passa por baixo
+        expect(progress["background-color"]).toBeDefined();
     });
 });

@@ -1,5 +1,5 @@
 import UrgencyNotice from "../urgency-notice/urgency-notice.jsx";
-import {formatAnswer} from "../../utils/scale-answers.js";
+import {answersPayload, formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./scale-form.module.css";
 
 // desenha os itens de qualquer escala a partir da definicao q veio da api
@@ -9,27 +9,50 @@ import styles from "./scale-form.module.css";
 //
 // o erro de campo q a api manda (fieldErrors, pela chave do item) aparece no proprio item
 // na tela do paciente o texto livre vem com o aviso de q o sistema n eh urgencia (showsUrgencyNotice, R1)
+// o item q falta ou com erro fica com aria-invalid, e a tela leva o foco pro primeiro (useFocusFirstError)
 export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
     fieldErrors = {}, showsUrgencyNotice = false}) {
+    // o valor q o sistema calcula n eh pergunta, entao fica fora da conta
+    const total = items.filter((item) => item.type !== "CALCULADO").length;
+    const answered = Object.keys(answersPayload(items, values)).length;
+
     return (
-        <ol className={styles.items}>
-            {items.map((item) => {
-                const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
-                return (
-                    <li key={item.key} className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}>
-                        <ScaleField
-                            item={item}
-                            bands={bandsOfItem(item, bands)}
-                            values={values}
-                            onChange={onChange}
-                            disabled={disabled}
-                            error={fieldErrors[item.key]}
-                            showsUrgencyNotice={showsUrgencyNotice}
-                        />
-                    </li>
-                );
-            })}
-        </ol>
+        <div className={styles.form}>
+            {total > 0 && <ScaleProgress answered={answered} total={total}/>}
+            <ol className={styles.items}>
+                {items.map((item) => {
+                    const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
+                    return (
+                        <li key={item.key} className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}>
+                            <ScaleField
+                                item={item}
+                                bands={bandsOfItem(item, bands)}
+                                values={values}
+                                onChange={onChange}
+                                disabled={disabled}
+                                isMarked={isMarked}
+                                error={fieldErrors[item.key]}
+                                showsUrgencyNotice={showsUrgencyNotice}
+                            />
+                        </li>
+                    );
+                })}
+            </ol>
+        </div>
+    );
+}
+
+// quantos itens a pessoa ja respondeu, preso no alto enquanto ela rola o formulario
+// o data-top-bar faz o campo com foco atras dele descer (utils/focus-above-bars.js)
+// o texto eh um so, entao o leitor de tela so ouve qnd a conta muda e n a cada letra do texto livre
+function ScaleProgress({answered, total}) {
+    return (
+        <div className={styles.progress} data-top-bar="">
+            <p className={styles.progressText} role="status">{answered + " de " + total + " respondidas"}</p>
+            <div className={styles.progressTrack} aria-hidden="true">
+                <div className={styles.progressFill} style={{width: Math.round(answered / total * 100) + "%"}}/>
+            </div>
+        </div>
     );
 }
 
@@ -57,7 +80,7 @@ function scoresBetween(minValue, maxValue) {
     return scores;
 }
 
-function ScaleField({item, bands, values, onChange, disabled, error, showsUrgencyNotice}) {
+function ScaleField({item, bands, values, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -66,12 +89,13 @@ function ScaleField({item, bands, values, onChange, disabled, error, showsUrgenc
     }
     if (item.type === "NOTA" || item.type === "ESCOLHA" || item.type === "SIM_NAO") {
         return (
-            <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled} error={error}/>
+            <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled}
+                isMarked={isMarked} error={error}/>
         );
     }
     return (
-        <TypedField item={item} value={value} onChange={change} disabled={disabled} error={error}
-            showsUrgencyNotice={showsUrgencyNotice}/>
+        <TypedField item={item} value={value} onChange={change} disabled={disabled} isMarked={isMarked}
+            error={error} showsUrgencyNotice={showsUrgencyNotice}/>
     );
 }
 
@@ -96,7 +120,7 @@ function ComputedField({item, value}) {
     );
 }
 
-function ChoiceField({item, bands, value, onChange, disabled, error}) {
+function ChoiceField({item, bands, value, onChange, disabled, isMarked, error}) {
     // toque errado no celular n pode virar dado clinico (RN10)
     // o botao some dps de limpar, entao o foco volta pra primeira opcao
     const clearAnswer = (event) => {
@@ -104,11 +128,11 @@ function ChoiceField({item, bands, value, onChange, disabled, error}) {
         onChange("");
     };
 
-    let choices = <OptionChoices item={item} value={value} onChange={onChange}/>;
+    let choices = <OptionChoices item={item} value={value} onChange={onChange} invalid={isMarked}/>;
     if (item.type === "NOTA" && bands.length > 0) {
-        choices = <BandedScoreChoices item={item} bands={bands} value={value} onChange={onChange}/>;
+        choices = <BandedScoreChoices item={item} bands={bands} value={value} onChange={onChange} invalid={isMarked}/>;
     } else if (item.type === "NOTA") {
-        choices = <ScoreChoices item={item} value={value} onChange={onChange}/>;
+        choices = <ScoreChoices item={item} value={value} onChange={onChange} invalid={isMarked}/>;
     }
 
     return (
@@ -137,7 +161,7 @@ function ChoiceField({item, bands, value, onChange, disabled, error}) {
 }
 
 // texto livre hora ou numero digitado
-function TypedField({item, value, onChange, disabled, error, showsUrgencyNotice}) {
+function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
     const noticeId = item.key + "-urgencia";
     const hasNotice = showsUrgencyNotice && item.type === "TEXTO";
     // o erro e o aviso de urgencia lidos junto com o campo
@@ -157,7 +181,7 @@ function TypedField({item, value, onChange, disabled, error, showsUrgencyNotice}
                     maxLength={2000}
                     value={value}
                     disabled={disabled}
-                    aria-invalid={error ? "true" : undefined}
+                    aria-invalid={isMarked ? "true" : undefined}
                     aria-describedby={describedBy === "" ? undefined : describedBy}
                     onChange={(event) => onChange(event.target.value)}
                 />
@@ -171,7 +195,7 @@ function TypedField({item, value, onChange, disabled, error, showsUrgencyNotice}
                     step={item.type === "HORAS" ? 0.5 : 1}
                     value={value}
                     disabled={disabled}
-                    aria-invalid={error ? "true" : undefined}
+                    aria-invalid={isMarked ? "true" : undefined}
                     aria-describedby={error ? errorIdOf(item) : undefined}
                     onChange={(event) => onChange(event.target.value)}
                 />
@@ -193,12 +217,13 @@ function Label({item}) {
 
 // a regua de notas, com as ancoras nas pontas pra dizer o q eh 0 e o q
 // eh o maximo. sem isso o numero sozinho n quer dizer nada
-function ScoreChoices({item, value, onChange}) {
+function ScoreChoices({item, value, onChange, invalid}) {
     return (
         <>
             <div className={styles.scores} role="group">
                 {scoresBetween(item.minValue, item.maxValue).map((score) => (
-                    <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}/>
+                    <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}
+                        invalid={invalid}/>
                 ))}
             </div>
             <p className={styles.anchors}>
@@ -212,7 +237,7 @@ function ScoreChoices({item, value, onChange}) {
 // a regua desenhada como a escala visual do papel, com cada faixa nomeada e
 // colorida em cima das notas dela (RF25). o nome fica escrito, entao a cor n
 // eh o unico sinal. as pontas ja estao no nome das faixas e as ancoras saem
-function BandedScoreChoices({item, bands, value, onChange}) {
+function BandedScoreChoices({item, bands, value, onChange, invalid}) {
     return (
         <div className={styles.bands}>
             {bands.map((band, index) => {
@@ -231,7 +256,8 @@ function BandedScoreChoices({item, bands, value, onChange}) {
                         </p>
                         <div className={styles.bandScores}>
                             {scoresBetween(band.minScore, band.maxScore).map((score) => (
-                                <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}/>
+                                <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}
+                                    invalid={invalid}/>
                             ))}
                         </div>
                     </div>
@@ -254,7 +280,7 @@ function toneOf(index, total, higherIsBetter) {
     return isGoodEnd ? styles.bandGood : styles.bandBad;
 }
 
-function ScoreOption({item, score, value, onChange}) {
+function ScoreOption({item, score, value, onChange, invalid}) {
     return (
         <label className={styles.score}>
             <input
@@ -262,6 +288,7 @@ function ScoreOption({item, score, value, onChange}) {
                 name={item.key}
                 value={score}
                 checked={String(value) === String(score)}
+                aria-invalid={invalid ? "true" : undefined}
                 onChange={() => onChange(String(score))}
             />
             <span>{score}</span>
@@ -269,7 +296,7 @@ function ScoreOption({item, score, value, onChange}) {
     );
 }
 
-function OptionChoices({item, value, onChange}) {
+function OptionChoices({item, value, onChange, invalid}) {
     const options = item.type === "SIM_NAO"
         ? [{value: "true", label: "Sim"}, {value: "false", label: "Não"}]
         : item.options.map((option) => ({value: String(option.value), label: option.label}));
@@ -283,6 +310,7 @@ function OptionChoices({item, value, onChange}) {
                         name={item.key}
                         value={option.value}
                         checked={String(value) === option.value}
+                        aria-invalid={invalid ? "true" : undefined}
                         onChange={() => onChange(option.value)}
                     />
                     <span>{option.label}</span>
