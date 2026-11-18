@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
-import {apiService, errorMessageOf, setLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, logout} from "../../services/api.js";
 import styles from "./confirm-email.module.css";
 
 // confirmacao do e-mail de acesso novo pelo link q chegou nele (issue 130)
@@ -16,6 +16,8 @@ export default function ConfirmEmail() {
 
     const [errorMessage, setErrorMessage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // a conta q estava aberta neste navegador e ficou, pq a api n confirmou a saida dela dps da confirmacao
+    const [openAccount, setOpenAccount] = useState(null);
 
     // tira o codigo da barra de endereco e do historico do navegador
     useEffect(() => {
@@ -24,18 +26,31 @@ export default function ConfirmEmail() {
         }
     }, [tokenInUrl, navigate]);
 
+    // a api so encerra as sessoes da conta do link, e a conta aberta neste navegador pode ser outra
+    // (responsavel com dois filhos). a tela sai dela pela api e so vai pro login qnd a api confirma a saida,
+    // senao o cookie continuava valendo e a proxima pessoa no computador entrava sem senha
+    const leaveOpenAccount = async () => {
+        const loggedUser = getLoggedUser();
+        setIsSubmitting(true);
+        if (loggedUser === null || await logout()) {
+            navigate("/entrar", {replace: true, state: {notice: "E-mail confirmado. Entre com o e-mail novo."}});
+            return;
+        }
+        setOpenAccount(loggedUser);
+        setIsSubmitting(false);
+    };
+
     const handleConfirm = async () => {
         setErrorMessage(null);
         setIsSubmitting(true);
         try {
             await apiService.post("/auth/email-change/confirm", {token: token});
-            // a api encerra as sessoes abertas, entao a tela esquece quem estava logado
-            setLoggedUser(null);
-            navigate("/entrar", {replace: true, state: {notice: "E-mail confirmado. Entre com o e-mail novo."}});
         } catch (requestError) {
             setErrorMessage(errorMessageOf(requestError));
             setIsSubmitting(false);
+            return;
         }
+        await leaveOpenAccount();
     };
 
     if (!token) {
@@ -61,13 +76,27 @@ export default function ConfirmEmail() {
                 </div>
             )}
 
-            <p className={styles.message}>
-                Você pediu para usar este e-mail como acesso da sua conta no 2AG. Ao confirmar, o e-mail antigo
-                deixa de entrar e as sessões abertas são encerradas: entre de novo com o e-mail novo.
-            </p>
-            <BusyButton type="button" className={styles.submitButton} onClick={handleConfirm} isBusy={isSubmitting}
-                        busyText="Confirmando...">
-                Confirmar e-mail novo
+            {openAccount && (
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">
+                    O e-mail novo foi confirmado, mas não foi possível sair da conta
+                    de <strong>{openAccount.name}</strong> neste navegador. Confira sua internet e tente de novo.
+                </p>
+            )}
+            {!openAccount && (
+                <p className={styles.message}>
+                    Você pediu para usar este e-mail como acesso da sua conta no 2AG. Ao confirmar, o e-mail antigo
+                    deixa de entrar e as sessões abertas são encerradas: entre de novo com o e-mail novo.
+                </p>
+            )}
+            {/* o botao eh o mesmo nos dois casos, pro foco do teclado continuar nele (CT-39) */}
+            <BusyButton
+                type="button"
+                className={styles.submitButton}
+                onClick={openAccount ? leaveOpenAccount : handleConfirm}
+                isBusy={isSubmitting}
+                busyText={openAccount ? "Saindo..." : "Confirmando..."}
+            >
+                {openAccount ? "Sair da conta" : "Confirmar e-mail novo"}
             </BusyButton>
         </AuthLayout>
     );

@@ -57,6 +57,7 @@ const routes = [
             },
             {
                 // sem o desvio de quem esta logado: a pessoa pode confirmar no mesmo navegador do perfil
+                // a conta aberta pode ser outra, entao a tela sai dela pela api dps de confirmar
                 path: "/confirmar-email",
                 lazy: lazyPage(() => import("../pages/confirm-email/confirm-email.jsx")),
             },

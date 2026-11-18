@@ -823,7 +823,7 @@ As questões que dependem da clínica ficam num documento de perguntas para a cl
 
 **E-mail configurado em 13/09/2026:** com `MAIL_HOST` definido, o link de recuperação de senha sai por e-mail pelo servidor SMTP. Sem ele, o link continua indo para o log da API.
 
-**Troca do e-mail de acesso em 13/10/2026:** o e-mail só muda depois que a pessoa abre o link enviado para o endereço novo (RF18). Sem `MAIL_HOST` esse link também vai só para o log da API: a troca nunca é direta, porque é o link que prova que a pessoa recebe e-mail naquele endereço.
+**Troca do e-mail de acesso em 13/10/2026:** o e-mail só muda depois que a pessoa abre o link enviado para o endereço novo (RF18). Sem `MAIL_HOST` esse link também vai só para o log da API: a troca nunca é direta, porque é o link que prova que a pessoa recebe e-mail naquele endereço. A confirmação encerra as sessões da conta do link e a tela também sai da conta que estiver aberta naquele navegador, que pode ser outra (o responsável com dois filhos): antes a tela ia para o login e a outra conta continuava aberta para quem recarregasse a página. Se a saída falhar, a tela não vai para o login: diz que o e-mail foi confirmado e que não conseguiu sair daquela conta, com o botão para sair (18/11/2026).
 
 **HTTPS na pilha em 13/10/2026 (RNF05):** o TLS termina no nginx do compose com o certificado da clínica (pasta `certs/`), a porta 80 só redireciona, o cookie de sessão sai com `Secure` por padrão (`.env.example`) e o smoke do CI sobe a pilha em https com certificado autoassinado. O passo a passo do servidor está em `docs/guia-de-deploy.md`. O desenvolvimento sem docker continua em http://localhost:5173 com `SESSION_SECURE_COOKIE=false`.
 
