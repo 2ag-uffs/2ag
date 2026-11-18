@@ -124,7 +124,14 @@ class PrescriberDeactivationTest {
                 .andExpect(jsonPath("$.openTasks").doesNotExist())
                 .andExpect(jsonPath("$.futureAppointments").doesNotExist());
 
-        // reativada, o lembrete q ficou no prazo sai na rodada seguinte
+        // reativar n manda nada na hora: mandaria o lembrete de todos os pacientes dela de uma vez, ate de noite
+        // (decisao de 17/11/2026)
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId())).isEmpty();
+        verify(emailSender, never()).send(any());
+
+        // o lembrete q ainda cabe no prazo sai na proxima rodada do job, q aqui eh chamada de novo no msm dia
+        // de vdd o job roda uma vez por dia: reativada dps das 8h, a rodada seguinte eh a de amanha, q ja olha
+        // o dia dps, e o lembrete da consulta de amanha n sai
         assertThat(reminderService.sendAppointmentReminders(TODAY)).isEqualTo(1);
         assertThat(reminderService.sendScaleReminders(TODAY)).isEqualTo(1);
         assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId())).hasSize(2);

@@ -552,7 +552,8 @@ class PatientArchiveTest {
                         hasSize(1)));
     }
 
-    // quem saiu do tratamento n recebe "sua consulta eh amanha", e reativado volta a receber
+    // quem saiu do tratamento n recebe "sua consulta eh amanha", e reativado volta a receber na proxima rodada
+    // do job em q o lembrete ainda couber. reativar n manda o lembrete na hora (decisao de 17/11/2026)
     @Test
     void theArchivedPatientGetsNoAppointmentReminder() throws Exception {
         LocalDate today = LocalDate.now();
@@ -565,6 +566,10 @@ class PatientArchiveTest {
                 .extracting(Notification::getTitle).doesNotContain("Consulta amanhã");
 
         reactivate(patient, prescriber).andExpect(status().isOk());
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .extracting(Notification::getTitle).doesNotContain("Consulta amanhã");
+        // o teste chama a rodada de novo no msm dia. de vdd o job roda uma vez por dia: reativado dps das 8h, a
+        // rodada seguinte eh a de amanha, q ja olha o dia dps
         assertThat(reminderService.sendAppointmentReminders(today)).isEqualTo(1);
     }
 
