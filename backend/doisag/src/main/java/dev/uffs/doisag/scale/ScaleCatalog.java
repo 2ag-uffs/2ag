@@ -34,6 +34,17 @@ public class ScaleCatalog {
             new ScaleOption(2, "Entre 3 e 6 dias"),
             new ScaleOption(3, "Todos os dias"));
 
+    // as perguntas q juntam varios itens no papel, copiadas de docs/scales. a tela mostra cada uma
+    // uma vez em cima dos itens dela (o section do item), e o rotulo de cada item continua o msm
+    // a 5 do psqi-br.pdf
+    private static final String SLEEP_TROUBLE_QUESTION =
+            "Durante o último mês, com que frequência você teve dificuldade para dormir porque você:";
+    // a da dor eh a ajuda de cada item e n vira titulo, senao a msm frase aparecia duas vezes em cada um
+    private static final String PAIN_TROUBLE_QUESTION = "Durante a última semana, com que frequência a dor atrapalhou";
+    // o cabecalho da tabela de registro-tea.pdf
+    private static final String TEA_BEHAVIOR_QUESTION =
+            "Durante a última semana com que frequência esses comportamentos ocorreram:";
+
     // frequencia do psqi, com o texto do formulario
     private static final List<ScaleOption> TIMES_PER_MONTH_OPTIONS = List.of(
             new ScaleOption(0, "Nenhuma no último mês"),
@@ -269,17 +280,18 @@ public class ScaleCatalog {
                         "Quando você geralmente levantou de manhã", ScaleItemType.HORA),
                 ScaleItem.simples("horasDeSono", "Horas de sono por noite",
                         "Pode ser diferente do número de horas que você ficou na cama", ScaleItemType.HORAS),
-                psqiFreq("freqNaoAdormeceu", "Não conseguiu adormecer em até 30 minutos"),
-                psqiFreq("freqAcordouNoite", "Acordou no meio da noite ou de manhã cedo"),
-                psqiFreq("freqBanheiro", "Precisou levantar para ir ao banheiro"),
-                psqiFreq("freqRespirar", "Não conseguiu respirar confortavelmente"),
-                psqiFreq("freqTosseRonco", "Tossiu ou roncou forte"),
-                psqiFreq("freqFrio", "Sentiu muito frio"),
-                psqiFreq("freqCalor", "Sentiu muito calor"),
-                psqiFreq("freqSonhosRuins", "Teve sonhos ruins"),
-                psqiFreq("freqDor", "Teve dor"),
-                ScaleItem.texto("outrasRazoes", "Outras razões que atrapalharam o sono", "Descreva"),
-                psqiFreq("freqOutrasRazoes", "Com que frequência essas outras razões atrapalharam"),
+                sleepTroubleFreq("freqNaoAdormeceu", "Não conseguiu adormecer em até 30 minutos"),
+                sleepTroubleFreq("freqAcordouNoite", "Acordou no meio da noite ou de manhã cedo"),
+                sleepTroubleFreq("freqBanheiro", "Precisou levantar para ir ao banheiro"),
+                sleepTroubleFreq("freqRespirar", "Não conseguiu respirar confortavelmente"),
+                sleepTroubleFreq("freqTosseRonco", "Tossiu ou roncou forte"),
+                sleepTroubleFreq("freqFrio", "Sentiu muito frio"),
+                sleepTroubleFreq("freqCalor", "Sentiu muito calor"),
+                sleepTroubleFreq("freqSonhosRuins", "Teve sonhos ruins"),
+                sleepTroubleFreq("freqDor", "Teve dor"),
+                ScaleItem.texto("outrasRazoes", "Outras razões que atrapalharam o sono", "Descreva")
+                        .inSection(SLEEP_TROUBLE_QUESTION),
+                sleepTroubleFreq("freqOutrasRazoes", "Com que frequência essas outras razões atrapalharam"),
                 ScaleItem.escolha("qualidadeGeral", "Qualidade do sono de uma maneira geral", null, List.of(
                         new ScaleOption(0, "Muito boa"),
                         new ScaleOption(1, "Boa"),
@@ -299,7 +311,7 @@ public class ScaleCatalog {
                         new ScaleOption(0, "Não"),
                         new ScaleOption(1, "Parceiro ou colega, mas em outro quarto"),
                         new ScaleOption(2, "Parceiro no mesmo quarto, mas em outra cama"),
-                        new ScaleOption(3, "Parceiro na mesma cama")), false));
+                        new ScaleOption(3, "Parceiro na mesma cama")), false, null));
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 5, "Boa qualidade de sono"),
@@ -313,6 +325,11 @@ public class ScaleCatalog {
 
     private ScaleItem psqiFreq(String key, String label) {
         return ScaleItem.escolha(key, label, null, TIMES_PER_MONTH_OPTIONS, false);
+    }
+
+    // os itens de a a j da pergunta 5, q o papel junta embaixo dela
+    private ScaleItem sleepTroubleFreq(String key, String label) {
+        return psqiFreq(key, label).inSection(SLEEP_TROUBLE_QUESTION);
     }
 
     // acompanhamento semanal de paciente com dor (RF25)
@@ -339,8 +356,7 @@ public class ScaleCatalog {
     }
 
     private ScaleItem painFreq(String key, String label) {
-        return ScaleItem.escolha(key, label, "Durante a última semana, com que frequência a dor atrapalhou",
-                DAYS_PER_WEEK_OPTIONS, false);
+        return ScaleItem.escolha(key, label, PAIN_TROUBLE_QUESTION, DAYS_PER_WEEK_OPTIONS, false);
     }
 
     // acompanhamento semanal de paciente com TEA (RF24)
@@ -371,7 +387,7 @@ public class ScaleCatalog {
     }
 
     private ScaleItem teaFreq(String key, String label, String help) {
-        return ScaleItem.escolha(key, label, help, DAYS_PER_WEEK_OPTIONS, false);
+        return ScaleItem.escolha(key, label, help, DAYS_PER_WEEK_OPTIONS, false).inSection(TEA_BEHAVIOR_QUESTION);
     }
 
     private ScaleItem notesItem(String key) {

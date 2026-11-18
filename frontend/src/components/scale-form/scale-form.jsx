@@ -1,3 +1,4 @@
+import {Fragment} from "react";
 import {FiCheck} from "react-icons/fi";
 import UrgencyNotice from "../urgency-notice/urgency-notice.jsx";
 import {answersPayload, formatAnswer} from "../../utils/scale-answers.js";
@@ -24,37 +25,68 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
     steps.forEach((stepItems, index) => stepItems.forEach((item) => {
         stepOfItem[item.key] = index;
     }));
-    const shownItems = step === null ? items : (steps[step] || []);
+    const shownKeys = (step === null ? items : (steps[step] || [])).map((item) => item.key);
+    // as partes saem da escala inteira, entao no celular a tela do item da parte leva o titulo junto
+    const parts = partsOf(items)
+        .map((part) => ({...part, items: part.items.filter((item) => shownKeys.includes(item.key))}))
+        .filter((part) => part.items.length > 0);
+
+    const itemList = (partItems) => (
+        <ol className={styles.items}>
+            {partItems.map((item) => {
+                const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
+                return (
+                    <li
+                        key={item.key}
+                        className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}
+                        data-step={stepOfItem[item.key]}
+                    >
+                        <ScaleField
+                            item={item}
+                            bands={bandsOfItem(item, bands)}
+                            values={values}
+                            onChange={onChange}
+                            disabled={disabled}
+                            isMarked={isMarked}
+                            error={fieldErrors[item.key]}
+                            showsUrgencyNotice={showsUrgencyNotice}
+                            isStep={step !== null}
+                        />
+                    </li>
+                );
+            })}
+        </ol>
+    );
 
     return (
         <div className={styles.form}>
             {steps.length > 0 && <ScaleProgress answered={answered} total={steps.length} step={step}/>}
-            <ol className={styles.items}>
-                {shownItems.map((item) => {
-                    const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
-                    return (
-                        <li
-                            key={item.key}
-                            className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}
-                            data-step={stepOfItem[item.key]}
-                        >
-                            <ScaleField
-                                item={item}
-                                bands={bandsOfItem(item, bands)}
-                                values={values}
-                                onChange={onChange}
-                                disabled={disabled}
-                                isMarked={isMarked}
-                                error={fieldErrors[item.key]}
-                                showsUrgencyNotice={showsUrgencyNotice}
-                                isStep={step !== null}
-                            />
-                        </li>
-                    );
-                })}
-            </ol>
+            {parts.map((part) => (part.section ? (
+                <div key={part.key} className={styles.part} role="group" aria-labelledby={part.key + "-parte"}>
+                    <h2 id={part.key + "-parte"} className={styles.partTitle}>{part.section}</h2>
+                    {itemList(part.items)}
+                </div>
+            ) : (
+                <Fragment key={part.key}>{itemList(part.items)}</Fragment>
+            )))}
         </div>
     );
+}
+
+// os itens seguidos com a msm pergunta do papel (o section q vem da api) ficam juntos embaixo dela
+// o texto eh o do instrumento e o rotulo de cada item continua o msm. o item sem pergunta fica sozinho
+function partsOf(items) {
+    const parts = [];
+    items.forEach((item) => {
+        const section = item.section || null;
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && lastPart.section === section) {
+            lastPart.items.push(item);
+        } else {
+            parts.push({key: item.key, section, items: [item]});
+        }
+    });
+    return parts;
 }
 
 // quantos itens a pessoa ja respondeu, preso no alto enquanto ela rola o formulario

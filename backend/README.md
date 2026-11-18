@@ -276,7 +276,7 @@ as respostas de todas as escalas caem numa tabela só. o formulário de cada uma
 
 | rota | o que faz |
 | :--- | :--- |
-| `GET /scales/definitions/{slug}` | o formulário de uma escala. o do MEEM só sai para o prescritor, e o paciente recebe 403 |
+| `GET /scales/definitions/{slug}` | o formulário de uma escala. o do MEEM só sai para o prescritor, e o paciente recebe 403. o item que o papel junta com outros embaixo de uma pergunta vem com ela em `section` (a 5 do Pittsburgh e a do TEA, copiadas de `docs/scales`; na dor a pergunta já é a ajuda de cada item e não vem em `section`), só para a tela mostrar a pergunta uma vez em cima deles; o escore não usa, e o item sozinho vem com `section` nulo (17/11/2026) |
 | `GET /scales/assignable` | as escalas que o prescritor pode enviar ao paciente |
 | `POST /scales/{slug}/responses` | o paciente responde. no diário, responder de novo o mesmo dia corrige aquele dia |
 | `GET /scales/{slug}/responses` | as respostas do paciente logado naquela escala, que a grade da semana usa. com o slug do MEEM a resposta é 403 |

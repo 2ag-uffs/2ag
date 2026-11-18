@@ -85,6 +85,48 @@ class ScaleFormsTest {
         org.assertj.core.api.Assertions.assertThat(body).doesNotContain("medos");
     }
 
+    // a pergunta q o papel usa pra juntar varios itens (a 5 do pittsburgh) vai em cada item dela, pra tela
+    // mostrar uma vez em cima deles. o texto vem de docs/scales, e o rotulo do item continua o msm
+    @Test
+    void aPerguntaQueJuntaItensNoPapelVemEmCadaItemDela() throws Exception {
+        String sleepTrouble = "Durante o último mês, com que frequência você teve dificuldade para dormir porque você:";
+        mockMvc.perform(get("/scales/definitions/pittsburgh").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[3].key").value("horasDeSono"))
+                .andExpect(jsonPath("$.items[3].section").doesNotExist())
+                .andExpect(jsonPath("$.items[4].key").value("freqNaoAdormeceu"))
+                .andExpect(jsonPath("$.items[4].label").value("Não conseguiu adormecer em até 30 minutos"))
+                .andExpect(jsonPath("$.items[4].section").value(sleepTrouble))
+                .andExpect(jsonPath("$.items[13].key").value("outrasRazoes"))
+                .andExpect(jsonPath("$.items[13].section").value(sleepTrouble))
+                .andExpect(jsonPath("$.items[14].key").value("freqOutrasRazoes"))
+                .andExpect(jsonPath("$.items[14].section").value(sleepTrouble))
+                .andExpect(jsonPath("$.items[15].key").value("qualidadeGeral"))
+                .andExpect(jsonPath("$.items[15].section").doesNotExist());
+
+        // na dor a pergunta eh a ajuda de cada item e fica so nela: com titulo a frase aparecia duas vezes
+        String painTrouble = "Durante a última semana, com que frequência a dor atrapalhou";
+        mockMvc.perform(get("/scales/definitions/registro-dor").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.items[0].section").doesNotExist())
+                .andExpect(jsonPath("$.items[1].key").value("freqAtividadesBasicas"))
+                .andExpect(jsonPath("$.items[1].help").value(painTrouble))
+                .andExpect(jsonPath("$.items[1].section").doesNotExist())
+                .andExpect(jsonPath("$.items[5].help").value(painTrouble))
+                .andExpect(jsonPath("$.items[5].section").doesNotExist())
+                .andExpect(jsonPath("$.items[6].key").value("observacao"))
+                .andExpect(jsonPath("$.items[6].section").doesNotExist());
+
+        mockMvc.perform(get("/scales/definitions/registro-tea").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.items[0].section").doesNotExist())
+                .andExpect(jsonPath("$.items[1].key").value("freqAgressividade"))
+                .andExpect(jsonPath("$.items[1].section")
+                        .value("Durante a última semana com que frequência esses comportamentos ocorreram:"))
+                .andExpect(jsonPath("$.items[6].key").value("freqApetite"))
+                .andExpect(jsonPath("$.items[6].section")
+                        .value("Durante a última semana com que frequência esses comportamentos ocorreram:"))
+                .andExpect(jsonPath("$.items[7].section").doesNotExist());
+    }
+
     @Test
     void itemQueNaoEhDaEscalaEhRecusado() throws Exception {
         answerScale("hamilton", "{\"intensidadeDor\":3}")

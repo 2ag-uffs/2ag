@@ -7,6 +7,7 @@ import dev.uffs.doisag.scale.ScaleOption;
 import java.util.List;
 
 // um item do formulario do jeito q a tela precisa pra desenhar o campo
+// o section eh a pergunta do papel q junta varios itens, q a tela mostra uma vez em cima deles
 public record ScaleItemDTO(
         String key,
         String label,
@@ -17,7 +18,8 @@ public record ScaleItemDTO(
         String lowAnchor,
         String highAnchor,
         boolean higherIsBetter,
-        List<ScaleOption> options
+        List<ScaleOption> options,
+        String section
 ) {
     public ScaleItemDTO(ScaleItem item) {
         this(
@@ -30,7 +32,8 @@ public record ScaleItemDTO(
                 item.lowAnchor(),
                 item.highAnchor(),
                 item.higherIsBetter(),
-                item.options()
+                item.options(),
+                item.section()
         );
     }
 }

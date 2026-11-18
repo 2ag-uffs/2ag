@@ -307,6 +307,61 @@ describe("ScaleForm com as opcoes em cartoes", () => {
     });
 });
 
+// a pergunta q o papel usa pra juntar varios itens (o section q vem da api) aparece uma vez em cima deles
+describe("ScaleForm com os itens juntos embaixo da pergunta do papel", () => {
+    const SLEEP_TROUBLE = "Durante o último mês, com que frequência você teve dificuldade para dormir porque você:";
+    const frequency = (key, label) => ({key, label, type: "ESCOLHA", section: SLEEP_TROUBLE,
+        options: [{value: 0, label: "Nenhuma no último mês"}, {value: 1, label: "Menos de uma vez por semana"}]});
+    const PSQI_ITEMS = [
+        {key: "horasDeSono", label: "Horas de sono por noite", type: "HORAS"},
+        frequency("freqFrio", "Sentiu muito frio"),
+        frequency("freqCalor", "Sentiu muito calor"),
+        {key: "qualidadeGeral", label: "Qualidade do sono de uma maneira geral", type: "ESCOLHA",
+            options: [{value: 0, label: "Muito boa"}, {value: 1, label: "Boa"}]},
+    ];
+
+    it("mostra a pergunta uma vez em cima dos itens dela, e os rotulos ficam como estao", () => {
+        render(<ScaleForm items={PSQI_ITEMS} values={{}} onChange={() => {}}/>);
+
+        expect(screen.getAllByText(SLEEP_TROUBLE)).toHaveLength(1);
+        expect(screen.getByRole("heading", {name: SLEEP_TROUBLE})).toBeInTheDocument();
+        const part = screen.getByRole("group", {name: SLEEP_TROUBLE});
+        expect(within(part).getByRole("group", {name: "Sentiu muito frio"})).toBeInTheDocument();
+        expect(within(part).getByRole("group", {name: "Sentiu muito calor"})).toBeInTheDocument();
+        expect(within(part).queryByLabelText("Horas de sono por noite")).not.toBeInTheDocument();
+        expect(within(part).queryByRole("group", {name: "Qualidade do sono de uma maneira geral"}))
+            .not.toBeInTheDocument();
+        // a ordem dos itens continua a do instrumento
+        expect(screen.getAllByRole("radio").map((radio) => radio.name))
+            .toEqual(["freqFrio", "freqFrio", "freqCalor", "freqCalor", "qualidadeGeral", "qualidadeGeral"]);
+    });
+
+    // na dor a pergunta eh a ajuda de cada item e n vem como parte: a ajuda aparece e nenhum titulo entra
+    it("item sem parte com a pergunta na ajuda n ganha titulo", () => {
+        const painTrouble = "Durante a última semana, com que frequência a dor atrapalhou";
+        const items = [
+            {...frequency("freqSono", "Sono"), help: painTrouble},
+            {...frequency("freqProdutividade", "Produtividade no trabalho"), help: painTrouble},
+        ];
+        render(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
+
+        expect(screen.queryByRole("heading", {name: painTrouble})).not.toBeInTheDocument();
+        expect(screen.getAllByText(painTrouble)).toHaveLength(2);
+    });
+
+    // no celular cada tela tem uma pergunta, e a da parte leva o titulo junto pra n perder o sentido
+    it("na tela do celular o item da parte vem com o titulo em cima", () => {
+        const {rerender} = render(<ScaleForm items={PSQI_ITEMS} values={{}} onChange={() => {}} step={2}/>);
+
+        expect(screen.getByRole("heading", {name: SLEEP_TROUBLE})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Sentiu muito calor"})).toBeInTheDocument();
+        expect(screen.queryByRole("group", {name: "Sentiu muito frio"})).not.toBeInTheDocument();
+
+        rerender(<ScaleForm items={PSQI_ITEMS} values={{}} onChange={() => {}} step={3}/>);
+        expect(screen.queryByRole("heading", {name: SLEEP_TROUBLE})).not.toBeInTheDocument();
+    });
+});
+
 // o jsdom n desenha a tela, entao o lugar do contador sai do css
 describe("contador preso no alto do formulario", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");

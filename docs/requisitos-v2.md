@@ -392,6 +392,7 @@ Avaliação do sono do último mês. O sistema calcula o índice global conforme
 - Existe teste automatizado com caso de referência publicado
 - A entidade recebe o campo faltante de **frequência do item "outros motivos"**, necessário para compor o componente de distúrbios do sono
 - *Decisão de 14/11/2026, revisão das regras R13:* horas de sono maiores que o tempo na cama são recusadas no campo das horas de sono, como o diário do sono já recusa mais tempo acordado do que na cama. O mesmo horário para deitar e levantar e o tempo na cama acima de 16 horas são recusados no campo da hora de levantar, e os minutos para dormir vão até 1.440. O cálculo do índice não muda: só deixa de receber a resposta impossível
+- *Desde 17/11/2026* a tela mostra uma vez, em cima dos itens de a até j, a pergunta 5 do formulário (*Durante o último mês, com que frequência você teve dificuldade para dormir porque você:*), como no papel. O texto e a ordem dos itens não mudam, e o índice não usa esse título
 
 *Justificativa:* a primeira implementação somava 13 campos crus, gerando faixa de 0 a 39, incomparável a qualquer ponto de corte publicado, e o próprio código documentava a limitação em comentário. Como o valor era apresentado à prescritora rotulado como índice de qualidade do sono e podia influenciar ajuste de dose, a soma crua é inaceitável. O cálculo pelos 7 componentes está no sistema desde 12/09/2026 (Anexo A.2).
 
@@ -403,6 +404,7 @@ Registro do período avaliado e autoavaliação da qualidade de vida (0 a 10). F
 
 *Critérios de aceite:*
 - **Possui tela de preenchimento acessível.** Existe no backend, sem interface
+- *Desde 17/11/2026* a tela mostra uma vez, em cima dos seis comportamentos, a pergunta da tabela do formulário (*Durante a última semana com que frequência esses comportamentos ocorreram:*), como no papel
 
 ---
 
@@ -415,6 +417,7 @@ Período avaliado (`De __/__/__ A __/__/__`) e intensidade da dor em escala visu
 - Faixas da escala visual **conforme o formulário aplicado** (`docs/scales/registro-dor.pdf`): **leve 0 a 2 · moderada 3 a 7 · intensa 8 a 10**. A v1.0 especificava 1–3 leve, 4–6 moderada e 7–10 intensa, que não são as do instrumento em uso
 - A escala é apresentada visualmente, com as três faixas nomeadas e coloridas, não como um campo numérico solto. *Atendido em 16/10/2026: o formulário genérico desenha a nota com as faixas da definição — Dor leve (0 a 2) em azul, Dor moderada (3 a 7) em âmbar e Dor intensa (8 a 10) em vermelho, cores que seguem o formulário impresso (no papel a faixa moderada vai do verde ao âmbar; na tela foi simplificada num âmbar só) — com o nome e o intervalo de cada faixa escritos em cima das notas dela, então a cor não é o único sinal. Vale para qualquer item de nota que vá de ponta a ponta das faixas da escala; no HAM-A as faixas são do total de 0 a 56 e o item de 0 a 4 continua com a régua simples (`ScaleForm`)*
 - O campo de observação exibe a orientação do formulário: relato de efeito colateral, ausência de tomada de alguma medicação, momento significativo na rotina
+- A pergunta *Durante a última semana, com que frequência a dor atrapalhou* continua como ajuda de cada uma das cinco atividades. Ela não vira título de parte, como a pergunta 5 do Pittsburgh e a tabela do TEA viraram em 17/11/2026, porque a mesma frase apareceria duas vezes em cada item
 
 ---
 
