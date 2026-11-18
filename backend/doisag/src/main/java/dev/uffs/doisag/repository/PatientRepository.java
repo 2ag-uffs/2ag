@@ -36,6 +36,9 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // a administracao acha a conta pelo e-mail e ve as q ela desativou
     Optional<Patient> findByEmail(String email);
 
+    // pra saber se o cpf repetido no formulario de prescritor eh de paciente
+    Optional<Patient> findByCpf(String cpf);
+
     List<Patient> findAllByActiveFalseOrderByNameAsc();
 
     // quem nasceu nesses dias, pro aviso dos 18 anos

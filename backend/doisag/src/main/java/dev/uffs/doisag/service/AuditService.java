@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -134,6 +135,15 @@ public class AuditService {
     public void recordAdminLookup(Long patientId) {
         saveLoggedUserEvent(AuditOperation.VISUALIZACAO, AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId,
                 "Busca da conta pelo e-mail");
+    }
+
+    // a administracao digitou num formulario de prescritor o cpf ou o e-mail de um paciente, e o 409 contou
+    // pra ela q ele tem conta. fica como a busca pelo e-mail, na trilha dela e na do prontuario dele
+    // (decisao de 17/11/2026). o 409 desfaz a transacao de quem chama, entao a linha vai numa transacao so dela
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordPatientDataTypedByAdmin(Long patientId, String detail) {
+        saveLoggedUserEvent(AuditOperation.VISUALIZACAO, AuditRecordType.CONTA_DE_PACIENTE, patientId, patientId,
+                detail);
     }
 
     // a lista das contas desativadas mostra nome e e-mail de todas, entao cada abertura tbm fica, sem paciente

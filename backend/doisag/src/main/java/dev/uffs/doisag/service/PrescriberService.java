@@ -10,9 +10,11 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DuplicateValueException;
 import dev.uffs.doisag.infra.InputCleaner;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
+import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.UsersRepository;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class PrescriberService {
@@ -40,8 +43,18 @@ public class PrescriberService {
     private static final String CPF_TAKEN_MESSAGE = "Este CPF já tem conta no sistema";
     private static final String REGISTRY_TAKEN_MESSAGE = "Este registro profissional já tem conta no sistema";
 
+    // o q vai pra trilha qnd o cpf ou o e-mail repetido eh de paciente (decisao de 17/11/2026)
+    public static final String PATIENT_CPF_ON_CREATION_DETAIL = "CPF de paciente informado no cadastro de prescritor";
+    public static final String PATIENT_EMAIL_ON_CREATION_DETAIL =
+            "E-mail de paciente informado no cadastro de prescritor";
+    public static final String PATIENT_CPF_ON_CORRECTION_DETAIL =
+            "CPF de paciente informado na correção do prescritor";
+    public static final String PATIENT_EMAIL_ON_CORRECTION_DETAIL =
+            "E-mail de paciente informado na correção do prescritor";
+
     private final PrescriberRepository prescriberRepository;
     private final UsersRepository usersRepository;
+    private final PatientRepository patientRepository;
     private final ScaleTaskRepository taskRepository;
     private final AppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
@@ -50,11 +63,12 @@ public class PrescriberService {
     private final PasswordService passwordService;
 
     public PrescriberService(PrescriberRepository prescriberRepository, UsersRepository usersRepository,
-                             ScaleTaskRepository taskRepository, AppointmentRepository appointmentRepository,
+                             PatientRepository patientRepository, ScaleTaskRepository taskRepository, AppointmentRepository appointmentRepository,
                              PasswordEncoder passwordEncoder, PasswordResetService passwordResetService,
                              AuditService auditService, PasswordService passwordService) {
         this.prescriberRepository = prescriberRepository;
         this.usersRepository = usersRepository;
+        this.patientRepository = patientRepository;
         this.taskRepository = taskRepository;
         this.appointmentRepository = appointmentRepository;
         this.passwordEncoder = passwordEncoder;
@@ -94,10 +108,12 @@ public class PrescriberService {
         // e-mail e cpf n se repetem em nenhuma conta senao o login n sabe quem eh quem
         String email = InputCleaner.normalizeEmail(prescriberData.email());
         if (usersRepository.existsByEmail(email)) {
+            recordIfItIsOfAPatient(patientRepository.findByEmail(email), PATIENT_EMAIL_ON_CREATION_DETAIL);
             throw new DuplicateValueException("email", EMAIL_TAKEN_MESSAGE);
         }
         String cpf = InputCleaner.keepOnlyDigits(prescriberData.cpf());
         if (usersRepository.existsByCpf(cpf)) {
+            recordIfItIsOfAPatient(patientRepository.findByCpf(cpf), PATIENT_CPF_ON_CREATION_DETAIL);
             throw new DuplicateValueException("cpf", CPF_TAKEN_MESSAGE);
         }
 
@@ -113,6 +129,16 @@ public class PrescriberService {
         prescriber.setRegistryNumber(registryNumber);
         prescriber.setPassword(passwordEncoder.encode(password));
         return prescriberRepository.save(prescriber);
+    }
+
+    // o 409 eh o mesmo pra qualquer conta, mas qnd o cpf ou o e-mail repetido eh de um paciente a resposta
+    // conta pra administracao q ele tem conta na clinica, e isso fica na trilha como a busca pelo e-mail (R20):
+    // so o numero do paciente, nunca o nome. conta de prescritor ou da administracao n gera linha
+    // (decisao de 17/11/2026)
+    private void recordIfItIsOfAPatient(Optional<Patient> owner, String detail) {
+        if (owner.isPresent()) {
+            auditService.recordPatientDataTypedByAdmin(owner.get().getId(), detail);
+        }
     }
 
     public List<Prescriber> listAllByName() {
@@ -135,6 +161,7 @@ public class PrescriberService {
         if (prescriberData.cpf() != null && !prescriberData.cpf().isBlank()) {
             String cpf = InputCleaner.keepOnlyDigits(prescriberData.cpf());
             if (!cpf.equals(prescriber.getCpf()) && usersRepository.existsByCpf(cpf)) {
+                recordIfItIsOfAPatient(patientRepository.findByCpf(cpf), PATIENT_CPF_ON_CORRECTION_DETAIL);
                 throw new DuplicateValueException("cpf", CPF_TAKEN_MESSAGE);
             }
             prescriber.setCpf(cpf);
@@ -221,6 +248,7 @@ public class PrescriberService {
         }
         String email = InputCleaner.normalizeEmail(newEmail);
         if (!email.equals(prescriber.getEmail()) && usersRepository.existsByEmail(email)) {
+            recordIfItIsOfAPatient(patientRepository.findByEmail(email), PATIENT_EMAIL_ON_CORRECTION_DETAIL);
             throw new DuplicateValueException("email", EMAIL_TAKEN_MESSAGE);
         }
 
