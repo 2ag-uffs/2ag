@@ -69,6 +69,14 @@ export default function HistoricoClinicoPaciente() {
     // so a consulta q ja passou e foi atendida, estava marcada ou virou falta
     const pastAppointments = appointments.filter(belongsToHistory);
     const orderedPrescriptions = currentFirst(prescriptions);
+    // a anulada n conta: quem so tem ficha anulada preenche de novo, como quem ainda n preencheu
+    // a api recusa anamnese nova de quem foi arquivado, entao o botao nem aparece
+    const hasValidAnamnesis = anamneses.some((anamnesis) => !anamnesis.annulled);
+    const fillAnamnesisButton = patient.archived || hasValidAnamnesis ? null : (
+        <button type="button" className="button-secondary button-small" onClick={() => navigate("/anamnese")}>
+            Preencher anamnese
+        </button>
+    );
 
     return (
         <section className={styles.page}>
@@ -132,20 +140,17 @@ export default function HistoricoClinicoPaciente() {
 
             <section id="anamnese" className={styles.section}>
                 <h2 className={styles.sectionTitle}>Anamnese</h2>
-                {/* a api recusa anamnese nova de quem foi arquivado, entao o botao nem aparece */}
                 {anamneses.length === 0 ? (
                     <EmptyState
                         icon={FiActivity}
                         message={patient.archived ? ARCHIVED_ANAMNESIS_NOTICE : "Você ainda não preencheu a anamnese."}
                         isCompact={true}
-                        action={patient.archived ? null : (
-                            <button type="button" className="button-secondary button-small" onClick={() => navigate("/anamnese")}>
-                                Preencher anamnese
-                            </button>
-                        )}
+                        action={fillAnamnesisButton}
                     />
                 ) : (
                     <div className={styles.list}>
+                        {/* dentro da div o botao fica da largura do texto, sem esticar como os cartoes */}
+                        {fillAnamnesisButton && <div>{fillAnamnesisButton}</div>}
                         {anamneses.map((anamnesis) => (
                             <AnamnesisView
                                 key={anamnesis.id}
