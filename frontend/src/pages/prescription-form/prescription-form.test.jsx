@@ -90,7 +90,12 @@ describe("PrescriptionForm", () => {
         await waitFor(() => expect(screen.getByLabelText("Semana 2")).toHaveFocus());
 
         // tirar a semana vazia sobe as de baixo, e a vazia do fim fica de fora do plano
+        // o erro era guardado pela posicao e passava pra semana q subiu, q esta preenchida
         await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
+        expect(screen.getByLabelText("Semana 2")).toHaveValue("4 gotas à noite");
+        expect(screen.getByLabelText("Semana 2")).not.toHaveAttribute("aria-invalid");
+        expect(screen.queryByText("Preencha ou tire a semana")).not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
         expect(post.mock.calls[0][1].escalationSteps).toEqual([
@@ -162,6 +167,12 @@ describe("PrescriptionForm", () => {
         expect(notes[0]).not.toHaveAttribute("aria-invalid");
         expect(notes[1]).toHaveAttribute("aria-invalid", "true");
         expect(screen.getByText("A observação pode ter até 255 caracteres")).toBeInTheDocument();
+
+        // tirar a semana leva so os erros do plano de dose, o da marca e o aviso de cima ficam
+        await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
+        expect(screen.queryByText("A observação pode ter até 255 caracteres")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Marca (opcional)")).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByRole("alert")).toHaveTextContent("Confira os campos destacados.");
     });
 
     it("erro de campo q o formulario n mostra aparece no aviso de cima", async () => {
@@ -227,6 +238,73 @@ describe("PrescriptionForm", () => {
         // com campo marcado quem leva a tela eh o foco, o aviso de cima n puxa ela pra longe do campo
         expect(scrollIntoView).not.toHaveBeenCalled();
         expect(post).not.toHaveBeenCalled();
+    });
+
+    // o erro era guardado pela posicao da linha e ficava na tela dps de tirar a linha dele
+    it("tirar a linha do THC no broad spectrum limpa o erro da composicao e o aviso de cima", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        fireEvent.change(screen.getByLabelText("Espectro"), {target: {value: "BROAD_SPECTRUM"}});
+        await addCannabinoid(user, "THC", "1");
+        await addCannabinoid(user, "CBG", "5");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(screen.getByText("O broad spectrum não tem THC. Tire o THC ou escolha full spectrum"))
+            .toBeInTheDocument();
+        expect(post).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", {name: "Tirar o canabinoide da linha 2"}));
+
+        // o CBG subiu pra linha 2 e n pode herdar o erro do THC
+        const cannabinoids = screen.getAllByLabelText("Canabinoide");
+        expect(cannabinoids[1]).toHaveValue("CBG");
+        expect(cannabinoids[1]).not.toHaveAttribute("aria-invalid");
+        expect(screen.queryByText("O broad spectrum não tem THC. Tire o THC ou escolha full spectrum"))
+            .not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    // o erro do plano inteiro (mais de 104 semanas) n eh de linha nenhuma, e ficava no aviso de cima
+    // dps de tirar a semana q sobrava. o caso de vdd tem 105 semanas, aqui sao duas pro teste n demorar
+    it("tirar a semana q passou do limite limpa tbm o erro do plano inteiro no aviso de cima", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
+            {field: "escalationSteps[1].week", message: "O plano de dose vai até a semana 104"},
+            {field: "escalationSteps", message: "O plano de dose pode ter até 104 degraus"},
+        ]));
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addWeeks(user, 2);
+        fireEvent.change(screen.getByLabelText("Semana 1"), {target: {value: "1 gota"}});
+        fireEvent.change(screen.getByLabelText("Semana 2"), {target: {value: "2 gotas"}});
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "O plano de dose vai até a semana 104. O plano de dose pode ter até 104 degraus.");
+
+        await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    // a recusa q n eh de linha nenhuma n some qnd uma linha sai
+    it("tirar uma linha n apaga o aviso da recusa q n eh do plano nem da composicao", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(
+            new ApiError(400, "Só consulta confirmada na agenda gera prescrição"));
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addWeeks(user, 1);
+        await addCannabinoid(user, "CBG", "5");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Só consulta confirmada na agenda gera prescrição");
+
+        await user.click(screen.getByRole("button", {name: "Tirar a semana 1"}));
+        await user.click(screen.getByRole("button", {name: "Tirar o canabinoide da linha 2"}));
+        expect(screen.getByRole("alert")).toHaveTextContent("Só consulta confirmada na agenda gera prescrição");
     });
 
     // a api recusa a concentracao acima de 1000, e o erro era uma frase solta q n dizia de qual linha

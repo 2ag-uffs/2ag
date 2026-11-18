@@ -159,6 +159,19 @@ function formErrorOf(apiMessage, errorsByField) {
     return "Confira os campos destacados.";
 }
 
+// os erros q sobram sem os de uma lista de linhas, pelo comeco do nome deles
+// a composicao guarda tudo em components, e o plano de dose guarda os das linhas em step-
+// e o da lista inteira (mais de 104 semanas) em escalationSteps
+function withoutRowErrors(fieldErrors, prefixes) {
+    const keptErrors = {};
+    Object.keys(fieldErrors).forEach((field) => {
+        if (!prefixes.some((prefix) => field.startsWith(prefix))) {
+            keptErrors[field] = fieldErrors[field];
+        }
+    });
+    return keptErrors;
+}
+
 function prescriptionBodyOf(form, components, escalationSteps) {
     return {
         productDescription: form.productDescription,
@@ -284,9 +297,21 @@ export default function PrescriptionForm() {
         )));
     };
 
+    // o erro de uma linha eh guardado pela posicao dela, entao qnd uma linha sai os erros da lista saem junto
+    // senao o erro da linha tirada passava pra linha q subiu, q esta certa
+    // o aviso de cima eh refeito com os erros q sobraram
+    const clearRowErrors = (prefixes) => {
+        const keptErrors = withoutRowErrors(fieldErrors, prefixes);
+        if (Object.keys(keptErrors).length < Object.keys(fieldErrors).length) {
+            setFieldErrors(keptErrors);
+            setFormError(formErrorOf(null, keptErrors));
+        }
+    };
+
     const removeComponent = (index) => {
         setComponents((currentComponents) => currentComponents.filter(
             (component, componentIndex) => componentIndex !== index));
+        clearRowErrors(["components"]);
     };
 
     const updateEscalationStep = (index, fieldName, value) => {
@@ -297,6 +322,7 @@ export default function PrescriptionForm() {
 
     const removeEscalationStep = (index) => {
         setEscalationSteps((currentSteps) => currentSteps.filter((step, stepIndex) => stepIndex !== index));
+        clearRowErrors(["step-", "escalationSteps"]);
     };
 
     // sair com algo digitado e n emitido pergunta antes, como no registro da consulta e na anamnese
