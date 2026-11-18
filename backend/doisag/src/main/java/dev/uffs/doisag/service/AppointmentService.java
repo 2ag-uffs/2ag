@@ -74,6 +74,8 @@ public class AppointmentService {
     public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
     public static final String LATE_CANCELLATION_MESSAGE =
             "Faltam menos de 24 horas para a consulta. Para cancelar, fale com o seu prescritor";
+    public static final String APPOINTMENT_OVER_MESSAGE =
+            "Esta consulta já terminou e não pode mais ser cancelada. Marque a falta ou registre o atendimento";
     public static final String NOT_SCHEDULED_MESSAGE = "Só dá para marcar falta em consulta que estava agendada";
     public static final String APPOINTMENT_NOT_OVER_MESSAGE =
             "Espere o horário da consulta terminar para marcar falta";
@@ -581,8 +583,15 @@ public class AppointmentService {
         if (canceledByPatient && isLateForThePatient) {
             throw new BusinessException(LATE_CANCELLATION_MESSAGE);
         }
-        // a consulta antiga q ficou agendada com receita ou meem aconteceu e n vira cancelada com eles valendo
-        // vem dps das 24 horas, entao o paciente nunca chega aqui com uma consulta q ja passou
+        // a consulta q ja terminou n eh mais cancelada, senao o paciente recebia "Consulta cancelada" de uma consulta
+        // q ja passou. sobram a falta e o registro do atendimento, o par q a agenda mostra dps do fim
+        // (decisao de 17/11/2026)
+        // o pedido segue o caminho dele de confirmar ou recusar
+        if (!isRequest && !endOf(appointment).isAfter(LocalDateTime.now())) {
+            throw new BusinessException(APPOINTMENT_OVER_MESSAGE);
+        }
+        // a consulta q ficou agendada com receita ou meem aconteceu e n vira cancelada com eles valendo
+        // vem dps do fim e das 24 horas, entao so a q comecou e ainda n terminou chega aqui
         consultationService.checkHasNoPrescriptionOrExam(appointmentId, CANCEL_WITH_PRESCRIPTION_MESSAGE,
                 CANCEL_WITH_EXAM_MESSAGE);
 

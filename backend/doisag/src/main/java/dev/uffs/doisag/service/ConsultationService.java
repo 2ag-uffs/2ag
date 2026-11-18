@@ -242,7 +242,7 @@ public class ConsultationService {
 
     // a receita e o meem concluem a consulta agendada com o registro clinico vazio. anulado o ultimo deles,
     // nada mais mostra q ela aconteceu, entao ela volta a agendada: senao a receita anulada seguia contando
-    // como atendimento (retorno, marca no grafico) e a falta e o cancelamento ficavam travados
+    // como atendimento (retorno, marca no grafico) e a falta ficava travada, e o cancelamento tbm ate o fim dela
     // registro clinico nunca eh gravado vazio, entao concluida sem ele so veio da receita ou do meem
     // quem chama ja travou a consulta e o paciente, por isso a trilha pode vir aqui
     public void reopenIfConcludedOnlyByPrescriptionOrExam(Appointment appointment) {

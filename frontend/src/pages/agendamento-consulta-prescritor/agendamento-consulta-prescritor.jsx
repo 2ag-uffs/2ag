@@ -217,9 +217,9 @@ export default function AgendamentoPrescritor() {
 
     const scheduledActions = (appointment, isBusy) => {
         const hasStarted = !isInTheFuture(appointment.dateTime);
+        const isOver = hasEnded(appointment.dateTime, appointment.durationMinutes);
         // a falta so depois q a hora marcada terminou, igual a api pede
-        const isOverAndScheduled = appointment.status === "AGENDADA"
-            && hasEnded(appointment.dateTime, appointment.durationMinutes);
+        const isOverAndScheduled = appointment.status === "AGENDADA" && isOver;
         return (
             <>
                 {hasStarted ? (
@@ -250,14 +250,17 @@ export default function AgendamentoPrescritor() {
                         Marcar falta
                     </button>
                 )}
-                <button
-                    type="button"
-                    className="button-danger button-small"
-                    onClick={() => openForm(setCancelTarget, appointment)}
-                    disabled={isBusy}
-                >
-                    Cancelar
-                </button>
+                {/* dps do fim a api n cancela mais, sobram registrar e marcar falta (decisao de 17/11/2026) */}
+                {!isOver && (
+                    <button
+                        type="button"
+                        className="button-danger button-small"
+                        onClick={() => openForm(setCancelTarget, appointment)}
+                        disabled={isBusy}
+                    >
+                        Cancelar
+                    </button>
+                )}
             </>
         );
     };

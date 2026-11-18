@@ -131,6 +131,7 @@ public class AppointmentsController {
     }
 
     // o paciente e o prescritor cancelam e a regra das 24 horas vale so pro paciente
+    // a consulta q ja terminou ninguem cancela, sobram a falta e o registro do atendimento
     @PreAuthorize("hasAnyRole('PATIENT', 'PRESCRIBER') and @patientAccess.canAccessAppointment(#id, authentication)")
     @PutMapping("/{id}/cancel")
     public AgendaAppointmentDTO cancel(@PathVariable Long id, @AuthenticationPrincipal Users loggedUser) {

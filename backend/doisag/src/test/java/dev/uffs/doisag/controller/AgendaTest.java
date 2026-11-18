@@ -977,6 +977,77 @@ class AgendaTest {
         assertThat(notificationTypeOf(otherPatient, "Consulta cancelada")).isEqualTo("ALERT");
     }
 
+    // a consulta q ja terminou n eh mais cancelada: o paciente recebia "Consulta cancelada" de uma consulta q ja
+    // tinha passado. sobram a falta e o registro do atendimento (decisao de 17/11/2026)
+    @Test
+    void theConsultationThatAlreadyEndedIsNotCanceled() throws Exception {
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        Appointment ended = saveAppointment(patient, now.minusMinutes(65), AppointmentStatus.AGENDADA);
+
+        cancel(ended.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.APPOINTMENT_OVER_MESSAGE));
+        // o paciente esbarra antes nas 24 horas e quem n eh o prescritor dele nem chega na regra
+        cancel(ended.getId(), patient)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.LATE_CANCELLATION_MESSAGE));
+        cancel(ended.getId(), otherPrescriber).andExpect(status().isForbidden());
+        assertThat(appointmentRepository.findById(ended.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(notificationTitlesOf(patient)).doesNotContain("Consulta cancelada");
+
+        // a falta continua no lugar do cancelamento
+        noShow(ended.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NAO_COMPARECEU"));
+    }
+
+    // antes do fim nada muda: a consulta q ja comecou e ainda n terminou o prescritor cancela
+    @Test
+    void thePrescriberStillCancelsUntilTheConsultationEnds() throws Exception {
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        Appointment started = saveAppointment(patient, now.minusMinutes(30), AppointmentStatus.AGENDADA);
+
+        cancel(started.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"));
+        assertThat(notificationTitlesOf(patient)).contains("Consulta cancelada");
+    }
+
+    // a regra vale pra consulta em andamento tbm, e o pedido vencido segue o caminho dele
+    @Test
+    void theEndRuleCoversTheConsultationInProgressButNotTheRequest() throws Exception {
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        Appointment inProgress = saveAppointment(patient, now.minusMinutes(65), AppointmentStatus.EM_ANDAMENTO);
+        Appointment expiredRequest = saveAppointment(otherPatient, now.minusHours(3), AppointmentStatus.SOLICITADA);
+
+        cancel(inProgress.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.APPOINTMENT_OVER_MESSAGE));
+        cancel(expiredRequest.getId(), prescriber)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELADA"));
+    }
+
+    // a consulta q comecou, ainda n terminou e ficou agendada com receita ou meem ainda pede pra anular antes
+    @Test
+    void cancelOfAStartedConsultationWithPrescriptionOrMiniExamIsRejected() throws Exception {
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES);
+        Appointment withPrescription = saveAppointment(patient, now.minusMinutes(30), AppointmentStatus.AGENDADA);
+        Appointment withExam = saveAppointment(otherPatient, now.minusMinutes(30), AppointmentStatus.AGENDADA);
+        prescribe(withPrescription.getId()).andExpect(status().isCreated());
+        applyMiniExam(withExam.getId()).andExpect(status().isCreated());
+        backToScheduled(withPrescription);
+        backToScheduled(withExam);
+
+        cancel(withPrescription.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_PRESCRIPTION_MESSAGE));
+        cancel(withExam.getId(), prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_EXAM_MESSAGE));
+    }
+
     // ---------- falta ----------
 
     // sem isso a consulta em q ninguem apareceu ficava AGENDADA pra sempre
@@ -1045,9 +1116,10 @@ class AgendaTest {
         noShow(yesterday.getId(), prescriber)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(AppointmentService.NO_SHOW_WITH_PRESCRIPTION_MESSAGE));
+        // a consulta de ontem ja terminou, entao o cancelamento esbarra antes no fim dela (decisao de 17/11/2026)
         cancel(yesterday.getId(), prescriber)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_PRESCRIPTION_MESSAGE));
+                .andExpect(jsonPath("$.message").value(AppointmentService.APPOINTMENT_OVER_MESSAGE));
         // o paciente esbarra antes na regra das 24 horas e n recebe o recado do prescritor
         cancel(yesterday.getId(), patient)
                 .andExpect(status().isBadRequest())
@@ -1072,7 +1144,7 @@ class AgendaTest {
                 .andExpect(jsonPath("$.message").value(AppointmentService.NO_SHOW_WITH_EXAM_MESSAGE));
         cancel(yesterday.getId(), prescriber)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(AppointmentService.CANCEL_WITH_EXAM_MESSAGE));
+                .andExpect(jsonPath("$.message").value(AppointmentService.APPOINTMENT_OVER_MESSAGE));
         assertThat(appointmentRepository.findById(yesterday.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.AGENDADA);
     }

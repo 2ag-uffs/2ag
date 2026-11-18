@@ -61,6 +61,7 @@ async function openReschedule(user) {
 describe("AgendamentoPrescritor", () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     // sem tipo e sem duracao a api decide pelo historico do paciente
@@ -264,5 +265,33 @@ describe("AgendamentoPrescritor", () => {
 
         expect(await screen.findByText("registro da consulta")).toBeInTheDocument();
         expect(router.state.location.pathname).toBe("/consulta/9/registro");
+    });
+
+    // o paciente recebia "Consulta cancelada" de uma consulta q ja tinha passado: dps do fim a agenda n oferece
+    // mais cancelar e sobram registrar e marcar falta. antes do fim nada muda (decisao de 17/11/2026)
+    it("a consulta q ja terminou n oferece cancelar, so registrar e marcar falta", async () => {
+        vi.useFakeTimers({toFake: ["Date"]});
+        vi.setSystemTime(new Date("2026-11-18T12:00:00-03:00"));
+        renderAgenda({
+            weekAppointments: [
+                {...SCHEDULED_RETURN, id: 1, dateTime: "2026-11-18T09:00:00", durationMinutes: 60},
+                {...SCHEDULED_RETURN, id: 2, dateTime: "2026-11-18T11:30:00", durationMinutes: 60, patientId: 6,
+                    patientName: "Ana Ativa"},
+                {...SCHEDULED_RETURN, id: 3, dateTime: "2026-11-19T09:00:00", durationMinutes: 60, patientId: 7,
+                    patientName: "Paulo Lima"},
+            ],
+        });
+
+        const ended = within((await screen.findByText("Maria Souza")).closest("li"));
+        expect(ended.getByRole("button", {name: "Registrar atendimento"})).toBeInTheDocument();
+        expect(ended.getByRole("button", {name: "Marcar falta"})).toBeInTheDocument();
+        expect(ended.queryByRole("button", {name: "Cancelar"})).not.toBeInTheDocument();
+        const started = within(screen.getByText("Ana Ativa").closest("li"));
+        expect(started.getByRole("button", {name: "Registrar atendimento"})).toBeInTheDocument();
+        expect(started.getByRole("button", {name: "Cancelar"})).toBeInTheDocument();
+        expect(started.queryByRole("button", {name: "Marcar falta"})).not.toBeInTheDocument();
+        const upcoming = within(screen.getByText("Paulo Lima").closest("li"));
+        expect(upcoming.getByRole("button", {name: "Remarcar"})).toBeInTheDocument();
+        expect(upcoming.getByRole("button", {name: "Cancelar"})).toBeInTheDocument();
     });
 });
