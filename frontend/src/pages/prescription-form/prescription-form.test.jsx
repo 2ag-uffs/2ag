@@ -86,6 +86,8 @@ describe("PrescriptionForm", () => {
         expect(screen.getByText("Preencha ou tire a semana")).toBeInTheDocument();
         expect(screen.getByLabelText("Semana 4")).not.toHaveAttribute("aria-invalid");
         expect(post).not.toHaveBeenCalled();
+        // o botao fica preso no pe da tela, entao o foco sai dele e vai pra linha marcada
+        await waitFor(() => expect(screen.getByLabelText("Semana 2")).toHaveFocus());
 
         // tirar a semana vazia sobe as de baixo, e a vazia do fim fica de fora do plano
         await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
@@ -176,8 +178,10 @@ describe("PrescriptionForm", () => {
     });
 
     // RN03: o isolado tem um canabinoide so
-    it("isolado com dois canabinoides avisa na composicao e nem chega na api", async () => {
+    // a composicao inteira n tem linha pra marcar, entao o motivo vai tbm pro aviso de cima e a tela rola ate ele
+    it("isolado com dois canabinoides avisa na composicao e no aviso de cima e nem chega na api", async () => {
         const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
         const user = userEvent.setup();
         renderForm();
 
@@ -188,13 +192,23 @@ describe("PrescriptionForm", () => {
 
         expect(screen.getByText("O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum"))
             .toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("Confira os campos destacados.");
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent(
+            "O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum.");
+        expect(document.querySelector("[aria-invalid='true']")).toBeNull();
+        expect(scrollIntoView).toHaveBeenCalledTimes(1);
+        expect(scrollIntoView.mock.contexts[0]).toBe(alert);
         expect(post).not.toHaveBeenCalled();
+
+        // o segundo clique da a msm msg e o aviso n muda, mas a tela rola ate ele de novo
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(scrollIntoView).toHaveBeenCalledTimes(2);
     });
 
     // RN03: broad spectrum eh sem THC
-    it("broad spectrum com THC avisa antes de enviar", async () => {
+    it("broad spectrum com THC marca o canabinoide da linha e leva o foco ate ele", async () => {
         const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
         const user = userEvent.setup();
         renderForm();
 
@@ -203,9 +217,52 @@ describe("PrescriptionForm", () => {
         await addCannabinoid(user, "THC", "1");
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
-        expect(screen.getByText("O broad spectrum não tem THC. Tire o THC ou escolha full spectrum"))
-            .toBeInTheDocument();
+        const cannabinoids = screen.getAllByLabelText("Canabinoide");
+        expect(cannabinoids[0]).not.toHaveAttribute("aria-invalid");
+        expect(cannabinoids[1]).toHaveAttribute("aria-invalid", "true");
+        expect(cannabinoids[1]).toHaveAccessibleDescription(
+            "O broad spectrum não tem THC. Tire o THC ou escolha full spectrum");
+        expect(screen.getByRole("alert")).toHaveTextContent("Confira os campos destacados.");
+        await waitFor(() => expect(cannabinoids[1]).toHaveFocus());
+        // com campo marcado quem leva a tela eh o foco, o aviso de cima n puxa ela pra longe do campo
+        expect(scrollIntoView).not.toHaveBeenCalled();
         expect(post).not.toHaveBeenCalled();
+    });
+
+    // a api recusa a concentracao acima de 1000, e o erro era uma frase solta q n dizia de qual linha
+    it("concentracao recusada pela api marca o campo da linha e leva o foco ate ele", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
+            {field: "components[1].concentration", message: "Confira a concentração"},
+        ]));
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await addCannabinoid(user, "CBG", "5000");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        expect(await screen.findByText("Confira a concentração")).toBeInTheDocument();
+        const concentrations = screen.getAllByLabelText("Concentração");
+        expect(concentrations[0]).not.toHaveAttribute("aria-invalid");
+        expect(concentrations[1]).toHaveAttribute("aria-invalid", "true");
+        expect(concentrations[1]).toHaveAccessibleDescription("Confira a concentração");
+        await waitFor(() => expect(concentrations[1]).toHaveFocus());
+    });
+
+    // o botao de emitir fica preso no pe da tela e o aviso la em cima, entao a recusa parecia um clique q n fez nada
+    it("recusa da api q n eh de campo nenhum leva a tela ate o aviso de cima", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(
+            new ApiError(400, "Só consulta confirmada na agenda gera prescrição"));
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Só consulta confirmada na agenda gera prescrição");
+        await waitFor(() => expect(scrollIntoView.mock.contexts).toContain(alert));
     });
 
     it("o mesmo canabinoide em duas linhas avisa antes de enviar", async () => {

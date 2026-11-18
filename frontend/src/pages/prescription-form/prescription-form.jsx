@@ -1,10 +1,11 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useBlocker, useNavigate, useParams} from "react-router";
 import {FiCheckCircle, FiPlus} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {focusFirstInvalidField} from "../../components/form/focus-first-error.js";
 import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
@@ -110,12 +111,6 @@ function stepErrorsOf(escalationSteps) {
     return errors;
 }
 
-// o erro de um canabinoide chega com o nome tipo components[0].concentration
-function compositionErrorOf(fieldErrors) {
-    const errorField = Object.keys(fieldErrors).find((field) => field.startsWith("components"));
-    return errorField ? fieldErrors[errorField] : null;
-}
-
 // o erro de uma semana chega pela posicao na lista enviada, q pula as linhas sem dose
 // aqui ele volta pra linha da tela, q eh a semana menos 1 (step-0-note)
 function stepErrorsOnRows(fieldErrors, sentSteps) {
@@ -137,19 +132,22 @@ const FIELDS_THAT_SHOW_ERROR = [
     "nextConsultationDate",
 ];
 
-function isErrorShownOnForm(field) {
-    return FIELDS_THAT_SHOW_ERROR.includes(field) || field.startsWith("components")
+// o erro de um canabinoide chega com a linha e o campo no nome, tipo components[0].concentration
+function isErrorShownOnField(field) {
+    return FIELDS_THAT_SHOW_ERROR.includes(field)
+        || /^components\[\d+\]\.(cannabinoid|concentration|unit)$/.test(field)
         || /^step-\d+-(dosage|note)$/.test(field);
 }
 
-// erro de campo q o formulario n mostra em lugar nenhum vai pro aviso de cima
+// erro q n marca campo nenhum vai pro aviso de cima
+// o da composicao inteira (isolado com duas linhas, mais de 20) tbm, pq n tem linha pra marcar
 function hiddenErrorsOf(fieldErrors) {
     return Object.keys(fieldErrors)
-        .filter((field) => !isErrorShownOnForm(field))
+        .filter((field) => !isErrorShownOnField(field))
         .map((field) => fieldErrors[field]);
 }
 
-// sem erro de campo vale a msg da api e qnd todo erro ja aparece na tela pede p/ conferir os destacados
+// sem erro de campo vale a msg da api e qnd todo erro ja marca um campo pede pra conferir os destacados
 function formErrorOf(apiMessage, errorsByField) {
     if (Object.keys(errorsByField).length === 0) {
         return apiMessage;
@@ -226,6 +224,10 @@ export default function PrescriptionForm() {
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
+    // conta cada envio recusado, pq a msm recusa de novo n muda os erros e a tela n iria ate eles
+    const [refusedCount, setRefusedCount] = useState(0);
+    const formRef = useRef(null);
+    const formErrorRef = useRef(null);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -257,6 +259,20 @@ export default function PrescriptionForm() {
             isCurrentRequest = false;
         };
     }, [appointmentId]);
+
+    // envio recusado: o foco vai pro primeiro campo marcado, como nos outros formularios, e a tela vai junto
+    // sem campo marcado a tela rola ate o aviso de cima. o botao de emitir fica preso no pe da tela,
+    // entao sem isso a recusa parece um clique q n fez nada
+    // eh um efeito pq o campo so fica marcado depois q a tela desenha de novo
+    useEffect(() => {
+        if (refusedCount === 0 || !formRef.current) {
+            return;
+        }
+        const hasFocusedField = focusFirstInvalidField(formRef.current);
+        if (!hasFocusedField && formErrorRef.current) {
+            formErrorRef.current.scrollIntoView({block: "center"});
+        }
+    }, [refusedCount]);
 
     const updateField = (fieldName, value) => {
         setForm((currentForm) => ({...currentForm, [fieldName]: value}));
@@ -293,12 +309,17 @@ export default function PrescriptionForm() {
     useLeaveWarning(hasUnsavedChanges);
     const successRef = useFocusWhenShown(issuedPrescription !== null);
 
+    const showRefusal = (apiMessage, errorsByField) => {
+        setFieldErrors(errorsByField);
+        setFormError(formErrorOf(apiMessage, errorsByField));
+        setRefusedCount((count) => count + 1);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         const formErrors = {...compositionErrorsOf(form.spectrum, components), ...stepErrorsOf(escalationSteps)};
         if (Object.keys(formErrors).length > 0) {
-            setFieldErrors(formErrors);
-            setFormError(formErrorOf(null, formErrors));
+            showRefusal(null, formErrors);
             return;
         }
         setIsSaving(true);
@@ -311,9 +332,7 @@ export default function PrescriptionForm() {
             setIssuedPrescription(savedPrescription);
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
-            const errorsByField = stepErrorsOnRows(errorInfo.fieldErrors, requestBody.escalationSteps);
-            setFieldErrors(errorsByField);
-            setFormError(formErrorOf(errorInfo.message, errorsByField));
+            showRefusal(errorInfo.message, stepErrorsOnRows(errorInfo.fieldErrors, requestBody.escalationSteps));
         } finally {
             setIsSaving(false);
         }
@@ -361,7 +380,6 @@ export default function PrescriptionForm() {
     const blockedMessage = blockedMessageOf(appointment);
     const becomesCurrent = currentPrescription === null
         || isSameOrAfter(appointment.dateTime, currentPrescription.appointmentDateTime);
-    const compositionError = compositionErrorOf(fieldErrors);
 
     return (
         <section className={styles.page}>
@@ -385,10 +403,10 @@ export default function PrescriptionForm() {
                     vigente continua valendo.
                 </p>
             )}
-            {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
+            {formError && <p className="aviso aviso--atencao" role="alert" ref={formErrorRef}>{formError}</p>}
 
             {!blockedMessage && (
-                <form className={styles.form} onSubmit={handleSubmit}>
+                <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                     <FormSection title="Produto" disabled={isSaving}>
                         <TextField
                             label="Produto"
@@ -454,6 +472,7 @@ export default function PrescriptionForm() {
                                     options={CANNABINOID_OPTIONS}
                                     value={component.cannabinoid}
                                     onChange={(event) => updateComponent(index, "cannabinoid", event.target.value)}
+                                    error={fieldErrors["components[" + index + "].cannabinoid"]}
                                 />
                                 <TextField
                                     label="Concentração"
@@ -464,6 +483,7 @@ export default function PrescriptionForm() {
                                     min="0"
                                     value={component.concentration}
                                     onChange={(event) => updateComponent(index, "concentration", event.target.value)}
+                                    error={fieldErrors["components[" + index + "].concentration"]}
                                     required={true}
                                 />
                                 <SelectField
@@ -472,6 +492,7 @@ export default function PrescriptionForm() {
                                     options={UNIT_OPTIONS}
                                     value={component.unit}
                                     onChange={(event) => updateComponent(index, "unit", event.target.value)}
+                                    error={fieldErrors["components[" + index + "].unit"]}
                                 />
                                 {components.length > 1 && (
                                     <button
@@ -485,7 +506,7 @@ export default function PrescriptionForm() {
                                 )}
                             </div>
                         ))}
-                        {compositionError && <p className={styles.fieldError}>{compositionError}</p>}
+                        {fieldErrors.components && <p className={styles.fieldError}>{fieldErrors.components}</p>}
                         <button
                             type="button"
                             className={"button-secondary button-small " + styles.addButton}

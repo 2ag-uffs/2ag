@@ -24,8 +24,9 @@
 }
 
 /* uma linha por canabinoide, com o botao de tirar alinhado ao pe dos campos */
+/* os campos alinham pelo alto, pq o erro embaixo de um deles n pode descer os outros */
 .componentRow {
-    align-items: end;
+    align-items: start;
     display: grid;
     gap: var(--space-3);
     grid-template-columns: minmax(7rem, 1fr) minmax(7rem, 1fr) minmax(6rem, 0.8fr) auto;
@@ -39,6 +40,7 @@
 }
 
 .removeButton {
+    align-self: end;
     margin-bottom: var(--space-1);
 }
 
