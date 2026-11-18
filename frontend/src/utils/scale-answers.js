@@ -74,6 +74,10 @@ export function formatAnswer(item, value) {
     if (item.type === "NOTA") {
         return value + " de " + item.maxValue;
     }
+    // as horas aceitam meia hora e saem com virgula e sem zero a toa, 6,5 e 7, igual ao scales.csv
+    if (item.type === "HORAS") {
+        return String(Number(value)).replace(".", ",");
+    }
     return String(value);
 }
 

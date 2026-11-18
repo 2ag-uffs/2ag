@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "./scale-answers.js";
+import {answersPayload, answersToValues, formatAnswer, missingItemsOf, requiredItemsOf} from "./scale-answers.js";
 
 const ITEMS = [
     {key: "dor", type: "NOTA"},
@@ -114,5 +114,24 @@ describe("answersToValues", () => {
     it("a resposta salva volta como texto pros campos da tela", () => {
         expect(answersToValues({dor: 3, diaComum: true})).toEqual({dor: "3", diaComum: "true"});
         expect(answersToValues(null)).toEqual({});
+    });
+});
+
+describe("formatAnswer", () => {
+    // o scales.csv ja sai com 6,5 e diz q segue o texto da tela
+    it("horas com meia hora saem com virgula decimal", () => {
+        expect(formatAnswer({type: "HORAS", key: "horasSono", label: "Horas de sono"}, 6.5)).toBe("6,5");
+        expect(formatAnswer({type: "HORAS", key: "horasSono"}, "2.5")).toBe("2,5");
+    });
+
+    it("horas cheias e numero inteiro continuam sem zero a toa", () => {
+        expect(formatAnswer({type: "HORAS", key: "horasSono"}, 7)).toBe("7");
+        expect(formatAnswer({type: "HORAS", key: "horasSono"}, "7.0")).toBe("7");
+        expect(formatAnswer({type: "NUMERO", key: "gotasManha"}, 3)).toBe("3");
+    });
+
+    it("hora em branco continua como n respondeu, e o zero eh resposta (RN10)", () => {
+        expect(formatAnswer({type: "HORAS", key: "horasSono"}, null)).toBe("não respondeu");
+        expect(formatAnswer({type: "HORAS", key: "horasSono"}, 0)).toBe("0");
     });
 });
