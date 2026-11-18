@@ -16,6 +16,7 @@ import styles from "./scale-form.module.css";
 //
 // com o step (a tela do celular q a pagina da escala controla) so aparece a pergunta daquela tela
 // cada item diz a tela dele no data-step, e o data-step-focus marca onde o foco vai qnd a tela muda
+// ou qnd o formulario volta no lugar do painel de pronto (o ver respostas salvas, no celular e no computador)
 export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
     fieldErrors = {}, showsUrgencyNotice = false, step = null}) {
     // o valor q o sistema calcula n eh pergunta, entao fica fora da conta e vai junto da pergunta de antes
@@ -147,7 +148,7 @@ function ScaleField({item, bands, values, onChange, disabled, isMarked, error, s
     }
     return (
         <TypedField item={item} value={value} onChange={change} disabled={disabled} isMarked={isMarked}
-            error={error} showsUrgencyNotice={showsUrgencyNotice} isStep={isStep}/>
+            error={error} showsUrgencyNotice={showsUrgencyNotice}/>
     );
 }
 
@@ -174,9 +175,10 @@ function ComputedField({item, value}) {
 
 // no celular o foco da tela nova vai pro grupo inteiro, e o leitor de tela le a pergunta
 // o grupo travado (resposta ja analisada) n recebe foco, entao ai o foco vai pra legenda
+// no computador tbm vai pra legenda: o grupo com tabIndex ganharia o foco no clique do mouse antes da opcao
 function ChoiceField({item, bands, value, onChange, disabled, isMarked, error, isStep}) {
     const focusesGroup = isStep && !disabled;
-    const focusesLegend = isStep && disabled;
+    const focusesLegend = !focusesGroup;
     // toque errado no celular n pode virar dado clinico (RN10)
     // o botao some dps de limpar, entao o foco volta pra primeira opcao
     const clearAnswer = (event) => {
@@ -223,10 +225,10 @@ function ChoiceField({item, bands, value, onChange, disabled, isMarked, error, i
 }
 
 // texto livre hora ou numero digitado
-// no celular o foco da tela nova vai pro proprio campo, e com o campo travado vai pro rotulo dele
-function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep}) {
-    const focusesField = isStep && !disabled;
-    const focusesLabel = isStep && disabled;
+// o foco da tela nova vai pro proprio campo, e com o campo travado vai pro rotulo dele
+function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
+    const focusesField = !disabled;
+    const focusesLabel = disabled;
     const noticeId = item.key + "-urgencia";
     const hasNotice = showsUrgencyNotice && item.type === "TEXTO";
     // o erro e o aviso de urgencia lidos junto com o campo

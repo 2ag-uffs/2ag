@@ -5,7 +5,7 @@ import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import AppLayout from "../../components/app-layout/app-layout.jsx";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
-import {addDays, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
+import {addDays, formatDate, formatWeekdayAndDate, mondayOf, toIsoDate} from "../../utils/date-format.js";
 import Escala from "./escala.jsx";
 
 // escala pontual com um item de nota, o bastante pra tela montar o formulario
@@ -81,6 +81,7 @@ describe("Escala", () => {
         expect(post).not.toHaveBeenCalled();
         // a tela segue na resposta, agora no dia novo e ainda em correcao
         expect(router.state.location.search).toBe("?data=2026-09-21");
+        await user.click(screen.getByRole("button", {name: "Ver respostas salvas"}));
         expect(screen.getByLabelText("Data da avaliação")).toHaveValue("2026-09-21");
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
         expect(screen.getByLabelText("Humor ansioso")).toHaveValue(3);
@@ -107,6 +108,7 @@ describe("Escala", () => {
         expect(post).toHaveBeenCalledWith("/scales/hamilton/responses",
             {periodStart: "2026-09-25", periodEnd: "2026-09-25", answers: {humorAnsioso: 1}});
         expect(router.state.location.search).toBe("?data=2026-09-25");
+        await user.click(screen.getByRole("button", {name: "Ver respostas salvas"}));
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
     });
 
@@ -134,6 +136,7 @@ describe("Escala", () => {
         fireEvent.change(screen.getByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
         await user.type(screen.getByLabelText("Humor ansioso"), "1");
         await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        await user.click(await screen.findByRole("button", {name: "Ver respostas salvas"}));
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
         expect(post).toHaveBeenCalledTimes(1);
 
@@ -163,6 +166,7 @@ describe("Escala", () => {
         fireEvent.change(await screen.findByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
         await user.type(screen.getByLabelText("Humor ansioso"), "1");
         await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        await user.click(await screen.findByRole("button", {name: "Ver respostas salvas"}));
         expect(await screen.findByText(/Mudar a data corrige esta resposta/)).toBeInTheDocument();
         expect(window.location.search).toBe("?data=2026-09-25");
 
@@ -354,6 +358,97 @@ describe("Escala", () => {
         expect(within(anxious).getByRole("radio", {name: "0"})).toHaveAttribute("aria-invalid", "true");
         expect(screen.getByRole("alert")).toHaveTextContent("Falta preencher: Humor ansioso.");
         expect(post).not.toHaveBeenCalled();
+    });
+
+    // dps de salvar o formulario da lugar ao painel de pronto, com o q foi salvo e o q vem dps
+    it("dps de salvar aparece o painel de pronto com a data, o resultado e as saidas", async () => {
+        const created = {...SAVED_RESPONSE, id: 8, periodStart: "2026-09-25", periodEnd: "2026-09-25",
+            answers: {humorAnsioso: 1}, result: "1 de 56 · Sem ansiedade"};
+        vi.spyOn(apiService, "post").mockImplementation(() => {
+            responses = [SAVED_RESPONSE, created];
+            return Promise.resolve(created);
+        });
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/pacientes/:patientId/escalas", element: <p>central de escalas</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/painel-paciente", "/escalas/hamilton"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const title = await screen.findByRole("heading", {name: "Pronto, obrigado!"});
+        const done = title.closest("[role='status']");
+        // o botao q salvou sumiu com o formulario, entao o foco vai pro painel
+        await waitFor(() => expect(done).toHaveFocus());
+        expect(done).toHaveTextContent("Respostas salvas.");
+        expect(done).toHaveTextContent("Resultado: 1 de 56 · Sem ansiedade");
+        expect(done).toHaveTextContent("Avaliação de 25/09/2026.");
+        // sem a proxima tarefa conhecida, nenhuma data inventada
+        expect(done).toHaveTextContent("Quando a clínica enviar a próxima, ela aparece em Escalas.");
+        expect(screen.queryByRole("button", {name: "Salvar respostas"})).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Humor ansioso")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", {name: "Voltar para Escalas"}));
+        expect(await screen.findByText("central de escalas")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/pacientes/3/escalas");
+    });
+
+    it("o painel de pronto leva pro inicio e o ver respostas salvas volta pro formulario", async () => {
+        const created = {...SAVED_RESPONSE, id: 8, periodStart: "2026-09-25", periodEnd: "2026-09-25",
+            answers: {humorAnsioso: 1}};
+        vi.spyOn(apiService, "post").mockImplementation(() => {
+            responses = [SAVED_RESPONSE, created];
+            return Promise.resolve(created);
+        });
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/escalas/hamilton"]});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Data da avaliação"), {target: {value: "2026-09-25"}});
+        await user.type(screen.getByLabelText("Humor ansioso"), "1");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        await user.click(await screen.findByRole("button", {name: "Ver respostas salvas"}));
+        expect(screen.queryByRole("heading", {name: "Pronto, obrigado!"})).not.toBeInTheDocument();
+        expect(await screen.findByLabelText("Humor ansioso")).toHaveValue(1);
+        // o botao clicado sumiu junto com o painel, entao o foco vai pra primeira pergunta e n cai no body (CT-39)
+        expect(screen.getByLabelText("Humor ansioso")).toHaveFocus();
+
+        // de volta no formulario a resposta ja esta em correcao, e salvar de novo corrige ela
+        const put = vi.spyOn(apiService, "put").mockResolvedValue(created);
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        expect(put).toHaveBeenCalledWith("/scales/responses/8",
+            {periodStart: "2026-09-25", periodEnd: "2026-09-25", answers: {humorAnsioso: 1}});
+        await user.click(await screen.findByRole("button", {name: "Ir para o início"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    it("na escala de periodo o painel de pronto diz o periodo salvo", async () => {
+        const periodStart = toIsoDate(addDays(new Date(), -6));
+        const today = toIsoDate(new Date());
+        const periodScale = {...HAMILTON, type: "REGISTRO_DOR", slug: "registro-dor", fillMode: "PERIODO"};
+        responses = [];
+        vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-dor" ? periodScale : responses));
+        vi.spyOn(apiService, "post").mockResolvedValue({...SAVED_RESPONSE, id: 8, slug: "registro-dor", periodStart,
+            periodEnd: today, result: null});
+        renderScale("/escalas/registro-dor");
+        const user = userEvent.setup();
+
+        await waitFor(() => expect(screen.getByLabelText("Início do período")).toHaveValue(periodStart));
+        await user.type(screen.getByLabelText("Humor ansioso"), "2");
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const done = (await screen.findByRole("heading", {name: "Pronto, obrigado!"})).closest("[role='status']");
+        expect(done).toHaveTextContent("Período: " + formatDate(periodStart) + " a " + formatDate(today) + ".");
+        expect(done).not.toHaveTextContent("Resultado");
     });
 
     // a semana respondida eh a q passou, entao o fim n vai alem de hoje nem antes do inicio
@@ -549,6 +644,37 @@ describe("Escala no celular, uma pergunta por tela", () => {
         resize(true);
         expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 3 · 1 de 3 respondidas");
         expect(screen.getByRole("radio", {name: "Até 3 dias"})).toBeChecked();
+    });
+
+    // o ver respostas salvas some junto com o painel, entao o foco vai pra primeira pergunta e n cai no body
+    it("no celular o ver respostas salvas volta pra primeira pergunta com o foco nela", async () => {
+        mockPhoneWidth(true);
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        await user.click(await screen.findByRole("button", {name: "Ver respostas salvas"}));
+
+        expect(screen.getByRole("group", {name: "Sono"})).toHaveFocus();
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 1 de 3");
+    });
+
+    // no computador o grupo fica sem tabIndex, pro clique do mouse ir direto pra opcao, entao o foco vai pra legenda
+    it("no computador o ver respostas salvas leva o foco pro titulo da primeira pergunta", async () => {
+        mockPhoneWidth(false);
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(within(await screen.findByRole("group", {name: "Sono"})).getByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        await user.click(await screen.findByRole("button", {name: "Ver respostas salvas"}));
+
+        const sleep = screen.getByRole("group", {name: "Sono"});
+        expect(within(sleep).getByText("Sono").closest("legend")).toHaveFocus();
+        expect(sleep).not.toHaveAttribute("tabindex");
     });
 
     // o voltar da primeira pergunta sai da tela, e com resposta n salva pergunta antes, como sempre
@@ -998,7 +1124,9 @@ describe("Escala diaria", () => {
 
         await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
 
-        expect(await screen.findByText("Respostas de 2 dias salvas.")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", {name: "Respostas de 2 dias salvas"})).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "Dias salvos: " + formatWeekdayAndDate(taskStart) + ", " + formatWeekdayAndDate(secondDay) + ".");
         expect(post).toHaveBeenCalledTimes(2);
         expect(post.mock.calls[0]).toEqual(["/scales/acompanhamento-semanal/responses",
             {periodStart: taskStart, periodEnd: taskStart, answers: {dor: 6}}]);
@@ -1032,10 +1160,62 @@ describe("Escala diaria", () => {
         await user.click(screen.getByRole("button", {name: "Próxima"}));
         await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
 
-        expect(await screen.findByText("Respostas de 2 dias salvas.")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", {name: "Respostas de 2 dias salvas"})).toBeInTheDocument();
         expect(post).toHaveBeenCalledTimes(2);
         expect(post.mock.calls[0][1].answers).toEqual({dor: 6});
         expect(post.mock.calls[1][1].answers).toEqual({dor: 4});
+    });
+
+    // o diario com periodo aberto sabe q amanha tem mais um dia, e no ultimo dia do periodo diz isso
+    it("dps de salvar o dia o painel diz q amanha tem mais um dia do periodo", async () => {
+        mockSavingApi();
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        expect(within(grid).getByRole("button", {pressed: true})).toHaveTextContent(formatWeekdayAndDate(dayFromToday(0)));
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const done = (await screen.findByRole("heading", {name: "Pronto, obrigado!"})).closest("[role='status']");
+        expect(done).toHaveTextContent("Dia salvo: " + formatWeekdayAndDate(dayFromToday(0)) + ".");
+        expect(done).toHaveTextContent("Amanhã tem mais um dia para preencher.");
+        // a grade continua, e escolher um dia volta pro formulario
+        await user.click(within(grid).getAllByRole("button")[0]);
+        expect(screen.queryByRole("heading", {name: "Pronto, obrigado!"})).not.toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "4"})).not.toBeChecked();
+    });
+
+    it("no ultimo dia do periodo o painel diz q hoje eh o ultimo dia", async () => {
+        pendingTasks = [{...pendingTasks[0], periodEnd: dayFromToday(0)}];
+        mockSavingApi();
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        await screen.findByRole("group", {name: "Dias do período"});
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const done = (await screen.findByRole("heading", {name: "Pronto, obrigado!"})).closest("[role='status']");
+        expect(done).toHaveTextContent("Hoje é o último dia deste período.");
+        expect(done).not.toHaveTextContent("Amanhã");
+    });
+
+    // sem periodo aberto a tela n sabe quando vem a proxima, entao n inventa data
+    it("sem periodo aberto o painel n fala de amanha", async () => {
+        pendingTasks = [];
+        mockSavingApi();
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        await screen.findByRole("group", {name: "Dias da semana"});
+        await waitFor(() => expect(apiService.get).toHaveBeenCalledWith("/patients/3/scales/overview"));
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const done = (await screen.findByRole("heading", {name: "Pronto, obrigado!"})).closest("[role='status']");
+        expect(done).toHaveTextContent("Quando a clínica enviar a próxima, ela aparece em Escalas.");
+        expect(done).not.toHaveTextContent("Amanhã");
     });
 
     // no diario o campo digitado eh o unico da tela, e o enter nele envia o formulario: no meio das perguntas
@@ -1300,6 +1480,7 @@ describe("Escala diaria", () => {
         await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
         expect(await screen.findByText("Respostas salvas.")).toBeInTheDocument();
 
+        await user.click(screen.getByRole("button", {name: "Ver respostas salvas"}));
         await user.click(screen.getByRole("button", {name: "Voltar"}));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
@@ -1331,6 +1512,7 @@ describe("Escala diaria", () => {
         await waitFor(() => expect(within(grid).getAllByRole("button")[1]).toHaveTextContent("preenchido"));
         expect(within(grid).queryByText("não salvo")).not.toBeInTheDocument();
 
+        await user.click(screen.getByRole("button", {name: "Ver respostas salvas"}));
         await user.click(screen.getByRole("button", {name: "Voltar"}));
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();

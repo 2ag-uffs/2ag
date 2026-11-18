@@ -1,10 +1,12 @@
 import {useEffect, useMemo, useRef, useState} from "react";
 import {useBlocker, useLocation, useNavigate, useParams, useSearchParams} from "react-router";
-import {FiCheck, FiEdit2, FiMoon} from "react-icons/fi";
+import {FiCheck, FiCheckCircle, FiEdit2, FiMoon} from "react-icons/fi";
+import {homePathFor} from "../../app/role-home.js";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
+import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import {stepOfKey, stepsOf} from "../../components/scale-form/scale-steps.js";
@@ -138,6 +140,32 @@ function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, lateU
     );
 }
 
+// o painel q fica no lugar do formulario dps de salvar tudo
+// o botao q salvou some junto com o formulario, entao o foco vem pro painel e o leitor de tela le o q aconteceu
+// o erro da recarga dps de salvar (a rede caiu) aparece aqui tbm, senao ficava escondido no formulario
+function SavedPanel({panel, error, panelRef, onScales, onHome, onReview}) {
+    return (
+        <section className={styles.done}>
+            {error && <p className="aviso aviso--atencao" role="alert">{error}</p>}
+            <div ref={panelRef} className={styles.doneStatus} role="status" tabIndex={-1}>
+                <FiCheckCircle className={styles.doneIcon} aria-hidden="true"/>
+                <div className={styles.doneText}>
+                    <h2 className={styles.doneTitle}>{panel.title}</h2>
+                    {panel.isSingle && <p>Respostas salvas.</p>}
+                    {panel.result && <p>Resultado: <strong>{panel.result}</strong></p>}
+                    <p>{panel.savedWhat}</p>
+                    <p className={styles.doneNext}>{panel.next}</p>
+                </div>
+            </div>
+            <div className={styles.doneActions}>
+                <button type="button" className="button" onClick={onScales}>Voltar para Escalas</button>
+                <button type="button" className="button-secondary" onClick={onHome}>Ir para o início</button>
+                <button type="button" className="button-tertiary" onClick={onReview}>Ver respostas salvas</button>
+            </div>
+        </section>
+    );
+}
+
 // tela unica de preenchimento de escala (RF08 e RF21 a RF26)
 //
 // o formulario inteiro vem do servidor: titulo, itens, ancoras e
@@ -168,6 +196,9 @@ export default function Escala() {
     // o inicio do periodo q a paciente mexeu na correcao, antes de salvar
     const [periodStartByDay, setPeriodStartByDay] = useState({});
     const [notice, setNotice] = useState(null);
+    // o painel de pronto dps de salvar todos os dias mexidos, no lugar do formulario
+    const [savedPanel, setSavedPanel] = useState(null);
+    const savedPanelRef = useFocusWhenShown(savedPanel !== null);
     const [formError, setFormError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     // itens da escala pontuada q ficaram em branco no ultimo envio
@@ -293,6 +324,8 @@ export default function Escala() {
     };
 
     // o foco vai pra pergunta da tela nova, e o contador anuncia em q pergunta a pessoa esta
+    // o ver respostas salvas tbm passa por aqui: o botao some com o painel e o foco caia no body (CT-39),
+    // entao ele volta pra primeira pergunta, no celular e no computador
     useEffect(() => {
         const question = stepMoves > 0 && formRef.current ? formRef.current.querySelector("[data-step-focus]") : null;
         if (question) {
@@ -384,9 +417,39 @@ export default function Escala() {
     const changeDay = (dayIso) => {
         setSelectedDay(dayIso);
         setNotice(null);
+        setSavedPanel(null);
         setFormError(null);
         setMissingKeys([]);
         moveToStep(0);
+    };
+
+    // o q foi salvo e o q vem dps, so qnd a tela sabe: o "amanha" so sai do periodo aberto do diario
+    // q ainda tem amanha, e sem isso fica a frase neutra, nunca uma data inventada
+    const savedPanelOf = (savedResponses) => {
+        const lastSaved = savedResponses[savedResponses.length - 1];
+        const isSingle = savedResponses.length === 1;
+        let savedWhat = "Avaliação de " + formatDate(lastSaved.periodStart) + ".";
+        if (isDiary && !isSingle) {
+            savedWhat = "Dias salvos: "
+                + savedResponses.map((response) => formatWeekdayAndDate(response.periodStart)).join(", ") + ".";
+        } else if (isDiary) {
+            savedWhat = "Dia salvo: " + formatWeekdayAndDate(lastSaved.periodStart) + ".";
+        } else if (isPeriod) {
+            savedWhat = "Período: " + formatDate(lastSaved.periodStart) + " a " + formatDate(lastSaved.periodEnd) + ".";
+        }
+        let next = "Quando a clínica enviar a próxima, ela aparece em Escalas.";
+        if (isDiary && openTask !== null && openTask.periodStart <= today && openTask.periodEnd >= today) {
+            next = openTask.periodEnd === today
+                ? "Hoje é o último dia deste período."
+                : "Amanhã tem mais um dia para preencher.";
+        }
+        return {
+            title: isSingle ? "Pronto, obrigado!" : "Respostas de " + savedResponses.length + " dias salvas",
+            isSingle,
+            result: isSingle ? lastSaved.result : null,
+            savedWhat,
+            next,
+        };
     };
 
     const changePeriodEnd = (dayIso) => {
@@ -497,10 +560,15 @@ export default function Escala() {
         }
 
         const lastSaved = savedResponses[savedResponses.length - 1];
-        if (savedResponses.length > 1) {
+        // com algum dia recusado o formulario fica, com o erro dele, e o aviso diz o q foi salvo
+        // com tudo salvo o painel de pronto entra no lugar do formulario
+        if (failures.length > 0 && savedResponses.length > 1) {
             setNotice("Respostas de " + savedResponses.length + " dias salvas.");
-        } else {
+        } else if (failures.length > 0) {
             setNotice(lastSaved.result ? "Respostas salvas. Resultado: " + lastSaved.result : "Respostas salvas.");
+        } else {
+            setSavedPanel(savedPanelOf(savedResponses));
+            moveToStep(0);
         }
         // as respostas salvas entram na lista na hora e o rascunho dos dias salvos sai
         setResponses((current) => [...savedResponses, ...current.filter((response) => !savedResponses.some(
@@ -603,120 +671,134 @@ export default function Escala() {
                 />
             )}
 
-            <form ref={formRef} className={styles.form} onSubmit={save} onFocus={followFocus}>
-                {!isDiary && (
-                    <div className={styles.period}>
-                        <div className={styles.dateField}>
-                            <label htmlFor="periodStart">
-                                {isPeriod ? "Início do período" : "Data da avaliação"}
-                            </label>
-                            <input
-                                id="periodStart"
-                                type="date"
-                                max={today}
-                                value={periodStart}
-                                disabled={isReadOnly}
-                                onChange={(event) => (isCorrecting
-                                    ? changePeriodStart(event.target.value)
-                                    : changeDay(event.target.value))}
-                            />
-                        </div>
-                        {isPeriod && (
+            {savedPanel ? (
+                <SavedPanel
+                    panel={savedPanel}
+                    error={formError}
+                    panelRef={savedPanelRef}
+                    onScales={() => navigate("/pacientes/" + loggedUser.id + "/escalas")}
+                    onHome={() => navigate(homePathFor(loggedUser))}
+                    onReview={() => {
+                        setSavedPanel(null);
+                        goToStep(0);
+                    }}
+                />
+            ) : (
+                <form ref={formRef} className={styles.form} onSubmit={save} onFocus={followFocus}>
+                    {!isDiary && (
+                        <div className={styles.period}>
                             <div className={styles.dateField}>
-                                <label htmlFor="periodEnd">Fim do período</label>
+                                <label htmlFor="periodStart">
+                                    {isPeriod ? "Início do período" : "Data da avaliação"}
+                                </label>
                                 <input
-                                    id="periodEnd"
+                                    id="periodStart"
                                     type="date"
-                                    min={periodStart}
                                     max={today}
-                                    value={periodEnd}
+                                    value={periodStart}
                                     disabled={isReadOnly}
-                                    onChange={(event) => changePeriodEnd(event.target.value)}
+                                    onChange={(event) => (isCorrecting
+                                        ? changePeriodStart(event.target.value)
+                                        : changeDay(event.target.value))}
                                 />
                             </div>
+                            {isPeriod && (
+                                <div className={styles.dateField}>
+                                    <label htmlFor="periodEnd">Fim do período</label>
+                                    <input
+                                        id="periodEnd"
+                                        type="date"
+                                        min={periodStart}
+                                        max={today}
+                                        value={periodEnd}
+                                        disabled={isReadOnly}
+                                        onChange={(event) => changePeriodEnd(event.target.value)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {isReadOnly && (
+                        <p className="aviso">O prescritor já analisou esta resposta. Para corrigir, fale com ele.</p>
+                    )}
+
+                    {hasAnnulledResponse && (
+                        <p className="aviso">
+                            A resposta desta data foi anulada pelo prescritor e continua no histórico. Você pode responder
+                            de novo.
+                        </p>
+                    )}
+
+                    {currentResponse && currentResponse.result && (
+                        <div className={styles.result}>
+                            <span className={styles.resultLabel}>Resultado</span>
+                            <strong>{currentResponse.result}</strong>
+                        </div>
+                    )}
+
+                    {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
+                    {notice && <p className="aviso" role="status">{notice}</p>}
+
+                    {hasRequiredItems && !isReadOnly && (
+                        <p className="aviso">
+                            Responda todos os itens antes de salvar. Sem eles a escala pode ficar sem escore e continuar pendente.
+                        </p>
+                    )}
+
+                    <ScaleForm
+                        items={definition.items}
+                        bands={definition.bands}
+                        values={values}
+                        onChange={changeAnswer}
+                        disabled={isReadOnly || isSaving}
+                        missingKeys={missingKeys}
+                        fieldErrors={fieldErrorsByDay[selectedDay] || {}}
+                        showsUrgencyNotice={true}
+                        step={isStepMode ? currentStep : null}
+                    />
+
+                    {!isDiary && currentResponse && (
+                        <p className={styles.periodNote}>
+                            {isPeriod
+                                ? "Período respondido: " + formatDate(currentResponse.periodStart) + " a "
+                                    + formatDate(currentResponse.periodEnd) + "."
+                                : "Avaliação de " + formatDate(currentResponse.periodStart) + "."}
+                            {isCorrecting && " Mudar a data corrige esta resposta, sem criar outra."}
+                        </p>
+                    )}
+
+                    {/* perto do botao pq no topo o aviso some num form comprido */}
+                    {missingLabels.length > 0 && (
+                        <p className="aviso aviso--atencao" role="alert">
+                            Falta preencher: {missingLabels.join(", ")}.
+                        </p>
+                    )}
+
+                    {/* no celular a primeira pergunta tem o Voltar, as outras o Anterior, e so a ultima o salvar */}
+                    <FormActions>
+                        {isStepMode && currentStep > 0 ? (
+                            <button type="button" className="button-secondary" onClick={() => goToStep(currentStep - 1)}>
+                                Anterior
+                            </button>
+                        ) : (
+                            <button type="button" className="button-secondary" onClick={goBack}>
+                                Voltar
+                            </button>
                         )}
-                    </div>
-                )}
-
-                {isReadOnly && (
-                    <p className="aviso">O prescritor já analisou esta resposta. Para corrigir, fale com ele.</p>
-                )}
-
-                {hasAnnulledResponse && (
-                    <p className="aviso">
-                        A resposta desta data foi anulada pelo prescritor e continua no histórico. Você pode responder
-                        de novo.
-                    </p>
-                )}
-
-                {currentResponse && currentResponse.result && (
-                    <div className={styles.result}>
-                        <span className={styles.resultLabel}>Resultado</span>
-                        <strong>{currentResponse.result}</strong>
-                    </div>
-                )}
-
-                {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
-                {notice && <p className="aviso" role="status">{notice}</p>}
-
-                {hasRequiredItems && !isReadOnly && (
-                    <p className="aviso">
-                        Responda todos os itens antes de salvar. Sem eles a escala pode ficar sem escore e continuar pendente.
-                    </p>
-                )}
-
-                <ScaleForm
-                    items={definition.items}
-                    bands={definition.bands}
-                    values={values}
-                    onChange={changeAnswer}
-                    disabled={isReadOnly || isSaving}
-                    missingKeys={missingKeys}
-                    fieldErrors={fieldErrorsByDay[selectedDay] || {}}
-                    showsUrgencyNotice={true}
-                    step={isStepMode ? currentStep : null}
-                />
-
-                {!isDiary && currentResponse && (
-                    <p className={styles.periodNote}>
-                        {isPeriod
-                            ? "Período respondido: " + formatDate(currentResponse.periodStart) + " a "
-                                + formatDate(currentResponse.periodEnd) + "."
-                            : "Avaliação de " + formatDate(currentResponse.periodStart) + "."}
-                        {isCorrecting && " Mudar a data corrige esta resposta, sem criar outra."}
-                    </p>
-                )}
-
-                {/* perto do botao pq no topo o aviso some num form comprido */}
-                {missingLabels.length > 0 && (
-                    <p className="aviso aviso--atencao" role="alert">
-                        Falta preencher: {missingLabels.join(", ")}.
-                    </p>
-                )}
-
-                {/* no celular a primeira pergunta tem o Voltar, as outras o Anterior, e so a ultima o salvar */}
-                <FormActions>
-                    {isStepMode && currentStep > 0 ? (
-                        <button type="button" className="button-secondary" onClick={() => goToStep(currentStep - 1)}>
-                            Anterior
-                        </button>
-                    ) : (
-                        <button type="button" className="button-secondary" onClick={goBack}>
-                            Voltar
-                        </button>
-                    )}
-                    {isStepMode && !isLastStep && (
-                        <button type="button" className="button" onClick={() => goToStep(currentStep + 1)}>
-                            Próxima
-                        </button>
-                    )}
-                    {!isReadOnly && (!isStepMode || isLastStep) && (
-                        <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
-                            Salvar respostas
-                        </BusyButton>
-                    )}
-                </FormActions>
-            </form>
+                        {isStepMode && !isLastStep && (
+                            <button type="button" className="button" onClick={() => goToStep(currentStep + 1)}>
+                                Próxima
+                            </button>
+                        )}
+                        {!isReadOnly && (!isStepMode || isLastStep) && (
+                            <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
+                                Salvar respostas
+                            </BusyButton>
+                        )}
+                    </FormActions>
+                </form>
+            )}
 
             {exitModal}
         </section>

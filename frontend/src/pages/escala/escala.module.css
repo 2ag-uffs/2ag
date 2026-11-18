@@ -173,8 +173,66 @@
     font-size: var(--text-sm);
 }
 
+/* ---- painel de pronto, no lugar do formulario dps de salvar ---- */
+
+.done {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-6) var(--space-5);
+}
+
+.doneStatus {
+    align-items: flex-start;
+    border-radius: var(--radius-md);
+    display: flex;
+    gap: var(--space-4);
+}
+
+.doneIcon {
+    color: var(--color-primary);
+    flex: 0 0 auto;
+    font-size: 2.25rem;
+}
+
+.doneText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+
+.doneTitle {
+    color: var(--color-text-headings);
+    font-size: var(--text-xl);
+}
+
+/* o q vem dps fica separado do q foi salvo */
+.doneNext {
+    color: var(--color-text-secondary);
+}
+
+.doneActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
 @media (max-width: 47.99rem) {
     .period {
         padding: var(--space-4);
+    }
+
+    .done {
+        padding: var(--space-5) var(--space-4);
+    }
+
+    /* no celular os botoes ficam um embaixo do outro, da largura toda */
+    .doneActions {
+        flex-direction: column;
     }
 }
