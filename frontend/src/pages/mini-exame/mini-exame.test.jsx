@@ -97,6 +97,26 @@ describe("MiniExame", () => {
         expect(post).not.toHaveBeenCalled();
     });
 
+    // o prescritor aplica o exame na consulta: no celular ele continua com todos os itens na mesma pagina
+    it("no celular o exame continua com todos os itens na mesma pagina", async () => {
+        vi.stubGlobal("matchMedia", () => ({matches: true, addEventListener: () => {}, removeEventListener: () => {}}));
+        const twoItems = {...DEFINITION, items: [...DEFINITION.items,
+            {key: "registro", label: "Registro", type: "NOTA", minValue: 0, maxValue: 3}]};
+        apiService.get.mockImplementation((path) => {
+            if (path === "/scales/definitions/mini-exame") {
+                return Promise.resolve(twoItems);
+            }
+            return Promise.resolve(path === "/appointments/7" ? APPOINTMENT : null);
+        });
+        renderExam();
+
+        expect(await screen.findByRole("group", {name: "Orientação temporal"})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Registro"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Próxima"})).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Salvar exame"})).toBeInTheDocument();
+        vi.unstubAllGlobals();
+    });
+
     // o exame aplicado antes abre direto no resultado e ai n tem pq tirar o foco de onde estava
     it("exame ja aplicado abre no resultado sem mexer no foco", async () => {
         apiService.get.mockImplementation((path) => {

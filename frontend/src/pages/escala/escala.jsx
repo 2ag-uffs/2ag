@@ -7,10 +7,12 @@ import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
+import {stepOfKey, stepsOf} from "../../components/scale-form/scale-steps.js";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {ApiError, apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
+import {usePhoneWidth} from "../../utils/phone-width.js";
 import {answersPayload, answersToValues, missingItemsOf, requiredItemsOf} from "../../utils/scale-answers.js";
 import styles from "./escala.module.css";
 
@@ -175,6 +177,20 @@ export default function Escala() {
     const [reloadCount, setReloadCount] = useState(0);
     // salvar com item q falta ou com erro de campo leva o foco e a rolagem pro primeiro deles
     const [formRef, focusFirstError] = useFocusFirstError();
+    // no celular a escala vai uma pergunta por tela, e a tela de agora fica guardada msm no computador:
+    // la ela segue a pergunta q a pessoa mexeu, entao girar o aparelho ou esticar a janela n perde o lugar
+    // no computador ela fica so no ref: redesenhar a pagina a cada foco reescrevia os radios e o chrome parava
+    // duas vezes no tab de cada pergunta sem resposta. qnd a largura vira a do celular o ref vira a tela de agora
+    const [stepIndex, setStepIndex] = useState(0);
+    const stepRef = useRef(0);
+    const isPhone = usePhoneWidth((nowPhone) => {
+        if (nowPhone) {
+            setStepIndex(stepRef.current);
+        }
+    });
+    // cada Anterior e Proxima leva o foco pra pergunta nova
+    const [stepMoves, setStepMoves] = useState(0);
+    const wasPhoneRef = useRef(isPhone);
     // a escala q ja abriu na tela. a recarga q falha dps (a rede caiu no meio do salvar) n troca a tela pelo
     // aviso de erro, senao somem a grade, os dias n salvos e o erro de cada um
     const loadedSlugRef = useRef(null);
@@ -259,6 +275,50 @@ export default function Escala() {
             .catch(() => setOpenTask(null));
     }, [isDiary, slug, loggedUser.id, today, chosenDate, startingDay]);
 
+    // as telas do celular: uma por pergunta, e o valor calculado vai junto da pergunta de antes
+    const steps = useMemo(() => (definition ? stepsOf(definition.items) : []), [definition]);
+    const isStepMode = isPhone && steps.length > 0;
+    const currentStep = Math.min(stepIndex, Math.max(steps.length - 1, 0));
+    const isLastStep = currentStep >= steps.length - 1;
+
+    // muda a tela de agora, no state e no ref
+    const moveToStep = (index) => {
+        stepRef.current = index;
+        setStepIndex(index);
+    };
+
+    const goToStep = (index) => {
+        moveToStep(index);
+        setStepMoves((count) => count + 1);
+    };
+
+    // o foco vai pra pergunta da tela nova, e o contador anuncia em q pergunta a pessoa esta
+    useEffect(() => {
+        const question = stepMoves > 0 && formRef.current ? formRef.current.querySelector("[data-step-focus]") : null;
+        if (question) {
+            question.focus();
+        }
+    }, [stepMoves, formRef]);
+
+    // do celular pro computador volta tudo numa pagina so, e a pergunta q estava na tela fica na vista
+    useEffect(() => {
+        if (wasPhoneRef.current && !isPhone && formRef.current) {
+            const item = formRef.current.querySelector("[data-step='" + stepIndex + "']");
+            if (item) {
+                item.scrollIntoView({block: "center"});
+            }
+        }
+        wasPhoneRef.current = isPhone;
+    }, [isPhone, stepIndex, formRef]);
+
+    // no computador a tela guardada segue a pergunta q recebe o foco (e a q foi respondida, no changeAnswer)
+    const followFocus = (event) => {
+        const item = isStepMode ? null : event.target.closest("[data-step]");
+        if (item) {
+            stepRef.current = Number(item.dataset.step);
+        }
+    };
+
     const insideOpenTask = openTask !== null
         && selectedDay >= openTask.periodStart
         && selectedDay <= openTask.periodEnd;
@@ -320,11 +380,13 @@ export default function Escala() {
 
     // o recado de um dia n vale pro outro entao trocar de dia limpa os avisos
     // salvar n passa por aqui e o recado de salvo continua na tela
+    // no celular cada dia eh um formulario, entao o dia novo abre na primeira pergunta
     const changeDay = (dayIso) => {
         setSelectedDay(dayIso);
         setNotice(null);
         setFormError(null);
         setMissingKeys([]);
+        moveToStep(0);
     };
 
     const changePeriodEnd = (dayIso) => {
@@ -352,6 +414,10 @@ export default function Escala() {
             [selectedDay]: {...(current[selectedDay] || savedValues), [key]: value},
         }));
         setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
+        // no computador a pergunta guardada segue tbm a resposta, pq o safari n da foco no radio clicado
+        if (!isStepMode) {
+            stepRef.current = stepOfKey(steps, key);
+        }
     };
 
     // manda a resposta de um dia do diario, ou do periodo q esta na tela
@@ -369,6 +435,12 @@ export default function Escala() {
 
     const save = async (event) => {
         event.preventDefault();
+        // no diario o campo da pergunta eh o unico do form e o enter nele envia: no meio das perguntas so passa
+        // pra proxima. nas outras a data fica junto e o navegador n envia nada com o enter sem o salvar na tela
+        if (isStepMode && !isLastStep) {
+            goToStep(currentStep + 1);
+            return;
+        }
         setFormError(null);
         setNotice(null);
         setFieldErrorsByDay({});
@@ -382,6 +454,7 @@ export default function Escala() {
             if (missingItems.length > 0) {
                 setSelectedDay(dayIso);
                 setMissingKeys(missingItems.map((item) => item.key));
+                moveToStep(stepOfKey(steps, missingItems[0].key));
                 focusFirstError();
                 return;
             }
@@ -412,7 +485,11 @@ export default function Escala() {
         if (failures.length > 0) {
             setFormError(failures.join(" "));
         }
-        if (fieldErrors[selectedDay] && Object.keys(fieldErrors[selectedDay]).length > 0) {
+        // o campo q a api recusou no dia da tela recebe o foco, e no celular a tela vai ate a pergunta dele
+        const dayErrors = fieldErrors[selectedDay] || {};
+        const firstRefused = definition.items.find((item) => dayErrors[item.key]);
+        if (firstRefused) {
+            moveToStep(stepOfKey(steps, firstRefused.key));
             focusFirstError();
         }
         if (savedResponses.length === 0) {
@@ -526,7 +603,7 @@ export default function Escala() {
                 />
             )}
 
-            <form ref={formRef} className={styles.form} onSubmit={save}>
+            <form ref={formRef} className={styles.form} onSubmit={save} onFocus={followFocus}>
                 {!isDiary && (
                     <div className={styles.period}>
                         <div className={styles.dateField}>
@@ -597,6 +674,7 @@ export default function Escala() {
                     missingKeys={missingKeys}
                     fieldErrors={fieldErrorsByDay[selectedDay] || {}}
                     showsUrgencyNotice={true}
+                    step={isStepMode ? currentStep : null}
                 />
 
                 {!isDiary && currentResponse && (
@@ -616,11 +694,23 @@ export default function Escala() {
                     </p>
                 )}
 
+                {/* no celular a primeira pergunta tem o Voltar, as outras o Anterior, e so a ultima o salvar */}
                 <FormActions>
-                    <button type="button" className="button-secondary" onClick={goBack}>
-                        Voltar
-                    </button>
-                    {!isReadOnly && (
+                    {isStepMode && currentStep > 0 ? (
+                        <button type="button" className="button-secondary" onClick={() => goToStep(currentStep - 1)}>
+                            Anterior
+                        </button>
+                    ) : (
+                        <button type="button" className="button-secondary" onClick={goBack}>
+                            Voltar
+                        </button>
+                    )}
+                    {isStepMode && !isLastStep && (
+                        <button type="button" className="button" onClick={() => goToStep(currentStep + 1)}>
+                            Próxima
+                        </button>
+                    )}
+                    {!isReadOnly && (!isStepMode || isLastStep) && (
                         <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
                             Salvar respostas
                         </BusyButton>

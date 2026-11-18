@@ -1,5 +1,6 @@
 import UrgencyNotice from "../urgency-notice/urgency-notice.jsx";
 import {answersPayload, formatAnswer} from "../../utils/scale-answers.js";
+import {stepsOf} from "./scale-steps.js";
 import styles from "./scale-form.module.css";
 
 // desenha os itens de qualquer escala a partir da definicao q veio da api
@@ -10,20 +11,32 @@ import styles from "./scale-form.module.css";
 // o erro de campo q a api manda (fieldErrors, pela chave do item) aparece no proprio item
 // na tela do paciente o texto livre vem com o aviso de q o sistema n eh urgencia (showsUrgencyNotice, R1)
 // o item q falta ou com erro fica com aria-invalid, e a tela leva o foco pro primeiro (useFocusFirstError)
+//
+// com o step (a tela do celular q a pagina da escala controla) so aparece a pergunta daquela tela
+// cada item diz a tela dele no data-step, e o data-step-focus marca onde o foco vai qnd a tela muda
 export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
-    fieldErrors = {}, showsUrgencyNotice = false}) {
-    // o valor q o sistema calcula n eh pergunta, entao fica fora da conta
-    const total = items.filter((item) => item.type !== "CALCULADO").length;
+    fieldErrors = {}, showsUrgencyNotice = false, step = null}) {
+    // o valor q o sistema calcula n eh pergunta, entao fica fora da conta e vai junto da pergunta de antes
+    const steps = stepsOf(items);
     const answered = Object.keys(answersPayload(items, values)).length;
+    const stepOfItem = {};
+    steps.forEach((stepItems, index) => stepItems.forEach((item) => {
+        stepOfItem[item.key] = index;
+    }));
+    const shownItems = step === null ? items : (steps[step] || []);
 
     return (
         <div className={styles.form}>
-            {total > 0 && <ScaleProgress answered={answered} total={total}/>}
+            {steps.length > 0 && <ScaleProgress answered={answered} total={steps.length} step={step}/>}
             <ol className={styles.items}>
-                {items.map((item) => {
+                {shownItems.map((item) => {
                     const isMarked = missingKeys.includes(item.key) || Boolean(fieldErrors[item.key]);
                     return (
-                        <li key={item.key} className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}>
+                        <li
+                            key={item.key}
+                            className={isMarked ? styles.item + " " + styles.itemMissing : styles.item}
+                            data-step={stepOfItem[item.key]}
+                        >
                             <ScaleField
                                 item={item}
                                 bands={bandsOfItem(item, bands)}
@@ -33,6 +46,7 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
                                 isMarked={isMarked}
                                 error={fieldErrors[item.key]}
                                 showsUrgencyNotice={showsUrgencyNotice}
+                                isStep={step !== null}
                             />
                         </li>
                     );
@@ -45,10 +59,15 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
 // quantos itens a pessoa ja respondeu, preso no alto enquanto ela rola o formulario
 // o data-top-bar faz o campo com foco atras dele descer (utils/focus-above-bars.js)
 // o texto eh um so, entao o leitor de tela so ouve qnd a conta muda e n a cada letra do texto livre
-function ScaleProgress({answered, total}) {
+// no celular ele diz tbm em q pergunta a pessoa esta, e ai a troca de tela eh anunciada
+function ScaleProgress({answered, total, step}) {
+    let text = answered + " de " + total + " respondidas";
+    if (step !== null) {
+        text = "Pergunta " + (step + 1) + " de " + total + " · " + text;
+    }
     return (
         <div className={styles.progress} data-top-bar="">
-            <p className={styles.progressText} role="status">{answered + " de " + total + " respondidas"}</p>
+            <p className={styles.progressText} role="status">{text}</p>
             <div className={styles.progressTrack} aria-hidden="true">
                 <div className={styles.progressFill} style={{width: Math.round(answered / total * 100) + "%"}}/>
             </div>
@@ -80,7 +99,7 @@ function scoresBetween(minValue, maxValue) {
     return scores;
 }
 
-function ScaleField({item, bands, values, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
+function ScaleField({item, bands, values, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -90,12 +109,12 @@ function ScaleField({item, bands, values, onChange, disabled, isMarked, error, s
     if (item.type === "NOTA" || item.type === "ESCOLHA" || item.type === "SIM_NAO") {
         return (
             <ChoiceField item={item} bands={bands} value={value} onChange={change} disabled={disabled}
-                isMarked={isMarked} error={error}/>
+                isMarked={isMarked} error={error} isStep={isStep}/>
         );
     }
     return (
         <TypedField item={item} value={value} onChange={change} disabled={disabled} isMarked={isMarked}
-            error={error} showsUrgencyNotice={showsUrgencyNotice}/>
+            error={error} showsUrgencyNotice={showsUrgencyNotice} isStep={isStep}/>
     );
 }
 
@@ -120,7 +139,11 @@ function ComputedField({item, value}) {
     );
 }
 
-function ChoiceField({item, bands, value, onChange, disabled, isMarked, error}) {
+// no celular o foco da tela nova vai pro grupo inteiro, e o leitor de tela le a pergunta
+// o grupo travado (resposta ja analisada) n recebe foco, entao ai o foco vai pra legenda
+function ChoiceField({item, bands, value, onChange, disabled, isMarked, error, isStep}) {
+    const focusesGroup = isStep && !disabled;
+    const focusesLegend = isStep && disabled;
     // toque errado no celular n pode virar dado clinico (RN10)
     // o botao some dps de limpar, entao o foco volta pra primeira opcao
     const clearAnswer = (event) => {
@@ -140,8 +163,14 @@ function ChoiceField({item, bands, value, onChange, disabled, isMarked, error}) 
             className={styles.field}
             disabled={disabled}
             aria-describedby={error ? errorIdOf(item) : undefined}
+            tabIndex={focusesGroup ? -1 : undefined}
+            data-step-focus={focusesGroup ? "" : undefined}
         >
-            <legend className={styles.legend}>
+            <legend
+                className={styles.legend}
+                tabIndex={focusesLegend ? -1 : undefined}
+                data-step-focus={focusesLegend ? "" : undefined}
+            >
                 <Label item={item}/>
             </legend>
             {choices}
@@ -161,7 +190,10 @@ function ChoiceField({item, bands, value, onChange, disabled, isMarked, error}) 
 }
 
 // texto livre hora ou numero digitado
-function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
+// no celular o foco da tela nova vai pro proprio campo, e com o campo travado vai pro rotulo dele
+function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep}) {
+    const focusesField = isStep && !disabled;
+    const focusesLabel = isStep && disabled;
     const noticeId = item.key + "-urgencia";
     const hasNotice = showsUrgencyNotice && item.type === "TEXTO";
     // o erro e o aviso de urgencia lidos junto com o campo
@@ -170,7 +202,12 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
         .join(" ");
     return (
         <div className={styles.field}>
-            <label className={styles.labelBox} htmlFor={item.key}>
+            <label
+                className={styles.labelBox}
+                htmlFor={item.key}
+                tabIndex={focusesLabel ? -1 : undefined}
+                data-step-focus={focusesLabel ? "" : undefined}
+            >
                 <Label item={item}/>
             </label>
             {item.type === "TEXTO" ? (
@@ -183,6 +220,7 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
                     disabled={disabled}
                     aria-invalid={isMarked ? "true" : undefined}
                     aria-describedby={describedBy === "" ? undefined : describedBy}
+                    data-step-focus={focusesField ? "" : undefined}
                     onChange={(event) => onChange(event.target.value)}
                 />
             ) : (
@@ -197,6 +235,7 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
                     disabled={disabled}
                     aria-invalid={isMarked ? "true" : undefined}
                     aria-describedby={error ? errorIdOf(item) : undefined}
+                    data-step-focus={focusesField ? "" : undefined}
                     onChange={(event) => onChange(event.target.value)}
                 />
             )}

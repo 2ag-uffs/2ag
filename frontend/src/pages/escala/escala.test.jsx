@@ -373,6 +373,210 @@ describe("Escala", () => {
     });
 });
 
+// o jsdom n tem matchMedia, entao a largura do celular vem daqui e o resize avisa a tela como o navegador
+function mockPhoneWidth(isPhone) {
+    const query = {matches: isPhone, listeners: []};
+    query.addEventListener = (type, listener) => query.listeners.push(listener);
+    query.removeEventListener = (type, listener) => {
+        query.listeners = query.listeners.filter((current) => current !== listener);
+    };
+    vi.stubGlobal("matchMedia", (media) => (media === "(max-width: 47.99rem)" ? query
+        : {matches: false, addEventListener: () => {}, removeEventListener: () => {}}));
+    return (nowPhone) => act(() => {
+        query.matches = nowPhone;
+        query.listeners.forEach((listener) => listener());
+    });
+}
+
+const choiceItem = (key, label) => ({key, label, type: "ESCOLHA",
+    options: [{value: 0, label: "Nenhum dia"}, {value: 1, label: "Até 3 dias"}]});
+
+// escala de periodo com tres perguntas de escolha, o bastante pra andar pelas telas
+const TEA = {
+    type: "REGISTRO_TEA", slug: "registro-tea", title: "Acompanhamento semanal de TEA",
+    instruction: "Pense na última semana para responder.", fillMode: "PERIODO", filledByPatient: true,
+    maxScore: null, bands: [],
+    items: [choiceItem("freqSono", "Sono"), choiceItem("freqApetite", "Apetite"),
+        {key: "observacao", label: "Observações", type: "TEXTO"}],
+};
+
+describe("Escala no celular, uma pergunta por tela", () => {
+    let post;
+
+    beforeEach(() => {
+        setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-tea" ? TEA : []));
+        post = vi.spyOn(apiService, "post").mockImplementation((path, body) => Promise.resolve({
+            id: 9, slug: "registro-tea", periodStart: body.periodStart, periodEnd: body.periodEnd,
+            answers: body.answers, result: null, reviewed: false, annulled: false, editableByPatient: true,
+        }));
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+        setLoggedUser(null);
+    });
+
+    function renderTea() {
+        const router = createMemoryRouter([
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+            {path: "/escalas/:slug", element: <Escala/>},
+        ], {initialEntries: ["/painel-paciente", "/escalas/registro-tea"], initialIndex: 1});
+        render(<RouterProvider router={router}/>);
+    }
+
+    it("mostra uma pergunta por vez, com Anterior e Proxima, e o salvar so na ultima", async () => {
+        mockPhoneWidth(true);
+        renderTea();
+        const user = userEvent.setup();
+
+        expect(await screen.findByRole("group", {name: "Sono"})).toBeInTheDocument();
+        expect(screen.queryByRole("group", {name: "Apetite"})).not.toBeInTheDocument();
+        expect(screen.getByText("Pergunta 1 de 3 · 0 de 3 respondidas")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Anterior"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Salvar respostas"})).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+        // a pergunta nova recebe o foco e o contador diz em q pergunta esta
+        const appetite = screen.getByRole("group", {name: "Apetite"});
+        expect(appetite).toHaveFocus();
+        expect(screen.queryByRole("group", {name: "Sono"})).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 3 · 1 de 3 respondidas");
+
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        expect(screen.getByLabelText("Observações")).toHaveFocus();
+        expect(screen.queryByRole("button", {name: "Próxima"})).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Salvar respostas"})).toBeInTheDocument();
+
+        // voltar uma pergunta mostra a resposta q ja estava
+        await user.click(screen.getByRole("button", {name: "Anterior"}));
+        await user.click(screen.getByRole("button", {name: "Anterior"}));
+        expect(screen.getByRole("radio", {name: "Até 3 dias"})).toBeChecked();
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 1 de 3");
+    });
+
+    // a proxima n trava (RN10): pular um item segue, e o salvar envia so o q foi respondido
+    it("pular uma pergunta segue e o salvar envia so o q foi respondido", async () => {
+        mockPhoneWidth(true);
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("radio", {name: "Nenhum dia"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+        expect(post.mock.calls[0][1].answers).toEqual({freqSono: 0});
+    });
+
+    it("escala pontuada salva com item pulado volta pra pergunta q falta e leva o foco nela", async () => {
+        mockPhoneWidth(true);
+        const scored = {...TEA, maxScore: 2, items: TEA.items.slice(0, 2)};
+        apiService.get.mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/registro-tea" ? scored : []));
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        const sleep = await screen.findByRole("group", {name: "Sono"});
+        await waitFor(() => expect(within(sleep).getByRole("radio", {name: "Nenhum dia"})).toHaveFocus());
+        expect(screen.getByRole("alert")).toHaveTextContent("Falta preencher: Sono.");
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    it("trocar a largura no meio mantem as respostas e a pergunta", async () => {
+        const resize = mockPhoneWidth(true);
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+        // no computador volta tudo numa pagina so, com a pergunta de antes na vista
+        resize(false);
+        const appetite = screen.getByRole("group", {name: "Apetite"});
+        expect(screen.getByRole("group", {name: "Sono"})).toBeInTheDocument();
+        expect(within(screen.getByRole("group", {name: "Sono"})).getByRole("radio", {name: "Até 3 dias"}))
+            .toBeChecked();
+        expect(scrollIntoView.mock.contexts[0]).toBe(appetite.closest("li"));
+        expect(screen.getByRole("button", {name: "Salvar respostas"})).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("1 de 3 respondidas");
+
+        // a pergunta q a pessoa mexeu no computador eh a q o celular mostra
+        await user.type(screen.getByLabelText("Observações"), "tudo certo");
+        resize(true);
+        expect(screen.getByLabelText("Observações")).toHaveValue("tudo certo");
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 3 de 3 · 2 de 3 respondidas");
+    });
+
+    // o react reescreve o name de cada radio a cada desenho, e com o desenho a cada foco o chrome parava duas
+    // vezes no tab de cada pergunta sem resposta. no computador o foco so fica guardado pro celular
+    it("no computador o foco numa pergunta nova n redesenha os radios e ainda guarda a pergunta", async () => {
+        const resize = mockPhoneWidth(false);
+        renderTea();
+        const appetite = await screen.findByRole("group", {name: "Apetite"});
+        const observer = new MutationObserver(() => {});
+        observer.observe(appetite.closest("form"), {attributes: true, attributeFilter: ["name"], subtree: true});
+
+        act(() => within(appetite).getByRole("radio", {name: "Nenhum dia"}).focus());
+
+        expect(observer.takeRecords()).toEqual([]);
+        observer.disconnect();
+        resize(true);
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 3 · 0 de 3 respondidas");
+    });
+
+    // o safari n da foco no radio clicado ou tocado, entao no computador a pergunta guardada segue tbm a resposta
+    // (o ipad mini respondendo deitado e girando pra de pe passa de 768 px pro celular)
+    it("no computador responder uma opcao sem foco tbm guarda a pergunta pro celular", async () => {
+        const resize = mockPhoneWidth(false);
+        renderTea();
+
+        const appetite = await screen.findByRole("group", {name: "Apetite"});
+        fireEvent.click(within(appetite).getByRole("radio", {name: "Até 3 dias"}));
+        expect(within(appetite).getByRole("radio", {name: "Até 3 dias"})).toBeChecked();
+        expect(document.body).toHaveFocus();
+
+        resize(true);
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 3 · 1 de 3 respondidas");
+        expect(screen.getByRole("radio", {name: "Até 3 dias"})).toBeChecked();
+    });
+
+    // o voltar da primeira pergunta sai da tela, e com resposta n salva pergunta antes, como sempre
+    it("na primeira pergunta o Voltar com resposta n salva pergunta antes de sair", async () => {
+        mockPhoneWidth(true);
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+        await user.click(screen.getByRole("button", {name: "Voltar"}));
+
+        const dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+        await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+    });
+
+    // o mini-exame n entra no modo de uma pergunta por tela, e no computador a escala fica toda numa pagina
+    it("no computador todas as perguntas ficam na mesma pagina", async () => {
+        mockPhoneWidth(false);
+        renderTea();
+
+        expect(await screen.findByRole("group", {name: "Sono"})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: "Apetite"})).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("0 de 3 respondidas");
+        expect(screen.queryByRole("button", {name: "Próxima"})).not.toBeInTheDocument();
+    });
+});
+
 // diario com um item de nota, preenchido um dia por vez na grade
 const DIARY = {
     type: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal", title: "Acompanhamento semanal",
@@ -412,6 +616,7 @@ describe("Escala diaria", () => {
         vi.restoreAllMocks();
         vi.useRealTimers();
         vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
         setLoggedUser(null);
     });
 
@@ -742,11 +947,11 @@ describe("Escala diaria", () => {
     }
 
     // o GET das respostas passa a devolver o q o POST salvou, igual a api de vdd
-    function mockSavingApi(rejectDay = null) {
+    function mockSavingApi(rejectDay = null, definition = DIARY) {
         let savedResponses = [];
         vi.mocked(apiService.get).mockImplementation((path) => {
             if (path === "/scales/definitions/acompanhamento-semanal") {
-                return Promise.resolve(DIARY);
+                return Promise.resolve(definition);
             }
             if (path === "/patients/3/scales/overview") {
                 return Promise.resolve({pending: pendingTasks, history: []});
@@ -802,6 +1007,87 @@ describe("Escala diaria", () => {
         await waitFor(() => expect(within(grid).getAllByRole("button")[0]).toHaveTextContent("preenchido"));
         expect(within(grid).getAllByRole("button")[1]).toHaveTextContent("preenchido");
         expect(within(grid).queryByText("não salvo")).not.toBeInTheDocument();
+    });
+
+    // no celular cada dia da grade eh um formulario com as suas perguntas, e o salvar de varios dias continua
+    it("no celular cada dia abre na primeira pergunta e salvar ainda envia todos os dias editados", async () => {
+        mockPhoneWidth(true);
+        const twoItems = {...DIARY, items: [...DIARY.items, {key: "sono", label: "Sono", type: "NOTA", minValue: 0,
+            maxValue: 10, lowAnchor: "muito ruim", highAnchor: "excelente", options: []}]};
+        const post = mockSavingApi(null, twoItems);
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        const days = within(grid).getAllByRole("button");
+        await user.click(days[0]);
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 2 · 1 de 2 respondidas");
+
+        // o outro dia abre na primeira pergunta dele
+        await user.click(days[1]);
+        expect(screen.getByRole("status")).toHaveTextContent("Pergunta 1 de 2 · 0 de 2 respondidas");
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByText("Respostas de 2 dias salvas.")).toBeInTheDocument();
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[0][1].answers).toEqual({dor: 6});
+        expect(post.mock.calls[1][1].answers).toEqual({dor: 4});
+    });
+
+    // no diario o campo digitado eh o unico da tela, e o enter nele envia o formulario: no meio das perguntas
+    // ele so passa pra proxima e n salva o dia pela metade
+    it("no celular o enter no campo de uma pergunta do meio passa pra proxima e n salva", async () => {
+        mockPhoneWidth(true);
+        const withDrops = {...DIARY, items: [{key: "gotasManha", label: "N.º de gotas pela manhã", type: "NUMERO",
+            options: []}, ...DIARY.items]};
+        const post = mockSavingApi(null, withDrops);
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const drops = await screen.findByLabelText("N.º de gotas pela manhã");
+        await user.type(drops, "3");
+        // o user-event n faz o envio do enter num campo de numero sozinho, entao o teste envia como o navegador
+        act(() => drops.form.requestSubmit());
+
+        expect(screen.getByRole("group", {name: "Dor"})).toHaveFocus();
+        expect(post).not.toHaveBeenCalled();
+    });
+
+    // o dia ja analisado fica travado, e campo travado n recebe foco: a tela nova leva o foco pro titulo da pergunta
+    // sem isso o foco caia no body qnd a Proxima some na ultima, e o Anterior virava o Voltar com o foco nele
+    it("no celular o dia ja analisado pelo prescritor ainda leva o foco pra cada pergunta", async () => {
+        mockPhoneWidth(true);
+        const withComment = {...DIARY, items: [...DIARY.items, {key: "comentario", label: "Comentário", type: "TEXTO"}]};
+        const reviewedDay = {
+            id: 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal", periodStart: dayFromToday(0),
+            periodEnd: dayFromToday(0), answers: {dor: 4, comentario: "dia tranquilo"}, result: null, reviewed: true,
+            annulled: false, editableByPatient: false,
+        };
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(withComment);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: pendingTasks, history: []});
+            }
+            return Promise.resolve(path === "/scales/acompanhamento-semanal/responses" ? [reviewedDay] : []);
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        expect(await screen.findByText(/O prescritor já analisou/)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        expect(screen.getByLabelText("Comentário")).toBeDisabled();
+        expect(screen.getByText("Comentário").closest("label")).toHaveFocus();
+        expect(screen.queryByRole("button", {name: "Salvar respostas"})).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", {name: "Anterior"}));
+        expect(screen.getByText("Dor").closest("legend")).toHaveFocus();
+        expect(screen.getByRole("button", {name: "Voltar"})).not.toHaveFocus();
     });
 
     // o dia q a api recusa n some calado: continua como rascunho marcado na grade e o erro dele aparece
