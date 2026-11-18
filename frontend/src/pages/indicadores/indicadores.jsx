@@ -92,7 +92,9 @@ export default function Indicadores() {
         setPeriod({from: fromDate, to: toDate});
     };
 
-    if (isLoading && !indicators && !errorMessage) {
+    // o esqueleto eh so da primeira carga, q ainda n tem periodo. no filtro o formulario fica na tela,
+    // mesmo dps de um erro, q deixa a tela sem os numeros: senao o botao sumia e o foco ia pro body (CT-39)
+    if (isLoading && period === null) {
         return <SkeletonPage cards={2}/>;
     }
 

@@ -175,4 +175,46 @@ describe("Indicadores", () => {
             .toHaveTextContent("O período precisa terminar até ontem, porque o prazo de hoje ainda está correndo");
         expect(screen.queryByText("Por escala")).not.toBeInTheDocument();
     });
+
+    // dps de um erro o filtro seguinte n pode trocar a tela pelo esqueleto: o formulario fica e o foco
+    // continua no botao (CT-39)
+    it("filtrar dps de um erro mantem o formulario e o foco no botao", async () => {
+        let finishSearch;
+        const get = vi.spyOn(apiService, "get")
+            .mockRejectedValueOnce(new ApiError(400, "x"))
+            .mockReturnValueOnce(new Promise((resolve) => {
+                finishSearch = resolve;
+            }));
+        const user = userEvent.setup();
+        renderPage();
+
+        await screen.findByRole("alert");
+        fireEvent.change(screen.getByLabelText("De"), {target: {value: "2026-09-01"}});
+        fireEvent.change(screen.getByLabelText("Até"), {target: {value: "2026-09-30"}});
+        await user.click(screen.getByRole("button", {name: "Filtrar"}));
+
+        // a busca ainda n voltou
+        expect(get).toHaveBeenLastCalledWith("/indicators?from=2026-09-01&to=2026-09-30");
+        expect(screen.getByLabelText("De")).toHaveValue("2026-09-01");
+        expect(screen.getByRole("button", {name: "Filtrar"})).toHaveFocus();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        finishSearch({...INDICATORS, from: "2026-09-01", to: "2026-09-30"});
+        expect(await screen.findByText("Por escala")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Filtrar"})).toHaveFocus();
+    });
+
+    // a primeira carga continua no esqueleto, sem o formulario com as datas vazias
+    it("a primeira carga mostra o esqueleto ate a api responder", async () => {
+        let finishLoad;
+        vi.spyOn(apiService, "get").mockReturnValue(new Promise((resolve) => {
+            finishLoad = resolve;
+        }));
+        renderPage();
+
+        expect(screen.queryByLabelText("De")).not.toBeInTheDocument();
+
+        finishLoad(INDICATORS);
+        expect(await screen.findByLabelText("De")).toHaveValue("2026-07-18");
+    });
 });
