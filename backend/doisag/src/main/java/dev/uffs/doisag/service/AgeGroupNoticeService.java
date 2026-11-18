@@ -1,10 +1,14 @@
 package dev.uffs.doisag.service;
 
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
+import dev.uffs.doisag.scale.ScaleScorer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,12 +33,15 @@ public class AgeGroupNoticeService {
     public static final String BIRTHDAY_TITLE = "Paciente fez 18 anos";
 
     private final PatientRepository patientRepository;
+    private final ScaleResponseRepository responseRepository;
     private final NotificationService notificationService;
     private final TransactionTemplate transactionTemplate;
 
-    public AgeGroupNoticeService(PatientRepository patientRepository, NotificationService notificationService,
+    public AgeGroupNoticeService(PatientRepository patientRepository, ScaleResponseRepository responseRepository,
+                                 NotificationService notificationService,
                                  PlatformTransactionManager transactionManager) {
         this.patientRepository = patientRepository;
+        this.responseRepository = responseRepository;
         this.notificationService = notificationService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
@@ -54,11 +61,33 @@ public class AgeGroupNoticeService {
                 : "passou de adulto para menor de 18 anos";
         sendToPrescriber(patient, AGE_GROUP_TITLE, patient.getDisplayName()
                 + " trocou a data de nascimento no perfil de " + BrazilianFormat.date(oldBirthDate) + " para "
-                + BrazilianFormat.date(patient.getBirthDate()) + " e " + change
-                + ". Confira a idade na próxima consulta.");
+                + BrazilianFormat.date(patient.getBirthDate()) + " e " + change + "."
+                + examsWithTheOldBandText(patient) + " Confira a idade na próxima consulta.");
         if (wasMinor) {
             patient.setAdultNoticeOn(LocalDate.now());
         }
+    }
+
+    // a faixa do mini-exame eh decidida qnd o exame eh gravado, pela idade no dia da consulta, e a data
+    // corrigida dps n mexe nela: quem muda o resultado q a prescritora gravou eh ela, anulando e aplicando de
+    // novo. o aviso diz quantos exames ficaram com a faixa q pela data nova seria outra (decisao de 17/11/2026)
+    private String examsWithTheOldBandText(Patient patient) {
+        int exams = 0;
+        for (ScaleResponse exam : responseRepository.findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(
+                patient.getId(), ScaleType.MINI_EXAME_ESTADO_MENTAL)) {
+            boolean savedAsMinor = ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND.equals(exam.getScoreBand());
+            boolean isMinorByTheNewDate = Patient.isMinor(patient.getBirthDate(), exam.getPeriodStart());
+            if (!exam.isAnnulled() && savedAsMinor != isMinorByTheNewDate) {
+                exams++;
+            }
+        }
+        if (exams == 0) {
+            return "";
+        }
+        String applied = exams == 1 ? "1 Mini-Exame foi aplicado com a data antiga e continua"
+                : exams + " Mini-Exames foram aplicados com a data antiga e continuam";
+        return " " + applied + " com a faixa gravada na aplicação: para mudar a faixa, anule o exame e aplique "
+                + "de novo.";
     }
 
     // job do dia: quem fez 18 anos nos ultimos dias e ainda n teve o aviso

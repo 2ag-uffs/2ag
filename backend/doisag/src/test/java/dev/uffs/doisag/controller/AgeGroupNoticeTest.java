@@ -1,20 +1,25 @@
 package dev.uffs.doisag.controller;
 
 import dev.uffs.doisag.enums.ConsentType;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.PendingTermException;
 import dev.uffs.doisag.model.Address;
 import dev.uffs.doisag.model.Admin;
+import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ScaleResponse;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.ConsentAcceptanceRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.scale.ScaleScorer;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AgeGroupNoticeService;
 import dev.uffs.doisag.service.ConsentTermService;
@@ -32,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -60,6 +66,7 @@ class AgeGroupNoticeTest {
     @Autowired private UsersRepository usersRepository;
     @Autowired private NotificationRepository notificationRepository;
     @Autowired private ConsentAcceptanceRepository consentAcceptanceRepository;
+    @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private AgeGroupNoticeService ageGroupNoticeService;
     @Autowired private TokenService tokenService;
     @Autowired private EntityManager entityManager;
@@ -163,6 +170,65 @@ class AgeGroupNoticeTest {
             assertThat(notice.getTitle()).isEqualTo(AgeGroupNoticeService.AGE_GROUP_TITLE);
             assertThat(notice.getMessage()).contains("passou de menor de 18 anos para adulto");
         });
+    }
+
+    // a faixa do mini-exame eh decidida qnd o exame eh gravado e n muda com a data corrigida dps. o aviso diz
+    // quantos exames ficaram com a faixa da data antiga e q pra mudar eh anular e aplicar de novo
+    // (decisao de 17/11/2026)
+    @Test
+    void theNoticeTellsHowManyMiniExamsKeepTheBandOfTheOldDate() throws Exception {
+        ScaleResponse firstExam = saveMiniExam(TODAY.minusDays(30), ADULT_BAND);
+        saveMiniExam(TODAY.minusDays(10), ADULT_BAND);
+        // o anulado n conta
+        ScaleResponse annulledExam = saveMiniExam(TODAY.minusDays(5), ADULT_BAND);
+        annulledExam.setAnnulment(new Annulment(prescriber, "Aplicado no paciente errado"));
+        responseRepository.save(annulledExam);
+
+        LocalDate minorBirthDate = TODAY.minusYears(10);
+        saveProfile(minorBirthDate, "Joana Souza");
+
+        assertThat(noticesOfThePrescriber()).singleElement().satisfies(notice ->
+                assertThat(notice.getMessage()).isEqualTo("Paciente da Idade trocou a data de nascimento no perfil "
+                        + "de 12/04/1990 para " + BrazilianFormat.date(minorBirthDate)
+                        + " e passou de adulto para menor de 18 anos. 2 Mini-Exames foram aplicados com a data "
+                        + "antiga e continuam com a faixa gravada na aplicação: para mudar a faixa, anule o exame "
+                        + "e aplique de novo. Confira a idade na próxima consulta."));
+        // a faixa gravada n muda sozinha
+        assertThat(responseRepository.findById(firstExam.getId()).orElseThrow().getScoreBand())
+                .isEqualTo(ADULT_BAND);
+    }
+
+    // so conta o exame q teria outra faixa pela data nova: o de qnd o paciente ainda era menor tbm pela data
+    // corrigida continua certo
+    @Test
+    void theNoticeCountsOnlyTheMiniExamsWhoseBandWouldBeAnother() throws Exception {
+        makeMinor(TODAY.minusYears(10));
+        saveMiniExam(TODAY.minusDays(30), ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND);
+        ScaleResponse recentExam = saveMiniExam(TODAY.minusDays(1), ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND);
+
+        saveProfile(TODAY.minusYears(18).minusDays(3), "Joana Souza");
+
+        assertThat(noticesOfThePrescriber()).singleElement().satisfies(notice ->
+                assertThat(notice.getMessage()).endsWith(" e passou de menor de 18 anos para adulto. 1 Mini-Exame "
+                        + "foi aplicado com a data antiga e continua com a faixa gravada na aplicação: para mudar "
+                        + "a faixa, anule o exame e aplique de novo. Confira a idade na próxima consulta."));
+        assertThat(responseRepository.findById(recentExam.getId()).orElseThrow().getScoreBand())
+                .isEqualTo(ScaleScorer.NOT_VALIDATED_FOR_AGE_BAND);
+    }
+
+    private static final String ADULT_BAND = "Abaixo do esperado para a escolaridade";
+
+    private ScaleResponse saveMiniExam(LocalDate examDay, String scoreBand) {
+        ScaleResponse exam = new ScaleResponse();
+        exam.setPatient(patient);
+        exam.setPrescriber(prescriber);
+        exam.setScaleType(ScaleType.MINI_EXAME_ESTADO_MENTAL);
+        exam.setPeriodStart(examDay);
+        exam.setPeriodEnd(examDay);
+        exam.setAnswers(Map.of("escolaridade", 1));
+        exam.setScore(18);
+        exam.setScoreBand(scoreBand);
+        return responseRepository.save(exam);
     }
 
     @Test
