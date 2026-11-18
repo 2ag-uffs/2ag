@@ -735,7 +735,7 @@ class ScaleDeliveryTest {
         Number answerId = JsonPath.read(answerHamilton(bearerTokenOf(patient))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(), "$.id");
-        archivePatient();
+        archivePatientAfterTheTasks();
 
         annul(answerId.longValue()).andExpect(status().isOk());
 
@@ -755,7 +755,7 @@ class ScaleDeliveryTest {
         Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(), "$.id");
-        archivePatient();
+        archivePatientAfterTheTasks();
         ScaleTask week = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
         assertThat(week.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
 
@@ -780,7 +780,7 @@ class ScaleDeliveryTest {
         Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(), "$.id");
-        archivePatient();
+        archivePatientAfterTheTasks();
         ScaleTask week = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
         assertThat(week.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
 
@@ -1402,6 +1402,15 @@ class ScaleDeliveryTest {
         mockMvc.perform(put("/patients/" + patient.getId() + "/archive")
                         .header("Authorization", bearerTokenOf(prescriber)))
                 .andExpect(status().isOk());
+    }
+
+    // o arquivamento vem um segundo dps das tarefas q ja existiam. no mesmo instante do relogio o banco
+    // arredonda a hora da tarefa pra cima e ela podia parecer mais nova q o arquivamento
+    private void archivePatientAfterTheTasks() throws Exception {
+        archivePatient();
+        Patient archived = patientRepository.findById(patient.getId()).orElseThrow();
+        archived.setArchivedAt(archived.getArchivedAt().plusSeconds(1));
+        patientRepository.saveAndFlush(archived);
     }
 
     private ResultActions annul(Long responseId) throws Exception {

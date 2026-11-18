@@ -324,6 +324,10 @@ class ReminderTest {
     void aSemanaFechadaPeloArquivamentoNaoCobraOsDiasEmBranco() {
         saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
         patientArchiveService.archive(patient.getId(), prescriber);
+        // o arquivamento vem um segundo dps da tarefa. no mesmo instante do relogio o banco arredondava a hora
+        // da tarefa pra cima e ela parecia mais nova q o arquivamento, e o teste falhava de vez em quando
+        patient.setArchivedAt(patient.getArchivedAt().plusSeconds(1));
+        patientRepository.save(patient);
 
         assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
     }
