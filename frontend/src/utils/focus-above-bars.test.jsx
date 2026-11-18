@@ -60,6 +60,28 @@ function renderScale() {
     render(<RouterProvider router={router}/>);
 }
 
+// pergunta de opcoes em cartao com a barra de acoes no pe, como o pittsburgh do paciente
+function ScaleCardsPage() {
+    const items = [{key: "freqAcordouNoite", label: "Acordou no meio da noite ou de manhã cedo", type: "ESCOLHA",
+        options: [{value: 0, label: "Nenhuma no último mês"}, {value: 1, label: "Menos de uma vez por semana"}]}];
+    return (
+        <form aria-label="Escala">
+            <ScaleForm items={items} values={{}} onChange={() => {}}/>
+            <FormActions>
+                <button type="button">Voltar</button>
+                <button type="submit">Salvar respostas</button>
+            </FormActions>
+        </form>
+    );
+}
+
+function renderScaleCards() {
+    const router = createMemoryRouter([
+        {element: <AppLayout/>, children: [{path: "/escalas/pittsburgh", element: <ScaleCardsPage/>}]},
+    ], {initialEntries: ["/escalas/pittsburgh"]});
+    render(<RouterProvider router={router}/>);
+}
+
 // a barra de acoes eh a div em volta dos botoes do fim do formulario
 function actionsBar() {
     return screen.getByRole("button", {name: "Salvar consulta"}).parentElement;
@@ -179,6 +201,22 @@ describe("campo com foco atras da barra presa no pe da tela", () => {
         await nextFrame();
 
         expect(scrollBy).not.toHaveBeenCalled();
+    });
+
+    // o radio de vdd tem 1 px e fica no alto do cartao, entao a conta vale pro cartao inteiro (o label em volta)
+    // em 768x1024 o cartao ia de 918 a 968 com a barra comecando em 940, e o anel de foco sumia embaixo dela
+    it("a opcao em cartao sobe ate o cartao inteiro sair de baixo da barra de acoes", async () => {
+        window.innerHeight = 1024;
+        renderScaleCards();
+        const option = await screen.findByRole("radio", {name: "Nenhuma no último mês"});
+        placeAt(screen.getByRole("button", {name: "Salvar respostas"}).parentElement, box(940, 1024, 0, 768));
+        placeAt(option.closest("label"), box(918, 968, 40, 728));
+        placeAt(option, box(918, 919, 40, 41));
+
+        act(() => option.focus());
+
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(0, 968 + 12 - 940);
     });
 
     // campo mais alto q o espaco livre: sobe so ate o topo dele, onde fica o rotulo e o cursor

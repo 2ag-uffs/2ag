@@ -144,10 +144,12 @@
     grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
 }
 
-.score {
+.score,
+.option {
     position: relative;
 }
 
+/* o radio de verdade fica invisivel mas continua no lugar, pro teclado e pro leitor de tela */
 .score input,
 .option input {
     height: 1px;
@@ -165,7 +167,7 @@
     display: flex;
     font-weight: 600;
     justify-content: center;
-    min-height: 2.75rem;
+    min-height: var(--control-height);
     transition: background-color var(--duration-fast) var(--easing-standard),
         border-color var(--duration-fast) var(--easing-standard);
 }
@@ -243,7 +245,7 @@
     grid-auto-flow: column;
 }
 
-/* ---- opcoes com a bolinha do radio desenhada ---- */
+/* ---- opcoes em cartoes, cada uma com a bolinha q ganha o check ---- */
 
 .options {
     display: flex;
@@ -251,7 +253,17 @@
     gap: var(--space-2);
 }
 
-.option span {
+/* sim e nao sao curtos e ficam lado a lado, do msm tamanho */
+.yesNo {
+    flex-direction: row;
+}
+
+.yesNo > .option {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.optionCard {
     align-items: center;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -259,57 +271,74 @@
     cursor: pointer;
     display: flex;
     gap: var(--space-3);
+    min-height: var(--control-height);
     padding: var(--space-3) var(--space-4);
     transition: background-color var(--duration-fast) var(--easing-standard),
         border-color var(--duration-fast) var(--easing-standard);
 }
 
-.option span::before {
+/* a bolinha fica vazia e o check so aparece na escolhida */
+.optionMark {
+    align-items: center;
     border: 2px solid var(--color-border);
     border-radius: var(--radius-pill);
-    box-sizing: border-box;
-    content: "";
+    display: flex;
     flex: 0 0 auto;
-    height: 1.125rem;
-    transition: border var(--duration-fast) var(--easing-standard);
-    width: 1.125rem;
+    font-size: 0.875rem;
+    height: 1.375rem;
+    justify-content: center;
+    transition: background-color var(--duration-fast) var(--easing-standard),
+        border-color var(--duration-fast) var(--easing-standard);
+    width: 1.375rem;
 }
 
-.option span:hover {
+.optionCard:hover {
     border-color: var(--color-primary);
 }
 
 /* respondido e travado continua legivel, so sem o jeito de clicavel */
 fieldset:disabled .score span,
-fieldset:disabled .option span {
+fieldset:disabled .optionCard {
     background-color: var(--color-background);
     cursor: default;
 }
 
 fieldset:disabled .score span:hover,
-fieldset:disabled .option span:hover {
+fieldset:disabled .optionCard:hover {
     border-color: var(--color-border);
 }
 
+/* a nota escolhida fica cheia e com um anel por dentro, entao a cor n eh o unico sinal */
 .score input:checked + span {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 2px var(--color-surface);
+    color: var(--color-text-on-primary);
+}
+
+/* a opcao escolhida ganha o check e a borda dobrada, alem da cor
+   eh borda de vdd e n sombra, pq o alto contraste do windows tira as sombras. o padding desconta o 1 px a mais */
+.option input:checked + .optionCard {
+    background-color: var(--color-primary-soft);
+    border-color: var(--color-primary);
+    border-width: 2px;
+    font-weight: 600;
+    padding: calc(var(--space-3) - 1px) calc(var(--space-4) - 1px);
+}
+
+.option input:checked + .optionCard .optionMark {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
     color: var(--color-text-on-primary);
 }
 
-.option input:checked + span {
-    background-color: var(--color-primary-soft);
-    border-color: var(--color-primary);
-    font-weight: 600;
-}
-
-.option input:checked + span::before {
-    border: 5px solid var(--color-primary);
-}
-
 .score input:focus-visible + span,
-.option input:focus-visible + span {
+.option input:focus-visible + .optionCard {
     box-shadow: var(--focus-ring);
+}
+
+.score input:checked:focus-visible + span {
+    box-shadow: inset 0 0 0 2px var(--color-surface), var(--focus-ring);
 }
 
 /* limpar fica no canto e discreto pra n competir com as opcoes */
@@ -327,11 +356,36 @@ fieldset:disabled .option span:hover {
         padding: var(--space-4);
     }
 
+    /* no celular o dedo pede alvo maior: a regua fica mais alta e a nota n fica mais estreita q 44 px,
+       e a faixa q n cabe desce pra linha de baixo, sem rolar a pagina de lado */
     .scores {
-        grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
+    }
+
+    .score span {
+        min-height: 3rem;
     }
 
     .bandScores {
-        grid-auto-columns: minmax(2.5rem, 1fr);
+        grid-auto-columns: minmax(2.75rem, 1fr);
+    }
+
+    .optionCard {
+        min-height: 3rem;
+    }
+}
+
+/* no alto contraste do windows as cores viram as do sistema e as sombras somem, entao o fundo cheio da nota
+   e o anel por dentro n aparecem: a nota e a opcao escolhidas usam a cor de destaque do sistema */
+@media (forced-colors: active) {
+    .score input:checked + span,
+    .option input:checked + .optionCard .optionMark {
+        background-color: Highlight;
+        border-color: Highlight;
+        color: HighlightText;
+    }
+
+    .option input:checked + .optionCard {
+        border-color: Highlight;
     }
 }

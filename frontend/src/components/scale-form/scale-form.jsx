@@ -1,3 +1,4 @@
+import {FiCheck} from "react-icons/fi";
 import UrgencyNotice from "../urgency-notice/urgency-notice.jsx";
 import {answersPayload, formatAnswer} from "../../utils/scale-answers.js";
 import {stepsOf} from "./scale-steps.js";
@@ -335,26 +336,37 @@ function ScoreOption({item, score, value, onChange, invalid}) {
     );
 }
 
+// cada opcao eh um cartao inteiro pra tocar, com a bolinha q ganha o check qnd escolhida
+// o radio de verdade continua ali embaixo pro teclado e pro leitor de tela, como no ChoiceCard
+// sim e nao sao curtos e ficam lado a lado
+// o check so existe na escolhida: escondido pela cor ele aparecia em todas no alto contraste do windows
 function OptionChoices({item, value, onChange, invalid}) {
-    const options = item.type === "SIM_NAO"
+    const isYesNo = item.type === "SIM_NAO";
+    const options = isYesNo
         ? [{value: "true", label: "Sim"}, {value: "false", label: "Não"}]
         : item.options.map((option) => ({value: String(option.value), label: option.label}));
 
     return (
-        <div className={styles.options}>
-            {options.map((option) => (
-                <label key={option.value} className={styles.option}>
-                    <input
-                        type="radio"
-                        name={item.key}
-                        value={option.value}
-                        checked={String(value) === option.value}
-                        aria-invalid={invalid ? "true" : undefined}
-                        onChange={() => onChange(option.value)}
-                    />
-                    <span>{option.label}</span>
-                </label>
-            ))}
+        <div className={isYesNo ? styles.options + " " + styles.yesNo : styles.options}>
+            {options.map((option) => {
+                const isChosen = String(value) === option.value;
+                return (
+                    <label key={option.value} className={styles.option}>
+                        <input
+                            type="radio"
+                            name={item.key}
+                            value={option.value}
+                            checked={isChosen}
+                            aria-invalid={invalid ? "true" : undefined}
+                            onChange={() => onChange(option.value)}
+                        />
+                        <span className={styles.optionCard}>
+                            <span className={styles.optionMark} aria-hidden="true">{isChosen && <FiCheck/>}</span>
+                            <span>{option.label}</span>
+                        </span>
+                    </label>
+                );
+            })}
         </div>
     );
 }

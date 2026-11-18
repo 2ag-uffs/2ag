@@ -46,13 +46,21 @@ function coveredBottomOf(fieldBox, headerBottom) {
     return coveredBottom;
 }
 
+// a opcao desenhada (o cartao das escalas, o ChoiceCard) esconde o radio ou o checkbox de vdd no alto dela,
+// entao a conta vale pro rotulo em volta dele, q eh o q a pessoa ve com o anel de foco
+function visibleBoxOf(element) {
+    const isChoice = element.matches("input[type='radio'], input[type='checkbox']");
+    const label = isChoice ? element.closest("label") : null;
+    return (label || element).getBoundingClientRect();
+}
+
 // sobe a pagina so o bastante pro elemento com foco sair de baixo das barras
 function showAboveBars(element) {
     // o botao da propria barra n tem como sair de baixo dela, e o modal fica parado por cima da pagina
     if (document.activeElement !== element || element.closest("[data-bottom-bar], [data-top-bar], [role='dialog']")) {
         return;
     }
-    const fieldBox = element.getBoundingClientRect();
+    const fieldBox = visibleBoxOf(element);
     if (fieldBox.height === 0) {
         return;
     }

@@ -212,6 +212,101 @@ describe("ScaleForm com as faixas da escala", () => {
     });
 });
 
+// cada opcao eh um cartao inteiro pra tocar, e a escolhida se ve sem depender so da cor
+describe("ScaleForm com as opcoes em cartoes", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+    const mobileCss = mediaRules(css, "@media (max-width: 47.99rem)");
+    const tokens = declarationsOf(readCss(import.meta.url, "../../styles/tokens.css"), ":root");
+
+    // soma os rem de um valor, trocando var() pelo token
+    function remOf(value) {
+        let resolved = value || "";
+        while (resolved.includes("var(")) {
+            resolved = resolved.replace(/var\((--[\w-]+)\)/g, (match, name) => tokens[name]);
+        }
+        return [...resolved.matchAll(/([\d.]+)rem/g)].reduce((total, match) => total + Number(match[1]), 0);
+    }
+
+    it("a opcao escolhida ganha a marca de check e a borda mais grossa, alem da cor", async () => {
+        const user = userEvent.setup();
+        render(<FormWithValues initialValues={{}}/>);
+
+        await user.click(screen.getByRole("radio", {name: "Às vezes"}));
+
+        // o radio de verdade continua ali pro teclado e pro leitor de tela, so escondido da vista
+        const chosen = screen.getByRole("radio", {name: "Às vezes"});
+        expect(chosen).toBeChecked();
+        const mark = chosen.closest("label").querySelector("svg");
+        expect(mark).not.toBeNull();
+        expect(mark.closest("[aria-hidden='true']")).not.toBeNull();
+        expect(declarationsOf(css, ".option input")).not.toHaveProperty("display");
+        expect(declarationsOf(css, ".option input")).not.toHaveProperty("visibility");
+        // a escolhida tem a borda dobrada e a marca aparece
+        expect(declarationsOf(css, ".option input:checked + .optionCard")["border-width"]).toBe("2px");
+        expect(declarationsOf(css, ".option input:checked + .optionCard .optionMark").color)
+            .toBe("var(--color-text-on-primary)");
+        // o foco do teclado aparece no cartao, escolhido ou n
+        expect(declarationsOf(css, ".option input:focus-visible + .optionCard")["box-shadow"]).toContain("--focus-ring");
+        expect(declarationsOf(css, ".option input:checked + .optionCard")).not.toHaveProperty("box-shadow");
+    });
+
+    // no alto contraste do windows a cor do site vira a do sistema e a sombra some: o check escondido pela cor
+    // aparecia em todas as opcoes e a borda feita de sombra sumia, entao a escolhida ficava igual as outras
+    it("no alto contraste do windows so a opcao escolhida tem o check e a borda mais grossa", async () => {
+        const user = userEvent.setup();
+        render(<FormWithValues initialValues={{}}/>);
+
+        await user.click(screen.getByRole("radio", {name: "Às vezes"}));
+
+        // o check so existe na escolhida, entao n depende da cor pra sumir das outras
+        expect(screen.getByRole("radio", {name: "Às vezes"}).closest("label").querySelector("svg")).not.toBeNull();
+        expect(screen.getByRole("radio", {name: "Nunca"}).closest("label").querySelector("svg")).toBeNull();
+        expect(declarationsOf(css, ".optionMark")).not.toHaveProperty("color");
+        // a borda mais grossa eh borda de vdd, q o alto contraste mantem, e n sombra
+        expect(declarationsOf(css, ".option input:checked + .optionCard")["border-width"]).toBe("2px");
+        // e la a nota e a opcao escolhidas usam a cor de destaque do sistema
+        const forcedCss = mediaRules(css, "@media (forced-colors: active)");
+        expect(declarationsOf(forcedCss, ".score input:checked + span")["background-color"]).toBe("Highlight");
+        expect(declarationsOf(forcedCss, ".score input:checked + span").color).toBe("HighlightText");
+        expect(declarationsOf(forcedCss, ".option input:checked + .optionCard")["border-color"]).toBe("Highlight");
+        expect(declarationsOf(forcedCss, ".option input:checked + .optionCard .optionMark")["background-color"])
+            .toBe("Highlight");
+    });
+
+    it("o cartao da opcao tem pelo menos 44 px de altura e no celular ocupa a largura toda", () => {
+        expect(remOf(declarationsOf(css, ".optionCard")["min-height"])).toBeGreaterThanOrEqual(2.75);
+        expect(remOf(declarationsOf(mobileCss, ".optionCard")["min-height"])).toBeGreaterThanOrEqual(2.75);
+        expect(declarationsOf(css, ".options")["flex-direction"]).toBe("column");
+    });
+
+    it("sim e nao viram dois cartoes lado a lado", () => {
+        render(<FormWithValues initialValues={{}}/>);
+
+        const yes = screen.getByRole("radio", {name: "Sim"}).closest("label");
+        const no = screen.getByRole("radio", {name: "Não"}).closest("label");
+        expect(yes.parentElement).toBe(no.parentElement);
+        expect(yes.parentElement.className).toContain("yesNo");
+        expect(declarationsOf(css, ".yesNo")["flex-direction"]).toBe("row");
+        expect(declarationsOf(css, ".yesNo > .option").flex).toBe("1 1 0");
+    });
+
+    // a regua continua regua, com os botoes maiores, e cabe em 375 px sem rolar a pagina de lado
+    it("a regua de notas tem botoes maiores no celular e a faixa mais larga cabe em 375 px", () => {
+        expect(remOf(declarationsOf(css, ".score span")["min-height"])).toBeGreaterThanOrEqual(2.75);
+        expect(remOf(declarationsOf(mobileCss, ".score span")["min-height"])).toBeGreaterThanOrEqual(3);
+        const scoreWidth = remOf(declarationsOf(mobileCss, ".bandScores")["grid-auto-columns"].split(",")[0]);
+        expect(scoreWidth).toBeGreaterThanOrEqual(2.75);
+
+        // a faixa moderada da dor tem 5 notas e eh a mais larga: 375 px menos as folgas da pagina e do item
+        const gap = remOf(declarationsOf(css, ".bandScores").gap);
+        const bandPadding = remOf(declarationsOf(css, ".band").padding) * 2;
+        const freeWidth = 375 / 16 - 2 * remOf("var(--space-4)") - 2 * remOf(declarationsOf(mobileCss, ".item").padding);
+        expect(5 * scoreWidth + 4 * gap + bandPadding).toBeLessThanOrEqual(freeWidth);
+        // a regua simples quebra a linha em vez de passar da borda
+        expect(declarationsOf(mobileCss, ".scores")["grid-template-columns"]).toContain("auto-fill");
+    });
+});
+
 // o jsdom n desenha a tela, entao o lugar do contador sai do css
 describe("contador preso no alto do formulario", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");

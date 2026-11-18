@@ -532,7 +532,7 @@ Interface simples e de navegação fácil, adequada a usuários com diferentes n
 
 **RNF02 — Responsividade** · `mantido` · **E**
 Telas responsivas em dispositivos móveis e desktop. *Prioridade de projeto no smartphone*: a elicitação registrou preferência unânime dos pacientes por celular.
-*Desde 17/11/2026* a escala do paciente, no celular (abaixo de 768 px), mostra uma pergunta por tela, com **Anterior** e **Próxima**, e o salvar só na última. A **Próxima** nunca obriga a responder (RN10), e o salvar lista o que falta como antes. A partir de 768 px a escala continua toda numa página, e o Mini-Exame, aplicado pelo prescritor, também.
+*Desde 17/11/2026* a escala do paciente, no celular (abaixo de 768 px), mostra uma pergunta por tela, com **Anterior** e **Próxima**, e o salvar só na última. A **Próxima** nunca obriga a responder (RN10), e o salvar lista o que falta como antes. A partir de 768 px a escala continua toda numa página, e o Mini-Exame, aplicado pelo prescritor, também. Cada opção de escolha é um cartão inteiro para tocar, com pelo menos 44 px de altura, e a escolhida mostra um check e a borda dobrada, além da cor; *Sim* e *Não* ficam lado a lado. A régua de notas continua régua, com notas de pelo menos 44 px no celular e sem rolar a página de lado.
 
 **RNF03 — Controle de acesso** · `ampliado` · **E**
 Controle de acesso por perfil **e por vínculo**, aplicado no servidor. Detalhado em RF29 e RF30, com critérios verificáveis.
