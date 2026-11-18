@@ -136,7 +136,12 @@ public class TreatmentProtocolService {
             if (stillRunning && startDate.isAfter(today)) {
                 throw new InvalidFieldException("startDate", RENEWAL_START_MESSAGE);
             }
-            previousItems.addAll(current.get().getItems());
+            // so a renovacao antes do fim segue as rodadas do atual. dps do fim ele conta como encerrado, com o
+            // job das 8h ja rodado ou n, e a renovacao eh um ciclo novo: antes ela herdava as rodadas so
+            // enquanto o job n tinha passado (decisao de 17/11/2026)
+            if (stillRunning) {
+                previousItems.addAll(current.get().getItems());
+            }
             endProtocol(current.get());
             // o insert do novo sai antes do update e o indice de um ativo por paciente do postgres
             // recusava, entao o encerramento vai pro banco ja

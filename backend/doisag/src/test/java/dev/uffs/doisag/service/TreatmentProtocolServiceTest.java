@@ -777,6 +777,55 @@ class TreatmentProtocolServiceTest {
         assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(30))).isEqualTo(2);
     }
 
+    // dps do fim o acompanhamento conta como encerrado, com o job das 8h ja rodado ou n: a renovacao eh um
+    // ciclo novo e a primeira rodada sai de novo. antes, no dia seguinte ao fim e antes do job, ela herdava a
+    // rodada do anterior, e dps do job n herdava (decisao de 17/11/2026)
+    @Test
+    void aRenovacaoDepoisDoFimEhCicloNovoAntesDoJob() {
+        LocalDate hoje = LocalDate.now();
+        TreatmentProtocol anterior = acompanhamentoQueTerminouOntemComAMensalRespondida();
+
+        TreatmentProtocolResponseDTO novo = renova(hoje);
+
+        assertThat(protocolRepository.findById(anterior.getId()).orElseThrow().isActive()).isFalse();
+        assertThat(novo.active()).isTrue();
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(2);
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH).getPeriodStart()).isEqualTo(hoje);
+    }
+
+    @Test
+    void aRenovacaoDepoisDoFimEhCicloNovoDepoisDoJob() {
+        LocalDate hoje = LocalDate.now();
+        TreatmentProtocol anterior = acompanhamentoQueTerminouOntemComAMensalRespondida();
+        treatmentProtocolService.designarEscalasVencidas(hoje);
+        assertThat(protocolRepository.findById(anterior.getId()).orElseThrow().isActive()).isFalse();
+
+        renova(hoje);
+
+        assertThat(quantasEnviadas(ScaleType.ESCALA_PITTSBURGH)).isEqualTo(2);
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH).getPeriodStart()).isEqualTo(hoje);
+    }
+
+    // a rodada mensal saiu 4 dias atras e foi respondida, entao ela ainda estava correndo qnd o acompanhamento
+    // terminou, ontem
+    private TreatmentProtocol acompanhamentoQueTerminouOntemComAMensalRespondida() {
+        LocalDate hoje = LocalDate.now();
+        treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(hoje.minusDays(64), 90,
+                null, null, List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+        treatmentProtocolService.designarEscalasVencidas(hoje.minusDays(4));
+        marcaRespondida(tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH));
+        TreatmentProtocol anterior = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
+                .orElseThrow();
+        anterior.setStartDate(hoje.minusDays(90));
+        anterior.setEndDate(hoje.minusDays(1));
+        return protocolRepository.save(anterior);
+    }
+
+    private TreatmentProtocolResponseDTO renova(LocalDate hoje) {
+        return treatmentProtocolService.create(paciente.getId(), new TreatmentProtocolCreateDTO(hoje, 90, null,
+                null, List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+    }
+
     // antes da ultima semana segue valendo um acompanhamento por vez
     @Test
     void naoRenovaAntesDosUltimosSeteDias() {
