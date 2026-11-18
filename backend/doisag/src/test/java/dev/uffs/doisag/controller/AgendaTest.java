@@ -829,6 +829,73 @@ class AgendaTest {
         reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "REMOTA").andExpect(status().isOk());
     }
 
+    // o aviso dizia "remarcada para" o mesmo dia e hora qnd so a modalidade mudava, e o paciente n ficava
+    // sabendo q a consulta passou a ser na clinica ou a distancia (decisao de 17/11/2026)
+    @Test
+    void theRescheduleNoticeOfTheSameTimeSaysTheNewModality() throws Exception {
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        String when = BrazilianFormat.dateTime(AGENDA_DAY.atTime(9, 0));
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "REMOTA").andExpect(status().isOk());
+        assertThat(notificationMessageOf(patient, "Consulta remarcada"))
+                .isEqualTo("Sua consulta com Dra Agenda de " + when + " agora é remota.");
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "PRESENCIAL").andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient))
+                .contains("Sua consulta com Dra Agenda de " + when + " agora é presencial.");
+    }
+
+    // mudou o horario: o texto de sempre, e a modalidade entra junto so qnd ela tbm mudou
+    @Test
+    void theRescheduleNoticeOfANewTimeAddsTheModalityOnlyWhenItChanged() throws Exception {
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(10, 0), "PRESENCIAL").andExpect(status().isOk());
+        assertThat(notificationMessageOf(patient, "Consulta remarcada")).isEqualTo("Sua consulta com Dra Agenda"
+                + " foi remarcada para " + BrazilianFormat.dateTime(AGENDA_DAY.atTime(10, 0)) + ".");
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(11, 0), "REMOTA").andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient)).contains("Sua consulta com Dra Agenda foi remarcada para "
+                + BrazilianFormat.dateTime(AGENDA_DAY.atTime(11, 0)) + ", agora remota.");
+    }
+
+    // so a duracao ou o tipo mudando o aviso diz isso, e varias mudancas vao numa frase so
+    @Test
+    void theRescheduleNoticeSaysTheNewDurationAndTheNewType() throws Exception {
+        Long appointmentId = idOf(schedule(patient, AGENDA_DAY.atTime(9, 0), null).andExpect(status().isCreated()));
+        String when = BrazilianFormat.dateTime(AGENDA_DAY.atTime(9, 0));
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "PRESENCIAL", 45, null).andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient))
+                .contains("Sua consulta com Dra Agenda de " + when + " agora tem 45 minutos.");
+
+        // a primeira consulta do paciente nasce como primeira consulta
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "PRESENCIAL", 45, "RETORNO").andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient))
+                .contains("Sua consulta com Dra Agenda de " + when + " agora é um retorno.");
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(9, 0), "REMOTA", 30, "PRIMEIRA_CONSULTA")
+                .andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient)).contains("Sua consulta com Dra Agenda de " + when
+                + " agora é remota, tem 30 minutos e é uma primeira consulta.");
+
+        reschedule(appointmentId, AGENDA_DAY.atTime(10, 0), "PRESENCIAL", 60, "RETORNO").andExpect(status().isOk());
+        assertThat(notificationMessagesOf(patient)).contains("Sua consulta com Dra Agenda foi remarcada para "
+                + BrazilianFormat.dateTime(AGENDA_DAY.atTime(10, 0))
+                + ", agora presencial, com 60 minutos e como retorno.");
+    }
+
+    // o pedido remarcado no mesmo horario vira consulta, entao o aviso continua dizendo o dia e a hora dela
+    @Test
+    void theRescheduleNoticeOfARequestKeepsTheDateAndAddsWhatChanged() throws Exception {
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+
+        reschedule(requestId, AGENDA_DAY.atTime(10, 0), "REMOTA").andExpect(status().isOk());
+
+        assertThat(notificationMessageOf(patient, "Consulta remarcada")).isEqualTo("Sua consulta com Dra Agenda"
+                + " foi remarcada para " + BrazilianFormat.dateTime(AGENDA_DAY.atTime(10, 0)) + ", agora remota.");
+    }
+
     // a consulta q ja passou e ficou agendada com receita (de antes da receita concluir a consulta): remarcar
     // levava a receita pra uma consulta futura e ela virava a vigente pela data errada (RF05), igual na correcao
     @Test
@@ -1755,9 +1822,15 @@ class AgendaTest {
 
     private ResultActions reschedule(Long appointmentId, LocalDateTime dateTime, String modality,
                                      String appointmentType) throws Exception {
+        return reschedule(appointmentId, dateTime, modality, null, appointmentType);
+    }
+
+    private ResultActions reschedule(Long appointmentId, LocalDateTime dateTime, String modality,
+                                     Integer durationMinutes, String appointmentType) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("dateTime", dateTime.toString());
         body.put("modality", modality);
+        body.put("durationMinutes", durationMinutes);
         body.put("appointmentType", appointmentType);
         return mockMvc.perform(put("/appointments/" + appointmentId)
                 .header("Authorization", bearerTokenOf(prescriber))

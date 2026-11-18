@@ -575,7 +575,7 @@ class ReminderTest {
         reminderService.sendAppointmentReminders(TODAY);
 
         appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
-                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.REMOTA, null, null));
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.PRESENCIAL, null, null));
 
         ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailSender, times(2)).send(emails.capture());
@@ -586,6 +586,52 @@ class ReminderTest {
                 + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + ".");
         // o horario novo continua com o lembrete dele na vespera
         assertThat(reminderService.sendAppointmentReminders(TODAY.plusDays(3))).isEqualTo(1);
+    }
+
+    // o e-mail da remarcacao diz o q mudou com as mesmas palavras do aviso (decisao de 17/11/2026)
+    @Test
+    void oEmailDaRemarcacaoDizAModalidadeNovaQuandoElaTambemMudou() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.REMOTA, null, null));
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emails.capture());
+        assertThat(emails.getAllValues().get(1).text()).contains("Sua consulta com Dra. Lembrete de "
+                + BrazilianFormat.dateTime(TODAY.plusDays(1).atTime(9, 0)) + " foi remarcada para "
+                + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + ", agora remota.");
+        assertThat(notificationsOf(patient)).extracting(Notification::getMessage)
+                .contains("Sua consulta com Dra. Lembrete foi remarcada para "
+                        + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + ", agora remota.");
+    }
+
+    // o e-mail da remarcacao pra outro dia n saiu (e-mail desligado) e a edicao seguinte so troca a modalidade:
+    // o e-mail ainda diz "foi remarcada para", entao a mudanca entra do jeito curto e n do jeito do aviso
+    @Test
+    void oEmailDaRemarcacaoAtrasadoDizAModalidadeNovaDoJeitoCurtoMesmoSemHorarioNovo() {
+        Appointment appointment = saveAppointment(TODAY.plusDays(1).atTime(9, 0), AppointmentStatus.AGENDADA);
+        reminderService.sendAppointmentReminders(TODAY);
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.PRESENCIAL, null, null));
+        patient.setEmailNotificationsEnabled(true);
+        patientRepository.save(patient);
+
+        appointmentService.reschedule(appointment.getId(), new AppointmentRescheduleDTO(
+                TODAY.plusDays(4).atTime(10, 0), AppointmentModality.REMOTA, null, null));
+
+        ArgumentCaptor<EmailMessage> emails = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, times(2)).send(emails.capture());
+        assertThat(emails.getAllValues().get(1).text()).contains("Sua consulta com Dra. Lembrete de "
+                + BrazilianFormat.dateTime(TODAY.plusDays(1).atTime(9, 0)) + " foi remarcada para "
+                + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + ", agora remota.");
+        // o aviso no sistema continua com a frase de quem n mudou de horario
+        assertThat(notificationsOf(patient)).extracting(Notification::getMessage)
+                .contains("Sua consulta com Dra. Lembrete de "
+                        + BrazilianFormat.dateTime(TODAY.plusDays(4).atTime(10, 0)) + " agora é remota.");
     }
 
     // sem o lembrete o e-mail nunca disse nada dessa consulta, e o aviso fica so no sistema como antes

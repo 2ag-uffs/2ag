@@ -8,6 +8,7 @@ import dev.uffs.doisag.dto.AppointmentRequestDTO;
 import dev.uffs.doisag.dto.AppointmentRescheduleDTO;
 import dev.uffs.doisag.dto.AppointmentScheduleDTO;
 import dev.uffs.doisag.dto.TimeSlotDTO;
+import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.AppointmentType;
 import dev.uffs.doisag.enums.AuditRecordType;
@@ -532,6 +533,11 @@ public class AppointmentService {
 
         // a tela de remarcar manda a mesma data qnd so troca modalidade duracao ou tipo
         boolean timeChanged = !appointment.getDateTime().equals(rescheduleData.dateTime());
+        // o pedido q vira consulta no mesmo horario segue com o texto do horario, q eh o q ele confirma
+        boolean saysNewTime = timeChanged || appointment.getStatus() == AppointmentStatus.SOLICITADA;
+        boolean modalityChanged = appointment.getModality() != rescheduleData.modality();
+        boolean durationChanged = appointment.getDurationMinutes() != durationMinutes;
+        boolean typeChanged = newType != null && newType != appointment.getAppointmentType();
         appointment.setDateTime(rescheduleData.dateTime());
         appointment.setModality(rescheduleData.modality());
         appointment.setDurationMinutes(durationMinutes);
@@ -544,20 +550,63 @@ public class AppointmentService {
             appointment.setReminderSentAt(null);
         }
         Appointment savedAppointment = saveChange(appointment);
-        notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada",
-                "Sua consulta com " + savedAppointment.getPrescriber().getName() + " foi remarcada para "
-                        + formatDateTime(savedAppointment) + ".",
+        // o aviso diz o q mudou: antes era sempre "remarcada para", ate qnd o dia e a hora ficavam iguais e so
+        // a modalidade trocava (decisao de 17/11/2026)
+        String otherChanges = otherChangesText(savedAppointment, modalityChanged, durationChanged, typeChanged,
+                saysNewTime);
+        String noticeText = "Sua consulta com " + savedAppointment.getPrescriber().getName();
+        if (saysNewTime || otherChanges.isEmpty()) {
+            noticeText += " foi remarcada para " + formatDateTime(savedAppointment) + otherChanges + ".";
+        } else {
+            noticeText += " de " + formatDateTime(savedAppointment) + otherChanges + ".";
+        }
+        notificationService.createNotification(savedAppointment.getPatient(), "Consulta remarcada", noticeText,
                 Notification.TYPE_APPOINTMENT, Notification.PATIENT_AGENDA_LINK);
         // remarcada pra amanha, o lembrete do horario novo sai agora: o job de amanha ja olha o dia seguinte,
         // e quem recebeu o e-mail do horario antigo ficava so com ele. a q ja tem lembrete (mesmo horario) n
         // ganha outro, e o pedido q vira consulta no mesmo horario ganha o primeiro
         boolean newReminderSent = reminderService.remindNowIfTomorrow(savedAppointment);
         // o paciente ja recebeu por e-mail o horario antigo e o novo, em outro dia, n ganhou lembrete agora, entao
-        // a remarcacao tbm vai por e-mail (R11)
+        // a remarcacao tbm vai por e-mail (R11). o e-mail sempre diz "foi remarcada para", mesmo qnd essa edicao
+        // n mudou o horario (o e-mail da remarcacao anterior n saiu), entao a mudanca vai do jeito curto
         if (!newReminderSent) {
-            reminderService.emailRescheduleIfEmailed(savedAppointment);
+            String emailChanges = otherChangesText(savedAppointment, modalityChanged, durationChanged, typeChanged,
+                    true);
+            reminderService.emailRescheduleIfEmailed(savedAppointment, emailChanges);
         }
         return new AgendaAppointmentDTO(savedAppointment);
+    }
+
+    // o q mudou alem do dia e da hora, numa frase so, pra entrar no aviso e no e-mail da remarcacao
+    // com horario novo fica curto (", agora remota e com 45 minutos"), sem ele fica a frase inteira
+    // (" agora é remota e tem 45 minutos"). vazio qnd so o horario mudou
+    private String otherChangesText(Appointment appointment, boolean modalityChanged, boolean durationChanged,
+                                    boolean typeChanged, boolean afterNewTime) {
+        List<String> changes = new ArrayList<>();
+        if (modalityChanged) {
+            String modality = appointment.getModality() == AppointmentModality.PRESENCIAL ? "presencial" : "remota";
+            changes.add(afterNewTime ? modality : "é " + modality);
+        }
+        if (durationChanged) {
+            changes.add((afterNewTime ? "com " : "tem ") + appointment.getDurationMinutes() + " minutos");
+        }
+        if (typeChanged) {
+            boolean isReturn = appointment.getAppointmentType() == AppointmentType.RETORNO;
+            if (afterNewTime) {
+                changes.add(isReturn ? "como retorno" : "como primeira consulta");
+            } else {
+                changes.add(isReturn ? "é um retorno" : "é uma primeira consulta");
+            }
+        }
+        if (changes.isEmpty()) {
+            return "";
+        }
+        String text = changes.get(0);
+        for (int index = 1; index < changes.size(); index++) {
+            boolean isLast = index == changes.size() - 1;
+            text += (isLast ? " e " : ", ") + changes.get(index);
+        }
+        return (afterNewTime ? ", agora " : " agora ") + text;
     }
 
     // cancelar n apaga e a consulta continua no historico como cancelada

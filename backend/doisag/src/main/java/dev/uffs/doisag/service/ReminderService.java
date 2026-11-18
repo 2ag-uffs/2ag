@@ -192,8 +192,9 @@ public class ReminderService {
 
     // o ultimo e-mail disse outro dia e o horario novo n ganhou lembrete agora. so a hora mudando no mesmo dia
     // fica no sistema, pq a decisao manda e-mail so pra outro dia. o horario novo fica guardado, entao cancelar ou
-    // remarcar dps tbm vai por e-mail
-    public void emailRescheduleIfEmailed(Appointment appointment) {
+    // remarcar dps tbm vai por e-mail. otherChanges eh o q mudou alem do horario, do jeito curto q vem dps
+    // do horario novo (", agora remota"), ou vazio
+    public void emailRescheduleIfEmailed(Appointment appointment, String otherChanges) {
         LocalDateTime emailedDateTime = appointment.getEmailedDateTime();
         if (emailedDateTime == null
                 || emailedDateTime.toLocalDate().equals(appointment.getDateTime().toLocalDate())) {
@@ -202,7 +203,7 @@ public class ReminderService {
         boolean wasSent = sendEmail(appointment.getPatient(), "Sua consulta no 2AG foi remarcada",
                 "Sua consulta com " + appointment.getPrescriber().getName() + " de "
                         + BrazilianFormat.dateTime(emailedDateTime) + " foi remarcada para "
-                        + BrazilianFormat.dateTime(appointment.getDateTime()) + ".",
+                        + BrazilianFormat.dateTime(appointment.getDateTime()) + otherChanges + ".",
                 Notification.PATIENT_AGENDA_LINK);
         if (wasSent) {
             appointment.setEmailedDateTime(appointment.getDateTime());
