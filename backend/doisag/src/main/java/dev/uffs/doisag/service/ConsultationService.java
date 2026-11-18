@@ -41,6 +41,8 @@ public class ConsultationService {
     public static final String CANCELED_MESSAGE = "Consulta cancelada não recebe registro clínico";
     public static final String NOT_CONFIRMED_MESSAGE = "Só consulta confirmada na agenda recebe registro clínico";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta consulta já foi anulada";
+    public static final String ARCHIVED_PATIENT_MESSAGE =
+            "Este paciente está arquivado. Reative o paciente antes de registrar a consulta";
     public static final String HAS_PRESCRIPTION_MESSAGE =
             "Esta consulta tem prescrição. Anule a prescrição antes de anular a consulta";
     public static final String HAS_EXAM_MESSAGE =
@@ -86,6 +88,7 @@ public class ConsultationService {
         prescriberRepository.lockById(prescriber.getId());
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> NotFoundException.patient(patientId));
+        checkPatientIsNotArchived(patientId, ARCHIVED_PATIENT_MESSAGE);
 
         LocalDateTime dateTime = recordData.dateTime() == null ? LocalDateTime.now() : recordData.dateTime();
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
@@ -130,6 +133,11 @@ public class ConsultationService {
         if (!appointment.getStatus().acceptsClinicalRecord()) {
             throw new BusinessException(NOT_CONFIRMED_MESSAGE);
         }
+        // a consulta ja concluida so esta sendo corrigida, e a correcao do q ja existe continua valendo pro
+        // arquivado. a q estava marcada ou com falta ia ganhar o primeiro registro, q eh atendimento novo
+        if (appointment.getStatus() != AppointmentStatus.CONCLUIDA) {
+            checkPatientIsNotArchived(appointment.getPatient().getId(), ARCHIVED_PATIENT_MESSAGE);
+        }
 
         LocalDateTime dateTime = recordData.dateTime() == null ? appointment.getDateTime() : recordData.dateTime();
         DateCheck.checkAlreadyHappened(dateTime, FUTURE_DATE_MESSAGE);
@@ -172,6 +180,18 @@ public class ConsultationService {
         auditService.recordAnnulment(AuditRecordType.CONSULTA, savedAppointment.getId(),
                 savedAppointment.getPatient().getId());
         return new AppointmentResponseDTO(savedAppointment);
+    }
+
+    // prontuario de quem foi arquivado n recebe registro de consulta, receita nem mini-exame novos: a receita
+    // nascia ja como "ultima prescricao", encerrada num dia antes do dela, e o paciente recebia "prescricao nova"
+    // (decisao de 17/11/2026). anular e corrigir o q ja existe continua valendo
+    // o paciente fica travado e eh lido de novo, entao o arquivamento gravado enquanto isto esperava aparece
+    // na ordem das travas ele vem dps da consulta e do prescritor
+    public void checkPatientIsNotArchived(Long patientId, String message) {
+        patientRepository.lockById(patientId);
+        if (patientRepository.existsByIdAndArchivedAtIsNotNull(patientId)) {
+            throw new BusinessException(message);
+        }
     }
 
     // a receita vigente sai da consulta mais recente e o meem fica no dia da consulta (RF05)

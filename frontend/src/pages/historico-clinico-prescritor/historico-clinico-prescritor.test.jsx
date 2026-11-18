@@ -95,6 +95,34 @@ describe("HistoricoClinicoPrescritor", () => {
         expect(doneCard.getByRole("button", {name: "Anular"})).toBeInTheDocument();
     });
 
+    // a receita emitida pro arquivado nascia "ultima prescricao" encerrada antes do dia dela: o historico do
+    // arquivado n oferece consulta, receita nem mini-exame novos e diz pra reativar (decisao de 17/11/2026)
+    it("o historico do arquivado n oferece consulta, receita nem mini-exame e manda reativar antes", async () => {
+        renderHistory([MISSED, DONE], {...PATIENT, archived: true, archivedAt: "2026-11-10T15:00:00"});
+
+        const doneCard = await cardWithStatus("Concluída");
+        expect(doneCard.getByRole("button", {name: "Editar registro"})).toBeInTheDocument();
+        expect(doneCard.getByRole("button", {name: "Anular"})).toBeInTheDocument();
+        expect(doneCard.queryByRole("button", {name: "Emitir prescrição"})).not.toBeInTheDocument();
+        expect(doneCard.queryByRole("button", {name: "Mini-exame"})).not.toBeInTheDocument();
+        const missedCard = await cardWithStatus("Falta");
+        expect(missedCard.queryByRole("button", {name: "Desfazer falta e registrar atendimento"}))
+            .not.toBeInTheDocument();
+        expect(missedCard.getByRole("button", {name: "Anular"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Nova consulta"})).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Enviar escalas"})).toBeInTheDocument();
+        expect(screen.getByText("Paciente arquivado. Reative o paciente, na aba Arquivados da lista de pacientes, "
+            + "antes de registrar consulta, emitir prescrição ou aplicar o Mini-Exame.")).toBeInTheDocument();
+    });
+
+    it("o historico do paciente ativo continua com nova consulta e sem a linha do arquivado", async () => {
+        renderHistory([DONE]);
+
+        await cardWithStatus("Concluída");
+        expect(screen.getByRole("button", {name: "Nova consulta"})).toBeInTheDocument();
+        expect(screen.queryByText(/Paciente arquivado/)).not.toBeInTheDocument();
+    });
+
     // o arquivado n tem receita em uso, mas anular a ultima deixa ele sem nenhuma, tbm se for reativado, e a
     // anterior n volta a valer (revisao das regras R2)
     it("anular a ultima receita do paciente arquivado avisa q ele fica sem prescricao sem dizer em uso", async () => {

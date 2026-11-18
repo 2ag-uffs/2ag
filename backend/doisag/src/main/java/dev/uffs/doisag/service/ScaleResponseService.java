@@ -66,6 +66,8 @@ public class ScaleResponseService {
     public static final String NOT_CONFIRMED_APPOINTMENT_MESSAGE =
             "Só consulta confirmada na agenda recebe o Mini-Exame";
     public static final String INCOMPLETE_EXAM_MESSAGE = "Falta preencher no Mini-Exame";
+    public static final String ARCHIVED_EXAM_MESSAGE =
+            "Este paciente está arquivado. Reative o paciente antes de aplicar o Mini-Exame";
     public static final String FUTURE_APPOINTMENT_MESSAGE = "Consulta que ainda não aconteceu não recebe o Mini-Exame";
     public static final String DIARY_DAY_MESSAGE =
             "No diário a data é o dia escolhido na grade e não muda na correção";
@@ -190,6 +192,8 @@ public class ScaleResponseService {
         // dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
         // paciente. com o prescritor travado antes os dois n ficam esperando um pelo outro
         prescriberRepository.lockById(loggedPrescriber.getId());
+        // o paciente vem por ultimo: arquivado n recebe mini-exame novo (decisao de 17/11/2026)
+        consultationService.checkPatientIsNotArchived(appointment.getPatient().getId(), ARCHIVED_EXAM_MESSAGE);
         ScaleType scaleType = ScaleType.MINI_EXAME_ESTADO_MENTAL;
         ScaleDefinition definition = catalog.definitionOf(scaleType);
         LocalDate examDay = appointment.getDateTime().toLocalDate();

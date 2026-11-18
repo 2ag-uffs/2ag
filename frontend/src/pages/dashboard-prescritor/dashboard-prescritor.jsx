@@ -144,8 +144,9 @@ function StatTile({stat}) {
 
 // a consulta concluida abre o historico, igual na agenda, e a q ainda n comecou n tem acao
 // a concluida so pela receita ou pelo mini-exame tbm: o registro vazio dela se preenche pelo historico
+// a do paciente arquivado tbm so abre o historico: o atendimento novo espera reativar (decisao de 17/11/2026)
 function todayAppointmentAction(appointment, navigate) {
-    if (appointment.status === "CONCLUIDA") {
+    if (appointment.status === "CONCLUIDA" || appointment.patientArchived) {
         return (
             <button
                 type="button"

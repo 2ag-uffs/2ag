@@ -8,6 +8,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf} from "../../services/api.js";
 import {appointmentTypeLabelOf, modalityLabelOf} from "../../utils/appointment-labels.js";
+import {ARCHIVED_ATTENDANCE_NOTICE} from "../../utils/archived-patient.js";
 import {
     addDays,
     formatDate,
@@ -245,7 +246,10 @@ export default function AgendamentoPrescritor() {
         const isOverAndScheduled = appointment.status === "AGENDADA" && isOver;
         return (
             <>
-                {hasStarted ? (
+                {hasStarted && appointment.patientArchived && (
+                    <span className={styles.meta}>{ARCHIVED_ATTENDANCE_NOTICE}</span>
+                )}
+                {hasStarted && !appointment.patientArchived && (
                     <button
                         type="button"
                         className="button button-small"
@@ -253,7 +257,8 @@ export default function AgendamentoPrescritor() {
                     >
                         Registrar atendimento
                     </button>
-                ) : (
+                )}
+                {!hasStarted && (
                     <button
                         type="button"
                         className="button-secondary button-small"
@@ -312,6 +317,10 @@ export default function AgendamentoPrescritor() {
             );
         }
         // falta marcada por engano: a api aceita o registro e ele desfaz a falta e conclui a consulta
+        // a do arquivado fica como falta ate ele ser reativado (decisao de 17/11/2026)
+        if (appointment.status === "NAO_COMPARECEU" && appointment.patientArchived) {
+            return <span className={styles.meta}>{ARCHIVED_ATTENDANCE_NOTICE}</span>;
+        }
         if (appointment.status === "NAO_COMPARECEU") {
             return (
                 <button

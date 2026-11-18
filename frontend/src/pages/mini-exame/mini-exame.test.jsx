@@ -117,6 +117,25 @@ describe("MiniExame", () => {
         vi.unstubAllGlobals();
     });
 
+    // a api recusa mini-exame novo de paciente arquivado, entao a tela avisa no lugar do formulario
+    // (decisao de 17/11/2026)
+    it("o mini-exame de paciente arquivado manda reativar e n mostra o formulario", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/scales/definitions/mini-exame") {
+                return Promise.resolve(DEFINITION);
+            }
+            if (path === "/appointments/7") {
+                return Promise.resolve({...APPOINTMENT, patientArchived: true});
+            }
+            return Promise.resolve(null);
+        });
+        renderExam();
+
+        expect(await screen.findByText("Paciente arquivado. Reative o paciente, na aba Arquivados da lista de "
+            + "pacientes, antes de aplicar o Mini-Exame.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Salvar exame"})).not.toBeInTheDocument();
+    });
+
     // o exame aplicado antes abre direto no resultado e ai n tem pq tirar o foco de onde estava
     it("exame ja aplicado abre no resultado sem mexer no foco", async () => {
         apiService.get.mockImplementation((path) => {

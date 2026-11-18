@@ -14,6 +14,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
 import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
+import {ARCHIVED_RECORD_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import {numberOrNull, textOrNull} from "../../utils/form-values.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
@@ -100,6 +101,11 @@ function blockedMessageOf(appointment) {
     if (appointment.status === "RECUSADA") {
         return "Este pedido de consulta foi recusado e não recebe registro clínico.";
     }
+    // do arquivado so o registro q ja existe eh corrigido: o atendimento novo espera reativar
+    // (decisao de 17/11/2026)
+    if (appointment.patientArchived && appointment.status !== "CONCLUIDA") {
+        return ARCHIVED_RECORD_NOTICE;
+    }
     return null;
 }
 
@@ -134,13 +140,18 @@ export default function ConsultationRecord() {
             ? apiService.get("/patients/" + patientId).then((foundPatient) => {
                 if (isCurrentRequest) {
                     setPatient({id: foundPatient.id, name: foundPatient.name, birthDate: foundPatient.birthDate});
+                    // a consulta nova do arquivado a api recusa, entao a tela abre so pra leitura
+                    if (foundPatient.archived) {
+                        setBlockedMessage(ARCHIVED_RECORD_NOTICE);
+                    }
                 }
             })
             : apiService.get("/appointments/" + appointmentId).then((appointment) => {
                 if (!isCurrentRequest) {
                     return;
                 }
-                setPatient({id: appointment.patientId, name: appointment.patientName, birthDate: null});
+                setPatient({id: appointment.patientId, name: appointment.patientName, birthDate: null,
+                    archived: appointment.patientArchived});
                 const loadedRecord = recordFromAppointment(appointment);
                 setRecord(loadedRecord);
                 setStartingRecord(loadedRecord);
@@ -242,20 +253,25 @@ export default function ConsultationRecord() {
                         </p>
                     </div>
                     <div className={styles.nextSteps}>
-                        <button
-                            type="button"
-                            className="button"
-                            onClick={() => navigate("/consulta/" + appointmentId + "/prescricao")}
-                        >
-                            Emitir prescrição
-                        </button>
-                        <button
-                            type="button"
-                            className="button-secondary"
-                            onClick={() => navigate("/consulta/" + appointmentId + "/mini-exame")}
-                        >
-                            Aplicar mini-exame
-                        </button>
+                        {/* do arquivado o registro foi so corrigido, e receita e mini-exame esperam reativar */}
+                        {!patient.archived && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="button"
+                                    onClick={() => navigate("/consulta/" + appointmentId + "/prescricao")}
+                                >
+                                    Emitir prescrição
+                                </button>
+                                <button
+                                    type="button"
+                                    className="button-secondary"
+                                    onClick={() => navigate("/consulta/" + appointmentId + "/mini-exame")}
+                                >
+                                    Aplicar mini-exame
+                                </button>
+                            </>
+                        )}
                         <button
                             type="button"
                             className="button-tertiary"

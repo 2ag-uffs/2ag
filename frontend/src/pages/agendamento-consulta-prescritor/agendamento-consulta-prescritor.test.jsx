@@ -226,6 +226,29 @@ describe("AgendamentoPrescritor", () => {
         expect(put).not.toHaveBeenCalled();
     });
 
+    // a api recusa o atendimento novo de paciente arquivado, entao a agenda diz pra reativar no lugar do botao
+    // (decisao de 17/11/2026)
+    it("a consulta q ja comecou de paciente arquivado n oferece registrar o atendimento", async () => {
+        // a segunda a meia noite ja passou em qualquer dia da semana em q o teste rodar
+        const monday = toIsoDate(mondayOf(new Date()));
+        renderAgenda({
+            weekAppointments: [
+                {...SCHEDULED_RETURN, id: 1, dateTime: monday + "T00:00:00", patientArchived: true},
+                {...SCHEDULED_RETURN, id: 2, dateTime: monday + "T00:01:00", patientId: 6,
+                    patientName: "Ana Ativa", patientArchived: false},
+                {...SCHEDULED_RETURN, id: 3, dateTime: monday + "T00:02:00", status: "NAO_COMPARECEU",
+                    patientArchived: true},
+            ],
+        });
+
+        const week = within(await screen.findByRole("region", {name: /Semana de/}));
+        expect(await week.findAllByRole("button", {name: "Registrar atendimento"})).toHaveLength(1);
+        expect(week.getAllByText("Paciente arquivado: reative antes de registrar o atendimento."))
+            .toHaveLength(2);
+        expect(week.queryByRole("button", {name: "Desfazer falta e registrar atendimento"}))
+            .not.toBeInTheDocument();
+    });
+
     // a prescritora confirmava o pedido sem saber q o paciente n ia ver a confirmacao nem o lembrete: a agenda e os
     // pedidos mostram o selo da conta desativada, como a lista de pacientes (decisao de 14/11/2026, revisao das regras R25)
     it("a agenda e os pedidos mostram o selo de conta desativada so de quem foi desativado", async () => {

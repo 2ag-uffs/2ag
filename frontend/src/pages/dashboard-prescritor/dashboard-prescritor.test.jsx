@@ -92,6 +92,23 @@ describe("DashboardPrescritor", () => {
         expect(await screen.findByText("Histórico do paciente")).toBeInTheDocument();
     });
 
+    // a api recusa o atendimento novo de paciente arquivado, entao o painel leva pro historico, q diz pra reativar
+    // (decisao de 17/11/2026)
+    it("a consulta de hoje de paciente arquivado abre o historico em vez de pedir registro", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            todaysAppointments: [
+                {appointmentId: 1, patientId: 3, patientName: "João Pedro", dateTime: "2026-01-05T08:00:00",
+                    modality: "REMOTA", status: "AGENDADA", patientArchived: true},
+            ],
+        });
+        renderPanel();
+
+        const item = (await screen.findByText("08:00 · João Pedro")).closest("li");
+        expect(within(item).getByRole("button", {name: "Ver histórico"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Registrar"})).not.toBeInTheDocument();
+    });
+
     // a receita e o mini-exame tbm concluem a consulta, e a agenda ja mostrava concluida e ver historico
     // enquanto o painel seguia com registrar. o registro vazio se preenche pelo editar registro do historico
     it("a consulta de hoje concluida so pela receita tbm mostra concluida e ver historico, igual a agenda", async () => {

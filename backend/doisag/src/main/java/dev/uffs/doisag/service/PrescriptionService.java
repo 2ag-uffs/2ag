@@ -46,6 +46,8 @@ public class PrescriptionService {
     public static final String NOT_CONFIRMED_CONSULTATION_MESSAGE = "Só consulta confirmada na agenda gera prescrição";
     public static final String FUTURE_CONSULTATION_MESSAGE = "Consulta que ainda não aconteceu não gera prescrição";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
+    public static final String ARCHIVED_PATIENT_MESSAGE =
+            "Este paciente está arquivado. Reative o paciente antes de emitir a prescrição";
     public static final String ISOLATE_ONE_CANNABINOID_MESSAGE =
             "O isolado tem um canabinoide só. Deixe uma linha ou escolha broad ou full spectrum";
     public static final String BROAD_SPECTRUM_THC_MESSAGE =
@@ -90,11 +92,12 @@ public class PrescriptionService {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> NotFoundException.appointment(appointmentId));
         checkAppointmentCanPrescribe(appointment);
+        // a trava do paciente vem aqui, junto da conferencia do arquivado (decisao de 17/11/2026)
+        Long patientId = appointment.getPatient().getId();
+        consultationService.checkPatientIsNotArchived(patientId, ARCHIVED_PATIENT_MESSAGE);
         checkPrescriptionData(prescriptionData, appointment);
         boolean concludedNow = concludeAppointment(appointment);
 
-        Long patientId = appointment.getPatient().getId();
-        patientRepository.lockById(patientId);
         boolean becomesCurrent = replaceCurrentPrescriptionsOlderThan(appointment);
 
         Prescription prescription = new Prescription();

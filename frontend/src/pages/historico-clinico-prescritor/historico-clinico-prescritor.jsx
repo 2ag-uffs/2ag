@@ -25,6 +25,7 @@ import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf} from "../../services/api.js";
 import {belongsToHistory, isConfirmed} from "../../utils/appointment-labels.js";
+import {ARCHIVED_CHART_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {formatPhone} from "../../utils/masks.js";
 import {currentFirst} from "../../utils/prescription-labels.js";
@@ -121,6 +122,30 @@ export default function HistoricoClinicoPrescritor() {
         if (appointment.annulled || !(isConfirmed(appointment) || isMissed)) {
             return null;
         }
+        // do arquivado so da pra corrigir e anular o q ja existe: registro novo, receita e mini-exame a api
+        // recusa ate reativar (decisao de 17/11/2026)
+        if (patient.archived) {
+            return (
+                <>
+                    {appointment.status === "CONCLUIDA" && (
+                        <button
+                            type="button"
+                            className="button-secondary button-small"
+                            onClick={() => navigate("/consulta/" + appointment.id + "/registro")}
+                        >
+                            Editar registro
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="button-danger button-small"
+                        onClick={() => setAnnulmentTarget(consultationAnnulmentOf(appointment))}
+                    >
+                        Anular
+                    </button>
+                </>
+            );
+        }
         // receita em consulta mais antiga q a da vigente entra so no historico
         const becomesCurrent = currentPrescription === null
             || isSameOrAfter(appointment.dateTime, currentPrescription.appointmentDateTime);
@@ -207,13 +232,15 @@ export default function HistoricoClinicoPrescritor() {
                         >
                             Enviar escalas
                         </button>
-                        <button
-                            type="button"
-                            className="button"
-                            onClick={() => navigate("/paciente/" + patientId + "/consulta/nova")}
-                        >
-                            Nova consulta
-                        </button>
+                        {!patient.archived && (
+                            <button
+                                type="button"
+                                className="button"
+                                onClick={() => navigate("/paciente/" + patientId + "/consulta/nova")}
+                            >
+                                Nova consulta
+                            </button>
+                        )}
                     </>
                 )}
             />
@@ -252,6 +279,7 @@ export default function HistoricoClinicoPrescritor() {
                 </button>
             </div>
 
+            {patient.archived && <p className="aviso">{ARCHIVED_CHART_NOTICE}</p>}
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
 

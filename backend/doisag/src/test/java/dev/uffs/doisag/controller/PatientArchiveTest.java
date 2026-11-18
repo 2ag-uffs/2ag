@@ -1,5 +1,6 @@
 package dev.uffs.doisag.controller;
 
+import tools.jackson.databind.ObjectMapper;
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
 import dev.uffs.doisag.enums.ScaleTaskStatus;
@@ -18,8 +19,11 @@ import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.PrescriptionRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.ConsultationService;
 import dev.uffs.doisag.service.PatientArchiveService;
+import dev.uffs.doisag.service.PrescriptionService;
 import dev.uffs.doisag.service.ReminderService;
+import dev.uffs.doisag.service.ScaleResponseService;
 import dev.uffs.doisag.service.ScaleTaskService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
@@ -407,6 +411,114 @@ class PatientArchiveTest {
                                 + "\",\"reasonForVisit\":\"Dor lombar\",\"treatmentAwareness\":\"Sim\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(AnamnesisService.ARCHIVED_PATIENT_MESSAGE));
+    }
+
+    // a receita emitida dps do arquivamento nascia "ultima prescricao", encerrada num dia antes do dela, e o
+    // paciente recebia "prescricao nova". agora o arquivado n recebe consulta, receita nem mini-exame novos,
+    // nem na consulta marcada antes do arquivamento, e a api pede pra reativar antes (decisao de 17/11/2026)
+    @Test
+    void theArchivedPatientGetsNoNewConsultationPrescriptionOrMiniExam() throws Exception {
+        Appointment attended = saveAppointment(LocalDateTime.now().minusDays(20), AppointmentStatus.CONCLUIDA);
+        Appointment booked = saveAppointment(LocalDateTime.now().minusDays(1), AppointmentStatus.AGENDADA);
+        Appointment missed = saveAppointment(LocalDateTime.now().minusDays(2), AppointmentStatus.NAO_COMPARECEU);
+        archive(patient, prescriber).andExpect(status().isOk());
+        int noticesBefore = notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()).size();
+
+        registerConsultation()
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.ARCHIVED_PATIENT_MESSAGE));
+        saveRecord(booked)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.ARCHIVED_PATIENT_MESSAGE));
+        saveRecord(missed)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ConsultationService.ARCHIVED_PATIENT_MESSAGE));
+        prescribe(attended)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriptionService.ARCHIVED_PATIENT_MESSAGE));
+        prescribe(booked)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PrescriptionService.ARCHIVED_PATIENT_MESSAGE));
+        applyMiniExam(attended)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.ARCHIVED_EXAM_MESSAGE));
+
+        assertThat(appointmentRepository.findByPatientIdOrderByDateTimeDesc(patient.getId())).hasSize(3);
+        // as telas sabem pelo proprio registro da consulta q o paciente esta arquivado e n oferecem essas acoes
+        mockMvc.perform(get("/appointments/" + booked.getId()).header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.patientArchived").value(true));
+        mockMvc.perform(get("/appointments").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$[0].patientArchived").value(true));
+        assertThat(appointmentRepository.findById(booked.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.AGENDADA);
+        assertThat(prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
+                patient.getId())).isEmpty();
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId())).hasSize(noticesBefore);
+
+        // reativado, tudo volta a valer
+        reactivate(patient, prescriber).andExpect(status().isOk());
+        registerConsultation().andExpect(status().isCreated());
+        saveRecord(booked).andExpect(status().isOk());
+        prescribe(attended).andExpect(status().isCreated());
+        applyMiniExam(attended).andExpect(status().isCreated());
+    }
+
+    // o q o arquivado ja tem continua sendo corrigido e anulado
+    @Test
+    void theRecordsTheArchivedPatientAlreadyHasAreStillCorrectedAndAnnulled() throws Exception {
+        Appointment attended = saveAppointment(LocalDateTime.now().minusDays(20), AppointmentStatus.CONCLUIDA);
+        saveRecord(attended).andExpect(status().isOk());
+        Long examId = idOf(applyMiniExam(attended).andExpect(status().isCreated()));
+        archive(patient, prescriber).andExpect(status().isOk());
+
+        saveRecord(attended).andExpect(status().isOk());
+        annul("/scales/responses/" + examId + "/annul").andExpect(status().isOk());
+        annul("/appointments/" + attended.getId() + "/annul").andExpect(status().isOk());
+    }
+
+    private ResultActions registerConsultation() throws Exception {
+        return mockMvc.perform(post("/patients/" + patient.getId() + "/appointments")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modality\":\"REMOTA\",\"evolution\":\"Dormindo melhor\"}"));
+    }
+
+    private ResultActions saveRecord(Appointment appointment) throws Exception {
+        return mockMvc.perform(put("/appointments/" + appointment.getId() + "/clinical-record")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modality\":\"PRESENCIAL\",\"evolution\":\"Dormindo melhor\"}"));
+    }
+
+    private ResultActions prescribe(Appointment appointment) throws Exception {
+        return mockMvc.perform(post("/appointments/" + appointment.getId() + "/prescriptions")
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
+                        + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,"
+                        + "\"unit\":\"PERCENTUAL\"}],\"posology\":\"2 gotas a noite\"}"));
+    }
+
+    private ResultActions applyMiniExam(Appointment appointment) throws Exception {
+        return mockMvc.perform(post("/scales/mental-state-exam/appointments/" + appointment.getId())
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answers\":{\"escolaridade\":1,\"orientacaoTemporal\":5,"
+                        + "\"orientacaoEspacial\":5,\"registro\":3,\"atencaoECalculo\":5,"
+                        + "\"memoriaEvocacao\":3,\"nomeacao\":2,\"repeticao\":1,\"comando\":3,"
+                        + "\"leitura\":1,\"escrita\":1,\"copia\":1}}"));
+    }
+
+    private ResultActions annul(String path) throws Exception {
+        return mockMvc.perform(put(path)
+                .header("Authorization", bearerTokenOf(prescriber))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"Lancado no paciente errado\"}"));
+    }
+
+    private Long idOf(ResultActions result) throws Exception {
+        String body = result.andReturn().getResponse().getContentAsString();
+        return new ObjectMapper().readTree(body).get("id").asLong();
     }
 
     // o pedido em aberto segurava horario de quem segue em tratamento, entao o arquivamento recusa ele

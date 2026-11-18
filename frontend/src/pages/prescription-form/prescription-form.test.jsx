@@ -58,6 +58,18 @@ describe("PrescriptionForm", () => {
         setLoggedUser(null);
     });
 
+    // a api recusa receita nova de paciente arquivado, entao a tela avisa no lugar do formulario
+    // (decisao de 17/11/2026)
+    it("a prescricao de paciente arquivado manda reativar e n mostra o formulario", async () => {
+        apiService.get.mockImplementation((path) => Promise.resolve(
+            path === "/appointments/7" ? {...APPOINTMENT, patientArchived: true} : []));
+        renderForm();
+
+        expect(await screen.findByText("Paciente arquivado. Reative o paciente, na aba Arquivados da lista de "
+            + "pacientes, antes de emitir a prescrição.")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Produto")).not.toBeInTheDocument();
+    });
+
     // a semana vazia no meio do plano era lida como parar a dose naquela semana (RN02, revisao das regras R23)
     it("semana vazia no meio do plano pede pra preencher ou tirar e as vazias do fim ficam de fora", async () => {
         const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});

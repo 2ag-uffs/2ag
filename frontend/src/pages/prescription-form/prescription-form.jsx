@@ -13,6 +13,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
 import {isConfirmed} from "../../utils/appointment-labels.js";
+import {ARCHIVED_PRESCRIPTION_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {emptyToNull, numberOrNull, textOrNull} from "../../utils/form-values.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
@@ -200,6 +201,10 @@ function blockedMessageOf(appointment) {
     }
     if (isInTheFuture(appointment.dateTime)) {
         return "Esta consulta ainda não aconteceu. A prescrição é emitida depois do atendimento.";
+    }
+    // a receita do arquivado nascia ja como ultima prescricao, encerrada antes do dia dela (decisao de 17/11/2026)
+    if (appointment.patientArchived) {
+        return ARCHIVED_PRESCRIPTION_NOTICE;
     }
     return null;
 }

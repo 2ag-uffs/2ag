@@ -155,6 +155,7 @@ class DashboardTest {
         prescriberPanel()
                 .andExpect(jsonPath("$.todaysAppointments.length()").value(2))
                 .andExpect(jsonPath("$.todaysAppointments[0].status").value("CONCLUIDA"))
+                .andExpect(jsonPath("$.todaysAppointments[0].patientArchived").value(false))
                 .andExpect(jsonPath("$.todaysAppointments[1].status").value("AGENDADA"));
     }
 

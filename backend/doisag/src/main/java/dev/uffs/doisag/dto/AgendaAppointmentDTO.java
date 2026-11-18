@@ -22,6 +22,8 @@ public record AgendaAppointmentDTO(
         // a conta desligada pela administracao, pro prescritor ver o selo na agenda e nos pedidos
         // o paciente n ve a confirmacao nem recebe lembrete, mas desativar n fecha nada (R25)
         boolean patientAccountActive,
+        // o arquivado n recebe registro de consulta novo, entao a agenda n oferece registrar o atendimento dele
+        boolean patientArchived,
         String prescriberName,
         String patientNote,
         boolean annulled
@@ -37,6 +39,7 @@ public record AgendaAppointmentDTO(
                 appointment.getPatient().getId(),
                 appointment.getPatient().getDisplayName(),
                 appointment.getPatient().isActive(),
+                appointment.getPatient().isArchived(),
                 appointment.getPrescriber().getName(),
                 appointment.getPatientNote(),
                 appointment.isAnnulled()

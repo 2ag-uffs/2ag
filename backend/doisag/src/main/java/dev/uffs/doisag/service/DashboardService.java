@@ -155,7 +155,8 @@ public class DashboardService {
                 appointment.getPatient().getDisplayName(),
                 appointment.getDateTime(),
                 appointment.getModality(),
-                appointment.getStatus());
+                appointment.getStatus(),
+                appointment.getPatient().isArchived());
     }
 
     private PrescriberDashboardDTO.WaitingRequestDTO waitingRequestOf(Appointment appointment) {

@@ -30,7 +30,9 @@ public record PrescriberDashboardDTO(
             LocalDateTime dateTime,
             AppointmentModality modality,
             // a concluida aparece como concluida e com o ver historico, igual na agenda
-            AppointmentStatus status
+            AppointmentStatus status,
+            // a do arquivado n recebe registro novo, entao o painel n oferece registrar
+            boolean patientArchived
     ) {}
 
     public record WaitingRequestDTO(

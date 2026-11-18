@@ -11,6 +11,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {ARCHIVED_EXAM_NOTICE} from "../../utils/archived-patient.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
@@ -167,6 +168,17 @@ export default function MiniExame() {
                             onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
                         >
                             Ver histórico do paciente
+                        </button>
+                    </div>
+                </Card>
+            ) : appointment.patientArchived ? (
+                // o exame ja aplicado continua abrindo no resultado, so o novo espera reativar
+                // (decisao de 17/11/2026)
+                <Card>
+                    <p className="aviso">{ARCHIVED_EXAM_NOTICE}</p>
+                    <div className={styles.nextSteps}>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Voltar
                         </button>
                     </div>
                 </Card>

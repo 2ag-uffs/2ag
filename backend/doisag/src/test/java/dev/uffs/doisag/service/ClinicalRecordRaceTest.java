@@ -373,6 +373,23 @@ class ClinicalRecordRaceTest {
         assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId())).isEmpty();
     }
 
+    // a receita trava a consulta e dps o paciente, e le o arquivamento de novo: o arquivamento gravado enquanto
+    // ela esperava aparece e a receita nova do arquivado eh recusada (decisao de 17/11/2026)
+    @Test
+    void theNewPrescriptionWaitsForTheArchivingAndIsRefused() throws Exception {
+        Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
+
+        HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
+                () -> patientRepository.lockById(patient.getId()),
+                () -> patientArchiveService.archive(patient.getId(), prescriber),
+                () -> prescriptionService.create(prescriptionData(), appointment.getId()));
+
+        assertThat(outcome.error()).isInstanceOf(BusinessException.class)
+                .hasMessage(PrescriptionService.ARCHIVED_PATIENT_MESSAGE);
+        assertThat(prescriptionRepository.findByAppointmentPatientIdOrderByAppointmentDateTimeDescCreatedAtDesc(
+                patient.getId())).isEmpty();
+    }
+
     // a anulacao da receita trava a consulta, o paciente e dps a receita, lida de novo: a segunda anulacao espera,
     // encontra a receita ja anulada e eh recusada, em vez de trocar o motivo da primeira
     @Test

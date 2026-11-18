@@ -64,6 +64,42 @@ describe("ConsultationRecord", () => {
         setLoggedUser(null);
     });
 
+    // a api recusa consulta nova e atendimento novo de paciente arquivado, entao a tela avisa e n deixa salvar
+    // (decisao de 17/11/2026)
+    it("a consulta nova de paciente arquivado manda reativar e n tem botao de salvar", async () => {
+        apiService.get.mockResolvedValue({...PATIENT, archived: true});
+        renderNewConsultation();
+
+        expect(await screen.findByText("Paciente arquivado. Reative o paciente, na aba Arquivados da lista de "
+            + "pacientes, antes de registrar a consulta.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Salvar consulta"})).not.toBeInTheDocument();
+    });
+
+    it("do arquivado a consulta marcada n recebe registro e a concluida continua sendo corrigida", async () => {
+        apiService.get.mockResolvedValue({...SAVED_APPOINTMENT, status: "AGENDADA", patientArchived: true});
+        const {unmount} = render(<RouterProvider router={createMemoryRouter([
+            {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
+        ], {initialEntries: ["/consulta/99/registro"]})}/>);
+        expect(await screen.findByText(/Paciente arquivado\. Reative o paciente/)).toBeInTheDocument();
+        expect(screen.getByLabelText("Evolução do quadro")).toBeDisabled();
+        unmount();
+
+        apiService.get.mockResolvedValue({...SAVED_APPOINTMENT, patientArchived: true});
+        render(<RouterProvider router={createMemoryRouter([
+            {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
+        ], {initialEntries: ["/consulta/99/registro"]})}/>);
+        expect(await screen.findByLabelText("Evolução do quadro")).toBeEnabled();
+        expect(screen.queryByText(/Paciente arquivado/)).not.toBeInTheDocument();
+
+        // corrigido o registro, a tela n oferece a receita nem o mini-exame q a api recusa
+        vi.spyOn(apiService, "put").mockResolvedValue({});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByText("Registro atualizado")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Emitir prescrição"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Aplicar mini-exame"})).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Ver histórico do paciente"})).toBeInTheDocument();
+    });
+
     // a modalidade vinha marcada como presencial numa clinica quase toda online: a consulta nova vem sem ela, e
     // salvar sem escolher marca o campo e leva o foco pra ele (decisao de 14/11/2026, revisao das regras R24)
     it("a consulta nova vem sem modalidade e salvar sem escolher leva o foco pra modalidade", async () => {
