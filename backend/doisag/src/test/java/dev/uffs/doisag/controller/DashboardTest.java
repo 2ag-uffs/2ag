@@ -21,6 +21,7 @@ import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.NotificationService;
+import dev.uffs.doisag.service.ScaleTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +64,7 @@ class DashboardTest {
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private ScaleResponseRepository responseRepository;
     @Autowired private NotificationService notificationService;
+    @Autowired private ScaleTaskService scaleTaskService;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -371,6 +373,37 @@ class DashboardTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.formsDue").value(2))
                 .andExpect(jsonPath("$.formsOnTime").value(0));
+    }
+
+    // a avaliacao inicial reenviada antes do job, com a antiga vencida ontem e ainda pendente: a ficha eh uma
+    // so, entao a antiga tbm sai das vencidas
+    @Test
+    void aAnamneseTiraDasVencidasAAvaliacaoInicialPendenteVencidaQueOReenvioDeixouParaTras() throws Exception {
+        ScaleTask old = saveLateTask(ScaleType.ANAMNESE, TODAY.minusDays(1));
+        old.setStatus(ScaleTaskStatus.PENDENTE);
+        taskRepository.save(old);
+        mockMvc.perform(post("/patients/" + patient.getId() + "/scales")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scaleType\":\"ANAMNESE\"}"))
+                .andExpect(status().isCreated());
+        assertThat(taskRepository.countByPatientIdAndStatus(patient.getId(), ScaleTaskStatus.PENDENTE))
+                .isEqualTo(2);
+
+        sendAnamnesis();
+        // a antiga fecha junto com a ficha, sem esperar o job: o paciente n fica com ela em aberto
+        assertThat(taskRepository.countByPatientIdAndStatus(patient.getId(), ScaleTaskStatus.PENDENTE)).isZero();
+        scaleTaskService.closeOverdue(TODAY);
+
+        assertThat(taskRepository.countByPatientIdAndStatus(patient.getId(), ScaleTaskStatus.RESPONDIDA))
+                .isEqualTo(1);
+        old = taskRepository.findById(old.getId()).orElseThrow();
+        assertThat(old.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        prescriberPanel()
+                .andExpect(jsonPath("$.lateScales.length()").value(0))
+                .andExpect(jsonPath("$.lateScalesTotal").value(0));
+        assertThat(old.getAnsweredAt()).isEqualTo(TODAY);
+        lateIndicator();
     }
 
     // arquivado e reativado no mesmo dia: o arquivamento cortou o prazo pra hoje e fechou a avaliacao inicial

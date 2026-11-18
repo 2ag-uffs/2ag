@@ -483,10 +483,23 @@ public class ScaleTaskService {
     // vencidas. o status fica e o indicador conta fora do prazo
     // a ficha eh uma so: toda avaliacao inicial perdida pedia essa mesma ficha, entao todas saem das vencidas,
     // com ou sem uma pendente, e n so a ultima
+    // a pendente mais antiga eh a q venceu e o reenvio antes do job das 8h deixou pra tras: tbm eh perdida, fecha
+    // aqui como o job fecharia e ganha o dia, senao o job fechava ela dps e ela ficava nas vencidas pra sempre
     @Transactional
     public void completeTask(Long patientId, ScaleType scaleType) {
         LocalDate today = LocalDate.now();
-        openTaskOf(patientId, scaleType).ifPresent(task -> closeAsAnswered(task, today));
+        List<ScaleTask> pendingTasks = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
+                patientId, scaleType, ScaleTaskStatus.PENDENTE);
+        for (int index = 0; index < pendingTasks.size(); index++) {
+            ScaleTask task = pendingTasks.get(index);
+            if (index == 0) {
+                closeAsAnswered(task, today);
+            } else {
+                task.setStatus(ScaleTaskStatus.NAO_RESPONDIDA);
+                task.setAnsweredAt(today);
+                taskRepository.save(task);
+            }
+        }
         List<ScaleTask> missedTasks = taskRepository.findByPatientIdAndScaleTypeAndStatusOrderByPeriodStartDesc(
                 patientId, scaleType, ScaleTaskStatus.NAO_RESPONDIDA);
         for (ScaleTask task : missedTasks) {
