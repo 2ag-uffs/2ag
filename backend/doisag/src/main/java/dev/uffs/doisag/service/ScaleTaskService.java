@@ -338,8 +338,9 @@ public class ScaleTaskService {
         }
         // a escala q o prescritor tirou do acompanhamento, ou a tarefa q o arquivamento encerrou, do acompanhamento
         // ou enviada a mao antes dele, n volta a ser cobrada: fecha como na troca, sem resposta e com o dia marcado,
-        // e o paciente n recebe o aviso de responder de novo
-        if (isRemovedFromProtocol(task) || task.existedBeforeArchive()) {
+        // e o paciente n recebe o aviso de responder de novo. a q o prescritor interrompeu segue assim dps de
+        // reativar o paciente ou de encerrar o acompanhamento novo
+        if (task.isStoppedByPrescriber() || isRemovedFromProtocol(task) || task.existedBeforeArchive()) {
             LocalDate today = LocalDate.now();
             if (task.getPeriodEnd().isAfter(today)) {
                 task.setPeriodEnd(today);
@@ -591,11 +592,14 @@ public class ScaleTaskService {
     // painel, e o indicador deixa ela de fora, pq foi escolha do prescritor e n atraso do paciente (07/11, e no
     // arquivamento desde a revisao das regras R22). a q ja tinha vencido, com o job das 8h ainda sem rodar,
     // foi atraso de vdd e fecha como no job, sem o dia marcado
+    // o dia da interrupcao fica na tarefa (stoppedOn), pra ela n voltar a ser cobrada qnd o paciente eh reativado
+    // ou o acompanhamento novo eh encerrado
     private void closeStoppedByPrescriber(ScaleTask task, LocalDate today) {
         boolean stillRunning = !task.getPeriodEnd().isBefore(today);
         if (task.getPeriodEnd().isAfter(today)) {
             task.setPeriodEnd(today);
         }
+        task.setStoppedOn(today);
         closeByAnswers(task, today);
         if (stillRunning && task.getAnsweredAt() == null) {
             task.setAnsweredAt(today);

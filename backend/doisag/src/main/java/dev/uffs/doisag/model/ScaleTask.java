@@ -154,8 +154,9 @@ public class ScaleTask {
         return ChronoUnit.DAYS.between(periodStart, periodEnd) + 1;
     }
 
-    // a tarefa ja existia qnd o paciente foi arquivado, entao o arquivamento encerrou ela
+    // a tarefa ja existia qnd o paciente foi arquivado, entao o arquivado n eh mais cobrado dela
     // a enviada a mao dps do arquivamento eh mais nova q ele e segue a regra de sempre
+    // so vale enquanto ele segue arquivado: a q o arquivamento fechou fica marcada em stoppedOn
     public boolean existedBeforeArchive() {
         LocalDateTime archivedAt = patient.getArchivedAt();
         return archivedAt != null && !createdAt.isAfter(archivedAt);
@@ -190,5 +191,21 @@ public class ScaleTask {
 
     public void setBlankDaysRemindedUntil(LocalDate blankDaysRemindedUntil) {
         this.blankDaysRemindedUntil = blankDaysRemindedUntil;
+    }
+
+    // o dia em q o prescritor interrompeu a tarefa, arquivando o paciente ou tirando a escala do acompanhamento
+    // fica na tarefa pq reativar o paciente, ou encerrar o acompanhamento novo, n desfaz a interrupcao
+    private LocalDate stoppedOn;
+
+    public LocalDate getStoppedOn() {
+        return stoppedOn;
+    }
+
+    public void setStoppedOn(LocalDate stoppedOn) {
+        this.stoppedOn = stoppedOn;
+    }
+
+    public boolean isStoppedByPrescriber() {
+        return stoppedOn != null;
     }
 }

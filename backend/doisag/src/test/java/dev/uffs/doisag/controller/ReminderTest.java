@@ -332,6 +332,17 @@ class ReminderTest {
         assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
     }
 
+    // reativar n devolve a cobranca da semana q o arquivamento fechou
+    @Test
+    void aSemanaFechadaPeloArquivamentoNaoCobraOsDiasEmBrancoDepoisDeReativar() {
+        saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        patientArchiveService.archive(patient.getId(), prescriber);
+        patientArchiveService.reactivate(patient.getId());
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
+        assertThat(notificationsOf(patient)).noneMatch(notice -> notice.getTitle().equals("Dias em branco"));
+    }
+
     // o diario enviado a mao dps do arquivamento n foi interrompido por ele: os dois ultimos dias em branco
     // cobram como em qualquer semana
     @Test
@@ -362,6 +373,20 @@ class ReminderTest {
                 List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
 
         assertThat(reminderService.sendBlankDaysReminders(TODAY)).isZero();
+    }
+
+    // encerrar o acompanhamento novo n devolve a cobranca da semana q a troca fechou
+    @Test
+    void aSemanaFechadaNaTrocaNaoCobraOsDiasEmBrancoDepoisDeEncerrarOAcompanhamentoNovo() {
+        ScaleTask week = saveTask(ScaleType.ACOMPANHAMENTO_SEMANAL, TODAY.plusDays(2));
+        week.setFromProtocol(true);
+        taskRepository.save(week);
+        treatmentProtocolService.create(patient.getId(), new TreatmentProtocolCreateDTO(TODAY, 90, null, null,
+                List.of(new ProtocolItemDTO(ScaleType.ESCALA_HAMILTON, null, Periodicity.SEMANAL))), prescriber);
+        treatmentProtocolService.end(patient.getId());
+
+        assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
+        assertThat(notificationsOf(patient)).noneMatch(notice -> notice.getTitle().equals("Dias em branco"));
     }
 
     @Test

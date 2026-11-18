@@ -771,6 +771,30 @@ class ScaleDeliveryTest {
         assertThat(closedWeek.getAnsweredAt()).isEqualTo(today);
     }
 
+    // reativar n desfaz a interrupcao: a semana q o arquivamento fechou segue fechada qnd o unico dia eh anulado
+    // dps de reativar, sem aviso de responder de novo
+    @Test
+    void annullingTheOnlyDiaryDayAfterArchivingAndReactivatingDoesNotReopenTheWeek() throws Exception {
+        LocalDate today = LocalDate.now();
+        startFollowUp("ACOMPANHAMENTO_SEMANAL", "SEMANAL").andExpect(status().isCreated());
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", bearerTokenOf(patient))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        archivePatient();
+        mockMvc.perform(put("/patients/" + patient.getId() + "/reactivate")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk());
+        ScaleTask week = taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()).get(0);
+        assertThat(week.getStatus()).isEqualTo(ScaleTaskStatus.RESPONDIDA);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        ScaleTask closedWeek = taskRepository.findById(week.getId()).orElseThrow();
+        assertThat(closedWeek.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(closedWeek.getAnsweredAt()).isEqualTo(today);
+        assertThat(noticeOf(patient, "Escala para responder de novo")).isNull();
+    }
+
     // a semana do diario enviada a mao q estava aberta no arquivamento tbm foi fechada por ele: anular dps o
     // unico dia dela n volta a cobrar o arquivado
     @Test

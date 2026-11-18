@@ -345,8 +345,9 @@ public class ReminderService {
 
     // o dia ainda eh cobrado na tarefa aberta, ou na semana q fechou nele pelo prazo, q segue na grade ate o fim
     // do dia seguinte (revisao das regras R6). a semana q o arquivamento encerrou e a da escala tirada do
-    // acompanhamento n cobram mais, pq quem interrompeu foi o prescritor. o diario enviado a mao dps do
-    // arquivamento cobra como qualquer outro
+    // acompanhamento n cobram mais, pq quem interrompeu foi o prescritor. a interrupcao fica gravada na tarefa,
+    // entao reativar o paciente ou encerrar o acompanhamento novo antes do job n devolve a cobranca. o diario
+    // enviado a mao dps do arquivamento cobra como qualquer outro
     private boolean isStillCharged(ScaleTask task, LocalDate day) {
         if (!task.coversDay(day)) {
             return false;
@@ -354,7 +355,7 @@ public class ReminderService {
         if (task.getStatus() == ScaleTaskStatus.PENDENTE) {
             return true;
         }
-        return task.getPeriodEnd().equals(day) && !task.existedBeforeArchive()
+        return task.getPeriodEnd().equals(day) && !task.isStoppedByPrescriber() && !task.existedBeforeArchive()
                 && !scaleTaskService.isRemovedFromProtocol(task);
     }
 
