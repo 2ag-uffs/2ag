@@ -686,7 +686,28 @@ class AgendaTest {
 
         assertThat(appointmentRepository.findById(expired.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.RECUSADA);
-        assertThat(notificationTitlesOf(patient)).contains("Pedido de consulta sem resposta");
+        assertThat(notificationMessageOf(patient, "Pedido de consulta sem resposta"))
+                .isEqualTo("Seu pedido de consulta para " + BrazilianFormat.dateTime(expired.getDateTime())
+                        + " passou da data sem resposta. Escolha outro horário na agenda.");
+    }
+
+    // com a conta do prescritor desativada a agenda do paciente n tem horario e o pedido novo eh recusado, entao
+    // o aviso manda falar com a clinica em vez de escolher outro horario. o estado da conta do prescritor n
+    // aparece pro paciente (decisao de 17/11/2026)
+    @Test
+    void theExpiredRequestOfADeactivatedPrescriberTellsThePatientToCallTheClinic() throws Exception {
+        Appointment expired = saveAppointment(patient, LocalDateTime.now().minusHours(2),
+                AppointmentStatus.SOLICITADA);
+        prescriber.setActive(false);
+        prescriberRepository.save(prescriber);
+
+        assertThat(appointmentService.declineExpiredRequests(LocalDateTime.now())).isEqualTo(1);
+
+        assertThat(appointmentRepository.findById(expired.getId()).orElseThrow().getStatus())
+                .isEqualTo(AppointmentStatus.RECUSADA);
+        assertThat(notificationMessageOf(patient, "Pedido de consulta sem resposta"))
+                .isEqualTo("Seu pedido de consulta para " + BrazilianFormat.dateTime(expired.getDateTime())
+                        + " passou da data sem resposta. Fale com a clínica para marcar.");
     }
 
     // o pedido de amanha ainda sem resposta avisa o paciente na vespera pra falar com a clinica, em vez de ele

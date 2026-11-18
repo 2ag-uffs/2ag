@@ -350,9 +350,14 @@ public class AppointmentService {
         if (!stillExpired) {
             return false;
         }
+        // com a conta do prescritor desativada a agenda do paciente n mostra horario e o pedido novo eh recusado,
+        // entao o aviso manda falar com a clinica. o estado da conta n aparece pro paciente
+        // (decisao de 17/11/2026)
+        String whatToDo = appointment.getPrescriber().isActive() ? "Escolha outro horário na agenda."
+                : "Fale com a clínica para marcar.";
         refuse(appointment, "Pedido de consulta sem resposta",
                 "Seu pedido de consulta para " + formatDateTime(appointment)
-                        + " passou da data sem resposta. Escolha outro horário na agenda.");
+                        + " passou da data sem resposta. " + whatToDo);
         return true;
     }
 
