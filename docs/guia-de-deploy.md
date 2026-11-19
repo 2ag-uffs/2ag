@@ -78,11 +78,11 @@ Abra o `.env` e preencha. O arquivo de exemplo explica cada linha; o que importa
 | :--- | :--- |
 | `POSTGRES_PASSWORD` | uma senha gerada: `openssl rand -base64 24` |
 | `JWT_SECRET` | `openssl rand -base64 48`. nunca reaproveite uma chave que já apareceu em alguma versão antiga do repositório |
-| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais, com letra maiúscula, número e símbolo. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não. se a senha não seguir a regra, a conta não é criada e o log da api diz por quê |
+| `ADMIN_EMAIL` e `ADMIN_PASSWORD` | o e-mail de quem vai administrar e uma senha com 12 caracteres ou mais, com letra maiúscula, número e símbolo. a conta nasce na primeira subida; a senha ela troca depois em *Perfil*, o e-mail não. se a senha não seguir a regra, a conta não é criada e o log da api diz por quê. senha com cifrão vai entre aspas simples, como em `ADMIN_PASSWORD='parte1$parte2'`: sem as aspas o compose lê o que vem depois do cifrão como nome de variável e a api recebe a senha cortada |
 | `PUBLIC_URL` | `https://2ag.clinica.com.br`, exatamente como as pessoas vão abrir, sem barra no fim |
 | `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` | a razão social da clínica, o CNPJ e o contato do encarregado de dados. entram no termo de consentimento no lugar dos colchetes, e sem as três a api não sobe. os valores da clínica do piloto ficam com a equipe, fora do repositório |
 | `SESSION_SECURE_COOKIE` | `true`, que já é o valor do exemplo |
-| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | os dados da conta SMTP. porta 587 com STARTTLS é o padrão |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | os dados da conta SMTP. porta 587 com STARTTLS é o padrão. senha com cifrão também vai entre aspas simples |
 | `BACKUP_AGE_PUBKEY` | a chave pública do backup (`age1...`) |
 
 O que **não** pode existir no `.env` do servidor:
