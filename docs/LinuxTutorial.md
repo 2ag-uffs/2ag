@@ -122,7 +122,7 @@ o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o 
 
 precisa do `age` instalado no servidor (`apt install age`). com o postgres instalado na própria máquina, sem compose, `BACKUP_VIA_COMPOSE=false` e o `pg_dump` e o `pg_restore` 17 instalados.
 
-o backup do dia não substitui o do dia anterior, porque o prontuário tem guarda mínima de 20 anos. e backup que ninguém restaurou não vale: o documento tem a tabela onde cada teste de restauração fica registrado.
+o backup do dia não substitui o do dia anterior, porque o prontuário tem guarda mínima de 20 anos. a pasta do servidor guarda só os últimos 30 dias, então a cópia para fora do servidor precisa existir antes disso. e backup que ninguém restaurou não vale: o documento tem a tabela onde cada teste de restauração fica registrado.
 
 ---
 

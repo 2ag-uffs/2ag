@@ -185,7 +185,7 @@ sudo touch /var/log/2ag-backup.log && sudo chown "$USER" /var/log/2ag-backup.log
 0 3 * * * cd /opt/2ag && ./scripts/backup-banco.sh /var/backups/2ag >> /var/log/2ag-backup.log 2>&1
 ```
 
-5. Copiar os arquivos de `/var/backups/2ag` para fora do servidor (outro disco, um bucket, o backup do provedor). Eles saem cifrados, então o destino não precisa ser de confiança.
+5. Copiar os arquivos de `/var/backups/2ag` para fora do servidor (outro disco, um bucket, o backup do provedor). Eles saem cifrados, então o destino não precisa ser de confiança. A cópia precisa acontecer antes de o arquivo completar 30 dias: passado esse prazo o script apaga o arquivo da pasta, sem conferir se ele foi copiado.
 6. Fazer uma restauração de teste num banco separado e anotar na tabela do documento de backup. O requisito de backup só fecha com esse registro.
 
 ---

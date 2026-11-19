@@ -4,7 +4,7 @@ Procedimento de backup do banco do 2ag e, principalmente, o de restauração (RN
 
 Backup que ninguém nunca restaurou não é backup, é só um arquivo. O requisito só está cumprido quando existe o registro de uma restauração bem-sucedida, na tabela do fim desta página.
 
-O prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então o backup diário **não substitui** o do dia anterior: os arquivos se acumulam, e a cópia antiga sai da pasta local só depois de ir para o destino de longo prazo.
+O prontuário tem guarda mínima de 20 anos (Lei 13.787/2018), então o backup diário **não substitui** o do dia anterior: cada execução gera um arquivo novo. A pasta local, porém, guarda só os últimos 30 dias (`BACKUP_DIAS`): o script apaga o que passou disso **sem conferir se a cópia saiu do servidor**. Quem cumpre a guarda longa é a cópia externa, que precisa estar funcionando antes de o primeiro arquivo completar 30 dias.
 
 ---
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # backup do banco do 2ag (RNF07)
 #
-# gera um arquivo por execucao e apaga os mais velhos que o prazo de guarda.
-# o prontuario tem guarda minima de 20 anos (Lei 13.787/2018), entao o
-# backup do dia nunca substitui o do dia anterior: eles se acumulam
+# gera um arquivo por execucao: o backup do dia nunca substitui o do dia anterior.
+# a pasta de destino guarda so os ultimos BACKUP_DIAS dias (30): o q passou disso eh apagado
+# sem conferir se a copia saiu do servidor. o prontuario tem guarda minima de 20 anos
+# (Lei 13.787/2018), entao a copia pra fora do servidor precisa existir antes desse prazo
 #
 # o arquivo sai cifrado com a chave publica do age (BACKUP_AGE_PUBKEY no .env):
 # so quem tem a chave privada, guardada fora do servidor, consegue abrir
