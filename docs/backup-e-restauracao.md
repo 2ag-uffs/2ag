@@ -81,13 +81,15 @@ Pelo compose, da pasta do `docker-compose.yml`, apontando a chave privada do age
 BACKUP_AGE_KEY=/caminho/da/chave-do-backup-2ag.txt ./scripts/restaurar-banco.sh /var/backups/2ag/doisag-2026-09-14-0300.dump.age doisag_teste
 ```
 
-O script pede o nome do banco digitado por extenso antes de mexer em qualquer coisa, porque a restauração apaga e recria o que já existe. Sem terminal (cron, ci) a confirmação vai na variável `CONFIRMAR_RESTAURACAO=doisag_teste`. O banco de destino é criado se não existir.
+O script pede o nome do banco digitado por extenso antes de mexer em qualquer coisa, porque a restauração troca o banco inteiro pelo conteúdo do backup. Sem terminal (cron, ci) a confirmação vai na variável `CONFIRMAR_RESTAURACAO=doisag_teste`. O banco de destino é criado se não existir.
 
-Sem compose: `BACKUP_VIA_COMPOSE=false DATABASE_PASSWORD='...' BACKUP_AGE_KEY=... ./scripts/restaurar-banco.sh arquivo [banco]`.
+A restauração é tudo ou nada. O backup entra primeiro num banco novo, `<banco>_restauracao`, e só depois de entrar inteiro ele toma o nome do banco de destino. O banco que estava no lugar não é apagado: fica guardado como `<banco>_antes_<data>_<hora>`, e o script mostra o nome. Se o arquivo estiver cortado, a chave for outra ou ainda houver alguém ligado no banco de destino, nada muda e o script diz o motivo. Depois de conferir o banco restaurado, apague o guardado, que ocupa disco: `docker compose exec banco dropdb --username admindoisag <nome que o script mostrou>`.
+
+Sem compose: `BACKUP_VIA_COMPOSE=false DATABASE_PASSWORD='...' BACKUP_AGE_KEY=... ./scripts/restaurar-banco.sh arquivo [banco]`. Nesse modo o usuário do banco precisa poder criar banco (`alter user admindoisag createdb;`).
 
 **Para o teste, restaure sempre num banco separado** (`doisag_teste`), nunca por cima do banco em uso.
 
-No dia ruim, para restaurar por cima do banco de verdade: pare a api antes (`docker compose stop api`), restaure no banco do `.env` e suba de novo (`docker compose up -d api`).
+No dia ruim, para restaurar por cima do banco de verdade: pare a api antes (`docker compose stop api`), restaure no banco do `.env` e suba de novo (`docker compose up -d api`). Com a api no ar o script não troca nada e avisa. O banco restaurado fica igual ao do backup, sem as tabelas que uma atualização feita depois dele tenha criado, e a api refaz essas migrações quando sobe.
 
 Depois de restaurar, o teste só vale se você conferir:
 
@@ -96,7 +98,7 @@ Depois de restaurar, o teste só vale se você conferir:
 3. uma escala respondida aparece com o escore e a faixa;
 4. a trilha de auditoria mostra os eventos anteriores ao backup.
 
-O ci faz uma versão curta disso a cada push (`scripts/ci-compose-smoke.sh`): gera um par de chaves de mentira, faz o backup cifrado pelo compose, restaura num banco separado e confere que a conta criada antes está lá. Isso prova que os scripts funcionam, não substitui o teste no servidor do piloto.
+O ci faz uma versão curta disso a cada push (`scripts/ci-compose-smoke.sh`): gera um par de chaves de mentira, faz o backup cifrado pelo compose, restaura num banco separado e confere que a conta criada antes está lá. Depois restaura por cima do banco em uso, que ganhou uma tabela mais nova que o backup: com a api no ar ou com o arquivo cortado ao meio nada pode mudar, e com o arquivo inteiro o banco volta a ser o do backup e a api sobe de novo. Isso prova que os scripts funcionam, não substitui o teste no servidor do piloto.
 
 ---
 

@@ -119,6 +119,38 @@ restored=$(docker compose exec -T banco psql --username admindoisag --dbname doi
     "select count(*) from users where email = 'prescritor-ci@email.com'")
 [ "$restored" = "1" ] || { echo "a conta criada antes do backup n apareceu no banco restaurado"; exit 1; }
 
+echo "=== restauracao por cima do banco em uso eh tudo ou nada ==="
+query_database() {
+    docker compose exec -T banco psql --username admindoisag --dbname doisag -tAc "$1"
+}
+restore_over_database() {
+    CONFIRMAR_RESTAURACAO=doisag BACKUP_AGE_KEY=/tmp/chave-do-backup.txt ./scripts/restaurar-banco.sh "$1" doisag
+}
+# tabela q o backup n conhece, com chave pra uma q ele conhece, igual a de uma migracao mais nova q o backup
+query_database "create table sobra_de_migracao_nova (user_id bigint references users(id))"
+# com a api ligada no banco nada troca
+if restore_over_database "$backup_file"; then
+    echo "a restauracao trocou o banco com a api no ar"; exit 1
+fi
+docker compose stop api
+# backup cortado no meio tbm n troca nada
+head -c $(($(wc -c < "$backup_file") / 2)) "$backup_file" > /tmp/backup-cortado.dump.age
+if restore_over_database /tmp/backup-cortado.dump.age; then
+    echo "a restauracao aceitou um backup cortado no meio"; exit 1
+fi
+[ "$(query_database "select to_regclass('sobra_de_migracao_nova')")" = "sobra_de_migracao_nova" ] \
+    || { echo "a restauracao q falhou mexeu no banco"; exit 1; }
+# backup inteiro: o banco fica igual ao backup, sem a tabela q veio dps, e o de antes fica guardado
+restore_over_database "$backup_file"
+[ -z "$(query_database "select to_regclass('sobra_de_migracao_nova')")" ] \
+    || { echo "sobrou no banco restaurado uma tabela mais nova q o backup"; exit 1; }
+restored=$(query_database "select count(*) from users where email = 'prescritor-ci@email.com'")
+[ "$restored" = "1" ] || { echo "a conta criada antes do backup n apareceu no banco restaurado por cima"; exit 1; }
+kept=$(query_database "select count(*) from pg_database where datname like 'doisag\_antes\_%'")
+[ "$kept" = "1" ] || { echo "o banco q estava no lugar n ficou guardado: $kept"; exit 1; }
+# o --wait so volta qnd a api passa no healthcheck, ou seja, subiu e migrou no banco restaurado
+docker compose up -d --wait --wait-timeout 180 api
+
 # fica no fim pq depois disso o login desse endereco fica travado por um minuto
 echo "=== limite do nginx no login pela porta publica ==="
 limited=0
