@@ -9,6 +9,7 @@ import AcompanhamentoProtocolo from "./acompanhamento-protocolo.jsx";
 
 const SCALES = [
     {type: "ESCALA_HAMILTON", name: "Escala de Hamilton", description: "Ansiedade", assignablePeriodically: true},
+    {type: "REGISTRO_SONO", name: "Diário do sono", description: "Sono", assignablePeriodically: true},
 ];
 
 const PATIENT = {id: 5, name: "Paciente Teste", archived: false};
@@ -155,6 +156,63 @@ describe("AcompanhamentoProtocolo", () => {
         });
         expect(await screen.findByText("Acompanhamento renovado. O sistema continua enviando as escalas sozinho."))
             .toBeInTheDocument();
+    });
+
+    // os horarios so aparecem com o diario marcado, entao sem o diario eles n podem ir escondidos no envio
+    it("renovar sem o diario do sono n manda os horarios de dormir e levantar", async () => {
+        const today = toIsoDate(new Date());
+        mockApiWithProtocol({
+            id: 1,
+            patientId: 5,
+            patientName: "Paciente Teste",
+            startDate: toIsoDate(addDays(new Date(), -26)),
+            endDate: toIsoDate(addDays(new Date(), 3)),
+            active: true,
+            sleepBedTime: "22:30:00",
+            sleepWakeTime: "06:45:00",
+            items: [
+                {scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "QUINZENAL"},
+                {scaleType: "REGISTRO_SONO", scaleName: "Diário do sono", periodicity: "SEMANAL"},
+            ],
+        });
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({});
+        const user = userEvent.setup();
+        renderPage();
+
+        expect(await screen.findByText("Ativo")).toBeInTheDocument();
+        expect(screen.getByLabelText("Ir dormir às")).toHaveValue("22:30");
+
+        await user.click(screen.getByRole("checkbox", {name: /Diário do sono/}));
+        expect(screen.queryByLabelText("Ir dormir às")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", {name: "Renovar acompanhamento"}));
+
+        expect(post).toHaveBeenCalledWith("/patients/5/treatment-protocol", {
+            startDate: today,
+            durationDays: 30,
+            sleepBedTime: null,
+            sleepWakeTime: null,
+            items: [{scaleType: "ESCALA_HAMILTON", periodicity: "QUINZENAL"}],
+        });
+    });
+
+    // no primeiro acompanhamento eh igual: marcar o diario, digitar os horarios e desmarcar
+    it("iniciar sem o diario do sono n manda os horarios digitados antes de desmarcar", async () => {
+        const post = mockApi(new ApiError(500, "Erro"));
+        const user = userEvent.setup();
+        renderPage();
+
+        await user.click(await screen.findByRole("checkbox", {name: /Escala de Hamilton/}));
+        await user.click(screen.getByRole("checkbox", {name: /Diário do sono/}));
+        fireEvent.change(screen.getByLabelText("Ir dormir às"), {target: {value: "22:00"}});
+        fireEvent.change(screen.getByLabelText("Levantar às"), {target: {value: "06:00"}});
+        await user.click(screen.getByRole("checkbox", {name: /Diário do sono/}));
+        await user.click(screen.getByRole("button", {name: "Iniciar acompanhamento"}));
+
+        expect(post).toHaveBeenCalledTimes(1);
+        expect(post.mock.calls[0][1].items).toEqual([{scaleType: "ESCALA_HAMILTON", periodicity: "SEMANAL"}]);
+        expect(post.mock.calls[0][1].sleepBedTime).toBeNull();
+        expect(post.mock.calls[0][1].sleepWakeTime).toBeNull();
     });
 
     // o job ja encerrou e a tela abria vazia: agora o formulario vem com o ultimo acompanhamento

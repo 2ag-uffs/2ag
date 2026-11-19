@@ -191,13 +191,16 @@ export default function AcompanhamentoProtocolo() {
             return;
         }
 
+        // os horarios do sono so aparecem com o diario marcado, entao sem ele n vao escondidos no envio
+        const hasSleepDiary = Boolean(chosen.REGISTRO_SONO);
+
         setIsSaving(true);
         try {
             await apiService.post("/patients/" + patientId + "/treatment-protocol", {
                 startDate,
                 durationDays: Number(durationDays),
-                sleepBedTime: emptyToNull(sleepBedTime),
-                sleepWakeTime: emptyToNull(sleepWakeTime),
+                sleepBedTime: hasSleepDiary ? emptyToNull(sleepBedTime) : null,
+                sleepWakeTime: hasSleepDiary ? emptyToNull(sleepWakeTime) : null,
                 items,
             });
             setNotice(lastProtocol !== null
