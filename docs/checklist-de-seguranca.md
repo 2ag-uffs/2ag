@@ -578,6 +578,8 @@ com `permissions: contents: write` no job. A partir daí o Dependabot alerta sob
 
 **Nota de 15/10/2026 (#115).** Dependabot security updates e o CodeQL (configuração padrão, para Java, JavaScript e as próprias actions) estão ligados. A primeira análise achou quatro pontos: três jobs do CI sem permissão declarada, corrigidos com `permissions: contents: read` no topo do `ci.yml` (o job do backend continua pedindo escrita só para mandar a árvore de dependências), e o CSRF do Spring desligado, que é de propósito: o cookie é `__Host-session` com `SameSite=Strict` e o `OriginCheckFilter` recusa com 403 o que grava vindo de outra origem (item 9). Esse alerta fica para ser marcado como falso positivo no GitHub.
 
+**Nota de 19/11/2026.** O envio da árvore de dependências saiu do job backend e ganhou um job próprio, `dependency-submission`, que roda só no push da `main`, depois dos testes, e não tem passo `run`. É o único job do CI com token de escrita: o job que roda os testes e os plugins do maven ficou só com leitura. O envio leva `correlator: backend`, o nome do job antigo, porque o GitHub troca uma árvore pela seguinte só quando as duas têm a mesma chave: com a chave nova, a última árvore do job antigo ficaria no grafo para sempre, com as versões velhas e os alertas delas. Todo checkout do CI usa `persist-credentials: false`, e o `npm ci` do front, no CI e no `frontend/Dockerfile`, roda com `--ignore-scripts`. Os testes de `.github/security-review/test/redteam/workflow.test.mjs` conferem os três pontos a cada push.
+
 ---
 
 ## O que fazer primeiro

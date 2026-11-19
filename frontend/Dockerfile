@@ -3,7 +3,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# sem script de instalacao de pacote: o build n depende de nenhum
+RUN npm ci --ignore-scripts
 
 COPY . .
 RUN npm run build

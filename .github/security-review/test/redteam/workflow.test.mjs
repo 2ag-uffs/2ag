@@ -9,6 +9,7 @@ import { ROOT } from "../helpers.mjs";
 
 const WORKFLOWS = path.join(ROOT, "..", "workflows");
 const REVIEW_WORKFLOW = path.join(WORKFLOWS, "security-review.yml");
+const CI_WORKFLOW = path.join(WORKFLOWS, "ci.yml");
 
 // contexto q o autor do pr ou do commit controla
 const UNTRUSTED = [
@@ -73,6 +74,12 @@ function permissionsOf(job) {
     return match[1].trim().split("\n").map((line) => line.trim()).sort();
 }
 
+// os nomes dos jobs: a linha com dois espacos e o nome, dps de "jobs:"
+function jobNames(text) {
+    const jobs = text.slice(text.indexOf("\njobs:\n"));
+    return [...jobs.matchAll(/\n {2}([a-z][\w-]*):\n/g)].map((match) => match[1]);
+}
+
 test("ataque: pull_request_target ou checkout do codigo do pr", async () => {
     for (const name of await readdir(WORKFLOWS)) {
         const text = await readText(path.join(WORKFLOWS, name));
@@ -135,6 +142,62 @@ test("ataque: chave da api em passo q roda codigo de terceiro", async () => {
     for (const run of runTexts(text).filter((each) => each.includes("npm"))) {
         assert.equal(run.trim(), "npm ci --ignore-scripts");
     }
+});
+
+// o ci roda teste, plugin do maven e pacote do npm, q sao codigo de terceiro
+test("ataque: token q escreve no repositorio ao alcance de teste ou plugin no ci", async () => {
+    const text = await readText(CI_WORKFLOW);
+    assert.match(text, /\npermissions:\n {2}contents: read\n/);
+    const writers = [];
+    for (const name of jobNames(text)) {
+        const job = jobBlock(text, name);
+        if (/\n {6}[\w-]+: write\n/.test(job)) {
+            writers.push(name);
+            // job q escreve n roda comando nenhum, so action fixada
+            assert.deepEqual(stepsOf(job).filter((step) => runTexts(step).length > 0), [], name);
+        }
+    }
+    // so o envio da arvore de dependencia escreve, dps dos testes e so no push da main
+    assert.deepEqual(writers, ["dependency-submission"]);
+    const submission = jobBlock(text, "dependency-submission");
+    assert.deepEqual(permissionsOf(submission), ["contents: write"]);
+    assert.match(submission, /\n {4}needs: backend\n/);
+    assert.match(submission, /\n {4}if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\n/);
+    assert.ok(!/\bcache:/.test(submission), "sem cache no job q escreve");
+    // a chave do envio continua a do job antigo, senao a arvore velha fica pra sempre ao lado da nova
+    assert.match(submission, /\n {10}correlator: backend\n/);
+    for (const line of text.split("\n").filter((each) => /\buses:/.test(each))) {
+        assert.match(line, /uses: [\w.-]+\/[\w.-]+@[0-9a-f]{40} # v\d/, line);
+    }
+});
+
+test("ataque: credencial do checkout gravada no git do runner", async () => {
+    const wrong = [];
+    for (const name of await readdir(WORKFLOWS)) {
+        const text = await readText(path.join(WORKFLOWS, name));
+        const checkouts = stepsOf(text).filter((each) => each.includes("actions/checkout"));
+        assert.ok(checkouts.length > 0, name);
+        for (const step of checkouts) {
+            if (!step.includes("persist-credentials: false")) {
+                wrong.push(name + ": " + step.trim());
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
+});
+
+test("ataque: script de instalacao de pacote do front no ci ou na imagem", async () => {
+    const wrong = [];
+    for (const file of [CI_WORKFLOW, path.join(ROOT, "..", "..", "frontend", "Dockerfile")]) {
+        const installs = (await readText(file)).split("\n").filter((line) => /\bnpm (ci|install)\b/.test(line));
+        assert.ok(installs.length > 0, file);
+        for (const line of installs) {
+            if (!line.includes("--ignore-scripts")) {
+                wrong.push(path.basename(file) + ": " + line.trim());
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
 });
 
 test("ataque: revisor le arquivo do disco ou executa codigo vindo de fora", async () => {
