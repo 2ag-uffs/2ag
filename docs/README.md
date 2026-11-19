@@ -26,8 +26,8 @@ O sistema reúne triagem (anamnese), agenda, prescrições, aplicação de escal
 | Objetivo da Clínica | Documento para abrir |
 | :--- | :--- |
 | **Testar o sistema no próprio computador (demonstração)** | [`WindowsTutorial.md`](./WindowsTutorial.md) (Windows) ou [`LinuxTutorial.md`](./LinuxTutorial.md) (Linux) — ensinam a abrir o sistema com contas e dados fictícios. |
-| **Treinar os prescritores e a administração** | [`docs/roteiro-de-capacitacao.md`](`./roteiro-de-capacitacao.md) — passo a passo de uma sessão prática passando por todas as telas. |
-| **Entregar instruções ao paciente** | [`docs/guia-do-paciente.md`](./guia-do-paciente.md) — folha de 1 página para imprimir ou enviar junto com o convite. |
+| **Treinar os prescritores e a administração** | [`docs/capacitacao/roteiro-de-capacitacao.md`](./capacitacao/roteiro-de-capacitacao.md) — passo a passo de uma sessão prática passando por todas as telas. |
+| **Entregar instruções ao paciente** | [`docs/capacitacao/guia-do-paciente.md`](./capacitacao/guia-do-paciente.md) — folha de 1 página para imprimir ou enviar junto com o convite. |
 | **Colocar o sistema no ar no servidor da clínica** | [`docs/guia-de-deploy.md`](./guia-de-deploy.md) — guia passo a passo para o responsável técnico configurar o servidor. |
 | **Configurar e testar a cópia diária dos prontuários** | [`docs/backup-e-restauracao.md`](./backup-e-restauracao.md) — instruções de backup automático e tabela de registro de restauração. |
-| **Conferir as fichas clínicas originais e regras de cálculo** | Pasta [`docs/scales/`](./scales/) (PDFs originais dos formulários) e Anexo A de [`docs/requisitos-v2.md`](`./requisitos-v2.md). |
+| **Conferir as fichas clínicas originais e regras de cálculo** | Pasta [`docs/scales/`](./scales/) (PDFs originais dos formulários) e Anexo A de [`docs/requisitos-v2.md`](./requisitos-v2.md). |

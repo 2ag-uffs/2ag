@@ -1,6 +1,6 @@
 # banco de dados do 2ag
 
-guia para instalar e configurar o postgres para a api do 2ag. com docker nada disso é necessário: o `docker compose up` sobe o banco sozinho (veja o [README da raiz](../README.md)).
+guia para instalar e configurar o postgres para a api do 2ag. com docker nada disso é necessário: o `docker compose up` sobe o banco sozinho (veja a seção *rodando com docker* do [`LinuxTutorial.md`](../docs/LinuxTutorial.md) ou do [`WindowsTutorial.md`](../docs/WindowsTutorial.md)).
 
 ## primeiro passo: instalar o postgresql
 

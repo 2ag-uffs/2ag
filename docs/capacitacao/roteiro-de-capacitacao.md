@@ -12,7 +12,7 @@ Cada passo diz o que mostrar, onde clicar (com o texto exato dos botões e menus
 
 ### subir a demonstração
 
-O jeito mais simples é a API com o banco em memória e os dados de demonstração, como explica o [README](../../README.md#sem-postgres-só-para-olhar-as-telas). Não precisa de postgres nem de docker.
+O jeito mais simples é a API com o banco em memória e os dados de demonstração, como explica o [`WindowsTutorial.md`](../WindowsTutorial.md#sem-postgres-só-para-olhar-as-telas). Não precisa de postgres nem de docker.
 
 Num terminal, a API:
 
@@ -29,9 +29,9 @@ npm install
 npm run dev
 ```
 
-Abra http://localhost:5173 no navegador. Se a porta 8080 já estiver ocupada no computador, o README explica como subir a API em outra porta.
+Abra http://localhost:5173 no navegador. Se a porta 8080 já estiver ocupada no computador, o [`WindowsTutorial.md`](../WindowsTutorial.md) explica como subir a API em outra porta.
 
-Quem já usa o docker pode seguir a seção *rodando com docker* do README, com `SEED_DADOS_TESTE=true` e valores de treino em `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` no `.env` (sem os três a api não sobe), e abrir https://localhost. Nesse caso os dados ficam guardados ao parar (recomeçar do zero pede `docker compose down -v`) e o link dos e-mails não aparece no log. Para a capacitação, o banco em memória é mais prático.
+Quem já usa o docker pode seguir a seção *rodando com docker* do [`WindowsTutorial.md`](../WindowsTutorial.md) ou do [`LinuxTutorial.md`](../LinuxTutorial.md), com `SEED_DADOS_TESTE=true` e valores de treino em `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` no `.env` (sem os três a api não sobe), e abrir https://localhost. Nesse caso os dados ficam guardados ao parar (recomeçar do zero pede `docker compose down -v`) e o link dos e-mails não aparece no log. Para a capacitação, o banco em memória é mais prático.
 
 Bom saber sobre essa demonstração:
 
@@ -42,7 +42,7 @@ Bom saber sobre essa demonstração:
 
 ### contas da demonstração
 
-Todas usam a mesma senha, que está na tabela *contas de teste* do README. Ela só existe na instalação de desenvolvimento.
+Todas usam a mesma senha, que está na tabela *contas de teste* do [`WindowsTutorial.md`](../WindowsTutorial.md). Ela só existe na instalação de desenvolvimento.
 
 | conta | quem é | para que serve na sessão |
 | :--- | :--- | :--- |

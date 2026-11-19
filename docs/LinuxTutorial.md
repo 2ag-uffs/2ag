@@ -6,7 +6,7 @@ sistema livre para acompanhamento terapêutico longitudinal de pacientes em trat
 
 sistema desenvolvido como ação de extensão no componente GCH1993 — Projeto de Integração de Extensão da Universidade Federal da Fronteira Sul (UFFS), campus Chapecó.
 
-o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./docs/requisitos-v2.md).
+o que o sistema precisa fazer está em [`docs/requisitos-v2.md`](./requisitos-v2.md).
 
 ## o que você precisa instalar
 Este tutorial utiliza o docker como base para instalação.
@@ -108,13 +108,13 @@ os testes do front usam vitest e testing library e ficam ao lado do arquivo test
 
 ## colocando no ar
 
-o passo a passo do servidor, uma VPS alugada para a clínica (docker, domínio, certificado, `.env` de produção, primeira entrada, backup e atualização) está em [`docs/guia-de-deploy.md`](./docs/guia-de-deploy.md). a seção *rodando com docker* acima é a receita do computador de desenvolvimento, não a do servidor.
+o passo a passo do servidor, uma VPS alugada para a clínica (docker, domínio, certificado, `.env` de produção, primeira entrada, backup e atualização) está em [`docs/guia-de-deploy.md`](./guia-de-deploy.md). a seção *rodando com docker* acima é a receita do computador de desenvolvimento, não a do servidor.
 
 ---
 
 ## backup
 
-o banco tem script de backup e de restauração em [`scripts/`](./scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./docs/backup-e-restauracao.md). o backup sai cifrado com o `age` (chave pública em `BACKUP_AGE_PUBKEY` no `.env`, privada guardada fora do servidor) e roda pelo compose, sem precisar de senha nem de porta aberta:
+o banco tem script de backup e de restauração em [`scripts/`](../scripts), e o procedimento está em [`docs/backup-e-restauracao.md`](./backup-e-restauracao.md). o backup sai cifrado com o `age` (chave pública em `BACKUP_AGE_PUBKEY` no `.env`, privada guardada fora do servidor) e roda pelo compose, sem precisar de senha nem de porta aberta:
 
 ```bash
 ./scripts/backup-banco.sh /var/backups/2ag
@@ -139,4 +139,4 @@ docs/        requisitos, guia de deploy, backup, segurança, escalas clínicas, 
 
 ## licença
 
-[agpl-3.0](./LICENSE). qualquer clínica pode baixar, usar e mudar. quem mudar e oferecer como serviço precisa publicar as mudanças também.
+[agpl-3.0](../LICENSE). qualquer clínica pode baixar, usar e mudar. quem mudar e oferecer como serviço precisa publicar as mudanças também.

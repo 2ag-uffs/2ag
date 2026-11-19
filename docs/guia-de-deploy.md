@@ -2,7 +2,7 @@
 
 Passo a passo para colocar o 2ag no ar numa VPS alugada para a clínica, com https (RNF05), backup diário (RNF07) e configuração por variável de ambiente (RNF15). Quem nunca viu o projeto consegue subir seguindo este documento: o que precisa saber está aqui ou nos documentos apontados.
 
-A seção *rodando com docker* do [`README.md`](../README.md) é a receita do computador de desenvolvimento. Este guia é a do servidor.
+A seção *rodando com docker* dos tutoriais de instalação ([`LinuxTutorial.md`](./LinuxTutorial.md) e [`WindowsTutorial.md`](./WindowsTutorial.md)) é a receita do computador de desenvolvimento. Este guia é a do servidor.
 
 ---
 
@@ -87,7 +87,7 @@ Abra o `.env` e preencha. O arquivo de exemplo explica cada linha; o que importa
 
 O que **não** pode existir no `.env` do servidor:
 
-- `SEED_DADOS_TESTE`: nem a linha. O exemplo vem com ela comentada. Ligada, ela criaria contas de teste com uma senha que está no README. A api ignora o seed em qualquer endereço `https://` que não seja `localhost`, mas a primeira trava é a variável não existir.
+- `SEED_DADOS_TESTE`: nem a linha. O exemplo vem com ela comentada. Ligada, ela criaria contas de teste com uma senha que está publicada no [`WindowsTutorial.md`](./WindowsTutorial.md). A api ignora o seed em qualquer endereço `https://` que não seja `localhost`, mas a primeira trava é a variável não existir.
 - `EMAIL_LOG_TEXT=true`: escreveria no log os links de senha nova.
 
 A api recusa subir, com a razão no log, quando: o `PUBLIC_URL` não é um endereço completo; o esquema do `PUBLIC_URL` não combina com `SESSION_SECURE_COOKIE` (`https` pede `true`); `MAIL_HOST` está preenchido sem `MAIL_FROM` nem `MAIL_USERNAME`; `JWT_SECRET` tem menos de 32 caracteres; falta `CLINIC_NAME`, `CLINIC_CNPJ` ou `CLINIC_DPO_CONTACT` (revisão das regras R21).
