@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 
 // motivo de anular um registro clinico
 public record AnnulmentDTO(
-        @NotBlank(message = "Conte por que o registro está sendo anulado")
+        @NotBlank(message = "Conte o motivo da anulação")
         @Size(max = 2000, message = "O motivo pode ter até 2000 caracteres")
         String reason
 ) {

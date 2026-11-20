@@ -36,9 +36,10 @@ public class ConsultationService {
 
     public static final String FUTURE_DATE_MESSAGE =
             "A consulta registrada precisa já ter acontecido. Para marcar uma consulta futura use a agenda";
-    public static final String EMPTY_RECORD_MESSAGE = "Preencha pelo menos um campo clínico da consulta";
-    public static final String ANNULLED_MESSAGE = "Consulta anulada não pode ser alterada";
-    public static final String CANCELED_MESSAGE = "Consulta cancelada não recebe registro clínico";
+    public static final String EMPTY_RECORD_MESSAGE =
+            "Preencha pelo menos um campo clínico da consulta, como a queixa principal ou a evolução do quadro";
+    public static final String ANNULLED_MESSAGE = "Esta consulta foi anulada e não pode ser alterada";
+    public static final String CANCELED_MESSAGE = "Esta consulta foi cancelada e não recebe registro clínico";
     public static final String NOT_CONFIRMED_MESSAGE = "Só consulta confirmada na agenda recebe registro clínico";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta consulta já foi anulada";
     public static final String ARCHIVED_PATIENT_MESSAGE =
@@ -51,9 +52,9 @@ public class ConsultationService {
             "Esta consulta tem prescrição. Anule a prescrição antes de mudar a data da consulta";
     public static final String DATE_WITH_EXAM_MESSAGE =
             "Esta consulta tem um Mini-Exame aplicado. Anule o exame antes de mudar a data da consulta";
-    public static final String DATE_PASSES_PRESCRIPTION_MESSAGE = "Esta consulta tem prescrição e a nova data a "
-            + "coloca antes ou depois de outra consulta com prescrição, o que muda a prescrição em uso. "
-            + "Anule a prescrição antes de mudar a data da consulta";
+    public static final String DATE_PASSES_PRESCRIPTION_MESSAGE = "A nova data põe esta consulta antes ou depois "
+            + "de outra consulta com prescrição, o que muda a prescrição em uso. "
+            + "Anule a prescrição desta consulta antes de mudar a data";
 
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;

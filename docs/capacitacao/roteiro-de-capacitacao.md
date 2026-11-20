@@ -240,7 +240,7 @@ Janela normal, prescritora de treino. Na janela anônima, saia do paciente menor
   4. **Salvar consulta**.
 - **Conferir:** aparece **Consulta registrada** com três caminhos: **Emitir prescrição**, **Aplicar mini-exame** e **Ver histórico do paciente**.
 - **Se der errado:**
-  - *Preencha pelo menos um campo clínico da consulta*: escreva algo em pelo menos um dos campos de texto.
+  - *Preencha pelo menos um campo clínico da consulta, como a queixa principal ou a evolução do quadro*: escreva algo em pelo menos um dos campos de texto.
   - *A consulta registrada precisa já ter acontecido*: esta tela é para o atendimento que já aconteceu. Consulta futura se marca na **Agenda**.
   - *Escolha se a consulta foi presencial ou remota*: a **Modalidade** vem sem nada marcado de propósito, porque a maioria das consultas é remota. Escolha uma; a **Nova consulta** da agenda e o pedido do paciente pedem o mesmo.
 
