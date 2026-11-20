@@ -155,3 +155,23 @@ test("a guarda de dados lista o e-mail q vai pro log da api", () => {
     }
     assert.deepEqual(missing, []);
 });
+
+// o ADMIN_PASSWORD_RESET eh a saida de quem esqueceu a senha do administrador sem e-mail
+test("nenhum .md diz q a senha esquecida do administrador so volta com MAIL_HOST", () => {
+    const example = readFileSync(path.join(REPO, ".env.example"), "utf8");
+    assert.ok(example.includes("ADMIN_PASSWORD_RESET"), "o .env.example n tem mais o ADMIN_PASSWORD_RESET");
+    const wrong = [];
+    for (const file of markdownFiles()) {
+        readFileSync(file, "utf8").split(/\r?\n/).forEach((line, index) => {
+            if (/senha do administrador n\u00e3o existe essa sa\u00edda/.test(line)) {
+                wrong.push(path.relative(REPO, file) + ":" + (index + 1));
+            }
+        });
+    }
+    for (const name of ["LinuxTutorial.md", "WindowsTutorial.md"]) {
+        if (!readFileSync(path.join(REPO, "docs", name), "utf8").includes("ADMIN_PASSWORD_RESET")) {
+            wrong.push("docs/" + name + " n cita o ADMIN_PASSWORD_RESET");
+        }
+    }
+    assert.deepEqual(wrong, []);
+});
