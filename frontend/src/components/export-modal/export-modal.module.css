@@ -57,8 +57,10 @@
     padding-bottom: 0;
 }
 
+/* os botoes fecham a caixa na direita, como nos outros modais */
 .actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
+    justify-content: flex-end;
 }

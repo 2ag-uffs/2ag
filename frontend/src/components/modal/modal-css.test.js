@@ -9,6 +9,8 @@ const MOBILE = "@media (max-width: 47.99rem)";
 const modalCss = readCss(import.meta.url, "./modal.module.css");
 const confirmCss = readCss(import.meta.url, "../confirm-modal/confirm-modal.module.css");
 const loginAgainCss = readCss(import.meta.url, "../login-again/login-again.module.css");
+const annulmentCss = readCss(import.meta.url, "../annulment-modal/annulment-modal.module.css");
+const exportCss = readCss(import.meta.url, "../export-modal/export-modal.module.css");
 
 describe("caixa do modal", () => {
     it("escurece a tela de tras igual o login por cima e fica na camada dos modais", () => {
@@ -48,6 +50,12 @@ describe("caixa do modal", () => {
         expect(content.width).toBe("100vw");
         expect(content["max-width"]).toBe("none");
         expect(content["min-width"]).toBe("auto");
+    });
+
+    it("os botoes do pe ficam na direita em todo modal, o de exportar dados tbm", () => {
+        [confirmCss, annulmentCss, exportCss, loginAgainCss].forEach((css) => {
+            expect(declarationsOf(css, ".actions")["justify-content"]).toBe("flex-end");
+        });
     });
 
     it("a pergunta de confirmacao usa os espacos dos tokens", () => {
