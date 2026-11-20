@@ -133,3 +133,25 @@ test("o tutorial do linux instala o q o docker compose e os testes pedem", () =>
     }
     assert.deepEqual(missing, []);
 });
+
+// sem MAIL_HOST o LogEmailSender escreve o endereco e o assunto de cada e-mail no log da api
+// e o AdminAccountCreator escreve o e-mail da administracao na primeira subida
+test("a guarda de dados lista o e-mail q vai pro log da api", () => {
+    const text = readFileSync(path.join(REPO, "docs", "guarda-de-dados.md"), "utf8");
+    const row = text.split(/\r?\n/).find((line) => line.startsWith("| logs do servidor"));
+    assert.ok(row, "n achei a linha dos logs do servidor");
+    const missing = [];
+    if (!row.includes("MAIL_HOST")) {
+        missing.push("o caso sem MAIL_HOST");
+    }
+    if (!/e-mail de quem recebe|endere\u00e7o de e-mail|destinat\u00e1rio/.test(row)) {
+        missing.push("o e-mail de quem recebe");
+    }
+    if (!row.includes("assunto")) {
+        missing.push("o assunto de cada mensagem");
+    }
+    if (!/administra/.test(row)) {
+        missing.push("o e-mail da administracao na primeira subida");
+    }
+    assert.deepEqual(missing, []);
+});

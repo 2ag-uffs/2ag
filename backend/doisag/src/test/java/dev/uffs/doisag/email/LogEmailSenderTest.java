@@ -25,6 +25,15 @@ class LogEmailSenderTest {
         assertThat(output).doesNotContain("codigo-secreto");
     }
 
+    // o endereco de quem recebe fica no log de proposito: eh por ele q o teste local acha o e-mail
+    // por isso o docs/guarda-de-dados.md lista esse dado nos logs da api
+    @Test
+    void productionLogKeepsTheRecipientAddressAndSubject(CapturedOutput output) {
+        new LogEmailSender(false).send(new EmailMessage("maria@exemplo.com", "Sua consulta no 2AG é amanhã", "texto"));
+
+        assertThat(output).contains("e-mail para maria@exemplo.com com assunto Sua consulta no 2AG é amanhã");
+    }
+
     @Test
     void developmentLogShowsTheWholeText(CapturedOutput output) {
         new LogEmailSender(true).send(RESET_EMAIL);
