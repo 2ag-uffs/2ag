@@ -384,7 +384,7 @@ describe("Progresso", () => {
                 return Promise.resolve(PRESCRIBER_ATTRIBUTES);
             }
             if (path.startsWith("/patients/3")) {
-                return Promise.reject(new ApiError(403, "Acesso negado"));
+                return Promise.reject(new ApiError(403, "Sua conta não tem permissão para isso. Se precisar, fale com a clínica"));
             }
             return Promise.resolve([]);
         });
@@ -671,7 +671,8 @@ describe("Progresso", () => {
                 return Promise.resolve(catalog);
             }
             if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
-                return Promise.reject(new ApiError(500, "Ocorreu um erro inesperado no servidor"));
+                return Promise.reject(new ApiError(500,
+                    "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica"));
             }
             if (path.startsWith("/patients/3/progress?")) {
                 return Promise.resolve(series);

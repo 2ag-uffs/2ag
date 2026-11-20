@@ -44,11 +44,11 @@ describe("abertura do app", () => {
     // o erro da propria api (o 500 dela ou o limite do nginx) tbm n quer dizer q a pessoa saiu da conta
     it("recarregar com o erro 500 da api mostra a mensagem dela em vez de abrir o login", async () => {
         vi.spyOn(globalThis, "fetch")
-            .mockResolvedValue(new Response(JSON.stringify({message: "Ocorreu um erro inesperado no servidor"}), {status: 500}));
+            .mockResolvedValue(new Response(JSON.stringify({message: "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica"}), {status: 500}));
 
         await openAppAt("/agendamento-consulta");
 
-        expect(await screen.findByText("Ocorreu um erro inesperado no servidor")).toBeInTheDocument();
+        expect(await screen.findByText("Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica")).toBeInTheDocument();
         expect(screen.getByRole("heading", {name: "Algo deu errado"})).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
         expect(window.location.pathname).toBe("/agendamento-consulta");

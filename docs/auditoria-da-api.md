@@ -248,7 +248,7 @@ Em qualquer variante, o mesmo commit precisa levar `SESSION_SECURE_COOKIE=true` 
 | `CONTRATO-05` | Três endpoints sem nenhum chamador (`GET /scales/definitions`, `GET /prescriptions/{id}`, `PUT /scales/responses/{id}`) | Decidir por rota: usar ou remover — o PUT grava dado clínico e não pode ficar publicado sem dono |
 | `CONTRATO-06` | `observation` da prescrição existe no DTO e no banco, e nenhuma tela usa | Colocar o campo na tela e no CSV, ou remover dos três lugares |
 | `CONTRATO-07` | Histórico e impressão contam pedido recusado e consulta cancelada como "Consultas" | Filtrar por situação além da data, e acrescentar o corte superior de data na impressão |
-| `ERRO-03` | Texto maior que o `varchar(255)` vira 409 "Este registro já existe" | `@Size(max = 255)` em `dosage`, `brand` e `batch`, com `maxLength` espelhado no formulário |
+| `ERRO-03` | Texto maior que o `varchar(255)` vira 409 "Não foi possível concluir porque isso já existe" | `@Size(max = 255)` em `dosage`, `brand` e `batch`, com `maxLength` espelhado no formulário |
 | `ERRO-05` | Content-Type errado vira 500 em vez de 415 | Fazer o `ErrorHandler` estender `ResponseEntityExceptionHandler` em vez de tratar exceção por exceção |
 | `ERRO-07` | `GET /appointments` com só um lado do intervalo devolve a agenda inteira | Recusar com mensagem quando vier só uma das duas datas |
 | `ERRO-08` | 404 expõe id interno e texto técnico na tela | Mensagem genérica, preservando as que já foram escritas para o usuário final (convite e escala) |

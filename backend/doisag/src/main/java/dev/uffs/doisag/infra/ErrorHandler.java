@@ -38,8 +38,12 @@ public class ErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
-    public static final String INVALID_REQUEST_MESSAGE = "Requisição inválida. Confira os dados enviados";
+    public static final String INVALID_REQUEST_MESSAGE =
+            "Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo";
     public static final String DEACTIVATED_ACCOUNT_MESSAGE = "Conta desativada. Fale com a clínica";
+    public static final String NOT_FOUND_MESSAGE =
+            "Não foi possível encontrar o que você procura. Atualize a página e, se continuar, fale com a clínica";
+    public static final String FORBIDDEN_MESSAGE = "Sua conta não tem permissão para isso. Se precisar, fale com a clínica";
 
     // registro q n existe
     // a mensagem tecnica traz id interno, entao ela fica no log e a tela recebe
@@ -50,20 +54,20 @@ public class ErrorHandler {
         if (!messageForUser) {
             log.info("registro n encontrado em {}: {}", request.getRequestURI(), exception.getMessage());
         }
-        String message = messageForUser ? exception.getMessage() : "Registro não encontrado";
+        String message = messageForUser ? exception.getMessage() : NOT_FOUND_MESSAGE;
         return buildResponse(HttpStatus.NOT_FOUND, message, request);
     }
 
     // rota q n existe na api
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleUnknownRoute(NoResourceFoundException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, "Rota não encontrada", request);
+        return buildResponse(HttpStatus.NOT_FOUND, NOT_FOUND_MESSAGE, request);
     }
 
     // logado mas sem permissao pra aquele recurso
     @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
     public ResponseEntity<ErrorResponseDTO> handleForbidden(RuntimeException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.FORBIDDEN, "Acesso negado", request);
+        return buildResponse(HttpStatus.FORBIDDEN, FORBIDDEN_MESSAGE, request);
     }
 
     // o cabecalho avisa o front pra abrir o termo, a versao pode ter mudado com a sessao aberta
@@ -141,14 +145,16 @@ public class ErrorHandler {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception,
                                                                        HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Envie o corpo da requisição em JSON", request);
+        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Não foi possível entender os dados enviados. Atualize a página e tente de novo", request);
     }
 
     // metodo http q a rota n aceita
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception,
                                                                    HttpServletRequest request) {
-        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Método não permitido nesta rota", request);
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED,
+                "Esta ação não está disponível aqui. Atualize a página e, se continuar, fale com a clínica", request);
     }
 
     // e-mail ou senha errados no login
@@ -180,14 +186,17 @@ public class ErrorHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataConflict(DataIntegrityViolationException exception,
                                                                HttpServletRequest request) {
-        return buildResponse(HttpStatus.CONFLICT, "Este registro já existe ou está em uso", request);
+        return buildResponse(HttpStatus.CONFLICT,
+                "Não foi possível concluir porque isso já existe ou ainda está em uso. Atualize a página para ver como está agora",
+                request);
     }
 
     // erro q ninguem previu vira 500 e vai pro log com a pilha inteira
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("erro inesperado em {}", request.getRequestURI(), exception);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Ocorreu um erro inesperado no servidor", request);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica", request);
     }
 
     private ResponseEntity<ValidationResponseDTO> buildFieldResponse(HttpStatus status, String field, String message,

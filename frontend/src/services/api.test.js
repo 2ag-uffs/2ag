@@ -185,8 +185,8 @@ describe("loadSession", () => {
     // so o 401 quer dizer q ninguem esta logado, o 500 da api e o 429 do nginx n dizem nada da sessao
     it("o erro 500 da api e o limite do nginx sobem com a mensagem deles em vez de dizer q ninguem esta logado", async () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch")
-            .mockResolvedValue(apiResponse(500, {message: "Ocorreu um erro inesperado no servidor"}));
-        await expect(loadSession()).rejects.toThrow("Ocorreu um erro inesperado no servidor");
+            .mockResolvedValue(apiResponse(500, {message: "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica"}));
+        await expect(loadSession()).rejects.toThrow("Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica");
         expect(getLoggedUser()).toBeNull();
 
         fetchSpy.mockResolvedValue(apiResponse(429, {message: "Muitas requisições em pouco tempo. Aguarde um instante e tente de novo."}));
@@ -265,13 +265,13 @@ describe("api fora do ar atras do proxy", () => {
     // o erro inesperado da propria api vem com o json dela e a mensagem continua a dela
     it("o 500 com o json da api continua com a mensagem da api", async () => {
         vi.spyOn(globalThis, "fetch")
-            .mockResolvedValue(apiResponse(500, {message: "Ocorreu um erro inesperado no servidor"}));
+            .mockResolvedValue(apiResponse(500, {message: "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica"}));
         setLoggedUser(MARIA);
 
         const requestError = await apiService.get("/appointments/mine").catch((error) => error);
 
         expect(requestError).toBeInstanceOf(ApiError);
-        expect(errorMessageOf(requestError)).toBe("Ocorreu um erro inesperado no servidor");
+        expect(errorMessageOf(requestError)).toBe("Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica");
     });
 });
 

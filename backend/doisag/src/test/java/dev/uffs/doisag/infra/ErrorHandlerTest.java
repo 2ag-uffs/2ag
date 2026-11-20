@@ -23,7 +23,7 @@ class ErrorHandlerTest {
                 new MockHttpServletRequest("PUT", "/profile/password"));
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
-        assertThat(response.getBody().message()).isEqualTo("Requisição inválida. Confira os dados enviados");
+        assertThat(response.getBody().message()).isEqualTo("Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo");
     }
 
     @Test
@@ -58,8 +58,8 @@ class ErrorHandlerTest {
                 new MockHttpServletRequest("GET", "/patients/1"));
 
         assertThat(blankId.getStatusCode().value()).isEqualTo(400);
-        assertThat(blankId.getBody().message()).isEqualTo("Requisição inválida. Confira os dados enviados");
+        assertThat(blankId.getBody().message()).isEqualTo("Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo");
         assertThat(wrongRoute.getStatusCode().value()).isEqualTo(500);
-        assertThat(wrongRoute.getBody().message()).isEqualTo("Ocorreu um erro inesperado no servidor");
+        assertThat(wrongRoute.getBody().message()).isEqualTo("Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica");
     }
 }

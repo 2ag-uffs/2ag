@@ -2,6 +2,7 @@ package dev.uffs.doisag.security;
 
 import dev.uffs.doisag.enums.AppointmentModality;
 import dev.uffs.doisag.enums.AppointmentStatus;
+import dev.uffs.doisag.infra.ErrorHandler;
 import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Appointment;
 import dev.uffs.doisag.model.Patient;
@@ -254,8 +255,10 @@ class RouteRolesTest {
     void prescriberCannotUseAdministrationRoutes() throws Exception {
         String prescriberToken = bearerTokenOf(prescriber);
 
+        // a recusa pela regra do endereco diz a msm frase da recusa no servico
         mockMvc.perform(get("/admin/prescribers").header("Authorization", prescriberToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(ErrorHandler.FORBIDDEN_MESSAGE));
         mockMvc.perform(post("/admin/prescribers").header("Authorization", prescriberToken)
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isForbidden());
@@ -308,7 +311,7 @@ class RouteRolesTest {
             for (Users user : List.of(prescriber, patient)) {
                 mockMvc.perform(get(URI.create(path)).header("Authorization", bearerTokenOf(user)))
                         .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+                        .andExpect(jsonPath("$.message").value("Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo"));
             }
         }
     }
@@ -320,7 +323,7 @@ class RouteRolesTest {
         for (String path : List.of("/patients/" + patient.getId() + ";x=1", "/patients/" + patient.getId() + ";/appointments")) {
             mockMvc.perform(get(URI.create(path)).header("Authorization", bearerTokenOf(prescriber)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+                    .andExpect(jsonPath("$.message").value("Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo"));
         }
     }
 

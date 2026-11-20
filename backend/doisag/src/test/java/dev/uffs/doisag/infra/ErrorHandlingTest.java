@@ -75,7 +75,7 @@ class ErrorHandlingTest {
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("reasonForVisit=dor"))
                 .andExpect(status().isUnsupportedMediaType())
-                .andExpect(jsonPath("$.message").value("Envie o corpo da requisição em JSON"));
+                .andExpect(jsonPath("$.message").value("Não foi possível entender os dados enviados. Atualize a página e tente de novo"));
     }
 
     // a mensagem tecnica do 404 mostrava id interno na tela de quem usa
@@ -83,7 +83,7 @@ class ErrorHandlingTest {
     void oNaoEncontradoNaoMostraDetalheInterno() throws Exception {
         mockMvc.perform(get("/scales/definitions/escala-que-nao-existe").header("Authorization", patientToken))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Registro não encontrado"));
+                .andExpect(jsonPath("$.message").value("Não foi possível encontrar o que você procura. Atualize a página e, se continuar, fale com a clínica"));
     }
 
     // o q foi escrito pra pessoa ler continua chegando inteiro
@@ -155,7 +155,7 @@ class ErrorHandlingTest {
                         .param("from", "2026-01-01").param("to", "+999999999-12-31")
                         .header("Authorization", prescriberToken))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Requisição inválida. Confira os dados enviados"));
+                .andExpect(jsonPath("$.message").value("Não foi possível entender os dados enviados. Confira o que você preencheu ou o endereço da página e tente de novo"));
         mockMvc.perform(post("/patients/" + patientId + "/treatment-protocol")
                         .header("Authorization", prescriberToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -185,7 +185,7 @@ class ErrorHandlingTest {
         mockMvc.perform(get("/rota-que-nao-existe").header("Authorization", patientToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value("Rota não encontrada"));
+                .andExpect(jsonPath("$.message").value("Não foi possível encontrar o que você procura. Atualize a página e, se continuar, fale com a clínica"));
     }
 
     @Test

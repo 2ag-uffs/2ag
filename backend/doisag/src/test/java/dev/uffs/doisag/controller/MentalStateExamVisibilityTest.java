@@ -165,7 +165,7 @@ class MentalStateExamVisibilityTest {
     void patientDoesNotListTheExamBySlug() throws Exception {
         mockMvc.perform(get("/scales/mini-exame/responses").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("Acesso negado"));
+                .andExpect(jsonPath("$.message").value("Sua conta não tem permissão para isso. Se precisar, fale com a clínica"));
 
         // o prescritor abre o exame pela consulta, como sempre
         read("/scales/mental-state-exam/appointments/" + appointmentId, prescriber)

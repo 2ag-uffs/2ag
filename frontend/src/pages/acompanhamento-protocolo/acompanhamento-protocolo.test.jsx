@@ -23,7 +23,7 @@ function mockApi(postError, patient = PATIENT) {
         if (path === "/patients/5") {
             return Promise.resolve(patient);
         }
-        return Promise.reject(new ApiError(404, "Registro não encontrado"));
+        return Promise.reject(new ApiError(404, "Não foi possível encontrar o que você procura. Atualize a página e, se continuar, fale com a clínica"));
     });
     return vi.spyOn(apiService, "post").mockRejectedValue(postError);
 }
@@ -260,7 +260,7 @@ describe("AcompanhamentoProtocolo", () => {
     it("sem acesso ao paciente a tela so mostra o aviso, sem formulario", async () => {
         vi.spyOn(apiService, "get").mockImplementation((path) => (path === "/scales/assignable"
             ? Promise.resolve(SCALES)
-            : Promise.reject(new ApiError(403, "Acesso negado"))));
+            : Promise.reject(new ApiError(403, "Sua conta não tem permissão para isso. Se precisar, fale com a clínica"))));
         const post = vi.spyOn(apiService, "post");
         renderPage();
 

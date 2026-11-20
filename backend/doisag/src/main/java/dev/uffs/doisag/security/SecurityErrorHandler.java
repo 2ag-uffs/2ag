@@ -52,7 +52,7 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        writeError(request, response, HttpStatus.FORBIDDEN, "Sua conta não tem permissão para isso. Se precisar, fale com a clínica");
+        writeError(request, response, HttpStatus.FORBIDDEN, ErrorHandler.FORBIDDEN_MESSAGE);
     }
 
     // requisicao barrada por um filtro nosso antes da autorizacao como a vinda de outro endereco
