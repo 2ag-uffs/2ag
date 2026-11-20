@@ -99,10 +99,6 @@
     opacity: 1;
 }
 
-.dayChosen .dayFilled {
-    color: var(--color-straw);
-}
-
 /* dia mexido e ainda n salvo */
 .dayUnsaved {
     color: var(--color-error);
@@ -110,8 +106,10 @@
     opacity: 1;
 }
 
+/* no dia escolhido a marca usa a cor do texto dele: a palha sobre o verde do tema escuro n dava 4,5:1 */
+.dayChosen .dayFilled,
 .dayChosen .dayUnsaved {
-    color: var(--color-straw);
+    color: var(--color-text-on-primary);
 }
 
 /* ---- formulario ---- */
