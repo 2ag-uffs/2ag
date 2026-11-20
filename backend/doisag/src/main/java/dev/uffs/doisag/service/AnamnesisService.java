@@ -33,9 +33,11 @@ import java.util.Map;
 @Service
 public class AnamnesisService {
 
-    public static final String ANNULLED_MESSAGE = "Anamnese anulada não pode ser alterada";
+    // as duas dizem o msm q a tela da anamnese ja diz qnd abre
+    public static final String ANNULLED_MESSAGE =
+            "Esta ficha foi anulada pelo prescritor e fica no histórico como está";
     public static final String ARCHIVED_PATIENT_MESSAGE =
-            "Seu acompanhamento está encerrado. Fale com a clínica antes de enviar uma anamnese nova";
+            "Seu acompanhamento foi encerrado. Fale com a clínica antes de preencher uma anamnese nova";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta anamnese já foi anulada";
 
     private final AnamnesisRepository anamnesisRepository;
