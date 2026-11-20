@@ -11,6 +11,7 @@ const tokensCss = readCss(import.meta.url, "./tokens.css");
 const buttonCss = readCss(import.meta.url, "./button.css");
 const sectionLinksCss = readCss(import.meta.url, "../components/section-links/section-links.module.css");
 const formCss = readCss(import.meta.url, "../components/form/form.module.css");
+const layoutCss = readCss(import.meta.url, "../components/app-layout/app-layout.module.css");
 
 describe("alvos de toque", () => {
     it("o --control-height tem 44 px com a letra padrao de 16 px", () => {
@@ -40,5 +41,28 @@ describe("alvos de toque", () => {
         expect(eye["background-clip"]).toBe("content-box");
         // o campo guarda 48 px na direita, entao a senha digitada n passa por baixo do olho
         expect(parseFloat(declarationsOf(formCss, ".passwordBox input")["padding-right"]) * 16).toBeGreaterThanOrEqual(44);
+    });
+
+    it("os icones da moldura (voltar, tema e sair) tem 44 px e no celular ficam a 8 px um do outro", () => {
+        const icon = declarationsOf(layoutCss, ".iconButton");
+        const mobile = mediaRules(layoutCss, MOBILE);
+
+        expect(icon.height).toBe(TARGET);
+        expect(icon.width).toBe(TARGET);
+        expect(declarationsOf(mobile, ".headerActions").gap).toBe("var(--space-2)");
+        // o espaco vazio da esquerda tem a largura do voltar, pra logo n pular qnd ele aparece
+        expect(declarationsOf(mobile, ".headerSpacer").width).toBe(TARGET);
+    });
+
+    // em px com a letra padrao de 16 px
+    it("o cabecalho do celular continua com 56 px: a folga de cima e de baixo mais o icone cabem nele", () => {
+        const root = declarationsOf(tokensCss, ":root");
+        const header = declarationsOf(mediaRules(layoutCss, MOBILE), ".mobileHeader");
+        const gap = parseFloat(root["--space-1"]) * 16;
+
+        expect(header["min-height"]).toBe("var(--mobile-header-height)");
+        expect(header.padding).toBe("calc(var(--space-1) + env(safe-area-inset-top)) var(--space-3) var(--space-1)");
+        expect(gap + parseFloat(root["--control-height"]) * 16 + gap)
+            .toBeLessThanOrEqual(parseFloat(root["--mobile-header-height"]) * 16);
     });
 });

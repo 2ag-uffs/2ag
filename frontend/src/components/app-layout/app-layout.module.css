@@ -190,11 +190,11 @@
     display: inline-flex;
     flex: 0 0 auto;
     font-size: 1.25rem;
-    height: 2.5rem;
+    height: var(--control-height);
     justify-content: center;
     min-height: 0;
     padding: 0;
-    width: 2.5rem;
+    width: var(--control-height);
 }
 
 .iconButton:hover {
@@ -346,14 +346,15 @@
         display: flex;
         justify-content: space-between;
         min-height: var(--mobile-header-height);
-        padding: calc(var(--space-2) + env(safe-area-inset-top)) var(--space-3) var(--space-2);
+        /* 4 + 44 + 4 cabem nos 56 px do cabecalho, entao o contador das escalas preso embaixo dele n sai do lugar */
+        padding: calc(var(--space-1) + env(safe-area-inset-top)) var(--space-3) var(--space-1);
         position: sticky;
         top: 0;
         z-index: var(--layer-nav);
     }
 
     .headerSpacer {
-        width: 2.5rem;
+        width: var(--control-height);
     }
 
     /* centralizada de verdade: assim os botoes da direita podem crescer sem
@@ -365,9 +366,10 @@
         transform: translateX(-50%);
     }
 
+    /* o tema e o sair ficam a 8 px um do outro, pro dedo n sair da conta sem querer */
     .headerActions {
         display: flex;
-        gap: var(--space-1);
+        gap: var(--space-2);
     }
 
     .content {
