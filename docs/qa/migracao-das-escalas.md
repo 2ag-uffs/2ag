@@ -136,13 +136,13 @@ a lista abaixo são os cuidados que a pesquisa de tendências de 19/11/2026 leva
 - nada vem marcado. o item sem resposta fica em branco e não vira zero, e *Limpar resposta* desfaz uma escolha.
 - a tela não passa sozinha para a próxima pergunta: é a pessoa que toca em *Próxima*, e *Anterior* volta mostrando o que estava marcado.
 - as opções vêm em lista, uma embaixo da outra, na ordem e com o texto do papel, e só uma pode ser escolhida.
+- os cartões de opção de uma mesma pergunta têm todos a mesma altura, e o cartão que se vê é a área de toque inteira. medido no Chrome sem janela em 375 e em 320 px, nos temas claro e escuro: na pergunta 10 do Pittsburgh os quatro cartões têm 74 px (antes, dois tinham 50 px), e num item do TEA e na escolaridade do MEEM todos têm 50 px.
+- o texto de apoio tem o tamanho do texto da página, 16 px (antes, 14 px). em várias escalas ele é texto do próprio instrumento.
 - a ordem dos itens e as opções são as do papel, fora as diferenças de forma anotadas nas tabelas, e o cálculo e as faixas são os do papel ou do Anexo A dos requisitos, conferidos pelos testes do escore de referência. nada disso mudou nesta rodada.
 - a resposta salva só é corrigida pelo paciente até a prescritora analisar; a versão anterior fica guardada, e anular pede motivo.
 
 **não atendidos**
 
-- cartões de opção da mesma altura dentro de uma pergunta: quando o texto de uma opção quebra em duas linhas, o cartão dela fica mais alto que os outros. na pergunta 10 do Pittsburgh, em 375 px, dois cartões têm 74 px e dois têm 50 px.
-- texto de apoio do tamanho do texto da pergunta: ele aparece em 14 px, e em várias escalas é texto do próprio instrumento.
 - números da régua de dor todos da mesma largura no celular: em 375 px, os de 0 a 2 e de 8 a 10 têm 92 px e os de 3 a 7 têm 52 px.
 - confirmação dos itens deixados em branco: a tela não pergunta se o item ficou em branco de propósito.
 - tela final de revisão: não há uma tela para conferir as respostas antes de salvar.

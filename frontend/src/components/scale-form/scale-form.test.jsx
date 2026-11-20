@@ -276,7 +276,39 @@ describe("ScaleForm com as opcoes em cartoes", () => {
     it("o cartao da opcao tem pelo menos 44 px de altura e no celular ocupa a largura toda", () => {
         expect(remOf(declarationsOf(css, ".optionCard")["min-height"])).toBeGreaterThanOrEqual(2.75);
         expect(remOf(declarationsOf(mobileCss, ".optionCard")["min-height"])).toBeGreaterThanOrEqual(2.75);
-        expect(declarationsOf(css, ".options")["flex-direction"]).toBe("column");
+        // uma coluna so: as opcoes ficam uma embaixo da outra, na ordem em q vieram
+        expect(declarationsOf(css, ".options").display).toBe("grid");
+        expect(declarationsOf(css, ".options")).not.toHaveProperty("grid-template-columns");
+    });
+
+    // a opcao de texto comprido n pode parecer mais importante nem ser mais facil de acertar
+    // o jsdom n mede altura, entao a regra sai do css: as linhas da grade de uma pergunta tem todas a msm altura
+    it("os cartoes de uma pergunta tem todos a msm altura, e o cartao enche a area de toque", () => {
+        expect(declarationsOf(css, ".options")["grid-auto-rows"]).toBe("1fr");
+        // o label eh a area de toque e o cartao eh a caixa q se ve: o cartao estica ate encher o label
+        expect(declarationsOf(css, ".option").display).toBe("flex");
+        expect(declarationsOf(css, ".option")).not.toHaveProperty("align-items");
+        expect(declarationsOf(css, ".optionCard").flex).toBe("1 1 auto");
+    });
+
+    // a altura igual vale dentro de uma pergunta e nunca de uma pergunta pra outra
+    it("cada pergunta tem a sua propria grade de opcoes", () => {
+        const items = [
+            {key: "curta", label: "Pergunta de opções curtas", type: "ESCOLHA",
+                options: [{value: 0, label: "Nunca"}, {value: 1, label: "Sempre"}]},
+            {key: "comprida", label: "Pergunta com uma opção comprida", type: "ESCOLHA",
+                options: [{value: 0, label: "Parceiro no mesmo quarto, mas em outra cama"},
+                    {value: 1, label: "Parceiro na mesma cama"}]},
+        ];
+        render(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
+
+        const shortGrid = screen.getByRole("radio", {name: "Nunca"}).closest("label").parentElement;
+        const longGrid = screen.getByRole("radio", {name: "Parceiro na mesma cama"}).closest("label").parentElement;
+        expect(shortGrid).not.toBe(longGrid);
+        expect(shortGrid.className).toContain("options");
+        expect(longGrid.className).toContain("options");
+        // a ordem das opcoes continua a q veio da api
+        expect(within(longGrid).getAllByRole("radio").map((radio) => radio.value)).toEqual(["0", "1"]);
     });
 
     it("sim e nao viram dois cartoes lado a lado", () => {
@@ -286,8 +318,14 @@ describe("ScaleForm com as opcoes em cartoes", () => {
         const no = screen.getByRole("radio", {name: "Não"}).closest("label");
         expect(yes.parentElement).toBe(no.parentElement);
         expect(yes.parentElement.className).toContain("yesNo");
-        expect(declarationsOf(css, ".yesNo")["flex-direction"]).toBe("row");
-        expect(declarationsOf(css, ".yesNo > .option").flex).toBe("1 1 0");
+        // duas colunas iguais na regra do proprio sim e nao, pq a grade das outras opcoes eh de uma coluna so
+        expect(declarationsOf(css, ".yesNo")["grid-template-columns"]).toBe("repeat(2, minmax(0, 1fr))");
+    });
+
+    // em varias escalas a ajuda eh texto do proprio instrumento, entao tem o tamanho do texto da pagina
+    it("o texto de apoio do item tem o tamanho do texto da pagina", () => {
+        expect(declarationsOf(css, ".help")["font-size"]).toBe("var(--text-md)");
+        expect(tokens["--text-md"]).toBe("1rem");
     });
 
     // a regua continua regua, com os botoes maiores, e cabe em 375 px sem rolar a pagina de lado
