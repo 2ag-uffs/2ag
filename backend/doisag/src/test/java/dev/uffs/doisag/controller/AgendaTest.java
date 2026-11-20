@@ -345,7 +345,7 @@ class AgendaTest {
         confirm(firstRequest.getId(), prescriber).andExpect(status().isOk());
         confirm(secondRequest.getId(), prescriber)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(AppointmentService.SLOT_TAKEN_MESSAGE));
+                .andExpect(jsonPath("$.message").value(AppointmentService.REQUEST_SLOT_TAKEN_MESSAGE));
     }
 
     // a tela aberta antes do horario ainda mostrava o confirmar: o pedido virava consulta

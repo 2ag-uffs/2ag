@@ -25,6 +25,7 @@ public record AvailabilityDTO(
         // sem ele um item nulo no meio da lista derruba o servico
         @NotNull(message = "Envie os períodos de atendimento")
         @Size(max = 50, message = "A agenda pode ter até 50 períodos")
-        List<@NotNull(message = "Período inválido") @Valid AvailabilityPeriodDTO> periods
+        List<@NotNull(message = "Preencha o dia, o início e o fim de cada período")
+                @Valid AvailabilityPeriodDTO> periods
 ) {
 }

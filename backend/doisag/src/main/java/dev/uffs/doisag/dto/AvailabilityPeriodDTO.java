@@ -11,8 +11,8 @@ import java.time.LocalTime;
 // o dia vai de 1 na segunda ate 7 no domingo
 public record AvailabilityPeriodDTO(
         @NotNull(message = "Escolha o dia da semana")
-        @Min(value = 1, message = "Escolha um dia da semana válido")
-        @Max(value = 7, message = "Escolha um dia da semana válido")
+        @Min(value = 1, message = "Escolha um dia da semana, de segunda a domingo")
+        @Max(value = 7, message = "Escolha um dia da semana, de segunda a domingo")
         Integer dayOfWeek,
 
         @NotNull(message = "Informe o horário de início")

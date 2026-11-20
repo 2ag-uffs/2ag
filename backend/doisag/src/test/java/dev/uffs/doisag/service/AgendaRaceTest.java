@@ -211,7 +211,7 @@ class AgendaRaceTest {
                 () -> appointmentService.confirm(request.getId()));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
-                .hasMessage(AppointmentService.SLOT_TAKEN_MESSAGE);
+                .hasMessage(AppointmentService.REQUEST_SLOT_TAKEN_MESSAGE);
         // o pedido segue esperando resposta e so a consulta do outro paciente vale no horario
         assertThat(appointmentRepository.findById(request.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.SOLICITADA);

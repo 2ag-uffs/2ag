@@ -31,8 +31,10 @@ import java.util.List;
 @Service
 public class AvailabilityService {
 
-    public static final String INVALID_PERIOD_MESSAGE = "O horário de fim precisa ser depois do horário de início";
-    public static final String OVERLAPPING_PERIODS_MESSAGE = "Dois períodos do mesmo dia não podem se sobrepor";
+    public static final String INVALID_PERIOD_MESSAGE =
+            "Em cada período, o horário de fim precisa ser depois do início";
+    public static final String OVERLAPPING_PERIODS_MESSAGE =
+            "Dois períodos do mesmo dia não podem se sobrepor. Ajuste o horário de um deles";
     public static final String PAST_DAY_OFF_MESSAGE = "Escolha um dia a partir de hoje";
     public static final String DAY_OFF_TAKEN_MESSAGE = "Esse dia já está marcado como sem atendimento";
     public static final String DAY_OFF_NOT_FOUND_MESSAGE = "Esse dia não está marcado como sem atendimento";

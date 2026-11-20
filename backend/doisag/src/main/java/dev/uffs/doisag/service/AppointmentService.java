@@ -59,19 +59,27 @@ public class AppointmentService {
     private static final Logger log = LoggerFactory.getLogger(AppointmentService.class);
 
     public static final String PAST_DATE_MESSAGE = "Não é possível marcar consulta em um horário que já passou";
-    public static final String SLOT_TAKEN_MESSAGE = "Já existe consulta marcada nesse horário";
+    public static final String SLOT_TAKEN_MESSAGE =
+            "Já existe consulta marcada nesse horário. Escolha outro horário";
+    // no confirmar n tem horario pra escolher, a tela so oferece confirmar e recusar o pedido
+    public static final String REQUEST_SLOT_TAKEN_MESSAGE =
+            "Já existe consulta marcada nesse horário. Recuse o pedido para o paciente escolher outro horário";
     public static final String SLOT_NOT_FREE_MESSAGE = "Esse horário não está livre na agenda. Escolha outro";
-    public static final String NO_PRESCRIBER_MESSAGE = "Você ainda não tem um prescritor vinculado";
+    public static final String NO_PRESCRIBER_MESSAGE =
+            "Você ainda não tem um prescritor vinculado. Fale com a clínica para receber o convite";
+    // a msm frase do aviso q a tela de consultas do paciente ja mostra
     public static final String ARCHIVED_PATIENT_MESSAGE =
-            "Seu acompanhamento está encerrado. Fale com a clínica para voltar a marcar consulta";
+            "Seu acompanhamento foi encerrado. Fale com a clínica para voltar a marcar consultas";
     public static final String ARCHIVED_SCHEDULE_MESSAGE =
             "Paciente arquivado não recebe consulta nova. Reative o paciente antes de marcar";
     public static final String INACTIVE_PRESCRIBER_MESSAGE =
             "Seu prescritor não está mais atendendo pelo sistema. Fale com a clínica";
-    public static final String ALREADY_ANSWERED_MESSAGE = "Este pedido de consulta já foi respondido";
+    public static final String ALREADY_ANSWERED_MESSAGE =
+            "Este pedido de consulta já foi respondido ou cancelado. Recarregue a página para ver a agenda atualizada";
     public static final String EXPIRED_REQUEST_MESSAGE =
             "O horário deste pedido já passou. Recuse o pedido para o paciente escolher outro horário";
-    public static final String CLOSED_APPOINTMENT_MESSAGE = "Esta consulta não pode mais ser alterada";
+    public static final String CLOSED_APPOINTMENT_MESSAGE =
+            "Esta consulta não pode mais ser alterada. Recarregue a página para ver como ela está";
     public static final String ALREADY_CANCELED_MESSAGE = "Esta consulta já está cancelada";
     public static final String LATE_CANCELLATION_MESSAGE =
             "Faltam menos de 24 horas para a consulta. Para cancelar, fale com o seu prescritor";
@@ -93,7 +101,8 @@ public class AppointmentService {
     public static final String RANGE_TOO_LONG_MESSAGE = "Escolha um intervalo de até 31 dias";
 
     // o pedido esperando resposta segura o horario, entao o paciente tem um por vez e o pedido novo substitui o antigo
-    public static final String SAME_SLOT_MESSAGE = "Este já é o horário do seu pedido";
+    public static final String SAME_SLOT_MESSAGE =
+            "Este já é o horário do seu pedido. Para trocar, escolha outro horário";
     public static final String REQUEST_CHANGED_MESSAGE = "Seus pedidos de consulta mudaram enquanto você escolhia "
             + "o horário. Confira seus pedidos e consultas e, se ainda quiser outro horário, peça de novo";
 
@@ -296,7 +305,7 @@ public class AppointmentService {
         // outro pedido do mesmo horario pode ter sido confirmado antes desse
         lockAgendaOf(appointment.getPrescriber().getId());
         if (overlapsAny(appointment.getDateTime(), endOf(appointment), confirmedAppointmentsAround(appointment))) {
-            throw new BusinessException(SLOT_TAKEN_MESSAGE);
+            throw new BusinessException(REQUEST_SLOT_TAKEN_MESSAGE);
         }
 
         appointment.setStatus(AppointmentStatus.AGENDADA);
