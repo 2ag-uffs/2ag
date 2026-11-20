@@ -6,8 +6,9 @@ import java.time.LocalDateTime;
 // regras de data q mais de um servico usa
 public class DateCheck {
 
+    // as duas com a msm frase do filtro de periodo da tela (periodErrorOf)
     public static final String INVALID_RANGE_MESSAGE = "A data inicial precisa ser igual ou anterior à data final";
-    public static final String INCOMPLETE_RANGE_MESSAGE = "Informe as duas datas do período, ou nenhuma das duas";
+    public static final String INCOMPLETE_RANGE_MESSAGE = "Escolha as duas datas do período";
 
     // folga pro relogio de quem registra estar um pouco adiantado
     private static final int CLOCK_TOLERANCE_MINUTES = 5;

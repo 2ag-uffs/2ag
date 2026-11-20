@@ -81,7 +81,7 @@ export default function Indicadores() {
         event.preventDefault();
         let periodError = periodErrorOf(fromDate, toDate);
         if (!periodError && toDate > yesterday) {
-            periodError = "Escolha um período que termine até ontem.";
+            periodError = "Escolha um período que termine até ontem, porque o prazo de hoje ainda está correndo.";
         }
         if (periodError) {
             setErrorMessage(periodError);

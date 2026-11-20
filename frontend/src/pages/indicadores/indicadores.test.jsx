@@ -168,11 +168,11 @@ describe("Indicadores", () => {
 
     it("erro da api aparece como alerta", async () => {
         vi.spyOn(apiService, "get").mockRejectedValue(
-            new ApiError(400, "O período precisa terminar até ontem, porque o prazo de hoje ainda está correndo"));
+            new ApiError(400, "Escolha um período que termine até ontem, porque o prazo de hoje ainda está correndo"));
         renderPage();
 
         expect(await screen.findByRole("alert"))
-            .toHaveTextContent("O período precisa terminar até ontem, porque o prazo de hoje ainda está correndo");
+            .toHaveTextContent("Escolha um período que termine até ontem, porque o prazo de hoje ainda está correndo");
         expect(screen.queryByText("Por escala")).not.toBeInTheDocument();
     });
 

@@ -37,8 +37,9 @@ public class IndicatorsService {
 
     public static final String INCOMPLETE_RANGE_MESSAGE = DateCheck.INCOMPLETE_RANGE_MESSAGE;
     public static final String INVALID_RANGE_MESSAGE = DateCheck.INVALID_RANGE_MESSAGE;
+    // a msm frase q a tela mostra antes de mandar o filtro
     public static final String OPEN_DEADLINE_MESSAGE =
-            "O período precisa terminar até ontem, porque o prazo de hoje ainda está correndo";
+            "Escolha um período que termine até ontem, porque o prazo de hoje ainda está correndo";
 
     private final PatientRepository patientRepository;
     private final TreatmentProtocolRepository protocolRepository;
