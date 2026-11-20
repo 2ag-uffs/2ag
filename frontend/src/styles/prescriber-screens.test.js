@@ -18,4 +18,10 @@ describe("telas do prescritor", () => {
         expect(box.height).toBe(profileBox.height);
         expect(box.width).toBe(profileBox.width);
     });
+
+    it("no progresso o q acompanhar e as caixas de marcar comecam no alto da linha, e os outros filtros embaixo", () => {
+        expect(declarationsOf(progressCss, ".filters")["align-items"]).toBe("flex-end");
+        expect(declarationsOf(progressCss, ".attributeFilter")["align-self"]).toBe("flex-start");
+        expect(declarationsOf(progressCss, ".checks")["align-self"]).toBe("flex-start");
+    });
 });
