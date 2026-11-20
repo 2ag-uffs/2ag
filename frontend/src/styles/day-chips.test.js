@@ -37,6 +37,27 @@ describe("dias e horarios de escolher", () => {
     });
 });
 
+// o paciente le e age em cima desses textos: nada de 12 px nem de texto apagado pela opacidade
+describe("texto dos dias e dos horarios", () => {
+    it("o nome do dia tem o tamanho do texto da pagina e a marca dele o de 14 px, sem opacidade", () => {
+        expect(declarationsOf(scaleCss, ".dayName")["font-size"]).toBe("var(--text-md)");
+        expect(declarationsOf(bookingCss, ".weekday")["font-size"]).toBe("var(--text-md)");
+        [[scaleCss, ".dayMark"], [bookingCss, ".slotCount"]].forEach(([css, selector]) => {
+            expect(declarationsOf(css, selector)["font-size"], selector).toBe("var(--text-sm)");
+            expect(declarationsOf(css, selector).opacity, selector).toBeUndefined();
+        });
+    });
+
+    it("a dica dos dias e a programacao do prescritor tem o tamanho do texto da pagina", () => {
+        expect(declarationsOf(scaleCss, ".daysHint")["font-size"]).toBe("var(--text-md)");
+        expect(declarationsOf(scaleCss, ".schedule")["font-size"]).toBe("var(--text-md)");
+    });
+
+    it("a programacao tem canto de cartao, q a capsula em duas linhas vira um estadio", () => {
+        expect(declarationsOf(scaleCss, ".schedule")["border-radius"]).toBe("var(--radius-lg)");
+    });
+});
+
 describe("dias da grade das escalas", () => {
     Object.entries(THEMES).forEach(([themeName, theme]) => {
         it("no tema " + themeName + " o preenchido e o não salvo do dia escolhido passam de 4,5:1 sobre o verde dele", () => {
