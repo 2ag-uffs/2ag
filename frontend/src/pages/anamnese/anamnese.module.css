@@ -58,7 +58,7 @@
 
 /* os botoes ficam presos no pe da tela, porque a ficha eh comprida */
 .actions {
-    background: linear-gradient(to bottom, rgba(244, 246, 244, 0), var(--color-background) 35%);
+    background: linear-gradient(to bottom, transparent, var(--color-background) 35%);
     bottom: 0;
     display: flex;
     flex-wrap: wrap;
