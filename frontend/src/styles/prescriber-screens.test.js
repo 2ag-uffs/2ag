@@ -12,6 +12,9 @@ const dashboardCss = readCss(import.meta.url, "../pages/dashboard-prescritor/das
 const dashboardSource = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.jsx");
 const skeletonCss = readCss(import.meta.url, "../components/skeleton/skeleton.module.css");
 const patientListCss = readCss(import.meta.url, "../pages/lista-paciente/lista-paciente.module.css");
+const statusBadgeCss = readCss(import.meta.url, "../components/appointment-status-badge/appointment-status-badge.module.css");
+const consultationCardCss = readCss(import.meta.url, "../components/consultation-card/consultation-card.module.css");
+const indicatorsCss = readCss(import.meta.url, "../pages/indicadores/indicadores.module.css");
 const THEMES = themesOf(readCss(import.meta.url, "./colors.css"));
 
 const MOBILE = "@media (max-width: 47.99rem)";
@@ -73,6 +76,18 @@ describe("telas do prescritor", () => {
         expect(declarationsOf(cssWithoutMedia(skeletonCss), ".stats")["grid-template-columns"]).toBe(five);
         expect(declarationsOf(skeletonNarrow, ".stats > .box:last-child:nth-child(odd)")["grid-column"]).toBe("1 / -1");
         expect(dashboardSource).toContain("<SkeletonPage cards={3} stats={5}/>");
+    });
+
+    // Agendada na tela de consultas e Concluída no historico sao o msm tipo de selo
+    it("o selo da situacao da consulta tem o tamanho, o peso e a folga dos outros selos", () => {
+        const statusBadge = declarationsOf(statusBadgeCss, ".waiting");
+        const cardBadge = declarationsOf(consultationCardCss, ".badgeDone");
+
+        ["border-radius", "font-size", "font-weight", "padding"].forEach((property) => {
+            expect(statusBadge[property], property).toBe(cardBadge[property]);
+        });
+        expect(declarationsOf(indicatorsCss, ".goalMet").padding).toBe(cardBadge.padding);
+        expect(declarationsOf(indicatorsCss, ".goalMissed").padding).toBe(cardBadge.padding);
     });
 
     // a cor escrita a mao (branco com 60%) virava um remendo claro no tema escuro, com o texto a uns 2:1
