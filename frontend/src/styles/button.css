@@ -103,3 +103,10 @@
 :where(.button-block) {
     width: 100%;
 }
+
+/* no celular o botao pequeno tem a altura do botao normal, q o dedo precisa de 44 px. a letra continua a pequena */
+@media (max-width: 47.99rem) {
+    :where(.button-small) {
+        min-height: var(--control-height);
+    }
+}

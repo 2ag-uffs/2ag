@@ -21,3 +21,10 @@
     background-color: var(--color-primary-soft);
     border-color: var(--color-primary);
 }
+
+/* no celular o atalho tem a altura de um botao, q o dedo precisa de 44 px */
+@media (max-width: 47.99rem) {
+    .link {
+        min-height: var(--control-height);
+    }
+}
