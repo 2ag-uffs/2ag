@@ -4,6 +4,7 @@ import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
+import PasswordField from "../../components/form/password-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
@@ -630,16 +631,17 @@ export default function AdminPrescribers() {
                             <p className={"aviso aviso--atencao " + styles.fieldWide} role="alert">{resetError}</p>
                         )}
 
-                        <FormField
-                            label="Sua senha de administrador"
-                            fieldName="adminPassword"
-                            type="password"
-                            value={adminPassword}
-                            error={resetFieldErrors.adminPassword}
-                            onChange={(fieldName, value) => setAdminPassword(value)}
-                            autoComplete="current-password"
-                            isWide={true}
-                        />
+                        <div className={styles.fieldWide}>
+                            <PasswordField
+                                label="Sua senha de administrador"
+                                name="adminPassword"
+                                value={adminPassword}
+                                error={resetFieldErrors.adminPassword}
+                                onChange={(event) => setAdminPassword(event.target.value)}
+                                autoComplete="current-password"
+                                required={true}
+                            />
+                        </div>
 
                         <div className={styles.formActions}>
                             <button type="button" className="button-secondary" onClick={closeReset}
@@ -694,16 +696,17 @@ export default function AdminPrescribers() {
                             onChange={(fieldName, value) => setNewEmail(value)}
                             isWide={true}
                         />
-                        <FormField
-                            label="Sua senha de administrador"
-                            fieldName="emailAdminPassword"
-                            type="password"
-                            value={emailAdminPassword}
-                            error={emailFieldErrors.adminPassword}
-                            onChange={(fieldName, value) => setEmailAdminPassword(value)}
-                            autoComplete="current-password"
-                            isWide={true}
-                        />
+                        <div className={styles.fieldWide}>
+                            <PasswordField
+                                label="Sua senha de administrador"
+                                name="emailAdminPassword"
+                                value={emailAdminPassword}
+                                error={emailFieldErrors.adminPassword}
+                                onChange={(event) => setEmailAdminPassword(event.target.value)}
+                                autoComplete="current-password"
+                                required={true}
+                            />
+                        </div>
 
                         <div className={styles.formActions}>
                             <button type="button" className="button-secondary" onClick={closeEmailChange}

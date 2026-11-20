@@ -314,6 +314,33 @@ describe("AdminPrescribers", () => {
         expect(password).toHaveAccessibleDescription("A senha do administrador está incorreta");
     });
 
+    // eram os unicos campos de senha sem o olho, e a senha a mostra n voltava a esconder no envio
+    it("a senha de administrador do Senha nova e do Corrigir e-mail tem o olho e se esconde de novo ao enviar", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(429, "Muitas tentativas. Espere um pouco"));
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        await user.click((await screen.findAllByRole("button", {name: "Senha nova"}))[0]);
+        const password = screen.getByLabelText("Sua senha de administrador");
+        expect(password).toHaveAttribute("type", "password");
+        expect(password).toHaveAttribute("spellcheck", "false");
+        expect(password).toBeRequired();
+        await user.type(password, "senha-errada");
+        await user.click(screen.getByRole("button", {name: "Mostrar senha"}));
+        expect(password).toHaveAttribute("type", "text");
+        await user.click(screen.getByRole("button", {name: "Gerar link"}));
+        await waitFor(() => expect(password).toHaveAttribute("type", "password"));
+        await user.click(screen.getByRole("button", {name: "Cancelar"}));
+
+        await user.click(await screen.findByRole("button", {name: "Corrigir e-mail"}));
+        const emailPassword = screen.getByLabelText("Sua senha de administrador");
+        expect(emailPassword).toHaveAttribute("type", "password");
+        expect(emailPassword).toBeRequired();
+        await user.click(screen.getByRole("button", {name: "Mostrar senha"}));
+        expect(emailPassword).toHaveAttribute("type", "text");
+    });
+
     it("a recusa sem campo no Senha nova aparece no aviso", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(429, "Muitas tentativas. Espere um pouco"));
