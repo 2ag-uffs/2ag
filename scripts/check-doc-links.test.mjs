@@ -197,3 +197,24 @@ test("README do backend e comentarios da trava falam do open-in-view do jeito q 
     }
     assert.deepEqual(wrong, []);
 });
+
+// a ficha tecnica vai pra universidade e pra clinica: o q ela lista do front tem q estar no frontend/package.json
+test("ficha tecnica lista do front so o q o frontend/package.json tem", () => {
+    const pkg = JSON.parse(readFileSync(path.join(REPO, "frontend/package.json"), "utf8"));
+    const packages = { ...pkg.dependencies, ...pkg.devDependencies };
+    const ficha = readFileSync(path.join(REPO, "docs/ficha-tecnica.md"), "utf8");
+    const row = ficha.split(/\r?\n/).find((line) => line.startsWith("| **Frontend** |"));
+    assert.ok(row, "a ficha n tem mais a linha do frontend");
+    const wrong = [];
+    for (const item of row.split("|")[2].split("\u00b7")) {
+        const name = item.replace(/\(.*\)/, "").replace(/[`\d.+]/g, "").trim().toLowerCase().replace(/ +/g, "-");
+        if (name !== "css-puro-e-css-modules" && !packages[name]) {
+            wrong.push(item.trim());
+        }
+    }
+    const eslint = ficha.match(/ESLint (\d+\.\d+)/);
+    if (eslint && !packages.eslint.startsWith("^" + eslint[1] + ".")) {
+        wrong.push(eslint[0] + " (package.json: " + packages.eslint + ")");
+    }
+    assert.deepEqual(wrong, []);
+});
