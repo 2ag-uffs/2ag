@@ -34,7 +34,7 @@ import java.time.LocalDateTime;
 public class EmailChangeService {
 
     public static final String ADMIN_EMAIL_MESSAGE =
-            "O e-mail da conta administrativa é definido no servidor, na variável ADMIN_EMAIL";
+            "O e-mail da conta administrativa é definido na instalação do sistema e não muda pelo perfil";
 
     public static final String SAME_EMAIL_MESSAGE = "Esse já é o seu e-mail de acesso";
 

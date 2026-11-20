@@ -94,7 +94,7 @@ describe("ResetPassword", () => {
 
         const newPassword = screen.getByLabelText("Nova senha");
         expect(newPassword).toHaveFocus();
-        expect(newPassword).toHaveAccessibleDescription("A senha ainda não cumpre todas as regras");
+        expect(newPassword).toHaveAccessibleDescription("A nova senha ainda não cumpre todas as regras");
         expect(post).not.toHaveBeenCalled();
     });
 

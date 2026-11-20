@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 
 // versao do termo q o paciente leu e aceitou depois q o texto mudou
 public record TermAcceptanceDTO(
-        @NotBlank(message = "Informe a versão do termo")
+        @NotBlank(message = "Não foi possível saber qual termo você leu. Recarregue a página e aceite de novo")
         String termVersion,
 
         // hash do texto q a tela mostrou (o textHash do GET), se o texto mudou dps o aceite eh recusado

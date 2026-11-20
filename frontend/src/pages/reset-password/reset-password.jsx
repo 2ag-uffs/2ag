@@ -53,7 +53,7 @@ export default function ResetPassword() {
 
         const formErrors = {};
         if (!isStrongPassword(newPassword)) {
-            formErrors.newPassword = "A senha ainda não cumpre todas as regras";
+            formErrors.newPassword = "A nova senha ainda não cumpre todas as regras";
         }
         if (newPassword !== passwordConfirmation) {
             formErrors.passwordConfirmation = "As senhas não são iguais";

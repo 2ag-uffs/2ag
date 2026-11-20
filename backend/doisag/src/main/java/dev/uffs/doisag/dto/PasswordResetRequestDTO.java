@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 // pedido do link pra criar uma senha nova (RF35)
 public record PasswordResetRequestDTO(
         @NotBlank(message = "Informe o e-mail")
-        @Email(message = "E-mail inválido")
+        @Email(message = EmailRules.FORMAT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,
 

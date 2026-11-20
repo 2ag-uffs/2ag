@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 // pede a senha atual pq o e-mail eh o login e o caminho pra recuperar a senha
 public record EmailChangeDTO(
         @NotBlank(message = "Informe o novo e-mail")
-        @Email(message = "E-mail inválido")
+        @Email(message = EmailRules.FORMAT_MESSAGE)
         @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String newEmail,

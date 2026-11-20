@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Pattern;
 
 // senha nova escolhida pelo link de recuperacao (RF35)
 public record PasswordResetDTO(
-        @NotBlank(message = "O link de recuperação está incompleto")
+        @NotBlank(message = "Este link está incompleto. Abra de novo o link que chegou no seu e-mail ou peça um novo")
         String token,
 
         @NotBlank(message = "Informe a nova senha")

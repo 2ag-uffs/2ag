@@ -132,9 +132,10 @@ describe("errorMessageOf", () => {
 
 describe("readRequestError", () => {
     it("erro de campo vai pros campos e fica sem mensagem geral", () => {
-        const requestError = new ApiError(400, "Dados inválidos.", [{field: "email", message: "E-mail inválido"}]);
+        const emailMessage = "Confira o e-mail: ele precisa ter um @ e o endereço depois dele, como nome@exemplo.com";
+        const requestError = new ApiError(400, "Dados inválidos.", [{field: "email", message: emailMessage}]);
 
-        expect(readRequestError(requestError)).toEqual({fieldErrors: {email: "E-mail inválido"}, message: null});
+        expect(readRequestError(requestError)).toEqual({fieldErrors: {email: emailMessage}, message: null});
     });
 
     it("erro da api sem campo vira a mensagem geral", () => {

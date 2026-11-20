@@ -20,7 +20,7 @@ public record ProfileUpdateDTO(
         String socialName,
 
         @Past(message = "A data de nascimento precisa ser no passado")
-        @MinYear(value = 1900, message = "Confira o ano de nascimento")
+        @MinYear(value = 1900, message = "Confira o ano de nascimento: ele precisa ser de 1900 em diante")
         LocalDate birthDate,
 
         @Pattern(regexp = "^[0-9]{10,11}$", message = "Informe o telefone com DDD")
