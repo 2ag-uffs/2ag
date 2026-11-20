@@ -10,6 +10,7 @@ const TARGET = "var(--control-height)";
 const tokensCss = readCss(import.meta.url, "./tokens.css");
 const buttonCss = readCss(import.meta.url, "./button.css");
 const sectionLinksCss = readCss(import.meta.url, "../components/section-links/section-links.module.css");
+const formCss = readCss(import.meta.url, "../components/form/form.module.css");
 
 describe("alvos de toque", () => {
     it("o --control-height tem 44 px com a letra padrao de 16 px", () => {
@@ -26,5 +27,18 @@ describe("alvos de toque", () => {
         expect(declarationsOf(buttonCss, ":where(.button-small)")["font-size"]).toBe("var(--text-sm)");
         expect(declarationsOf(sectionLinksCss, ".link")["min-height"]).toBe("2.25rem");
         expect(declarationsOf(mediaRules(buttonCss, MOBILE), ":where(.button-small)")["font-size"]).toBeUndefined();
+    });
+
+    it("o olho de mostrar a senha tem 44 px, encostado na ponta do campo, e o circulo do hover fica por dentro", () => {
+        const eye = declarationsOf(formCss, ".visibilityButton");
+
+        expect(eye.height).toBe(TARGET);
+        expect(eye.width).toBe(TARGET);
+        expect(eye.right).toBe("0");
+        // a folga de 4 px de cada lado deixa o circulo com 36 px, longe da borda do campo
+        expect(eye.padding).toBe("var(--space-1)");
+        expect(eye["background-clip"]).toBe("content-box");
+        // o campo guarda 48 px na direita, entao a senha digitada n passa por baixo do olho
+        expect(parseFloat(declarationsOf(formCss, ".passwordBox input")["padding-right"]) * 16).toBeGreaterThanOrEqual(44);
     });
 });
