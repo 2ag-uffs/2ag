@@ -8,8 +8,8 @@ import java.util.Optional;
 
 // trava a linha de um registro e le ela de novo
 //
-// quem chega por uma rota ja tem o registro na sessao antes do servico: a checagem de acesso
-// do @PreAuthorize carrega ele, e o open-in-view segura a mesma sessao ate a resposta. uma
+// o servico pode ja ter o registro na sessao dele antes de chegar na trava: leu ele numa busca
+// anterior da mesma transacao, ou trava outro registro primeiro, na ordem das travas. uma
 // consulta com @Lock trava a linha mas n atualiza o q ja estava carregado, entao o servico
 // decidia em cima do registro velho (o cancelamento gravado no meio da confirmacao, a analise
 // gravada no meio da correcao). aqui a copia velha sai da sessao e o registro eh lido de novo

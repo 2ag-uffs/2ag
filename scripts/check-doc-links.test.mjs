@@ -175,3 +175,25 @@ test("nenhum .md diz q a senha esquecida do administrador so volta com MAIL_HOST
     }
     assert.deepEqual(wrong, []);
 });
+
+// o application.yml desliga o open-in-view, entao o README do backend e os comentarios da trava
+// n podem explicar nada contando com ele ligado
+test("README do backend e comentarios da trava falam do open-in-view do jeito q o application.yml deixa", () => {
+    const config = readFileSync(path.join(REPO, "backend/doisag/src/main/resources/application.yml"), "utf8");
+    assert.match(config, /^ +open-in-view: false\r?$/m, "o application.yml n desliga mais o open-in-view");
+    const files = [
+        "backend/README.md",
+        "backend/doisag/src/main/java/dev/uffs/doisag/infra/RowLock.java",
+        "backend/doisag/src/test/java/dev/uffs/doisag/service/ScaleResponseRaceTest.java",
+    ];
+    const wrong = [];
+    for (const name of files) {
+        const lines = readFileSync(path.join(REPO, name), "utf8").split(/\r?\n/);
+        lines.forEach((line, index) => {
+            if (/open-in-view`? (fica ligado|segura a mesma sess|ja deixava)/.test(line)) {
+                wrong.push(name + ":" + (index + 1));
+            }
+        });
+    }
+    assert.deepEqual(wrong, []);
+});

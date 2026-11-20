@@ -139,8 +139,8 @@ class ScaleResponseRaceTest {
 
     // a correcao trava o paciente, dps trava a resposta e le ela de novo: a analise do
     // prescritor gravada no meio tempo aparece, em vez de ser sobrescrita pela correcao
-    // pela rota de proposito: a checagem de acesso e o open-in-view ja deixavam a resposta
-    // carregada antes do servico, e eh esse registro velho q a trava precisa atualizar
+    // pela rota de proposito: a checagem de acesso le a resposta antes do servico, e a correcao
+    // tem q decidir em cima do q a trava le de novo, n do q foi lido antes dela
     @Test
     void theCorrectionWaitsAndFindsTheReviewSavedMeanwhile() throws Exception {
         ScaleResponse response = saveDiaryAnswerOfToday(8);
