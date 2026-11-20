@@ -16,7 +16,7 @@ public record PrescriptionComponentDTO(
 
         @NotNull(message = "Informe a concentração")
         @DecimalMin(value = "0.001", message = "A concentração precisa ser maior que zero")
-        @DecimalMax(value = "1000", message = "Confira a concentração")
+        @DecimalMax(value = "1000", message = "A concentração vai até 1000")
         BigDecimal concentration,
 
         @NotNull(message = "Escolha a unidade da concentração")

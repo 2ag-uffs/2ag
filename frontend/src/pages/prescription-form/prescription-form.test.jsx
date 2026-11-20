@@ -83,7 +83,7 @@ describe("PrescriptionForm", () => {
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
         expect(screen.getByLabelText("Semana 2")).toHaveAttribute("aria-invalid", "true");
-        expect(screen.getByText("Preencha ou tire a semana")).toBeInTheDocument();
+        expect(screen.getByText("Preencha ou tire a semana 2")).toBeInTheDocument();
         expect(screen.getByLabelText("Semana 4")).not.toHaveAttribute("aria-invalid");
         expect(post).not.toHaveBeenCalled();
         // o botao fica preso no pe da tela, entao o foco sai dele e vai pra linha marcada
@@ -94,7 +94,7 @@ describe("PrescriptionForm", () => {
         await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
         expect(screen.getByLabelText("Semana 2")).toHaveValue("4 gotas à noite");
         expect(screen.getByLabelText("Semana 2")).not.toHaveAttribute("aria-invalid");
-        expect(screen.queryByText("Preencha ou tire a semana")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Preencha ou tire a semana/)).not.toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
@@ -177,7 +177,7 @@ describe("PrescriptionForm", () => {
 
     it("erro de campo q o formulario n mostra aparece no aviso de cima", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
-            {field: "escalationSteps", message: "O plano de dose pode ter até 104 degraus"},
+            {field: "escalationSteps", message: "O escalonamento de dose pode ter até 104 semanas"},
         ]));
         const user = userEvent.setup();
         renderForm();
@@ -185,7 +185,7 @@ describe("PrescriptionForm", () => {
         await fillRequiredFields();
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("O plano de dose pode ter até 104 degraus.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("O escalonamento de dose pode ter até 104 semanas.");
     });
 
     // RN03: o isolado tem um canabinoide so
@@ -271,8 +271,8 @@ describe("PrescriptionForm", () => {
     // dps de tirar a semana q sobrava. o caso de vdd tem 105 semanas, aqui sao duas pro teste n demorar
     it("tirar a semana q passou do limite limpa tbm o erro do plano inteiro no aviso de cima", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
-            {field: "escalationSteps[1].week", message: "O plano de dose vai até a semana 104"},
-            {field: "escalationSteps", message: "O plano de dose pode ter até 104 degraus"},
+            {field: "escalationSteps[1].week", message: "O escalonamento de dose vai até a semana 104"},
+            {field: "escalationSteps", message: "O escalonamento de dose pode ter até 104 semanas"},
         ]));
         const user = userEvent.setup();
         renderForm();
@@ -283,7 +283,7 @@ describe("PrescriptionForm", () => {
         fireEvent.change(screen.getByLabelText("Semana 2"), {target: {value: "2 gotas"}});
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
         expect(await screen.findByRole("alert")).toHaveTextContent(
-            "O plano de dose vai até a semana 104. O plano de dose pode ter até 104 degraus.");
+            "O escalonamento de dose vai até a semana 104. O escalonamento de dose pode ter até 104 semanas.");
 
         await user.click(screen.getByRole("button", {name: "Tirar a semana 2"}));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -310,7 +310,7 @@ describe("PrescriptionForm", () => {
     // a api recusa a concentracao acima de 1000, e o erro era uma frase solta q n dizia de qual linha
     it("concentracao recusada pela api marca o campo da linha e leva o foco ate ele", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos destacados", [
-            {field: "components[1].concentration", message: "Confira a concentração"},
+            {field: "components[1].concentration", message: "A concentração vai até 1000"},
         ]));
         const user = userEvent.setup();
         renderForm();
@@ -319,11 +319,11 @@ describe("PrescriptionForm", () => {
         await addCannabinoid(user, "CBG", "5000");
         await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
 
-        expect(await screen.findByText("Confira a concentração")).toBeInTheDocument();
+        expect(await screen.findByText("A concentração vai até 1000")).toBeInTheDocument();
         const concentrations = screen.getAllByLabelText("Concentração");
         expect(concentrations[0]).not.toHaveAttribute("aria-invalid");
         expect(concentrations[1]).toHaveAttribute("aria-invalid", "true");
-        expect(concentrations[1]).toHaveAccessibleDescription("Confira a concentração");
+        expect(concentrations[1]).toHaveAccessibleDescription("A concentração vai até 1000");
         await waitFor(() => expect(concentrations[1]).toHaveFocus());
     });
 

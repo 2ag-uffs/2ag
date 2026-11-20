@@ -41,10 +41,11 @@ import java.util.List;
 @Service
 public class PrescriptionService {
 
-    public static final String ANNULLED_CONSULTATION_MESSAGE = "Consulta anulada não gera prescrição";
-    public static final String CANCELED_CONSULTATION_MESSAGE = "Consulta cancelada não gera prescrição";
+    public static final String ANNULLED_CONSULTATION_MESSAGE = "Esta consulta foi anulada e não gera prescrição";
+    public static final String CANCELED_CONSULTATION_MESSAGE = "Esta consulta foi cancelada e não gera prescrição";
     public static final String NOT_CONFIRMED_CONSULTATION_MESSAGE = "Só consulta confirmada na agenda gera prescrição";
-    public static final String FUTURE_CONSULTATION_MESSAGE = "Consulta que ainda não aconteceu não gera prescrição";
+    public static final String FUTURE_CONSULTATION_MESSAGE =
+            "Esta consulta ainda não aconteceu. A prescrição é emitida depois do atendimento";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta prescrição já foi anulada";
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Este paciente está arquivado. Reative o paciente antes de emitir a prescrição";

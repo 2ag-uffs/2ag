@@ -105,7 +105,7 @@ function stepErrorsOf(escalationSteps) {
         if (step.note.trim() !== "") {
             errors["step-" + index + "-dosage"] = "Escreva a dose desta semana ou apague a observação";
         } else if (index < lastFilledIndex) {
-            errors["step-" + index + "-dosage"] = "Preencha ou tire a semana";
+            errors["step-" + index + "-dosage"] = "Preencha ou tire a semana " + (index + 1);
         }
     });
     return errors;

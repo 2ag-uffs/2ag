@@ -10,12 +10,12 @@ import jakarta.validation.constraints.Size;
 // um degrau do plano de subida de dose
 // degrau sem semana ou sem dosagem n diz nada pra quem vai tomar
 public record DoseEscalationStepDTO(
-        @NotNull(message = "Informe a semana do degrau")
+        @NotNull(message = "Informe o número da semana")
         @Min(value = 1, message = "A semana começa em 1")
-        @Max(value = 104, message = "O plano de dose vai até a semana 104")
+        @Max(value = 104, message = "O escalonamento de dose vai até a semana 104")
         Integer week,
 
-        @NotBlank(message = "Informe a dosagem do degrau")
+        @NotBlank(message = "Escreva a dose desta semana")
         @Size(max = 255, message = "A dosagem pode ter até 255 caracteres")
         String dosage,
 

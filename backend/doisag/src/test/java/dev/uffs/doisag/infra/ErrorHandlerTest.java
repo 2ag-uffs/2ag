@@ -29,10 +29,10 @@ class ErrorHandlerTest {
     @Test
     void businessRuleMessageReachesTheUser() {
         ResponseEntity<ErrorResponseDTO> response = errorHandler.handleBusinessRule(
-                new BusinessException("Consulta anulada não gera prescrição"),
+                new BusinessException("Esta consulta foi anulada e não gera prescrição"),
                 new MockHttpServletRequest("POST", "/appointments/1/prescriptions"));
 
-        assertThat(response.getBody().message()).isEqualTo("Consulta anulada não gera prescrição");
+        assertThat(response.getBody().message()).isEqualTo("Esta consulta foi anulada e não gera prescrição");
     }
 
     // erro de conta no servidor (divisao por zero) eh bug nosso: fica 500 e vai pro log de erro,
