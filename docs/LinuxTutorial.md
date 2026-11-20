@@ -13,34 +13,41 @@ Este tutorial utiliza o docker como base para instalação.
 O tutorial sem uso de Docker será futuramente adicionado.
 
 1. Atualize o sistema;
-``bash
+```bash
 sudo apt update
-``
+```
 2. Instale o Git (será utilizado para clonarmos o repositório em seguida);
-``bash
+```bash
 sudo apt install git
-``
-3. Clone o repositório para sua máquina de acesso;
-``bash
+```
+3. Clone o repositório para sua máquina de acesso e entre na pasta dele (os próximos comandos rodam de dentro dela);
+```bash
 git clone https://github.com/2ag-uffs/2ag
-``
-4. Instale o Docker para rodar o servidor;
-``bash
-sudo apt install docker.io
-``
+cd 2ag
+```
+4. Instale o Docker e o Docker Compose para rodar o servidor. No Ubuntu 24.04 os dois vêm em pacotes separados;
+```bash
+sudo apt install docker.io docker-compose-v2
+```
+No Debian e nas outras distribuições, em que o pacote `docker-compose-v2` não existe, instale o docker com o plugin do compose seguindo a página oficial (https://docs.docker.com/engine/install/). Para conferir, `docker compose version` precisa responder com o número da versão.
 
 5. [OPCIONAL] Instale o pacote de utilidades do linux (importante para utilizarmos o próximo comando caso seu usuário de acesso não seja um perfil super-usuário)
-``bash
+```bash
 sudo apt install util-linux-extra
-``
+```
 6. [OPCIONAL] Dê permissão ao seu usuário para compôr o servidor.
-``bash
+```bash
 sudo usermod -aG docker $USER
-``
+```
 7. [OPCIONAL] Atualize o grupo de permissão.
-``bash
+```bash
 newgrp docker
-``
+```
+
+Só para rodar os testes (seção *rodando os testes*), instale também:
+
+- jdk 17 (`sudo apt install openjdk-17-jdk`; o maven não precisa, o repositório já tem o `mvnw`)
+- node 22.22 ou mais novo, que traz o `npm`. o `nodejs` do apt costuma ser mais antigo, então instale pela página oficial (https://nodejs.org/)
 
 ---
 
@@ -60,6 +67,7 @@ cp .env.example .env
 - `PUBLIC_URL`: o endereço onde as pessoas abrem o sistema, com https. vai nos links enviados por e-mail. no seu computador, `https://localhost`
 - `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT`: a razão social, o CNPJ e o contato do encarregado de dados, que entram no termo de consentimento. no seu computador use valores de treino, que não são de clínica nenhuma, como os do `scripts/ci-compose-smoke.sh`: `Clinica de Teste do CI`, `00.000.000/0000-00` e `encarregado-ci@email.com`
 - `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM`: o servidor de e-mail que manda o link de senha nova e o link que confirma a troca do e-mail de acesso. sem `MAIL_HOST` o e-mail não sai e o log mostra só o destinatário e o assunto, sem o link
+- `SEED_DADOS_TESTE`: só para demonstração no seu computador. tire o `#` da linha `# SEED_DADOS_TESTE=true` para ela ficar `SEED_DADOS_TESTE=true`, e a primeira subida cria as contas de teste e os dados fictícios. os e-mails e a senha dessas contas estão na seção [*contas de teste*](./WindowsTutorial.md#contas-de-teste) do tutorial do Windows. sem essa linha o sistema abre vazio, só com a conta do `ADMIN_EMAIL`. no servidor ela nunca é ligada
 
 sem e-mail configurado, quem esquece a senha depende do administrador: em *Prescritores*, o botão **Senha nova** gera o link de recuperação na tela, para o administrador entregar à pessoa. ele pede a senha do próprio administrador e fica registrado na auditoria. o link de primeiro acesso de uma conta nova de prescritor funciona igual: sem e-mail, aparece na tela. para a senha do administrador não existe essa saída — ele troca em *Perfil* enquanto lembra a atual, e se esquecer só com `MAIL_HOST`.
 
@@ -88,6 +96,8 @@ os dados ficam num volume e não somem quando os containers param. para parar, u
 ---
 ## rodando os testes
 
+os testes pedem o jdk 17 e o node 22 da lista de instalação. a partir da pasta do repositório:
+
 ```bash
 cd backend/doisag
 ./mvnw clean install
@@ -95,8 +105,11 @@ cd backend/doisag
 
 não precisa de postgres: os testes usam banco em memória.
 
+depois, saindo de `backend/doisag` para a pasta do front:
+
 ```bash
-cd frontend
+cd ../../frontend
+npm ci --ignore-scripts
 npm run lint
 npm test
 npm run build

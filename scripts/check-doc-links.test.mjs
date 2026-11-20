@@ -96,3 +96,40 @@ test("o guia de deploy aponta a secao rodando com docker pra arquivo q tem essa 
         assert.match(text, /^## rodando com docker/m, link.target + " n tem a secao rodando com docker");
     }
 });
+
+// cerca de codigo precisa de tres crases, com duas o markdown vira codigo em linha e o comando sai grudado no texto
+test("bloco de codigo de .md abre e fecha com tres crases ou mais", () => {
+    const wrong = [];
+    for (const file of markdownFiles()) {
+        readFileSync(file, "utf8").split(/\r?\n/).forEach((line, index) => {
+            if (/^\s*``(?!`)/.test(line)) {
+                wrong.push(path.relative(REPO, file) + ":" + (index + 1));
+            }
+        });
+    }
+    assert.deepEqual(wrong, []);
+});
+
+test("o tutorial do linux instala o q o docker compose e os testes pedem", () => {
+    const text = readFileSync(path.join(REPO, "docs", "LinuxTutorial.md"), "utf8");
+    const missing = [];
+    if (!/docker-compose-v2|docs\.docker\.com\/engine\/install/.test(text)) {
+        missing.push("compose v2 junto do docker");
+    }
+    if (!/^cd 2ag\s*$/m.test(text)) {
+        missing.push("cd 2ag dps do clone");
+    }
+    if (!/jdk 17/i.test(text)) {
+        missing.push("jdk 17 pro mvnw");
+    }
+    if (!/node 22/i.test(text)) {
+        missing.push("node 22");
+    }
+    if (!text.includes("npm ci") || text.indexOf("npm ci") > text.indexOf("npm run lint")) {
+        missing.push("npm ci antes do lint");
+    }
+    if (!text.includes("SEED_DADOS_TESTE=true")) {
+        missing.push("SEED_DADOS_TESTE=true pras contas ficticias");
+    }
+    assert.deepEqual(missing, []);
+});
