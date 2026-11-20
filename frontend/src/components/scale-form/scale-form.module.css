@@ -395,8 +395,16 @@ fieldset:disabled .optionCard:hover {
         min-height: 3rem;
     }
 
+    /* na regua com faixas toda nota tem a msm largura, 44 px: a faixa fica do tamanho das notas dela e n
+       estica mais pra encher a linha, senao a de 3 notas ficava com botoes bem mais largos q a de 5
+       o espaco menor entre as notas eh pra faixa de 5 caber tbm numa tela de 320 px */
+    .band {
+        max-width: max-content;
+    }
+
     .bandScores {
-        grid-auto-columns: minmax(2.75rem, 1fr);
+        gap: var(--space-1);
+        grid-auto-columns: 2.75rem;
     }
 
     .optionCard {

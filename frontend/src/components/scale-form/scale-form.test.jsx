@@ -328,18 +328,30 @@ describe("ScaleForm com as opcoes em cartoes", () => {
         expect(tokens["--text-md"]).toBe("1rem");
     });
 
-    // a regua continua regua, com os botoes maiores, e cabe em 375 px sem rolar a pagina de lado
-    it("a regua de notas tem botoes maiores no celular e a faixa mais larga cabe em 375 px", () => {
+    // a regua continua regua, com os botoes maiores, e cabe no celular sem rolar a pagina de lado
+    // no celular toda nota da regua com faixas tem a msm largura: a faixa n estica mais pra encher a linha, entao
+    // a de 3 notas n fica com botoes mais largos q a de 5 qnd cada faixa cai numa linha (o jsdom n mede, a conta
+    // sai do css)
+    it("no celular as notas da regua com faixas tem todas a msm largura, e a faixa mais larga cabe em 375 e em 320 px", () => {
         expect(remOf(declarationsOf(css, ".score span")["min-height"])).toBeGreaterThanOrEqual(2.75);
         expect(remOf(declarationsOf(mobileCss, ".score span")["min-height"])).toBeGreaterThanOrEqual(3);
-        const scoreWidth = remOf(declarationsOf(mobileCss, ".bandScores")["grid-auto-columns"].split(",")[0]);
+        // a coluna de cada nota tem largura fixa, de pelo menos 44 px, sem o 1fr q esticava
+        const scoreColumn = declarationsOf(mobileCss, ".bandScores")["grid-auto-columns"];
+        expect(scoreColumn).toMatch(/^[\d.]+rem$/);
+        const scoreWidth = remOf(scoreColumn);
         expect(scoreWidth).toBeGreaterThanOrEqual(2.75);
+        // a faixa fica do tamanho das notas dela e n cresce pra encher a linha
+        expect(declarationsOf(mobileCss, ".band")["max-width"]).toBe("max-content");
 
-        // a faixa moderada da dor tem 5 notas e eh a mais larga: 375 px menos as folgas da pagina e do item
-        const gap = remOf(declarationsOf(css, ".bandScores").gap);
+        // a faixa moderada da dor tem 5 notas e eh a mais larga: a tela menos as folgas da pagina e do item
+        const gap = remOf(declarationsOf(mobileCss, ".bandScores").gap);
         const bandPadding = remOf(declarationsOf(css, ".band").padding) * 2;
-        const freeWidth = 375 / 16 - 2 * remOf("var(--space-4)") - 2 * remOf(declarationsOf(mobileCss, ".item").padding);
-        expect(5 * scoreWidth + 4 * gap + bandPadding).toBeLessThanOrEqual(freeWidth);
+        const itemBorder = 2 / 16;
+        for (const screenWidth of [375, 320]) {
+            const freeWidth = screenWidth / 16 - 2 * remOf("var(--space-4)")
+                - 2 * remOf(declarationsOf(mobileCss, ".item").padding) - itemBorder;
+            expect(5 * scoreWidth + 4 * gap + bandPadding).toBeLessThanOrEqual(freeWidth);
+        }
         // a regua simples quebra a linha em vez de passar da borda
         expect(declarationsOf(mobileCss, ".scores")["grid-template-columns"]).toContain("auto-fill");
     });

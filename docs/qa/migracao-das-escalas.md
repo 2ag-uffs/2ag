@@ -138,12 +138,12 @@ a lista abaixo são os cuidados que a pesquisa de tendências de 19/11/2026 leva
 - as opções vêm em lista, uma embaixo da outra, na ordem e com o texto do papel, e só uma pode ser escolhida.
 - os cartões de opção de uma mesma pergunta têm todos a mesma altura, e o cartão que se vê é a área de toque inteira. medido no Chrome sem janela em 375 e em 320 px, nos temas claro e escuro: na pergunta 10 do Pittsburgh os quatro cartões têm 74 px (antes, dois tinham 50 px), e num item do TEA e na escolaridade do MEEM todos têm 50 px.
 - o texto de apoio tem o tamanho do texto da página, 16 px (antes, 14 px). em várias escalas ele é texto do próprio instrumento.
+- no celular, as onze notas da régua de dor têm todas o mesmo tamanho, 44 por 48 px, com as faixas cada uma na sua linha como antes. medido no Chrome sem janela em 320 e em 375 px, nos temas claro e escuro (antes, em 375 px, as notas de 0 a 2 e de 8 a 10 tinham 92 px de largura e as de 3 a 7 tinham 52 px).
 - a ordem dos itens e as opções são as do papel, fora as diferenças de forma anotadas nas tabelas, e o cálculo e as faixas são os do papel ou do Anexo A dos requisitos, conferidos pelos testes do escore de referência. nada disso mudou nesta rodada.
 - a resposta salva só é corrigida pelo paciente até a prescritora analisar; a versão anterior fica guardada, e anular pede motivo.
 
 **não atendidos**
 
-- números da régua de dor todos da mesma largura no celular: em 375 px, os de 0 a 2 e de 8 a 10 têm 92 px e os de 3 a 7 têm 52 px.
 - confirmação dos itens deixados em branco: a tela não pergunta se o item ficou em branco de propósito.
 - tela final de revisão: não há uma tela para conferir as respostas antes de salvar.
 - treino no aparelho: não há pergunta de exemplo nem instrução de uso antes da primeira escala.
