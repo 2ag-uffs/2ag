@@ -1,4 +1,5 @@
 import {Link} from "react-router";
+import {StatusTitle} from "../../app/page-title.jsx";
 import {homePathFor} from "../../app/role-home.js";
 import {getLoggedUser} from "../../services/api.js";
 import styles from "./status-page.module.css";
@@ -10,6 +11,7 @@ export default function StatusPage({title, message, showReloadButton = false, sh
 
     return (
         <main className={styles.page}>
+            <StatusTitle name={title}/>
             <img src="/images/logotipo-horizontal.svg" alt="2AG" className={styles.logo}/>
             <h1 className={styles.title}>{title}</h1>
             <p className={styles.message}>{message}</p>

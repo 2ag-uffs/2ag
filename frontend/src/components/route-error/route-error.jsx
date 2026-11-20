@@ -1,6 +1,7 @@
 import {useEffect} from "react";
 import {isRouteErrorResponse, Link, useRouteError} from "react-router";
 import {FiAlertTriangle} from "react-icons/fi";
+import {StatusTitle} from "../../app/page-title.jsx";
 import {homePathFor} from "../../app/role-home.js";
 import {getLoggedUser} from "../../services/api.js";
 import styles from "./route-error.module.css";
@@ -11,6 +12,7 @@ export default function RouteError() {
     const error = useRouteError();
     const homePath = homePathFor(getLoggedUser());
     const isMissingPage = isRouteErrorResponse(error) && error.status === 404;
+    const title = isMissingPage ? "Esta tela não existe" : "Não foi possível abrir esta tela";
 
     // o detalhe do erro fica no console pra quem for investigar
     useEffect(() => {
@@ -19,10 +21,9 @@ export default function RouteError() {
 
     return (
         <section className={styles.box} role="alert">
+            <StatusTitle name={title}/>
             <FiAlertTriangle className={styles.icon} aria-hidden="true"/>
-            <h1 className={styles.title}>
-                {isMissingPage ? "Esta tela não existe" : "Não foi possível abrir esta tela"}
-            </h1>
+            <h1 className={styles.title}>{title}</h1>
             <p className={styles.message}>
                 {isMissingPage
                     ? "O endereço pode ter mudado. Use o menu para chegar onde você queria."
