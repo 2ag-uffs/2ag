@@ -43,6 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ScaleFormsTest {
 
     private static final LocalDate TODAY = LocalDate.now();
+    // o item do hamilton vai de 0 a 4
+    private static final String HUMOR_ANSIOSO_REFUSED =
+            "Confira a resposta de Humor ansioso. Escolha um número de 0 a 4";
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PrescriberRepository prescriberRepository;
@@ -205,14 +208,33 @@ class ScaleFormsTest {
     void itemQueNaoEhDaEscalaEhRecusado() throws Exception {
         answerScale("hamilton", "{\"intensidadeDor\":3}")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("não é dessa escala")));
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.UNKNOWN_ITEM_MESSAGE));
     }
 
     @Test
     void respostaForaDaEscalaDoItemEhRecusada() throws Exception {
         answerScale("hamilton", "{\"humorAnsioso\":7}")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+                .andExpect(jsonPath("$.message").value(HUMOR_ANSIOSO_REFUSED));
+    }
+
+    // a recusa diz o nome do item e o q vale nele, tbm nos minutos e na escolha
+    @Test
+    void respostaRecusadaDizOQueValeNoItem() throws Exception {
+        answerScale("diario-sono", "{\"tempoAteDormir\":-5,\"cansaco\":2}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Confira a resposta de Tempo antes de adormecer. "
+                        + "Escreva os minutos com um número inteiro de 0 a 1.440"));
+        answerScale("pittsburgh", "{\"qualidadeGeral\":7}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Confira a resposta de Qualidade do sono de uma maneira geral. "
+                        + "Escolha uma destas respostas: \"Muito boa\", \"Boa\", \"Ruim\" ou \"Muito ruim\""));
+        // a opcao com virgula dentro continua uma resposta so
+        answerScale("pittsburgh", "{\"parceiroDeQuarto\":4}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Confira a resposta de Você tem parceiro ou colega de quarto. "
+                        + "Escolha uma destas respostas: \"Não\", \"Parceiro ou colega, mas em outro quarto\", "
+                        + "\"Parceiro no mesmo quarto, mas em outra cama\" ou \"Parceiro na mesma cama\""));
     }
 
     // o valor gravado eh o q foi mandado ou nada: o 2.9 virava 2 e o numero q passa do int
@@ -222,7 +244,7 @@ class ScaleFormsTest {
         for (String value : new String[] {"2.9", "-0.9", "4294967298", "4294967296", "99999999999999999999"}) {
             answerScale("hamilton", "{\"humorAnsioso\":" + value + "}")
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+                    .andExpect(jsonPath("$.message").value(HUMOR_ANSIOSO_REFUSED));
         }
         // na escolha tbm, e numero inteiro escrito com ponto continua valendo
         answerScale("pittsburgh", "{\"qualidadeGeral\":1.5}").andExpect(status().isBadRequest());
@@ -236,7 +258,8 @@ class ScaleFormsTest {
     void horarioMandadoComoNumeroEhRecusado() throws Exception {
         answerScale("diario-sono", "{\"horarioDormir\":2300,\"cansaco\":2}")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("fora da escala")));
+                .andExpect(jsonPath("$.message").value("Confira a resposta de Horário em que foi dormir. "
+                        + "Escreva o horário com horas e minutos, como 22:30"));
     }
 
     // so item em branco eh resposta vazia, na correcao tbm
@@ -527,8 +550,14 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.annulledByName").value("Prescritora das escalas"));
 
         // registro anulado continua no historico e n muda mais
+        // o paciente le o msm q a tela dele diz, e o prescritor q a anulada aparece qnd recarrega
         updateResponse(responseId, "{\"intensidadeDor\":3}", patient)
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.ANNULLED_MESSAGE));
+        mockMvc.perform(put("/scales/responses/" + responseId + "/review")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(ScaleResponseService.REVIEW_ANNULLED_MESSAGE));
     }
 
     // RN09 o MEEM eh do prescritor e nasce dentro da consulta

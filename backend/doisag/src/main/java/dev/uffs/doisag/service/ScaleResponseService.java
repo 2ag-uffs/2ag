@@ -49,17 +49,25 @@ import java.util.Map;
 @Service
 public class ScaleResponseService {
 
-    public static final String UNKNOWN_ITEM_MESSAGE = "Essa resposta tem um item que não é dessa escala";
+    // a tela monta o formulario com os itens da escala, entao item q n existe eh pagina aberta antes de a escala mudar
+    public static final String UNKNOWN_ITEM_MESSAGE =
+            "Esta página está desatualizada. Recarregue a página e preencha de novo";
     public static final String COMPUTED_ITEM_MESSAGE = "Esse item é calculado pelo sistema";
-    public static final String INVALID_VALUE_MESSAGE = "Resposta fora da escala do item";
+    // vem seguido do nome do item e do q vale nele (expectedAnswerOf)
+    public static final String INVALID_VALUE_MESSAGE = "Confira a resposta de ";
     public static final String INVALID_TEXT_MESSAGE = "O texto pode ter até 2000 caracteres";
     public static final String FUTURE_PERIOD_MESSAGE = "Não dá para responder por um dia que ainda não chegou";
-    public static final String INVALID_PERIOD_MESSAGE = "O fim do período precisa ser depois do início";
+    public static final String INVALID_PERIOD_MESSAGE = "O fim do período não pode ser antes do início";
     public static final String PRESCRIBER_SCALE_MESSAGE =
             "O Mini-Exame do Estado Mental é aplicado pelo prescritor durante a consulta";
     public static final String REVIEWED_MESSAGE =
-            "O prescritor já analisou esta resposta. Fale com ele para corrigir";
-    public static final String ANNULLED_MESSAGE = "Resposta anulada não muda mais";
+            "O prescritor já analisou esta resposta. Para corrigir, fale com ele";
+    // o paciente cai nela corrigindo a resposta e, recarregando, a tela abre o dia em branco pra responder de novo
+    public static final String ANNULLED_MESSAGE = "A resposta desta data foi anulada pelo prescritor e continua no "
+            + "histórico. Recarregue a página para responder de novo";
+    // o prescritor marcando como analisada, e o historico dele mostra a anulada
+    public static final String REVIEW_ANNULLED_MESSAGE =
+            "Esta resposta foi anulada e não pode mais ser alterada. Recarregue a página para ver como ela ficou";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta resposta já está anulada";
     public static final String EXAM_ALREADY_APPLIED_MESSAGE =
             "Esta consulta já tem um Mini-Exame aplicado. Para aplicar de novo, anule o anterior com o motivo";
@@ -68,10 +76,12 @@ public class ScaleResponseService {
     public static final String INCOMPLETE_EXAM_MESSAGE = "Falta preencher no Mini-Exame";
     public static final String ARCHIVED_EXAM_MESSAGE =
             "Este paciente está arquivado. Reative o paciente antes de aplicar o Mini-Exame";
-    public static final String FUTURE_APPOINTMENT_MESSAGE = "Consulta que ainda não aconteceu não recebe o Mini-Exame";
+    public static final String FUTURE_APPOINTMENT_MESSAGE =
+            "Esta consulta ainda não aconteceu. O Mini-Exame é aplicado durante o atendimento";
     public static final String DIARY_DAY_MESSAGE =
             "No diário a data é o dia escolhido na grade e não muda na correção";
-    public static final String PERIOD_START_TAKEN_MESSAGE = "Já existe uma resposta dessa escala começando nesse dia";
+    public static final String PERIOD_START_TAKEN_MESSAGE =
+            "Já existe uma resposta dessa escala começando nesse dia. Escolha outra data";
     public static final String EMPTY_ANSWERS_MESSAGE = "Responda ao menos um item da escala";
     public static final String MAX_MINUTES_MESSAGE = "Passa de um dia inteiro. O máximo é 1.440 minutos";
     public static final String MAX_COUNT_MESSAGE = "Número alto demais para este campo. O máximo é 200";
@@ -330,7 +340,7 @@ public class ScaleResponseService {
     public ScaleResponseDTO review(Long responseId, Prescriber loggedPrescriber) {
         ScaleResponse response = findResponseForUpdate(responseId);
         if (response.isAnnulled()) {
-            throw new BusinessException(ANNULLED_MESSAGE);
+            throw new BusinessException(REVIEW_ANNULLED_MESSAGE);
         }
         if (!response.isReviewed()) {
             response.markReviewed(loggedPrescriber);
@@ -429,7 +439,7 @@ public class ScaleResponseService {
         Map<String, Object> answers = new LinkedHashMap<>();
         rawAnswers.forEach((key, value) -> {
             ScaleItem item = definition.itemOf(key)
-                    .orElseThrow(() -> new BusinessException(UNKNOWN_ITEM_MESSAGE + ": " + key));
+                    .orElseThrow(() -> new BusinessException(UNKNOWN_ITEM_MESSAGE));
             Object cleanValue = cleanValue(item, value);
             if (cleanValue != null) {
                 answers.put(key, cleanValue);
@@ -540,10 +550,33 @@ public class ScaleResponseService {
 
     // sempre lanca e o retorno Object eh so p/ caber no switch
     private Object throwInvalidValue(ScaleItem item) {
-        String expected = item.options().isEmpty()
-                ? ""
-                : " Valores aceitos: " + item.options().stream().map(ScaleOption::label).toList();
-        throw new BusinessException(INVALID_VALUE_MESSAGE + ": " + item.label() + "." + expected);
+        throw new BusinessException(INVALID_VALUE_MESSAGE + item.label() + ". " + expectedAnswerOf(item));
+    }
+
+    // o q vale em cada tipo de item, pra mensagem dizer o q responder em vez de so recusar
+    // o numero digitado no celular passa sem a conferencia do navegador qnd a pergunta dele ja saiu da tela
+    private String expectedAnswerOf(ScaleItem item) {
+        return switch (item.type()) {
+            case NOTA -> "Escolha um número de " + item.minValue() + " a " + item.maxValue();
+            case ESCOLHA -> "Escolha uma destas respostas: " + optionsText(item.options());
+            case NUMERO -> "Escreva um número inteiro de 0 a 200";
+            case MINUTOS -> "Escreva os minutos com um número inteiro de 0 a 1.440";
+            case HORAS -> "Escreva as horas com um número de 0 a 24";
+            case HORA -> "Escreva o horário com horas e minutos, como 22:30";
+            case SIM_NAO -> "Escolha Sim ou Não";
+            case TEXTO, CALCULADO -> "Escreva a resposta em texto";
+        };
+    }
+
+    // cada opcao entre aspas e o ou antes da ultima, pq tem opcao com virgula dentro
+    // ("Parceiro ou colega, mas em outro quarto") e a lista so com virgula parecia ter mais respostas
+    private String optionsText(List<ScaleOption> options) {
+        List<String> quotedLabels = options.stream().map(option -> "\"" + option.label() + "\"").toList();
+        if (quotedLabels.size() == 1) {
+            return quotedLabels.get(0);
+        }
+        int lastIndex = quotedLabels.size() - 1;
+        return String.join(", ", quotedLabels.subList(0, lastIndex)) + " ou " + quotedLabels.get(lastIndex);
     }
 
     private LocalDate periodStartOf(ScaleDefinition definition, ScaleResponseCreateDTO answerData) {
