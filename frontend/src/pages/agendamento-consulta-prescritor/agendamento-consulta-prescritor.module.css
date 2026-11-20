@@ -104,7 +104,7 @@
 /* folga marcada nos horarios de atendimento: o paciente n pede, mas o q ja estava marcado fica */
 .dayOffTag {
     background-color: var(--color-surface-alt);
-    color: var(--color-warning);
+    color: var(--color-error);
 }
 
 /* ---- consulta ---- */

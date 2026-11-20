@@ -8,6 +8,7 @@ import {cssRules, declarationsOf, mediaRules, readCss} from "../test/css-rules.j
 const progressCss = readCss(import.meta.url, "../pages/progresso/progresso.module.css");
 const profileCss = readCss(import.meta.url, "../pages/profile/profile.module.css");
 const availabilityCss = readCss(import.meta.url, "../pages/agenda-disponibilidade/agenda-disponibilidade.module.css");
+const agendaCss = readCss(import.meta.url, "../pages/agendamento-consulta-prescritor/agendamento-consulta-prescritor.module.css");
 const dashboardCss = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.module.css");
 const dashboardSource = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.jsx");
 const skeletonCss = readCss(import.meta.url, "../components/skeleton/skeleton.module.css");
@@ -88,6 +89,16 @@ describe("telas do prescritor", () => {
         });
         expect(declarationsOf(indicatorsCss, ".goalMet").padding).toBe(cardBadge.padding);
         expect(declarationsOf(indicatorsCss, ".goalMissed").padding).toBe(cardBadge.padding);
+    });
+
+    // texto pequeno em terracota usa o tom 3. o tom 2 dava 3,85:1 sobre o bloco cinza
+    it("o selo sem atendimento da agenda passa de 4,5:1 nos temas", () => {
+        const tag = declarationsOf(agendaCss, ".dayOffTag");
+
+        Object.entries(THEMES).forEach(([themeName, theme]) => {
+            const contrast = contrastOf(colorIn(theme, tag.color), colorIn(theme, tag["background-color"]));
+            expect(contrast, themeName).toBeGreaterThanOrEqual(4.5);
+        });
     });
 
     // a cor escrita a mao (branco com 60%) virava um remendo claro no tema escuro, com o texto a uns 2:1
