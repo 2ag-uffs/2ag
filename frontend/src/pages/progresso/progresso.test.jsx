@@ -1081,6 +1081,25 @@ describe("Progresso", () => {
             .toBeInTheDocument();
     });
 
+    // dois MEEM no msm dia, em duas consultas, sao dois pontos e duas linhas, e o de baixo do corte n some
+    it("dois exames do msm dia aparecem os dois no grafico e na tabela", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-10", value: 22, band: "Abaixo do esperado para a escolaridade (corte 25)", cutoff: 25},
+            {date: "2026-10-10", value: 27, band: "Dentro do esperado para a escolaridade (corte 25)", cutoff: 25},
+        ];
+        renderPrescriberProgress("ESCORE_MEEM", "TUDO");
+
+        expect(await screen.findByRole("application", {name: /Gráfico de Escore total com 2 registros/}))
+            .toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Ver como tabela"}));
+        expect(tableRows()).toEqual([
+            ["Data", "Escore total"],
+            ["10/10/2026", "22 · Abaixo do esperado para a escolaridade (corte 25)"],
+            ["10/10/2026", "27 · Dentro do esperado para a escolaridade (corte 25)"],
+        ]);
+    });
+
     // RN10 em branco n vira zero na tabela, nem no item nem nas gotas
     it("com as gotas marcadas a tabela ganha a coluna delas, com a dose parcial e o q ficou em branco", async () => {
         const user = userEvent.setup();

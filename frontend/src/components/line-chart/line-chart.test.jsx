@@ -376,6 +376,26 @@ describe("LineChart", () => {
         expect(status).toBeEmptyDOMElement();
     });
 
+    // dois MEEM do msm dia ficam no msm x, o 27 em cima (y 47,6) e o 22 embaixo (y 86,9)
+    it("dois pontos do msm dia abrem cada um o seu tooltip, o q esta mais perto do mouse na altura", () => {
+        const rows = [
+            MEEM_ROWS[0],
+            {date: "2026-10-10", label: "10/10", valor: 22, faixa: null, gotas: null},
+            {date: "2026-10-10", label: "10/10", valor: 27, faixa: null, gotas: null},
+        ];
+        renderChart({rows: rows, maxValue: 30, valueName: "Escore total", frequencyDays: null});
+        const chart = screen.getByRole("application");
+
+        fireEvent.pointerMove(chart, {clientX: 610, clientY: 50, pointerType: "mouse"});
+        expect(screen.getByText("Escore total : 27")).toBeInTheDocument();
+
+        fireEvent.pointerMove(chart, {clientX: 610, clientY: 90, pointerType: "mouse"});
+        expect(screen.getByText("Escore total : 22")).toBeInTheDocument();
+
+        fireEvent.pointerDown(chart, {clientX: 610, clientY: 40, pointerType: "touch"});
+        expect(screen.getByText("Escore total : 27")).toBeInTheDocument();
+    });
+
     it("no toque o tooltip fica dps de tirar o dedo e some ao tocar fora", () => {
         renderChart();
         const chart = screen.getByRole("application");

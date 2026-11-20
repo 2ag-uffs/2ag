@@ -342,23 +342,29 @@ export default function Progresso() {
     const isDoseShown = isDoseLoaded && !doseError;
     const shownDosePoints = isDoseShown ? dosePoints : [];
     const doseByDate = new Map(shownDosePoints.map((point) => [point.date, point]));
-    const pointByDate = new Map(points.map((point) => [point.date, point]));
+    const pointDates = new Set(points.map((point) => point.date));
+    // uma linha por ponto, pq dois MEEM do msm dia (duas consultas) sao dois pontos
     // o dia com gota e com o item em branco tbm entra, senao a gota sumia e a linha delas cortava num dia em q
-    // elas foram anotadas. sem nenhum ponto do item o grafico continua vazio. aaaa-mm-dd ja ordena pela data
-    const rowDates = points.length > 0
-        ? Array.from(new Set([...pointByDate.keys(), ...doseByDate.keys()])).sort()
+    // elas foram anotadas. sem nenhum ponto do item o grafico continua vazio
+    const emptyDoseDates = points.length > 0
+        ? shownDosePoints.map((dose) => dose.date).filter((date) => !pointDates.has(date))
         : [];
+    // aaaa-mm-dd ja ordena pela data, e os pontos do msm dia ficam na ordem q a api mandou
+    const rowPoints = [...points, ...emptyDoseDates.map((date) => ({date: date, isDoseOnly: true}))]
+        .sort((a, b) => a.date.localeCompare(b.date));
     // o eixo vai da primeira a ultima resposta, entao o ano aparece qnd as respostas passam de um ano
     // a consulta fora delas fica so na lista e n mexe no eixo
-    const hasManyYears = rowDates.some((date) => date.slice(0, 4) !== rowDates[0].slice(0, 4));
-    const chartRows = rowDates.map((date) => {
-        const point = pointByDate.get(date);
-        const dose = doseByDate.get(date);
+    const hasManyYears = rowPoints.some((point) => point.date.slice(0, 4) !== rowPoints[0].date.slice(0, 4));
+    const chartRows = rowPoints.map((point, index) => {
+        const hasValue = !point.isDoseOnly;
+        // a gota eh do dia, entao vai so na primeira linha daquela data
+        const isFirstOfDate = index === 0 || rowPoints[index - 1].date !== point.date;
+        const dose = isFirstOfDate ? doseByDate.get(point.date) : undefined;
         return {
-            date: date,
-            label: hasManyYears ? dayMonthAndYear(date) : dayAndMonth(date),
-            valor: point ? point.value : null,
-            faixa: point ? bandTextOf(point, isMentalStateExam) : null,
+            date: point.date,
+            label: hasManyYears ? dayMonthAndYear(point.date) : dayAndMonth(point.date),
+            valor: hasValue ? point.value : null,
+            faixa: hasValue ? bandTextOf(point, isMentalStateExam) : null,
             gotas: dose ? dose.value : null,
             partialDoseNote: dose ? dose.partialNote : null,
         };
@@ -816,8 +822,8 @@ function ChartTable({rows, valueName, showDose, isOpen, onToggle}) {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row) => (
-                                <tr key={row.date}>
+                            {rows.map((row, index) => (
+                                <tr key={row.date + "-" + index}>
                                     <th scope="row">{formatDate(row.date)}</th>
                                     <td>{scoreText(row)}</td>
                                     {/* o dia sem gota anotada fica em branco, e n com zero (RN10) */}

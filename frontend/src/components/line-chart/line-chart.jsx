@@ -146,10 +146,26 @@ export default function LineChart({
     const pickNearest = (event) => {
         const box = event.currentTarget.getBoundingClientRect();
         const scale = box.width > 0 ? width / box.width : 1;
-        const index = nearestIndex((event.clientX - box.left) * scale, xs);
-        if (index !== -1) {
-            setActiveIndex(index);
+        const scaleY = box.height > 0 ? HEIGHT / box.height : 1;
+        const pointerY = (event.clientY - box.top) * scaleY;
+        let index = nearestIndex((event.clientX - box.left) * scale, xs);
+        if (index === -1) {
+            return;
         }
+        // dois MEEM do msm dia ficam no msm x, ai vale o ponto mais perto na altura, senao o segundo
+        // nunca abria com o mouse nem com o dedo
+        const sameX = xs[index];
+        for (let other = 0; other < xs.length; other++) {
+            const otherY = scorePoints[other].y;
+            if (xs[other] !== sameX || otherY === null) {
+                continue;
+            }
+            const y = scorePoints[index].y;
+            if (y === null || Math.abs(otherY - pointerY) < Math.abs(y - pointerY)) {
+                index = other;
+            }
+        }
+        setActiveIndex(index);
     };
 
     // no toque o tooltip fica dps de tirar o dedo e some ao tocar fora
