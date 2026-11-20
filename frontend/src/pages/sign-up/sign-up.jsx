@@ -88,11 +88,9 @@ const CONSENT_LABELS = {
 // confere no navegador o q da pra conferir antes de mandar pra api
 function findFormErrors(formData, hasAcceptedConsent, ageBand) {
     const errors = findGuardianErrors(formData, ageBand !== "adult");
-    if (onlyDigits(formData.cpf).length !== 11) {
-        errors.cpf = "O CPF tem 11 números";
-    } else if (!isValidCpf(formData.cpf)) {
-        // a mesma mensagem q a api devolve, so q antes de mandar
-        errors.cpf = "CPF inválido. Confira os números";
+    // a mesma mensagem q a api devolve, so q antes de mandar. cpf faltando numero tbm cai aqui
+    if (!isValidCpf(formData.cpf)) {
+        errors.cpf = "Confira o CPF: os 11 números precisam ser iguais aos do documento";
     }
     if (onlyDigits(formData.phone).length < 10) {
         errors.phone = "Informe o telefone com DDD";
@@ -112,7 +110,7 @@ function findFormErrors(formData, hasAcceptedConsent, ageBand) {
 // convite q falta q n vale mais ou q n deu pra conferir
 function inviteProblemText(inviteStatus) {
     if (inviteStatus === "invalid") {
-        return "Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. "
+        return "Este convite não vale mais: ele pode ter vencido ou já ter sido usado. "
             + "Peça um novo link ao seu prescritor.";
     }
     if (inviteStatus === "offline") {
@@ -375,7 +373,7 @@ export default function SignUp() {
         return (
             <AuthLayout title="Criar conta">
                 <p className={"aviso aviso--atencao " + styles.message}>
-                    Este convite não vale mais. Ele pode ter vencido ou já ter sido usado. Você continua conectado
+                    Este convite não vale mais: ele pode ter vencido ou já ter sido usado. Você continua conectado
                     como <strong>{otherAccount.name}</strong>. Para criar outra conta, peça um novo link ao seu
                     prescritor.
                 </p>

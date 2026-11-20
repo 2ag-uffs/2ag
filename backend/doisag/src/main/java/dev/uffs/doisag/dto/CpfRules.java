@@ -4,6 +4,9 @@ package dev.uffs.doisag.dto;
 // o navegador manda so os 11 numeros, mas a mascara 000.000.000-00 tbm passa, como antes
 public final class CpfRules {
 
+    // msm frase no cadastro do paciente, nos formularios da administracao e na tela antes de enviar
+    public static final String INVALID_MESSAGE = "Confira o CPF: os 11 números precisam ser iguais aos do documento";
+
     private CpfRules() {
     }
 

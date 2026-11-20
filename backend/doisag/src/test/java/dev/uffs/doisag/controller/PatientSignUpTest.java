@@ -462,7 +462,8 @@ class PatientSignUpTest {
         signUp(signUpBody(newInviteToken(), "maria.gmail.com", VALID_CPF, VALID_PASSWORD))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors", hasSize(1)))
-                .andExpect(jsonPath("$.errors[0].message").value("E-mail inválido"));
+                .andExpect(jsonPath("$.errors[0].message").value(
+                        "Confira o e-mail: ele precisa ter um @ e o endereço depois dele, como nome@exemplo.com"));
     }
 
     @Test

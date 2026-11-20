@@ -13,7 +13,7 @@ import java.time.LocalDate;
 // dados do cadastro do proprio paciente pelo link de convite (RF02.1)
 // o prescritor vem do convite e nunca do formulario
 public record RegisterDTO(
-        @NotBlank(message = "O link de convite é obrigatório")
+        @NotBlank(message = "O cadastro de paciente é feito pelo link de convite que o seu prescritor envia. Peça o link a ele")
         String inviteToken,
 
         @NotBlank(message = "Informe o nome completo")
@@ -25,12 +25,12 @@ public record RegisterDTO(
         String socialName,
 
         @NotBlank(message = "Informe o CPF")
-        @ValidCpf(message = "CPF inválido. Confira os números")
+        @ValidCpf(message = CpfRules.INVALID_MESSAGE)
         String cpf,
 
         @NotNull(message = "Informe a data de nascimento")
         @Past(message = "A data de nascimento precisa ser no passado")
-        @MinYear(value = 1900, message = "Confira o ano de nascimento")
+        @MinYear(value = 1900, message = "Confira o ano de nascimento: ele precisa ser de 1900 em diante")
         LocalDate birthDate,
 
         @NotBlank(message = "Informe o telefone")
@@ -45,7 +45,7 @@ public record RegisterDTO(
         GuardianDTO guardian,
 
         @NotBlank(message = "Informe o e-mail")
-        @Email(message = "E-mail inválido")
+        @Email(message = EmailRules.FORMAT_MESSAGE)
         @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,

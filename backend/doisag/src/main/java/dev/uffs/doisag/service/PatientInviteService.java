@@ -23,7 +23,7 @@ import java.util.List;
 public class PatientInviteService {
 
     public static final String INVALID_INVITE_MESSAGE =
-            "Convite inválido ou vencido. Peça um novo link ao seu prescritor.";
+            "Este convite não vale mais: ele pode ter vencido ou já ter sido usado. Peça um novo link ao seu prescritor";
     public static final String INVITE_NOT_FOUND_MESSAGE = "Convite não encontrado";
     public static final String INVITE_ALREADY_USED_MESSAGE =
             "Este convite já foi usado: o paciente criou a conta. Se não era a pessoa certa, arquive ou peça para a administração desativar a conta";

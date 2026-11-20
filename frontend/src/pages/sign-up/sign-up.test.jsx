@@ -12,7 +12,8 @@ const INVITE = {prescriberName: "Ana Lima", prescriberProfession: "Médica", exp
 const OUTDATED_TERM_MESSAGE = "O termo de consentimento foi atualizado. Leia a versão nova e aceite para continuar";
 const SIGN_UP_REFUSED_MESSAGE = "Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF. "
     + "Se você já tem conta, entre pela tela de login, que também tem o Esqueci minha senha";
-const INVALID_INVITE_MESSAGE = "Convite inválido ou vencido. Peça um novo link ao seu prescritor.";
+const INVALID_INVITE_MESSAGE = "Este convite não vale mais: ele pode ter vencido ou já ter sido usado. "
+    + "Peça um novo link ao seu prescritor";
 
 function mockApi() {
     vi.spyOn(apiService, "get").mockImplementation((path) => {
@@ -229,7 +230,24 @@ describe("SignUp", () => {
         await user.type(screen.getByLabelText("CPF"), "52998224726");
         await user.click(screen.getByRole("button", {name: "Criar conta"}));
 
-        expect(await screen.findByText("CPF inválido. Confira os números")).toBeInTheDocument();
+        expect(await screen.findByText("Confira o CPF: os 11 números precisam ser iguais aos do documento"))
+            .toBeInTheDocument();
+        expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
+    }, TYPING_TIMEOUT);
+
+    // cpf faltando numero tem a msm frase da api e da administracao
+    it("cpf com menos de 11 numeros avisa no campo com a msm frase e n manda", async () => {
+        const post = mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await fillRequiredFields(user);
+        await user.clear(screen.getByLabelText("CPF"));
+        await user.type(screen.getByLabelText("CPF"), "5299822472");
+        await user.click(screen.getByRole("button", {name: "Criar conta"}));
+
+        expect(await screen.findByText("Confira o CPF: os 11 números precisam ser iguais aos do documento"))
+            .toBeInTheDocument();
         expect(post).not.toHaveBeenCalledWith("/auth/register", expect.anything());
     }, TYPING_TIMEOUT);
 
@@ -416,7 +434,7 @@ describe("SignUp", () => {
     it("convite ja usado com uma conta aberta n pede pra sair da conta", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({version: "termo-1", text: "Texto do termo"});
         vi.spyOn(apiService, "post").mockImplementation((path) => path === "/invites/lookup"
-            ? Promise.reject(new ApiError(404, "Convite inválido ou vencido. Peça um novo link ao seu prescritor."))
+            ? Promise.reject(new ApiError(404, INVALID_INVITE_MESSAGE))
             : Promise.resolve(null));
         const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({status: 204, ok: true});
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT", termPending: false});

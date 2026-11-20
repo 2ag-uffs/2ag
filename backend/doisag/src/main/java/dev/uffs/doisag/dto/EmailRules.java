@@ -13,6 +13,10 @@ public final class EmailRules {
     public static final String DOMAIN_WITH_DOT_MESSAGE =
             "Confira o e-mail: falta o ponto depois do @, como em nome@gmail.com";
 
+    // o q o @Email recusa, como e-mail sem @ ou com espaco no meio. a msm frase em todo formulario
+    public static final String FORMAT_MESSAGE =
+            "Confira o e-mail: ele precisa ter um @ e o endereço depois dele, como nome@exemplo.com";
+
     private EmailRules() {
     }
 }
