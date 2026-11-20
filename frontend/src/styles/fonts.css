@@ -68,8 +68,10 @@
         url("/fonts/Belleza-Regular.woff2") format("woff2");
 }
 
-/* os titulos usam a Belleza, o resto herda a Yaldevi do body */
+/* o arquivo da Belleza q esta no projeto eh o recorte latin-ext: das letras do portugues so tem o A e o Á
+   com ela na frente so o A do titulo saia na Belleza e o resto da palavra na Yaldevi
+   os titulos ficam na Yaldevi ate o arquivo latin chegar. a face de cima fica: fonte sem uso o navegador n baixa */
 h1, h2, h3 {
-    font-family: "Belleza", "Yaldevi Colombo", sans-serif;
+    font-family: "Yaldevi Colombo", sans-serif;
     letter-spacing: 0.01em;
 }
