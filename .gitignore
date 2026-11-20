@@ -34,6 +34,8 @@ chave-do-backup*
 # certificado do servidor montado no nginx do compose e a pasta q o certbot usa
 /certs/
 /acme/
+# contato de seguranca da clinica (security.txt), criado so no servidor antes do build
+/frontend/public/.well-known/
 
 # ---------------------------------------------------------------
 # java / maven

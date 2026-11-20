@@ -107,6 +107,31 @@ O segundo comando confere a configuração do nginx e o certificado antes de sub
 
 Os logs ficam em `docker compose logs -f api` (e `web`, `banco`), limitados a 50 MB por container. Na primeira subida o log da api mostra `conta administrativa criada para <e-mail>`. Se em vez disso aparecer um erro sobre `PUBLIC_URL`, `SESSION_SECURE_COOKIE` ou `MAIL_FROM`, corrija o `.env` e rode `docker compose up -d` de novo.
 
+### o contato de segurança (security.txt)
+
+Quem acha uma falha no sistema precisa saber a quem avisar. O lugar combinado para isso é um arquivo de texto em `/.well-known/security.txt` (RFC 9116). Ele entra na imagem do `web` no build, então crie antes do primeiro `docker compose build`, ou crie depois e rode o build de novo. No servidor, dentro de `/opt/2ag`, crie a pasta `frontend/public/.well-known` e, nela, o arquivo `security.txt` com estas quatro linhas, sem acento:
+
+```
+Contact: mailto:seguranca@clinica.com.br
+Expires: 2027-11-20T12:00:00-03:00
+Preferred-Languages: pt-BR
+Canonical: https://2ag.clinica.com.br/.well-known/security.txt
+```
+
+- `Contact`: uma caixa de e-mail da clínica que alguém lê de verdade. Contato que ninguém lê é pior do que não ter arquivo.
+- `Expires`: uma data de no máximo um ano à frente (a do exemplo é só o formato). Depois dela o arquivo vale como abandonado. **Todo ano**, troque essa linha por uma data nova e rode o build de novo; anote a data junto com a do vencimento do certificado.
+- `Canonical`: o `PUBLIC_URL` seguido de `/.well-known/security.txt`.
+- O arquivo fica só no servidor. A pasta está no `.gitignore`, porque o contato é da clínica e o repositório é público, e continua no lugar nas atualizações da seção 10.
+
+Para conferir depois de subir (ou de renovar a data):
+
+```bash
+docker compose build web && docker compose up -d --wait
+curl -s https://2ag.clinica.com.br/.well-known/security.txt
+```
+
+O `curl` mostra as quatro linhas. Se vier o html do sistema no lugar delas, o arquivo não estava na pasta na hora do build.
+
 ---
 
 ## 6. o certificado de verdade
@@ -223,6 +248,7 @@ Backup antes de qualquer atualização. As migrações do banco rodam sozinhas q
 - [ ] `.env` com `chmod 600`, sem `SEED_DADOS_TESTE` e sem `EMAIL_LOG_TEXT=true`
 - [ ] o administrador entrou e trocou a senha inicial
 - [ ] renovação do certificado testada (`certbot renew --dry-run`) ou vencimento anotado
+- [ ] `/.well-known/security.txt` no ar, com um contato que a clínica lê e a data do `Expires` anotada para renovar em até um ano
 - [ ] backup agendado, cópia saindo do servidor e primeira restauração testada e registrada
 - [ ] chave privada do backup guardada fora do servidor
 - [ ] termo de consentimento aprovado pela clínica antes do primeiro paciente
