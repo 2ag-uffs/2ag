@@ -154,10 +154,14 @@ public class TreatmentProtocolService {
         protocol.setStartDate(startDate);
         protocol.setEndDate(endDate);
         protocol.setActive(true);
-        // a programacao de horarios q aparece no topo do diario do sono (RF22)
-        protocol.setSleepBedTime(protocolData.sleepBedTime());
-        protocol.setSleepWakeTime(protocolData.sleepWakeTime());
         Set<ScaleType> newScaleTypes = addItems(protocol, protocolData.items());
+        // a programacao de horarios q aparece no topo do diario do sono (RF22)
+        // sem o diario entre as escalas ela n eh guardada, mesmo q chegue: o paciente leria no diario enviado
+        // a mao, como programacao do prescritor, um horario q a tela dele nem mostrou
+        if (newScaleTypes.contains(ScaleType.REGISTRO_SONO)) {
+            protocol.setSleepBedTime(protocolData.sleepBedTime());
+            protocol.setSleepWakeTime(protocolData.sleepWakeTime());
+        }
         continueRounds(protocol, previousItems);
 
         TreatmentProtocol savedProtocol = protocolRepository.save(protocol);

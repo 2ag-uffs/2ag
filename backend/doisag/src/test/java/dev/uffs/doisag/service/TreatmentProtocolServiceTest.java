@@ -673,6 +673,22 @@ class TreatmentProtocolServiceTest {
         assertThat(criado.sleepWakeTime()).isEqualTo(LocalTime.of(6, 45));
     }
 
+    // os horarios sao a programacao do diario do sono. a tela ja n manda eles sem o diario, mas a api
+    // guardava o q chegasse, e o paciente leria no diario enviado a mao um horario q o prescritor n programou
+    @Test
+    void semODiarioDoSonoOsHorariosNaoSaoGuardados() {
+        TreatmentProtocolResponseDTO criado = treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(INICIO, 90, LocalTime.of(22, 30), LocalTime.of(6, 45),
+                        List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL))), prescritora);
+
+        assertThat(criado.sleepBedTime()).isNull();
+        assertThat(criado.sleepWakeTime()).isNull();
+        TreatmentProtocol guardado = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
+                .orElseThrow();
+        assertThat(guardado.getSleepBedTime()).isNull();
+        assertThat(guardado.getSleepWakeTime()).isNull();
+    }
+
     // RF31 a criacao do acompanhamento fica na trilha do paciente
     @Test
     void registraACriacaoNaTrilhaDoPaciente() {
