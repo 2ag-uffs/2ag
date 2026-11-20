@@ -134,7 +134,8 @@ class ClinicalRecordRaceTest {
                 () -> protocolService.create(patient.getId(), protocolData, prescriber));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
-                .hasMessage("Este paciente já tem um acompanhamento em andamento");
+                .hasMessage("Este paciente já tem um acompanhamento em andamento. "
+                        + "Encerre o atual antes de começar outro");
         assertThat(protocolRepository.findByActiveTrue().stream()
                 .filter(protocol -> protocol.getPatient().getId().equals(patient.getId()))).hasSize(1);
     }

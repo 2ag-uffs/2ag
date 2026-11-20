@@ -62,7 +62,8 @@ public class TreatmentProtocolService {
             "O acompanhamento terminaria antes de hoje. Confira a data de início";
     public static final String DUPLICATE_SCALE_MESSAGE =
             "A mesma escala não pode entrar duas vezes no acompanhamento";
-    public static final String RUNNING_MESSAGE = "Este paciente já tem um acompanhamento em andamento";
+    public static final String RUNNING_MESSAGE =
+            "Este paciente já tem um acompanhamento em andamento. Encerre o atual antes de começar outro";
     public static final String RENEWAL_START_MESSAGE =
             "Para renovar antes do fim, comece o acompanhamento novo hoje";
 

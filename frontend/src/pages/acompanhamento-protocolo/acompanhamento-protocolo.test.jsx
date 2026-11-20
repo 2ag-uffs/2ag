@@ -310,7 +310,7 @@ describe("AcompanhamentoProtocolo", () => {
 
         const startButton = await screen.findByRole("button", {name: "Iniciar acompanhamento"});
         await user.click(startButton);
-        expect(await screen.findByRole("alert")).toHaveTextContent("Escolha ao menos uma escala.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Escolha ao menos uma escala para o acompanhamento.");
         expect(scrollIntoView).toHaveBeenCalledTimes(1);
 
         await user.click(startButton);

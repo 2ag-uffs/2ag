@@ -25,5 +25,6 @@ public record TreatmentProtocolCreateDTO(
         LocalTime sleepWakeTime,
         @NotEmpty(message = "Escolha ao menos uma escala para o acompanhamento")
         @Size(max = 10, message = "O acompanhamento pode ter até 10 escalas")
-        List<@NotNull(message = "Escala inválida") @Valid ProtocolItemDTO> items
+        List<@NotNull(message = "Marque as escalas e escolha de quanto em quanto tempo cada uma é enviada")
+                @Valid ProtocolItemDTO> items
 ) {}

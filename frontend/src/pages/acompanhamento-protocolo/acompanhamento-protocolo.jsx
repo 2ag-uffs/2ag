@@ -187,7 +187,7 @@ export default function AcompanhamentoProtocolo() {
 
         const items = Object.entries(chosen).map(([scaleType, periodicity]) => ({scaleType, periodicity}));
         if (items.length === 0) {
-            showFormError("Escolha ao menos uma escala.");
+            showFormError("Escolha ao menos uma escala para o acompanhamento.");
             return;
         }
 
