@@ -1,4 +1,5 @@
 import {useEffect, useRef} from "react";
+import {FiX} from "react-icons/fi";
 import styles from "./modal.module.css";
 
 const FOCUSABLE_SELECTOR = "a[href], button, input:not([type='hidden']), select, textarea, "
@@ -85,7 +86,7 @@ export default function Modal({show, title, children, onClickClose}) {
                 <div className={styles.header}>
                     <h2>{title}</h2>
                     <button type="button" className={styles.closeButton} onClick={onClickClose} aria-label="Fechar">
-                        X
+                        <FiX aria-hidden="true"/>
                     </button>
                 </div>
                 {children}

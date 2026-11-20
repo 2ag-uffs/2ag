@@ -1,12 +1,12 @@
 /* texto e botoes da pergunta de confirmacao */
 
 .message {
-    margin: 1rem 0 1.5rem;
+    margin: var(--space-4) 0 var(--space-6);
 }
 
 .actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
     justify-content: flex-end;
 }
 

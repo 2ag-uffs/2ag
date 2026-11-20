@@ -2,7 +2,7 @@
 
 .backdrop {
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.25);
+    background-color: rgba(0, 0, 0, 0.45);
     bottom: 0;
     display: flex;
     justify-content: center;
@@ -10,18 +10,21 @@
     position: fixed;
     right: 0;
     top: 0;
-    z-index: 100;
+    z-index: var(--layer-modal);
 }
 
+/* a largura para na medida de leitura, q a caixa de so texto abria na tela toda com linhas de 160 letras
+   a borda separa a caixa da tela escurecida no tema escuro, onde a sombra quase n aparece */
 .content {
     background-color: var(--color-surface);
-    border-radius: 1rem;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
     max-height: 90svh;
-    max-width: 90vw;
-    min-width: 578px;
+    max-width: min(90vw, var(--width-narrow));
+    min-width: min(36rem, 90vw);
     overflow: auto;
-    padding: 2rem;
+    padding: var(--space-8);
 }
 
 .header {
@@ -30,21 +33,31 @@
     justify-content: space-between;
 }
 
-/* o x tem tamanho fixo e n segue o estilo dos botoes normais */
+/* o x tem tamanho fixo e n segue o estilo dos botoes normais
+   a margem negativa alinha o desenho do x com a ponta direita do conteudo, q o botao tem 44 px e o desenho 20 */
 .closeButton {
     all: unset;
     align-items: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
     cursor: pointer;
     display: flex;
-    font-weight: 700;
-    height: 32px;
+    flex: 0 0 auto;
+    font-size: 1.25rem;
+    height: var(--control-height);
     justify-content: center;
-    width: 32px;
+    margin-right: calc(-1 * var(--space-2));
+    width: var(--control-height);
+}
+
+.closeButton:hover {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-primary);
 }
 
 /* o all: unset de cima apaga o anel de foco dos botoes, entao ele volta aqui */
 .closeButton:focus-visible {
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     box-shadow: var(--focus-ring);
 }
 

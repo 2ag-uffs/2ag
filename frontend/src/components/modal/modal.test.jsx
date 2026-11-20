@@ -40,6 +40,17 @@ describe("Modal", () => {
         expect(within(dialog).getByRole("button", {name: "Fechar"})).toHaveFocus();
     });
 
+    it("o fechar eh um icone, n a letra X, e o leitor de tela le so Fechar", async () => {
+        const user = userEvent.setup();
+        render(<Page/>);
+
+        const dialog = await openDialog(user);
+        const closeButton = within(dialog).getByRole("button", {name: "Fechar"});
+
+        expect(closeButton).toHaveTextContent("");
+        expect(closeButton.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    });
+
     it("o tab e o shift+tab ficam dentro da caixa", async () => {
         const user = userEvent.setup();
         render(<Page/>);
