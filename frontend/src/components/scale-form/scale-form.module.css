@@ -204,11 +204,12 @@
     border-color: var(--color-primary);
 }
 
+/* o q quer dizer cada ponta da regua eh texto do instrumento, do tamanho do texto da pagina */
 .anchors {
     color: var(--color-text-secondary);
     display: flex;
     flex-wrap: wrap;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     gap: var(--space-2);
     justify-content: space-between;
 }
@@ -250,13 +251,13 @@
     --band-stripe: var(--color-scale-band-bad-stripe);
 }
 
-/* o nome da faixa eh texto de verdade, a cor so acompanha */
+/* o nome da faixa eh texto de verdade, do tamanho do texto da pagina, e a cor so acompanha */
 .bandName {
     align-items: baseline;
     color: var(--color-text-primary);
     display: flex;
     flex-wrap: wrap;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: 700;
     gap: 0 var(--space-2);
 }

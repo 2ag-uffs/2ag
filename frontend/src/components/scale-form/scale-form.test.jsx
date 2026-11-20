@@ -522,6 +522,20 @@ describe("ScaleForm com a pergunta inteira do papel", () => {
     });
 });
 
+// o q quer dizer cada ponta da regua e o nome de cada faixa da dor sao texto do instrumento
+describe("texto da regua", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+
+    it("as ancoras e o nome das faixas tem o tamanho do texto da pagina, como o texto de apoio", () => {
+        expect(declarationsOf(css, ".anchors")["font-size"]).toBe("var(--text-md)");
+        expect(declarationsOf(css, ".bandName")["font-size"]).toBe("var(--text-md)");
+        expect(declarationsOf(css, ".help")["font-size"]).toBe("var(--text-md)");
+        // os dois continuam quebrando a linha qnd n cabem
+        expect(declarationsOf(css, ".anchors")["flex-wrap"]).toBe("wrap");
+        expect(declarationsOf(css, ".bandName")["flex-wrap"]).toBe("wrap");
+    });
+});
+
 // o jsdom n desenha a tela, entao o lugar do contador sai do css
 describe("contador preso no alto do formulario", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");
