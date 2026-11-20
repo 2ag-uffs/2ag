@@ -12,7 +12,7 @@
 .stats {
     display: grid;
     gap: var(--space-4);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .stat {
@@ -27,6 +27,8 @@
     font-weight: 400;
     gap: var(--space-1);
     justify-content: flex-start;
+    /* o cartao q eh botao e o q eh div ficam com a msm altura de linha, senao o nome de um descia 2 px */
+    line-height: var(--leading-tight);
     min-height: 0;
     padding: var(--space-4) var(--space-5);
     text-align: left;
@@ -97,6 +99,11 @@ button.statAttention:hover {
 @media (max-width: 63.99rem) {
     .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* o cartao q sobra sozinho na ultima linha ocupa a linha toda */
+    .stat:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 

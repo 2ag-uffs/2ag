@@ -38,7 +38,7 @@
 .stats {
     display: grid;
     gap: var(--space-4);
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .cards {
@@ -60,6 +60,11 @@
 @media (max-width: 63.99rem) {
     .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* igual o painel: o bloco q sobra sozinho na ultima linha ocupa a linha toda */
+    .stats > .box:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 

@@ -7,8 +7,12 @@ import {cssRules, declarationsOf, mediaRules, readCss} from "../test/css-rules.j
 const progressCss = readCss(import.meta.url, "../pages/progresso/progresso.module.css");
 const profileCss = readCss(import.meta.url, "../pages/profile/profile.module.css");
 const availabilityCss = readCss(import.meta.url, "../pages/agenda-disponibilidade/agenda-disponibilidade.module.css");
+const dashboardCss = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.module.css");
+const dashboardSource = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.jsx");
+const skeletonCss = readCss(import.meta.url, "../components/skeleton/skeleton.module.css");
 
 const MOBILE = "@media (max-width: 47.99rem)";
+const NARROW = "@media (max-width: 63.99rem)";
 
 // so as regras de fora de qualquer @media, q sao as do computador
 function cssWithoutMedia(cssText) {
@@ -46,5 +50,20 @@ describe("telas do prescritor", () => {
         expect(declarationsOf(mobile, ".periodError")["grid-column"]).toBe("1 / -1");
         // no computador nada muda
         expect(declarationsOf(cssWithoutMedia(availabilityCss), ".period").display).toBe("flex");
+    });
+
+    it("os cinco numeros do painel cabem numa linha, e em duas colunas o q sobra sozinho ocupa a linha toda", () => {
+        const five = "repeat(5, minmax(0, 1fr))";
+        const dashboardNarrow = mediaRules(dashboardCss, NARROW);
+        const skeletonNarrow = mediaRules(skeletonCss, NARROW);
+
+        expect(declarationsOf(cssWithoutMedia(dashboardCss), ".stats")["grid-template-columns"]).toBe(five);
+        expect(declarationsOf(dashboardNarrow, ".stat:last-child:nth-child(odd)")["grid-column"]).toBe("1 / -1");
+        // o botao e a div ficam com a msm altura de linha
+        expect(declarationsOf(dashboardCss, ".stat")["line-height"]).toBe("var(--leading-tight)");
+        // o esqueleto tem a msm forma, pra tela n pular qnd os dados chegam
+        expect(declarationsOf(cssWithoutMedia(skeletonCss), ".stats")["grid-template-columns"]).toBe(five);
+        expect(declarationsOf(skeletonNarrow, ".stats > .box:last-child:nth-child(odd)")["grid-column"]).toBe("1 / -1");
+        expect(dashboardSource).toContain("<SkeletonPage cards={3} stats={5}/>");
     });
 });

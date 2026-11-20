@@ -46,7 +46,7 @@ export default function DashboardPrescritor() {
     }
 
     if (!panel) {
-        return <SkeletonPage cards={3} stats={4}/>;
+        return <SkeletonPage cards={3} stats={5}/>;
     }
 
     const firstName = firstNameOf(loggedUser.name);
