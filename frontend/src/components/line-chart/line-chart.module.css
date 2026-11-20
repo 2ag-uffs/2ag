@@ -62,8 +62,9 @@
     fill: var(--color-text-secondary);
 }
 
+/* a linha de cada faixa tem q ser achada, entao leva a borda dos controles. a grade continua clara */
 .band {
-    stroke: var(--color-chart-grid);
+    stroke: var(--color-control-border);
     stroke-dasharray: 6 3;
 }
 

@@ -91,6 +91,7 @@
 /* periodo recusado ganha a borda de erro e a mensagem embaixo, na linha toda */
 .timeField input[aria-invalid="true"] {
     border-color: var(--color-error);
+    border-width: 2px;
     box-shadow: 0 0 0 3px var(--color-error-soft);
 }
 

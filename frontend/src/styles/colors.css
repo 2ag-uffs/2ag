@@ -77,6 +77,13 @@
     --color-primary-soft: #e0ede6;      /* verde diluido, selecao e destaque */
     --color-neutral: #9aa69f;
 
+    /* ---- borda do q a pessoa tem q achar e tocar ----
+     * campo, opcao, bolinha vazia, nota da regua e linha das faixas do grafico.
+     * passa de 3:1 sobre o cartao, o fundo da pagina e as tres faixas da escala
+     * visual (a vermelha eh a q mais aperta, 3,2:1). a --color-border continua
+     * clara pq eh so o contorno dos cartoes, q n precisa ser achado */
+    --color-control-border: #6b756f;
+
     /* ---- estados ---- */
     --color-error: #a44819;             /* terracota tom 3, 6,0:1 */
     --color-error-soft: #f1e4dd;        /* fundo da caixa de erro */
@@ -168,6 +175,7 @@
         --color-border-light: #232b25;
         --color-primary-soft: #16281d;
         --color-neutral: #6f7c73;
+        --color-control-border: #7a887e;
 
         --color-error: #e0906b;
         --color-error-soft: #2e1d16;
@@ -225,6 +233,7 @@
     --color-border-light: #232b25;
     --color-primary-soft: #16281d;
     --color-neutral: #6f7c73;
+    --color-control-border: #7a887e;
 
     --color-error: #e0906b;
     --color-error-soft: #2e1d16;
@@ -284,6 +293,7 @@
         --color-border-light: #e9edea;
         --color-primary-soft: #e0ede6;
         --color-neutral: #9aa69f;
+        --color-control-border: #6b756f;
 
         --color-error: #a44819;
         --color-error-soft: #f1e4dd;

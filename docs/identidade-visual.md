@@ -100,7 +100,7 @@ Sobre fundo sem contraste · esticar horizontalmente · aumentar o tamanho do s�
 
 `frontend/src/styles/colors.css` é a única fonte de cor do frontend. Os quinze tons da cartela estão lá com o nome da família, mais o preto neutro.
 
-Quatro valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo.
+Cinco valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-control-border`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo.
 
 Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, âmbar e vermelha da escala de dor, que seguem o formulário impresso que a clínica já usa. No papel a faixa moderada vai do verde ao âmbar; na tela ela foi simplificada num âmbar só.
 
@@ -124,6 +124,19 @@ O verde claro e a terracota do manual **reprovam como cor de texto**, nos dois s
 
 A regra que ficou: onde o verde claro é fundo, o texto vai escuro (`--color-text-on-secondary`); onde ele era texto, virou a primária, porque nem o tom 3 (`#637D40`, 4,3:1) passa em cima do fundo da página; e a terracota de texto e de fundo virou o tom 3 (`#A44819`), que é também a `--color-error`. O verde claro e a terracota do tom 1 continuam na paleta, em preenchimento, borda e ícone.
 
+**Borda dos controles (20/11/2026).** A borda do que a pessoa precisa achar para tocar ou preencher (campo de texto, seletor, área de texto, cartão de opção, bolinha e caixa de marcar vazias, nota da régua) e a linha tracejada das faixas no gráfico usam `--color-control-border`: `#6B756F` no tema claro e `#7A887E` no escuro, dois neutros esverdeados da mesma receita dos outros. Passam de 3:1 em todo fundo em que a borda encosta:
+
+| Fundo | claro `#6B756F` | escuro `#7A887E` |
+| :--- | :--- | :--- |
+| cartão, que é também o lado de dentro do campo e da nota | 4,7:1 | 4,6:1 |
+| fundo da página, que é também o do campo travado | 4,3:1 | 5,0:1 |
+| bloco dentro do cartão e realce verde | 3,9:1 | 4,1:1 |
+| faixa azul da régua de dor | 3,7:1 | 3,8:1 |
+| faixa âmbar | 3,9:1 | 3,5:1 |
+| faixa vermelha | 3,2:1 | 3,8:1 |
+
+Antes essas bordas usavam `--color-border`, que dá 1,3:1 sobre o cartão nos dois temas. `--color-border` e `--color-chart-grid` não mudaram de valor: continuam no contorno dos cartões e na grade do gráfico, que não precisam ser achados. Como a borda em repouso ficou quase tão escura quanto a de erro, o campo recusado passou a ter a borda dobrada (2 px), além da cor, do halo e da mensagem embaixo; a opção escolhida já tinha a borda dobrada e o check. `frontend/src/styles/control-border.test.js` refaz a conta nos dois temas.
+
 ### superfícies
 
 O fundo das telas é um neutro frio levemente esverdeado (`#F4F6F4`), o cartão é branco e o bloco dentro do cartão é `#E9EDEA`. Nenhum dos três sai da cartela, porque ela não tem tom neutro.
@@ -132,7 +145,7 @@ A primeira versão usava a palha `#FFEEDA` como fundo de tudo. Na tela pesou: fu
 
 Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
 
-O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.
+O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Desde 20/11/2026 essa borda neutra é a `--color-control-border`, mais escura que a do cartão (veja *contraste*). Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.
 
 ### logotipo
 
@@ -142,7 +155,7 @@ O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006
 
 ### gráfico de progresso
 
-O gráfico de evolução é um SVG feito à mão, e as cores vêm direto dos tokens do CSS por `var()` (`--color-chart-line`, `--color-chart-grid`, `--color-secondary` e `--color-error`, em `line-chart.module.css`). Por isso o tema escuro vale no gráfico sem nenhum JavaScript.
+O gráfico de evolução é um SVG feito à mão, e as cores vêm direto dos tokens do CSS por `var()` (`--color-chart-line`, `--color-chart-grid`, `--color-control-border` nas linhas das faixas, `--color-secondary` e `--color-error`, em `line-chart.module.css`). Por isso o tema escuro vale no gráfico sem nenhum JavaScript.
 
 ---
 

@@ -56,7 +56,7 @@
 .box {
     align-items: center;
     background-color: var(--color-surface);
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--color-control-border);
     border-radius: var(--radius-sm);
     color: transparent;
     display: flex;

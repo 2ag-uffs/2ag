@@ -140,14 +140,16 @@
     font-weight: 500;
 }
 
+/* a borda dobra, como no campo recusado dos outros formularios */
 .input[aria-invalid="true"],
 .textarea[aria-invalid="true"] {
     border-color: var(--color-error);
+    border-width: 2px;
 }
 
 .textarea {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-control-border);
     border-radius: var(--radius-md);
     color: var(--color-text-primary);
     font: inherit;
@@ -186,7 +188,7 @@
 .score span {
     align-items: center;
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-control-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
@@ -294,7 +296,7 @@
 .optionCard {
     align-items: center;
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-control-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
@@ -309,7 +311,7 @@
 /* a bolinha fica vazia e o check so aparece na escolhida */
 .optionMark {
     align-items: center;
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--color-control-border);
     border-radius: var(--radius-pill);
     display: flex;
     flex: 0 0 auto;
@@ -334,7 +336,7 @@ fieldset:disabled .optionCard {
 
 fieldset:disabled .score span:hover,
 fieldset:disabled .optionCard:hover {
-    border-color: var(--color-border);
+    border-color: var(--color-control-border);
 }
 
 /* a nota escolhida fica cheia e com um anel por dentro, entao a cor n eh o unico sinal */

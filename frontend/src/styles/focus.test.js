@@ -1,4 +1,5 @@
 import {describe, expect, it} from "vitest";
+import {contrastOf, onTopOf, rgbaOf, themesOf} from "../test/contrast.js";
 import {declarationsOf, mediaRules, readCss} from "../test/css-rules.js";
 
 // foco sempre visivel pra quem usa so o teclado (CT-39)
@@ -25,35 +26,6 @@ function actionsBarHeight(declarations, mobileDeclarations = {}) {
     return remOf(padding[0]) + remOf("var(--control-height)") + remOf(paddingBottom);
 }
 
-// cor do css (#rrggbb ou rgba) em [r, g, b, alfa]
-function rgbaOf(color) {
-    if (color.startsWith("#")) {
-        return [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16)).concat(1);
-    }
-    const parts = color.match(/[\d.]+/g).map(Number);
-    return [parts[0], parts[1], parts[2], parts.length > 3 ? parts[3] : 1];
-}
-
-// a cor q aparece na tela: a transparente se mistura com o fundo
-function onTopOf(color, backdrop) {
-    return [0, 1, 2].map((index) => color[index] * color[3] + backdrop[index] * (1 - color[3]));
-}
-
-// luminancia relativa e contraste da wcag
-function luminanceOf(rgb) {
-    const [red, green, blue] = rgb.map((channel) => {
-        const value = channel / 255;
-        return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-}
-
-function contrastOf(first, second) {
-    const lighter = Math.max(luminanceOf(first), luminanceOf(second));
-    const darker = Math.min(luminanceOf(first), luminanceOf(second));
-    return (lighter + 0.05) / (darker + 0.05);
-}
-
 // a cor da parte de fora do anel, a ultima sombra do --focus-ring
 function ringColorIn(theme) {
     const shadows = tokens["--focus-ring"].split(/,(?![^(]*\))/);
@@ -61,16 +33,7 @@ function ringColorIn(theme) {
     return color.startsWith("var(") ? theme[color.slice(4, -1)] : color;
 }
 
-const colorsCss = readCss(import.meta.url, "./colors.css");
-const lightTheme = declarationsOf(colorsCss, ":root");
-const THEMES = {
-    "claro": lightTheme,
-    "escuro escolhido no botao": {...lightTheme, ...declarationsOf(colorsCss, ":root[data-theme=\"dark\"]")},
-    "escuro do aparelho": {
-        ...lightTheme,
-        ...declarationsOf(mediaRules(colorsCss, "@media (prefers-color-scheme: dark)"), ":root:not([data-theme=\"light\"])"),
-    },
-};
+const THEMES = themesOf(readCss(import.meta.url, "./colors.css"));
 
 // botao e link so tem o anel pra mostrar o foco, e o verde meio transparente quase sumia no escuro
 describe("anel de foco de botoes e links", () => {
