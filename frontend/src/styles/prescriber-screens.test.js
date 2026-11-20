@@ -1,4 +1,5 @@
 import {describe, expect, it} from "vitest";
+import {contrastOf, rgbaOf, themesOf} from "../test/contrast.js";
 import {cssRules, declarationsOf, mediaRules, readCss} from "../test/css-rules.js";
 
 // melhorias visuais de 20/11/2026 nas telas q o prescritor mais usa. o jsdom n desenha a tela,
@@ -10,9 +11,16 @@ const availabilityCss = readCss(import.meta.url, "../pages/agenda-disponibilidad
 const dashboardCss = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.module.css");
 const dashboardSource = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.jsx");
 const skeletonCss = readCss(import.meta.url, "../components/skeleton/skeleton.module.css");
+const patientListCss = readCss(import.meta.url, "../pages/lista-paciente/lista-paciente.module.css");
+const THEMES = themesOf(readCss(import.meta.url, "./colors.css"));
 
 const MOBILE = "@media (max-width: 47.99rem)";
 const NARROW = "@media (max-width: 63.99rem)";
+
+// o valor do css, q aqui eh sempre var(--token), na cor do tema
+function colorIn(theme, value) {
+    return rgbaOf(theme[value.match(/var\((--[\w-]+)\)/)[1]]);
+}
 
 // so as regras de fora de qualquer @media, q sao as do computador
 function cssWithoutMedia(cssText) {
@@ -65,5 +73,16 @@ describe("telas do prescritor", () => {
         expect(declarationsOf(cssWithoutMedia(skeletonCss), ".stats")["grid-template-columns"]).toBe(five);
         expect(declarationsOf(skeletonNarrow, ".stats > .box:last-child:nth-child(odd)")["grid-column"]).toBe("1 / -1");
         expect(dashboardSource).toContain("<SkeletonPage cards={3} stats={5}/>");
+    });
+
+    // a cor escrita a mao (branco com 60%) virava um remendo claro no tema escuro, com o texto a uns 2:1
+    it("a aba de ativos e arquivados com o mouse em cima usa o verde diluido e o texto passa de 4,5:1 nos temas", () => {
+        const hover = declarationsOf(patientListCss, ".tab:hover");
+
+        expect(hover["background-color"]).toBe("var(--color-primary-soft)");
+        Object.entries(THEMES).forEach(([themeName, theme]) => {
+            const contrast = contrastOf(colorIn(theme, hover.color), colorIn(theme, hover["background-color"]));
+            expect(contrast, themeName).toBeGreaterThanOrEqual(4.5);
+        });
     });
 });
