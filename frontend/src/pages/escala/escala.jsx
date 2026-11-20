@@ -40,6 +40,19 @@ function openTaskOf(pendingTasks, slug, dayIso) {
     return latestTask;
 }
 
+// o erro de campo q n eh de item nenhum, como o answers da resposta sem nada respondido, n tem onde ser marcado
+// entao o motivo dele vai pro aviso, no lugar do "Confira os campos destacados" q apontava pra nada
+function refusalMessageOf(requestError, items) {
+    if (!(requestError instanceof ApiError)) {
+        return errorMessageOf(requestError);
+    }
+    const fieldErrors = requestError.fieldErrors();
+    const looseMessages = Object.keys(fieldErrors)
+        .filter((field) => !items.some((item) => item.key === field))
+        .map((field) => fieldErrors[field]);
+    return looseMessages.length > 0 ? looseMessages.join(". ") : requestError.message;
+}
+
 // c/ a hora no texto a data eh lida no fuso local e n volta um dia
 function localDateOf(dayIso) {
     return new Date(dayIso + "T00:00:00");
@@ -534,7 +547,7 @@ export default function Escala() {
                 savedDays.push(dayIso);
             } catch (requestError) {
                 // o dia recusado continua como rascunho e o erro diz qual dia foi
-                const message = errorMessageOf(requestError);
+                const message = refusalMessageOf(requestError, definition.items);
                 failures.push(isDiary
                     ? formatWeekdayAndDate(dayIso) + ": a resposta não foi salva. " + message
                     : message);

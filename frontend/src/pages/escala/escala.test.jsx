@@ -577,6 +577,24 @@ describe("Escala no celular, uma pergunta por tela", () => {
         expect(post.mock.calls[0][1].answers).toEqual({freqSono: 0});
     });
 
+    // o tea n tem escore, entao nada falta na tela e a api eh quem recusa a resposta vazia. o erro dela eh do
+    // campo answers, q n eh item nenhum, e o aviso tem q dizer o motivo em vez de mandar conferir campo destacado
+    it("salvar sem responder nada diz pra responder ao menos um item", async () => {
+        mockPhoneWidth(true);
+        post.mockRejectedValue(new ApiError(400, "Confira os campos destacados",
+            [{field: "answers", message: "Responda ao menos um item da escala"}]));
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Responda ao menos um item da escala");
+        expect(screen.queryByText(/Confira os campos destacados/)).not.toBeInTheDocument();
+        expect(post.mock.calls[0][1].answers).toEqual({});
+    });
+
     it("escala pontuada salva com item pulado volta pra pergunta q falta e leva o foco nela", async () => {
         mockPhoneWidth(true);
         const scored = {...TEA, maxScore: 2, items: TEA.items.slice(0, 2)};
@@ -1096,9 +1114,10 @@ describe("Escala diaria", () => {
             if (body.periodStart === rejectDay) {
                 return Promise.reject(new ApiError(400, "Dia fora do período da tarefa"));
             }
-            // a api de vdd recusa resposta sem nenhum item
+            // a api de vdd recusa resposta sem nenhum item, no campo answers
             if (Object.keys(body.answers).length === 0) {
-                return Promise.reject(new ApiError(400, "Responda ao menos um item da escala"));
+                return Promise.reject(new ApiError(400, "Confira os campos destacados",
+                    [{field: "answers", message: "Responda ao menos um item da escala"}]));
             }
             const saved = {
                 id: savedResponses.length + 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal",
