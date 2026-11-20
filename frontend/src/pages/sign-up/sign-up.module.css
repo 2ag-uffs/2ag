@@ -85,7 +85,7 @@
 
 /* aceite do termo de consentimento num bloco destacado */
 .consent {
-    background-color: var(--color-background);
+    background-color: var(--color-surface-alt);
     border-radius: var(--radius-md);
     display: flex;
     flex-direction: column;
