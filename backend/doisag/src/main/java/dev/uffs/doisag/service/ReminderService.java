@@ -52,6 +52,9 @@ public class ReminderService {
     private static final int SCALE_REMINDER_DAYS = 2;
     // no diario, quantos dias seguidos em branco viram lembrete (revisao das regras R6)
     private static final int BLANK_DAYS_IN_A_ROW = 2;
+    // o e-mail dos formularios leva pro painel do paciente, q mostra o q espera resposta e n tem o numero
+    // dele no endereco. o aviso de dentro do sistema continua com o link da central ou da tela
+    private static final String EMAIL_FORMS_PATH = "/painel-paciente";
 
     private final AppointmentRepository appointmentRepository;
     private final ScaleTaskRepository taskRepository;
@@ -264,7 +267,8 @@ public class ReminderService {
     }
 
     // a tarefa reaberta pela anulacao leva pra tela ja na data dela, como o cartao da central, senao a resposta
-    // de hoje fechava a rodada nova. o e-mail leva pra central, pq o link da tela diz o nome da escala
+    // de hoje fechava a rodada nova. o e-mail leva pro painel, pq o link da tela diz o nome da escala e o da
+    // central o numero do paciente
     private void sendTaskReminder(ScaleTask task, LocalDate today) {
         Patient patient = task.getPatient();
         String scaleName = task.getScaleType().getDisplayName();
@@ -278,7 +282,7 @@ public class ReminderService {
         // o nome da escala eh dado clinico e fica so dentro do sistema
         sendEmail(patient, "Você tem formulário para responder no 2AG",
                 "Você tem um formulário esperando resposta até " + BrazilianFormat.date(task.getPeriodEnd())
-                        + ". Entre no sistema para ver qual.", link);
+                        + ". Entre no sistema para ver qual.", EMAIL_FORMS_PATH);
 
         task.setReminderSentAt(LocalDateTime.now());
         taskRepository.save(task);
@@ -429,7 +433,7 @@ public class ReminderService {
         // o nome da escala eh dado clinico e fica so dentro do sistema
         sendEmail(patient, "Você tem dias em branco no 2AG",
                 "Os dias " + days + " ficaram em branco num formulário diário. Entre no sistema para ver qual "
-                        + "e preencher.", Notification.patientScalesLink(patient.getId()));
+                        + "e preencher.", EMAIL_FORMS_PATH);
     }
 
     // o e-mail so sai pra conta ativa q deixou ligado no perfil (RF18)

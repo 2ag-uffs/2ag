@@ -525,6 +525,7 @@ Lembretes automáticos de **horário de dose**, de **consulta próxima** e de **
 - Lembrete de consulta enviado com antecedência configurável
 - Lembrete de formulário pendente respeita a periodicidade do protocolo (RF32), sem duplicar
 - *Decisão de 14/11/2026, revisão das regras R6:* na ficha diária e no diário do sono, dois dias seguidos em branco geram um lembrete, um só por sequência de dias em branco, no sistema e por e-mail quando a preferência do paciente deixa, como os outros lembretes
+- *Acrescentado em 20/11/2026:* o link do e-mail de lembrete de formulário leva ao painel do paciente, um endereço sem o número dele; o aviso dentro do sistema continua levando à central de escalas ou à tela da escala. Um teste automático passa pelo assunto e pelo texto de todos os e-mails que o sistema monta e falha se achar o nome de uma escala ou uma palavra do tratamento (ansiedade, sono, dor, cannabis, canabidiol). É um alarme, não uma prova de que o e-mail não diz nada clínico
 
 *Justificativa:* foi a necessidade mais citada pelos pacientes na elicitação (v1.0 §1.5 e Tabela 2): *"Pacientes relataram dificuldade para lembrar de tomar as doses"*. A v1.0 menciona lembretes em RF10 e RF14, mas nunca como requisito próprio, e nada foi implementado.
 

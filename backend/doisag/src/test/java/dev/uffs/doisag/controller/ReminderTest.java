@@ -177,6 +177,10 @@ class ReminderTest {
         ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailSender).send(email.capture());
         assertThat(email.getValue().text()).doesNotContain("Hamilton").contains("Entre no sistema para ver qual");
+        // o link do e-mail n leva o numero do paciente, e o aviso de dentro do sistema continua com o dele
+        assertThat(email.getValue().text()).contains("http://localhost:5173/painel-paciente\n")
+                .doesNotContain("/pacientes/");
+        assertThat(notificationsOf(patient).get(0).getLink()).isEqualTo("/pacientes/" + patient.getId() + "/escalas");
     }
 
     @Test
@@ -266,6 +270,9 @@ class ReminderTest {
         ArgumentCaptor<EmailMessage> email = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailSender).send(email.capture());
         assertThat(email.getValue().text()).doesNotContain("Acompanhamento").contains("Entre no sistema");
+        // nem o numero do paciente no link
+        assertThat(email.getValue().text()).contains("http://localhost:5173/painel-paciente\n")
+                .doesNotContain("/pacientes/");
 
         // a mesma sequencia de dias em branco n cobra de novo
         assertThat(reminderService.sendBlankDaysReminders(TODAY.plusDays(1))).isZero();
