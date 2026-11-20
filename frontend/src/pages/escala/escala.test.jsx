@@ -1583,4 +1583,63 @@ describe("Escala diaria", () => {
         expect(screen.getByLabelText("Horário em que foi dormir")).not.toHaveAttribute("aria-invalid");
         expect(screen.getByRole("alert")).toHaveTextContent("a resposta não foi salva. " + message);
     });
+
+    // o numero calculado na tela tem q ser a conta das respostas q estao nela: mexer num horario
+    // de um dia salvo apaga o valor antigo e volta o texto de q o sistema calcula ao salvar
+    it("no diario, mudar o horario de um dia salvo tira da tela o tempo calculado antigo", async () => {
+        const day = toIsoDate(new Date());
+        const sleepDiary = {
+            type: "REGISTRO_SONO", slug: "diario-sono", title: "Diário do sono", instruction: "Preencha um dia.",
+            fillMode: "DIARIO", filledByPatient: true, maxScore: null,
+            items: [
+                {key: "horarioDormir", label: "Horário em que foi dormir", type: "HORA", options: []},
+                {key: "horarioLevantar", label: "Horário em que se levantou", type: "HORA", options: []},
+                {key: "tempoNaCama", label: "Tempo na cama", type: "CALCULADO", options: []},
+                {key: "tempoAteDormir", label: "Tempo antes de adormecer", type: "MINUTOS", options: []},
+                {key: "tempoAcordadoNoite", label: "Duração de tempo acordado", type: "MINUTOS", options: []},
+                {key: "totalAcordado", label: "Total acordado no horário do sono", type: "CALCULADO", options: []},
+                {key: "tempoTotalSono", label: "Tempo total de sono", type: "CALCULADO", options: []},
+            ],
+        };
+        const savedDay = {
+            id: 21, scaleType: "REGISTRO_SONO", slug: "diario-sono", periodStart: day, periodEnd: day,
+            answers: {horarioDormir: "23:00", horarioLevantar: "07:00", tempoAteDormir: 30, tempoAcordadoNoite: 30,
+                tempoNaCama: 480, totalAcordado: 60, tempoTotalSono: 420},
+            result: null, reviewed: false, annulled: false, editableByPatient: true,
+        };
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/diario-sono") {
+                return Promise.resolve(sleepDiary);
+            }
+            if (path === "/scales/diario-sono/responses") {
+                return Promise.resolve([savedDay]);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.resolve({pending: [], history: []});
+            }
+            return Promise.resolve([]);
+        });
+        const post = vi.spyOn(apiService, "post").mockResolvedValue(savedDay);
+        renderScale("/escalas/diario-sono?data=" + day);
+        const user = userEvent.setup();
+
+        const wakeUpField = await screen.findByLabelText("Horário em que se levantou");
+        await waitFor(() => expect(wakeUpField).toHaveValue("07:00"));
+        expect(screen.getByText("8h00")).toBeInTheDocument();
+        expect(screen.getByText("7h00")).toBeInTheDocument();
+
+        fireEvent.change(wakeUpField, {target: {value: "05:00"}});
+
+        // com 05:00 o tempo na cama seria 6h00 e o sono 5h00, entao o 8h00 e o 7h00 de antes n valem mais
+        expect(screen.queryByText("8h00")).not.toBeInTheDocument();
+        expect(screen.queryByText("7h00")).not.toBeInTheDocument();
+        expect(screen.getAllByText("o sistema calcula quando você salvar").length).toBeGreaterThanOrEqual(2);
+
+        // o envio segue sem os calculados, a api eh q faz a conta
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        await waitFor(() => expect(post).toHaveBeenCalledWith("/scales/diario-sono/responses", {
+            periodStart: day, periodEnd: day,
+            answers: {horarioDormir: "23:00", horarioLevantar: "05:00", tempoAteDormir: 30, tempoAcordadoNoite: 30},
+        }));
+    });
 });

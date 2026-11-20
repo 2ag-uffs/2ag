@@ -485,10 +485,14 @@ export default function Escala() {
     };
 
     const changeAnswer = (key, value) => {
-        setEditsByDay((current) => ({
-            ...current,
-            [selectedDay]: {...(current[selectedDay] || savedValues), [key]: value},
-        }));
+        // o valor q o sistema calculou no dia salvo n vale mais dps de uma resposta mudar, entao ele sai do
+        // rascunho e a tela volta a dizer q o sistema calcula ao salvar. a conta continua so na api
+        const computedKeys = definition.items.filter((item) => item.type === "CALCULADO").map((item) => item.key);
+        setEditsByDay((current) => {
+            const dayValues = {...(current[selectedDay] || savedValues)};
+            computedKeys.forEach((computedKey) => delete dayValues[computedKey]);
+            return {...current, [selectedDay]: {...dayValues, [key]: value}};
+        });
         setMissingKeys((currentKeys) => currentKeys.filter((currentKey) => currentKey !== key));
         // no computador a pergunta guardada segue tbm a resposta, pq o safari n da foco no radio clicado
         if (!isStepMode) {
