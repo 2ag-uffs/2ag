@@ -55,6 +55,18 @@ describe("ListaPacientes", () => {
         expect(badges[0].closest("li")).toHaveTextContent("Ana Desativada");
     });
 
+    // arquivar encerra o acompanhamento e fecha escalas e pedidos, entao tem a cara de acao q perde algo,
+    // como Desativar na administracao, e n a de um link verde ao lado de Nova consulta
+    it("o botao de arquivar da linha tem a cara de acao q perde algo", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([
+            {id: 1, name: "Bruna Ativa", birthDate: "1990-01-01", archived: false},
+        ]);
+        renderList();
+
+        expect(await screen.findByRole("button", {name: "Arquivar"})).toHaveClass("button-danger", "button-small");
+        expect(screen.getByRole("button", {name: "Nova consulta"})).toHaveClass("button-secondary");
+    });
+
     // o arquivamento recusa os pedidos em aberto e n cancela a consulta marcada: o prescritor fica sabendo
     // quantas ficaram e cancela na mao se quiser (#170)
     it("arquivar avisa q os pedidos sao recusados e quantas consultas marcadas ficaram", async () => {

@@ -156,7 +156,7 @@ export default function ListaPacientes() {
                             </button>
                             <button
                                 type="button"
-                                className="button-tertiary button-small"
+                                className="button-danger button-small"
                                 onClick={() => setPatientToArchive(patient)}
                                 disabled={isBusy}
                             >
