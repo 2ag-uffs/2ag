@@ -4,6 +4,8 @@ import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
 import AdminPrescribers from "./admin-prescribers.jsx";
 
+const INVALID_CPF_MESSAGE = "Confira o CPF: os 11 números precisam ser iguais aos do documento";
+
 const PRESCRIBERS = [
     {
         id: 1, name: "Ana Lima", email: "ana@email.com", profession: "Biomédica", registryType: "CRBM",
@@ -262,15 +264,15 @@ describe("AdminPrescribers", () => {
         await user.type(screen.getByLabelText("CPF"), "abc");
         await user.click(screen.getByRole("button", {name: "Criar conta"}));
 
-        expect(await screen.findByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(await screen.findByText(INVALID_CPF_MESSAGE)).toBeInTheDocument();
         expect(screen.getByLabelText("CPF")).toHaveAttribute("aria-invalid", "true");
-        expect(screen.queryByText("O CPF é obrigatório")).not.toBeInTheDocument();
+        expect(screen.queryByText("Informe o CPF")).not.toBeInTheDocument();
         expect(post).not.toHaveBeenCalled();
 
         // o digito verificador errado tbm fica na tela
         fireEvent.change(screen.getByLabelText("CPF"), {target: {value: "529.982.247-26"}});
         await user.click(screen.getByRole("button", {name: "Criar conta"}));
-        expect(screen.getByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(screen.getByText(INVALID_CPF_MESSAGE)).toBeInTheDocument();
         expect(post).not.toHaveBeenCalled();
     });
 
@@ -336,7 +338,7 @@ describe("AdminPrescribers", () => {
         await user.type(screen.getByLabelText(/^CPF/), "abc");
         await user.click(screen.getByRole("button", {name: "Salvar correção"}));
 
-        expect(await screen.findByText("O CPF informado é inválido")).toBeInTheDocument();
+        expect(await screen.findByText(INVALID_CPF_MESSAGE)).toBeInTheDocument();
         expect(screen.getByLabelText(/^CPF/)).toHaveAttribute("aria-invalid", "true");
         expect(put).not.toHaveBeenCalled();
         expect(screen.getByRole("button", {name: "Salvar correção"})).toBeInTheDocument();

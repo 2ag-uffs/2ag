@@ -9,8 +9,8 @@ import jakarta.validation.constraints.Size;
 // o link de primeiro acesso vai pro endereco novo, entao a senha do administrador entra junto,
 // igual no link de senha nova: isso tbm poe a conta de outra pessoa em jogo
 public record AdminEmailChangeDTO(
-        @NotBlank(message = "O e-mail é obrigatório")
-        @Email(message = "O formato do e-mail é inválido")
+        @NotBlank(message = "Informe o e-mail")
+        @Email(message = EmailRules.FORMAT_MESSAGE)
         @Pattern(regexp = EmailRules.DOMAIN_WITH_DOT, message = EmailRules.DOMAIN_WITH_DOT_MESSAGE)
         @Size(max = 255, message = "O e-mail pode ter até 255 caracteres")
         String email,

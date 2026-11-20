@@ -117,7 +117,7 @@ Janela normal, conta `admin@email.com`.
   - A prescritora nova aparece na lista com os botões **Senha nova**, **Corrigir e-mail**, **Corrigir dados** e **Desativar**.
   - No servidor de verdade, com e-mail configurado, o link vai direto para o e-mail da pessoa em vez de aparecer na tela.
 - **Se der errado:**
-  - *O CPF informado é inválido*: use um CPF fictício com dígitos válidos.
+  - *Confira o CPF: os 11 números precisam ser iguais aos do documento*: use um CPF fictício com dígitos válidos.
   - O link venceu ou se perdeu: **Senha nova**, digite a senha da administração em **Sua senha de administrador** e **Gerar link**. Esse link vale só 30 minutos, e não 48 horas como o de primeiro acesso: entregue e use na hora. Para quem ainda não criou a senha, a janela e o e-mail dizem que é esse link que cria a primeira senha.
   - O e-mail foi digitado errado: **Corrigir e-mail** (só aparece enquanto a pessoa ainda não criou a senha).
   - O registro, a profissão ou o CPF foram digitados errado: **Corrigir dados**. O CPF guardado não aparece na janela: preencha só se for corrigir.

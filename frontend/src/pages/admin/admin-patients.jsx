@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from "react";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
-import {apiService, ApiError, errorMessageOf} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
 import accountStyles from "./admin-prescribers.module.css";
 import styles from "./admin-patients.module.css";
@@ -62,7 +62,8 @@ export default function AdminPatients() {
                 setPageError(null);
             })
             .catch((requestError) => {
-                setPageError(errorMessageOf(requestError, "Não foi possível carregar as contas desativadas."));
+                setPageError(errorMessageOf(requestError,
+                    "Não foi possível carregar as contas desativadas. Confira sua internet e tente de novo."));
             });
     }, []);
 
@@ -83,7 +84,7 @@ export default function AdminPatients() {
             if (requestError instanceof ApiError) {
                 setSearchError(requestError.fieldErrors().email || requestError.message);
             } else {
-                setSearchError("Não foi possível falar com o servidor.");
+                setSearchError(CONNECTION_ERROR_MESSAGE);
             }
         } finally {
             setIsSearching(false);
@@ -108,7 +109,8 @@ export default function AdminPatients() {
             await loadDeactivated();
         } catch (requestError) {
             setNotice(null);
-            setPageError(errorMessageOf(requestError, "Não foi possível alterar a conta."));
+            setPageError(errorMessageOf(requestError,
+                "Não foi possível alterar a conta. Confira sua internet e tente de novo."));
         }
     };
 

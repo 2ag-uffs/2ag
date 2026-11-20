@@ -16,10 +16,8 @@ import styles from "./admin-prescribers.module.css";
 // conselhos profissionais aceitos no cadastro
 const REGISTRY_TYPES = ["CRBM", "CRM", "COREN", "CRP", "CRF", "CRN"];
 
-const CONNECTION_ERROR = "Não foi possível falar com o servidor.";
-
 // a msm msg da api pro cpf q n fecha a conta dos dois digitos
-const INVALID_CPF_MESSAGE = "O CPF informado é inválido";
+const INVALID_CPF_MESSAGE = "Confira o CPF: os 11 números precisam ser iguais aos do documento";
 
 // o envio tira tudo q n eh numero, entao o cpf so com letras chegava vazio: no cadastro a api dizia q era
 // obrigatorio e na correcao ele virava null e ficava o guardado. aqui ele eh conferido como foi digitado
@@ -261,7 +259,8 @@ export default function AdminPrescribers() {
                 setPageError(null);
             })
             .catch((requestError) => {
-                setPageError(errorMessageOf(requestError, "Não foi possível carregar os prescritores."));
+                setPageError(errorMessageOf(requestError,
+                    "Não foi possível carregar os prescritores. Confira sua internet e tente de novo."));
             })
             .finally(() => setIsLoading(false));
     }, []);
@@ -321,7 +320,7 @@ export default function AdminPrescribers() {
             setFirstAccess({...createdAccount, email: formData.email.trim()});
             await loadPrescribers();
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError);
             setFieldErrors(errorInfo.fieldErrors);
             if (errorInfo.message) {
                 setFormError(errorInfo.message);
@@ -346,7 +345,8 @@ export default function AdminPrescribers() {
             await loadPrescribers();
         } catch (requestError) {
             setNotice(null);
-            setPageError(errorMessageOf(requestError, "Não foi possível alterar a conta."));
+            setPageError(errorMessageOf(requestError,
+                "Não foi possível alterar a conta. Confira sua internet e tente de novo."));
         }
     };
 
@@ -379,7 +379,7 @@ export default function AdminPrescribers() {
             setNewLink(link);
             setAdminPassword("");
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError);
             setResetFieldErrors(errorInfo.fieldErrors);
             if (errorInfo.message) {
                 setResetError(errorInfo.message);
@@ -423,7 +423,7 @@ export default function AdminPrescribers() {
             // a lista mostra o e-mail certo do jeito q a api guardou
             await loadPrescribers();
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError);
             setEmailFieldErrors(errorInfo.fieldErrors);
             if (errorInfo.message) {
                 setEmailError(errorInfo.message);
@@ -484,7 +484,7 @@ export default function AdminPrescribers() {
             setNotice("Dados de " + fixTarget.name + " corrigidos.");
             await loadPrescribers();
         } catch (requestError) {
-            const errorInfo = readRequestError(requestError, CONNECTION_ERROR);
+            const errorInfo = readRequestError(requestError);
             setFixFieldErrors(errorInfo.fieldErrors);
             if (errorInfo.message) {
                 setFixError(errorInfo.message);

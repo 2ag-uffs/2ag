@@ -19,7 +19,8 @@ import java.util.Locale;
 @Service
 public class PatientAccountService {
 
-    public static final String PATIENT_NOT_FOUND_MESSAGE = "Nenhuma conta de paciente com este e-mail";
+    public static final String PATIENT_NOT_FOUND_MESSAGE =
+            "Nenhuma conta de paciente com este e-mail. Confira se ele foi digitado certo";
     public static final String ALREADY_ACTIVE_MESSAGE = "Esta conta já está ativa";
     public static final String ALREADY_INACTIVE_MESSAGE = "Esta conta já está desativada";
 
