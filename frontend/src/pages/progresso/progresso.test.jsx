@@ -641,7 +641,8 @@ describe("Progresso", () => {
                 return Promise.resolve([{date: "2026-10-01", value: 5}]);
             }
             if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
-                return Promise.reject(new ApiError(0, "Sem conexão com o servidor."));
+                // eh assim q o api.js avisa q a api nem respondeu
+                return Promise.reject(new Error(CONNECTION_ERROR_MESSAGE));
             }
             if (path.startsWith("/patients/3/progress?")) {
                 return Promise.resolve(series);
@@ -653,12 +654,38 @@ describe("Progresso", () => {
 
         await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
 
-        expect(await screen.findByText("Não foi possível carregar as gotas do dia.")).toBeInTheDocument();
+        expect(await screen.findByText("Não foi possível carregar as gotas do dia. Confira sua internet e tente de novo."))
+            .toBeInTheDocument();
         // o grafico continua com o item, sem a legenda e o eixo das gotas q n vieram
         const chart = screen.getByRole("application");
         expect(chart.querySelectorAll("circle")).toHaveLength(1);
         expect(chart.querySelector("path[class*='doseLine']")).toBeNull();
         expect(screen.queryByText("Gotas no dia (eixo da direita)")).not.toBeInTheDocument();
+    });
+
+    // a api respondeu com erro, entao a internet funciona e o aviso n manda conferir ela
+    it("gotas q a api recusou pedem pra tentar mais tarde sem falar da internet", async () => {
+        const user = userEvent.setup();
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.reject(new ApiError(500, "Ocorreu um erro inesperado no servidor"));
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+
+        expect(await screen.findByText("Não foi possível carregar as gotas do dia. Tente de novo mais tarde."))
+            .toBeInTheDocument();
+        expect(screen.queryByText(/Confira sua internet/)).not.toBeInTheDocument();
     });
 
     // CT-32 a dose em branco n vale zero (RN10), mas o dia n perde o ponto: ele mostra a dose preenchida com a bolinha

@@ -268,10 +268,14 @@ export default function Progresso() {
                     setLoadedDoseKey(requestKey);
                 }
             })
-            .catch(() => {
+            // o aviso fica sozinho em cima do grafico, entao sempre diz q foram as gotas
+            // e so manda conferir a internet qnd a api nem respondeu
+            .catch((requestError) => {
                 if (isCurrentRequest) {
                     setDosePoints([]);
-                    setDoseError("Não foi possível carregar as gotas do dia.");
+                    setDoseError(requestError instanceof ApiError
+                        ? "Não foi possível carregar as gotas do dia. Tente de novo mais tarde."
+                        : "Não foi possível carregar as gotas do dia. Confira sua internet e tente de novo.");
                     setLoadedDoseKey(requestKey);
                 }
             });
