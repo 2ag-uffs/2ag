@@ -12,6 +12,13 @@ import java.util.List;
 // o section eh a pergunta q o papel usa pra juntar varios itens, tipo a 5 do
 // pittsburgh. so a tela usa, pra mostrar ela uma vez em cima dos itens, e o
 // escore n olha pra ela. nulo no item q fica sozinho
+//
+// o question eh a pergunta inteira do jeito q o papel faz. a tela mostra ela no lugar do label, e o
+// label fica de nome curto pro grafico, pro csv, pra lista do q falta e pra leitura da resposta. nulo
+// no item q o papel ja pergunta com o proprio label
+//
+// o intro eh a frase q o papel poe antes do item, tipo o "para cada uma das questoes restantes" do
+// pittsburgh. tbm so a tela usa
 public record ScaleItem(
         String key,
         String label,
@@ -24,20 +31,22 @@ public record ScaleItem(
         boolean higherIsBetter,
         List<ScaleOption> options,
         boolean trackable,
-        String section) {
+        String section,
+        String question,
+        String intro) {
 
     // nota numa regua, tipo os itens de 0 a 10 da ficha de acompanhamento
     public static ScaleItem nota(String key, String label, int minValue, int maxValue,
                                  String lowAnchor, String highAnchor, boolean higherIsBetter) {
         return new ScaleItem(key, label, null, ScaleItemType.NOTA, minValue, maxValue,
-                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null);
+                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null);
     }
 
     // nota com um texto de apoio embaixo, tipo os itens do hamilton
     public static ScaleItem notaComAjuda(String key, String label, String help, int minValue, int maxValue,
                                          String lowAnchor, String highAnchor, boolean higherIsBetter) {
         return new ScaleItem(key, label, help, ScaleItemType.NOTA, minValue, maxValue,
-                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null);
+                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null);
     }
 
     public static ScaleItem escolha(String key, String label, String help, List<ScaleOption> options,
@@ -45,29 +54,42 @@ public record ScaleItem(
         int maxValue = options.stream().mapToInt(ScaleOption::value).max().orElse(0);
         int minValue = options.stream().mapToInt(ScaleOption::value).min().orElse(0);
         return new ScaleItem(key, label, help, ScaleItemType.ESCOLHA, minValue, maxValue,
-                null, null, higherIsBetter, options, true, null);
+                null, null, higherIsBetter, options, true, null, null, null);
     }
 
     public static ScaleItem simples(String key, String label, String help, ScaleItemType type) {
         return new ScaleItem(key, label, help, type, null, null, null, null, true, List.of(),
-                type == ScaleItemType.NUMERO || type == ScaleItemType.MINUTOS || type == ScaleItemType.HORAS, null);
+                type == ScaleItemType.NUMERO || type == ScaleItemType.MINUTOS || type == ScaleItemType.HORAS,
+                null, null, null);
     }
 
     public static ScaleItem texto(String key, String label, String help) {
         return new ScaleItem(key, label, help, ScaleItemType.TEXTO, null, null, null, null, true,
-                List.of(), false, null);
+                List.of(), false, null, null, null);
     }
 
     // valor q sai de conta, como o tempo total de sono do diario
     public static ScaleItem calculado(String key, String label, String help) {
         return new ScaleItem(key, label, help, ScaleItemType.CALCULADO, null, null, null, null, true,
-                List.of(), true, null);
+                List.of(), true, null, null, null);
     }
 
     // o msm item embaixo da pergunta q o papel usa pra juntar os itens dela
     public ScaleItem inSection(String newSection) {
         return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
-                options, trackable, newSection);
+                options, trackable, newSection, question, intro);
+    }
+
+    // o msm item com a pergunta inteira do papel
+    public ScaleItem withQuestion(String paperQuestion) {
+        return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
+                options, trackable, section, paperQuestion, intro);
+    }
+
+    // o msm item com a frase q o papel poe antes dele
+    public ScaleItem withIntro(String paperIntro) {
+        return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
+                options, trackable, section, question, paperIntro);
     }
 
     public boolean isNumeric() {

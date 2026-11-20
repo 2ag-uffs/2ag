@@ -9,6 +9,7 @@ import styles from "./scale-form.module.css";
 //
 // a tela n sabe o nome de escala nenhuma: o tipo do item diz q campo
 // usar, e as ancoras as opcoes e as faixas vem prontas do servidor (RNF08)
+// o texto de cada item eh a pergunta do papel (question) qnd ela vem, e senao o rotulo
 //
 // o erro de campo q a api manda (fieldErrors, pela chave do item) aparece no proprio item
 // na tela do paciente o texto livre vem com o aviso de q o sistema n eh urgencia (showsUrgencyNotice, R1)
@@ -62,26 +63,40 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
     return (
         <div className={styles.form}>
             {steps.length > 0 && <ScaleProgress answered={answered} total={steps.length} step={step}/>}
-            {parts.map((part) => (part.section ? (
-                <div key={part.key} className={styles.part} role="group" aria-labelledby={part.key + "-parte"}>
-                    <h2 id={part.key + "-parte"} className={styles.partTitle}>{part.section}</h2>
-                    {itemList(part.items)}
-                </div>
-            ) : (
-                <Fragment key={part.key}>{itemList(part.items)}</Fragment>
-            )))}
+            {parts.map((part) => {
+                // a frase q o papel poe antes da pergunta fica em cima da parte, so qnd o item dela esta na tela
+                const intro = part.items[0].intro;
+                const introId = part.key + "-antes";
+                return (
+                    <Fragment key={part.key}>
+                        {intro && <p id={introId} className={styles.intro}>{intro}</p>}
+                        {part.section ? (
+                            <div
+                                className={styles.part}
+                                role="group"
+                                aria-labelledby={part.key + "-parte"}
+                                aria-describedby={intro ? introId : undefined}
+                            >
+                                <h2 id={part.key + "-parte"} className={styles.partTitle}>{part.section}</h2>
+                                {itemList(part.items)}
+                            </div>
+                        ) : itemList(part.items)}
+                    </Fragment>
+                );
+            })}
         </div>
     );
 }
 
 // os itens seguidos com a msm pergunta do papel (o section q vem da api) ficam juntos embaixo dela
 // o texto eh o do instrumento e o rotulo de cada item continua o msm. o item sem pergunta fica sozinho
+// o item q o papel apresenta com uma frase antes (o intro) comeca uma parte nova, pra frase ficar em cima dele
 function partsOf(items) {
     const parts = [];
     items.forEach((item) => {
         const section = item.section || null;
         const lastPart = parts[parts.length - 1];
-        if (lastPart && lastPart.section === section) {
+        if (lastPart && lastPart.section === section && !item.intro) {
             lastPart.items.push(item);
         } else {
             parts.push({key: item.key, section, items: [item]});
@@ -280,10 +295,12 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
     );
 }
 
+// a pergunta inteira do papel (o question q vem da api) entra no lugar do rotulo, do msm tamanho e peso
+// o rotulo eh o nome curto do item: fica no limpar resposta e na lista do q falta, e n aparece junto dela
 function Label({item}) {
     return (
         <>
-            <span className={styles.label}>{item.label}</span>
+            <span className={styles.label}>{item.question || item.label}</span>
             {item.help && <span className={styles.help}>{item.help}</span>}
         </>
     );

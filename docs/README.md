@@ -30,4 +30,5 @@ O sistema reúne triagem (anamnese), agenda, prescrições, aplicação de escal
 | **Entregar instruções ao paciente** | [`docs/capacitacao/guia-do-paciente.md`](./capacitacao/guia-do-paciente.md) — folha de 1 página para imprimir ou enviar junto com o convite. |
 | **Colocar o sistema no ar no servidor da clínica** | [`docs/guia-de-deploy.md`](./guia-de-deploy.md) — guia passo a passo para o responsável técnico configurar o servidor. |
 | **Configurar e testar a cópia diária dos prontuários** | [`docs/backup-e-restauracao.md`](./backup-e-restauracao.md) — instruções de backup automático e tabela de registro de restauração. |
+| **Conferir o texto das escalas na tela contra a ficha em papel** | [`docs/qa/migracao-das-escalas.md`](./qa/migracao-das-escalas.md) — comparação item por item de cada escala e a lista do que está e do que não está atendido na passagem do papel para a tela. |
 | **Conferir as fichas clínicas originais e regras de cálculo** | Pasta [`docs/scales/`](./scales/) (PDFs originais dos formulários) e Anexo A de [`docs/requisitos-v2.md`](./requisitos-v2.md). |

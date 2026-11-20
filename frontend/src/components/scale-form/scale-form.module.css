@@ -50,6 +50,12 @@
     list-style: none;
 }
 
+/* a frase q o papel poe antes de uma pergunta, do tamanho do texto da pagina */
+.intro {
+    color: var(--color-text-primary);
+    line-height: var(--leading-normal);
+}
+
 /* a pergunta do papel q junta varios itens fica uma vez em cima deles, com o fio verde do lado */
 .part {
     border-left: 3px solid var(--color-secondary);

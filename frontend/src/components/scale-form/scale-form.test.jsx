@@ -336,17 +336,23 @@ describe("ScaleForm com os itens juntos embaixo da pergunta do papel", () => {
             .toEqual(["freqFrio", "freqFrio", "freqCalor", "freqCalor", "qualidadeGeral", "qualidadeGeral"]);
     });
 
-    // na dor a pergunta eh a ajuda de cada item e n vem como parte: a ajuda aparece e nenhum titulo entra
-    it("item sem parte com a pergunta na ajuda n ganha titulo", () => {
-        const painTrouble = "Durante a última semana, com que frequência a dor atrapalhou";
+    // na dor o cabecalho da tabela do papel tbm fica uma vez em cima das atividades, e a linha q o sistema
+    // tinha encurtado vem com o texto do papel
+    it("na dor a pergunta da tabela fica em cima das atividades, com a linha escrita como no papel", () => {
+        const painTrouble = "Durante a última semana com que frequência a dor te atrapalhou:";
         const items = [
-            {...frequency("freqSono", "Sono"), help: painTrouble},
-            {...frequency("freqProdutividade", "Produtividade no trabalho"), help: painTrouble},
+            {...frequency("freqAtividadesBasicas", "Atividades básicas (comer, levantar, tomar banho)"),
+                section: painTrouble},
+            {...frequency("freqSono", "Sono"), section: painTrouble, question: "No seu sono"},
         ];
         render(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
 
-        expect(screen.queryByRole("heading", {name: painTrouble})).not.toBeInTheDocument();
-        expect(screen.getAllByText(painTrouble)).toHaveLength(2);
+        expect(screen.getAllByText(painTrouble)).toHaveLength(1);
+        const part = screen.getByRole("group", {name: painTrouble});
+        expect(within(part).getByRole("group", {name: "Atividades básicas (comer, levantar, tomar banho)"}))
+            .toBeInTheDocument();
+        expect(within(part).getByRole("group", {name: "No seu sono"})).toBeInTheDocument();
+        expect(screen.queryByText("Sono")).not.toBeInTheDocument();
     });
 
     // no celular cada tela tem uma pergunta, e a da parte leva o titulo junto pra n perder o sentido
@@ -359,6 +365,110 @@ describe("ScaleForm com os itens juntos embaixo da pergunta do papel", () => {
 
         rerender(<ScaleForm items={PSQI_ITEMS} values={{}} onChange={() => {}} step={3}/>);
         expect(screen.queryByRole("heading", {name: SLEEP_TROUBLE})).not.toBeInTheDocument();
+    });
+});
+
+// o paciente le a pergunta inteira do papel (o question q vem da api, copiado de docs/scales) no lugar do
+// nome curto do item. o nome curto continua no limpar resposta, na lista do q falta, no csv e no grafico
+describe("ScaleForm com a pergunta inteira do papel", () => {
+    const SLEEP_TROUBLE = "Durante o último mês, com que frequência você teve dificuldade para dormir porque você:";
+    const options = [{value: 0, label: "Muito boa"}, {value: 1, label: "Boa"}];
+    const SLEEP_QUALITY = {
+        key: "qualidadeGeral", label: "Qualidade do sono de uma maneira geral", type: "ESCOLHA", options,
+        question: "Durante o último mês como você classificaria a qualidade do seu sono de uma maneira geral:",
+    };
+    const PAIN = {
+        ...PAIN_ITEM,
+        question: "De acordo com a escala visual abaixo, como você classifica a sua dor no último período?",
+    };
+    const QUALITY_OF_LIFE = {
+        key: "qualidadeDeVida", label: "Qualidade de vida no período", type: "NOTA", minValue: 0, maxValue: 10,
+        lowAnchor: "muito ruim", highAnchor: "muito boa", higherIsBetter: true,
+        question: "Em uma escala de 0 a 10, sendo 10 a melhor pontuação, como você classifica sua qualidade de vida "
+            + "no último período?",
+    };
+
+    it("mostra a pergunta do papel num item do pittsburgh, da dor e do tea, sem o nome curto junto", () => {
+        for (const item of [SLEEP_QUALITY, PAIN, QUALITY_OF_LIFE]) {
+            const {unmount} = render(
+                <ScaleForm items={[item]} bands={item === PAIN ? PAIN_BANDS : []} values={{}} onChange={() => {}}/>);
+
+            expect(screen.getByRole("group", {name: item.question})).toBeInTheDocument();
+            expect(screen.getAllByText(item.question)).toHaveLength(1);
+            expect(screen.queryByText(item.label)).not.toBeInTheDocument();
+            unmount();
+        }
+    });
+
+    it("o limpar resposta continua dizendo o nome curto do item", () => {
+        render(<ScaleForm items={[SLEEP_QUALITY]} values={{qualidadeGeral: "1"}} onChange={() => {}}/>);
+
+        expect(screen.getByRole("button", {name: "Limpar resposta de Qualidade do sono de uma maneira geral"}))
+            .toBeInTheDocument();
+    });
+
+    // nas perguntas de 1 a 4 do pittsburgh o papel traz a pergunta e, do lado, o nome do campo de resposta
+    it("no campo digitado a pergunta vem primeiro e o nome do campo do papel embaixo, uma vez so", () => {
+        const bedTime = {
+            key: "horaDeitar", label: "Hora usual de deitar", help: "Hora usual de deitar:", type: "HORA",
+            question: "Durante o último mês, quando você geralmente foi para a cama à noite?",
+        };
+        render(<ScaleForm items={[bedTime]} values={{}} onChange={() => {}}/>);
+
+        const field = screen.getByLabelText(/^Durante o último mês, quando você geralmente foi para a cama à noite\?/);
+        expect([...field.labels[0].children].map((child) => child.textContent))
+            .toEqual([bedTime.question, "Hora usual de deitar:"]);
+        expect(screen.getAllByText(/Hora usual de deitar/)).toHaveLength(1);
+    });
+
+    // a letra j da pergunta 5 fica embaixo do titulo dela, e o texto do item eh a frase da propria letra j
+    it("a letra j do pittsburgh mostra a frase dela embaixo do titulo da pergunta 5, sem repetir o titulo", () => {
+        const items = [
+            {key: "outrasRazoes", label: "Outras razões que atrapalharam o sono", type: "TEXTO",
+                section: SLEEP_TROUBLE, question: "Outras razões, por favor descreva:"},
+            {key: "freqOutrasRazoes", label: "Com que frequência essas outras razões atrapalharam", type: "ESCOLHA",
+                section: SLEEP_TROUBLE, options,
+                question: "Com que frequência, durante o último mês, você teve dificuldade para dormir devido a "
+                    + "essa razão?"},
+        ];
+        render(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
+
+        expect(screen.getAllByText(SLEEP_TROUBLE)).toHaveLength(1);
+        const part = screen.getByRole("group", {name: SLEEP_TROUBLE});
+        expect(within(part).getByLabelText("Outras razões, por favor descreva:")).toBeInTheDocument();
+        expect(within(part).getByRole("group", {name: items[1].question})).toBeInTheDocument();
+        expect(screen.queryByText("Com que frequência essas outras razões atrapalharam")).not.toBeInTheDocument();
+    });
+
+    // a frase q o papel poe entre a pergunta 4 e a 5 do pittsburgh (o intro do primeiro item da 5)
+    it("a frase de antes da pergunta fica uma vez em cima dela, e no celular so na tela do item dela", () => {
+        const intro = "Para cada uma das questões restantes, marque a melhor (uma) resposta. Por favor, responda a "
+            + "todas as questões.";
+        const frequency = (key, label) => ({key, label, type: "ESCOLHA", section: SLEEP_TROUBLE, options});
+        const items = [
+            {key: "horasDeSono", label: "Horas de sono por noite", type: "HORAS"},
+            {...frequency("freqNaoAdormeceu", "Não conseguiu adormecer em até 30 minutos"), intro},
+            frequency("freqAcordouNoite", "Acordou no meio da noite ou de manhã cedo"),
+        ];
+        const {rerender} = render(<ScaleForm items={items} values={{}} onChange={() => {}}/>);
+
+        expect(screen.getAllByText(intro)).toHaveLength(1);
+        // vem antes do titulo da pergunta 5, como no papel, e o leitor de tela le junto da parte
+        const heading = screen.getByRole("heading", {name: SLEEP_TROUBLE});
+        expect(screen.getByText(intro).compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+        expect(screen.getByRole("group", {name: SLEEP_TROUBLE})).toHaveAccessibleDescription(intro);
+
+        rerender(<ScaleForm items={items} values={{}} onChange={() => {}} step={1}/>);
+        expect(screen.getByText(intro)).toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: SLEEP_TROUBLE})).toBeInTheDocument();
+
+        rerender(<ScaleForm items={items} values={{}} onChange={() => {}} step={0}/>);
+        expect(screen.queryByText(intro)).not.toBeInTheDocument();
+
+        rerender(<ScaleForm items={items} values={{}} onChange={() => {}} step={2}/>);
+        expect(screen.queryByText(intro)).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: SLEEP_TROUBLE})).toBeInTheDocument();
     });
 });
 

@@ -23,9 +23,14 @@ public class ScaleCatalog {
     public static final String INCOMPLETE_RESULT = "Incompleta: sem escore";
 
     private static final String ANSWERED_RESULT = "Respondida";
+    // essa frase eh do sistema e n do papel. fica no cabecalho da pagina, fora dos itens do instrumento
     private static final String LAST_WEEK_INSTRUCTION = "Pense na última semana para responder.";
     private static final String NOTES_HELP = "Relato de efeito colateral, ausência da tomada de alguma medicação, "
             + "momento significativo na rotina";
+    // o texto das observacoes de registro-dor.pdf e de registro-tea.pdf, inteiro
+    private static final String PAPER_NOTES_HELP = "Escreva aqui qualquer ponto que julgar relevante como, por "
+            + "exemplo, o relato de algum efeito colateral, a ausência da tomada de alguma medicação, o relato de "
+            + "algum momento significativo na rotina, etc...";
 
     // frequencia dos acompanhamentos semanais de dor e de TEA
     private static final List<ScaleOption> DAYS_PER_WEEK_OPTIONS = List.of(
@@ -39,8 +44,12 @@ public class ScaleCatalog {
     // a 5 do psqi-br.pdf
     private static final String SLEEP_TROUBLE_QUESTION =
             "Durante o último mês, com que frequência você teve dificuldade para dormir porque você:";
-    // a da dor eh a ajuda de cada item e n vira titulo, senao a msm frase aparecia duas vezes em cada um
-    private static final String PAIN_TROUBLE_QUESTION = "Durante a última semana, com que frequência a dor atrapalhou";
+    // a frase q o psqi-br.pdf poe entre a pergunta 4 e a 5
+    private static final String REMAINING_QUESTIONS_INTRO = "Para cada uma das questões restantes, marque a melhor "
+            + "(uma) resposta. Por favor, responda a todas as questões.";
+    // o cabecalho da tabela de registro-dor.pdf
+    private static final String PAIN_TROUBLE_QUESTION =
+            "Durante a última semana com que frequência a dor te atrapalhou:";
     // o cabecalho da tabela de registro-tea.pdf
     private static final String TEA_BEHAVIOR_QUESTION =
             "Durante a última semana com que frequência esses comportamentos ocorreram:";
@@ -270,17 +279,26 @@ public class ScaleCatalog {
 
     // PSQI-BR (RF23 e Anexo A.2)
     // o indice sai de 7 componentes calculados, n da soma das respostas
+    //
+    // o paciente le a pergunta do psqi-br.pdf inteira (o question). o rotulo eh o nome curto q vai no csv e
+    // na lista do q falta. nas perguntas de 1 a 4 a ajuda eh o nome do campo de resposta, q o papel tbm traz
     private ScaleDefinition pittsburgh() {
         List<ScaleItem> items = List.of(
-                ScaleItem.simples("horaDeitar", "Hora usual de deitar",
-                        "Durante o último mês, quando você geralmente foi para a cama à noite", ScaleItemType.HORA),
-                ScaleItem.simples("minutosParaDormir", "Número de minutos para dormir",
-                        "Quanto tempo você geralmente levou para dormir à noite", ScaleItemType.MINUTOS),
-                ScaleItem.simples("horaLevantar", "Hora usual de levantar",
-                        "Quando você geralmente levantou de manhã", ScaleItemType.HORA),
-                ScaleItem.simples("horasDeSono", "Horas de sono por noite",
-                        "Pode ser diferente do número de horas que você ficou na cama", ScaleItemType.HORAS),
-                sleepTroubleFreq("freqNaoAdormeceu", "Não conseguiu adormecer em até 30 minutos"),
+                ScaleItem.simples("horaDeitar", "Hora usual de deitar", "Hora usual de deitar:", ScaleItemType.HORA)
+                        .withQuestion("Durante o último mês, quando você geralmente foi para a cama à noite?"),
+                ScaleItem.simples("minutosParaDormir", "Número de minutos para dormir", "Número de minutos:",
+                                ScaleItemType.MINUTOS)
+                        .withQuestion("Durante o último mês, quanto tempo (em minutos) você geralmente levou "
+                                + "para dormir à noite?"),
+                ScaleItem.simples("horaLevantar", "Hora usual de levantar", "Hora usual de levantar:",
+                                ScaleItemType.HORA)
+                        .withQuestion("Durante o último mês, quando você geralmente levantou de manhã?"),
+                ScaleItem.simples("horasDeSono", "Horas de sono por noite", "Horas de sono por noite:",
+                                ScaleItemType.HORAS)
+                        .withQuestion("Durante o último mês, quantas horas de sono você teve por noite? "
+                                + "(Esta pode ser diferente do número de horas que você ficou na cama)"),
+                sleepTroubleFreq("freqNaoAdormeceu", "Não conseguiu adormecer em até 30 minutos")
+                        .withIntro(REMAINING_QUESTIONS_INTRO),
                 sleepTroubleFreq("freqAcordouNoite", "Acordou no meio da noite ou de manhã cedo"),
                 sleepTroubleFreq("freqBanheiro", "Precisou levantar para ir ao banheiro"),
                 sleepTroubleFreq("freqRespirar", "Não conseguiu respirar confortavelmente"),
@@ -289,37 +307,53 @@ public class ScaleCatalog {
                 sleepTroubleFreq("freqCalor", "Sentiu muito calor"),
                 sleepTroubleFreq("freqSonhosRuins", "Teve sonhos ruins"),
                 sleepTroubleFreq("freqDor", "Teve dor"),
-                ScaleItem.texto("outrasRazoes", "Outras razões que atrapalharam o sono", "Descreva")
-                        .inSection(SLEEP_TROUBLE_QUESTION),
-                sleepTroubleFreq("freqOutrasRazoes", "Com que frequência essas outras razões atrapalharam"),
+                // a letra j do papel sao duas respostas: o texto e a frequencia
+                ScaleItem.texto("outrasRazoes", "Outras razões que atrapalharam o sono", null)
+                        .inSection(SLEEP_TROUBLE_QUESTION)
+                        .withQuestion("Outras razões, por favor descreva:"),
+                sleepTroubleFreq("freqOutrasRazoes", "Com que frequência essas outras razões atrapalharam")
+                        .withQuestion("Com que frequência, durante o último mês, você teve dificuldade para "
+                                + "dormir devido a essa razão?"),
                 ScaleItem.escolha("qualidadeGeral", "Qualidade do sono de uma maneira geral", null, List.of(
                         new ScaleOption(0, "Muito boa"),
                         new ScaleOption(1, "Boa"),
                         new ScaleOption(2, "Ruim"),
-                        new ScaleOption(3, "Muito ruim")), false),
-                psqiFreq("freqMedicacao", "Tomou medicamento para ajudar a dormir"),
+                        new ScaleOption(3, "Muito ruim")), false)
+                        .withQuestion("Durante o último mês como você classificaria a qualidade do seu sono de "
+                                + "uma maneira geral:"),
+                // o papel corta a pergunta 7 em "para lhe ajudar" e escreve a 8 sem o "com", e a tela copia
+                psqiFreq("freqMedicacao", "Tomou medicamento para ajudar a dormir")
+                        .withQuestion("Durante o último mês, com que frequência você tomou medicamento "
+                                + "(prescrito ou “por conta própria”) para lhe ajudar"),
                 psqiFreq("freqDificuldadeAcordado",
-                        "Teve dificuldade para ficar acordado dirigindo, comendo ou numa atividade social"),
+                        "Teve dificuldade para ficar acordado dirigindo, comendo ou numa atividade social")
+                        .withQuestion("No último mês, que frequência você teve dificuldade para ficar acordado "
+                                + "enquanto dirigia, comia ou participava de uma atividade social (festa, reunião "
+                                + "de amigos)"),
                 ScaleItem.escolha("dificuldadeEntusiasmo", "Dificuldade para manter o entusiasmo", null, List.of(
                         new ScaleOption(0, "Nenhuma dificuldade"),
                         new ScaleOption(1, "Um problema leve"),
                         new ScaleOption(2, "Um problema razoável"),
-                        new ScaleOption(3, "Um grande problema")), false),
+                        new ScaleOption(3, "Um grande problema")), false)
+                        .withQuestion("Durante o último mês, quão problemático foi pra você manter o entusiasmo "
+                                + "(ânimo) para fazer as coisas (suas atividades habituais)"),
                 // o parceiro de quarto eh contexto e n entra no indice
                 new ScaleItem("parceiroDeQuarto", "Você tem parceiro ou colega de quarto", null,
                         ScaleItemType.ESCOLHA, 0, 3, null, null, true, List.of(
                         new ScaleOption(0, "Não"),
                         new ScaleOption(1, "Parceiro ou colega, mas em outro quarto"),
                         new ScaleOption(2, "Parceiro no mesmo quarto, mas em outra cama"),
-                        new ScaleOption(3, "Parceiro na mesma cama")), false, null));
+                        new ScaleOption(3, "Parceiro na mesma cama")), false, null,
+                        "Você tem um parceiro (a), esposo (a) ou colega de quarto?", null));
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 5, "Boa qualidade de sono"),
                 new ScoreBand(6, 21, "Qualidade de sono ruim"));
 
         return new ScaleDefinition(ScaleType.ESCALA_PITTSBURGH, "Índice de qualidade do sono de Pittsburgh (PSQI-BR)",
-                "As perguntas são sobre os seus hábitos de sono durante o último mês. Responda pensando na "
-                        + "maioria dos dias e das noites.",
+                "As seguintes perguntas são relativas aos seus hábitos de sono durante o último mês somente. "
+                        + "Suas respostas devem indicar a lembrança mais exata da maioria dos dias e noites do "
+                        + "último mês. Por favor, responda a todas as perguntas.",
                 FillMode.PONTUAL, items, bands, 0, 21, "Índice global", false, null);
     }
 
@@ -334,16 +368,19 @@ public class ScaleCatalog {
 
     // acompanhamento semanal de paciente com dor (RF25)
     // as faixas sao as da escala visual do formulario
+    // a pergunta da intensidade e as linhas da tabela q o catalogo tinha encurtado vem inteiras de registro-dor.pdf
     private ScaleDefinition painLog() {
         List<ScaleItem> items = List.of(
                 ScaleItem.nota("intensidadeDor", "Intensidade da dor no período", 0, 10,
-                        "leve", "intensa", false),
+                        "leve", "intensa", false)
+                        .withQuestion("De acordo com a escala visual abaixo, como você classifica a sua dor no "
+                                + "último período?"),
                 painFreq("freqAtividadesBasicas", "Atividades básicas (comer, levantar, tomar banho)"),
                 painFreq("freqAtividadesSociais", "Atividades sociais (sair com amigos, passear, ficar com a família)"),
-                painFreq("freqProdutividade", "Produtividade no trabalho"),
-                painFreq("freqSono", "Sono"),
+                painFreq("freqProdutividade", "Produtividade no trabalho").withQuestion("Na produtividade do trabalho"),
+                painFreq("freqSono", "Sono").withQuestion("No seu sono"),
                 painFreq("freqMedicacaoExtra", "Necessitou de medicação extra para dor"),
-                notesItem("observacao"));
+                paperNotesItem("observacao"));
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 2, "Dor leve"),
@@ -355,31 +392,35 @@ public class ScaleCatalog {
                 FillMode.PERIODO, items, bands, 0, 10, "Intensidade da dor", false, "intensidadeDor");
     }
 
+    // as cinco linhas da tabela do papel, embaixo do cabecalho dela
     private ScaleItem painFreq(String key, String label) {
-        return ScaleItem.escolha(key, label, PAIN_TROUBLE_QUESTION, DAYS_PER_WEEK_OPTIONS, false);
+        return ScaleItem.escolha(key, label, null, DAYS_PER_WEEK_OPTIONS, false).inSection(PAIN_TROUBLE_QUESTION);
     }
 
     // acompanhamento semanal de paciente com TEA (RF24)
+    // a pergunta da qualidade de vida e a descricao de cada comportamento vem inteiras de registro-tea.pdf
     private ScaleDefinition teaLog() {
         List<ScaleItem> items = List.of(
                 ScaleItem.nota("qualidadeDeVida", "Qualidade de vida no período", 0, 10,
-                        "muito ruim", "muito boa", true),
+                        "muito ruim", "muito boa", true)
+                        .withQuestion("Em uma escala de 0 a 10, sendo 10 a melhor pontuação, como você classifica "
+                                + "sua qualidade de vida no último período?"),
                 teaFreq("freqAgressividade", "Agressividade e impulsividade",
-                        "Agrediu verbalmente ou fisicamente a si ou a outras pessoas? "
+                        "Agrediu verbalmente ou fisicamente a si ou outras pessoas? "
                                 + "Quebrou objetos de forma impulsiva?"),
                 teaFreq("freqAgitacao", "Agitação psicomotora e ansiedade",
-                        "Não conseguiu ficar parado por tempo curto? Demonstrou sinais de nervosismo, "
-                                + "como falta de ar, inquietação, expressão tensa?"),
+                        "Não conseguiu ficar quieto(a) / parado(a) por tempo curto? Demonstrou sinais de "
+                                + "nervosismo, como falta de ar, inquietação, expressão tensa?"),
                 teaFreq("freqSono", "Sono",
-                        "Demorou para pegar no sono, acordou ou se manteve acordado durante a noite? "
-                                + "Sonolento durante o dia?"),
+                        "Demorou para pegar no sono, acordou ou se manteve acordado(a) durante a noite? "
+                                + "Sonolento(a) durante o dia?"),
                 teaFreq("freqInteracaoSocial", "Interação social",
-                        "Permaneceu isolado, com pouco contato com outras pessoas?"),
+                        "Permaneceu isolado(a), com pouco contato com outras pessoas?"),
                 teaFreq("freqEstereotipia", "Estereotipia",
                         "Realizou movimentos repetitivos estereotipados?"),
                 teaFreq("freqApetite", "Apetite",
-                        "Perdeu ou ganhou peso, ou teve alterações no tipo de comida de que gosta?"),
-                notesItem("observacao"));
+                        "Perdeu ou ganhou peso, ou teve alterações no tipo de comida/alimentos de que gosta?"),
+                paperNotesItem("observacao"));
 
         return new ScaleDefinition(ScaleType.REGISTRO_TEA, "Acompanhamento semanal de TEA",
                 LAST_WEEK_INSTRUCTION,
@@ -392,6 +433,11 @@ public class ScaleCatalog {
 
     private ScaleItem notesItem(String key) {
         return ScaleItem.texto(key, "Observações", NOTES_HELP);
+    }
+
+    // as observacoes da dor e do TEA, com o texto do papel inteiro
+    private ScaleItem paperNotesItem(String key) {
+        return ScaleItem.texto(key, "Observações", PAPER_NOTES_HELP);
     }
 
     // MEEM (RF26 e Anexo A.3)

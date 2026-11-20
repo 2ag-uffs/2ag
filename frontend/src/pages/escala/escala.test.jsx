@@ -315,25 +315,33 @@ describe("Escala", () => {
 
     // RF25 a intensidade da dor eh a escala visual do papel, com as tres faixas nomeadas
     // e coloridas, e n onze botoes soltos. as faixas vem na definicao, como em qualquer escala
-    it("o registro de dor mostra a escala visual com as faixas da definicao", async () => {
+    // o paciente le a pergunta do papel, e o nome curto do item fica so na lista do q falta
+    it("o registro de dor mostra a pergunta do papel e a escala visual com as faixas da definicao", async () => {
+        const question = "De acordo com a escala visual abaixo, como você classifica a sua dor no último período?";
         const painLog = {
             type: "REGISTRO_DOR", slug: "registro-dor", title: "Acompanhamento semanal de dor",
             instruction: "Pense na última semana para responder.", fillMode: "PERIODO", filledByPatient: true,
             scoreLabel: "Intensidade da dor", minScore: 0, maxScore: 10,
-            items: [{key: "intensidadeDor", label: "Intensidade da dor no período", type: "NOTA", minValue: 0,
-                maxValue: 10, lowAnchor: "leve", highAnchor: "intensa", higherIsBetter: false, options: []}],
+            items: [{key: "intensidadeDor", label: "Intensidade da dor no período", question, type: "NOTA",
+                minValue: 0, maxValue: 10, lowAnchor: "leve", highAnchor: "intensa", higherIsBetter: false,
+                options: []}],
             bands: [{minScore: 0, maxScore: 2, label: "Dor leve"}, {minScore: 3, maxScore: 7, label: "Dor moderada"},
                 {minScore: 8, maxScore: 10, label: "Dor intensa"}],
         };
         vi.mocked(apiService.get).mockImplementation((path) => Promise.resolve(
             path === "/scales/definitions/registro-dor" ? painLog : []));
         renderScale("/escalas/registro-dor");
+        const user = userEvent.setup();
 
-        expect(await screen.findByText("Intensidade da dor no período")).toBeInTheDocument();
+        expect(await screen.findByRole("group", {name: question})).toBeInTheDocument();
+        expect(screen.queryByText("Intensidade da dor no período")).not.toBeInTheDocument();
         expect(screen.getByRole("group", {name: "Dor leve 0 a 2"})).toBeInTheDocument();
         expect(screen.getByRole("group", {name: "Dor moderada 3 a 7"})).toBeInTheDocument();
         expect(screen.getByRole("group", {name: "Dor intensa 8 a 10"})).toBeInTheDocument();
         expect(screen.getAllByRole("radio")).toHaveLength(11);
+
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Falta preencher: Intensidade da dor no período.");
     });
 
     // escala pontuada salva com item em branco: o foco e a rolagem vao pro primeiro q falta, como no erro de campo

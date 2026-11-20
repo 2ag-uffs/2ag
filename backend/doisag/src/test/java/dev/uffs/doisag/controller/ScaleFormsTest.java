@@ -104,15 +104,16 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.items[15].key").value("qualidadeGeral"))
                 .andExpect(jsonPath("$.items[15].section").doesNotExist());
 
-        // na dor a pergunta eh a ajuda de cada item e fica so nela: com titulo a frase aparecia duas vezes
-        String painTrouble = "Durante a última semana, com que frequência a dor atrapalhou";
+        // na dor o cabecalho da tabela do papel tbm fica em cima das cinco atividades, e saiu da ajuda de cada uma
+        String painTrouble = "Durante a última semana com que frequência a dor te atrapalhou:";
         mockMvc.perform(get("/scales/definitions/registro-dor").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(jsonPath("$.items[0].section").doesNotExist())
                 .andExpect(jsonPath("$.items[1].key").value("freqAtividadesBasicas"))
-                .andExpect(jsonPath("$.items[1].help").value(painTrouble))
-                .andExpect(jsonPath("$.items[1].section").doesNotExist())
-                .andExpect(jsonPath("$.items[5].help").value(painTrouble))
-                .andExpect(jsonPath("$.items[5].section").doesNotExist())
+                .andExpect(jsonPath("$.items[1].section").value(painTrouble))
+                .andExpect(jsonPath("$.items[1].help").doesNotExist())
+                .andExpect(jsonPath("$.items[5].key").value("freqMedicacaoExtra"))
+                .andExpect(jsonPath("$.items[5].section").value(painTrouble))
+                .andExpect(jsonPath("$.items[5].help").doesNotExist())
                 .andExpect(jsonPath("$.items[6].key").value("observacao"))
                 .andExpect(jsonPath("$.items[6].section").doesNotExist());
 
@@ -125,6 +126,79 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.items[6].section")
                         .value("Durante a última semana com que frequência esses comportamentos ocorreram:"))
                 .andExpect(jsonPath("$.items[7].section").doesNotExist());
+    }
+
+    // o paciente le a pergunta inteira do papel (question), copiada de docs/scales, e o nome curto (label)
+    // continua o msm, pq eh ele q vai no csv e no grafico
+    @Test
+    void aPerguntaInteiraDoPapelVaiPraTelaEONomeCurtoContinuaNoCsvENoGrafico() throws Exception {
+        mockMvc.perform(get("/scales/definitions/pittsburgh").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.instruction").value("As seguintes perguntas são relativas aos seus hábitos "
+                        + "de sono durante o último mês somente. Suas respostas devem indicar a lembrança mais exata "
+                        + "da maioria dos dias e noites do último mês. Por favor, responda a todas as perguntas."))
+                .andExpect(jsonPath("$.items[1].key").value("minutosParaDormir"))
+                .andExpect(jsonPath("$.items[1].question").value("Durante o último mês, quanto tempo (em minutos) "
+                        + "você geralmente levou para dormir à noite?"))
+                .andExpect(jsonPath("$.items[1].help").value("Número de minutos:"))
+                .andExpect(jsonPath("$.items[1].label").value("Número de minutos para dormir"))
+                // a frase q o papel poe antes da pergunta 5 vem so no primeiro item dela
+                .andExpect(jsonPath("$.items[3].intro").doesNotExist())
+                .andExpect(jsonPath("$.items[4].intro").value("Para cada uma das questões restantes, marque a "
+                        + "melhor (uma) resposta. Por favor, responda a todas as questões."))
+                .andExpect(jsonPath("$.items[4].question").doesNotExist())
+                .andExpect(jsonPath("$.items[5].intro").doesNotExist())
+                .andExpect(jsonPath("$.items[13].question").value("Outras razões, por favor descreva:"))
+                .andExpect(jsonPath("$.items[13].help").doesNotExist())
+                .andExpect(jsonPath("$.items[14].question").value("Com que frequência, durante o último mês, "
+                        + "você teve dificuldade para dormir devido a essa razão?"))
+                .andExpect(jsonPath("$.items[15].key").value("qualidadeGeral"))
+                .andExpect(jsonPath("$.items[15].question").value("Durante o último mês como você classificaria "
+                        + "a qualidade do seu sono de uma maneira geral:"))
+                .andExpect(jsonPath("$.items[15].label").value("Qualidade do sono de uma maneira geral"))
+                .andExpect(jsonPath("$.items[19].key").value("parceiroDeQuarto"))
+                .andExpect(jsonPath("$.items[19].question")
+                        .value("Você tem um parceiro (a), esposo (a) ou colega de quarto?"));
+
+        mockMvc.perform(get("/scales/definitions/registro-dor").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.items[0].key").value("intensidadeDor"))
+                .andExpect(jsonPath("$.items[0].question").value("De acordo com a escala visual abaixo, como você "
+                        + "classifica a sua dor no último período?"))
+                .andExpect(jsonPath("$.items[0].label").value("Intensidade da dor no período"))
+                // a linha q o papel escreve igual ao nome curto n precisa de pergunta
+                .andExpect(jsonPath("$.items[1].question").doesNotExist())
+                .andExpect(jsonPath("$.items[3].question").value("Na produtividade do trabalho"))
+                .andExpect(jsonPath("$.items[3].label").value("Produtividade no trabalho"))
+                .andExpect(jsonPath("$.items[4].question").value("No seu sono"));
+
+        mockMvc.perform(get("/scales/definitions/registro-tea").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(jsonPath("$.items[0].key").value("qualidadeDeVida"))
+                .andExpect(jsonPath("$.items[0].question").value("Em uma escala de 0 a 10, sendo 10 a melhor "
+                        + "pontuação, como você classifica sua qualidade de vida no último período?"))
+                .andExpect(jsonPath("$.items[0].label").value("Qualidade de vida no período"))
+                .andExpect(jsonPath("$.items[4].key").value("freqInteracaoSocial"))
+                .andExpect(jsonPath("$.items[4].help")
+                        .value("Permaneceu isolado(a), com pouco contato com outras pessoas?"));
+
+        // no arquivo e no grafico o item continua com o nome curto de antes
+        answerScale("pittsburgh", "{\"qualidadeGeral\":1}").andExpect(status().isCreated());
+        answerScale("registro-dor", "{\"intensidadeDor\":7}").andExpect(status().isCreated());
+        answerScale("registro-tea", "{\"qualidadeDeVida\":6}").andExpect(status().isCreated());
+        String csv = mockMvc.perform(get("/patients/" + patient.getId() + "/export/scales.csv")
+                        .header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        org.assertj.core.api.Assertions.assertThat(csv)
+                .contains("\"Qualidade do sono de uma maneira geral\";\"Boa\";\"1\"")
+                .contains("\"Intensidade da dor no período\";\"7\";\"7\"")
+                .contains("\"Qualidade de vida no período\";\"6\";\"6\"")
+                .doesNotContain("como você classifica");
+        mockMvc.perform(get("/progress/attributes").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name=='ESCORE_PITTSBURGH')].displayName").value("Índice global"))
+                .andExpect(jsonPath("$[?(@.name=='INTENSIDADE_DOR')].displayName").value("Intensidade da dor"))
+                .andExpect(jsonPath("$[?(@.name=='QUALIDADE_DE_VIDA')].displayName")
+                        .value("Qualidade de vida no período"));
     }
 
     @Test
