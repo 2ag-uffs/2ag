@@ -414,6 +414,14 @@ fieldset:disabled .optionCard:hover {
     }
 }
 
+/* na janela baixa, como o celular deitado ou o zoom de 400%, o contador preso tomava o lugar da pergunta:
+   ele fica no comeco do formulario e rola com a pagina */
+@media (max-height: 30rem) {
+    .progress {
+        position: static;
+    }
+}
+
 /* no alto contraste do windows as cores viram as do sistema e as sombras somem, entao o fundo cheio da nota
    e o anel por dentro n aparecem: a nota e a opcao escolhidas usam a cor de destaque do sistema */
 @media (forced-colors: active) {

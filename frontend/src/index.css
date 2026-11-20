@@ -31,6 +31,15 @@ html {
     }
 }
 
+/* na janela baixa, como o celular deitado ou o zoom de 400%, as barras se soltam e rolam com a pagina,
+   entao n sobra nada pra descontar */
+@media (max-height: 30rem) {
+    html {
+        scroll-padding-bottom: 0;
+        scroll-padding-top: 0;
+    }
+}
+
 #root {
     display: flex;
     flex-direction: column;

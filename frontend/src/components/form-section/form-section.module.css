@@ -62,3 +62,11 @@
         flex: 1 1 auto;
     }
 }
+
+/* na janela baixa, como o celular deitado ou o zoom de 400%, os botoes presos cobriam os campos:
+   eles ficam no fim do formulario e rolam com a pagina */
+@media (max-height: 30rem) {
+    .actions {
+        position: static;
+    }
+}

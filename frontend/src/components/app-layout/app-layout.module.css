@@ -431,6 +431,26 @@
     }
 }
 
+/* ---- celular em janela baixa (deitado, ou o computador com zoom de 400%) ---- */
+
+/* o cabecalho e o menu presos, mais o contador e os botoes dos formularios, cobriam a janela quase toda
+   aqui eles se soltam: o cabecalho rola com a pagina e o menu vai pro fim dela
+   o cabecalho fica relative pq a logo do meio dele eh absoluta */
+@media (max-width: 47.99rem) and (max-height: 30rem) {
+    .mobileHeader {
+        position: relative;
+    }
+
+    .bottomMenu {
+        position: static;
+    }
+
+    /* o menu ja n fica por cima do fim da pagina, entao a folga dele sai */
+    .content {
+        padding-bottom: var(--space-6);
+    }
+}
+
 /* na impressao fica so o conteudo: a moldura n vai pro papel */
 @media print {
     .layout {

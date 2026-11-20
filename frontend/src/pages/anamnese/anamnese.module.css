@@ -94,3 +94,10 @@
         flex: 1 1 auto;
     }
 }
+
+/* na janela baixa os botoes n ficam presos, como nos outros formularios */
+@media (max-height: 30rem) {
+    .actions {
+        position: static;
+    }
+}

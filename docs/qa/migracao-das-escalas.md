@@ -140,6 +140,7 @@ a lista abaixo são os cuidados que a pesquisa de tendências de 19/11/2026 leva
 - o texto de apoio tem o tamanho do texto da página, 16 px (antes, 14 px). em várias escalas ele é texto do próprio instrumento.
 - no celular, as onze notas da régua de dor têm todas o mesmo tamanho, 44 por 48 px, com as faixas cada uma na sua linha como antes. medido no Chrome sem janela em 320 e em 375 px, nos temas claro e escuro (antes, em 375 px, as notas de 0 a 2 e de 8 a 10 tinham 92 px de largura e as de 3 a 7 tinham 52 px).
 - a borda dos campos, dos cartões de opção, da bolinha vazia e das notas das réguas tem contraste de pelo menos 3:1 com o fundo, nos temas claro e escuro, também em cima das três faixas coloridas da régua de dor (a menor é 3,2:1, sobre a faixa vermelha no tema claro; antes era 1,3:1 sobre o cartão). conta da WCAG refeita pelo teste `frontend/src/styles/control-border.test.js` e cor conferida no Chrome sem janela.
+- numa janela baixa, com menos de 480 px de altura, como o celular deitado ou o computador com zoom de 400%, o cabeçalho, o contador, os botões e o menu de baixo deixam de ficar presos e rolam com a página, então nenhuma barra cobre a pergunta. medido no Chrome sem janela em 320x256 e em 667x375: antes as barras cobriam de 249 a 256 dos 256 px de altura e 258 dos 375; depois, nenhum. o celular deitado é uma saída para quem precisa: as escalas foram pensadas para o celular em pé.
 - a ordem dos itens e as opções são as do papel, fora as diferenças de forma anotadas nas tabelas, e o cálculo e as faixas são os do papel ou do Anexo A dos requisitos, conferidos pelos testes do escore de referência. nada disso mudou nesta rodada.
 - a resposta salva só é corrigida pelo paciente até a prescritora analisar; a versão anterior fica guardada, e anular pede motivo.
 
@@ -155,3 +156,4 @@ a lista abaixo são os cuidados que a pesquisa de tendências de 19/11/2026 leva
 - permissão e licença de uso dos instrumentos: a confirmar com a clínica.
 - as frases do papel copiadas como estão, listadas no fim da seção 4: a confirmar com a clínica.
 - as diferenças do Hamilton, do acompanhamento semanal e do diário do sono listadas na seção 5: não foram mexidas nesta rodada.
+- Safari do iPhone: não foi testado com as ferramentas do projeto, que só rodam o Chrome. é o caso CT-52 do [plano de testes](plano-de-testes.md), manual e ainda não executado.

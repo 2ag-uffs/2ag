@@ -219,6 +219,23 @@ describe("campo com foco atras da barra presa no pe da tela", () => {
         expect(scrollBy).toHaveBeenCalledWith(0, 968 + 12 - 940);
     });
 
+    // na janela baixa (celular deitado, 667x375) as barras se soltam e ficam no fim da pagina: os botoes embaixo
+    // da pergunta e o menu no pe da janela so pq a pagina acabou ali. nenhum cobre a opcao, q fica onde esta
+    it("na janela baixa as barras soltas no fim da pagina n fazem a pagina rolar", async () => {
+        window.innerHeight = 375;
+        renderScaleCards();
+        const option = await screen.findByRole("radio", {name: "Menos de uma vez por semana"});
+        placeAt(screen.getByRole("navigation", {name: "Menu"}), box(310, 375, 0, 667));
+        placeAt(screen.getByRole("button", {name: "Salvar respostas"}).parentElement, box(206, 286, 16, 651));
+        placeAt(option.closest("label"), box(119, 169, 48, 634));
+        placeAt(option, box(119, 120, 48, 49));
+
+        act(() => option.focus());
+        await nextFrame();
+
+        expect(scrollBy).not.toHaveBeenCalled();
+    });
+
     // campo mais alto q o espaco livre: sobe so ate o topo dele, onde fica o rotulo e o cursor
     it("campo mais alto q o espaco livre sobe so ate o topo dele aparecer", async () => {
         window.innerHeight = 900;

@@ -4,6 +4,8 @@ Para quem faz o acompanhamento pelo 2AG e para o responsável de quem tem menos 
 
 **Endereço do 2AG:** ______________________________ Salve este endereço nos favoritos do navegador, no celular e no computador.
 
+**Testado em:** Google Chrome, no computador e com a janela no tamanho da tela de um celular, em pé e deitado. Se alguma tela ficar estranha no seu navegador, avise a clínica.
+
 ## quem procurar
 
 - **Contato da clínica:** ______________________ **Horário:** ______________
