@@ -270,7 +270,7 @@ const routes = [
                 element: (
                     <StatusPage
                         title="Página não encontrada"
-                        message="O endereço pode ter mudado ou não existe mais."
+                        message="O endereço pode ter mudado ou não existe mais. Toque em Ir para o início."
                     />
                 ),
             },

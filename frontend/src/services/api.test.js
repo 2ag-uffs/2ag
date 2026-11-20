@@ -146,8 +146,8 @@ describe("readRequestError", () => {
     it("sem resposta da api vira o aviso de sem conexao ou o texto q a tela mandar", () => {
         expect(readRequestError(new TypeError("Failed to fetch")))
             .toEqual({fieldErrors: {}, message: CONNECTION_ERROR_MESSAGE});
-        expect(readRequestError(new TypeError("Failed to fetch"), "Não foi possível falar com o servidor."))
-            .toEqual({fieldErrors: {}, message: "Não foi possível falar com o servidor."});
+        expect(readRequestError(new TypeError("Failed to fetch"), "Não foi possível carregar a lista. Confira sua internet e tente de novo."))
+            .toEqual({fieldErrors: {}, message: "Não foi possível carregar a lista. Confira sua internet e tente de novo."});
     });
 });
 
@@ -369,7 +369,7 @@ describe("sessao vencida com a tela aberta", () => {
 
         await loginAgain("Senha#2026");
 
-        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou. Faça login novamente."});
+        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."});
         expect(getLoggedUser()).toBeNull();
         const calledPaths = fetchSpy.mock.calls.map((call) => call[0]);
         expect(calledPaths).toEqual(["/api/scales/answers", "/api/auth/login", "/api/auth/logout"]);
@@ -385,7 +385,7 @@ describe("sessao vencida com a tela aberta", () => {
 
         leaveExpiredSession();
 
-        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou. Faça login novamente."});
+        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."});
         expect(getLoggedUser()).toBeNull();
         expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
@@ -441,7 +441,7 @@ describe("sessao vencida com a tela aberta", () => {
 
         leaveExpiredSession();
 
-        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou. Faça login novamente."});
+        await expect(saving).rejects.toMatchObject({status: 401, message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."});
         expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -451,7 +451,7 @@ describe("sessao vencida com a tela aberta", () => {
         vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         setLoggedUser(MARIA);
 
-        await expect(apiService.get("/profile")).rejects.toMatchObject({status: 401, message: "Sua sessão expirou. Faça login novamente."});
+        await expect(apiService.get("/profile")).rejects.toMatchObject({status: 401, message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."});
         expect(getLoggedUser()).toBeNull();
     });
 

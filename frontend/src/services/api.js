@@ -20,7 +20,7 @@ export function setLoggedUser(user) {
 // erro da api com o status a mensagem e os erros de cada campo
 export class ApiError extends Error {
     constructor(status, message, errors) {
-        super(message || "Ocorreu um erro.");
+        super(message || "Houve um problema no sistema. Tente de novo em alguns minutos e, se continuar, fale com a clínica.");
         this.status = status;
         this.errors = errors || null;
     }
@@ -39,7 +39,7 @@ export class ApiError extends Error {
 }
 
 // aviso padrao qnd a api nem chegou a responder
-export const CONNECTION_ERROR_MESSAGE = "Não foi possível falar com o servidor. Confira sua internet e tente de novo.";
+export const CONNECTION_ERROR_MESSAGE = "Não foi possível conectar ao sistema. Confira sua internet e tente de novo.";
 
 // mensagem da api ou o aviso de sem conexao
 export function errorMessageOf(requestError, offlineText = CONNECTION_ERROR_MESSAGE) {
@@ -77,12 +77,15 @@ async function readBody(response) {
 }
 
 // erro 5xx sem o json da api eh o proxy (nginx ou vite) dizendo q a api esta fora do ar
-// a tela trata igual a falta de internet, com o aviso de sem conexao em vez de "Ocorreu um erro."
+// a tela trata igual a falta de internet, com o aviso de sem conexao em vez do aviso de problema no sistema
 function isApiDown(response, body) {
     return response.status >= 500 && body === null;
 }
 
-const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
+// a msm frase q a api manda qnd a sessao acabou (SecurityErrorHandler)
+const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou ou foi encerrada. Entre de novo para continuar.";
+// a msm frase q a api manda pro e-mail ou senha errados, qnd a resposta vem sem ela
+const WRONG_LOGIN_MESSAGE = "E-mail ou senha incorretos. Confira os dois e tente de novo.";
 
 // o login avisa q a sessao acabou e depois volta pra tela onde a pessoa estava
 function goToLoginWithExpiredSession() {
@@ -156,7 +159,7 @@ export async function loginAgain(password) {
         throw new Error(CONNECTION_ERROR_MESSAGE);
     }
     if (!response.ok) {
-        const message = (body && body.message) || "E-mail ou senha inválidos.";
+        const message = (body && body.message) || WRONG_LOGIN_MESSAGE;
         throw new ApiError(response.status, message, body && body.errors);
     }
     // outra conta no lugar da q estava aberta (n deveria acontecer com o e-mail travado):
@@ -197,7 +200,7 @@ async function request(path, options = {}) {
     // 401 sem ninguem logado eh senha errada e quem mostra a mensagem eh a tela
     if (response.status === 401) {
         if (loggedUser === null) {
-            throw new ApiError(401, (body && body.message) || "E-mail ou senha inválidos.");
+            throw new ApiError(401, (body && body.message) || WRONG_LOGIN_MESSAGE);
         }
         // na tela de login a sessao velha eh so esquecida
         if (window.location.pathname.startsWith("/entrar")) {

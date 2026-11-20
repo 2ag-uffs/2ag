@@ -25,7 +25,7 @@ describe("abertura do app", () => {
         await openAppAt("/agendamento-consulta");
 
         expect(await screen.findByText(CONNECTION_ERROR_MESSAGE)).toBeInTheDocument();
-        expect(screen.getByRole("heading", {name: "Sem conexão com o servidor"})).toBeInTheDocument();
+        expect(screen.getByRole("heading", {name: "Sem conexão com o sistema"})).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
         // o tentar de novo recarrega a mesma tela
         expect(window.location.pathname).toBe("/agendamento-consulta");

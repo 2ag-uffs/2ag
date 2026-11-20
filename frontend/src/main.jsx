@@ -26,7 +26,7 @@ loadSession().then(
         );
     },
     (sessionError) => {
-        const title = sessionError instanceof ApiError ? "Algo deu errado" : "Sem conexão com o servidor";
+        const title = sessionError instanceof ApiError ? "Algo deu errado" : "Sem conexão com o sistema";
         root.render(
             <StrictMode>
                 <StatusPage

@@ -1371,7 +1371,7 @@ describe("Escala diaria", () => {
         await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
 
         expect(screen.getByRole("alert")).toHaveTextContent(formatWeekdayAndDate(dayFromToday(-8))
-            + ": a resposta não foi salva. Não foi possível falar com o servidor");
+            + ": a resposta não foi salva. Não foi possível conectar ao sistema");
         expect(screen.getByRole("alert")).toHaveTextContent(
             "Não foi possível atualizar a tela agora. As respostas salvas continuam salvas.");
         const gridAfter = screen.getByRole("group", {name: "Dias do período"});

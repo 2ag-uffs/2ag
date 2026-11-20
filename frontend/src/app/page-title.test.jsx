@@ -199,7 +199,7 @@ describe("PageTitle", () => {
 
     // sem resposta da api as rotas nem montam, e a tela de sem conexao tbm tem nome
     it("a tela de sem conexao tem nome mesmo fora das rotas", async () => {
-        render(<StatusPage title="Sem conexão com o servidor" message="Confira sua internet." showHomeLink={false}/>);
-        await expectTitle("Sem conexão com o servidor · 2AG");
+        render(<StatusPage title="Sem conexão com o sistema" message="Confira sua internet." showHomeLink={false}/>);
+        await expectTitle("Sem conexão com o sistema · 2AG");
     });
 });
