@@ -1,5 +1,6 @@
 import {render, screen} from "@testing-library/react";
 import {describe, expect, it} from "vitest";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import AnamnesisView from "./anamnesis-view.jsx";
 
 const ANAMNESIS = {
@@ -59,5 +60,12 @@ describe("AnamnesisView", () => {
 
         expect(screen.queryByText(/Corrigida em/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Antes da correção/)).not.toBeInTheDocument();
+    });
+
+    it("os grupos da ficha usam as mesmas colunas, mesmo o grupo q tem so dois itens", () => {
+        // com auto-fit o grupo de dois itens esticava em metades e os outros ficavam em tercos
+        const details = declarationsOf(readCss(import.meta.url, "./anamnesis-view.module.css"), ".details");
+
+        expect(details["grid-template-columns"]).toBe("repeat(auto-fill, minmax(14rem, 1fr))");
     });
 });
