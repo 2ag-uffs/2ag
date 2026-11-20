@@ -24,7 +24,8 @@ import java.util.List;
 public class PatientArchiveService {
 
     public static final String ALREADY_ARCHIVED_MESSAGE = "Este paciente já está arquivado";
-    public static final String NOT_ARCHIVED_MESSAGE = "Este paciente não está arquivado";
+    // a lista de pacientes chama de ativos quem n esta arquivado
+    public static final String NOT_ARCHIVED_MESSAGE = "Este paciente já está na lista de ativos";
     public static final String NEW_REQUEST_MESSAGE =
             "O paciente acabou de pedir uma consulta. Tente arquivar de novo para recusar o pedido";
 
