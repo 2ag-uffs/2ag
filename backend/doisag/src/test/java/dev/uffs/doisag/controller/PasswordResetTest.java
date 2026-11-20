@@ -45,6 +45,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,6 +59,7 @@ class PasswordResetTest {
     private static final String OLD_PASSWORD = "Senha@123";
     private static final String NEW_PASSWORD = "Senha-Nova#2026";
     private static final String PATIENT_EMAIL = "recuperacao-paciente@email.com";
+    private static final String PASSWORD_CHANGED_SUBJECT = "A senha da sua conta no 2AG foi alterada";
     private static final Pattern TOKEN_IN_LINK = Pattern.compile("token=([A-Za-z0-9_-]+)");
 
     @Autowired private MockMvc mockMvc;
@@ -123,6 +125,12 @@ class PasswordResetTest {
         Matcher tokenMatcher = TOKEN_IN_LINK.matcher(lastEmail.text());
         assertThat(tokenMatcher.find()).isTrue();
         return tokenMatcher.group(1);
+    }
+
+    private EmailMessage lastEmail() {
+        ArgumentCaptor<EmailMessage> emailCaptor = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(emailSender, atLeastOnce()).send(emailCaptor.capture());
+        return emailCaptor.getAllValues().get(emailCaptor.getAllValues().size() - 1);
     }
 
     // token assinado com a chave da api mas emitido alguns minutos atras
@@ -269,6 +277,72 @@ class PasswordResetTest {
         mockMvc.perform(get("/auth/me").header("Authorization", olderSession))
                 .andExpect(status().isUnauthorized());
         login(NEW_PASSWORD).andExpect(status().isOk());
+    }
+
+    // a dona da conta fica sabendo q a senha mudou, pra perceber qnd n foi ela (20/11/2026)
+    // o e-mail diz so a conta e a hora: sem link nenhum, nem o do sistema, e sem o codigo do link usado
+    @Test
+    void afterTheResetTheAccountIsToldByEmailWithoutAnyLink() throws Exception {
+        requestReset(PATIENT_EMAIL);
+        confirmReset(tokenFromLastEmail(), NEW_PASSWORD).andExpect(status().isNoContent());
+
+        EmailMessage notice = lastEmail();
+        assertThat(notice.to()).isEqualTo(PATIENT_EMAIL);
+        assertThat(notice.subject()).isEqualTo(PASSWORD_CHANGED_SUBJECT);
+        assertThat(notice.text()).startsWith("Olá, Paciente da Recuperacao.")
+                .contains(PATIENT_EMAIL)
+                .containsPattern("foi alterada em \\d{2}/\\d{2}/\\d{4} às \\d{2}:\\d{2} \\(horário de Brasília\\)")
+                .contains("Se não foi você")
+                .doesNotContain("http").doesNotContain("token=");
+    }
+
+    // a opcao do perfil so desliga lembrete de formulario e de consulta, e esse aviso eh da conta
+    @Test
+    void theNoticeGoesEvenWithEmailRemindersTurnedOff() throws Exception {
+        patient.setEmailNotificationsEnabled(false);
+        patientRepository.save(patient);
+
+        requestReset(PATIENT_EMAIL);
+        confirmReset(tokenFromLastEmail(), NEW_PASSWORD).andExpect(status().isNoContent());
+
+        assertThat(lastEmail().subject()).isEqualTo(PASSWORD_CHANGED_SUBJECT);
+    }
+
+    // vale pra toda conta, e a primeira senha do prescritor tbm eh criada por esse link
+    @Test
+    void prescriberIsAlsoToldWhenThePasswordIsCreatedByTheLink() throws Exception {
+        requestReset("recuperacao-prescritora@email.com");
+        confirmReset(tokenFromLastEmail(), NEW_PASSWORD).andExpect(status().isNoContent());
+
+        assertThat(lastEmail().to()).isEqualTo("recuperacao-prescritora@email.com");
+        assertThat(lastEmail().subject()).isEqualTo(PASSWORD_CHANGED_SUBJECT);
+    }
+
+    @Test
+    void changingThePasswordInTheProfileAlsoTellsTheAccount() throws Exception {
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenIssuedMinutesAgo(1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + OLD_PASSWORD + "\",\"newPassword\":\"" + NEW_PASSWORD + "\"}"))
+                .andExpect(status().isNoContent());
+
+        assertThat(lastEmail().to()).isEqualTo(PATIENT_EMAIL);
+        assertThat(lastEmail().subject()).isEqualTo(PASSWORD_CHANGED_SUBJECT);
+    }
+
+    // senha recusada n muda nada, entao so o e-mail do link saiu
+    @Test
+    void refusedPasswordSendsNoNotice() throws Exception {
+        requestReset(PATIENT_EMAIL);
+        confirmReset(tokenFromLastEmail(), "fraca").andExpect(status().isBadRequest());
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenIssuedMinutesAgo(1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"Senha-Errada#1\",\"newPassword\":\"" + NEW_PASSWORD + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(emailSender, times(1)).send(any());
+        assertThat(lastEmail().subject()).isEqualTo("Criar uma senha nova no 2AG");
     }
 
     @Test

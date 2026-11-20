@@ -2,6 +2,9 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.email.BackgroundEmailSender;
+import dev.uffs.doisag.email.EmailMessage;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
@@ -13,6 +16,7 @@ import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -48,15 +52,20 @@ class PasswordServiceTest {
     @Mock
     private EmailChangeRepository emailChangeRepository;
 
+    @Mock
+    private BackgroundEmailSender backgroundEmailSender;
+
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
     private PasswordService passwordService;
     private Patient user;
 
     @BeforeEach
     void setUp() {
-        passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter, emailChangeRepository);
+        passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter, emailChangeRepository,
+                backgroundEmailSender);
         user = new Patient();
         user.setId(1L);
+        user.setName("Maria da Senha");
         user.setEmail(EMAIL);
         user.setPassword(encoder.encode(CURRENT_PASSWORD));
     }
@@ -97,6 +106,24 @@ class PasswordServiceTest {
         assertThat(user.getPasswordChangedAt()).isAfter(LocalDateTime.now().minusSeconds(2));
     }
 
+    // a conta fica sabendo da troca por e-mail, q entra na fila q so manda dps de o banco confirmar
+    // o texto diz a conta e a hora e n leva link nenhum, nem a senha
+    @Test
+    void tellsTheAccountByEmailThatThePasswordChanged() {
+        repositoryFindsTheUser();
+
+        passwordService.changePassword(1L, new ChangePasswordDTO(CURRENT_PASSWORD, NEW_PASSWORD), ADDRESS);
+
+        ArgumentCaptor<EmailMessage> notice = ArgumentCaptor.forClass(EmailMessage.class);
+        verify(backgroundEmailSender).sendLater(notice.capture(), eq(1L));
+        assertThat(notice.getValue().to()).isEqualTo(EMAIL);
+        assertThat(notice.getValue().subject()).isEqualTo("A senha da sua conta no 2AG foi alterada");
+        assertThat(notice.getValue().text()).startsWith("Olá, Maria da Senha.")
+                .contains("(" + EMAIL + ") foi alterada em " + BrazilianFormat.dateTime(user.getPasswordChangedAt()))
+                .contains("Se não foi você")
+                .doesNotContain("http").doesNotContain(NEW_PASSWORD).doesNotContain(CURRENT_PASSWORD);
+    }
+
     @Test
     void refusesWhenTheCurrentPasswordIsWrong() {
         repositoryFindsTheUser();
@@ -108,6 +135,7 @@ class PasswordServiceTest {
 
         verify(usersRepository, never()).save(any(Users.class));
         verify(loginAttemptLimiter).registerFailure(EMAIL, ADDRESS);
+        verify(backgroundEmailSender, never()).sendLater(any(), any());
     }
 
     @Test
@@ -167,8 +195,8 @@ class PasswordServiceTest {
     void blocksAfterFiveWrongGuessesOfTheCurrentPassword() {
         repositoryFindsTheUser();
         LoginAttemptLimiter realLimiter = new LoginAttemptLimiter(5, 20, 100, 10, 15);
-        PasswordService serviceWithRealLimiter =
-                new PasswordService(usersRepository, encoder, realLimiter, emailChangeRepository);
+        PasswordService serviceWithRealLimiter = new PasswordService(usersRepository, encoder, realLimiter,
+                emailChangeRepository, backgroundEmailSender);
 
         for (int attempt = 0; attempt < 5; attempt++) {
             assertThatThrownBy(() ->

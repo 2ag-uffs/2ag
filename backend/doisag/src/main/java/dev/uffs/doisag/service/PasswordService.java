@@ -2,6 +2,9 @@ package dev.uffs.doisag.service;
 
 import dev.uffs.doisag.dto.ChangePasswordDTO;
 import dev.uffs.doisag.dto.PasswordRules;
+import dev.uffs.doisag.email.BackgroundEmailSender;
+import dev.uffs.doisag.email.EmailMessage;
+import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
@@ -26,13 +29,16 @@ public class PasswordService {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final EmailChangeRepository emailChangeRepository;
+    private final BackgroundEmailSender backgroundEmailSender;
 
     public PasswordService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
-                           LoginAttemptLimiter loginAttemptLimiter, EmailChangeRepository emailChangeRepository) {
+                           LoginAttemptLimiter loginAttemptLimiter, EmailChangeRepository emailChangeRepository,
+                           BackgroundEmailSender backgroundEmailSender) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptLimiter = loginAttemptLimiter;
         this.emailChangeRepository = emailChangeRepository;
+        this.backgroundEmailSender = backgroundEmailSender;
     }
 
     @Transactional
@@ -85,5 +91,21 @@ public class PasswordService {
         for (EmailChange pendingChange : emailChangeRepository.findPendingForUpdate(user.getId())) {
             pendingChange.setUsedAt(now);
         }
+        // a dona da conta fica sabendo da troca, pra perceber qnd n foi ela. sai so dps q o banco confirma
+        backgroundEmailSender.sendLater(changedMessage(user, now), user.getId());
+    }
+
+    // o aviso sai sempre, mesmo com os avisos por e-mail desligados: a opcao do perfil so cobre lembrete
+    // de formulario e de consulta. diz so a conta e a hora, sem link nenhum, sem endereco de rede e sem
+    // aparelho, pra ninguem aprender a clicar em link de e-mail q fala de senha
+    private EmailMessage changedMessage(Users user, LocalDateTime now) {
+        return new EmailMessage(user.getEmail(), "A senha da sua conta no 2AG foi alterada",
+                "Olá, " + user.getDisplayName() + ".\n\n"
+                + "A senha da sua conta no 2AG (" + user.getEmail() + ") foi alterada em "
+                + BrazilianFormat.dateTime(now) + " (horário de Brasília).\n\n"
+                + "Se foi você, não precisa fazer nada.\n\n"
+                + "Se não foi você, alguém pode estar usando a sua conta. Abra o 2AG, use \"Esqueci minha senha\" "
+                + "na tela de entrada e crie outra senha: isso encerra as sessões abertas. Troque também a senha "
+                + "deste e-mail. Se não conseguir, fale com a clínica.");
     }
 }
