@@ -1,5 +1,5 @@
 import {useLayoutEffect, useRef, useState} from "react";
-import {formatCutoff, valueWithBand} from "../../utils/progress-reading.js";
+import {DOSE_NAME, doseText, formatCutoff, scoreText} from "../../utils/progress-reading.js";
 import {
     dayNumber,
     linePath,
@@ -24,23 +24,8 @@ const DEFAULT_WIDTH = 640;
 const DATE_GAP = 44;
 // a data com o ano tem 8 letras em vez de 5 e precisa de mais espaco
 const DATE_WITH_YEAR_GAP = 64;
-const DOSE_NAME = "Gotas no dia";
 const DOSE_AXIS_NAME = "Gotas no dia (eixo da direita)";
 const PARTIAL_DOSE_NAME = "Dia com uma das doses em branco";
-
-// o escore vai com a faixa do lado como em todo lugar q ele aparece RN14
-// o dia q so tem a gota deixou o item em branco, e em branco n vira zero (RN10)
-function scoreText(row) {
-    if (row.valor === null) {
-        return "em branco";
-    }
-    return row.faixa ? valueWithBand(row.valor, row.faixa) : row.valor;
-}
-
-// o dia com uma das doses em branco diz qual ficou em branco, pq o numero eh so a dose preenchida
-function doseText(row) {
-    return row.partialDoseNote ? row.gotas + " (" + row.partialDoseNote + ")" : row.gotas;
-}
 
 function doseDotClass(row, isActive) {
     if (row.partialDoseNote) {

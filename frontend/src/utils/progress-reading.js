@@ -79,3 +79,22 @@ export function formatCutoff(cutoff) {
 export function valueWithBand(value, band) {
     return band ? value + " · " + band : String(value);
 }
+
+// o texto de um dia do grafico. a dica do ponto e a tabela da tela de progresso usam os msm, pra um
+// lugar n dizer uma coisa e o outro outra
+export const DOSE_NAME = "Gotas no dia";
+export const BLANK_TEXT = "em branco";
+
+// o escore vai com a faixa do lado como em todo lugar q ele aparece RN14
+// o dia q so tem a gota deixou o item em branco, e em branco n vira zero (RN10)
+export function scoreText(row) {
+    if (row.valor === null) {
+        return BLANK_TEXT;
+    }
+    return row.faixa ? valueWithBand(row.valor, row.faixa) : row.valor;
+}
+
+// o dia com uma das doses em branco diz qual ficou em branco, pq o numero eh so a dose preenchida
+export function doseText(row) {
+    return row.partialDoseNote ? row.gotas + " (" + row.partialDoseNote + ")" : row.gotas;
+}

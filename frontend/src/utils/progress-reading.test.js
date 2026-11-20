@@ -4,8 +4,10 @@ import {
     bandTextOf,
     countWithoutCutoff,
     directionTextOf,
+    doseText,
     formatCutoff,
     hasVaryingCutoff,
+    scoreText,
     sharedCutoffOf,
     valueWithBand,
 } from "./progress-reading.js";
@@ -107,5 +109,24 @@ describe("valueWithBand", () => {
     // item da ficha n tem faixa nem escolaridade, entao n ganha esse texto
     it("fora do MEEM o ponto sem faixa continua sem faixa", () => {
         expect(bandTextOf({value: 7, band: null, cutoff: null}, false)).toBeNull();
+    });
+});
+
+// o texto de um dia do grafico, q a dica do ponto e a tabela da tela de progresso mostram igual
+describe("scoreText e doseText", () => {
+    it("o valor sai com a faixa do lado qnd tem faixa (RN14)", () => {
+        expect(scoreText({valor: 24, faixa: "Abaixo do esperado"})).toBe("24 · Abaixo do esperado");
+        expect(String(scoreText({valor: 7, faixa: null}))).toBe("7");
+    });
+
+    it("o item em branco diz em branco e n vira zero (RN10)", () => {
+        expect(scoreText({valor: null, faixa: null})).toBe("em branco");
+        expect(String(scoreText({valor: 0, faixa: null}))).toBe("0");
+    });
+
+    it("a dose parcial diz qual dose ficou em branco", () => {
+        expect(String(doseText({gotas: 8, partialDoseNote: null}))).toBe("8");
+        expect(doseText({gotas: 5, partialDoseNote: "só a manhã, a tarde ficou em branco"}))
+            .toBe("5 (só a manhã, a tarde ficou em branco)");
     });
 });

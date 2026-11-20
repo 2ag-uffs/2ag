@@ -11,11 +11,15 @@ import {formatDate} from "../../utils/date-format.js";
 import {
     anchorsTextOf,
     bandTextOf,
+    BLANK_TEXT,
     countWithoutCutoff,
     directionTextOf,
+    DOSE_NAME,
+    doseText,
     formatCutoff,
     hasVaryingCutoff,
     NO_SCHOOLING_TEXT,
+    scoreText,
     sharedCutoffOf,
     valueWithBand,
 } from "../../utils/progress-reading.js";
@@ -88,6 +92,8 @@ export default function Progresso() {
     // as consultas tbm lembram de qual paciente e periodo sao, senao as do periodo anterior ficavam na tela (CT-40)
     const [loadedAppointmentsKey, setLoadedAppointmentsKey] = useState(null);
     const [showAppointments, setShowAppointments] = useState(keptFilters.showAppointments !== false);
+    // a tabela do grafico vem fechada e fica como a pessoa deixou enquanto ela troca o periodo e o item
+    const [showTable, setShowTable] = useState(false);
     const [isDeidentified, setIsDeidentified] = useState(Boolean(keptFilters.isDeidentified));
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
@@ -371,6 +377,9 @@ export default function Progresso() {
     // qnd todos tem o msm corte ele vira uma linha senao a faixa fica em cada ponto
     const sharedCutoff = sharedCutoffOf(points);
 
+    // o nome do item no grafico e na tabela dele
+    const valueName = currentAttribute ? currentAttribute.displayName : "valor";
+
     // trocar a escala abre o primeiro atributo dela
     const changeScale = (newScale) => {
         const firstOfScale = attributes.find((attribute) => attribute.scaleType === newScale);
@@ -626,7 +635,7 @@ export default function Progresso() {
                             rows={chartRows}
                             minValue={currentAttribute ? currentAttribute.minValue : null}
                             maxValue={currentAttribute ? currentAttribute.maxValue : null}
-                            valueName={currentAttribute ? currentAttribute.displayName : "valor"}
+                            valueName={valueName}
                             showDose={isDoseShown}
                             bandLines={bandLines}
                             cutoff={sharedCutoff}
@@ -638,6 +647,16 @@ export default function Progresso() {
 
                 {!isLoading && (
                     <ReadingNotes points={points} isMentalStateExam={isMentalStateExam} sharedCutoff={sharedCutoff}/>
+                )}
+
+                {!isLoading && chartRows.length > 0 && (
+                    <ChartTable
+                        rows={chartRows}
+                        valueName={valueName}
+                        showDose={isDoseShown}
+                        isOpen={showTable}
+                        onToggle={() => setShowTable(!showTable)}
+                    />
                 )}
             </Card>
 
@@ -760,6 +779,50 @@ function ReadingNotes({points, isMentalStateExam, sharedCutoff}) {
                     Último registro, em {formatDate(lastPoint.date)}:{" "}
                     <strong>{valueWithBand(lastPoint.value, lastBand)}</strong>
                 </p>
+            )}
+        </>
+    );
+}
+
+// os pontos do grafico numa tabela de verdade, pra quem usa leitor de tela no celular, onde as setas do
+// grafico n existem, e pra quem quer o numero exato de cada dia sem tocar ponto por ponto
+// vem fechada. as linhas sao as q o grafico recebeu, sem pedido novo pra api, entao o q a api n manda
+// (a resposta anulada, o MEEM pro paciente) tbm n aparece aqui. o texto de cada dia eh o da dica do ponto,
+// e a coluna das gotas so existe qnd o grafico mostra as gotas
+function ChartTable({rows, valueName, showDose, isOpen, onToggle}) {
+    return (
+        <>
+            <button
+                type="button"
+                className={"button-secondary " + styles.tableToggle}
+                aria-expanded={isOpen}
+                onClick={onToggle}
+            >
+                {isOpen ? "Esconder a tabela" : "Ver como tabela"}
+            </button>
+            {isOpen && (
+                <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                        <caption>{valueName}, por data do preenchimento</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Data</th>
+                                <th scope="col">{valueName}</th>
+                                {showDose && <th scope="col">{DOSE_NAME}</th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row) => (
+                                <tr key={row.date}>
+                                    <th scope="row">{formatDate(row.date)}</th>
+                                    <td>{scoreText(row)}</td>
+                                    {/* o dia sem gota anotada fica em branco, e n com zero (RN10) */}
+                                    {showDose && <td>{row.gotas === null ? BLANK_TEXT : doseText(row)}</td>}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </>
     );

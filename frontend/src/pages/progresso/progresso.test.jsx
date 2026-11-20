@@ -72,6 +72,12 @@ function requestedPaths() {
     return apiService.get.mock.calls.map((call) => call[0]);
 }
 
+// o texto da tabela do grafico, linha por linha e celula por celula
+function tableRows() {
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    return rows.map((row) => Array.from(row.children, (cell) => cell.textContent));
+}
+
 describe("Progresso", () => {
     beforeEach(() => {
         setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
@@ -983,5 +989,165 @@ describe("Progresso", () => {
         await releaseAndWait([oldPatient]);
 
         expect(screen.getByRole("heading", {level: 1})).toHaveTextContent("João Almeida");
+    });
+
+    // os msm pontos do grafico numa tabela de verdade, pra quem usa leitor de tela no celular ou quer o numero
+    // exato (pesquisa de tendencias de 19/11/2026)
+    it("a tabela vem fechada, e ver como tabela mostra os pontos do grafico sem pedir nada novo pra api", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-02", value: 6, band: null, cutoff: null},
+        ];
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+
+        expect(screen.queryByRole("table")).not.toBeInTheDocument();
+        const openButton = screen.getByRole("button", {name: "Ver como tabela"});
+        expect(openButton).toHaveAttribute("aria-expanded", "false");
+        const requestsBefore = requestedPaths().length;
+
+        await user.click(openButton);
+
+        const table = screen.getByRole("table", {name: "Ansiedade, por data do preenchimento"});
+        expect(table.querySelectorAll("caption")).toHaveLength(1);
+        expect(table.querySelectorAll("thead th[scope='col']")).toHaveLength(2);
+        expect(table.querySelectorAll("tbody th[scope='row']")).toHaveLength(2);
+        expect(tableRows()).toEqual([
+            ["Data", "Ansiedade"],
+            ["01/10/2026", "3"],
+            ["02/10/2026", "6"],
+        ]);
+        expect(requestedPaths()).toHaveLength(requestsBefore);
+
+        const closeButton = screen.getByRole("button", {name: "Esconder a tabela"});
+        expect(closeButton).toHaveAttribute("aria-expanded", "true");
+        await user.click(closeButton);
+        expect(screen.queryByRole("table")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Ver como tabela"})).toBeInTheDocument();
+    });
+
+    // RN14 na tabela o escore tbm anda com a faixa, com o msm texto da dica do ponto
+    it("a tabela mostra o escore com a faixa de cada exame, como a dica do ponto", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-08-10", value: 22, band: null, cutoff: null},
+            {date: "2026-09-10", value: 24, band: "Abaixo do esperado para a escolaridade (corte 25)", cutoff: 25},
+            {date: "2026-10-10", value: 27, band: "Dentro do esperado para a escolaridade (corte 26,5)", cutoff: 26.5},
+        ];
+        renderPrescriberProgress("ESCORE_MEEM", "TUDO");
+        await screen.findByRole("application");
+
+        await user.click(screen.getByRole("button", {name: "Ver como tabela"}));
+
+        expect(tableRows()).toEqual([
+            ["Data", "Escore total"],
+            ["10/08/2026", "22 · Exame sem escolaridade registrada: sem faixa"],
+            ["10/09/2026", "24 · Abaixo do esperado para a escolaridade (corte 25)"],
+            ["10/10/2026", "27 · Dentro do esperado para a escolaridade (corte 26,5)"],
+        ]);
+        // a dica do ultimo ponto diz a msm coisa q a ultima linha
+        await user.click(screen.getByRole("application"));
+        await user.keyboard("{End}");
+        expect(screen.getByText("Escore total : 27 · Dentro do esperado para a escolaridade (corte 26,5)"))
+            .toBeInTheDocument();
+    });
+
+    // RN10 em branco n vira zero na tabela, nem no item nem nas gotas
+    it("com as gotas marcadas a tabela ganha a coluna delas, com a dose parcial e o q ficou em branco", async () => {
+        const user = userEvent.setup();
+        series = [
+            {date: "2026-10-01", value: 3, band: null, cutoff: null},
+            {date: "2026-10-03", value: 5, band: null, cutoff: null},
+            {date: "2026-10-04", value: 6, band: null, cutoff: null},
+        ];
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_MANHA") {
+                return Promise.resolve([
+                    {date: "2026-10-01", value: 5}, {date: "2026-10-02", value: 5}, {date: "2026-10-03", value: 5},
+                ]);
+            }
+            if (path === "/patients/3/progress?period=DIAS_30&attribute=GOTAS_TARDE") {
+                return Promise.resolve([{date: "2026-10-01", value: 3}, {date: "2026-10-02", value: 3}]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("DOR");
+        await screen.findByRole("application");
+        await user.click(screen.getByRole("button", {name: "Ver como tabela"}));
+
+        // sem as gotas marcadas o grafico n mostra gota, e a tabela tbm n
+        expect(tableRows()[0]).toEqual(["Data", "Dor"]);
+
+        await user.click(screen.getByLabelText("Mostrar as gotas do dia"));
+        await vi.waitFor(() => expect(tableRows()[0]).toEqual(["Data", "Dor", "Gotas no dia"]));
+
+        expect(tableRows()).toEqual([
+            ["Data", "Dor", "Gotas no dia"],
+            ["01/10/2026", "3", "8"],
+            ["02/10/2026", "em branco", "8"],
+            ["03/10/2026", "5", "5 (só a manhã, a tarde ficou em branco)"],
+            ["04/10/2026", "6", "em branco"],
+        ]);
+        expect(screen.getByRole("table").querySelectorAll("thead th[scope='col']")).toHaveLength(3);
+    });
+
+    it("trocar o periodo deixa a tabela aberta, com as linhas do periodo novo", async () => {
+        const user = userEvent.setup();
+        apiService.get.mockImplementation((path) => {
+            if (path === "/progress/attributes") {
+                return Promise.resolve(catalog);
+            }
+            if (path === "/patients/3/progress?attribute=ANSIEDADE&period=DIAS_90") {
+                return Promise.resolve([
+                    {date: "2026-08-20", value: 2, band: null, cutoff: null},
+                    {date: "2026-10-01", value: 3, band: null, cutoff: null},
+                ]);
+            }
+            if (path.startsWith("/patients/3/progress?")) {
+                return Promise.resolve(series);
+            }
+            return Promise.resolve([]);
+        });
+        renderProgress("ANSIEDADE");
+        await screen.findByRole("application");
+        await user.click(screen.getByRole("button", {name: "Ver como tabela"}));
+        expect(tableRows()).toEqual([["Data", "Ansiedade"], ["01/10/2026", "3"]]);
+
+        await user.selectOptions(screen.getByLabelText("Período"), "DIAS_90");
+
+        await vi.waitFor(() => expect(tableRows()).toEqual([
+            ["Data", "Ansiedade"],
+            ["20/08/2026", "2"],
+            ["01/10/2026", "3"],
+        ]));
+    });
+
+    it("sem registro no periodo n tem tabela nem o botao dela", async () => {
+        series = [];
+        renderProgress("ANSIEDADE");
+
+        expect(await screen.findByText("Nenhum registro preenchido neste período.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Ver como tabela"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    });
+
+    // a tabela sai das linhas do grafico, entao o MEEM q o paciente n ve tbm n aparece nela (decisao de 13/11/2026)
+    it("a tabela do paciente q veio de um link antigo do MEEM eh a do grafico q abriu, sem o exame", async () => {
+        const user = userEvent.setup();
+        renderProgress("ESCORE_MEEM");
+        await screen.findByRole("application", {name: /Gráfico de Ansiedade/});
+
+        await user.click(screen.getByRole("button", {name: "Ver como tabela"}));
+
+        expect(tableRows()).toEqual([["Data", "Ansiedade"], ["01/10/2026", "3"]]);
+        expect(requestedPaths().some((path) => path.includes("ESCORE_MEEM"))).toBe(false);
+        expect(screen.queryByText(/Mini-Exame|MEEM|escolaridade/)).not.toBeInTheDocument();
     });
 });
