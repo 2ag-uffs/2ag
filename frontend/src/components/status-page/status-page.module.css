@@ -24,6 +24,7 @@
 .message {
     color: var(--color-text-secondary);
     max-width: 28rem;
+    text-wrap: pretty;
 }
 
 .actions {

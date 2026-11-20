@@ -21,8 +21,9 @@ export default function StatusPage({title, message, showReloadButton = false, sh
                         Tentar de novo
                     </button>
                 )}
+                {/* sozinho na tela o link do inicio eh a acao principal. do lado do Tentar de novo ele fica de contorno */}
                 {showHomeLink && (
-                    <Link to={homePath} className={"button button-secondary " + styles.action}>
+                    <Link to={homePath} className={(showReloadButton ? "button button-secondary " : "button ") + styles.action}>
                         Ir para o início
                     </Link>
                 )}

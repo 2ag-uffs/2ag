@@ -71,7 +71,9 @@ h4 {
     font-size: var(--text-md);
 }
 
-a {
+/* o :where deixa a cor do link com peso zero, igual as regras do button.css, q vem dps e ganha:
+   com o a puro o link com cara de botao principal ficava verde sobre verde */
+:where(a) {
     color: var(--color-primary);
     text-underline-offset: 0.15em;
 }
