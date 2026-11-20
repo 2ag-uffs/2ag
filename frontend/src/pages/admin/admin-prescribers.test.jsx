@@ -2,6 +2,7 @@ import {fireEvent, render, screen, waitFor, within} from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import AdminPrescribers from "./admin-prescribers.jsx";
 
 const INVALID_CPF_MESSAGE = "Confira o CPF: os 11 números precisam ser iguais aos do documento";
@@ -386,5 +387,16 @@ describe("AdminPrescribers", () => {
         await user.click(buttons[0]);
         expect(screen.getByText(/A senha atual dela continua valendo/)).toBeInTheDocument();
         expect(screen.queryByText(/ainda não tem senha/)).not.toBeInTheDocument();
+    });
+
+    // no celular o space-between espalhava o selo e os botoes e deixava o Desativar sozinho num canto
+    it("no celular os botoes da linha enchem a linha e o selo fica do tamanho dele", () => {
+        const css = readCss(import.meta.url, "./admin-prescribers.module.css");
+        const mobile = mediaRules(css, "@media (max-width: 47.99rem)");
+
+        expect(declarationsOf(mobile, ".rowActions")["justify-content"]).toBeUndefined();
+        expect(declarationsOf(mobile, ".rowActions").width).toBe("100%");
+        expect(declarationsOf(mobile, ".rowActions > button").flex).toBe("1 1 auto");
+        expect(declarationsOf(css, ".rowActions > button").flex).toBeUndefined();
     });
 });

@@ -161,8 +161,12 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
+    /* os botoes enchem a linha, como na lista de pacientes do prescritor. o selo fica do tamanho dele */
     .rowActions {
-        justify-content: space-between;
         width: 100%;
+    }
+
+    .rowActions > button {
+        flex: 1 1 auto;
     }
 }
