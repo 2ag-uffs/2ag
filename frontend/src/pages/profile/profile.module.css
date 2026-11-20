@@ -41,7 +41,7 @@
 }
 
 .readOnlyInfo {
-    background-color: var(--color-background);
+    background-color: var(--color-surface-alt);
     border-radius: var(--radius-md);
     display: grid;
     gap: var(--space-1) var(--space-4);
