@@ -21,7 +21,7 @@ import java.net.URISyntaxException;
 public class OriginCheckFilter extends OncePerRequestFilter {
 
     public static final String BLOCKED_MESSAGE =
-            "Requisição de outro endereço bloqueada. Abra o sistema pelo endereço oficial e tente de novo.";
+            "Por segurança, esta ação só pode ser feita pelo endereço oficial do 2AG. Abra o sistema por esse endereço e tente de novo";
 
     private final SessionCookieService sessionCookieService;
     private final SecurityErrorHandler securityErrorHandler;

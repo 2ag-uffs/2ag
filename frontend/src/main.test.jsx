@@ -56,7 +56,7 @@ describe("abertura do app", () => {
     });
 
     it("sem sessao a api responde 401 e o login abre como sempre", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({message: "Sessão inválida"}), {status: 401}));
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}), {status: 401}));
 
         await openAppAt("/agendamento-consulta");
 

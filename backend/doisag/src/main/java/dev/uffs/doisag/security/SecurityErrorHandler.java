@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 @Component
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
-    public static final String INVALID_SESSION_MESSAGE = "Sessão inválida ou expirada. Faça login novamente!";
+    public static final String INVALID_SESSION_MESSAGE = "Sua sessão expirou ou foi encerrada. Entre de novo para continuar";
     // o front le esse cabecalho pra trocar o login por cima pelo aviso de conta desativada
     public static final String DEACTIVATED_ACCOUNT_HEADER = "X-Account-Deactivated";
 
@@ -52,7 +52,7 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        writeError(request, response, HttpStatus.FORBIDDEN, "Acesso negado!");
+        writeError(request, response, HttpStatus.FORBIDDEN, "Sua conta não tem permissão para isso. Se precisar, fale com a clínica");
     }
 
     // requisicao barrada por um filtro nosso antes da autorizacao como a vinda de outro endereco

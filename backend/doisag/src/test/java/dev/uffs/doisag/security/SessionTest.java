@@ -136,11 +136,11 @@ class SessionTest {
     void wrongPasswordAndUnknownEmailGetTheSameAnswer() throws Exception {
         login(PATIENT_EMAIL, WRONG_PASSWORD)
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos. Confira os dois e tente de novo"));
 
         login("ninguem@email.com", PATIENT_PASSWORD)
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
+                .andExpect(jsonPath("$.message").value("E-mail ou senha incorretos. Confira os dois e tente de novo"));
     }
 
     // a pessoa pode digitar o e-mail com letra maiuscula ou com espaco sobrando

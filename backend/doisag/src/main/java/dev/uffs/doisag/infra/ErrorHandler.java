@@ -154,7 +154,7 @@ public class ErrorHandler {
     // e-mail ou senha errados no login
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDTO> handleBadCredentials(BadCredentialsException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos", request);
+        return buildResponse(HttpStatus.UNAUTHORIZED, "E-mail ou senha incorretos. Confira os dois e tente de novo", request);
     }
 
     // conta desativada tentando entrar com a senha certa
@@ -172,7 +172,8 @@ public class ErrorHandler {
     // qualquer outra falha de autenticacao
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponseDTO> handleAuthentication(AuthenticationException exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Não foi possível autenticar. Faça login novamente", request);
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Não foi possível confirmar o seu acesso. Entre de novo para continuar",
+                request);
     }
 
     // registro duplicado ou ainda em uso por outro

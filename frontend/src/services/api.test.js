@@ -166,7 +166,7 @@ describe("loadSession", () => {
     });
 
     it("sem sessao a api responde 401 e ninguem esta logado", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sessão inválida"}));
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
 
         expect(await loadSession()).toBeNull();
         expect(getLoggedUser()).toBeNull();
@@ -293,7 +293,7 @@ describe("sessao vencida com a tela aberta", () => {
             }
             const isFirstTry = globalThis.fetch.mock.calls.length === 1;
             if (isFirstTry) {
-                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+                return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
             }
             return Promise.resolve(apiResponse(200, {saved: true, answer: sentBody([url, options]).answer}));
         });
@@ -326,7 +326,7 @@ describe("sessao vencida com a tela aberta", () => {
     });
 
     it("senha errada no login por cima vira mensagem e o envio continua esperando", async () => {
-        const fetchSpy = mockExpiredSessionThenLogin(apiResponse(401, {message: "E-mail ou senha inválidos"}));
+        const fetchSpy = mockExpiredSessionThenLogin(apiResponse(401, {message: "E-mail ou senha incorretos. Confira os dois e tente de novo"}));
         setLoginAgainOpener(vi.fn());
         setLoggedUser(MARIA);
         let isSettled = false;
@@ -334,7 +334,7 @@ describe("sessao vencida com a tela aberta", () => {
             isSettled = true;
         });
 
-        await expect(loginAgain("senha-errada")).rejects.toMatchObject({status: 401, message: "E-mail ou senha inválidos"});
+        await expect(loginAgain("senha-errada")).rejects.toMatchObject({status: 401, message: "E-mail ou senha incorretos. Confira os dois e tente de novo"});
         await flushPromises();
 
         expect(isSettled).toBe(false);
@@ -361,7 +361,7 @@ describe("sessao vencida com a tela aberta", () => {
             if (url === "/api/auth/logout") {
                 return Promise.resolve(apiResponse(204));
             }
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         });
         setLoginAgainOpener(vi.fn());
         setLoggedUser(MARIA);
@@ -377,7 +377,7 @@ describe("sessao vencida com a tela aberta", () => {
 
     it("sair no login por cima derruba o envio q esperava e esquece quem estava logado", async () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch")
-            .mockResolvedValue(apiResponse(401, {message: "Sessão inválida"}));
+            .mockResolvedValue(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         setLoginAgainOpener(vi.fn());
         setLoggedUser(MARIA);
         const saving = apiService.put("/anamnesis/7", {smokes: null});
@@ -399,7 +399,7 @@ describe("sessao vencida com a tela aberta", () => {
                 return Promise.resolve(apiResponse(200, MARIA));
             }
             if (isSessionExpired) {
-                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+                return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
             }
             return Promise.resolve(new Response("data;nota", {
                 status: 200, headers: {"Content-Disposition": "attachment; filename=\"progresso-3.csv\""},
@@ -433,7 +433,7 @@ describe("sessao vencida com a tela aberta", () => {
 
     it("sair no login por cima derruba o download q esperava", async () => {
         const fetchSpy = vi.spyOn(globalThis, "fetch")
-            .mockResolvedValue(apiResponse(401, {message: "Sessão inválida"}));
+            .mockResolvedValue(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         setLoginAgainOpener(vi.fn());
         setLoggedUser(MARIA);
         const saving = download("/patients/3/export/progress.csv", "progresso.csv");
@@ -448,7 +448,7 @@ describe("sessao vencida com a tela aberta", () => {
     // fora do layout (link de senha nova aberto com alguem logado) n tem onde abrir o login por cima
     it("sem o layout montado o 401 com alguem logado recarrega no login como sempre", async () => {
         vi.spyOn(console, "error").mockImplementation(() => {});
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sessão inválida"}));
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         setLoggedUser(MARIA);
 
         await expect(apiService.get("/profile")).rejects.toMatchObject({status: 401, message: "Sua sessão expirou. Faça login novamente."});
@@ -456,12 +456,12 @@ describe("sessao vencida com a tela aberta", () => {
     });
 
     it("na tela de login o 401 continua sendo senha errada, sem login por cima", async () => {
-        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "E-mail ou senha inválidos"}));
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "E-mail ou senha incorretos. Confira os dois e tente de novo"}));
         const openLoginAgain = vi.fn();
         setLoginAgainOpener(openLoginAgain);
 
         await expect(apiService.post("/auth/login", {email: "maria@email.com", password: "x"}))
-            .rejects.toMatchObject({status: 401, message: "E-mail ou senha inválidos"});
+            .rejects.toMatchObject({status: 401, message: "E-mail ou senha incorretos. Confira os dois e tente de novo"});
         expect(openLoginAgain).not.toHaveBeenCalled();
     });
 });
@@ -489,7 +489,7 @@ describe("conta trocada em outra aba", () => {
             }
             const sentUser = new Headers(options.headers).get("X-Session-User");
             if (sentUser !== null && sentUser !== String(state.cookieOwner)) {
-                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+                return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
             }
             state.savedFor.push(state.cookieOwner);
             return Promise.resolve(apiResponse(201, {id: 1, patientId: state.cookieOwner}));

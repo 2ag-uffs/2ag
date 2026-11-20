@@ -86,7 +86,7 @@ function mockExpiredSessionApi() {
             return Promise.resolve(apiResponse(200, MARIA));
         }
         if (isSessionExpired) {
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         }
         return Promise.resolve(apiResponse(200, {answer: JSON.parse(options.body).answer}));
     });
@@ -221,7 +221,7 @@ describe("AppLayout", () => {
                 return Promise.resolve(apiResponse(200, {...MARIA, termPending: true}));
             }
             if (isSessionExpired) {
-                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+                return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
             }
             if (url === "/api/profile") {
                 return Promise.resolve(apiResponse(200, {id: 3, role: "PATIENT", birthDate: "1990-01-01", guardian: null}));
@@ -271,7 +271,7 @@ describe("AppLayout", () => {
                 return Promise.resolve(apiResponse(200, {...MARIA, termPending: true}));
             }
             if (isSessionExpired) {
-                return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+                return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
             }
             if (url === "/api/notifications/unread-count") {
                 return Promise.resolve(apiResponse(200, {unread: 0}));
@@ -328,7 +328,7 @@ describe("AppLayout", () => {
             if (url === "/api/notifications/unread-count") {
                 return Promise.resolve(apiResponse(200, {unread: 0}));
             }
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         });
         // o login de vdd demora um pouco pra abrir, pq a tela dele eh baixada na hora
         const router = createMemoryRouter([
@@ -358,9 +358,9 @@ describe("AppLayout", () => {
                 return Promise.resolve(apiResponse(200, {unread: 0}));
             }
             if (url === "/api/auth/login") {
-                return Promise.resolve(apiResponse(401, {message: "E-mail ou senha inválidos"}));
+                return Promise.resolve(apiResponse(401, {message: "E-mail ou senha incorretos. Confira os dois e tente de novo"}));
             }
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         });
         const user = userEvent.setup();
         setLoggedUser(MARIA);
@@ -374,7 +374,7 @@ describe("AppLayout", () => {
         await user.type(dialog.getByLabelText("Senha"), "Senha#2026");
         await user.click(dialog.getByRole("button", {name: "Entrar"}));
 
-        expect(await dialog.findByRole("alert")).toHaveTextContent("E-mail ou senha inválidos");
+        expect(await dialog.findByRole("alert")).toHaveTextContent("E-mail ou senha incorretos. Confira os dois e tente de novo");
         expect(dialog.getByText("Trocou o e-mail de acesso? Toque em Sair e entre com o e-mail novo."))
             .toBeInTheDocument();
 
@@ -390,7 +390,7 @@ describe("AppLayout", () => {
             if (url === "/api/notifications/unread-count") {
                 return Promise.resolve(apiResponse(200, {unread: 0}));
             }
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         });
         const onClose = vi.fn();
         const router = createMemoryRouter([
@@ -472,7 +472,7 @@ describe("AppLayout", () => {
             if (url === "/api/auth/login") {
                 return Promise.resolve(apiResponse(403, {message: "Conta desativada. Fale com a clínica"}));
             }
-            return Promise.resolve(apiResponse(401, {message: "Sessão inválida"}));
+            return Promise.resolve(apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}));
         });
         const user = userEvent.setup();
         setLoggedUser(MARIA);
