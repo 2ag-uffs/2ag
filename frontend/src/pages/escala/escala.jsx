@@ -343,6 +343,25 @@ export default function Escala() {
         const question = stepMoves > 0 && formRef.current ? formRef.current.querySelector("[data-step-focus]") : null;
         if (question) {
             question.focus();
+            // o navegador rola so ate o campo q ganhou o foco, e numa janela baixa a pergunta dele ficava acima
+            // da janela: a tela rola ate o cartao inteiro da pergunta. o cartao mais alto q a janela parava
+            // pelo pe e o nome da pergunta sumia la em cima: ele sobe pro alto da janela, sai de baixo do
+            // contador preso e o campo com foco puxa de volta so o q falta pra aparecer inteiro.
+            // o scroll-padding do html desconta o cabecalho e as barras do pe
+            const item = question.closest("[data-step]");
+            if (item) {
+                item.scrollIntoView({block: "nearest"});
+                const visibleTop = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+                if (item.getBoundingClientRect().top < visibleTop) {
+                    item.scrollIntoView({block: "start"});
+                }
+                const counter = formRef.current.querySelector("[data-top-bar]");
+                const covered = counter ? counter.getBoundingClientRect().bottom - item.getBoundingClientRect().top : 0;
+                if (covered > 0) {
+                    window.scrollBy(0, -covered);
+                }
+                question.scrollIntoView({block: "nearest"});
+            }
         }
     }, [stepMoves, formRef]);
 

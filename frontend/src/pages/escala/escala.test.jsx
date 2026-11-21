@@ -613,6 +613,62 @@ describe("Escala no celular, uma pergunta por tela", () => {
         expect(post).not.toHaveBeenCalled();
     });
 
+    // numa janela baixa (320x256) o navegador rolava so ate o campo com foco, e a pergunta ficava acima da janela
+    it("a tela nova rola ate o cartao inteiro da pergunta, e por ultimo ate o campo q ganhou o foco", async () => {
+        mockPhoneWidth(true);
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+        const field = screen.getByLabelText("Observações");
+        expect(field).toHaveFocus();
+        // primeiro o cartao da pergunta, dps o campo: se o cartao for mais alto q a janela, o campo com foco ganha
+        expect(scrollIntoView.mock.contexts.slice(-2)).toEqual([field.closest("li"), field]);
+        expect(scrollIntoView.mock.calls.slice(-2)).toEqual([[{block: "nearest"}], [{block: "nearest"}]]);
+    });
+
+    // o cartao das Observações (texto de apoio comprido e campo alto) n cabe em 320x256: parado pelo pe,
+    // o nome da pergunta ficava acima da janela mesmo qnd ele e o campo cabiam juntos
+    it("o cartao mais alto q a janela sobe pro alto dela antes de o campo com foco puxar de volta", async () => {
+        mockPhoneWidth(true);
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        // o jsdom n mede a tela: o cartao diz q o alto dele ficou 96 px acima da janela
+        vi.spyOn(HTMLLIElement.prototype, "getBoundingClientRect").mockReturnValue({top: 0, bottom: 352})
+            .mockReturnValueOnce({top: 0, bottom: 352}).mockReturnValueOnce({top: 0, bottom: 352})
+            .mockReturnValueOnce({top: -96, bottom: 256});
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+        const field = screen.getByLabelText("Observações");
+        const card = field.closest("li");
+        expect(field).toHaveFocus();
+        expect(scrollIntoView.mock.contexts.slice(-3)).toEqual([card, card, field]);
+        expect(scrollIntoView.mock.calls.slice(-3)).toEqual([[{block: "nearest"}], [{block: "start"}], [{block: "nearest"}]]);
+    });
+
+    // em 320x568 o cartao parava no cabecalho, com o nome da pergunta atras do contador preso logo abaixo dele
+    it("o cartao q ficou atras do contador preso desce ate sair de baixo dele", async () => {
+        mockPhoneWidth(true);
+        const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+        vi.spyOn(HTMLLIElement.prototype, "getBoundingClientRect").mockReturnValue({top: 56, bottom: 445});
+        renderTea();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        expect(scrollBy).not.toHaveBeenCalled();
+        screen.getByRole("status").closest("[data-top-bar]").getBoundingClientRect = () => ({top: 56, bottom: 113});
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+        expect(screen.getByLabelText("Observações")).toHaveFocus();
+        expect(scrollBy).toHaveBeenLastCalledWith(0, -57);
+    });
+
     it("trocar a largura no meio mantem as respostas e a pergunta", async () => {
         const resize = mockPhoneWidth(true);
         const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
@@ -628,7 +684,8 @@ describe("Escala no celular, uma pergunta por tela", () => {
         expect(screen.getByRole("group", {name: "Sono"})).toBeInTheDocument();
         expect(within(screen.getByRole("group", {name: "Sono"})).getByRole("radio", {name: "Até 3 dias"}))
             .toBeChecked();
-        expect(scrollIntoView.mock.contexts[0]).toBe(appetite.closest("li"));
+        const centered = scrollIntoView.mock.calls.findIndex(([options]) => options.block === "center");
+        expect(scrollIntoView.mock.contexts[centered]).toBe(appetite.closest("li"));
         expect(screen.getByRole("button", {name: "Salvar respostas"})).toBeInTheDocument();
         expect(screen.getByRole("status")).toHaveTextContent("1 de 3 respondidas");
 
