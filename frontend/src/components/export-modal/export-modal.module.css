@@ -16,7 +16,7 @@
 
 .deidentified {
     align-items: flex-start;
-    background-color: var(--color-background);
+    background-color: var(--color-surface-alt);
     border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;

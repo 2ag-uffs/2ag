@@ -11,6 +11,9 @@ const BLOCK = "var(--color-surface-alt)";
 const BLOCKS = [
     ["../pages/sign-up/sign-up.module.css", ".consent",
         ["--color-text-primary", "--color-text-secondary", "--color-primary", "--color-error"]],
+    ["../components/annulment-modal/annulment-modal.module.css", ".recordDescription", ["--color-text-primary"]],
+    ["../components/export-modal/export-modal.module.css", ".deidentified",
+        ["--color-text-primary", "--color-text-secondary"]],
 ];
 
 const THEMES = themesOf(readCss(import.meta.url, "./colors.css"));

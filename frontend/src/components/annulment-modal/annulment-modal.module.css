@@ -9,7 +9,7 @@
 
 /* o registro q vai ser anulado aparece numa faixa pra ninguem anular o errado */
 .recordDescription {
-    background-color: var(--color-background);
+    background-color: var(--color-surface-alt);
     border-radius: var(--radius-md);
     font-weight: 600;
     padding: var(--space-3) var(--space-4);
