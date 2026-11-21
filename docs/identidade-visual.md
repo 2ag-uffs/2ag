@@ -69,7 +69,7 @@ Dois detalhes que mudam decisão:
 | **Yaldevi** | corpo de texto | "contemporânea, profissional e minimalista", "escreve um texto inteiro sem cansar seus olhos" |
 | **Belleza** | complementar, títulos | "elegância, rebusco e delicadeza por meio dos traços" |
 
-As duas estão em `frontend/public/fonts/`: a Yaldevi em seis pesos e a Belleza em regular. `frontend/src/styles/fonts.css` aplica a Belleza em `h1`, `h2` e `h3`, e o corpo herda a Yaldevi.
+As duas estão em `frontend/public/fonts/`: a Yaldevi em seis pesos e a Belleza em regular. O arquivo da Belleza que está lá é o recorte latin-ext do Google Fonts (só traz A, Á e o bloco Latin Extended-A), então na tela `h1`, `h2` e `h3` aparecem em Yaldevi até entrar o arquivo latin. Essa troca espera a decisão de quem cuida do projeto.
 
 ---
 
@@ -152,6 +152,10 @@ O campo de formulário também perdeu a borda verde e o texto verde; ficou com b
 Os três SVGs oficiais substituíram os exports antigos em `frontend/public/images/`. As proporções do símbolo e da versão vertical são idênticas às anteriores; o horizontal ficou 6% mais largo na mesma altura, e como o cabeçalho dimensiona por altura, nenhuma tela precisou mudar.
 
 O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006633` sólido e o cabeçalho também, existem duas variantes em palha (`logotipo-icon-claro.svg` e `logotipo-vertical-claro.svg`) usadas no cabeçalho e na arte lateral do login e do cadastro. A versão verde continua no fundo branco.
+
+O ícone da aba segue o tema do navegador: o `index.html` aponta para `logotipo-icon-claro.svg` quando o navegador está no escuro e para `logotipo-icon.svg` no claro.
+
+O `logotipo-horizontal.svg` ainda não tem variante em palha. Por isso, no tema escuro, as telas de entrada e as páginas de status (página não encontrada, sem conexão) continuam com o logotipo verde sobre fundo escuro, até chegar o arquivo negativo oficial.
 
 ### gráfico de progresso
 
