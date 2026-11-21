@@ -25,6 +25,18 @@ function previousVersionsOf(items, response) {
     return versions.reverse();
 }
 
+// o item sem resposta e o texto livre tem a propria cara na lista, o resto fica como resposta comum
+// o teste de vazio eh o msm do formatAnswer
+function answerClassOf(item, value) {
+    if (value === undefined || value === null || value === "") {
+        return styles.blank;
+    }
+    if (item.type === "TEXTO") {
+        return styles.freeText;
+    }
+    return undefined;
+}
+
 function PreviousVersion({version}) {
     const titleId = useId();
     const correction = version.correction;
@@ -41,7 +53,9 @@ function PreviousVersion({version}) {
                     {version.changedItems.map((item) => (
                         <div key={item.key} className={styles.answer}>
                             <dt>{item.label}</dt>
-                            <dd>{formatAnswer(item, correction.answers[item.key])}</dd>
+                            <dd className={answerClassOf(item, correction.answers[item.key])}>
+                                {formatAnswer(item, correction.answers[item.key])}
+                            </dd>
                         </div>
                     ))}
                 </dl>
@@ -153,7 +167,9 @@ export default function RespostaEscala() {
                     {definition.items.map((item) => (
                         <div key={item.key} className={styles.answer}>
                             <dt>{item.label}</dt>
-                            <dd>{formatAnswer(item, response.answers[item.key])}</dd>
+                            <dd className={answerClassOf(item, response.answers[item.key])}>
+                                {formatAnswer(item, response.answers[item.key])}
+                            </dd>
                         </div>
                     ))}
                 </dl>

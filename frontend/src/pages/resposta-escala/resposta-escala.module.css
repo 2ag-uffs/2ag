@@ -73,6 +73,20 @@
     text-align: right;
 }
 
+/* o item sem resposta n tem a cara de uma resposta */
+.answer dd.blank {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+/* o texto livre eh pra ler: fica na linha dele, na esquerda, sem negrito e com as quebras de linha de quem escreveu */
+.answer dd.freeText {
+    flex-basis: 100%;
+    font-weight: 400;
+    text-align: left;
+    white-space: pre-line;
+}
+
 /* cada versao q uma correcao do paciente substituiu, so com o q mudou */
 .versions {
     display: flex;
@@ -91,7 +105,18 @@
     font-size: var(--text-md);
 }
 
+/* no celular toda resposta fica embaixo da pergunta dela, a curta tbm */
 @media (max-width: 47.99rem) {
+    .answer {
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    /* sem isso a base de 16rem da pergunta virava altura */
+    .answer dt {
+        flex: none;
+    }
+
     .answer dd {
         text-align: left;
     }

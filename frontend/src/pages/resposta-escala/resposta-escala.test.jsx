@@ -3,6 +3,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {apiService, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import RespostaEscala from "./resposta-escala.jsx";
 
 const HAMILTON = {
@@ -66,5 +67,59 @@ describe("RespostaEscala", () => {
         expect(await screen.findByText("Humor ansioso")).toBeInTheDocument();
         expect(screen.queryByText(/Corrigida pelo paciente/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Antes da correção/)).not.toBeInTheDocument();
+    });
+
+    // o "não respondeu" tinha a msm cara de uma resposta, e o texto livre vinha em negrito e na direita
+    it("o item sem resposta e o texto livre tem a propria cara, e a nota respondida fica como estava", async () => {
+        const withNotes = {
+            ...HAMILTON,
+            items: [...HAMILTON.items, {key: "observacoes", label: "Observações", type: "TEXTO", options: []},
+                {key: "outras", label: "Outras observações", type: "TEXTO", options: []}],
+        };
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/scales/definitions/hamilton"
+                ? withNotes
+                : {...CORRECTED, corrections: [], answers: {humorAnsioso: 1, observacoes: "dormi mal\nna terça"}}));
+        const router = createMemoryRouter([{path: "/escalas/resposta/:responseId", element: <RespostaEscala/>}],
+            {initialEntries: ["/escalas/resposta/5"]});
+        render(<RouterProvider router={router}/>);
+
+        const answered = (await screen.findByText("Humor ansioso")).nextElementSibling;
+        const blank = screen.getByText("Tensão").nextElementSibling;
+        const freeText = screen.getByText("Observações").nextElementSibling;
+        const blankFreeText = screen.getByText("Outras observações").nextElementSibling;
+
+        expect(answered).toHaveTextContent("1 de 4");
+        expect(answered.className).toBe("");
+        expect(blank).toHaveTextContent("não respondeu");
+        expect(blank.className).toMatch(/blank/);
+        expect(freeText.className).toMatch(/freeText/);
+        // o texto livre em branco eh um item sem resposta como os outros
+        expect(blankFreeText.className).toMatch(/blank/);
+    });
+});
+
+// o jsdom n desenha a tela, entao a cara de cada resposta sai do css
+describe("css da resposta da escala", () => {
+    const css = readCss(import.meta.url, "./resposta-escala.module.css");
+    const mobileCss = mediaRules(css, "@media (max-width: 47.99rem)");
+
+    it("o sem resposta fica cinza e sem negrito, e o texto livre na linha dele, na esquerda e sem negrito", () => {
+        const blank = declarationsOf(css, ".answer dd.blank");
+        expect(blank.color).toBe("var(--color-text-secondary)");
+        expect(blank["font-weight"]).toBe("400");
+
+        const freeText = declarationsOf(css, ".answer dd.freeText");
+        expect(freeText["flex-basis"]).toBe("100%");
+        expect(freeText["font-weight"]).toBe("400");
+        expect(freeText["text-align"]).toBe("left");
+        expect(freeText["white-space"]).toBe("pre-line");
+    });
+
+    it("no celular toda resposta fica embaixo da pergunta dela", () => {
+        expect(declarationsOf(mobileCss, ".answer")["flex-direction"]).toBe("column");
+        // sem isso a base de 16rem da pergunta virava altura
+        expect(declarationsOf(mobileCss, ".answer dt").flex).toBe("none");
+        expect(declarationsOf(mobileCss, ".answer dd")["text-align"]).toBe("left");
     });
 });
