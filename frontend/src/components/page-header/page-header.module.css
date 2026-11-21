@@ -26,6 +26,7 @@
 
 .subtitle {
     color: var(--color-text-secondary);
+    max-width: 70ch;
 }
 
 .actions {

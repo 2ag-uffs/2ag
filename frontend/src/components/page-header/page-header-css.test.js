@@ -26,6 +26,11 @@ describe("cabecalho da tela", () => {
         expect(basis + gap + dashboardActions).toBeLessThanOrEqual(644);
     });
 
+    it("a frase de apoio para na largura de leitura", () => {
+        // sem isso a frase passava de 100 letras por linha no computador
+        expect(declarationsOf(css, ".subtitle")["max-width"]).toBe("70ch");
+    });
+
     it("no celular as acoes continuam na linha de baixo, com a largura toda", () => {
         expect(declarationsOf(mediaRules(css, MOBILE), ".actions").width).toBe("100%");
     });
