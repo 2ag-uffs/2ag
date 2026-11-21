@@ -10,6 +10,9 @@
 
 .text {
     display: flex;
+    /* a frase comprida quebra dentro da coluna dela e as acoes n caem pra linha de baixo */
+    /* a base eh curta pq a linha quebra por ela: com 24rem as acoes do painel caiam no tablet */
+    flex: 1 1 13rem;
     flex-direction: column;
     gap: var(--space-1);
     min-width: 0;
@@ -27,6 +30,7 @@
 
 .actions {
     display: flex;
+    flex: 0 1 auto;
     flex-wrap: wrap;
     gap: var(--space-2);
 }
