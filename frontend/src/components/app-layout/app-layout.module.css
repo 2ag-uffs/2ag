@@ -129,11 +129,11 @@
     font-size: 1.25rem;
 }
 
+/* o nome q n cabe numa linha quebra em duas e o item cresce, em vez de virar reticencias
+   eh o caso do Horarios de atendimento com o espacamento de texto aumentado (CT-51) */
 .sideLabel {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 /* contador de avisos n lidos no item Avisos, pessego pq eh a cor de destaque */
@@ -304,7 +304,9 @@
     .sideLabel {
         clip: rect(0 0 0 0);
         height: 1px;
+        overflow: hidden;
         position: absolute;
+        white-space: nowrap;
         width: 1px;
     }
 
