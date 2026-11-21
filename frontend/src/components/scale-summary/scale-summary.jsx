@@ -72,7 +72,7 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                                         </button>
                                     )}
                                     {onAnnul && !response.annulled && (
-                                        <button type="button" className="button-tertiary"
+                                        <button type="button" className="button-danger"
                                                 onClick={() => onAnnul(response)}>
                                             Anular
                                         </button>

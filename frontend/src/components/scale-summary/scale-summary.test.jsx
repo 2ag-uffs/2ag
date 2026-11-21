@@ -38,6 +38,18 @@ function renderSummary(actions) {
 }
 
 describe("ScaleSummary", () => {
+    // nos cartoes de consulta, prescricao e anamnese do historico o anular ja eh botao de perigo
+    it("o anular da escala respondida eh botao de perigo, e as outras duas acoes continuam discretas", () => {
+        renderSummary({onOpenResponse: vi.fn(), onReview: vi.fn(), onAnnul: vi.fn()});
+
+        screen.getAllByRole("button", {name: "Anular"}).forEach((button) => {
+            expect(button).toHaveClass("button-danger");
+            expect(button).not.toHaveClass("button-tertiary");
+        });
+        expect(screen.getAllByRole("button", {name: "Ver respostas"})[0]).toHaveClass("button-tertiary");
+        expect(screen.getAllByRole("button", {name: "Marcar como analisada"})[0]).toHaveClass("button-tertiary");
+    });
+
     it("mostra a pendente com prazo e quantos dias ja foram preenchidos", () => {
         renderSummary({});
 
