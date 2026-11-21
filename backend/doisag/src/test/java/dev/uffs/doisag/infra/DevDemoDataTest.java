@@ -1,6 +1,8 @@
 package dev.uffs.doisag.infra;
 
 import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.enums.ScaleType;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.AppointmentRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
@@ -8,11 +10,16 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.ScaleResponseRepository;
 import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.repository.UsersRepository;
+import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,6 +40,7 @@ class DevDemoDataTest {
     @Autowired private ScaleTaskRepository taskRepository;
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private TreatmentProtocolService treatmentProtocolService;
 
     @Test
     void oSeedCriaADemonstracaoInteira() {
@@ -56,5 +64,32 @@ class DevDemoDataTest {
         assertThat(prescriber.getPasswordChangedAt()).isNotNull();
         assertThat(usersRepository.findByEmail("carlos.pereira@email.com").orElseThrow().getPasswordChangedAt())
                 .isNotNull();
+    }
+
+    // o diario e o diario do sono da semana da maria ja sao a rodada do acompanhamento dela
+    // o job q roda dps do seed (a cada minuto no ambiente de teste) adotava os dois e mudava o prazo
+    @Test
+    void oJobDoAcompanhamentoDeixaAsEscalasDaDemonstracaoComoEstao() {
+        Users maria = usersRepository.findByEmail("paciente@email.com").orElseThrow();
+        LocalDate today = LocalDate.now();
+        List<String> before = pendingTasksOf(maria);
+        assertThat(before).contains(
+                ScaleType.ACOMPANHAMENTO_SEMANAL + " " + today.minusDays(2) + " " + today.plusDays(4),
+                ScaleType.REGISTRO_SONO + " " + today + " " + today.plusDays(6));
+
+        int sent = treatmentProtocolService.designarEscalasVencidas(today);
+
+        assertThat(sent).isZero();
+        assertThat(pendingTasksOf(maria)).isEqualTo(before);
+    }
+
+    // escala, inicio e prazo de cada tarefa pendente
+    private List<String> pendingTasksOf(Users patient) {
+        List<String> tasks = new ArrayList<>();
+        for (ScaleTask task : taskRepository.findByPatientIdAndStatusOrderByPeriodEndAsc(patient.getId(),
+                ScaleTaskStatus.PENDENTE)) {
+            tasks.add(task.getScaleType() + " " + task.getPeriodStart() + " " + task.getPeriodEnd());
+        }
+        return tasks;
     }
 }

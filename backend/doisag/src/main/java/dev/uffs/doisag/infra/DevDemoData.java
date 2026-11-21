@@ -28,9 +28,13 @@ import dev.uffs.doisag.model.Address;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ProtocolItem;
+import dev.uffs.doisag.model.ScaleTask;
+import dev.uffs.doisag.model.TreatmentProtocol;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
+import dev.uffs.doisag.repository.TreatmentProtocolRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.service.AnamnesisService;
 import dev.uffs.doisag.service.AppointmentService;
@@ -48,6 +52,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
@@ -93,6 +99,8 @@ public class DevDemoData {
     private final UsersRepository usersRepository;
     private final PatientRepository patientRepository;
     private final NotificationRepository notificationRepository;
+    private final TreatmentProtocolRepository protocolRepository;
+    private final TransactionTemplate transactionTemplate;
     private final PasswordEncoder passwordEncoder;
     private final AvailabilityService availabilityService;
     private final ConsultationService consultationService;
@@ -107,7 +115,9 @@ public class DevDemoData {
     private final ConsentTermService consentTermService;
 
     public DevDemoData(UsersRepository usersRepository, PatientRepository patientRepository,
-                       NotificationRepository notificationRepository, PasswordEncoder passwordEncoder,
+                       NotificationRepository notificationRepository,
+                       TreatmentProtocolRepository protocolRepository,
+                       PlatformTransactionManager transactionManager, PasswordEncoder passwordEncoder,
                        AvailabilityService availabilityService, ConsultationService consultationService,
                        PrescriptionService prescriptionService, AnamnesisService anamnesisService,
                        ScaleResponseService scaleResponseService, ScaleTaskService scaleTaskService,
@@ -117,6 +127,8 @@ public class DevDemoData {
         this.usersRepository = usersRepository;
         this.patientRepository = patientRepository;
         this.notificationRepository = notificationRepository;
+        this.protocolRepository = protocolRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.passwordEncoder = passwordEncoder;
         this.availabilityService = availabilityService;
         this.consultationService = consultationService;
@@ -288,17 +300,34 @@ public class DevDemoData {
 
     private void createMariaRecent(Prescriber prescriber, Patient maria, LocalDate today) {
         // a semana atual do diario comecou anteontem e ja tem dois dias preenchidos
-        scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL, today.minusDays(2), TASK_DAYS, true);
+        ScaleTask diaryWeek = scaleTaskService.assign(maria.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(2), TASK_DAYS, true);
         LocalDate firstDay = today.minusDays(56);
         mariaFollowUpDay(maria, firstDay, 54);
         mariaFollowUpDay(maria, firstDay, 55);
 
-        scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, TASK_DAYS, false);
+        ScaleTask sleepWeek = scaleTaskService.assign(maria.getId(), ScaleType.REGISTRO_SONO, today, TASK_DAYS, false);
         scaleTaskService.assign(maria.getId(), ScaleType.ESCALA_PITTSBURGH, today, TASK_DAYS, false);
+        markAsCurrentRound(maria, diaryWeek);
+        markAsCurrentRound(maria, sleepWeek);
 
         appointmentService.schedule(new AppointmentScheduleDTO(maria.getId(),
                 nextWorkingDay(today.plusDays(7)).atTime(9, 0), AppointmentModality.PRESENCIAL, null, null),
                 prescriber.getId());
+    }
+
+    // a tarefa feita a mao fica valendo como a rodada q o acompanhamento ja mandou dessa escala
+    // sem o fim da rodada no item, o job via a primeira rodada por mandar, adotava a tarefa e mudava o prazo dela
+    private void markAsCurrentRound(Patient patient, ScaleTask task) {
+        transactionTemplate.executeWithoutResult(status -> {
+            TreatmentProtocol protocol = protocolRepository.findFirstByPatientIdAndActiveTrue(patient.getId())
+                    .orElseThrow();
+            for (ProtocolItem item : protocol.getItems()) {
+                if (item.getScaleType() == task.getScaleType()) {
+                    item.setLastRoundEnd(task.getPeriodEnd());
+                }
+            }
+        });
     }
 
     // um dia do diario da maria
