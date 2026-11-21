@@ -376,6 +376,41 @@ class ScaleDeliveryTest {
         assertThat(noticeOf(patient, "Formulário para responder")).isNull();
     }
 
+    // a semana q venceu ontem e o job de hoje ainda n fechou: anular o unico dia dela segura a semana ate
+    // amanha, entao o paciente recebe o msm aviso de quando a anulacao vem dps do job
+    @Test
+    void annullingTheOnlyDayOfAWeekStillPendingBeforeTheMorningJobNotifiesThePatient() throws Exception {
+        LocalDate today = LocalDate.now();
+        ScaleTask task = scaleTaskService.assign(patient.getId(), ScaleType.ACOMPANHAMENTO_SEMANAL,
+                today.minusDays(7), 7, true);
+        String annulledDay = "\"periodStart\":\"" + today.minusDays(5) + "\",";
+        String patientToken = bearerTokenOf(patient);
+        Number dayId = JsonPath.read(answerScale("acompanhamento-semanal", "{\"dor\":3}", annulledDay, patientToken)
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+
+        annul(dayId.longValue()).andExpect(status().isOk());
+
+        Notification notice = noticeOf(patient, "Escala para responder de novo");
+        assertThat(notice).isNotNull();
+        assertThat(notice.getMessage())
+                .contains("Preencha o dia " + formatDate(today.minusDays(5)) + " de novo até amanhã de manhã.")
+                .contains("Respondida errado, responda de novo");
+        assertThat(notice.getLink()).isEqualTo("/escalas/acompanhamento-semanal?data=" + today.minusDays(5));
+
+        // o job de hoje segura a semana, e o dia preenchido de novo fecha ela no job de amanha
+        scaleTaskService.closeOverdue(today);
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.PENDENTE);
+        answerScale("acompanhamento-semanal", "{\"dor\":2}", annulledDay, patientToken)
+                .andExpect(status().isCreated());
+        scaleTaskService.closeOverdue(today.plusDays(1));
+        assertThat(taskRepository.findById(task.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScaleTaskStatus.RESPONDIDA);
+    }
+
     // a anulacao q chega antes do job das 8h: o job desse dia n fecha a semana reaberta, so o de amanha
     @Test
     void annullingADiaryDayBeforeTheMorningJobKeepsTheWeekOpenUntilTheNextMorning() throws Exception {

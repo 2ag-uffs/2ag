@@ -366,10 +366,16 @@ public class ScaleTaskService {
     // pendente a resposta de hoje fechava a rodada nova e a reaberta ficava pendente ate virar nao respondida
     // no diario o periodo eh a semana da grade e n muda, senao os dias da semana seguinte caiam nas duas,
     // entao o job das 8h de amanha fecha a semana reaberta e o aviso diz isso
+    // a semana do diario q venceu ontem e o job de hoje ainda n fechou continua pendente: sem dia no prazo o
+    // job segura ela ate amanha (closeIfStillOverdue), entao ela recebe o mesmo aviso da q o job ja tinha fechado
     @Transactional
     public void reopenAfterAnnulment(ScaleResponse annulledResponse) {
         ScaleTask task = annulledResponse.getTask();
-        if (!reopenIfWithoutAnswers(task)) {
+        boolean reopened = reopenIfWithoutAnswers(task);
+        boolean heldWeek = task != null && isDaily(task.getScaleType())
+                && task.getStatus() == ScaleTaskStatus.PENDENTE
+                && task.getPeriodEnd().isBefore(LocalDate.now()) && onTimeAnswersOf(task) == 0;
+        if (!reopened && !heldWeek) {
             return;
         }
         ScaleType scaleType = task.getScaleType();
