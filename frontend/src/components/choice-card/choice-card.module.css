@@ -24,8 +24,12 @@
     border-color: var(--color-primary);
 }
 
-.disabled {
-    opacity: 0.75;
+/* o cartao travado fica cinza, sem opacidade, q apagava o texto de apoio abaixo de 4,5:1
+   vem dps do .checked pra ganhar dele: o verde fica so pra escolha de agora */
+.disabled,
+.disabled:hover {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border);
 }
 
 .choice {
@@ -74,6 +78,13 @@
     background-color: var(--color-primary);
     border-color: var(--color-primary);
     color: var(--color-text-on-primary);
+}
+
+/* check cinza quer dizer q ja estava ali, como a escala ja enviada */
+.checked.disabled .box {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-control-border);
+    color: var(--color-text-secondary);
 }
 
 .input:focus-visible + .box {
