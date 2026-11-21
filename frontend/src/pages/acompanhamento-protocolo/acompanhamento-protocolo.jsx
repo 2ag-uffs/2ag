@@ -302,7 +302,7 @@ export default function AcompanhamentoProtocolo() {
                             <FiCalendar aria-hidden="true"/>
                             {protocol.patientName}: {formatDate(protocol.startDate)} até {formatDate(protocol.endDate)}
                         </span>
-                        {protocol.sleepBedTime && (
+                        {(protocol.sleepBedTime || protocol.sleepWakeTime) && (
                             <span className={styles.fact}>
                                 <FiMoon aria-hidden="true"/>
                                 Dormir às {shortTime(protocol.sleepBedTime) || "—"} e

@@ -98,6 +98,8 @@ describe("AcompanhamentoProtocolo", () => {
             startDate: toIsoDate(addDays(new Date(), -60)),
             endDate: toIsoDate(addDays(new Date(), 29)),
             active: true,
+            sleepBedTime: null,
+            sleepWakeTime: null,
             items: [{scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "SEMANAL"}],
         });
         renderPage();
@@ -107,6 +109,28 @@ describe("AcompanhamentoProtocolo", () => {
         expect(screen.getByRole("button", {name: "Encerrar acompanhamento"})).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Iniciar acompanhamento"})).not.toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Renovar acompanhamento"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/levantar às/)).not.toBeInTheDocument();
+    });
+
+    // so o horario de levantar combinado: o quadro mostra a programacao igual ao diario do paciente
+    it("o quadro em andamento mostra a programacao do sono so com o horario de levantar", async () => {
+        mockApiWithProtocol({
+            id: 1,
+            patientId: 5,
+            patientName: "Paciente Teste",
+            startDate: toIsoDate(addDays(new Date(), -5)),
+            endDate: toIsoDate(addDays(new Date(), 60)),
+            active: true,
+            sleepBedTime: null,
+            sleepWakeTime: "07:00:00",
+            items: [
+                {scaleType: "REGISTRO_SONO", scaleName: "Diário do sono", periodicity: "SEMANAL"},
+            ],
+        });
+        renderPage();
+
+        expect(await screen.findByText("Ativo")).toBeInTheDocument();
+        expect(screen.getByText(/levantar às 07:00/)).toBeInTheDocument();
     });
 
     // decisao da dona (11/2026): encerrar a mao fecha as escalas do acompanhamento q esperavam resposta,
