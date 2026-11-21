@@ -46,4 +46,16 @@ describe("StatusPage", () => {
 
         expect(message["text-wrap"]).toBe("pretty");
     });
+
+    // o css do tema esconde uma das duas (styles/colors.css), entao o leitor de tela ouve um logotipo so
+    it("tem o logotipo verde pro tema claro e o de palha pro escuro, com o msm nome", () => {
+        render(<MemoryRouter><StatusPage title="Página não encontrada" message="O endereço não existe."/></MemoryRouter>);
+
+        const logos = screen.getAllByAltText("2AG");
+        expect(logos).toHaveLength(2);
+        expect(logos[0]).toHaveAttribute("src", "/images/logotipo-horizontal.svg");
+        expect(logos[0]).toHaveClass("logo-on-light");
+        expect(logos[1]).toHaveAttribute("src", "/images/logotipo-horizontal-claro.svg");
+        expect(logos[1]).toHaveClass("logo-on-dark");
+    });
 });

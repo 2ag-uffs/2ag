@@ -12,7 +12,9 @@ export default function StatusPage({title, message, showReloadButton = false, sh
     return (
         <main className={styles.page}>
             <StatusTitle name={title}/>
-            <img src="/images/logotipo-horizontal.svg" alt="2AG" className={styles.logo}/>
+            {/* so uma das duas aparece: a verde no tema claro e a de palha no escuro (styles/colors.css) */}
+            <img src="/images/logotipo-horizontal.svg" alt="2AG" className={"logo-on-light " + styles.logo}/>
+            <img src="/images/logotipo-horizontal-claro.svg" alt="2AG" className={"logo-on-dark " + styles.logo}/>
             <h1 className={styles.title}>{title}</h1>
             <p className={styles.message}>{message}</p>
             <div className={styles.actions}>

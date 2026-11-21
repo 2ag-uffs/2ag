@@ -15,7 +15,11 @@ export default function AuthLayout({title, children}) {
 
             <main className={styles.content}>
                 <div className={styles.card}>
-                    <img src="/images/logotipo-horizontal.svg" alt="2AG Cannabis Medicinal" className={styles.logo}/>
+                    {/* so uma das duas aparece: a verde no tema claro e a de palha no escuro (styles/colors.css) */}
+                    <img src="/images/logotipo-horizontal.svg" alt="2AG Cannabis Medicinal"
+                         className={"logo-on-light " + styles.logo}/>
+                    <img src="/images/logotipo-horizontal-claro.svg" alt="2AG Cannabis Medicinal"
+                         className={"logo-on-dark " + styles.logo}/>
                     <h1 className={styles.title}>{title}</h1>
                     {children}
                 </div>

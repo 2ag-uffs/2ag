@@ -151,11 +151,11 @@ O campo de formulário também perdeu a borda verde e o texto verde; ficou com b
 
 Os três SVGs oficiais substituíram os exports antigos em `frontend/public/images/`. As proporções do símbolo e da versão vertical são idênticas às anteriores; o horizontal ficou 6% mais largo na mesma altura, e como o cabeçalho dimensiona por altura, nenhuma tela precisou mudar.
 
-O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006633` sólido e o cabeçalho também, existem duas variantes em palha (`logotipo-icon-claro.svg` e `logotipo-vertical-claro.svg`) usadas no cabeçalho e na arte lateral do login e do cadastro. A versão verde continua no fundo branco.
+O manual exige logotipo negativo sobre fundo escuro. Como o SVG oficial é `#006633` sólido e o cabeçalho também, existem três variantes em palha, com o mesmo desenho do arquivo oficial e só a cor trocada: `logotipo-icon-claro.svg` e `logotipo-vertical-claro.svg`, usadas no cabeçalho e na arte lateral do login e do cadastro, e `logotipo-horizontal-claro.svg`, do tema escuro das telas de entrada e das páginas de status. A versão verde continua no fundo branco.
 
 O ícone da aba segue o tema do navegador: o `index.html` aponta para `logotipo-icon-claro.svg` quando o navegador está no escuro e para `logotipo-icon.svg` no claro.
 
-O `logotipo-horizontal.svg` ainda não tem variante em palha. Por isso, no tema escuro, as telas de entrada e as páginas de status (página não encontrada, sem conexão) continuam com o logotipo verde sobre fundo escuro, até chegar o arquivo negativo oficial.
+Nas telas de entrada e nas páginas de status (página não encontrada, sem conexão) o logotipo horizontal fica sobre o fundo da tela, que no tema escuro é escuro. Elas trazem as duas imagens, a verde com a classe `logo-on-light` e a de palha com `logo-on-dark`, e `frontend/src/styles/colors.css` mostra só uma: a de palha no tema escuro (automático ou escolhido no botão) e a verde no claro e na impressão. A imagem escondida não é lida pelo leitor de tela, então ele ouve um logotipo só.
 
 ### gráfico de progresso
 

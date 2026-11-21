@@ -326,3 +326,31 @@
         --color-scale-band-bad-stripe: #b8382b;
     }
 }
+
+/*
+ * logotipo de cada tema: o verde no claro e o de palha no escuro, q o manual pede o negativo em fundo escuro
+ * a tela poe as duas imagens e so uma aparece (a escondida o leitor de tela n le). na impressao sai a verde
+ */
+.logo-on-dark {
+    display: none;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .logo-on-light {
+        display: none;
+    }
+
+    :root:not([data-theme="light"]) .logo-on-dark {
+        display: block;
+    }
+}
+
+@media screen {
+    :root[data-theme="dark"] .logo-on-light {
+        display: none;
+    }
+
+    :root[data-theme="dark"] .logo-on-dark {
+        display: block;
+    }
+}
