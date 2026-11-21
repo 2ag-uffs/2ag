@@ -330,6 +330,24 @@ class PasswordResetTest {
         assertThat(lastEmail().subject()).isEqualTo(PASSWORD_CHANGED_SUBJECT);
     }
 
+    // trocar a senha pelo perfil eh a dona retomando a conta, entao o link de senha nova pendente cai junto
+    @Test
+    void changingThePasswordInTheProfileCancelsThePendingLink() throws Exception {
+        requestReset(PATIENT_EMAIL).andExpect(status().isNoContent());
+        String token = tokenFromLastEmail();
+
+        mockMvc.perform(put("/profile/password")
+                        .header("Authorization", bearerTokenIssuedMinutesAgo(1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"" + OLD_PASSWORD + "\",\"newPassword\":\"" + NEW_PASSWORD + "\"}"))
+                .andExpect(status().isNoContent());
+
+        confirmReset(token, "Outra-Senha#2027")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PasswordResetService.INVALID_LINK_MESSAGE));
+        login(NEW_PASSWORD).andExpect(status().isOk());
+    }
+
     // senha recusada n muda nada, entao so o e-mail do link saiu
     @Test
     void refusedPasswordSendsNoNotice() throws Exception {

@@ -153,7 +153,7 @@ Alteração de dados pessoais, de contato, **idioma preferido** e **preferência
 - O idioma escolhido determina o idioma das mensagens do sistema para aquele usuário (RNF12)
 - Preferência de notificação controla, por canal e por tipo, o que o usuário recebe (RF14/RF15/RF34)
 - A troca da data de nascimento pelo paciente entra na trilha de auditoria, com a data antiga e a nova, e a que muda a faixa de idade, de menor para adulto ou o contrário, avisa a prescritora (decisão de 14/11/2026, revisão das regras R9, §8.6 *Aceite pelo responsável legal*)
-- *Acrescentado em 20/11/2026:* toda troca de senha, pelo perfil ou pelo link de senha nova (RF35), avisa a conta por e-mail, em qualquer perfil, para a pessoa perceber quando não foi ela. O e-mail diz só a conta, o dia e a hora da troca e o que fazer se não foi a pessoa, sem link nenhum e sem dado do tratamento. Ele sai mesmo com os avisos por e-mail desligados no perfil, porque essa preferência cobre só os lembretes de formulário e de consulta (RF34)
+- *Acrescentado em 20/11/2026:* toda troca de senha, pelo perfil ou pelo link de senha nova (RF35), avisa a conta por e-mail, em qualquer perfil, para a pessoa perceber quando não foi ela. O e-mail diz só a conta, o dia e a hora da troca e o que fazer se não foi a pessoa, sem link nenhum e sem dado do tratamento. Ele sai mesmo com os avisos por e-mail desligados no perfil, porque essa preferência cobre só os lembretes de formulário e de consulta (RF34). A troca pelo perfil também cancela o link de senha nova que ainda valia, como o link novo e a confirmação do e-mail novo já cancelavam: quem retomou a conta não deixa para trás um link que troca a senha de novo
 
 ---
 

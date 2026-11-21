@@ -9,8 +9,10 @@ import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.LoginBlockedException;
 import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.EmailChange;
+import dev.uffs.doisag.model.PasswordReset;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.EmailChangeRepository;
+import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,20 +31,29 @@ public class PasswordService {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptLimiter loginAttemptLimiter;
     private final EmailChangeRepository emailChangeRepository;
+    private final PasswordResetRepository passwordResetRepository;
     private final BackgroundEmailSender backgroundEmailSender;
 
     public PasswordService(UsersRepository usersRepository, PasswordEncoder passwordEncoder,
                            LoginAttemptLimiter loginAttemptLimiter, EmailChangeRepository emailChangeRepository,
+                           PasswordResetRepository passwordResetRepository,
                            BackgroundEmailSender backgroundEmailSender) {
         this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptLimiter = loginAttemptLimiter;
         this.emailChangeRepository = emailChangeRepository;
+        this.passwordResetRepository = passwordResetRepository;
         this.backgroundEmailSender = backgroundEmailSender;
     }
 
     @Transactional
     public Users changePassword(Long userId, ChangePasswordDTO passwordData, String clientAddress) {
+        // trocar a senha eh a dona retomando a conta, entao o link de senha nova q ainda valia cai junto
+        // vem antes da trava da conta pela ordem das travas (password_reset, users, email_change),
+        // e a senha atual errada desfaz isso junto com o resto da transacao
+        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
+            pendingReset.setUsedAt(LocalDateTime.now());
+        }
         // a senha atual eh conferida no banco e n no objeto da sessao
         // a conta fica travada antes de ler a senha, igual no pedido de e-mail novo: a senha nova q o link
         // gravou no mesmo instante aparece e a atual eh conferida com ela, em vez de a troca gravar por cima

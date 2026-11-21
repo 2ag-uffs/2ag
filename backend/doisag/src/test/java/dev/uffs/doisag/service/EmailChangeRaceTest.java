@@ -286,15 +286,15 @@ class EmailChangeRaceTest {
     }
 
     // a dona usa o link de senha nova enquanto quem sabe a senha antiga troca a senha pelo perfil: a troca
-    // trava a conta antes de conferir a senha atual, entao espera o link, confere a senha nova e eh recusada,
-    // em vez de gravar a senha dela por cima da q a dona acabou de criar
+    // trava os links e a conta antes de conferir a senha atual, entao espera o link, confere a senha nova
+    // e eh recusada, em vez de gravar a senha dela por cima da q a dona acabou de criar
     @Test
     void thePasswordChangeWaitsForTheResetLinkAndIsRefusedWithTheOldPassword() throws Exception {
         passwordResetService.requestReset(OLD_EMAIL, ADDRESS);
         String resetToken = tokenFromLastLinkTo(OLD_EMAIL);
 
         HeldLock.Outcome<Object> outcome = heldLock.run(
-                () -> usersRepository.lockById(patient.getId()),
+                () -> passwordResetRepository.findPendingForUpdate(patient.getId()),
                 () -> passwordResetService.resetPassword(new PasswordResetDTO(resetToken, NEW_PASSWORD)),
                 () -> passwordService.changePassword(patient.getId(),
                         new ChangePasswordDTO(PASSWORD, "Senha-Do-Outro#2026"), ADDRESS));

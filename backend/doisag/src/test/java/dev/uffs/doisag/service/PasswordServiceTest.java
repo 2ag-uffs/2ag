@@ -11,6 +11,7 @@ import dev.uffs.doisag.infra.NotFoundException;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.repository.EmailChangeRepository;
+import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,9 @@ class PasswordServiceTest {
     private EmailChangeRepository emailChangeRepository;
 
     @Mock
+    private PasswordResetRepository passwordResetRepository;
+
+    @Mock
     private BackgroundEmailSender backgroundEmailSender;
 
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
@@ -62,7 +66,7 @@ class PasswordServiceTest {
     @BeforeEach
     void setUp() {
         passwordService = new PasswordService(usersRepository, encoder, loginAttemptLimiter, emailChangeRepository,
-                backgroundEmailSender);
+                passwordResetRepository, backgroundEmailSender);
         user = new Patient();
         user.setId(1L);
         user.setName("Maria da Senha");
@@ -196,7 +200,7 @@ class PasswordServiceTest {
         repositoryFindsTheUser();
         LoginAttemptLimiter realLimiter = new LoginAttemptLimiter(5, 20, 100, 10, 15);
         PasswordService serviceWithRealLimiter = new PasswordService(usersRepository, encoder, realLimiter,
-                emailChangeRepository, backgroundEmailSender);
+                emailChangeRepository, passwordResetRepository, backgroundEmailSender);
 
         for (int attempt = 0; attempt < 5; attempt++) {
             assertThatThrownBy(() ->
