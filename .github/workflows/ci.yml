@@ -150,6 +150,8 @@ jobs:
           node-version: "22"
       # n instala pacote nenhum: o teste so usa o q ja vem com o node
       - run: node --test scripts/check-doc-links.test.mjs
+      # o compose tem q esperar a fila de e-mail da api antes de matar o container
+      - run: node --test scripts/check-compose-stop.test.mjs
 
   # garante q as imagens do compose continuam montando e q a pilha sobe de ponta a ponta
   docker:

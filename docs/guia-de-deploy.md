@@ -226,7 +226,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Backup antes de qualquer atualização. As migrações do banco rodam sozinhas quando a api sobe, e só andam para a frente. Enquanto a api reinicia, o nginx responde `502` por alguns segundos. Nunca rode `docker compose down -v` no servidor: o `-v` apaga o volume do banco.
+Backup antes de qualquer atualização. As migrações do banco rodam sozinhas quando a api sobe, e só andam para a frente. Enquanto a api reinicia, o nginx responde `502` por alguns segundos. Ao parar, a api espera até 20 segundos a fila de e-mail esvaziar, e o compose dá 40 segundos a ela antes de matar o container (`stop_grace_period`), então a parada pode demorar um pouco. O e-mail que mesmo assim ficar na fila não sai de novo, e o log da api avisa (`a api parou com e-mail ainda na fila de envio`): evite atualizar perto das 8h, quando saem os lembretes do dia. Nunca rode `docker compose down -v` no servidor: o `-v` apaga o volume do banco.
 
 ---
 

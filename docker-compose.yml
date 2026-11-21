@@ -40,6 +40,8 @@ services:
     build:
       context: ./backend/doisag
     container_name: 2ag-api
+    # cobre os 20s q a fila de e-mail espera ao parar (o padrao do docker eh matar em 10s)
+    stop_grace_period: 40s
     restart: unless-stopped
     logging: *logging
     depends_on:
