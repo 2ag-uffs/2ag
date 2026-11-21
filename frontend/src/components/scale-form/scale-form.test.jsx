@@ -635,4 +635,48 @@ describe("ScaleForm com os campos digitados", () => {
         await user.type(hours, "25");
         expect(hours.validity.rangeOverflow).toBe(true);
     });
+
+    // no iphone o type=number sozinho abre o teclado inteiro na pagina de numeros, e n o teclado de numeros
+    // as horas ficam com o teclado de hoje ate a decisao da virgula (T22), e o horario tem o teclado dele
+    it("minutos e contagem abrem o teclado de numeros, e as horas e o horario ficam como estavam", () => {
+        render(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}}/>);
+
+        expect(screen.getByLabelText("Minutos para adormecer")).toHaveAttribute("inputmode", "numeric");
+        expect(screen.getByLabelText("Número de vezes que acordou")).toHaveAttribute("inputmode", "numeric");
+        // o campo continua number, entao o navegador ainda confere o minimo
+        expect(screen.getByLabelText("Minutos para adormecer")).toHaveAttribute("type", "number");
+        expect(screen.getByLabelText("Horas de sono por noite")).not.toHaveAttribute("inputmode");
+        expect(screen.getByLabelText("Hora usual de deitar")).not.toHaveAttribute("inputmode");
+    });
+
+    // no celular dividido o teclado n pode sugerir a resposta clinica q outra pessoa digitou
+    it("nenhum campo digitado nem o texto livre sugere resposta antiga", () => {
+        render(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}}/>);
+
+        TYPED_ITEMS.forEach((item) => {
+            expect(screen.getByLabelText(item.label)).toHaveAttribute("autocomplete", "off");
+        });
+    });
+
+    // a tecla de acao do teclado ja passava pra proxima pergunta, agora ela tbm diz isso
+    it("no celular a tecla de acao diz proxima nas perguntas do meio e concluir na ultima", () => {
+        const {rerender} = render(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}} step={0}/>);
+        expect(screen.getByLabelText("Hora usual de deitar")).toHaveAttribute("enterkeyhint", "next");
+
+        rerender(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}} step={2}/>);
+        expect(screen.getByLabelText("Minutos para adormecer")).toHaveAttribute("enterkeyhint", "next");
+
+        // no texto livre o enter eh uma linha nova
+        rerender(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}} step={3}/>);
+        expect(screen.getByLabelText("Observações")).not.toHaveAttribute("enterkeyhint");
+
+        rerender(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}} step={4}/>);
+        expect(screen.getByLabelText("Número de vezes que acordou")).toHaveAttribute("enterkeyhint", "done");
+
+        // no computador a escala eh uma pagina so e o campo n diz nada da tecla
+        rerender(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}}/>);
+        TYPED_ITEMS.forEach((item) => {
+            expect(screen.getByLabelText(item.label)).not.toHaveAttribute("enterkeyhint");
+        });
+    });
 });

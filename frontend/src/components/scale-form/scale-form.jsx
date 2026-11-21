@@ -22,6 +22,7 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
     fieldErrors = {}, showsUrgencyNotice = false, step = null}) {
     // o valor q o sistema calcula n eh pergunta, entao fica fora da conta e vai junto da pergunta de antes
     const steps = stepsOf(items);
+    const isLastStep = step !== null && step >= steps.length - 1;
     const answered = Object.keys(answersPayload(items, values)).length;
     const stepOfItem = {};
     steps.forEach((stepItems, index) => stepItems.forEach((item) => {
@@ -53,6 +54,7 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
                             error={fieldErrors[item.key]}
                             showsUrgencyNotice={showsUrgencyNotice}
                             isStep={step !== null}
+                            isLastStep={isLastStep}
                         />
                     </li>
                 );
@@ -148,7 +150,8 @@ function scoresBetween(minValue, maxValue) {
     return scores;
 }
 
-function ScaleField({item, bands, values, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep}) {
+function ScaleField({item, bands, values, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep,
+    isLastStep}) {
     const value = values[item.key] ?? "";
     const change = (newValue) => onChange(item.key, newValue);
 
@@ -163,7 +166,7 @@ function ScaleField({item, bands, values, onChange, disabled, isMarked, error, s
     }
     return (
         <TypedField item={item} value={value} onChange={change} disabled={disabled} isMarked={isMarked}
-            error={error} showsUrgencyNotice={showsUrgencyNotice}/>
+            error={error} showsUrgencyNotice={showsUrgencyNotice} isStep={isStep} isLastStep={isLastStep}/>
     );
 }
 
@@ -241,11 +244,19 @@ function ChoiceField({item, bands, value, onChange, disabled, isMarked, error, i
 
 // texto livre hora ou numero digitado
 // o foco da tela nova vai pro proprio campo, e com o campo travado vai pro rotulo dele
-function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice}) {
+// o autocomplete fica desligado pro teclado n sugerir resposta clinica antiga num celular dividido
+function TypedField({item, value, onChange, disabled, isMarked, error, showsUrgencyNotice, isStep, isLastStep}) {
     const focusesField = !disabled;
     const focusesLabel = disabled;
     const noticeId = item.key + "-urgencia";
     const hasNotice = showsUrgencyNotice && item.type === "TEXTO";
+    // minutos e contagem sao inteiros e abrem o teclado de numeros. as horas ficam com o teclado de hoje (T22)
+    const isWholeNumber = item.type === "MINUTOS" || item.type === "NUMERO";
+    // no celular o enter passa pra proxima pergunta e na ultima salva, entao a tecla de acao diz isso
+    let enterKeyHint = undefined;
+    if (isStep) {
+        enterKeyHint = isLastStep ? "done" : "next";
+    }
     // o erro e o aviso de urgencia lidos junto com o campo
     const describedBy = [error ? errorIdOf(item) : null, hasNotice ? noticeId : null]
         .filter((id) => id !== null)
@@ -266,6 +277,7 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
                     className={styles.textarea}
                     rows={3}
                     maxLength={2000}
+                    autoComplete="off"
                     value={value}
                     disabled={disabled}
                     aria-invalid={isMarked ? "true" : undefined}
@@ -281,6 +293,9 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
                     min={item.type === "HORA" ? undefined : 0}
                     max={item.type === "HORAS" ? 24 : undefined}
                     step={inputStepOf(item)}
+                    inputMode={isWholeNumber ? "numeric" : undefined}
+                    enterKeyHint={enterKeyHint}
+                    autoComplete="off"
                     value={value}
                     disabled={disabled}
                     aria-invalid={isMarked ? "true" : undefined}
