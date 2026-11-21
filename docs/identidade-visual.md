@@ -69,7 +69,7 @@ Dois detalhes que mudam decisão:
 | **Yaldevi** | corpo de texto | "contemporânea, profissional e minimalista", "escreve um texto inteiro sem cansar seus olhos" |
 | **Belleza** | complementar, títulos | "elegância, rebusco e delicadeza por meio dos traços" |
 
-As duas estão em `frontend/public/fonts/`: a Yaldevi em seis pesos e a Belleza em regular. O arquivo da Belleza que está lá é o recorte latin-ext do Google Fonts (só traz A, Á e o bloco Latin Extended-A), então na tela `h1`, `h2` e `h3` aparecem em Yaldevi até entrar o arquivo latin. Essa troca espera a decisão de quem cuida do projeto.
+As duas estão em `frontend/public/fonts/`: a Yaldevi nos quatro pesos que as telas usam e a Belleza em regular. Os arquivos da Yaldevi são o recorte latino dos originais, cerca de 30 kB cada em vez de 150 kB, porque os originais trazem também o alfabeto cingalês (21/11/2026). A licença da Yaldevi, gravada no próprio arquivo, é a SIL Open Font License 1.1 sem nome de fonte reservado, então o recorte pode manter o nome, e ele mantém o aviso de direitos e o de licença. O arquivo da Belleza que está lá é o recorte latin-ext do Google Fonts (só traz A, Á e o bloco Latin Extended-A), então na tela `h1`, `h2` e `h3` aparecem em Yaldevi até entrar o arquivo latin. Essa troca espera a decisão de quem cuida do projeto.
 
 ---
 

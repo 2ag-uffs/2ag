@@ -1,55 +1,51 @@
+/*
+ * Yaldevi: o corpo de texto da marca
+ * os arquivos sao o recorte latin dos originais, sem o alfabeto cingales q vinha junto e pesava 80% de cada um.
+ * o unicode-range eh o msm do recorte, entao letra fora dele vai direto pra fonte do aparelho.
+ * com o swap o texto aparece na fonte do aparelho e troca qnd a da marca chega, em vez de ficar invisivel
+ */
 @font-face {
     font-family: "Yaldevi Colombo";
     font-style: normal;
     font-weight: 500;
+    font-display: swap;
     src:
         local("Yaldevi Colombo Regular"),
-        url("/fonts/YaldeviColombo-Regular.woff") format("woff");
+        url("/fonts/YaldeviColombo-Regular-latin.woff") format("woff");
+    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
     font-family: "Yaldevi Colombo";
     font-style: normal;
     font-weight: 700;
+    font-display: swap;
     src:
         local("Yaldevi Colombo Bold"),
-        url("/fonts/YaldeviColombo-Bold.woff") format("woff");
-}
-
-@font-face {
-    font-family: "Yaldevi Colombo";
-    font-style: normal;
-    font-weight: 300;
-    src:
-        local("Yaldevi Colombo ExtraLight Regular"),
-        url("/fonts/YaldeviColombo-ExtraLight.woff") format("woff");
-}
-
-@font-face {
-    font-family: "Yaldevi Colombo";
-    font-style: normal;
-    font-weight: 400;
-    src:
-        local("Yaldevi Colombo Light Regular"),
-        url("/fonts/YaldeviColombo-Light.woff") format("woff");
+        url("/fonts/YaldeviColombo-Bold-latin.woff") format("woff");
+    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
     font-family: "Yaldevi Colombo";
     font-style: normal;
     font-weight: normal;
+    font-display: swap;
     src:
         local("Yaldevi Colombo Medium Regular"),
-        url("/fonts/YaldeviColombo-Medium.woff") format("woff");
+        url("/fonts/YaldeviColombo-Medium-latin.woff") format("woff");
+    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
     font-family: "Yaldevi Colombo";
     font-style: normal;
     font-weight: 600;
+    font-display: swap;
     src:
         local("Yaldevi Colombo SemiBold Regular"),
-        url("/fonts/YaldeviColombo-SemiBold.woff") format("woff");
+        url("/fonts/YaldeviColombo-SemiBold-latin.woff") format("woff");
+    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 /*
