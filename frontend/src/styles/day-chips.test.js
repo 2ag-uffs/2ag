@@ -58,6 +58,20 @@ describe("texto dos dias e dos horarios", () => {
     });
 });
 
+// o resumo do dia e do horario escolhidos fica dentro do cartao, entao usa o fundo de bloco de dentro do cartao
+describe("resumo do horario escolhido no pedido de consulta", () => {
+    it("usa o fundo de bloco dentro do cartao, e n o fundo da pagina", () => {
+        expect(declarationsOf(bookingCss, ".summary")["background-color"]).toBe("var(--color-surface-alt)");
+    });
+
+    Object.entries(THEMES).forEach(([themeName, theme]) => {
+        it("no tema " + themeName + " o texto do resumo passa de 4,5:1 sobre o fundo dele", () => {
+            const background = colorIn(theme, declarationsOf(bookingCss, ".summary")["background-color"]);
+            expect(contrastOf(rgbaOf(theme["--color-text-primary"]), background)).toBeGreaterThanOrEqual(4.5);
+        });
+    });
+});
+
 describe("dias da grade das escalas", () => {
     Object.entries(THEMES).forEach(([themeName, theme]) => {
         it("no tema " + themeName + " o preenchido e o não salvo do dia escolhido passam de 4,5:1 sobre o verde dele", () => {

@@ -130,9 +130,10 @@
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
 
+/* bloco dentro do cartao: o fundo da pagina aqui virava um buraco mais escuro no tema escuro */
 .summary {
     align-items: center;
-    background-color: var(--color-background);
+    background-color: var(--color-surface-alt);
     border-radius: var(--radius-md);
     display: flex;
     font-weight: 600;
