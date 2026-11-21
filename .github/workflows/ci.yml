@@ -152,6 +152,8 @@ jobs:
       - run: node --test scripts/check-doc-links.test.mjs
       # o compose tem q esperar a fila de e-mail da api antes de matar o container
       - run: node --test scripts/check-compose-stop.test.mjs
+      # o Referer das chamadas da api n pode levar o codigo do convite nem o da senha nova pro log do nginx
+      - run: node --test scripts/check-referrer-policy.test.mjs
 
   # garante q as imagens do compose continuam montando e q a pilha sobe de ponta a ponta
   docker:
