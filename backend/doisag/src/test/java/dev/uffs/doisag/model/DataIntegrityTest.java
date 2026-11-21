@@ -7,14 +7,21 @@ import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@ExtendWith(OutputCaptureExtension.class)
 class DataIntegrityTest {
 
     @Autowired private AnamnesisRepository anamnesisRepository;
@@ -136,5 +144,43 @@ class DataIntegrityTest {
             novoPaciente("segundo@email.com", "11144477735");
             entityManager.flush();
         }).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    // o cadastro q bate na chave unica n pode deixar o cpf nem o e-mail de ninguem no log da api
+    @Test
+    void cpfRepetidoNaoVaiProLog(CapturedOutput output) {
+        novoPaciente("primeiro-log@email.com", "11144477735");
+        entityManager.flush();
+
+        assertThatThrownBy(() -> {
+            novoPaciente("segundo-log@email.com", "11144477735");
+            entityManager.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(output.toString()).doesNotContain("11144477735");
+    }
+
+    @Test
+    void emailRepetidoNaoVaiProLog(CapturedOutput output) {
+        novoPaciente("repetido-no-log@email.com", "11144477735");
+        entityManager.flush();
+
+        assertThatThrownBy(() -> {
+            novoPaciente("repetido-no-log@email.com", "52998224725");
+            entityManager.flush();
+        }).isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(output.toString()).doesNotContain("repetido-no-log@email.com");
+    }
+
+    // a api q sobe fora do compose usa o endereco padrao, e sem o parametro o driver do postgres
+    // poe o valor repetido na mensagem do erro, q os logs das tarefas do dia escrevem inteira
+    @Test
+    void enderecoPadraoDoBancoPedeOErroSemODetalhe() throws Exception {
+        List<PropertySource<?>> arquivo = new YamlPropertySourceLoader()
+                .load("application", new ClassPathResource("application.yml"));
+        String endereco = String.valueOf(arquivo.get(0).getProperty("spring.datasource.url"));
+
+        assertThat(endereco).contains("logServerErrorDetail=false");
     }
 }

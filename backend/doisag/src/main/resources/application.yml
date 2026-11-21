@@ -24,7 +24,9 @@ spring:
       # nenhuma rota recebe arquivo
       enabled: false
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/doisag}
+    # logServerErrorDetail=false tira do erro do banco o valor q bateu na chave unica, como o cpf repetido
+    # quem troca o endereco tem q manter o parametro, como o docker-compose.yml faz
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/doisag?logServerErrorDetail=false}
     username: ${DATABASE_USER:admindoisag}
     # sem padrao de proposito pra api n subir com senha publicada no repositorio
     password: ${DATABASE_PASSWORD}
@@ -61,6 +63,13 @@ spring:
       "[mail.smtp.connectiontimeout]": 5000
       "[mail.smtp.timeout]": 5000
       "[mail.smtp.writetimeout]": 5000
+
+logging:
+  level:
+    # a mensagem do banco qnd um cadastro bate na chave unica traz o valor repetido (cpf, e-mail, registro)
+    # e o hibernate escrevia ela no log. ERROR n basta pq o valor vem na propria mensagem
+    # o ErrorHandler ja responde o 409 e o handleUnexpected loga o erro q ninguem previu
+    org.hibernate.orm.jdbc.error: "OFF"
 
 api:
   security:

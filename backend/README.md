@@ -55,7 +55,7 @@ tudo que muda entre ambientes vem de variável de ambiente:
 
 | variável | para que serve | padrão |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | endereço jdbc do banco | `jdbc:postgresql://localhost:5432/doisag` |
+| `DATABASE_URL` | endereço jdbc do banco. um endereço escrito à mão precisa manter o `?logServerErrorDetail=false`: sem ele, o erro de um cadastro que bate numa chave única traz o CPF ou o e-mail repetido, e esse erro pode ir para o log (veja os logs do servidor em [`guarda-de-dados.md`](../docs/guarda-de-dados.md)) | `jdbc:postgresql://localhost:5432/doisag?logServerErrorDetail=false` |
 | `DATABASE_USER` | usuário do banco | `admindoisag` |
 | `DATABASE_PASSWORD` | senha do banco | **obrigatória** |
 | `JWT_SECRET` | chave que assina a sessão, com pelo menos 32 caracteres | **obrigatória** |
