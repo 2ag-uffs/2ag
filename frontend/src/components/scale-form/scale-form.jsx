@@ -280,7 +280,7 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
                     type={item.type === "HORA" ? "time" : "number"}
                     min={item.type === "HORA" ? undefined : 0}
                     max={item.type === "HORAS" ? 24 : undefined}
-                    step={item.type === "HORAS" ? 0.5 : 1}
+                    step={inputStepOf(item)}
                     value={value}
                     disabled={disabled}
                     aria-invalid={isMarked ? "true" : undefined}
@@ -293,6 +293,15 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
             {hasNotice && <UrgencyNotice id={noticeId}/>}
         </div>
     );
+}
+
+// o horario fica sem step: o padrao do navegador eh 60 s, entao o campo tem so hora e minuto
+// com step=1 ele pedia segundos tbm (--:--:--)
+function inputStepOf(item) {
+    if (item.type === "HORA") {
+        return undefined;
+    }
+    return item.type === "HORAS" ? 0.5 : 1;
 }
 
 // a pergunta inteira do papel (o question q vem da api) entra no lugar do rotulo, do msm tamanho e peso

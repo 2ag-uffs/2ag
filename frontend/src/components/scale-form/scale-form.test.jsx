@@ -590,3 +590,25 @@ describe("contador preso no alto do formulario", () => {
         expect(progress["background-color"]).toBeDefined();
     });
 });
+
+// os campos digitados do pittsburgh e do diario do sono, como a pessoa preenche no celular
+describe("ScaleForm com os campos digitados", () => {
+    const TYPED_ITEMS = [
+        {key: "horaDeitar", label: "Hora usual de deitar", type: "HORA"},
+        {key: "horasDeSono", label: "Horas de sono por noite", type: "HORAS"},
+        {key: "minutosParaDormir", label: "Minutos para adormecer", type: "MINUTOS"},
+        {key: "comentario", label: "Observações", type: "TEXTO"},
+        {key: "vezesQueAcordou", label: "Número de vezes que acordou", type: "NUMERO"},
+    ];
+
+    // o horario do pittsburgh e do diario eh so hora e minuto: com step=1 o campo pedia segundos (--:--:--)
+    it("o horario n tem step e fica so com hora e minuto, e minutos e contagem seguem de um em um", () => {
+        render(<ScaleForm items={TYPED_ITEMS} values={{}} onChange={() => {}}/>);
+
+        const bedTime = screen.getByLabelText("Hora usual de deitar");
+        expect(bedTime).toHaveAttribute("type", "time");
+        expect(bedTime).not.toHaveAttribute("step");
+        expect(screen.getByLabelText("Minutos para adormecer")).toHaveAttribute("step", "1");
+        expect(screen.getByLabelText("Número de vezes que acordou")).toHaveAttribute("step", "1");
+    });
+});
