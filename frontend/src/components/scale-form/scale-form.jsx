@@ -297,11 +297,12 @@ function TypedField({item, value, onChange, disabled, isMarked, error, showsUrge
 
 // o horario fica sem step: o padrao do navegador eh 60 s, entao o campo tem so hora e minuto
 // com step=1 ele pedia segundos tbm (--:--:--)
+// as horas aceitam qqr fracao, como a api: com 0.5 o 7,25 ganhava o balao do navegador e o salvar travava
 function inputStepOf(item) {
     if (item.type === "HORA") {
         return undefined;
     }
-    return item.type === "HORAS" ? 0.5 : 1;
+    return item.type === "HORAS" ? "any" : 1;
 }
 
 // a pergunta inteira do papel (o question q vem da api) entra no lugar do rotulo, do msm tamanho e peso

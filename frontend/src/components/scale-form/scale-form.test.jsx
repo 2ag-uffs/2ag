@@ -611,4 +611,28 @@ describe("ScaleForm com os campos digitados", () => {
         expect(screen.getByLabelText("Minutos para adormecer")).toHaveAttribute("step", "1");
         expect(screen.getByLabelText("Número de vezes que acordou")).toHaveAttribute("step", "1");
     });
+
+    // a api aceita qqr numero de 0 a 24, e com step 0.5 o 7,25 (7h15) ganhava o balao do navegador
+    it("as horas aceitam a fracao q a api aceita, e o limite de 0 a 24 continua", async () => {
+        function HoursForm() {
+            const [values, setValues] = useState({});
+            return <ScaleForm items={TYPED_ITEMS} values={values}
+                onChange={(key, value) => setValues((current) => ({...current, [key]: value}))}/>;
+        }
+        const user = userEvent.setup();
+        render(<HoursForm/>);
+
+        const hours = screen.getByLabelText("Horas de sono por noite");
+        expect(hours).toHaveAttribute("step", "any");
+        expect(hours).toHaveAttribute("min", "0");
+        expect(hours).toHaveAttribute("max", "24");
+
+        await user.type(hours, "7.25");
+        expect(hours).toHaveValue(7.25);
+        expect(hours.validity.valid).toBe(true);
+
+        await user.clear(hours);
+        await user.type(hours, "25");
+        expect(hours.validity.rangeOverflow).toBe(true);
+    });
 });
