@@ -57,12 +57,14 @@
     transform: scaleX(-1);
 }
 
+/* sem o min-width a coluna esticava ate a largura do campo de e-mail com a letra grande do celular */
 .content {
     align-items: center;
     background-color: var(--color-surface);
     display: flex;
     flex: 1 1 45%;
     justify-content: center;
+    min-width: 0;
     padding: var(--space-10) var(--space-8);
 }
 
@@ -76,7 +78,7 @@
 
 .logo {
     align-self: flex-start;
-    max-width: 11rem;
+    max-width: min(11rem, 100%);
 }
 
 .title {
