@@ -308,9 +308,10 @@ function Label({item}) {
 
 // a regua de notas, com as ancoras nas pontas pra dizer o q eh 0 e o q
 // eh o maximo. sem isso o numero sozinho n quer dizer nada
+// as notas e as pontas ficam numa caixa so, pra ponta da direita parar embaixo da ultima nota
 function ScoreChoices({item, value, onChange, invalid}) {
     return (
-        <>
+        <div className={styles.ruler}>
             <div className={styles.scores} role="group">
                 {scoresBetween(item.minValue, item.maxValue).map((score) => (
                     <ScoreOption key={score} item={item} score={score} value={value} onChange={onChange}
@@ -321,7 +322,7 @@ function ScoreChoices({item, value, onChange, invalid}) {
                 <span>{item.minValue} {item.lowAnchor}</span>
                 <span>{item.maxValue} {item.highAnchor}</span>
             </p>
-        </>
+        </div>
     );
 }
 

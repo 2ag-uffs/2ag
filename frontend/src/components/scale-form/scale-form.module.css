@@ -165,6 +165,12 @@
 
 /* ---- regua de notas: cada numero eh um botao de radio ---- */
 
+.ruler {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
 .scores {
     display: grid;
     gap: var(--space-2);
@@ -412,6 +418,24 @@ fieldset:disabled .optionCard:hover {
 
     .optionCard {
         min-height: 3rem;
+    }
+}
+
+/* no computador as notas n esticam pra encher o cartao, e a regua fica do tamanho delas: assim a ponta da
+   direita para embaixo da ultima nota em vez de ir pro outro lado do cartao
+   so a regua simples muda, a regua com faixas (.bandScores) fica como esta */
+@media (min-width: 48rem) {
+    .ruler {
+        align-self: flex-start;
+    }
+
+    .scores {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .scores .score {
+        width: 2.75rem;
     }
 }
 

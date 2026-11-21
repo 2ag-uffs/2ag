@@ -536,6 +536,31 @@ describe("texto da regua", () => {
     });
 });
 
+// a partir de 768 px a ponta da direita da regua ficava longe da ultima nota, do outro lado do cartao
+describe("regua do tamanho das notas no computador", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+    const desktopCss = mediaRules(css, "@media (min-width: 48rem)");
+
+    it("as notas e as pontas ficam na msm caixa", () => {
+        render(<ScaleForm items={ITEMS} values={{}} onChange={() => {}}/>);
+        const anchors = screen.getByText("10 pior dor").parentElement;
+        const scores = screen.getByRole("radio", {name: "10"}).closest("[role=group]");
+        expect(anchors.parentElement).toBe(scores.parentElement);
+        expect(anchors.parentElement.tagName).toBe("DIV");
+    });
+
+    it("no computador a caixa fica do tamanho das notas, q tem 44 px e n esticam", () => {
+        expect(declarationsOf(desktopCss, ".ruler")["align-self"]).toBe("flex-start");
+        expect(declarationsOf(desktopCss, ".scores").display).toBe("flex");
+        expect(declarationsOf(desktopCss, ".scores")["flex-wrap"]).toBe("wrap");
+        expect(declarationsOf(desktopCss, ".scores .score").width).toBe("2.75rem");
+        // a regua com faixas n entra nessa regra
+        expect(declarationsOf(desktopCss, ".bandScores")).toEqual({});
+        // no celular a regua simples continua em grade, quebrando a linha
+        expect(declarationsOf(css, ".scores")["grid-template-columns"]).toContain("auto-fill");
+    });
+});
+
 // o jsdom n desenha a tela, entao o lugar do contador sai do css
 describe("contador preso no alto do formulario", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");
