@@ -12,7 +12,9 @@ const DEFINITION = {
     items: [{key: "orientacaoTemporal", label: "Orientação temporal", type: "NOTA", minValue: 0, maxValue: 5}],
 };
 
-const APPOINTMENT = {id: 7, patientId: 5, patientName: "Paciente Teste", dateTime: "2026-09-01T10:00:00"};
+const APPOINTMENT = {
+    id: 7, patientId: 5, patientName: "Paciente Teste", dateTime: "2026-09-01T10:00:00", status: "AGENDADA",
+};
 
 const SAVED_EXAM = {id: 3, score: 4, scoreBand: "Sem alteração"};
 

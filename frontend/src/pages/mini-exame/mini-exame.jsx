@@ -11,6 +11,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_EXAM_NOTICE} from "../../utils/archived-patient.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
 import {useForgetBlockedExit, useLeaveWarning, useSendWaitingLogin} from "../../utils/leave-warning.js";
@@ -44,6 +45,20 @@ function ExamResult({exam, maxScore, resultRef}) {
             </div>
         </div>
     );
+}
+
+// a api so aceita o exame em consulta confirmada e n anulada, igual a prescricao
+function blockedMessageOf(appointment) {
+    if (appointment.annulled) {
+        return "Esta consulta foi anulada e não recebe o Mini-Exame.";
+    }
+    if (appointment.status === "CANCELADA") {
+        return "Esta consulta foi cancelada e não recebe o Mini-Exame.";
+    }
+    if (!isConfirmed(appointment)) {
+        return "Só consulta confirmada na agenda recebe o Mini-Exame.";
+    }
+    return null;
 }
 
 // Mini-Exame do Estado Mental (RF26)
@@ -152,6 +167,7 @@ export default function MiniExame() {
     const missingLabels = definition.items
         .filter((item) => missingKeys.includes(item.key))
         .map((item) => item.label);
+    const blockedMessage = blockedMessageOf(appointment);
 
     return (
         <section className={styles.page}>
@@ -171,6 +187,17 @@ export default function MiniExame() {
                             onClick={() => navigate("/paciente/" + appointment.patientId + "/historico")}
                         >
                             Ver histórico do paciente
+                        </button>
+                    </div>
+                </Card>
+            ) : blockedMessage ? (
+                // aba velha, voltar do navegador ou endereco digitado: o formulario inteiro abria e
+                // a api so recusava dps de tudo preenchido
+                <Card>
+                    <p className="aviso aviso--atencao">{blockedMessage}</p>
+                    <div className={styles.nextSteps}>
+                        <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                            Voltar
                         </button>
                     </div>
                 </Card>
