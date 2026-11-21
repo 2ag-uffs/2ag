@@ -45,10 +45,13 @@
     padding-top: 0;
 }
 
-.date,
-.empty {
+.date {
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
+}
+
+.empty {
+    color: var(--color-text-secondary);
 }
 
 .result {

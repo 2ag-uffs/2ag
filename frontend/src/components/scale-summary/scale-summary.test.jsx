@@ -1,7 +1,23 @@
 import {render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe, expect, it, vi} from "vitest";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import ScaleSummary from "./scale-summary.jsx";
+
+// a lista vazia das escalas era menor q as listas vazias dos cartoes em volta
+describe("lista vazia das escalas", () => {
+    it("tem o tamanho do texto da pagina, so com a cor mais discreta", () => {
+        const empty = declarationsOf(readCss(import.meta.url, "./scale-summary.module.css"), ".empty");
+        expect(empty["font-size"]).toBeUndefined();
+        expect(empty.color).toBe("var(--color-text-secondary)");
+    });
+
+    it("n mexe no prazo, no periodo e no analisada das escalas, q seguem no texto pequeno", () => {
+        const date = declarationsOf(readCss(import.meta.url, "./scale-summary.module.css"), ".date");
+        expect(date["font-size"]).toBe("var(--text-sm)");
+        expect(date.color).toBe("var(--color-text-secondary)");
+    });
+});
 
 const SCALES_PAGE = {
     pending: [
