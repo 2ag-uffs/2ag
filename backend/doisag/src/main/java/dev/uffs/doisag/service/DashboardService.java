@@ -78,14 +78,15 @@ public class DashboardService {
         // os pedidos q vieram da agenda e ainda esperam resposta (RF11)
         LocalDateTime now = LocalDateTime.now();
         List<PrescriberDashboardDTO.WaitingRequestDTO> waitingRequests = appointmentRepository
-                .findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
+                .findByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfterOrderByDateTimeAsc(
                         prescriberId, AppointmentStatus.SOLICITADA, now, PANEL_PAGE)
                 .stream()
                 .map(this::waitingRequestOf)
                 .toList();
         // a lista para em cinco, o numero do cartao n
-        long waitingRequestsTotal = appointmentRepository.countByPrescriberIdAndStatusAndDateTimeAfter(
-                prescriberId, AppointmentStatus.SOLICITADA, now);
+        long waitingRequestsTotal = appointmentRepository
+                .countByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfter(
+                        prescriberId, AppointmentStatus.SOLICITADA, now);
 
         // as escalas q passaram do prazo e ninguem respondeu (RF32)
         List<ScaleTaskStatus> lateStatuses = List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA);

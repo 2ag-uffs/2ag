@@ -710,6 +710,30 @@ class AgendaTest {
                         + " passou da data sem resposta. Fale com a clínica para marcar.");
     }
 
+    // pedido anulado n pode mais ser respondido entao sai da lista de pedidos e da contagem do painel
+    @Test
+    void annulledRequestLeavesTheWaitingListAndThePanelCount() throws Exception {
+        Long requestId = idOf(request(patient, AGENDA_DAY.atTime(10, 0), null).andExpect(status().isCreated()));
+
+        mockMvc.perform(put("/appointments/" + requestId + "/annul")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("reason", "pedido errado"))))
+                .andExpect(status().isOk());
+        confirm(requestId, prescriber)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AppointmentService.ALREADY_ANSWERED_MESSAGE));
+
+        mockMvc.perform(get("/appointments/requests").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.waitingRequests.length()").value(0))
+                .andExpect(jsonPath("$.waitingRequestsTotal").value(0));
+    }
+
     // o pedido de amanha ainda sem resposta avisa o paciente na vespera pra falar com a clinica, em vez de ele
     // so saber dps q o horario passou. a decisao fala so do pedido de amanha, entao o de hoje mais tarde n entra,
     // e cada pedido avisa uma vez so (decisao de 14/11/2026, revisao das regras R1)

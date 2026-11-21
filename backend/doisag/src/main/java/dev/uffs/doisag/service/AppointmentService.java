@@ -770,8 +770,9 @@ public class AppointmentService {
     // pedidos de pacientes q ainda esperam a resposta do prescritor
     @Transactional(readOnly = true)
     public List<AgendaAppointmentDTO> getWaitingRequests(Long prescriberId) {
-        return agendaOf(appointmentRepository.findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(
-                prescriberId, AppointmentStatus.SOLICITADA, LocalDateTime.now()));
+        return agendaOf(appointmentRepository
+                .findByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfterOrderByDateTimeAsc(
+                        prescriberId, AppointmentStatus.SOLICITADA, LocalDateTime.now()));
     }
 
     // proximos pedidos e consultas do paciente com a situacao de cada um

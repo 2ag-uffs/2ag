@@ -28,19 +28,18 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByPrescriberIdOrderByDateTimeAsc(Long prescriberId);
 
     // pedidos de um prescritor numa situacao a partir de um momento tipo os q esperam resposta
-    List<Appointment> findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(Long prescriberId,
-                                                                                    AppointmentStatus status,
-                                                                                    LocalDateTime moment);
+    // o anulado fica de fora pq ninguem consegue mais responder ele
+    List<Appointment> findByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfterOrderByDateTimeAsc(
+            Long prescriberId, AppointmentStatus status, LocalDateTime moment);
 
     // a mesma lista cortada pelo Pageable, q eh o q o painel precisa
-    List<Appointment> findByPrescriberIdAndStatusAndDateTimeAfterOrderByDateTimeAsc(Long prescriberId,
-                                                                                    AppointmentStatus status,
-                                                                                    LocalDateTime moment,
-                                                                                    Pageable pageable);
+    List<Appointment> findByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfterOrderByDateTimeAsc(
+            Long prescriberId, AppointmentStatus status, LocalDateTime moment, Pageable pageable);
 
     // o total dessa lista, pq o painel mostra so cinco mas o numero tem q ser o de vdd
-    long countByPrescriberIdAndStatusAndDateTimeAfter(Long prescriberId, AppointmentStatus status,
-                                                      LocalDateTime moment);
+    long countByPrescriberIdAndStatusAndAnnulmentAnnulledAtIsNullAndDateTimeAfter(Long prescriberId,
+                                                                                  AppointmentStatus status,
+                                                                                  LocalDateTime moment);
 
     // proximos pedidos e consultas do paciente
     List<Appointment> findByPatientIdAndDateTimeAfterOrderByDateTimeAsc(Long patientId, LocalDateTime moment);
