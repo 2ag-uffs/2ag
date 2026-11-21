@@ -8,6 +8,17 @@
 
 const STORAGE_KEY = "2ag-theme";
 
+// cor do cabecalho de cada tema (--color-brand-surface do colors.css), a msm do public/theme-boot.js
+const BAR_COLORS = {light: "#006633", dark: "#16281d"};
+
+// a barra do navegador fica da cor do cabecalho do tema escolhido, e n do tema do aparelho
+// as duas metas recebem a msm cor pq o media delas olha so o aparelho
+function paintBrowserBar(theme) {
+    document.querySelectorAll("meta[name=theme-color]").forEach((meta) => {
+        meta.setAttribute("content", BAR_COLORS[theme]);
+    });
+}
+
 // navegador sem matchMedia fica no claro
 function prefersDark() {
     if (typeof window.matchMedia !== "function") {
@@ -27,6 +38,7 @@ export function currentTheme() {
 
 export function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
+    paintBrowserBar(theme);
     try {
         localStorage.setItem(STORAGE_KEY, theme);
     } catch {
