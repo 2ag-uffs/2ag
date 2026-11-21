@@ -1,11 +1,12 @@
 /* login por cima da tela qnd a sessao vence com algo aberto (#151) */
 
+/* numa janela baixa (320x256, o zoom de 400%) a caixa n cabe, entao o fundo rola
+   o centro vem da margem da caixa: com align-items: center o topo de quem n cabe fica fora da rolagem */
 .backdrop {
-    align-items: center;
     background-color: rgba(0, 0, 0, 0.45);
     display: flex;
     inset: 0;
-    justify-content: center;
+    overflow-y: auto;
     padding: var(--space-4);
     position: fixed;
     z-index: var(--layer-modal);
@@ -18,6 +19,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    margin: auto;
     max-width: 26rem;
     padding: var(--space-6);
     width: 100%;

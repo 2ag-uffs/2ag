@@ -14,6 +14,7 @@ const layoutCss = readCss(import.meta.url, "../components/app-layout/app-layout.
 const scaleFormCss = readCss(import.meta.url, "../components/scale-form/scale-form.module.css");
 const formSectionCss = readCss(import.meta.url, "../components/form-section/form-section.module.css");
 const anamnesisCss = readCss(import.meta.url, "../pages/anamnese/anamnese.module.css");
+const loginAgainCss = readCss(import.meta.url, "../components/login-again/login-again.module.css");
 
 // em q posicao do arquivo a regra aparece. a de baixo ganha da de cima qnd as duas valem
 function placeOf(cssText, media) {
@@ -69,5 +70,15 @@ describe("janela baixa", () => {
         expect(limit).toBeGreaterThanOrEqual(256);
         expect(limit).toBeLessThan(667);
         expect(limit).toBeLessThan(720);
+    });
+    // em 320x256 a caixa tem 402 px de altura: centralizada pelo flex, o titulo e os botoes ficavam fora da janela, sem rolagem
+    it("o login por cima da sessao vencida rola qnd n cabe na janela", () => {
+        const backdrop = declarationsOf(loginAgainCss, ".backdrop");
+
+        expect(backdrop["overflow-y"]).toBe("auto");
+        // o centro vem da margem da caixa, q o align-items: center corta o topo de quem n cabe
+        expect(backdrop["align-items"]).toBeUndefined();
+        expect(backdrop["justify-content"]).toBeUndefined();
+        expect(declarationsOf(loginAgainCss, ".box").margin).toBe("auto");
     });
 });
