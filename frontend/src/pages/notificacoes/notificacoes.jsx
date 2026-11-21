@@ -51,7 +51,7 @@ function NotificationItem({notification, onOpen, onRemove}) {
                 <button type="button" className="button-secondary button-small" onClick={onOpen}>
                     {notification.link ? "Abrir" : "Marcar como lido"}
                 </button>
-                <button type="button" className="button-tertiary button-small" onClick={onRemove}>
+                <button type="button" className={"button-tertiary button-small " + styles.remove} onClick={onRemove}>
                     Apagar
                 </button>
             </div>

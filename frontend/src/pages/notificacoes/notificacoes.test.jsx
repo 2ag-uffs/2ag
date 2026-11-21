@@ -4,7 +4,17 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService} from "../../services/api.js";
+import {contrastOf, rgbaOf, themesOf} from "../../test/contrast.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Notificacoes from "./notificacoes.jsx";
+
+const noticesCss = readCss(import.meta.url, "./notificacoes.module.css");
+const THEMES = themesOf(readCss(import.meta.url, "../../styles/colors.css"));
+
+// o valor do css, q aqui eh sempre var(--token), na cor do tema
+function colorIn(theme, value) {
+    return rgbaOf(theme[value.match(/var\((--[\w-]+)\)/)[1]]);
+}
 
 function notification(id) {
     return {
@@ -47,6 +57,33 @@ describe("Notificacoes", () => {
         expect(await screen.findByText("Aviso 1")).toBeInTheDocument();
         expect(screen.queryByText("Aviso 21")).not.toBeInTheDocument();
         expect(screen.queryByText("Nenhum aviso por aqui.")).not.toBeInTheDocument();
+    });
+
+    // apagar n pede confirmacao: fica longe do Abrir, na outra ponta no celular, e na cor de acao q perde algo
+    it("o Apagar fica longe do Abrir e na terracota, q passa de 4,5:1 nos temas", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({
+            notifications: [notification(1)], page: 0, totalPages: 1, totalNotifications: 1, unread: 0,
+        });
+        const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+            {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        const removeButton = await screen.findByRole("button", {name: "Apagar"});
+        expect(removeButton).toHaveClass("button-tertiary", "button-small");
+        expect(removeButton.className).toMatch(/remove/);
+
+        const remove = declarationsOf(noticesCss, ".remove");
+        const hover = declarationsOf(noticesCss, ".remove:hover");
+        const card = declarationsOf(noticesCss, ".item");
+        expect(remove.color).toBe("var(--color-error)");
+        Object.entries(THEMES).forEach(([themeName, theme]) => {
+            const text = colorIn(theme, remove.color);
+            expect(contrastOf(text, colorIn(theme, card["background-color"])), themeName).toBeGreaterThanOrEqual(4.5);
+            expect(contrastOf(text, colorIn(theme, hover["background-color"])), themeName).toBeGreaterThanOrEqual(4.5);
+        });
+        expect(declarationsOf(noticesCss, ".actions").gap).toBe("var(--space-4)");
+        expect(declarationsOf(mediaRules(noticesCss, "@media (max-width: 47.99rem)"), ".actions")["justify-content"])
+            .toBe("space-between");
     });
 
     // o aviso da consulta vem da api com o horario de brasilia no meio do texto

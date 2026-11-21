@@ -92,7 +92,16 @@
     align-self: center;
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: var(--space-4);
+}
+
+/* apagar n pede confirmacao, entao fica longe do Abrir e na cor de acao q perde algo, como a lixeira dos horarios */
+.remove {
+    color: var(--color-error);
+}
+
+.remove:hover {
+    background-color: var(--color-error-soft);
 }
 
 .pagination {
@@ -110,8 +119,9 @@
         padding: var(--space-4);
     }
 
-    /* no celular os botoes descem e ficam alinhados com o texto, depois do icone */
+    /* no celular os botoes descem e ficam alinhados com o texto, depois do icone, com o Apagar na outra ponta */
     .actions {
+        justify-content: space-between;
         padding-left: calc(2.25rem + var(--space-3));
         width: 100%;
     }
