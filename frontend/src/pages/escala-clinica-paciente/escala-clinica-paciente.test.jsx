@@ -4,7 +4,31 @@ import {createMemoryRouter, useLocation} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService} from "../../services/api.js";
+import {contrastOf, rgbaOf, themesOf} from "../../test/contrast.js";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import CentralEscalas from "./escala-clinica-paciente.jsx";
+
+// a barra de dias preenchidos eh um desenho q diz algo, entao a parte cheia precisa de 3:1 sobre o trilho
+// o verde claro dava 2,9:1, e a barra do formulario e a dos indicadores ja usavam o verde escuro
+describe("barra de dias preenchidos", () => {
+    const css = readCss(import.meta.url, "./escala-clinica-paciente.module.css");
+    const themes = themesOf(readCss(import.meta.url, "../../styles/colors.css"));
+    const tokenOf = (value) => value.match(/var\((--[\w-]+)\)/)[1];
+
+    it("a parte cheia tem a cor principal, como a barra do formulario", () => {
+        const formCss = readCss(import.meta.url, "../../components/scale-form/scale-form.module.css");
+        expect(declarationsOf(css, ".progressFill")["background-color"]).toBe("var(--color-primary)");
+        expect(declarationsOf(formCss, ".progressFill")["background-color"]).toBe("var(--color-primary)");
+    });
+
+    Object.entries(themes).forEach(([themeName, theme]) => {
+        it("no tema " + themeName + " a parte cheia passa de 3:1 sobre o trilho", () => {
+            const fill = rgbaOf(theme[tokenOf(declarationsOf(css, ".progressFill")["background-color"])]);
+            const track = rgbaOf(theme[tokenOf(declarationsOf(css, ".progressBar")["background-color"])]);
+            expect(contrastOf(fill, track)).toBeGreaterThanOrEqual(3);
+        });
+    });
+});
 
 const ATTRIBUTES = [
     {name: "DOR", displayName: "Dor", scaleType: "ACOMPANHAMENTO_SEMANAL", scaleName: "Acompanhamento semanal"},

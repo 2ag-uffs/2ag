@@ -96,8 +96,9 @@
     overflow: hidden;
 }
 
+/* a cor principal, como a barra do formulario: o verde claro n dava 3:1 sobre o trilho */
 .progressFill {
-    background-color: var(--color-secondary);
+    background-color: var(--color-primary);
     display: block;
     height: 100%;
     transition: width var(--duration-base) var(--easing-standard);
