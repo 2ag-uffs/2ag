@@ -55,11 +55,12 @@
 }
 
 /* cidade e estado so ficam lado a lado qnd os dois tem 11rem: Rio Grande do Norte, o nome mais comprido,
-   cabe nisso com a seta da lista. com menos espaco, como no cadastro em 768, um fica embaixo do outro (CT-38) */
+   cabe nisso com a seta da lista. com menos espaco, como no cadastro em 768, um fica embaixo do outro (CT-38)
+   e qnd 11rem passa da largura, como com a letra grande, a coluna fica do tamanho do formulario */
 .cityRow {
     display: grid;
     gap: var(--space-3) var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
 }
 
 .submitButton {
@@ -81,6 +82,14 @@
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
     text-align: center;
+}
+
+/* o Entrar tinha 18 px de altura, agora tem os 44 px do dedo */
+.loginNote a {
+    align-items: center;
+    display: inline-flex;
+    min-height: var(--control-height);
+    padding: 0 var(--space-2);
 }
 
 /* aceite do termo de consentimento num bloco destacado */
@@ -122,12 +131,20 @@
     width: 1.25rem;
 }
 
+/* com a letra grande num celular estreito, uma palavra comprida como consentimento passava da tela.
+   ela so quebra no meio qnd sozinha n cabe na linha, e o botao q quebra em linhas fica alinhado com a frase */
+.consent,
+.research {
+    overflow-wrap: anywhere;
+}
+
 /* ler o termo embaixo da frase, com os 44 px do botao e a letra da frase
    a caixa tem 1.25rem e a folga do botao eh a msm do gap do rotulo, entao o texto dele comeca junto com o da frase */
 .readTermButton {
     align-self: flex-start;
     font-size: inherit;
     margin-left: 1.25rem;
+    text-align: left;
 }
 
 .consentError {
@@ -136,11 +153,13 @@
     font-weight: 500;
 }
 
+/* no fim do texto o dedo continuava rolando o formulario atras do modal */
 .termText {
     line-height: var(--leading-normal);
     margin-top: var(--space-4);
     max-height: 60svh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     white-space: pre-line;
 }
 
@@ -156,5 +175,14 @@
     .rowWide,
     .cityRow {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* janela baixa, como o celular deitado: o texto do termo virava uma caixa de 216 px com rolagem propria dentro
+   do modal q tbm rola, e o aceite ficava embaixo da janela. aqui so o modal rola */
+@media (max-height: 30rem) {
+    .termText {
+        max-height: none;
+        overflow: visible;
     }
 }

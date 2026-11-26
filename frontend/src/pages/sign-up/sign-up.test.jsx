@@ -552,9 +552,46 @@ describe("SignUp", () => {
         expect(cityRow.className).toMatch(/cityRow/);
         expect(within(cityRow).getByLabelText("Cidade")).toBeInTheDocument();
         const css = readCss(import.meta.url, "./sign-up.module.css");
-        expect(declarationsOf(css, ".cityRow")["grid-template-columns"]).toBe("repeat(auto-fit, minmax(11rem, 1fr))");
+        // com a letra grande 11rem passava do formulario, entao a coluna para na largura dele
+        expect(declarationsOf(css, ".cityRow")["grid-template-columns"])
+            .toBe("repeat(auto-fit, minmax(min(11rem, 100%), 1fr))");
         const mobile = mediaRules(css, "@media (max-width: 47.99rem)");
         expect(declarationsOf(mobile, ".cityRow")["grid-template-columns"]).toBe("minmax(0, 1fr)");
+    });
+
+    // no celular deitado o texto do termo era uma caixa de 216 px com rolagem dentro do modal q tbm rolava,
+    // e o aceite ficava embaixo da janela. no fim do texto o dedo rolava o formulario de tras
+    it("na janela baixa so o modal do termo rola, e o texto segura a propria rolagem", () => {
+        const css = readCss(import.meta.url, "./sign-up.module.css");
+        const termText = declarationsOf(css, ".termText");
+
+        expect(termText["overscroll-behavior"]).toBe("contain");
+        // em pe continua a caixa com rolagem de hoje
+        expect(termText["max-height"]).toBe("60svh");
+        const short = declarationsOf(mediaRules(css, "@media (max-height: 30rem)"), ".termText");
+        expect(short["max-height"]).toBe("none");
+        expect(short.overflow).toBe("visible");
+    });
+
+    // com a letra em 200% numa tela de 360 a palavra comprida da frase do aceite passava da tela,
+    // e em 320 o botao de ler o termo tbm
+    it("a frase do aceite e os botoes de ler quebram a palavra q sozinha n cabe na linha", () => {
+        const css = readCss(import.meta.url, "./sign-up.module.css");
+
+        expect(declarationsOf(css, ".consent")["overflow-wrap"]).toBe("anywhere");
+        expect(declarationsOf(css, ".research")["overflow-wrap"]).toBe("anywhere");
+    });
+
+    // o Entrar do pe da pagina tinha 32x18 px com letra de 14 px
+    it("o Entrar de quem ja tem conta tem os 44 px do dedo", async () => {
+        mockApi();
+        renderSignUp();
+
+        const loginLink = await screen.findByRole("link", {name: "Entrar"});
+        expect(loginLink.closest("p").className).toMatch(/loginNote/);
+        const link = declarationsOf(readCss(import.meta.url, "./sign-up.module.css"), ".loginNote a");
+        expect(link.display).toBe("inline-flex");
+        expect(link["min-height"]).toBe("var(--control-height)");
     });
 
     // o mesmo desenho do perfil: cidade e estado lado a lado cortavam o nome do estado no celular (CT-38)
