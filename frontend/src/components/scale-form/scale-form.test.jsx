@@ -336,10 +336,10 @@ describe("ScaleForm com as opcoes em cartoes", () => {
     it("no celular as notas da regua com faixas tem todas a msm largura, e a faixa mais larga cabe em 375 e em 320 px", () => {
         expect(remOf(declarationsOf(css, ".score span")["min-height"])).toBeGreaterThanOrEqual(2.75);
         expect(remOf(declarationsOf(mobileCss, ".score span")["min-height"])).toBeGreaterThanOrEqual(3);
-        // a coluna de cada nota tem largura fixa, de pelo menos 44 px, sem o 1fr q esticava
-        const scoreColumn = declarationsOf(mobileCss, ".bandScores")["grid-auto-columns"];
-        expect(scoreColumn).toMatch(/^[\d.]+rem$/);
-        const scoreWidth = remOf(scoreColumn);
+        // cada nota tem largura fixa, de pelo menos 44 px, sem o 1fr q esticava
+        const scoreBasis = declarationsOf(mobileCss, ".bandScores .score").flex;
+        expect(scoreBasis).toMatch(/^0 0 [\d.]+rem$/);
+        const scoreWidth = remOf(scoreBasis.slice(4));
         expect(scoreWidth).toBeGreaterThanOrEqual(2.75);
         // a faixa fica do tamanho das notas dela e n cresce pra encher a linha
         expect(declarationsOf(mobileCss, ".band")["max-width"]).toBe("max-content");
@@ -355,6 +355,17 @@ describe("ScaleForm com as opcoes em cartoes", () => {
         }
         // a regua simples quebra a linha em vez de passar da borda
         expect(declarationsOf(mobileCss, ".scores")["grid-template-columns"]).toContain("auto-fill");
+    });
+
+    // com a letra em 200% a faixa Dor moderada ia de x 65 a 569 numa tela de 360 e a pagina rolava de lado
+    it("no celular a faixa q n cabe na linha fica da largura dela e as notas descem pra linha de baixo dentro da faixa", () => {
+        // fit-content: as notas numa linha so qnd cabem, como sempre, e a largura da linha qnd n cabem
+        expect(declarationsOf(mobileCss, ".band")["min-width"]).toBe("fit-content");
+        expect(declarationsOf(mobileCss, ".bandScores").display).toBe("flex");
+        expect(declarationsOf(mobileCss, ".bandScores")["flex-wrap"]).toBe("wrap");
+        // no computador a faixa continua como estava
+        expect(declarationsOf(css, ".band")["min-width"]).toBe("min-content");
+        expect(declarationsOf(css, ".bandScores").display).toBe("grid");
     });
 });
 

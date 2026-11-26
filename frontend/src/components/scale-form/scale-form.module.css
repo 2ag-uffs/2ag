@@ -410,11 +410,19 @@ fieldset:disabled .optionCard:hover {
        o espaco menor entre as notas eh pra faixa de 5 caber tbm numa tela de 320 px */
     .band {
         max-width: max-content;
+        /* com a letra grande a faixa de 5 notas passava da tela: com o fit-content ela fica com as notas numa linha
+           so qnd cabem, como sempre, e qnd n cabem fica da largura da linha e as notas descem dentro dela */
+        min-width: fit-content;
     }
 
     .bandScores {
+        display: flex;
+        flex-wrap: wrap;
         gap: var(--space-1);
-        grid-auto-columns: 2.75rem;
+    }
+
+    .bandScores .score {
+        flex: 0 0 2.75rem;
     }
 
     .optionCard {
