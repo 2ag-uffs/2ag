@@ -28,6 +28,7 @@ preloadRouteOf(window.location.pathname);
 // descobre quem esta logado antes de montar as rotas
 // as regras de acesso de cada rota dependem disso
 // sem resposta da api a tela diz q o servidor n respondeu, e o tentar de novo recarrega a mesma tela
+// sem internet no aparelho o botao n recarrega: destaca o aviso e a tela recarrega sozinha qnd a rede volta
 // o erro da propria api (o 500 dela ou o limite do nginx) mostra a mensagem dela
 loadSession().then(
     () => {

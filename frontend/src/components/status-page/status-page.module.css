@@ -27,6 +27,12 @@
     text-wrap: pretty;
 }
 
+/* a cor e a caixa vem do aviso--atencao (styles/aviso.css) */
+.offlineMessage {
+    max-width: 28rem;
+    text-wrap: pretty;
+}
+
 .actions {
     display: flex;
     flex-wrap: wrap;

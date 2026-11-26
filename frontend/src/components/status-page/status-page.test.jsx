@@ -1,6 +1,8 @@
-import {render, screen} from "@testing-library/react";
+import {cleanup, render, screen} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {MemoryRouter} from "react-router";
-import {describe, expect, it} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+import {CONNECTION_ERROR_MESSAGE} from "../../services/api.js";
 import {cssRules, declarationsOf, readCss} from "../../test/css-rules.js";
 import StatusPage from "./status-page.jsx";
 
@@ -57,5 +59,101 @@ describe("StatusPage", () => {
         expect(logos[0]).toHaveClass("logo-on-light");
         expect(logos[1]).toHaveAttribute("src", "/images/logotipo-horizontal-claro.svg");
         expect(logos[1]).toHaveClass("logo-on-dark");
+    });
+});
+
+// a tela q aparece qnd a sessao n carrega: sem rede o recarregar trocava o 2AG pela pagina de erro do navegador
+describe("StatusPage sem internet", () => {
+    let reload;
+
+    function openSessionError() {
+        render(
+            <StatusPage
+                title="Algo deu errado"
+                message="Houve um problema no sistema."
+                showReloadButton={true}
+                showHomeLink={false}
+            />,
+        );
+    }
+
+    beforeEach(() => {
+        reload = vi.fn();
+        vi.stubGlobal("location", {...window.location, reload});
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it("o Tentar de novo fica na tela e diz pra conferir a internet", async () => {
+        vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+        openSessionError();
+
+        await userEvent.click(screen.getByRole("button", {name: "Tentar de novo"}));
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(screen.getByText(CONNECTION_ERROR_MESSAGE)).toBeInTheDocument();
+    });
+
+    // a api sem resposta ja abre com a frase de sem internet, e o toque sem rede n mudava nada na tela nem no leitor de tela
+    it("com a frase de sem internet ja na tela, cada toque sem rede destaca o aviso e leva o foco pra ele", async () => {
+        vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+        render(
+            <StatusPage
+                title="Sem conexão com o sistema"
+                message={CONNECTION_ERROR_MESSAGE}
+                showReloadButton={true}
+                showHomeLink={false}
+            />,
+        );
+        const button = screen.getByRole("button", {name: "Tentar de novo"});
+        expect(screen.getByText(CONNECTION_ERROR_MESSAGE)).not.toHaveClass("aviso");
+
+        await userEvent.click(button);
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(screen.getByText(CONNECTION_ERROR_MESSAGE)).toHaveClass("aviso", "aviso--atencao");
+        expect(screen.getByText(CONNECTION_ERROR_MESSAGE)).toHaveFocus();
+
+        // o segundo toque tbm leva o foco de volta pro aviso
+        await userEvent.click(button);
+
+        expect(button).not.toHaveFocus();
+        expect(screen.getByText(CONNECTION_ERROR_MESSAGE)).toHaveFocus();
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it("com internet o Tentar de novo recarrega a tela", async () => {
+        openSessionError();
+
+        await userEvent.click(screen.getByRole("button", {name: "Tentar de novo"}));
+
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it("qnd a rede volta a tela recarrega sozinha, uma vez so, e para qnd a tela sai", () => {
+        openSessionError();
+
+        window.dispatchEvent(new Event("online"));
+        window.dispatchEvent(new Event("online"));
+
+        expect(reload).toHaveBeenCalledTimes(1);
+
+        cleanup();
+        openSessionError();
+        cleanup();
+        window.dispatchEvent(new Event("online"));
+
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it("a pagina q n existe n recarrega com a volta da rede", () => {
+        render(<MemoryRouter><StatusPage title="Página não encontrada" message="O endereço não existe."/></MemoryRouter>);
+
+        window.dispatchEvent(new Event("online"));
+
+        expect(reload).not.toHaveBeenCalled();
     });
 });
