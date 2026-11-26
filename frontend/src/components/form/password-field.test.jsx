@@ -1,4 +1,4 @@
-import {render, screen} from "@testing-library/react";
+import {fireEvent, render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe, expect, it, vi} from "vitest";
 import PasswordField from "./password-field.jsx";
@@ -31,6 +31,46 @@ describe("PasswordField", () => {
         render(<PasswordField label="Senha" name="password"/>);
 
         expect(screen.getByLabelText("Senha")).toHaveAttribute("autocapitalize", "off");
+    });
+
+    // com a senha a mostra o corretor do iPhone podia trocar uma letra e aprender a senha como palavra
+    it("n deixa o corretor automatico do iPhone mexer na senha", () => {
+        render(<PasswordField label="Senha" name="password"/>);
+
+        expect(screen.getByLabelText("Senha")).toHaveAttribute("autocorrect", "off");
+    });
+
+    // no celular o toque no olho tirava o foco do campo e o teclado fechava no meio da senha
+    it("o toque no olho troca o tipo e deixa o foco no campo", async () => {
+        const user = userEvent.setup();
+        render(<PasswordField label="Senha" name="password"/>);
+        const input = screen.getByLabelText("Senha");
+
+        await user.click(input);
+        expect(fireEvent.mouseDown(screen.getByRole("button", {name: "Mostrar senha"}))).toBe(false);
+        await user.click(screen.getByRole("button", {name: "Mostrar senha"}));
+
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute("type", "text");
+
+        await user.click(screen.getByRole("button", {name: "Esconder senha"}));
+
+        expect(input).toHaveFocus();
+        expect(input).toHaveAttribute("type", "password");
+    });
+
+    it("quem usa o teclado ainda chega no olho com Tab e troca com Enter", async () => {
+        const user = userEvent.setup();
+        render(<PasswordField label="Senha" name="password"/>);
+
+        await user.click(screen.getByLabelText("Senha"));
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Mostrar senha"})).toHaveFocus();
+
+        await user.keyboard("{Enter}");
+
+        expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "text");
+        expect(screen.getByRole("button", {name: "Esconder senha"})).toHaveFocus();
     });
 
     // enviado como texto o navegador pode guardar a senha entre as sugestoes de preenchimento

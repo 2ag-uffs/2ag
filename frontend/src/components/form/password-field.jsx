@@ -4,8 +4,9 @@ import styles from "./form.module.css";
 
 // campo de senha com um botao pra ver o q foi digitado
 // ajuda muito no celular onde eh facil errar uma letra
-// com a senha a mostra o campo vira texto comum, entao o corretor ortografico e a maiuscula
-// automatica do teclado ficam desligados: o corretor pode mandar o q le pra um servico de fora
+// com a senha a mostra o campo vira texto comum, entao o corretor ortografico, a correcao automatica
+// do iPhone e a maiuscula automatica do teclado ficam desligados: o corretor pode mandar o q le pra um
+// servico de fora e a correcao automatica pode trocar uma letra e aprender a senha como palavra
 export default function PasswordField({label, name, error, ...inputProps}) {
     const [isVisible, setIsVisible] = useState(false);
     const inputRef = useRef(null);
@@ -34,14 +35,18 @@ export default function PasswordField({label, name, error, ...inputProps}) {
                     type={isVisible ? "text" : "password"}
                     spellCheck={false}
                     autoCapitalize="off"
+                    autoCorrect="off"
                     aria-invalid={error ? "true" : undefined}
                     aria-describedby={error ? errorId : undefined}
                     {...inputProps}
                     ref={inputRef}
                 />
+                {/* o toque no olho n tira o foco do campo, entao o teclado do celular continua aberto
+                    o clique troca igual e quem usa o teclado ainda chega no botao com Tab */}
                 <button
                     type="button"
                     className={styles.visibilityButton}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => setIsVisible(!isVisible)}
                     aria-label={visibilityLabel}
                     title={visibilityLabel}
