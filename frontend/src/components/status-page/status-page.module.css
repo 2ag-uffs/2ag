@@ -9,6 +9,9 @@
     justify-content: center;
     min-height: 100svh;
     padding: var(--space-8) var(--space-4);
+    /* com o celular deitado o recorte da camera fica do lado */
+    padding-left: max(var(--space-4), env(safe-area-inset-left));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
     text-align: center;
 }
 

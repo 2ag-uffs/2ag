@@ -43,6 +43,15 @@ describe("StatusPage", () => {
         expect(mainJsx.indexOf('"./styles/button.css"')).toBeGreaterThan(mainJsx.indexOf('"./index.css"'));
     });
 
+    // com o celular deitado o recorte da camera fica do lado e o texto ficava embaixo dele
+    it("os lados respeitam o recorte da camera e nunca ficam menores q hoje", () => {
+        const page = declarationsOf(readCss(import.meta.url, "./status-page.module.css"), ".page");
+
+        expect(page.padding).toBe("var(--space-8) var(--space-4)");
+        expect(page["padding-left"]).toBe("max(var(--space-4), env(safe-area-inset-left))");
+        expect(page["padding-right"]).toBe("max(var(--space-4), env(safe-area-inset-right))");
+    });
+
     it("a mensagem n deixa uma palavra sozinha na ultima linha", () => {
         const message = declarationsOf(readCss(import.meta.url, "./status-page.module.css"), ".message");
 
