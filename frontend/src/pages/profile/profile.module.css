@@ -17,6 +17,12 @@
     margin-top: calc(-1 * var(--space-2));
 }
 
+/* o e-mail comprido n tem onde quebrar e com a letra grande empurrava a pagina pro lado */
+.cardText strong,
+.hint strong {
+    overflow-wrap: anywhere;
+}
+
 .cardIcon {
     color: var(--color-primary);
 }
@@ -97,18 +103,21 @@
 }
 
 /* cidade e estado so ficam lado a lado qnd os dois tem 11rem: Rio Grande do Norte, o nome mais comprido,
-   cabe nisso com a seta da lista. com menos espaco, como no cadastro em 768, um fica embaixo do outro (CT-38) */
+   cabe nisso com a seta da lista. com menos espaco, como no cadastro em 768, um fica embaixo do outro (CT-38)
+   e qnd 11rem passa da largura, como com a letra grande, a coluna fica do tamanho do cartao */
 .cityRow {
     display: grid;
     gap: var(--space-3) var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
 }
 
-/* texto do termo de pesquisa dentro do modal */
+/* texto do termo de pesquisa dentro do modal
+   no fim do texto o dedo continuava rolando a pagina de tras */
 .termText {
     line-height: var(--leading-normal);
     max-height: 55svh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     white-space: pre-line;
 }
 
@@ -119,17 +128,21 @@
     justify-content: flex-end;
 }
 
+/* a linha toda tem os 44 px do dedo, tbm com o texto numa linha so no celular deitado, e ai ele fica no meio dela.
+   com o texto em duas linhas a caixa continua na altura da primeira */
 .preference {
-    align-items: flex-start;
+    align-content: center;
+    align-items: start;
     cursor: pointer;
-    display: flex;
+    display: grid;
     gap: var(--space-3);
+    grid-template-columns: auto minmax(0, 1fr);
     line-height: 1.4;
+    min-height: var(--control-height);
 }
 
 .preferenceCheckbox {
     accent-color: var(--color-primary);
-    flex: 0 0 auto;
     height: 1.25rem;
     margin-top: 0.1rem;
     width: 1.25rem;

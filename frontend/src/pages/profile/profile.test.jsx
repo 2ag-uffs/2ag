@@ -438,9 +438,35 @@ describe("Profile", () => {
         expect(cityRow.className).toMatch(/cityRow/);
         expect(within(cityRow).getByLabelText(/^Cidade/)).toBeInTheDocument();
         const css = readCss(import.meta.url, "./profile.module.css");
-        expect(declarationsOf(css, ".cityRow")["grid-template-columns"]).toBe("repeat(auto-fit, minmax(11rem, 1fr))");
+        // com a letra grande 11rem passava do cartao, entao a coluna para na largura dele
+        expect(declarationsOf(css, ".cityRow")["grid-template-columns"])
+            .toBe("repeat(auto-fit, minmax(min(11rem, 100%), 1fr))");
         const mobile = mediaRules(css, "@media (max-width: 47.99rem)");
         expect(declarationsOf(mobile, ".cityRow")["grid-template-columns"]).toBe("minmax(0, 1fr)");
+    });
+
+    // com a letra do sistema em 200% um e-mail de 32 letras ia ate x 515 numa tela de 360 e a pagina rolava pro lado
+    it("o e-mail comprido quebra em qq ponto no lugar de empurrar a pagina", () => {
+        const css = readCss(import.meta.url, "./profile.module.css");
+
+        expect(declarationsOf(css, ".cardText strong")["overflow-wrap"]).toBe("anywhere");
+        expect(declarationsOf(css, ".hint strong")["overflow-wrap"]).toBe("anywhere");
+    });
+
+    // no celular deitado o texto cabia numa linha e o toque caia pra 22 px
+    it("a linha do lembrete por e-mail tem 44 px mesmo com o texto numa linha so", () => {
+        const preference = declarationsOf(readCss(import.meta.url, "./profile.module.css"), ".preference");
+
+        expect(preference["min-height"]).toBe("var(--control-height)");
+        // o texto de uma linha fica no meio e a caixa sempre na altura da primeira linha
+        expect(preference["align-content"]).toBe("center");
+        expect(preference["align-items"]).toBe("start");
+    });
+
+    // no fim do termo de pesquisa o dedo continuava rolando a pagina de tras
+    it("o texto do termo de pesquisa segura a propria rolagem", () => {
+        expect(declarationsOf(readCss(import.meta.url, "./profile.module.css"), ".termText")["overscroll-behavior"])
+            .toBe("contain");
     });
 
     // cidade e estado lado a lado no celular deixavam uns 48px pro estado, e Santa Catarina virava "Santa Ca" (CT-38)
