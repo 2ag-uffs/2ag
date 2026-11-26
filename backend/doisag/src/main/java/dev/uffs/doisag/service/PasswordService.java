@@ -72,6 +72,23 @@ public class PasswordService {
         return usersRepository.save(user);
     }
 
+    // desativar ou reativar a conta derruba o q estava esperando: os links de senha nova e os pedidos de
+    // e-mail novo ficam como usados, igual na troca de senha. sem isso o link mandado pra quem invadiu a
+    // conta voltava a valer na reativacao (decisao da dona, 11/2026)
+    // segue a ordem das travas da conta: password_reset, users, email_change. numa conta de paciente quem
+    // chama trava o paciente antes
+    @Transactional
+    public void cancelPendingLinksOf(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        for (PasswordReset pendingReset : passwordResetRepository.findPendingForUpdate(userId)) {
+            pendingReset.setUsedAt(now);
+        }
+        usersRepository.lockById(userId);
+        for (EmailChange pendingChange : emailChangeRepository.findPendingForUpdate(userId)) {
+            pendingChange.setUsedAt(now);
+        }
+    }
+
     // mesma contagem do login: sessao esquecida aberta n vira chute livre da senha atual
     public void checkCurrentPassword(Users user, String typedPassword, String clientAddress,
                                      String field, String message) {

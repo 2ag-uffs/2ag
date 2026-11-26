@@ -6,15 +6,22 @@ import dev.uffs.doisag.enums.Periodicity;
 import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.infra.ErrorHandler;
 import dev.uffs.doisag.model.Admin;
+import dev.uffs.doisag.model.EmailChange;
+import dev.uffs.doisag.model.PasswordReset;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
+import dev.uffs.doisag.repository.EmailChangeRepository;
+import dev.uffs.doisag.repository.PasswordResetRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
 import dev.uffs.doisag.repository.UsersRepository;
 import dev.uffs.doisag.security.LoginAttemptLimiter;
+import dev.uffs.doisag.security.SecureTokens;
 import dev.uffs.doisag.security.SecurityErrorHandler;
 import dev.uffs.doisag.security.TokenService;
+import dev.uffs.doisag.service.EmailChangeService;
+import dev.uffs.doisag.service.PasswordResetService;
 import dev.uffs.doisag.service.PatientAccountService;
 import dev.uffs.doisag.service.TreatmentProtocolService;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +37,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +68,8 @@ class AdminPatientsTest {
     @Autowired private TokenService tokenService;
     @Autowired private LoginAttemptLimiter loginAttemptLimiter;
     @Autowired private TreatmentProtocolService treatmentProtocolService;
+    @Autowired private PasswordResetRepository passwordResetRepository;
+    @Autowired private EmailChangeRepository emailChangeRepository;
 
     private Admin admin;
     private Prescriber prescriber;
@@ -118,6 +128,104 @@ class AdminPatientsTest {
         return mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + PATIENT_EMAIL + "\",\"password\":\"" + PASSWORD + "\"}"));
+    }
+
+    // link de senha nova e pedido de e-mail novo ainda no prazo, como os q o invasor da conta deixaria
+    private PasswordReset pendingResetOf(Users user, String token) {
+        PasswordReset reset = new PasswordReset();
+        reset.setUser(user);
+        reset.setTokenHash(SecureTokens.hashToken(token));
+        reset.setCreatedAt(LocalDateTime.now());
+        reset.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        return passwordResetRepository.save(reset);
+    }
+
+    private EmailChange pendingEmailChangeOf(Users user, String newEmail, String token) {
+        EmailChange change = new EmailChange();
+        change.setUser(user);
+        change.setNewEmail(newEmail);
+        change.setTokenHash(SecureTokens.hashToken(token));
+        change.setCreatedAt(LocalDateTime.now());
+        change.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        return emailChangeRepository.save(change);
+    }
+
+    private void expectBothLinksRefused(String resetToken, String changeToken) throws Exception {
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + resetToken + "\",\"newPassword\":\"OutraSenha@456\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PasswordResetService.INVALID_LINK_MESSAGE));
+        mockMvc.perform(post("/auth/email-change/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"" + changeToken + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(EmailChangeService.INVALID_LINK_MESSAGE));
+    }
+
+    // decisao da dona (11/2026): desativar a conta marca como usados o link de senha nova e o pedido de
+    // e-mail novo q esperavam, como a troca de senha, e reativar n traz eles de volta. antes os dois
+    // voltavam a valer na reativacao, q eh o q o roteiro de incidente manda fazer com a conta invadida
+    @Test
+    void deactivatingThePatientCancelsThePendingLinksAndReactivatingDoesNotBringThemBack() throws Exception {
+        PasswordReset reset = pendingResetOf(patient, "link-de-senha-do-paciente");
+        EmailChange change = pendingEmailChangeOf(patient, "invasor-paciente@email.com", "link-de-email-do-paciente");
+
+        changeActive(false, adminToken()).andExpect(status().isOk());
+
+        assertThat(reset.getUsedAt()).isNotNull();
+        assertThat(change.getUsedAt()).isNotNull();
+
+        changeActive(true, adminToken()).andExpect(status().isOk());
+
+        expectBothLinksRefused("link-de-senha-do-paciente", "link-de-email-do-paciente");
+        assertThat(usersRepository.findById(patient.getId()).orElseThrow().getEmail()).isEqualTo(PATIENT_EMAIL);
+        login().andExpect(status().isOk());
+    }
+
+    // o pedido feito com a conta desativada n existe pela tela, mas a reativacao tbm limpa o q achar
+    @Test
+    void reactivatingThePatientAlsoCancelsWhatIsPending() throws Exception {
+        changeActive(false, adminToken()).andExpect(status().isOk());
+        PasswordReset reset = pendingResetOf(patient, "link-de-senha-na-desativada");
+        EmailChange change = pendingEmailChangeOf(patient, "invasor-dois@email.com", "link-de-email-na-desativada");
+
+        changeActive(true, adminToken()).andExpect(status().isOk());
+
+        assertThat(reset.getUsedAt()).isNotNull();
+        assertThat(change.getUsedAt()).isNotNull();
+        expectBothLinksRefused("link-de-senha-na-desativada", "link-de-email-na-desativada");
+    }
+
+    @Test
+    void deactivatingThePrescriberCancelsThePendingLinksAndReactivatingDoesNotBringThemBack() throws Exception {
+        PasswordReset reset = pendingResetOf(prescriber, "link-de-senha-da-prescritora");
+        EmailChange change = pendingEmailChangeOf(prescriber, "invasor-prescritora@email.com",
+                "link-de-email-da-prescritora");
+
+        for (boolean active : List.of(false, true)) {
+            mockMvc.perform(put("/admin/prescribers/" + prescriber.getId() + "/active")
+                            .header("Authorization", adminToken())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"active\":" + active + "}"))
+                    .andExpect(status().isOk());
+        }
+
+        assertThat(reset.getUsedAt()).isNotNull();
+        assertThat(change.getUsedAt()).isNotNull();
+        expectBothLinksRefused("link-de-senha-da-prescritora", "link-de-email-da-prescritora");
+        assertThat(usersRepository.findById(prescriber.getId()).orElseThrow().getEmail())
+                .isEqualTo("conta-prescritora@email.com");
+    }
+
+    // o link de outra conta n eh tocado
+    @Test
+    void deactivatingOneAccountLeavesTheLinksOfTheOthers() throws Exception {
+        PasswordReset resetOfThePrescriber = pendingResetOf(prescriber, "link-da-outra-conta");
+
+        changeActive(false, adminToken()).andExpect(status().isOk());
+
+        assertThat(resetOfThePrescriber.getUsedAt()).isNull();
     }
 
     @Test

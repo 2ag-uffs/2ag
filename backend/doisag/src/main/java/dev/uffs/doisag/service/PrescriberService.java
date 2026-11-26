@@ -185,6 +185,9 @@ public class PrescriberService {
         if (prescriber.isActive() == active) {
             return prescriber;
         }
+        // o link de senha nova (ou de primeiro acesso) e o pedido de e-mail novo q esperavam caem aqui, nas
+        // duas direcoes, igual ao paciente: reativar n traz de volta o q ficou pendente
+        passwordService.cancelPendingLinksOf(prescriberId);
         prescriber.setActive(active);
         if (active) {
             // as sessoes de antes caem na reativacao e n na desativacao, igual ao paciente (PatientAccountService)

@@ -26,10 +26,13 @@ public class PatientAccountService {
 
     private final PatientRepository patientRepository;
     private final AuditService auditService;
+    private final PasswordService passwordService;
 
-    public PatientAccountService(PatientRepository patientRepository, AuditService auditService) {
+    public PatientAccountService(PatientRepository patientRepository, AuditService auditService,
+                                 PasswordService passwordService) {
         this.patientRepository = patientRepository;
         this.auditService = auditService;
+        this.passwordService = passwordService;
     }
 
     // a busca eh pelo e-mail inteiro pq a administracao n tem lista de paciente
@@ -69,6 +72,9 @@ public class PatientAccountService {
         if (patient.isActive() == active) {
             throw new BusinessException(active ? ALREADY_ACTIVE_MESSAGE : ALREADY_INACTIVE_MESSAGE);
         }
+        // o link de senha nova e o pedido de e-mail novo q esperavam caem aqui, nas duas direcoes,
+        // pra reativar n trazer de volta o q quem invadiu a conta deixou pendente
+        passwordService.cancelPendingLinksOf(patientId);
         patient.setActive(active);
         if (active) {
             // sem isso a sessao de antes da desativacao voltava a valer. a conta desativada ja n entra,
