@@ -112,7 +112,7 @@ export default function Impressao() {
                     </select>
                 </div>
                 <div className={styles.toolbarActions}>
-                    <button type="button" className="button-secondary" onClick={() => navigate(-1)}>
+                    <button type="button" className={"button-secondary " + styles.backButton} onClick={() => navigate(-1)}>
                         Voltar
                     </button>
                     <button type="button" className="button" onClick={() => window.print()}>

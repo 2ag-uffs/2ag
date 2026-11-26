@@ -4,6 +4,7 @@ import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import {addDays, formatDate, toIsoDate} from "../../utils/date-format.js";
 import Impressao from "./impressao.jsx";
 
@@ -138,6 +139,18 @@ describe("Impressao", () => {
         expect(printRules).toMatch(/\.section article \{[^}]*border: 0;[^}]*padding: 0 /);
         expect(printRules).toMatch(/\.section article > header \{[^}]*padding-top: /);
         expect(printRules).toMatch(/\.section article dl \{[^}]*display: block;/);
+    });
+
+    // no celular o Voltar da barra ocupava uma linha inteira em cima do botao de imprimir e repetia a seta
+    // do cabecalho, q ja volta. no computador ele continua, e no papel a barra toda ja sai
+    it("no celular o Voltar da barra sai e o botao de imprimir fica sozinho", async () => {
+        renderPrint([]);
+
+        const back = await screen.findByRole("button", {name: "Voltar"});
+        expect(back.className).toContain("backButton");
+        const css = readCss(import.meta.url, "./impressao.module.css");
+        expect(declarationsOf(mediaRules(css, "@media (max-width: 47.99rem)"), ".backButton").display).toBe("none");
+        expect(declarationsOf(css, ".backButton").display).toBeUndefined();
     });
 
     // a impressao da prescritora mostra a correcao da escala com o resultado de antes, como o historico.

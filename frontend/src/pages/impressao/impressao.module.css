@@ -127,6 +127,11 @@
     .toolbarActions > * {
         flex: 1 1 auto;
     }
+
+    /* no celular a seta do cabecalho ja volta, entao o Voltar da barra sai e o botao de imprimir fica sozinho */
+    .backButton {
+        display: none;
+    }
 }
 
 /* no papel a barra de ferramentas sai e o conteudo ocupa a folha toda */
