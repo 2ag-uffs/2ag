@@ -32,3 +32,15 @@
     font-size: var(--text-sm);
     padding-top: var(--space-5);
 }
+
+/* janela baixa, como o celular deitado: o Esqueci com 44 px empurrava o Entrar pra baixo, mais do q a folga tirada
+   da moldura. o link fica a 8 px do olho e o Entrar logo embaixo dele */
+@media (max-height: 30rem) {
+    .forgotLink {
+        margin-top: calc(-1 * var(--space-2));
+    }
+
+    .submitButton {
+        margin-top: 0;
+    }
+}

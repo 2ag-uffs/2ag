@@ -57,7 +57,8 @@
     transform: scaleX(-1);
 }
 
-/* sem o min-width a coluna esticava ate a largura do campo de e-mail com a letra grande do celular */
+/* sem o min-width a coluna esticava ate a largura do campo de e-mail com a letra grande do celular
+   no celular deitado a camera pode ficar na direita, entao a folga de la respeita a area segura */
 .content {
     align-items: center;
     background-color: var(--color-surface);
@@ -66,6 +67,7 @@
     justify-content: center;
     min-width: 0;
     padding: var(--space-10) var(--space-8);
+    padding-right: max(var(--space-8), env(safe-area-inset-right));
 }
 
 .card {
@@ -103,9 +105,26 @@
         display: none;
     }
 
+    /* o logotipo desce o tamanho da barra de status e os lados fogem do recorte da camera */
     .content {
         align-items: flex-start;
         flex: 1;
         padding: var(--space-8) var(--space-5);
+        padding-left: max(var(--space-5), env(safe-area-inset-left));
+        padding-right: max(var(--space-5), env(safe-area-inset-right));
+        padding-top: calc(var(--space-8) + env(safe-area-inset-top));
+    }
+}
+
+/* janela baixa, como o celular deitado: menos folga em cima e embaixo e entre o logotipo, o titulo e o formulario,
+   pro botao Entrar subir */
+@media (max-height: 30rem) {
+    .content {
+        padding-bottom: var(--space-4);
+        padding-top: max(var(--space-4), env(safe-area-inset-top));
+    }
+
+    .card {
+        gap: var(--space-4);
     }
 }
