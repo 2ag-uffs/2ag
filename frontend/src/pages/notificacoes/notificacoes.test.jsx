@@ -107,6 +107,20 @@ describe("Notificacoes", () => {
             .toBe("space-between");
     });
 
+    // o texto pedia 16rem do lado do icone e o cartao tem uns 294 px por dentro no celular de 360: cada aviso
+    // virava tres linhas, com o icone sozinho em cima. no de 320 sobram 202 px do lado do icone, e 12rem cabe.
+    // com flex-basis 0 o texto ficava com uns 90 px do lado do icone na letra em 200%
+    it("no celular o texto do aviso fica do lado do icone, e no computador nada muda", () => {
+        const mobile = mediaRules(noticesCss, "@media (max-width: 47.99rem)");
+
+        expect(declarationsOf(mobile, ".content")["flex-basis"]).toBe("12rem");
+        expect(declarationsOf(noticesCss, ".content").flex).toBe("1 1 16rem");
+        // o Abrir comeca onde o texto comeca: a largura do icone mais o espaco entre as colunas do cartao
+        const columnGap = declarationsOf(noticesCss, ".item").gap.split(" ")[1];
+        expect(declarationsOf(mobile, ".actions")["padding-left"])
+            .toBe("calc(" + declarationsOf(noticesCss, ".icon").width + " + " + columnGap + ")");
+    });
+
     // o aviso da consulta vem da api com o horario de brasilia no meio do texto
     describe("aviso com horario de consulta", () => {
         const APPOINTMENT_NOTICE = {

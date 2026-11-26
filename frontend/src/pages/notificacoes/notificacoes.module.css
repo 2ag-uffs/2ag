@@ -119,10 +119,17 @@
         padding: var(--space-4);
     }
 
-    /* no celular os botoes descem e ficam alinhados com o texto, depois do icone, com o Apagar na outra ponta */
+    /* os 16rem do texto n cabiam do lado do icone no celular de 360 e o icone ficava sozinho numa linha.
+       12rem cabe ate no de 320, e com a letra grande o texto ainda desce pra baixo do icone com a largura toda */
+    .content {
+        flex-basis: 12rem;
+    }
+
+    /* no celular os botoes descem e ficam alinhados com o texto, depois do icone e do espaco entre eles,
+       com o Apagar na outra ponta */
     .actions {
         justify-content: space-between;
-        padding-left: calc(2.25rem + var(--space-3));
+        padding-left: calc(2.25rem + var(--space-4));
         width: 100%;
     }
 }
