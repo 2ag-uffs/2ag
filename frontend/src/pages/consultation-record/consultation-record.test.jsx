@@ -52,6 +52,33 @@ function renderInsideLayout(recordPath = "/paciente/5/consulta/nova") {
     return router;
 }
 
+const PRESCRIBER = {id: 2, name: "Ana Lima", email: "ana@email.com", role: "PRESCRIBER"};
+
+// resposta da api como o fetch devolve, com o status e o json
+function apiResponse(status, body) {
+    return new Response(JSON.stringify(body), {status});
+}
+
+// a sessao venceu: o primeiro envio recebe 401, o login de novo entra e o envio q vai outra vez eh gravado
+function mockExpiredSessionThenLogin(savedBody) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+        if (url === "/api/auth/login") {
+            return Promise.resolve(apiResponse(200, PRESCRIBER));
+        }
+        const isFirstTry = globalThis.fetch.mock.calls.length === 1;
+        return Promise.resolve(isFirstTry
+            ? apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."})
+            : apiResponse(201, savedBody));
+    });
+}
+
+// o navegador pergunta antes de recarregar ou fechar a aba?
+function browserAsksBeforeLeaving() {
+    const leaving = new Event("beforeunload", {cancelable: true});
+    window.dispatchEvent(leaving);
+    return leaving.defaultPrevented;
+}
+
 async function saveNewConsultation() {
     fireEvent.change(await screen.findByLabelText("Evolução do quadro"), {target: {value: "melhorou da dor"}});
     fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
@@ -340,5 +367,58 @@ describe("ConsultationRecord", () => {
 
         expect(post).toHaveBeenCalledTimes(2);
         expect(post.mock.calls[1][2]).not.toBe(post.mock.calls[0][2]);
+    });
+
+    // a sessao venceu e o salvar ficou parado atras do login por cima: ali nada foi salvo ainda, entao
+    // recarregar e o voltar do navegador perguntam antes (decisao de novembro/2026)
+    // antes o voltar saia da tela, a consulta era gravada dps do login e ninguem via q deu certo
+    it("com o salvar parado atras do login por cima a tela pergunta antes de sair, e dps de entrar de novo mostra a consulta registrada", async () => {
+        post.mockRestore();
+        setLoggedUser(PRESCRIBER);
+        const fetchSpy = mockExpiredSessionThenLogin({id: 99});
+        const user = userEvent.setup();
+        const router = renderInsideLayout();
+
+        await user.type(await screen.findByLabelText("Queixa principal e observações"), "dor lombar");
+        fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        const loginDialog = await screen.findByRole("dialog", {name: "Sua sessão venceu"});
+        await waitFor(() => expect(browserAsksBeforeLeaving()).toBe(true));
+
+        // o voltar do navegador n sai da tela, q continua embaixo do login
+        await act(() => router.navigate(-1));
+        expect(router.state.location.pathname).toBe("/paciente/5/consulta/nova");
+        expect(screen.queryByText("historico do paciente")).not.toBeInTheDocument();
+
+        await user.type(within(loginDialog).getByLabelText("Senha"), "Senha#2026");
+        await user.click(within(loginDialog).getByRole("button", {name: "Entrar"}));
+
+        expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/consulta/99/registro");
+        // a pergunta barrada atras do login n aparece em cima do registro salvo
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(browserAsksBeforeLeaving()).toBe(false);
+        expect(fetchSpy.mock.calls.filter((call) => call[0] === "/api/patients/5/appointments")).toHaveLength(2);
+    });
+
+    // sair no login por cima continua indo pro login sem perguntar, mesmo com o voltar barrado antes
+    it("sair no login por cima, com o salvar parado, vai pra tela de login sem perguntar", async () => {
+        post.mockRestore();
+        setLoggedUser(PRESCRIBER);
+        mockExpiredSessionThenLogin({id: 99});
+        const user = userEvent.setup();
+        const router = renderInsideLayout();
+
+        await user.type(await screen.findByLabelText("Queixa principal e observações"), "dor lombar");
+        fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
+        await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        const loginDialog = await screen.findByRole("dialog", {name: "Sua sessão venceu"});
+        await act(() => router.navigate(-1));
+        expect(router.state.location.pathname).toBe("/paciente/5/consulta/nova");
+
+        await user.click(within(loginDialog).getByRole("button", {name: "Sair"}));
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 });

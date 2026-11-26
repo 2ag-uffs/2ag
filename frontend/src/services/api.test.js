@@ -7,6 +7,7 @@ import {
     download,
     errorMessageOf,
     getLoggedUser,
+    hasSendWaitingLogin,
     leaveExpiredSession,
     loadSession,
     loginAgain,
@@ -566,5 +567,65 @@ describe("chave do envio", () => {
             expect(key.length).toBeGreaterThan(8);
             expect(key.length).toBeLessThanOrEqual(100);
         });
+    });
+});
+
+// o registro da consulta, a prescricao e o mini-exame perguntam antes de sair enquanto o envio
+// espera o login por cima (decisao de novembro/2026), entao a api diz se tem envio parado e avisa qnd muda
+describe("envio parado esperando o login por cima", () => {
+    afterEach(() => {
+        leaveExpiredSession();
+        setLoginAgainOpener(null);
+        setLoggedUser(null);
+        vi.restoreAllMocks();
+    });
+
+    function mockExpiredSessionThenLogin() {
+        return vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/auth/login") {
+                return Promise.resolve(apiResponse(200, MARIA));
+            }
+            const isFirstTry = globalThis.fetch.mock.calls.length === 1;
+            return Promise.resolve(isFirstTry ? apiResponse(401, {message: "sessao vencida"}) : apiResponse(200, {saved: true}));
+        });
+    }
+
+    it("tem envio parado do 401 ate a pessoa entrar de novo, e a tela eh avisada nas duas horas", async () => {
+        mockExpiredSessionThenLogin();
+        const changes = [];
+        const listen = () => changes.push(hasSendWaitingLogin());
+        window.addEventListener("waiting-login-changed", listen);
+        setLoginAgainOpener(vi.fn());
+        setLoggedUser(MARIA);
+
+        expect(hasSendWaitingLogin()).toBe(false);
+        const saving = apiService.post("/appointments/7/prescriptions", {posology: "2 gotas"});
+        await flushPromises();
+        expect(hasSendWaitingLogin()).toBe(true);
+
+        await loginAgain("Senha#2026");
+        expect(hasSendWaitingLogin()).toBe(false);
+        expect(await saving).toEqual({saved: true});
+        expect(changes).toEqual([true, false]);
+        window.removeEventListener("waiting-login-changed", listen);
+    });
+
+    it("sair no login por cima tbm acaba com o envio parado, ja sem ninguem logado", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse(401, {message: "sessao vencida"}));
+        const loggedAtChange = [];
+        const listen = () => loggedAtChange.push(getLoggedUser());
+        setLoginAgainOpener(vi.fn());
+        setLoggedUser(MARIA);
+        const saving = apiService.post("/appointments/7/prescriptions", {posology: "2 gotas"});
+        await flushPromises();
+        window.addEventListener("waiting-login-changed", listen);
+
+        leaveExpiredSession();
+
+        expect(hasSendWaitingLogin()).toBe(false);
+        // a tela q escuta o aviso ja ve q n tem ninguem logado e n pergunta mais nada
+        expect(loggedAtChange).toEqual([null]);
+        await expect(saving).rejects.toMatchObject({status: 401});
+        window.removeEventListener("waiting-login-changed", listen);
     });
 });

@@ -104,10 +104,22 @@ export function setLoginAgainOpener(opener) {
     loginAgainOpener = opener;
 }
 
+// tem envio parado esperando a pessoa entrar de novo?
+// o registro da consulta, a prescricao e o mini-exame perguntam antes de sair enquanto tiver
+// (decisao de novembro/2026). quem quer saber na hora escuta o aviso waiting-login-changed
+export function hasSendWaitingLogin() {
+    return pendingRequests.length > 0;
+}
+
+function setPendingRequests(requests) {
+    pendingRequests = requests;
+    window.dispatchEvent(new Event("waiting-login-changed"));
+}
+
 // guarda o envio e abre o login por cima. a promessa so termina qnd a pessoa entra de novo ou sai
 function waitForLoginAgain(retry, deactivatedMessage) {
     return new Promise((resolve, reject) => {
-        pendingRequests.push({retry, resolve, reject});
+        setPendingRequests([...pendingRequests, {retry, resolve, reject}]);
         loginAgainOpener(deactivatedMessage);
     });
 }
@@ -134,15 +146,15 @@ function handleExpiredSession(retry, deactivatedMessage = null) {
 // cada envio q estava esperando vai de novo com a sessao nova e a tela dele recebe a resposta de vdd
 function retryPendingRequests() {
     const requests = pendingRequests;
-    pendingRequests = [];
+    setPendingRequests([]);
     requests.forEach((pending) => pending.retry().then(pending.resolve, pending.reject));
 }
 
 // sair no login por cima: esquece quem estava logado e o q esperava falha como sessao vencida
 export function leaveExpiredSession() {
     const requests = pendingRequests;
-    pendingRequests = [];
     loggedUser = null;
+    setPendingRequests([]);
     requests.forEach((pending) => pending.reject(new ApiError(401, SESSION_EXPIRED_MESSAGE)));
 }
 

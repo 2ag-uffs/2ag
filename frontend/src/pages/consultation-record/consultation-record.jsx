@@ -17,7 +17,7 @@ import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ARCHIVED_RECORD_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import {numberOrNull, textOrNull} from "../../utils/form-values.js";
-import {useLeaveWarning} from "../../utils/leave-warning.js";
+import {useForgetBlockedExit, useLeaveWarning, useSendWaitingLogin} from "../../utils/leave-warning.js";
 import styles from "./consultation-record.module.css";
 
 // a modalidade vem vazia e a prescritora escolhe, pq a que vinha marcada como presencial ficava sem ninguem
@@ -188,12 +188,15 @@ export default function ConsultationRecord() {
     // sair com algo digitado e n salvo pergunta antes, como na anamnese e nas escalas
     // vale pra qqr saida: o Voltar do formulario, a seta e o Voltar de cima e o menu
     // enquanto salva n pergunta, e sair da conta tbm n pq a sessao ja acabou
-    const hasUnsavedChanges = !isSaving
+    // o envio parado atras do login por cima ainda n salvou nada, entao ali pergunta (decisao de novembro/2026)
+    const isWaitingLogin = useSendWaitingLogin();
+    const hasUnsavedChanges = (!isSaving || isWaitingLogin)
         && Object.keys(record).some((fieldName) => record[fieldName] !== startingRecord[fieldName]);
     const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    useForgetBlockedExit(exitBlocker, hasUnsavedChanges);
     const successRef = useFocusWhenShown(!isLoading && !loadError && (isUpdated || wasJustRegistered));
 
     const handleSubmit = async (event) => {

@@ -13,7 +13,7 @@ import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {ARCHIVED_EXAM_NOTICE} from "../../utils/archived-patient.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
-import {useLeaveWarning} from "../../utils/leave-warning.js";
+import {useForgetBlockedExit, useLeaveWarning, useSendWaitingLogin} from "../../utils/leave-warning.js";
 import {answersPayload, missingItemsOf} from "../../utils/scale-answers.js";
 import styles from "./mini-exame.module.css";
 
@@ -105,12 +105,15 @@ export default function MiniExame() {
 
     // sair com alguma resposta marcada e n salva pergunta antes, como no registro da consulta
     // a resposta limpa volta a ficar em branco, e enquanto salva ou dps de salvo n pergunta
-    const hasUnsavedChanges = !isSaving && savedExam === null
+    // o envio parado atras do login por cima ainda n salvou nada, entao ali pergunta (decisao de novembro/2026)
+    const isWaitingLogin = useSendWaitingLogin();
+    const hasUnsavedChanges = (!isSaving || isWaitingLogin) && savedExam === null
         && Object.values(values).some((value) => String(value).trim() !== "");
     const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    useForgetBlockedExit(exitBlocker, hasUnsavedChanges);
     const resultRef = useFocusWhenShown(wasSavedNow);
 
     const save = async (event) => {

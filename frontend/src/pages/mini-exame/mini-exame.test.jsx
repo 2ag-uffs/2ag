@@ -1,9 +1,9 @@
-import {render, screen, waitFor, within} from "@testing-library/react";
+import {act, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, setLoggedUser} from "../../services/api.js";
+import {apiService, leaveExpiredSession, loginAgain, setLoggedUser, setLoginAgainOpener} from "../../services/api.js";
 import MiniExame from "./mini-exame.jsx";
 
 // o exame com um item so, o bastante pra tela montar o formulario
@@ -24,6 +24,33 @@ function renderExam() {
     ], {initialEntries: ["/paciente/5/historico", "/consulta/7/mini-exame"], initialIndex: 1});
     render(<RouterProvider router={router}/>);
     return router;
+}
+
+const PRESCRIBER = {id: 2, name: "Ana Lima", email: "ana@email.com", role: "PRESCRIBER"};
+
+// resposta da api como o fetch devolve, com o status e o json
+function apiResponse(status, body) {
+    return new Response(JSON.stringify(body), {status});
+}
+
+// a sessao venceu: o primeiro envio recebe 401, o login de novo entra e o envio q vai outra vez eh gravado
+function mockExpiredSessionThenLogin(savedBody) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+        if (url === "/api/auth/login") {
+            return Promise.resolve(apiResponse(200, PRESCRIBER));
+        }
+        const isFirstTry = globalThis.fetch.mock.calls.length === 1;
+        return Promise.resolve(isFirstTry
+            ? apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."})
+            : apiResponse(201, savedBody));
+    });
+}
+
+// o navegador pergunta antes de recarregar ou fechar a aba?
+function browserAsksBeforeLeaving() {
+    const leaving = new Event("beforeunload", {cancelable: true});
+    window.dispatchEvent(leaving);
+    return leaving.defaultPrevented;
 }
 
 describe("MiniExame", () => {
@@ -190,5 +217,33 @@ describe("MiniExame", () => {
         const after = new Event("beforeunload", {cancelable: true});
         window.dispatchEvent(after);
         expect(after.defaultPrevented).toBe(true);
+    });
+
+    // a sessao venceu e o salvar ficou parado atras do login por cima: ali nada foi salvo ainda, entao
+    // recarregar e o voltar do navegador perguntam antes (decisao de novembro/2026)
+    it("com o salvar parado atras do login por cima a tela pergunta antes de sair, e dps de entrar de novo n pergunta mais", async () => {
+        setLoggedUser(PRESCRIBER);
+        setLoginAgainOpener(vi.fn());
+        const fetchSpy = mockExpiredSessionThenLogin(SAVED_EXAM);
+        const user = userEvent.setup();
+        const router = renderExam();
+
+        await user.click(await screen.findByRole("radio", {name: "4"}));
+        await user.click(screen.getByRole("button", {name: "Salvar exame"}));
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(browserAsksBeforeLeaving()).toBe(true));
+
+        await act(() => router.navigate(-1));
+        expect(router.state.location.pathname).toBe("/consulta/7/mini-exame");
+        expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+
+        await act(() => loginAgain("Senha#2026"));
+        expect(await screen.findByText("O resultado fica no histórico do paciente junto com a consulta.")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/consulta/7/mini-exame");
+        expect(browserAsksBeforeLeaving()).toBe(false);
+
+        leaveExpiredSession();
+        setLoginAgainOpener(null);
     });
 });

@@ -17,7 +17,7 @@ import {isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_PRESCRIPTION_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
 import {emptyToNull, numberOrNull, textOrNull} from "../../utils/form-values.js";
-import {useLeaveWarning} from "../../utils/leave-warning.js";
+import {useForgetBlockedExit, useLeaveWarning, useSendWaitingLogin} from "../../utils/leave-warning.js";
 import {
     ADMINISTRATION_ROUTE_OPTIONS,
     CANNABINOID_OPTIONS,
@@ -329,12 +329,15 @@ export default function PrescriptionForm() {
 
     // sair com algo digitado e n emitido pergunta antes, como no registro da consulta e na anamnese
     // enquanto emite n pergunta, a receita emitida sai direto e sair da conta tbm n pergunta
-    const hasUnsavedChanges = !isSaving && issuedPrescription === null
+    // o envio parado atras do login por cima ainda n emitiu nada, entao ali pergunta (decisao de novembro/2026)
+    const isWaitingLogin = useSendWaitingLogin();
+    const hasUnsavedChanges = (!isSaving || isWaitingLogin) && issuedPrescription === null
         && hasTypedSomething(form, components, escalationSteps);
     const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
         && getLoggedUser() !== null
         && currentLocation.pathname !== nextLocation.pathname);
     useLeaveWarning(hasUnsavedChanges);
+    useForgetBlockedExit(exitBlocker, hasUnsavedChanges);
     const successRef = useFocusWhenShown(issuedPrescription !== null);
 
     const showRefusal = (apiMessage, errorsByField) => {

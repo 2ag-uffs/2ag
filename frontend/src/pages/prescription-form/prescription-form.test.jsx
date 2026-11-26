@@ -1,9 +1,11 @@
-import {fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {
+    apiService, ApiError, leaveExpiredSession, loginAgain, setLoggedUser, setLoginAgainOpener,
+} from "../../services/api.js";
 import PrescriptionForm from "./prescription-form.jsx";
 
 const APPOINTMENT = {
@@ -25,6 +27,34 @@ function renderFormAfterHistory() {
         {path: "/consulta/:appointmentId/prescricao", element: <PrescriptionForm/>},
     ], {initialEntries: ["/paciente/5/historico", "/consulta/7/prescricao"], initialIndex: 1});
     render(<RouterProvider router={router}/>);
+    return router;
+}
+
+const PRESCRIBER = {id: 2, name: "Ana Lima", email: "ana@email.com", role: "PRESCRIBER"};
+
+// resposta da api como o fetch devolve, com o status e o json
+function apiResponse(status, body) {
+    return new Response(JSON.stringify(body), {status});
+}
+
+// a sessao venceu: o primeiro envio recebe 401, o login de novo entra e o envio q vai outra vez eh gravado
+function mockExpiredSessionThenLogin(savedBody) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+        if (url === "/api/auth/login") {
+            return Promise.resolve(apiResponse(200, PRESCRIBER));
+        }
+        const isFirstTry = globalThis.fetch.mock.calls.length === 1;
+        return Promise.resolve(isFirstTry
+            ? apiResponse(401, {message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar."})
+            : apiResponse(201, savedBody));
+    });
+}
+
+// o navegador pergunta antes de recarregar ou fechar a aba?
+function browserAsksBeforeLeaving() {
+    const leaving = new Event("beforeunload", {cancelable: true});
+    window.dispatchEvent(leaving);
+    return leaving.defaultPrevented;
 }
 
 async function fillRequiredFields() {
@@ -567,5 +597,56 @@ describe("PrescriptionForm", () => {
         expect(post).toHaveBeenCalledTimes(2);
         expect(post.mock.calls[1][1]).toEqual(post.mock.calls[0][1]);
         expect(post.mock.calls[1][2]).not.toBe(post.mock.calls[0][2]);
+    });
+
+    // a sessao venceu e o emitir ficou parado atras do login por cima: ali nada foi emitido ainda, entao
+    // recarregar e o voltar do navegador perguntam antes (decisao de novembro/2026)
+    // antes a tela saia calada e a receita era gravada dps do login sem ninguem ver
+    it("com o emitir parado atras do login por cima a tela pergunta antes de sair, e dps de entrar de novo n pergunta mais", async () => {
+        setLoggedUser(PRESCRIBER);
+        setLoginAgainOpener(vi.fn());
+        const fetchSpy = mockExpiredSessionThenLogin({current: true});
+        const user = userEvent.setup();
+        const router = renderFormAfterHistory();
+
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(browserAsksBeforeLeaving()).toBe(true));
+
+        // o voltar do navegador n sai da tela
+        await act(() => router.navigate(-1));
+        expect(router.state.location.pathname).toBe("/consulta/7/prescricao");
+        expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+
+        // entrou de novo: o envio segue, a tela mostra q emitiu e a pergunta barrada some
+        await act(() => loginAgain("Senha#2026"));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/consulta/7/prescricao");
+        expect(browserAsksBeforeLeaving()).toBe(false);
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
+
+        leaveExpiredSession();
+        setLoginAgainOpener(null);
+    });
+
+    // o envio q n espera login nenhum continua sem perguntar, pq a resposta ja esta chegando
+    it("enquanto emite de vdd, sem login por cima, a tela continua sem perguntar", async () => {
+        setLoggedUser(PRESCRIBER);
+        let finishSaving = null;
+        vi.spyOn(apiService, "post").mockReturnValue(new Promise((resolve) => {
+            finishSaving = resolve;
+        }));
+        const user = userEvent.setup();
+        renderFormAfterHistory();
+
+        await fillRequiredFields();
+        expect(browserAsksBeforeLeaving()).toBe(true);
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(browserAsksBeforeLeaving()).toBe(false);
+
+        await act(() => finishSaving({current: true}));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
     });
 });
