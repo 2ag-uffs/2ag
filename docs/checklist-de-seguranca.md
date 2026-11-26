@@ -177,6 +177,8 @@ age -d -i "$BACKUP_AGE_KEY" "$ARQUIVO" | pg_restore --dbname "$BANCO" ...
 
 **Card.** #57; a truncagem já está no #109 (AUTZ-08).
 
+**Nota de 25/11/2026.** A truncagem em milissegundos não fechava tudo: a troca de senha calcula a hora antes das travas e só confirma no banco depois, e uma requisição lida nesse meio tempo recebia um cookie renovado com emissão depois da marca, que continuava valendo e sendo renovado até as 12 h do login. O mesmo valia para a saída da conta e para a confirmação do e-mail novo. O `SecurityFilter` passou a comparar `passwordChangedAt` e `sessionsEndedAt` com a hora do login guardada no token (`loginAt`), que a renovação não muda, e não mais com a emissão; a troca pelo perfil grava uma sessão nova, com login depois da marca. Os testes estão em `SessionTest` (`sessionRenewedDuringAPasswordChangeDoesNotSurviveIt` e `sessionRenewedDuringALogoutDoesNotSurviveIt`).
+
 ---
 
 ## 7 — Restringir acessos

@@ -51,10 +51,10 @@ public abstract class Users implements UserDetails {
     // a pessoa escolhe se quer receber lembretes e avisos por e-mail (RF18)
     private boolean emailNotificationsEnabled = true;
 
-    // sessao emitida antes da ultima troca de senha deixa de valer
+    // sessao com login antes da ultima troca de senha deixa de valer, msm renovada dps
     private LocalDateTime passwordChangedAt;
 
-    // sair da conta encerra as sessoes emitidas antes desse momento
+    // sair da conta encerra as sessoes com login ate esse momento, msm renovadas dps
     private LocalDateTime sessionsEndedAt;
 
     public Users() {
@@ -171,13 +171,13 @@ public abstract class Users implements UserDetails {
         this.sessionsEndedAt = sessionsEndedAt;
     }
 
-    // o token guarda a emissao em milissegundos entao o fim das sessoes tbm fica em milissegundos
+    // o token guarda a hora do login em milissegundos entao o fim das sessoes tbm fica em milissegundos
     public void endSessionsNow() {
         this.sessionsEndedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
-    // o token guarda a emissao em milissegundos entao a troca tbm fica em milissegundos
-    // senao a sessao emitida no mesmo segundo da troca continuava valendo
+    // o token guarda a hora do login em milissegundos entao a troca tbm fica em milissegundos
+    // senao a sessao com login no mesmo segundo da troca continuava valendo
     public void markPasswordChangedNow() {
         this.passwordChangedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
     }

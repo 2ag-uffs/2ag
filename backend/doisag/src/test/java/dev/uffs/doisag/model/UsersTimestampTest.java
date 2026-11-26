@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// o token guarda a emissao em milissegundos entao os dois cortes da conta tbm
+// o token guarda a hora do login em milissegundos entao os dois cortes da conta tbm
 class UsersTimestampTest {
 
     @Test

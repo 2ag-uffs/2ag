@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -420,6 +421,37 @@ class SessionTest {
         assertThat(renewedCookie).isNotNull();
         assertThat(tokenService.readToken(renewedCookie.getValue()).loginAt())
                 .isEqualTo(tokenService.readToken(oldCookie.getValue()).loginAt());
+    }
+
+    // a troca de senha marca a hora antes de confirmar no banco. a sessao antiga renovada nesse
+    // meio tempo nasce com emissao depois da marca, mas o login dela eh de antes e ela n pode valer
+    @Test
+    void sessionRenewedDuringAPasswordChangeDoesNotSurviveIt() throws Exception {
+        Cookie renewedCookie = mockMvc.perform(get("/auth/me").cookie(cookieWithToken(11, 11)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(renewedCookie).isNotNull();
+        Instant renewedAt = tokenService.readToken(renewedCookie.getValue()).issuedAt();
+
+        patient.setPasswordChangedAt(LocalDateTime.ofInstant(renewedAt.minusMillis(1), ZoneId.systemDefault()));
+        patientRepository.saveAndFlush(patient);
+
+        mockMvc.perform(get("/auth/me").cookie(renewedCookie)).andExpect(status().isUnauthorized());
+    }
+
+    // msm coisa com o Sair de outra aba: a renovada no meio da saida tbm cai
+    @Test
+    void sessionRenewedDuringALogoutDoesNotSurviveIt() throws Exception {
+        Cookie renewedCookie = mockMvc.perform(get("/auth/me").cookie(cookieWithToken(11, 11)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(renewedCookie).isNotNull();
+        Instant renewedAt = tokenService.readToken(renewedCookie.getValue()).issuedAt();
+
+        patient.setSessionsEndedAt(LocalDateTime.ofInstant(renewedAt.minusMillis(1), ZoneId.systemDefault()));
+        patientRepository.saveAndFlush(patient);
+
+        mockMvc.perform(get("/auth/me").cookie(renewedCookie)).andExpect(status().isUnauthorized());
     }
 
     // responsavel com dois filhos (#152): a aba 1 ainda mostra a conta de A, a aba 2 saiu e entrou na de B

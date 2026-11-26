@@ -104,16 +104,18 @@ public class SecurityFilter extends OncePerRequestFilter {
             return false;
         }
 
-        // a sessao emitida antes da ultima troca de senha deixa de valer
+        // a sessao com login antes da ultima troca de senha deixa de valer
         // a troca grava um cookie novo logo em seguida e esse precisa continuar valendo
-        if (wasIssuedBefore(sessionToken, user.getPasswordChangedAt())) {
+        // conta o login e n a emissao: a renovacao feita no meio da troca, antes dela chegar no banco,
+        // nascia com emissao dps da marca e continuava valendo
+        if (loggedInBefore(sessionToken, user.getPasswordChangedAt())) {
             return false;
         }
 
-        // sair da conta derruba toda sessao emitida ate aquele momento
+        // sair da conta derruba toda sessao com login ate aquele momento, msm renovada dps
         // o mesmo milissegundo tbm cai pq o relogio anda de poucos em poucos ms
         // e um login seguido de saida podia marcar a mesma hora e a sessao continuava valendo
-        if (wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())) {
+        if (loggedInAtOrBefore(sessionToken, user.getSessionsEndedAt())) {
             return false;
         }
 
@@ -128,8 +130,8 @@ public class SecurityFilter extends OncePerRequestFilter {
     // a de antes da troca de senha, a encerrada pela saida da conta e a vencida continuam com o 401
     // generico, pq podem estar com outra pessoa. por isso a desativacao n encerra as sessoes, so a reativacao
     private boolean isOwnSessionOfDeactivatedAccount(SessionToken sessionToken, Users user) {
-        return !wasIssuedBefore(sessionToken, user.getPasswordChangedAt())
-                && !wasIssuedAtOrBefore(sessionToken, user.getSessionsEndedAt())
+        return !loggedInBefore(sessionToken, user.getPasswordChangedAt())
+                && !loggedInAtOrBefore(sessionToken, user.getSessionsEndedAt())
                 && !isPastMaxDuration(sessionToken);
     }
 
@@ -137,18 +139,18 @@ public class SecurityFilter extends OncePerRequestFilter {
         return sessionToken.loginAt().plus(tokenService.getSessionMaxDuration()).isBefore(Instant.now());
     }
 
-    private boolean wasIssuedBefore(SessionToken sessionToken, LocalDateTime moment) {
+    private boolean loggedInBefore(SessionToken sessionToken, LocalDateTime moment) {
         if (moment == null) {
             return false;
         }
-        return sessionToken.issuedAt().isBefore(toInstant(moment));
+        return sessionToken.loginAt().isBefore(toInstant(moment));
     }
 
-    private boolean wasIssuedAtOrBefore(SessionToken sessionToken, LocalDateTime moment) {
+    private boolean loggedInAtOrBefore(SessionToken sessionToken, LocalDateTime moment) {
         if (moment == null) {
             return false;
         }
-        return !sessionToken.issuedAt().isAfter(toInstant(moment));
+        return !sessionToken.loginAt().isAfter(toInstant(moment));
     }
 
     // o momento vem do banco sem fuso e o token guarda um instante
