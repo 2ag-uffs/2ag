@@ -109,6 +109,33 @@ describe("AcompanhamentoProtocolo", () => {
         expect(screen.queryByRole("button", {name: "Renovar acompanhamento"})).not.toBeInTheDocument();
     });
 
+    // decisao da dona (11/2026): encerrar a mao fecha as escalas do acompanhamento q esperavam resposta,
+    // e a janela diz isso antes de a prescritora confirmar
+    it("a confirmacao de encerrar avisa q as escalas abertas sao fechadas", async () => {
+        mockApiWithProtocol({
+            id: 1,
+            patientId: 5,
+            patientName: "Paciente Teste",
+            startDate: toIsoDate(addDays(new Date(), -60)),
+            endDate: toIsoDate(addDays(new Date(), 29)),
+            active: true,
+            items: [{scaleType: "ESCALA_HAMILTON", scaleName: "Escala de Hamilton", periodicity: "SEMANAL"}],
+        });
+        const put = vi.spyOn(apiService, "put").mockResolvedValue({});
+        renderPage();
+
+        await userEvent.click(await screen.findByRole("button", {name: "Encerrar acompanhamento"}));
+        expect(screen.getByText("O sistema para de enviar as escalas para este paciente e fecha na hora as do "
+            + "acompanhamento que ainda esperam resposta: ele não é mais cobrado por elas. O acompanhamento fica "
+            + "guardado como encerrado.")).toBeInTheDocument();
+        expect(put).not.toHaveBeenCalled();
+
+        await userEvent.click(screen.getByRole("button", {name: "Sim, encerrar"}));
+        expect(put).toHaveBeenCalledWith("/patients/5/treatment-protocol/end");
+        expect(await screen.findByText("Acompanhamento encerrado. O sistema para de enviar escalas para este "
+            + "paciente, e as do acompanhamento que esperavam resposta foram fechadas.")).toBeInTheDocument();
+    });
+
     // nos ultimos 7 dias, q eh qnd a prescritora recebe o aviso, a renovacao aparece ja preenchida com o
     // acompanhamento de agora e sai com um clique. o novo comeca hoje (revisao das regras R5)
     it("acompanhamento q termina nos proximos 7 dias mostra a renovacao ja preenchida", async () => {

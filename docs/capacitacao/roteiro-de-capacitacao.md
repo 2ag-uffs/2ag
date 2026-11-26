@@ -311,7 +311,7 @@ Janela normal, prescritora de treino, no histórico do paciente adulto.
   - A **Avaliação inicial** não entra no acompanhamento: ela é da triagem e é enviada uma vez só, pelo envio avulso.
   - No servidor de verdade, a prescritora recebe um aviso 7 dias antes do fim e outro no dia do fim. Nesses últimos 7 dias, e depois de encerrado, a tela mostra o formulário já preenchido com o último acompanhamento: confira e clique em **Renovar acompanhamento**.
 - **Se der errado:**
-  - *Este paciente já tem um acompanhamento em andamento. Encerre o atual antes de começar outro*: só cabe um por paciente. **Encerrar acompanhamento** e crie outro, ou espere os últimos 7 dias, quando a renovação aparece.
+  - *Este paciente já tem um acompanhamento em andamento. Encerre o atual antes de começar outro*: só cabe um por paciente. **Encerrar acompanhamento** e crie outro, ou espere os últimos 7 dias, quando a renovação aparece. Encerrar fecha na hora as escalas do acompanhamento que ainda esperavam resposta, e o novo manda as dele.
   - *Para renovar antes do fim, comece o acompanhamento novo hoje*: na renovação dos últimos 7 dias, deixe **Começa em** com a data de hoje.
   - *Escolha ao menos uma escala para o acompanhamento*: marque pelo menos uma.
   - Começando em outra data, a primeira rodada só sai pelas tarefas da manhã do dia de início, que não rodam na demonstração.

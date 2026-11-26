@@ -229,7 +229,8 @@ export default function AcompanhamentoProtocolo() {
         setFormError(null);
         try {
             await apiService.put("/patients/" + patientId + "/treatment-protocol/end");
-            setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente.");
+            setNotice("Acompanhamento encerrado. O sistema para de enviar escalas para este paciente, "
+                + "e as do acompanhamento que esperavam resposta foram fechadas.");
             load();
         } catch (requestError) {
             showFormError(errorMessageOf(requestError));
@@ -453,7 +454,9 @@ export default function AcompanhamentoProtocolo() {
             <ConfirmModal
                 show={isEndingOpen}
                 title="Encerrar acompanhamento"
-                message="O sistema para de enviar as escalas para este paciente. O acompanhamento fica guardado como encerrado."
+                message={"O sistema para de enviar as escalas para este paciente e fecha na hora as do acompanhamento "
+                    + "que ainda esperam resposta: ele não é mais cobrado por elas. O acompanhamento fica guardado "
+                    + "como encerrado."}
                 confirmText="Sim, encerrar"
                 cancelText="Manter ativo"
                 onConfirm={end}

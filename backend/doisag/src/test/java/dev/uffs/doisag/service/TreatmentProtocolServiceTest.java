@@ -93,6 +93,15 @@ class TreatmentProtocolServiceTest {
                 prescritora);
     }
 
+    // comeca hoje e manda a primeira rodada na hora: encerrar a mao fecha as rodadas no dia de vdd,
+    // entao os testes do encerramento n podem ter tarefa q so comeca amanha
+    private void criaProtocoloHoje(List<ProtocolItemDTO> itens) {
+        treatmentProtocolService.create(
+                paciente.getId(),
+                new TreatmentProtocolCreateDTO(LocalDate.now(), 90, null, null, itens),
+                prescritora);
+    }
+
     private ProtocolItemDTO item(ScaleType escala, Periodicity periodicidade) {
         return new ProtocolItemDTO(escala, escala.getDisplayName(), periodicidade);
     }
@@ -418,47 +427,116 @@ class TreatmentProtocolServiceTest {
         assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(3);
     }
 
-    // a rodada do anterior q ainda espera resposta vira a primeira do novo, sem repetir a escala
+    // decisao da dona (11/2026): encerrar a mao fecha na hora as rodadas do acompanhamento q ainda esperavam
+    // resposta, como a troca e o arquivamento, com o dia da interrupcao marcado. a q estava no prazo e fecha
+    // vazia ganha o dia e fica fora das vencidas e do indicador. a escala enviada a mao n eh do acompanhamento
+    // e continua. antes encerrar so parava as rodadas novas e as abertas seguiam sendo cobradas ate o prazo
     @Test
-    void aRodadaAbertaDoAnteriorNaoViraDuasPendencias() {
-        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL)));
-        treatmentProtocolService.designarEscalasVencidas(INICIO);
-        treatmentProtocolService.end(paciente.getId());
-        criaProtocolo(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL)));
+    void encerrarAMaoFechaAsRodadasAbertasDoAcompanhamento() {
+        LocalDate hoje = LocalDate.now();
+        criaProtocoloHoje(List.of(
+                item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
+                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        ScaleTask semanal = tarefaMaisNova(ScaleType.ACOMPANHAMENTO_SEMANAL);
+        ScaleTask pittsburgh = tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH);
+        ScaleTask avulsa = enviaAvulsa(ScaleType.ESCALA_HAMILTON, hoje);
 
-        assertThat(treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(2))).isEqualTo(1);
-        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(1);
+        treatmentProtocolService.end(paciente.getId());
+
+        for (ScaleTask rodada : List.of(semanal, pittsburgh)) {
+            assertThat(rodada.getStatus()).as(rodada.getScaleType().name()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+            assertThat(rodada.getPeriodEnd()).isEqualTo(hoje);
+            assertThat(rodada.getStoppedOn()).isEqualTo(hoje);
+            assertThat(rodada.getAnsweredAt()).isEqualTo(hoje);
+        }
+        assertThat(avulsa.getStatus()).isEqualTo(ScaleTaskStatus.PENDENTE);
+        assertThat(avulsa.getPeriodEnd()).isEqualTo(hoje.plusDays(6));
+        assertThat(avulsa.getStoppedOn()).isNull();
+        assertThat(taskRepository.findByPatientIdAndStatusOrderByPeriodEndAsc(paciente.getId(),
+                ScaleTaskStatus.PENDENTE))
+                .containsExactly(avulsa);
+        // amanha nada do acompanhamento vira escala vencida nem volta a ser enviado
+        assertThat(taskRepository.findLateWithoutAnswers(prescritora.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), hoje.plusDays(1),
+                PageRequest.of(0, 5)))
+                .isEmpty();
+        assertThat(scaleTaskService.closeOverdue(hoje.plusDays(1))).isZero();
+        assertThat(treatmentProtocolService.designarEscalasVencidas(hoje.plusDays(1))).isZero();
     }
 
-    // trocar o acompanhamento no meio da semana n deixa dia sem tarefa: a tarefa do anterior q ainda
-    // espera resposta vira a primeira rodada do novo e acaba junto com ela, pra mais ou pra menos.
-    // antes ela seguia com o prazo velho e a rodada seguinte so saia dias dps
+    // a rodada q ja tinha vencido antes de encerrar, com o job das 8h ainda sem rodar, foi atraso de vdd:
+    // fecha como no job, sem o dia marcado, e segue nas vencidas
+    @Test
+    void encerrarAMaoNaoPerdoaARodadaQueJaTinhaVencido() {
+        LocalDate hoje = LocalDate.now();
+        criaProtocoloHoje(List.of(item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
+        ScaleTask pittsburgh = tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH);
+        pittsburgh.setPeriodStart(hoje.minusDays(30));
+        pittsburgh.setPeriodEnd(hoje.minusDays(1));
+        taskRepository.save(pittsburgh);
+
+        treatmentProtocolService.end(paciente.getId());
+
+        assertThat(pittsburgh.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(pittsburgh.getPeriodEnd()).isEqualTo(hoje.minusDays(1));
+        assertThat(pittsburgh.getAnsweredAt()).isNull();
+        assertThat(taskRepository.findLateWithoutAnswers(prescritora.getId(),
+                List.of(ScaleTaskStatus.PENDENTE, ScaleTaskStatus.NAO_RESPONDIDA), hoje, PageRequest.of(0, 5)))
+                .containsExactly(pittsburgh);
+    }
+
+    // o acompanhamento criado dps de encerrar o anterior a mao manda a propria rodada: a do encerrado fechou
+    // e o paciente fica com uma pendencia so. a rodada aberta so vira a primeira do novo na renovacao dos
+    // ultimos 7 dias, q n passa pelo encerrar
+    @Test
+    void aRodadaAbertaDoEncerradoFechaEONovoMandaAPropria() {
+        LocalDate hoje = LocalDate.now();
+        criaProtocoloHoje(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL)));
+        ScaleTask rodadaAntiga = tarefaMaisNova(ScaleType.ESCALA_HAMILTON);
+        treatmentProtocolService.end(paciente.getId());
+        criaProtocoloHoje(List.of(item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL)));
+
+        assertThat(rodadaAntiga.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(taskRepository.findByPatientIdAndStatusOrderByPeriodEndAsc(paciente.getId(),
+                ScaleTaskStatus.PENDENTE))
+                .extracting(ScaleTask::getPeriodEnd)
+                .containsExactly(hoje.plusDays(6));
+        assertThat(quantasEnviadas(ScaleType.ESCALA_HAMILTON)).isEqualTo(2);
+    }
+
+    // encerrar e criar outro no meio da semana n deixa dia sem tarefa: as rodadas do encerrado fecham no dia
+    // e o novo manda as dele na hora, cada uma com o fim da propria rodada
     @Test
     void trocarOAcompanhamentoNoMeioDaSemanaNaoDeixaDiaSemTarefa() {
-        criaProtocolo(List.of(
-                item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
-                item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
-                item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL)));
-        LocalDate troca = INICIO.plusDays(4);
-        for (LocalDate dia = INICIO; !dia.isAfter(troca); dia = dia.plusDays(1)) {
+        LocalDate troca = LocalDate.now();
+        LocalDate comeco = troca.minusDays(4);
+        treatmentProtocolService.create(paciente.getId(),
+                new TreatmentProtocolCreateDTO(comeco, 90, null, null, List.of(
+                        item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
+                        item(ScaleType.ESCALA_HAMILTON, Periodicity.SEMANAL),
+                        item(ScaleType.ESCALA_PITTSBURGH, Periodicity.MENSAL))), prescritora);
+        for (LocalDate dia = comeco; !dia.isAfter(troca); dia = dia.plusDays(1)) {
             rodaOJobDoDia(dia);
         }
         ScaleTask hamiltonDaSemana = tarefaQueCobre(ScaleType.ESCALA_HAMILTON, troca);
         assertThat(hamiltonDaSemana.getReminderSentAt()).isNotNull();
 
         treatmentProtocolService.end(paciente.getId());
-        criaProtocolo(List.of(
+        criaProtocoloHoje(List.of(
                 item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL),
                 item(ScaleType.ESCALA_HAMILTON, Periodicity.MENSAL),
                 item(ScaleType.ESCALA_PITTSBURGH, Periodicity.SEMANAL)));
         rodaOJobDoDia(troca);
 
-        // a hamilton da semana virou a rodada mensal e o lembrete volta a valer pro prazo novo
-        assertThat(hamiltonDaSemana.getPeriodEnd()).isEqualTo(troca.plusDays(29));
-        assertThat(hamiltonDaSemana.getReminderSentAt()).isNull();
-        assertThat(tarefaQueCobre(ScaleType.ESCALA_PITTSBURGH, troca).getPeriodEnd()).isEqualTo(troca.plusDays(6));
+        // a hamilton da semana fechou no dia da troca e a rodada mensal do novo eh outra tarefa
+        assertThat(hamiltonDaSemana.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(hamiltonDaSemana.getPeriodEnd()).isEqualTo(troca);
+        assertThat(hamiltonDaSemana.getStoppedOn()).isEqualTo(troca);
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_HAMILTON).getPeriodEnd()).isEqualTo(troca.plusDays(29));
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_HAMILTON).getReminderSentAt()).isNull();
+        assertThat(tarefaMaisNova(ScaleType.ESCALA_PITTSBURGH).getPeriodEnd()).isEqualTo(troca.plusDays(6));
 
-        for (LocalDate dia = troca; dia.isBefore(INICIO.plusDays(75)); dia = dia.plusDays(1)) {
+        for (LocalDate dia = troca; dia.isBefore(troca.plusDays(75)); dia = dia.plusDays(1)) {
             rodaOJobDoDia(dia);
             TreatmentProtocol protocolo = protocolRepository.findFirstByPatientIdAndActiveTrue(paciente.getId())
                     .orElseThrow();
@@ -471,8 +549,10 @@ class TreatmentProtocolServiceTest {
                         .isEqualTo(item.getLastRoundEnd());
             }
         }
-        // lida de novo: o lembrete trava a tarefa e le ela de novo, entao a copia de cima ficou pra tras
-        assertThat(taskRepository.findById(hamiltonDaSemana.getId()).orElseThrow().getReminderSentAt()).isNotNull();
+        // a tarefa fechada pelo encerramento n volta a ser cobrada nem reaberta pelas rodadas do novo
+        ScaleTask fechada = taskRepository.findById(hamiltonDaSemana.getId()).orElseThrow();
+        assertThat(fechada.getStatus()).isEqualTo(ScaleTaskStatus.NAO_RESPONDIDA);
+        assertThat(fechada.getPeriodEnd()).isEqualTo(troca);
     }
 
     // a escala q o prescritor tirou do acompanhamento novo para de ser cobrada na hora: a rodada dela fecha
@@ -895,11 +975,10 @@ class TreatmentProtocolServiceTest {
 
     @Test
     void depoisDeEncerradoNaoDesignaMais() {
-        criaProtocolo(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
-        treatmentProtocolService.designarEscalasVencidas(INICIO);
+        criaProtocoloHoje(List.of(item(ScaleType.ACOMPANHAMENTO_SEMANAL, Periodicity.SEMANAL)));
         treatmentProtocolService.end(paciente.getId());
 
-        int designadas = treatmentProtocolService.designarEscalasVencidas(INICIO.plusDays(7));
+        int designadas = treatmentProtocolService.designarEscalasVencidas(LocalDate.now().plusDays(7));
 
         assertThat(designadas).isZero();
     }

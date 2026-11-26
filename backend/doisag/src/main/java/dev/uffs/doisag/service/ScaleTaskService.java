@@ -455,7 +455,8 @@ public class ScaleTaskService {
     }
 
     // a tarefa do acompanhamento cuja escala ficou de fora do acompanhamento q vale agora
-    // sem nenhum valendo segue a regra de sempre, pq encerrar so para de mandar rodada nova
+    // sem nenhum valendo n eh por aqui: a rodada q o encerramento a mao fechou ja ficou marcada em stoppedOn,
+    // e a do acompanhamento q acabou no prazo segue a regra de sempre
     // o lembrete dos dias em branco tbm usa: a semana q fechou na troca n cobra mais
     public boolean isRemovedFromProtocol(ScaleTask task) {
         if (!task.isFromProtocol()) {
@@ -588,8 +589,9 @@ public class ScaleTaskService {
     }
 
     // a escala q ficou de fora do acompanhamento novo para de ser cobrada na hora, como no arquivamento
+    // encerrar o acompanhamento a mao chama sem escala nenhuma pra manter, e fecha todas as rodadas dele
     // a avulsa n eh do acompanhamento e fica como esta
-    // quem chama ja travou o prescritor e o paciente
+    // quem chama ja travou o paciente (e o prescritor, qnd grava algo q aponta pra ele)
     @Transactional
     public int closeProtocolTasksNotIn(Long patientId, Set<ScaleType> keptScaleTypes) {
         LocalDate today = LocalDate.now();

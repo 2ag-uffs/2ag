@@ -247,9 +247,17 @@ public class TreatmentProtocolService {
                         "Nenhum acompanhamento em andamento para o paciente " + patientId));
     }
 
+    // encerrar a mao fecha na hora as rodadas q ainda esperavam resposta, como a troca e o arquivamento:
+    // o paciente n eh mais cobrado por um acompanhamento q acabou e elas n contam como atraso dele
+    // (decisao da dona, 11/2026). a escala avulsa e a avaliacao inicial n sao do acompanhamento e ficam
+    // o paciente eh travado antes de ler o acompanhamento e as tarefas, pra resposta ou a rodada do job
+    // q chega no mesmo instante esperar em vez de gravar por cima
     @Transactional
     public TreatmentProtocolResponseDTO end(Long patientId) {
-        return new TreatmentProtocolResponseDTO(endProtocol(findActiveProtocol(patientId)));
+        patientRepository.lockById(patientId);
+        TreatmentProtocol endedProtocol = endProtocol(findActiveProtocol(patientId));
+        scaleTaskService.closeProtocolTasksNotIn(patientId, Set.of());
+        return new TreatmentProtocolResponseDTO(endedProtocol);
     }
 
     // arquivar o paciente encerra o acompanhamento automatico q estiver andando
