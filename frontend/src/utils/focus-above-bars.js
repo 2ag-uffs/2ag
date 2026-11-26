@@ -7,7 +7,7 @@ const GAP = 12;
 // so contam as q cobrem o campo pelo lado e estao coladas no pe da janela, ou na barra q ja esta colada nele,
 // como a de acoes q para em cima do menu de baixo. a de acoes fora do lugar preso fica no fim do formulario,
 // embaixo de todos os campos, e a lateral fica do lado do formulario
-function coveredTopOf(fieldBox) {
+export function coveredTopOf(fieldBox) {
     const barBoxes = Array.from(document.querySelectorAll("[data-bottom-bar]"))
         .map((bar) => bar.getBoundingClientRect())
         .filter((barBox) => barBox.height > 0 && barBox.left < fieldBox.right && barBox.right > fieldBox.left);

@@ -31,6 +31,11 @@ function mockScreen(upcomingAppointments, freeSlots) {
     });
 }
 
+// a caixa q o navegador mediria, pq o jsdom n desenha a tela
+function box(top, bottom, left, right) {
+    return {top, bottom, left, right, height: bottom - top, width: right - left, x: left, y: top};
+}
+
 // a modalidade vem sem nada marcado e o paciente escolhe (decisao de 14/11/2026, revisao das regras R24)
 async function chooseFreeSlot(user, time, modality = "PRESENCIAL") {
     const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
@@ -241,6 +246,85 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(post).toHaveBeenCalledWith("/appointments/requests",
             expect.objectContaining({dateTime: FREE_SLOT.start, replacedRequestIds: []}));
         expect(await screen.findByRole("status")).toHaveTextContent("Pedido enviado para Dra Ana.");
+    });
+
+    // no celular o passo 3 aparecia embaixo da grade de horarios, fora da tela, e so o horario ficava verde:
+    // o paciente podia achar q o pedido ja tinha ido. a rolagem vai no quadro seguinte, dps da do foco
+    it("escolher um horario rola a tela ate o passo de confirmar o pedido e o foco fica no horario", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT, {start: "2026-10-21T15:00:00", end: "2026-10-21T16:00:00"}]);
+        // o jsdom n desenha a tela: a modalidade, o primeiro campo do passo, fica embaixo da janela de 768
+        vi.spyOn(HTMLSelectElement.prototype, "getBoundingClientRect").mockReturnValue(box(900, 944, 16, 344));
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
+        await nextFrame();
+        expect(scrollIntoView).not.toHaveBeenCalled();
+        await user.click(within(slots).getByRole("button", {name: "14:00"}));
+
+        const step = screen.getByRole("heading", {name: /Confirme o pedido/}).parentElement;
+        await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+        expect(scrollIntoView.mock.contexts[0]).toBe(step);
+        expect(scrollIntoView).toHaveBeenCalledWith({block: "start"});
+        expect(within(slots).getByRole("button", {name: "14:00"})).toHaveFocus();
+
+        // outro horario rola de novo, e tocar de novo no msm n mexe na tela
+        await user.click(within(slots).getByRole("button", {name: "15:00"}));
+        await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(2));
+        await user.click(within(slots).getByRole("button", {name: "15:00"}));
+        await nextFrame();
+        expect(scrollIntoView).toHaveBeenCalledTimes(2);
+        expect(within(slots).getByRole("button", {name: "15:00"})).toHaveFocus();
+    });
+
+    // no computador o passo 3 ja aparecia e a pagina pulava msm assim: o horario com foco saia por cima da janela
+    it("com o passo de confirmar ja na tela, escolher ou trocar o horario n rola a pagina", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT, {start: "2026-10-21T15:00:00", end: "2026-10-21T16:00:00"}]);
+        vi.spyOn(HTMLSelectElement.prototype, "getBoundingClientRect").mockReturnValue(box(560, 604, 16, 744));
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
+        await user.click(within(slots).getByRole("button", {name: "14:00"}));
+        expect(screen.getByRole("heading", {name: /Confirme o pedido/})).toBeInTheDocument();
+        await nextFrame();
+        await nextFrame();
+        await user.click(within(slots).getByRole("button", {name: "15:00"}));
+        await nextFrame();
+        await nextFrame();
+
+        expect(scrollIntoView).not.toHaveBeenCalled();
+        expect(within(slots).getByRole("button", {name: "15:00"})).toHaveFocus();
+    });
+
+    // a modalidade dentro da janela mas atras do menu de baixo do celular n aparece, entao a tela rola
+    it("com a modalidade atras do menu de baixo, escolher o horario rola ate o passo de confirmar", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT]);
+        vi.spyOn(HTMLSelectElement.prototype, "getBoundingClientRect").mockReturnValue(box(690, 734, 16, 344));
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        render(
+            <>
+                <AgendamentoConsultaPaciente/>
+                <nav aria-label="Menu" data-bottom-bar=""/>
+            </>,
+        );
+        vi.spyOn(screen.getByRole("navigation", {name: "Menu"}), "getBoundingClientRect")
+            .mockReturnValue(box(704, 768, 0, 360));
+        const user = userEvent.setup();
+
+        const slots = await screen.findByRole("group", {name: "Horários livres do dia"});
+        await user.click(within(slots).getByRole("button", {name: "14:00"}));
+
+        const step = screen.getByRole("heading", {name: /Confirme o pedido/}).parentElement;
+        await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+        expect(scrollIntoView.mock.contexts[0]).toBe(step);
     });
 
     // o botao ficava desabilitado e dps sumia, e o foco ia pro body: o tab seguinte saia da pagina (CT-39)

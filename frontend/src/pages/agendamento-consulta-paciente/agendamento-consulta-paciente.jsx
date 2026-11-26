@@ -24,6 +24,7 @@ import {
     minutesUntil,
     toIsoDate,
 } from "../../utils/date-format.js";
+import {coveredTopOf} from "../../utils/focus-above-bars.js";
 import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./agendamento-consulta-paciente.module.css";
 
@@ -154,6 +155,27 @@ export default function AgendamentoConsultaPaciente() {
             noticeRef.current.focus();
         }
     }, [notice]);
+
+    // no celular o passo 3 aparece embaixo da grade de horarios e fora da tela, entao a tela rola ate ele.
+    // sem rolagem suave, q respeita quem pede menos movimento, e o foco continua no horario.
+    // o toque da o foco pro horario e o useFocusAboveBars rola ate ele no proximo quadro, entao a rolagem
+    // do passo vai no quadro tbm, dps da dele. e so rola qnd a modalidade, o primeiro campo do passo, fica
+    // embaixo das barras ou fora da janela: com o passo ja na tela, como no computador, a pagina n pula
+    // e o horario com foco continua a vista
+    useEffect(() => {
+        if (!selectedSlot || !requestStepRef.current) {
+            return;
+        }
+        const step = requestStepRef.current;
+        const frame = requestAnimationFrame(() => {
+            const firstField = step.querySelector("select") || step;
+            const fieldBox = firstField.getBoundingClientRect();
+            if (fieldBox.bottom > coveredTopOf(fieldBox)) {
+                step.scrollIntoView({block: "start"});
+            }
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [selectedSlot, requestStepRef]);
 
     useEffect(() => {
         let isCurrentRequest = true;
