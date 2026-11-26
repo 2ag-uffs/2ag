@@ -46,6 +46,12 @@ html[data-loose-bars] {
     scroll-padding-top: 0;
 }
 
+/* a palavra q n cabe na linha, como um e-mail comprido, quebra em vez de empurrar a pagina pro lado.
+   so quebra o q passaria, entao o resto do texto fica igual */
+body {
+    overflow-wrap: break-word;
+}
+
 #root {
     display: flex;
     flex-direction: column;

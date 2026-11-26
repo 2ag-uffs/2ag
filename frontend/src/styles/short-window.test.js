@@ -15,6 +15,8 @@ const scaleFormCss = readCss(import.meta.url, "../components/scale-form/scale-fo
 const formSectionCss = readCss(import.meta.url, "../components/form-section/form-section.module.css");
 const anamnesisCss = readCss(import.meta.url, "../pages/anamnese/anamnese.module.css");
 const loginAgainCss = readCss(import.meta.url, "../components/login-again/login-again.module.css");
+const inputCss = readCss(import.meta.url, "./input.css");
+const scaleCss = readCss(import.meta.url, "../pages/escala/escala.module.css");
 
 // em q posicao do arquivo a regra aparece. a de baixo ganha da de cima qnd as duas valem
 function placeOf(cssText, media) {
@@ -118,5 +120,46 @@ describe("janela baixa", () => {
         expect(backdrop["align-items"]).toBeUndefined();
         expect(backdrop["justify-content"]).toBeUndefined();
         expect(declarationsOf(loginAgainCss, ".box").margin).toBe("auto");
+    });
+});
+
+// com a letra em 200% numa tela de 320 px os 11rem passavam da largura do cartao, a data do Pittsburgh ia de
+// x 65 a 346 e um e-mail comprido empurrava a pagina pro lado
+describe("tela estreita com a letra grande", () => {
+    it("as colunas dos formularios nunca pedem mais q a largura do cartao", () => {
+        [formSectionCss, anamnesisCss].forEach((css) => {
+            expect(declarationsOf(css, ".row")["grid-template-columns"])
+                .toBe("repeat(auto-fit, minmax(min(11rem, 100%), 1fr))");
+        });
+    });
+
+    it("o campo de texto encolhe ate a largura de quem esta em volta dele", () => {
+        const field = declarationsOf(inputCss, ":where(input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"range\"]))");
+
+        expect(field["max-width"]).toBe("100%");
+        expect(field["min-width"]).toBe("0");
+    });
+
+    // o campo de data pede a largura da data inteira: com 200% em 320 px o bloco dele ia ate x 346 e a pagina tinha 347
+    it("o bloco da data das escalas encolhe ate a largura do cartao", () => {
+        expect(declarationsOf(scaleCss, ".dateField")["min-width"]).toBe("0");
+    });
+
+    // um e-mail de 39 letras em negrito media 270 px com 254 px de espaco em 320
+    it("a palavra q n cabe na linha quebra em vez de empurrar a pagina pro lado", () => {
+        expect(declarationsOf(indexCss, "body")["overflow-wrap"]).toBe("break-word");
+    });
+
+    // o cartao do sim e do nao pede 5.8rem (6.1rem na letra do sistema). com a letra em 200% numa tela de 320 px
+    // as duas colunas tinham 87 px e o nao ia ate x 350, e com 150% em 320 px os dois cartoes ficavam um por cima do outro
+    it("o sim e o nao ficam um embaixo do outro so qnd os dois n cabem lado a lado", () => {
+        const columns = declarationsOf(scaleFormCss, ".yesNo")["grid-template-columns"];
+        expect(columns).toBe("repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr))");
+
+        // em 320 px a grade das opcoes tem 254 px com a letra padrao e 190 px com 200%, e o vao eh de 0.5rem
+        const columnRem = Number(columns.match(/([\d.]+)rem/)[1]);
+        expect(columnRem).toBeGreaterThan(6.1);
+        expect(2 * columnRem * 16 + 8).toBeLessThanOrEqual(254);
+        expect(2 * columnRem * 32 + 16).toBeGreaterThan(190);
     });
 });

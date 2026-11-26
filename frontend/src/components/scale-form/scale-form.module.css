@@ -290,9 +290,10 @@
     grid-auto-rows: 1fr;
 }
 
-/* sim e nao sao curtos e ficam lado a lado, do msm tamanho */
+/* sim e nao sao curtos e ficam lado a lado, do msm tamanho, e um embaixo do outro so qnd os dois n cabem,
+   como com a letra em 200% numa tela de 320 px. o cartao pede 5.8rem (6.1rem na letra do sistema), dai os 6.5rem */
 .yesNo {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr));
 }
 
 /* o label eh a area de toque e o cartao eh a caixa q se ve: o cartao estica ate encher o label */

@@ -318,8 +318,9 @@ describe("ScaleForm com as opcoes em cartoes", () => {
         const no = screen.getByRole("radio", {name: "Não"}).closest("label");
         expect(yes.parentElement).toBe(no.parentElement);
         expect(yes.parentElement.className).toContain("yesNo");
-        // duas colunas iguais na regra do proprio sim e nao, pq a grade das outras opcoes eh de uma coluna so
-        expect(declarationsOf(css, ".yesNo")["grid-template-columns"]).toBe("repeat(2, minmax(0, 1fr))");
+        // colunas iguais na regra do proprio sim e nao, pq a grade das outras opcoes eh de uma coluna so. qnd os
+        // dois n cabem lado a lado, como com a letra em 200% em 320 px, cada um fica numa linha
+        expect(declarationsOf(css, ".yesNo")["grid-template-columns"]).toBe("repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr))");
     });
 
     // em varias escalas a ajuda eh texto do proprio instrumento, entao tem o tamanho do texto da pagina

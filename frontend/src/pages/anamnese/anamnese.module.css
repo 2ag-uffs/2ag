@@ -50,10 +50,11 @@
     width: 100%;
 }
 
+/* com a letra grande 11rem passava da largura do cartao, por isso o min */
 .row {
     display: grid;
     gap: var(--space-3) var(--space-4);
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
 }
 
 /* os botoes ficam presos no pe da tela, porque a ficha eh comprida */

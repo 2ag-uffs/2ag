@@ -7,7 +7,10 @@
     color: var(--color-text-primary);
     font-family: inherit;
     font-size: var(--text-md);
+    /* o campo n fica mais largo q o lugar dele, com a letra grande tbm */
+    max-width: 100%;
     min-height: var(--control-height);
+    min-width: 0;
     padding: 0 var(--space-4);
     transition: border-color var(--duration-fast) var(--easing-standard),
         box-shadow var(--duration-fast) var(--easing-standard);

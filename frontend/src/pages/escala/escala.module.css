@@ -130,11 +130,14 @@
     padding: var(--space-4) var(--space-5);
 }
 
+/* sem o min-width o campo de data ficava com a largura q o navegador reserva pra data inteira:
+   com a letra em 200% numa tela de 320 px ia de x 65 a 346 e a pagina rolava pro lado */
 .dateField {
     display: flex;
     flex: 1 1 11rem;
     flex-direction: column;
     gap: var(--space-1);
+    min-width: 0;
 }
 
 .dateField label {
