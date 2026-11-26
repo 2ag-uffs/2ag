@@ -13,6 +13,14 @@ import "./styles/input.css";
 
 const root = createRoot(document.getElementById("root"));
 
+// a pagina guardada pelo navegador volta sem passar pela sessao
+// dps de Sair o voltar devolvia o perfil inteiro, com cpf e endereco, num celular q pode ser da familia toda
+window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
 // descobre quem esta logado antes de montar as rotas
 // as regras de acesso de cada rota dependem disso
 // sem resposta da api a tela diz q o servidor n respondeu, e o tentar de novo recarrega a mesma tela

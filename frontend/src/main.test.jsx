@@ -1,6 +1,7 @@
 import {screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {CONNECTION_ERROR_MESSAGE} from "./services/api.js";
+import {readCss} from "./test/css-rules.js";
 
 // o main.jsx pergunta pra api quem esta logado e so dps monta as telas
 // cada teste importa ele de novo numa pagina limpa, como um F5
@@ -14,6 +15,7 @@ async function openAppAt(path) {
 describe("abertura do app", () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
         document.body.innerHTML = "";
         window.history.replaceState(null, "", "/");
     });
@@ -53,6 +55,34 @@ describe("abertura do app", () => {
         expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
         expect(window.location.pathname).toBe("/agendamento-consulta");
         expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    });
+
+    // perfil aberto pelo endereco, outro endereco na msm aba, Sair e voltar: o navegador devolvia a pagina inteira
+    // guardada na memoria, com cpf e endereco, e a api ja dizendo 401
+    it("a pagina q o navegador devolve da memoria recarrega e passa pela sessao de novo", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({message: "Sessão expirada"}), {status: 401}));
+        await openAppAt("/perfil");
+        // espera o router terminar, senao ele ainda monta dps q o teste acaba e baixa a tela do teste seguinte
+        expect(await screen.findByLabelText("Senha", {}, {timeout: 5000})).toBeInTheDocument();
+        const reload = vi.fn();
+        vi.stubGlobal("location", {...window.location, reload});
+
+        window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted: false}));
+
+        expect(reload).not.toHaveBeenCalled();
+
+        window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted: true}));
+
+        expect(reload).toHaveBeenCalled();
+    }, 15000);
+
+    // o nginx tbm n deixa o navegador guardar o index, e as rotas do app chegam nele pelo try_files
+    it("o index sai do nginx sem ficar guardado no navegador", () => {
+        const nginx = readCss(import.meta.url, "../nginx.conf");
+        const indexBlock = nginx.slice(nginx.indexOf("location = /index.html {"));
+
+        expect(indexBlock.slice(0, indexBlock.indexOf("}"))).toContain("add_header Cache-Control \"no-store\" always;");
+        expect(nginx).toContain("try_files $uri $uri/ /index.html;");
     });
 
     it("sem sessao a api responde 401 e o login abre como sempre", async () => {
