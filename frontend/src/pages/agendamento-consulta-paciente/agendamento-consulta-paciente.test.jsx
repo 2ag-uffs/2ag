@@ -2,6 +2,7 @@ import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import AgendamentoConsultaPaciente from "./agendamento-consulta-paciente.jsx";
 
 const PATIENT = {id: 3, name: "Maria Souza", prescriberId: 5, prescriberName: "Dra Ana"};
@@ -472,5 +473,59 @@ describe("AgendamentoConsultaPaciente", () => {
         expect(within(slots).getByRole("button", {name: "09:00"})).toBeInTheDocument();
         expect(within(slots).queryByRole("button", {name: "08:00"})).not.toBeInTheDocument();
         expect(screen.getByText(/com pelo menos 24 horas de antecedência/)).toBeInTheDocument();
+    });
+
+    // o navegador n rola ate o dia q ja aparece um pouco na borda da faixa, e o tab deixava o dia com foco
+    // cortado, no celular embaixo do esmaecido
+    it("o tab ate um dia cortado na borda da faixa rola ela ate o dia aparecer inteiro", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([], [FREE_SLOT, {start: "2026-10-22T14:00:00", end: "2026-10-22T15:00:00"}]);
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        const strip = await screen.findByRole("group", {name: "Dias com horário livre"});
+        const [firstDay, secondDay] = within(strip).getAllByRole("button");
+        // como o navegador mediu no celular de 360: o segundo dia passa da borda da faixa
+        vi.spyOn(strip, "getBoundingClientRect").mockReturnValue(box(300, 360, 33, 343));
+        vi.spyOn(firstDay, "getBoundingClientRect").mockReturnValue(box(300, 356, 33, 163));
+        vi.spyOn(secondDay, "getBoundingClientRect").mockReturnValue(box(300, 356, 171, 360));
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+
+        // o dia q ja aparece inteiro n mexe na faixa
+        await user.click(firstDay);
+        expect(scrollIntoView).not.toHaveBeenCalled();
+        await user.tab();
+
+        expect(secondDay).toHaveFocus();
+        expect(scrollIntoView).toHaveBeenCalledTimes(1);
+        expect(scrollIntoView.mock.contexts[0]).toBe(secondDay);
+        expect(scrollIntoView).toHaveBeenCalledWith({block: "nearest", inline: "start"});
+    });
+});
+
+// a faixa tem uns 20 dias e no celular de 360 o terceiro comecava bem na borda, sem nada dizendo q tinha mais.
+// o jsdom n desenha a tela, entao a regra eh conferida no css
+describe("faixa de dias no celular", () => {
+    // o esmaecido de 2rem em cima da faixa apagava o fim do segundo dia no 360, abaixo de 4,5:1, e o dia com foco
+    // do tab parava embaixo dele. agora a faixa entra na folga do cartao e so essa ponta a mais esmaece
+    it("so a ponta q entra na folga do cartao some aos poucos, e o ultimo dia e o dia com foco ficam fora dela", () => {
+        const css = readCss(import.meta.url, "./agendamento-consulta-paciente.module.css");
+        const days = declarationsOf(mediaRules(css, "@media (max-width: 47.99rem)"), ".days");
+        const cardCss = readCss(import.meta.url, "../../components/card/card.module.css");
+        const tokens = declarationsOf(readCss(import.meta.url, "../../styles/tokens.css"), ":root");
+        const fade = "linear-gradient(to right, #000 calc(100% - var(--space-4)), transparent)";
+
+        // a ponta a mais eh do tamanho da folga do cartao no celular, entao n passa da borda dele
+        expect(declarationsOf(mediaRules(cardCss, "@media (max-width: 47.99rem)"), ".card").padding).toBe("var(--space-4)");
+        expect(days["margin-inline-end"]).toBe("calc(-1 * var(--space-4))");
+        expect(days["mask-image"]).toBe(fade);
+        expect(days["-webkit-mask-image"]).toBe(fade);
+        // o anel de foco sai 4 px do botao
+        expect(tokens["--focus-ring"]).toBe("0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary)");
+        expect(days["padding-inline-end"]).toBe("calc(var(--space-4) + 4px)");
+        expect(days["scroll-padding-inline-end"]).toBe("calc(var(--space-4) + 4px)");
+        // no computador a faixa fica como era
+        expect(declarationsOf(css, ".days")["mask-image"]).toBeUndefined();
+        expect(declarationsOf(css, ".days")["margin-inline-end"]).toBeUndefined();
     });
 });

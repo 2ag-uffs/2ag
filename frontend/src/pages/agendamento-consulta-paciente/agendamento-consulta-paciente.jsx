@@ -124,6 +124,24 @@ function slotCountText(count) {
     return count === 1 ? "1 horário" : count + " horários";
 }
 
+// o navegador n rola ate o dia q ja aparece um pouco na borda da faixa, entao o tab deixava o dia com foco
+// cortado e, no celular, embaixo do esmaecido, q eh o scroll-padding do fim da faixa no css.
+// alinha pelo comeco pq eh onde a faixa encaixa os dias, e o encaixe desfazia uma rolagem menor.
+// so pelo teclado: no toque a faixa n anda embaixo do dedo
+function showWholeDay(event) {
+    const day = event.currentTarget;
+    if (!day.matches(":focus-visible")) {
+        return;
+    }
+    const strip = day.parentElement;
+    const dayBox = day.getBoundingClientRect();
+    const stripBox = strip.getBoundingClientRect();
+    const fadeWidth = parseFloat(getComputedStyle(strip).scrollPaddingInlineEnd) || 0;
+    if (dayBox.left < stripBox.left || dayBox.right > stripBox.right - fadeWidth) {
+        day.scrollIntoView({block: "nearest", inline: "start"});
+    }
+}
+
 // consultas do paciente (RF10)
 // o paciente pede um horario livre na agenda do prescritor e acompanha os pedidos e as consultas marcadas
 export default function AgendamentoConsultaPaciente() {
@@ -391,6 +409,7 @@ export default function AgendamentoConsultaPaciente() {
                                             className={dayIso === currentDay ? styles.dayButtonSelected : styles.dayButton}
                                             aria-pressed={dayIso === currentDay}
                                             onClick={() => chooseDay(dayIso)}
+                                            onFocus={showWholeDay}
                                         >
                                             <span className={styles.weekday}>{formatWeekdayAndDate(dayIso)}</span>
                                             <span className={styles.slotCount}>
