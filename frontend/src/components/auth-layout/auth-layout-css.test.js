@@ -11,4 +11,9 @@ describe("moldura das telas de entrada", () => {
         expect(declarationsOf(css, ".content")["min-width"]).toBe("0");
         expect(declarationsOf(css, ".logo")["max-width"]).toBe("min(11rem, 100%)");
     });
+
+    // a imagem traz 611 x 149 pra guardar o lugar: sem o height auto ela ficaria com 149 px de altura e esticada
+    it("o logotipo segue a proporcao do desenho na largura q cabe", () => {
+        expect(declarationsOf(css, ".logo").height).toBe("auto");
+    });
 });

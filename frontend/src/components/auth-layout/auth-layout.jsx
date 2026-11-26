@@ -5,21 +5,23 @@ import styles from "./auth-layout.module.css";
 export default function AuthLayout({title, children}) {
     return (
         <div className={styles.layout}>
+            {/* lazy: no celular a arte fica escondida e o navegador n baixa as imagens dela */}
             <section className={styles.art} aria-hidden="true">
-                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerTopLeft}/>
-                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerTopRight}/>
-                <img src="/images/logotipo-vertical-claro.svg" alt="" className={styles.artLogo}/>
-                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerBottomLeft}/>
-                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerBottomRight}/>
+                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerTopLeft} loading="lazy"/>
+                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerTopRight} loading="lazy"/>
+                <img src="/images/logotipo-vertical-claro.svg" alt="" className={styles.artLogo} loading="lazy"/>
+                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerBottomLeft} loading="lazy"/>
+                <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.cornerBottomRight} loading="lazy"/>
             </section>
 
             <main className={styles.content}>
                 <div className={styles.card}>
-                    {/* so uma das duas aparece: a verde no tema claro e a de palha no escuro (styles/colors.css) */}
-                    <img src="/images/logotipo-horizontal.svg" alt="2AG Cannabis Medicinal"
-                         className={"logo-on-light " + styles.logo}/>
-                    <img src="/images/logotipo-horizontal-claro.svg" alt="2AG Cannabis Medicinal"
-                         className={"logo-on-dark " + styles.logo}/>
+                    {/* so uma das duas aparece: a verde no tema claro e a de palha no escuro (styles/colors.css)
+                        a largura e a altura do desenho guardam o lugar dela na internet lenta e a escondida n eh baixada */}
+                    <img src="/images/logotipo-horizontal.svg" alt="2AG Cannabis Medicinal" width="611" height="149"
+                         loading="lazy" className={"logo-on-light " + styles.logo}/>
+                    <img src="/images/logotipo-horizontal-claro.svg" alt="2AG Cannabis Medicinal" width="611" height="149"
+                         loading="lazy" className={"logo-on-dark " + styles.logo}/>
                     <h1 className={styles.title}>{title}</h1>
                     {children}
                 </div>
