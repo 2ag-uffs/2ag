@@ -75,7 +75,7 @@ export default function ExportModal({patientId, printPath, canDeidentify, hasRes
                                         + "observação, sai como foi escrito e pode citar nomes. Pela LGPD o arquivo "
                                         + "continua sendo dado de saúde: guarde e envie com o mesmo cuidado do prontuário."
                                     : "O paciente não aceitou participar da pesquisa, então o arquivo sem "
-                                        + "identificação não sai. Ele pode aceitar no perfil dele."}
+                                        + "identificação não sai. Só paciente maior de idade pode aceitar, no perfil dele."}
                             </span>
                         </span>
                     </label>

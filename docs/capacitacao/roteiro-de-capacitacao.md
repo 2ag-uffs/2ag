@@ -384,7 +384,7 @@ Janela normal, Ana Lima.
   - Os arquivos são **Consultas**, **Prescrições**, **Escalas respondidas** e **Anamnese**. Cada um abre direto numa planilha.
   - No modo sem identificação, nome, CPF, e-mail, telefone e endereço ficam de fora, e paciente e prescritor aparecem só por um número.
   - **Esse modo não é anônimo.** A clínica sabe de quem é cada número, as datas saem como estão e o texto livre, como queixa e observação, sai como foi escrito e pode citar nomes. Pela LGPD o arquivo continua sendo dado de saúde: guarde e envie com o mesmo cuidado do prontuário.
-  - Na Maria Souza a caixa fica desligada: ela não aceitou participar da pesquisa, então o arquivo sem identificação não sai. O paciente pode aceitar no **Perfil** dele.
+  - Na Maria Souza a caixa fica desligada: ela não aceitou participar da pesquisa, então o arquivo sem identificação não sai. Só paciente maior de idade pode aceitar, no **Perfil** dele.
   - A série de um gráfico sai na tela **Progresso**, em **Baixar esta série em CSV**, com a caixa **Baixar o CSV sem identificação, para pesquisa**.
   - A versão para impressão traz **Prescrição em uso** e **Anamnese mais recente** mesmo quando a receita e a ficha são de antes do período escolhido, com a data de cada uma.
   - O paciente que baixa os próprios arquivos recebe **Escalas respondidas** sem o Mini-Exame. Quando o paciente ou o responsável pede o prontuário inteiro (LGPD, art. 18), o prescritor baixa ou imprime por aqui, com o exame.
