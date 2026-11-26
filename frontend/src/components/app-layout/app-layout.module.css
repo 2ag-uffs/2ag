@@ -347,7 +347,9 @@
         color: var(--color-on-brand-surface);
         display: flex;
         justify-content: space-between;
-        min-height: var(--mobile-header-height);
+        /* com o entalhe em cima o cabecalho cresce junto, igual o top do contador das escalas, e n fica fresta
+           entre os dois */
+        min-height: calc(var(--mobile-header-height) + env(safe-area-inset-top));
         /* 4 + 44 + 4 cabem nos 56 px do cabecalho, entao o contador das escalas preso embaixo dele n sai do lugar */
         padding: calc(var(--space-1) + env(safe-area-inset-top)) var(--space-3) var(--space-1);
         position: sticky;
@@ -355,15 +357,20 @@
         z-index: var(--layer-nav);
     }
 
+    /* os icones n sao texto, entao n crescem com a letra: com a letra em 200% o tema ia pra baixo da logo */
+    .mobileHeader .iconButton,
     .headerSpacer {
-        width: var(--control-height);
+        font-size: 20px;
+        height: 44px;
+        width: 44px;
     }
 
     /* centralizada de verdade: assim os botoes da direita podem crescer sem
-       empurrar a logo pro lado */
+       empurrar a logo pro lado. o toque passa por ela */
     .mobileLogo {
-        height: 2rem;
+        height: 32px;
         left: 50%;
+        pointer-events: none;
         position: absolute;
         transform: translateX(-50%);
     }

@@ -50,8 +50,11 @@ describe("alvos de toque", () => {
         expect(icon.height).toBe(TARGET);
         expect(icon.width).toBe(TARGET);
         expect(declarationsOf(mobile, ".headerActions").gap).toBe("var(--space-2)");
+        // no cabecalho do celular os 44 px sao em px, pq com a letra grande o tema ia pra baixo da logo
+        expect(declarationsOf(mobile, ".mobileHeader .iconButton").width).toBe("44px");
+        expect(declarationsOf(mobile, ".mobileHeader .iconButton").height).toBe("44px");
         // o espaco vazio da esquerda tem a largura do voltar, pra logo n pular qnd ele aparece
-        expect(declarationsOf(mobile, ".headerSpacer").width).toBe(TARGET);
+        expect(declarationsOf(mobile, ".headerSpacer").width).toBe("44px");
     });
 
     // em px com a letra padrao de 16 px
@@ -60,7 +63,7 @@ describe("alvos de toque", () => {
         const header = declarationsOf(mediaRules(layoutCss, MOBILE), ".mobileHeader");
         const gap = parseFloat(root["--space-1"]) * 16;
 
-        expect(header["min-height"]).toBe("var(--mobile-header-height)");
+        expect(header["min-height"]).toBe("calc(var(--mobile-header-height) + env(safe-area-inset-top))");
         expect(header.padding).toBe("calc(var(--space-1) + env(safe-area-inset-top)) var(--space-3) var(--space-1)");
         expect(gap + parseFloat(root["--control-height"]) * 16 + gap)
             .toBeLessThanOrEqual(parseFloat(root["--mobile-header-height"]) * 16);
