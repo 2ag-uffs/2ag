@@ -64,6 +64,19 @@ describe("telas do prescritor", () => {
         expect(declarationsOf(cssWithoutMedia(availabilityCss), ".period").display).toBe("flex");
     });
 
+    // a nota do cartao de pacientes ativos eh texto de apoio: cor de texto secundario, q passa de 4.5:1
+    // no fundo do cartao nos dois temas
+    it("a nota do cartao do painel tem contraste de texto nos dois temas", () => {
+        const note = declarationsOf(dashboardCss, ".statNote");
+        const tile = declarationsOf(dashboardCss, ".stat");
+
+        expect(note["font-size"]).toBe("var(--text-xs)");
+        Object.entries(THEMES).forEach(([themeName, theme]) => {
+            const contrast = contrastOf(colorIn(theme, note.color), colorIn(theme, tile["background-color"]));
+            expect(contrast, themeName).toBeGreaterThanOrEqual(4.5);
+        });
+    });
+
     it("os cinco numeros do painel cabem numa linha, e em duas colunas o q sobra sozinho ocupa a linha toda", () => {
         const five = "repeat(5, minmax(0, 1fr))";
         const dashboardNarrow = mediaRules(dashboardCss, NARROW);

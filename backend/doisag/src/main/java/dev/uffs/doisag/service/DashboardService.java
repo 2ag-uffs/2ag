@@ -63,6 +63,8 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public PrescriberDashboardDTO getPrescriberDashboard(Long prescriberId) {
         long activePatients = patientRepository.countByPrescriberIdAndArchivedAtIsNull(prescriberId);
+        long deactivatedAccountPatients = patientRepository
+                .countByPrescriberIdAndArchivedAtIsNullAndActiveFalse(prescriberId);
         long unreadNotifications = notificationRepository.countUnread(prescriberId);
         LocalDate today = LocalDate.now();
 
@@ -97,8 +99,8 @@ public class DashboardService {
                 .toList();
         long lateScalesTotal = taskRepository.countLateWithoutAnswers(prescriberId, lateStatuses, today);
 
-        return new PrescriberDashboardDTO(activePatients, unreadNotifications, todaysAppointments, waitingRequests,
-                lateScales, waitingRequestsTotal, lateScalesTotal);
+        return new PrescriberDashboardDTO(activePatients, deactivatedAccountPatients, unreadNotifications,
+                todaysAppointments, waitingRequests, lateScales, waitingRequestsTotal, lateScalesTotal);
     }
 
     @Transactional

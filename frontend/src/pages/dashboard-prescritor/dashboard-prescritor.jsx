@@ -91,10 +91,25 @@ export default function DashboardPrescritor() {
     );
 }
 
+// o cartao conta todo paciente fora do arquivo e os Indicadores so quem tem a conta ativa
+// a nota diz quantos sao a diferenca, so qnd ha algum (decisao da dona do projeto, novembro de 2026)
+function deactivatedNoteOf(deactivatedCount) {
+    if (!deactivatedCount) {
+        return null;
+    }
+    return deactivatedCount + " com a conta desativada";
+}
+
 // as listas vem com no maximo cinco entao o numero eh sempre o total q a api manda
 function statsOf(panel) {
     return [
-        {label: "Pacientes ativos", value: panel.activePatients, icon: FiUsers, path: "/lista-paciente"},
+        {
+            label: "Pacientes ativos",
+            value: panel.activePatients,
+            icon: FiUsers,
+            path: "/lista-paciente",
+            note: deactivatedNoteOf(panel.deactivatedAccountPatients),
+        },
         {label: "Consultas hoje", value: panel.todaysAppointments.length, icon: FiCalendar, path: "/agendamento-prescritor"},
         {
             label: "Pedidos esperando",
@@ -129,6 +144,7 @@ function StatTile({stat}) {
             <span className={styles.statIcon}><Icon/></span>
             <span className={styles.statNumber}>{stat.value}</span>
             <span className={styles.statLabel}>{stat.label}</span>
+            {stat.note && <span className={styles.statNote}>{stat.note}</span>}
         </>
     );
 

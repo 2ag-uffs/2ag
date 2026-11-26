@@ -78,6 +78,13 @@ button.statAttention:hover {
     font-weight: 500;
 }
 
+/* a nota do cartao, tipo quantos dos pacientes ativos estao com a conta desativada */
+.statNote {
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+}
+
 /* ---- cartoes ---- */
 
 .grid {

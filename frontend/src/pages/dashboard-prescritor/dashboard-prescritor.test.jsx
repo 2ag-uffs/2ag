@@ -61,6 +61,24 @@ describe("DashboardPrescritor", () => {
         expect(screen.getByText("Mostrando 5 de 12.")).toBeInTheDocument();
     });
 
+    // o cartao conta quem esta fora do arquivo e os Indicadores so quem tem a conta ativa: a nota diz a
+    // diferenca no proprio cartao (decisao da dona do projeto, novembro de 2026)
+    it("o cartao de pacientes ativos diz quantos estao com a conta desativada", async () => {
+        apiService.get.mockResolvedValue({...PANEL, activePatients: 4, deactivatedAccountPatients: 1});
+        renderPanel();
+
+        const tile = await screen.findByRole("button", {name: /Pacientes ativos/});
+        expect(tile).toHaveTextContent("4Pacientes ativos1 com a conta desativada");
+    });
+
+    it("sem conta desativada o cartao de pacientes ativos n tem nota", async () => {
+        apiService.get.mockResolvedValue({...PANEL, deactivatedAccountPatients: 0});
+        renderPanel();
+
+        expect(await screen.findByRole("button", {name: /Pacientes ativos/})).toHaveTextContent(/^20Pacientes ativos$/);
+        expect(screen.queryByText(/com a conta desativada/)).not.toBeInTheDocument();
+    });
+
     it("o cartao de pedidos leva pra agenda, q tem a lista inteira", async () => {
         renderPanel();
 

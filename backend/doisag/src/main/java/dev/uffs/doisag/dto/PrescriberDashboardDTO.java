@@ -13,6 +13,9 @@ import java.util.List;
 // hoje, os pedidos q esperam resposta e as escalas q venceram
 public record PrescriberDashboardDTO(
         long activePatients,
+        // dos ativos, quantos estao com a conta desativada: os indicadores n contam esses, entao o cartao
+        // do painel diz quantos sao (decisao da dona do projeto, novembro de 2026)
+        long deactivatedAccountPatients,
         // o prescritor n tem contador de aviso em outro lugar e evento tipo
         // consulta cancelada pelo paciente so aparece na tela de avisos
         long unreadNotifications,

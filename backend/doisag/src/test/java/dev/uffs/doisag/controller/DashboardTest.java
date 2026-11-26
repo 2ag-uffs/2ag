@@ -534,6 +534,37 @@ class DashboardTest {
                 .andExpect(status().isOk());
     }
 
+    // o cartao conta todo paciente fora do arquivo e os indicadores so quem tem a conta ativa: o painel manda
+    // a diferenca pra tela explicar numa nota (decisao da dona do projeto, novembro de 2026)
+    @Test
+    void oPainelDizQuantosDosPacientesAtivosEstaoComAContaDesativada() throws Exception {
+        prescriberPanel()
+                .andExpect(jsonPath("$.activePatients").value(1))
+                .andExpect(jsonPath("$.deactivatedAccountPatients").value(0));
+
+        Patient deactivated = savePanelPatient("Paciente com a conta desativada", "painel-desativado@email.com");
+        deactivated.setActive(false);
+        patientRepository.save(deactivated);
+        // o arquivado n entra nos ativos, entao tbm n entra na nota, mesmo com a conta desativada
+        Patient archived = savePanelPatient("Paciente arquivado e desativado", "painel-arquivado@email.com");
+        archived.setActive(false);
+        archived.setArchivedAt(TODAY.minusDays(3).atTime(10, 0));
+        patientRepository.save(archived);
+
+        prescriberPanel()
+                .andExpect(jsonPath("$.activePatients").value(2))
+                .andExpect(jsonPath("$.deactivatedAccountPatients").value(1));
+    }
+
+    private Patient savePanelPatient(String name, String email) {
+        Patient other = new Patient();
+        other.setName(name);
+        other.setEmail(email);
+        other.setPassword("hash");
+        other.setPrescriber(prescriber);
+        return patientRepository.save(other);
+    }
+
     private org.springframework.test.web.servlet.ResultActions prescriberPanel() throws Exception {
         return mockMvc.perform(get("/dashboard/prescriber/" + prescriber.getId())
                         .header("Authorization", bearerTokenOf(prescriber)))
