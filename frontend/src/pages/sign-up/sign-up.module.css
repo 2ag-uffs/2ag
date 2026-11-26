@@ -93,23 +93,24 @@
     padding: var(--space-3) var(--space-4);
 }
 
+/* a margem de baixo afasta a frase do botao de ler o termo: com o gap do bloco sao 24 px, entao o dedo q erra o
+   botao uns 12 px pra cima fica mais perto dele q da frase e n marca a caixa */
 .consentLabel {
     align-items: flex-start;
     cursor: pointer;
     display: flex;
     gap: var(--space-3);
     line-height: 1.4;
+    margin-bottom: var(--space-4);
 }
 
 /* a pesquisa eh opcional e fica mais discreta q o aceite do termo */
-.researchLabel {
-    align-items: flex-start;
+.research {
     color: var(--color-text-secondary);
-    cursor: pointer;
     display: flex;
+    flex-direction: column;
     font-size: var(--text-sm);
-    gap: var(--space-3);
-    line-height: 1.4;
+    gap: var(--space-2);
     padding: 0 var(--space-4);
 }
 
@@ -121,23 +122,12 @@
     width: 1.25rem;
 }
 
-/* botao com cara de link no meio da frase */
-.termButton {
-    background-color: transparent;
-    border: none;
-    color: var(--color-primary);
-    display: inline;
-    font: inherit;
-    font-weight: 600;
-    min-height: 0;
-    padding: 0;
-    text-decoration: underline;
-    text-underline-offset: 0.15em;
-}
-
-.termButton:hover {
-    background-color: transparent;
-    color: var(--color-primary-dark);
+/* ler o termo embaixo da frase, com os 44 px do botao e a letra da frase
+   a caixa tem 1.25rem e a folga do botao eh a msm do gap do rotulo, entao o texto dele comeca junto com o da frase */
+.readTermButton {
+    align-self: flex-start;
+    font-size: inherit;
+    margin-left: 1.25rem;
 }
 
 .consentError {

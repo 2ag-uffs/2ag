@@ -69,7 +69,7 @@ const MINOR_EMAIL_HINT = "Cada paciente precisa de um e-mail próprio, mesmo que
 const SIGN_UP_REFUSED_MESSAGE = "Não foi possível criar a conta com esses dados. Confira o e-mail e o CPF. "
     + "Se você já tem conta, entre pela tela de login, que também tem o Esqueci minha senha";
 
-// texto do aceite antes e depois do botao q abre o termo
+// texto do aceite antes e depois das palavras termo de consentimento
 const CONSENT_LABELS = {
     "adult": {
         before: "Li e aceito o",
@@ -590,6 +590,7 @@ export default function SignUp() {
                     />
                 </fieldset>
 
+                {/* o botao de ler fica fora do rotulo: o dedo q errava o botao por pouco marcava a caixa sem abrir o texto */}
                 <div className={styles.consent}>
                     <label className={styles.consentLabel}>
                         <input
@@ -602,13 +603,13 @@ export default function SignUp() {
                             aria-describedby={fieldErrors.consentTermVersion ? "consentTermVersion-error" : undefined}
                         />
                         <span>
-                            {CONSENT_LABELS[ageBand].before}{" "}
-                            <button type="button" className={styles.termButton} onClick={() => setIsTermOpen(true)}>
-                                termo de consentimento
-                            </button>
-                            {" "}{CONSENT_LABELS[ageBand].after}
+                            {CONSENT_LABELS[ageBand].before} termo de consentimento {CONSENT_LABELS[ageBand].after}
                         </span>
                     </label>
+                    <button type="button" className={"button-tertiary " + styles.readTermButton}
+                            onClick={() => setIsTermOpen(true)}>
+                        Ler o termo de consentimento
+                    </button>
                     {fieldErrors.consentTermVersion && (
                         <span id="consentTermVersion-error" className={styles.consentError}>
                             {fieldErrors.consentTermVersion}
@@ -617,22 +618,25 @@ export default function SignUp() {
                 </div>
 
                 {!isMinor && (
-                    <label className={styles.researchLabel}>
-                        <input
-                            type="checkbox"
-                            name="researchTermVersion"
-                            className={styles.consentCheckbox}
-                            checked={acceptsResearch}
-                            onChange={(event) => setAcceptsResearch(event.target.checked)}
-                        />
-                        <span>
-                            Aceito participar da pesquisa da clínica com os meus dados sem identificação. É opcional e
-                            não muda o atendimento.{" "}
-                            <button type="button" className={styles.termButton} onClick={() => setIsResearchOpen(true)}>
-                                Ler o termo de pesquisa
-                            </button>
-                        </span>
-                    </label>
+                    <div className={styles.research}>
+                        <label className={styles.consentLabel}>
+                            <input
+                                type="checkbox"
+                                name="researchTermVersion"
+                                className={styles.consentCheckbox}
+                                checked={acceptsResearch}
+                                onChange={(event) => setAcceptsResearch(event.target.checked)}
+                            />
+                            <span>
+                                Aceito participar da pesquisa da clínica com os meus dados sem identificação. É opcional
+                                e não muda o atendimento.
+                            </span>
+                        </label>
+                        <button type="button" className={"button-tertiary " + styles.readTermButton}
+                                onClick={() => setIsResearchOpen(true)}>
+                            Ler o termo de pesquisa
+                        </button>
+                    </div>
                 )}
 
                 <BusyButton type="submit" className={styles.submitButton} isBusy={isSubmitting}

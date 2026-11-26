@@ -130,7 +130,7 @@ describe("SignUp", () => {
             .toBeInTheDocument();
         expect(screen.queryByRole("checkbox", {name: /pesquisa/})).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        fireEvent.click(screen.getByRole("button", {name: "Ler o termo de consentimento"}));
         expect(screen.getByRole("button", {name: "Li e aceito como responsável"})).toBeInTheDocument();
     });
 
@@ -149,9 +149,58 @@ describe("SignUp", () => {
         expect(screen.queryByRole("checkbox", {name: /Sou o responsável legal/})).not.toBeInTheDocument();
         expect(screen.queryByRole("checkbox", {name: /pesquisa/})).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        fireEvent.click(screen.getByRole("button", {name: "Ler o termo de consentimento"}));
         fireEvent.click(screen.getByRole("button", {name: "Lemos e aceitamos"}));
         expect(screen.getByRole("checkbox", {name: /lemos e aceitamos/})).toBeChecked();
+    });
+
+    // o botao de ler ficava dentro do rotulo, e o dedo q errava ele por pouco marcava a caixa sem abrir o texto.
+    // na pesquisa isso era entrar nela sem querer
+    it("os botoes de ler os termos ficam fora do rotulo, abrem o texto e n mexem na caixa", async () => {
+        mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        const readConsent = await screen.findByRole("button", {name: "Ler o termo de consentimento"});
+        const readResearch = screen.getByRole("button", {name: "Ler o termo de pesquisa"});
+        const consent = screen.getByRole("checkbox", {name: /termo de consentimento/});
+        const research = screen.getByRole("checkbox", {name: /pesquisa/});
+        expect(readConsent.closest("label")).toBeNull();
+        expect(readResearch.closest("label")).toBeNull();
+        expect(readConsent).toHaveClass("button-tertiary");
+        expect(readResearch).toHaveClass("button-tertiary");
+
+        await user.click(readConsent);
+        expect(screen.getByRole("dialog", {name: "Termo de consentimento"})).toHaveTextContent("Texto do termo");
+        await user.click(screen.getByRole("button", {name: "Fechar"}));
+        await user.click(readResearch);
+        expect(screen.getByRole("dialog", {name: "Termo de pesquisa"})).toHaveTextContent("Texto da pesquisa");
+        await user.click(screen.getByRole("button", {name: "Fechar"}));
+        expect(consent).not.toBeChecked();
+        expect(research).not.toBeChecked();
+
+        // a frase continua marcando a caixa
+        await user.click(screen.getByText(/Li e aceito o termo de consentimento para o uso/));
+        await user.click(screen.getByText(/Aceito participar da pesquisa da clínica/));
+        expect(consent).toBeChecked();
+        expect(research).toBeChecked();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // com a frase a 8 px do botao, o dedo q errava o botao uns 6 px pra cima caia na frase e marcava a caixa.
+    // com 16 px, o toque 12 px acima do botao ficava a 4 px da frase e o chrome do celular ainda entregava pra ela
+    it("a frase fica afastada do botao de ler, q o toque um pouco acima dele n marca a caixa", () => {
+        const css = readCss(import.meta.url, "./sign-up.module.css");
+        const tokens = declarationsOf(readCss(import.meta.url, "../../styles/tokens.css"), ":root");
+        // var(--space-4) vira 1, em rem
+        const remOf = (value) => parseFloat(tokens[value.slice(4, -1)]);
+        const margin = declarationsOf(css, ".consentLabel")["margin-bottom"];
+
+        expect(margin).toBe("var(--space-4)");
+        // a margem e o gap do bloco somam pelo menos 24 px, entao o toque 12 px acima do botao fica a 12 px da frase
+        [".consent", ".research"].forEach((block) => {
+            expect((remOf(margin) + remOf(declarationsOf(css, block).gap)) * 16).toBeGreaterThanOrEqual(2 * 12);
+        });
     });
 
     // trocar de faixa troca qm marca o aceite, entao a marcacao antiga n vale
@@ -315,7 +364,7 @@ describe("SignUp", () => {
 
         expect(await screen.findByText(OUTDATED_TERM_MESSAGE)).toBeInTheDocument();
         expect(screen.getByRole("checkbox", {name: /termo de consentimento/})).not.toBeChecked();
-        await user.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        await user.click(screen.getByRole("button", {name: "Ler o termo de consentimento"}));
         expect(screen.getByText("Texto do termo termo-2")).toBeInTheDocument();
         await user.click(screen.getByRole("button", {name: "Li e aceito"}));
         await user.click(screen.getByRole("button", {name: "Criar conta"}));
@@ -346,7 +395,7 @@ describe("SignUp", () => {
             consentTermVersion: "termo-1", consentTermHash: "hash de Texto do termo com contato-a",
         }));
         expect(screen.getByRole("checkbox", {name: /termo de consentimento/})).not.toBeChecked();
-        await user.click(screen.getByRole("button", {name: "termo de consentimento"}));
+        await user.click(screen.getByRole("button", {name: "Ler o termo de consentimento"}));
         expect(screen.getByText("Texto do termo com contato-b")).toBeInTheDocument();
     }, TYPING_TIMEOUT);
 
