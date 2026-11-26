@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.AppointmentResponseDTO;
 import dev.uffs.doisag.dto.ConsultationRecordDTO;
+import dev.uffs.doisag.infra.RepeatedSendMemory;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.service.ConsultationService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 // registro clinico da consulta (RF04)
@@ -27,12 +29,16 @@ public class ConsultationController {
         this.consultationService = consultationService;
     }
 
+    // o envio repetido com a mesma chave recebe a consulta q ja foi gravada (decisao de novembro/2026)
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccess(#patientId, authentication)")
     @PostMapping("/patients/{patientId}/appointments")
     public ResponseEntity<AppointmentResponseDTO> register(@PathVariable Long patientId,
                                                            @RequestBody @Valid ConsultationRecordDTO recordData,
-                                                           @AuthenticationPrincipal Prescriber loggedPrescriber) {
-        AppointmentResponseDTO appointment = consultationService.register(patientId, recordData, loggedPrescriber);
+                                                           @AuthenticationPrincipal Prescriber loggedPrescriber,
+                                                           @RequestHeader(value = RepeatedSendMemory.HEADER, required = false)
+                                                           String requestKey) {
+        AppointmentResponseDTO appointment = consultationService.register(patientId, recordData, loggedPrescriber,
+                requestKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
     }
 

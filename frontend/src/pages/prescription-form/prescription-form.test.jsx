@@ -523,4 +523,49 @@ describe("PrescriptionForm", () => {
         window.dispatchEvent(after);
         expect(after.defaultPrevented).toBe(true);
     });
+
+    // a resposta do emitir se perdeu e a prescritora clicou de novo com tudo preenchido: o segundo envio
+    // leva a mesma chave do primeiro, q eh como a api sabe q n eh outra receita (decisao de novembro/2026)
+    it("emitir de novo dps de uma resposta perdida manda a mesma chave do envio", async () => {
+        const post = vi.spyOn(apiService, "post")
+            .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+            .mockResolvedValue({current: true});
+        const user = userEvent.setup();
+        renderForm();
+
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível conectar ao sistema");
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[0][0]).toBe("/appointments/7/prescriptions");
+        expect(post.mock.calls[0][2]).toEqual(expect.any(String));
+        expect(post.mock.calls[0][2]).not.toBe("");
+        expect(post.mock.calls[1][2]).toBe(post.mock.calls[0][2]);
+    });
+
+    // a receita emitida de novo de proposito sai de um formulario aberto de novo, com outra chave
+    it("o formulario aberto de novo manda outra chave do envio", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({current: true});
+        const user = userEvent.setup();
+
+        const firstForm = render(<RouterProvider router={createMemoryRouter([
+            {path: "/consulta/:appointmentId/prescricao", element: <PrescriptionForm/>},
+        ], {initialEntries: ["/consulta/7/prescricao"]})}/>);
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+        firstForm.unmount();
+
+        renderForm();
+        await fillRequiredFields();
+        await user.click(screen.getByRole("button", {name: "Emitir prescrição"}));
+        expect(await screen.findByText("Prescrição emitida")).toBeInTheDocument();
+
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[1][1]).toEqual(post.mock.calls[0][1]);
+        expect(post.mock.calls[1][2]).not.toBe(post.mock.calls[0][2]);
+    });
 });

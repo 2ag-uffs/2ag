@@ -23,6 +23,15 @@ function renderNewConsultation() {
     return router;
 }
 
+// a mesma tela, devolvendo o q o render devolve pra poder fechar ela
+function renderNewConsultationOnly() {
+    const router = createMemoryRouter([
+        {path: "/paciente/:patientId/consulta/nova", element: <ConsultationRecord/>},
+        {path: "/consulta/:appointmentId/registro", element: <ConsultationRecord/>},
+    ], {initialEntries: ["/paciente/5/consulta/nova"]});
+    return render(<RouterProvider router={router}/>);
+}
+
 // o registro dentro do layout de vdd, com a seta do topo, o Voltar de cima e o menu
 // a tela de antes eh o historico do paciente, de onde a prescritora abriu o registro
 function renderInsideLayout(recordPath = "/paciente/5/consulta/nova") {
@@ -118,7 +127,8 @@ describe("ConsultationRecord", () => {
         await user.selectOptions(modality, "REMOTA");
         await user.click(screen.getByRole("button", {name: "Salvar consulta"}));
         expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
-        expect(post).toHaveBeenCalledWith("/patients/5/appointments", expect.objectContaining({modality: "REMOTA"}));
+        expect(post).toHaveBeenCalledWith("/patients/5/appointments", expect.objectContaining({modality: "REMOTA"}),
+            expect.any(String));
     });
 
     // a prescritora escreve sabendo quem le: o paciente, e o responsavel qnd ele eh menor (revisao das regras R8)
@@ -297,5 +307,38 @@ describe("ConsultationRecord", () => {
         const after = new Event("beforeunload", {cancelable: true});
         window.dispatchEvent(after);
         expect(after.defaultPrevented).toBe(true);
+    });
+
+    // a resposta do salvar se perdeu e a prescritora clicou de novo com tudo preenchido: o segundo envio
+    // leva a mesma chave do primeiro, q eh como a api sabe q n eh outra consulta (decisao de novembro/2026)
+    it("salvar de novo dps de uma resposta perdida manda a mesma chave do envio", async () => {
+        post.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+        renderNewConsultation();
+
+        fireEvent.change(await screen.findByLabelText("Evolução do quadro"), {target: {value: "melhorou da dor"}});
+        fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível conectar ao sistema");
+        fireEvent.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        expect(await screen.findByText("Consulta registrada")).toBeInTheDocument();
+
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[0][0]).toBe("/patients/5/appointments");
+        expect(post.mock.calls[0][2]).toEqual(expect.any(String));
+        expect(post.mock.calls[0][2]).not.toBe("");
+        expect(post.mock.calls[1][2]).toBe(post.mock.calls[0][2]);
+    });
+
+    // outra consulta nova, aberta de novo, eh outro formulario e manda outra chave
+    it("a consulta nova aberta de novo manda outra chave do envio", async () => {
+        const firstForm = renderNewConsultationOnly();
+        await saveNewConsultation();
+        firstForm.unmount();
+
+        renderNewConsultationOnly();
+        await saveNewConsultation();
+
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post.mock.calls[1][2]).not.toBe(post.mock.calls[0][2]);
     });
 });

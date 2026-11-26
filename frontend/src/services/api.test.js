@@ -11,6 +11,7 @@ import {
     loadSession,
     loginAgain,
     logout,
+    newRequestKey,
     readRequestError,
     setLoggedUser,
     setLoginAgainOpener,
@@ -533,5 +534,37 @@ describe("conta trocada em outra aba", () => {
 
         const sentUsers = fetchSpy.mock.calls.map((call) => new Headers(call[1] && call[1].headers).get("X-Session-User"));
         expect(sentUsers).toEqual(["11", "11", null, null]);
+    });
+});
+
+// a resposta do salvar pode se perder com o registro ja gravado: o formulario manda a mesma chave
+// em todo envio dele e a api reconhece o envio repetido (decisao de novembro/2026)
+describe("chave do envio", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it("o envio com chave manda ela no X-Request-Key e o sem chave n manda o cabecalho", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(apiResponse(201, {id: 1})));
+
+        await apiService.post("/appointments/7/prescriptions", {posology: "2 gotas"}, "chave-do-formulario");
+        await apiService.post("/scales/answers", {answer: "dormi bem"});
+
+        const sentKeys = fetchSpy.mock.calls.map((call) => new Headers(call[1].headers).get("X-Request-Key"));
+        expect(sentKeys).toEqual(["chave-do-formulario", null]);
+        expect(sentBody(fetchSpy.mock.calls[0])).toEqual({posology: "2 gotas"});
+    });
+
+    it("cada chave sorteada eh diferente da outra e cabe no limite da api", () => {
+        const keys = new Set();
+        for (let count = 0; count < 200; count++) {
+            keys.add(newRequestKey());
+        }
+
+        expect(keys.size).toBe(200);
+        keys.forEach((key) => {
+            expect(key.length).toBeGreaterThan(8);
+            expect(key.length).toBeLessThanOrEqual(100);
+        });
     });
 });

@@ -12,7 +12,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, newRequestKey, readRequestError} from "../../services/api.js";
 import {isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_PRESCRIPTION_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
@@ -234,6 +234,8 @@ export default function PrescriptionForm() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [issuedPrescription, setIssuedPrescription] = useState(null);
+    // uma chave por formulario aberto: emitir de novo dps de uma resposta perdida n cria outra receita
+    const [requestKey] = useState(newRequestKey);
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -354,7 +356,8 @@ export default function PrescriptionForm() {
 
         const requestBody = prescriptionBodyOf(form, components, escalationSteps);
         try {
-            const savedPrescription = await apiService.post("/appointments/" + appointmentId + "/prescriptions", requestBody);
+            const savedPrescription = await apiService.post("/appointments/" + appointmentId + "/prescriptions",
+                requestBody, requestKey);
             setIssuedPrescription(savedPrescription);
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);

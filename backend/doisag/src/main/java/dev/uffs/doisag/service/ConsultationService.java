@@ -10,6 +10,7 @@ import dev.uffs.doisag.infra.BrazilianFormat;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RepeatedSendMemory;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
@@ -64,11 +65,13 @@ public class ConsultationService {
     private final AuditService auditService;
     private final NotificationService notificationService;
     private final RowLock rowLock;
+    private final RepeatedSendMemory repeatedSendMemory;
 
     public ConsultationService(AppointmentRepository appointmentRepository, PatientRepository patientRepository,
                                PrescriberRepository prescriberRepository, PrescriptionRepository prescriptionRepository,
                                ScaleResponseRepository responseRepository, AuditService auditService,
-                               NotificationService notificationService, RowLock rowLock) {
+                               NotificationService notificationService, RowLock rowLock,
+                               RepeatedSendMemory repeatedSendMemory) {
         this.appointmentRepository = appointmentRepository;
         this.patientRepository = patientRepository;
         this.prescriberRepository = prescriberRepository;
@@ -77,16 +80,26 @@ public class ConsultationService {
         this.auditService = auditService;
         this.notificationService = notificationService;
         this.rowLock = rowLock;
+        this.repeatedSendMemory = repeatedSendMemory;
     }
 
     // consulta q aconteceu sem ter sido marcada antes ou lancada depois
+    // a chave do envio eh a q a tela manda no X-Request-Key, e vem nula de quem n manda
     @Transactional
-    public AppointmentResponseDTO register(Long patientId, ConsultationRecordDTO recordData, Prescriber prescriber) {
+    public AppointmentResponseDTO register(Long patientId, ConsultationRecordDTO recordData, Prescriber prescriber,
+                                           String requestKey) {
         // o prescritor fica travado antes de tudo, igual na agenda: no postgres o insert da consulta toma o paciente
         // e dps o prescritor em modo compartilhado, e o cadastro do acompanhamento segura o prescritor e espera o
         // paciente. sem essa trava os dois ficavam esperando um pelo outro. de quebra dois registros do mesmo
         // prescritor passam um de cada vez e o segundo ja conta o primeiro na hora de decidir o tipo
         prescriberRepository.lockById(prescriber.getId());
+        // o mesmo envio de novo, pq a resposta do primeiro se perdeu, recebe a consulta q ja foi gravada
+        // em vez de criar outra igual. vem dps da trava do prescritor, entao o reenvio espera o primeiro terminar
+        String sendPlace = "consulta do prescritor " + prescriber.getId() + " com o paciente " + patientId;
+        Appointment alreadySaved = findSavedBySameSend(sendPlace, requestKey, recordData);
+        if (alreadySaved != null) {
+            return new AppointmentResponseDTO(alreadySaved);
+        }
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> NotFoundException.patient(patientId));
         checkPatientIsNotArchived(patientId, ARCHIVED_PATIENT_MESSAGE);
@@ -115,8 +128,23 @@ public class ConsultationService {
         copyClinicalFields(recordData, appointment);
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+        repeatedSendMemory.remember(sendPlace, requestKey, recordData, savedAppointment.getId());
         auditService.recordCreation(AuditRecordType.CONSULTA, savedAppointment.getId(), patientId);
         return new AppointmentResponseDTO(savedAppointment);
+    }
+
+    // a consulta q esse mesmo envio ja criou, ou null. a anulada nesse meio tempo n conta, e a q n foi
+    // gravada de vdd (o primeiro envio falhou dps de guardar a chave) tbm n
+    private Appointment findSavedBySameSend(String sendPlace, String requestKey, ConsultationRecordDTO recordData) {
+        Long savedId = repeatedSendMemory.findSaved(sendPlace, requestKey, recordData);
+        if (savedId == null) {
+            return null;
+        }
+        Appointment saved = appointmentRepository.findById(savedId).orElse(null);
+        if (saved == null || saved.isAnnulled()) {
+            return null;
+        }
+        return saved;
     }
 
     // corrige o registro ou registra o atendimento de uma consulta q estava marcada

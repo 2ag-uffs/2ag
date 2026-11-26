@@ -181,7 +181,7 @@ class ClinicalRecordRaceTest {
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> rowLock.reload(Appointment.class, appointment.getId()),
                 () -> savePrescriptionOf(appointment),
-                () -> prescriptionService.create(prescriptionData(), appointment.getId()));
+                () -> prescriptionService.create(prescriptionData(), appointment.getId(), null));
 
         assertThat(outcome.error()).isNull();
         // a q foi gravada no meio tempo virou substituida e so a nova segue em uso
@@ -201,7 +201,7 @@ class ClinicalRecordRaceTest {
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> patientRepository.lockById(patient.getId()),
                 () -> savePrescriptionOf(newer),
-                () -> prescriptionService.create(prescriptionData(), older.getId()));
+                () -> prescriptionService.create(prescriptionData(), older.getId(), null));
 
         assertThat(outcome.error()).isNull();
         assertThat(outcome.value().current()).isFalse();
@@ -300,7 +300,7 @@ class ClinicalRecordRaceTest {
         HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
                 () -> protocolService.create(patient.getId(), protocolData, prescriber),
-                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber));
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber, null));
 
         assertThat(outcome.error()).isNull();
         assertThat(appointmentRepository.findById(outcome.value().id())).isPresent();
@@ -313,8 +313,8 @@ class ClinicalRecordRaceTest {
     void registeringAConsultationWaitsForThePrescriberAndCountsTheOneSavedMeanwhile() throws Exception {
         HeldLock.Outcome<AppointmentResponseDTO> outcome = heldLock.run(
                 () -> prescriberRepository.lockById(prescriber.getId()),
-                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(10)), prescriber),
-                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber));
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(10)), prescriber, null),
+                () -> consultationService.register(patient.getId(), recordOn(TODAY.minusDays(1)), prescriber, null));
 
         assertThat(outcome.error()).isNull();
         assertThat(appointmentRepository.findById(outcome.value().id()).orElseThrow().getAppointmentType())
@@ -383,7 +383,7 @@ class ClinicalRecordRaceTest {
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> patientRepository.lockById(patient.getId()),
                 () -> patientArchiveService.archive(patient.getId(), prescriber),
-                () -> prescriptionService.create(prescriptionData(), appointment.getId()));
+                () -> prescriptionService.create(prescriptionData(), appointment.getId(), null));
 
         assertThat(outcome.error()).isInstanceOf(BusinessException.class)
                 .hasMessage(PrescriptionService.ARCHIVED_PATIENT_MESSAGE);
@@ -415,7 +415,7 @@ class ClinicalRecordRaceTest {
     @Test
     void thePrescriptionAnnulmentWaitsForTheConsultationAndKeepsTheRecordSavedMeanwhile() throws Exception {
         Appointment appointment = saveAppointmentOn(TODAY.minusDays(1));
-        PrescriptionResponseDTO prescription = prescriptionService.create(prescriptionData(), appointment.getId());
+        PrescriptionResponseDTO prescription = prescriptionService.create(prescriptionData(), appointment.getId(), null);
 
         HeldLock.Outcome<PrescriptionResponseDTO> outcome = heldLock.run(
                 () -> rowLock.reload(Appointment.class, appointment.getId()),

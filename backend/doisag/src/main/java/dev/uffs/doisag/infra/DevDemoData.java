@@ -528,7 +528,7 @@ public class DevDemoData {
                                                         String bloodPressure) {
         ConsultationRecordDTO record = new ConsultationRecordDTO(dateTime, AppointmentModality.PRESENCIAL,
                 complaint, exam, evolution, diagnosis, plan, null, bloodPressure, null, null);
-        return consultationService.register(patient.getId(), record, prescriber);
+        return consultationService.register(patient.getId(), record, prescriber, null);
     }
 
     private void prescribe(AppointmentResponseDTO consultation, String product, Spectrum spectrum,
@@ -539,7 +539,7 @@ public class DevDemoData {
                 "Agitar o frasco antes de usar. Pingar embaixo da língua e esperar um minuto antes de engolir.",
                 "Evitar dirigir nas primeiras semanas se sentir sonolência.",
                 "Melhora gradual dos sintomas ao longo das semanas.", null, durationDays, nextConsultation);
-        prescriptionService.create(prescription, consultation.id());
+        prescriptionService.create(prescription, consultation.id(), null);
     }
 
     private PrescriptionComponentDTO component(Cannabinoid cannabinoid, String concentration) {

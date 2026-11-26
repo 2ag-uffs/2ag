@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -402,6 +403,55 @@ class ConsultationRecordTest {
                 .content("{\"productDescription\":\"Oleo de CBD\",\"spectrum\":\"FULL_SPECTRUM\","
                         + "\"components\":[{\"cannabinoid\":\"CBD\",\"concentration\":3,\"unit\":\"PERCENTUAL\"}],"
                         + "\"posology\":\"2 gotas a noite\"}"));
+    }
+
+    // a resposta do salvar se perdeu e a tela mandou tudo de novo com a mesma chave (decisao de novembro/2026)
+    // a api devolve a consulta q ja gravou em vez de criar outra igual
+    @Test
+    void repeatedSendWithTheSameKeyReturnsTheConsultationAlreadySaved() throws Exception {
+        Long firstId = registeredConsultationId(clinicalRecord(), "chave-do-envio-repetido");
+        Long secondId = registeredConsultationId(clinicalRecord(), "chave-do-envio-repetido");
+
+        assertThat(secondId).isEqualTo(firstId);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/appointments").header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    // outro formulario (outra chave), o texto corrigido antes de tentar de novo e o envio sem chave criam outra
+    @Test
+    void newFormOrChangedRecordRegistersAnotherConsultation() throws Exception {
+        Long firstId = registeredConsultationId(clinicalRecord(), "chave-do-primeiro-formulario");
+        Long secondId = registeredConsultationId(clinicalRecord(), "chave-do-segundo-formulario");
+        Map<String, Object> changedRecord = clinicalRecord();
+        changedRecord.put("diagnosis", "Fibromialgia e insonia");
+        Long thirdId = registeredConsultationId(changedRecord, "chave-do-primeiro-formulario");
+        Long fourthId = registeredConsultationId();
+        Long fifthId = registeredConsultationId();
+
+        assertThat(List.of(firstId, secondId, thirdId, fourthId, fifthId)).doesNotHaveDuplicates();
+    }
+
+    // a consulta anulada n vale mais, entao o envio repetido dela registra outra
+    @Test
+    void repeatedSendOfAnAnnulledConsultationRegistersAnother() throws Exception {
+        Long firstId = registeredConsultationId(clinicalRecord(), "chave-da-consulta-anulada");
+        annul(firstId, "registrada no paciente errado").andExpect(status().isOk());
+        Long secondId = registeredConsultationId(clinicalRecord(), "chave-da-consulta-anulada");
+
+        assertThat(secondId).isNotEqualTo(firstId);
+    }
+
+    // registra mandando a chave do envio, como a tela faz
+    private Long registeredConsultationId(Map<String, Object> record, String requestKey) throws Exception {
+        String response = mockMvc.perform(post("/patients/" + patient.getId() + "/appointments")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .header("X-Request-Key", requestKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(record)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).get("id").asLong();
     }
 
     private Map<String, Object> clinicalRecord() {

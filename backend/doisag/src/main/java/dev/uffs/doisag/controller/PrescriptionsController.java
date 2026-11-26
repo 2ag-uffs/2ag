@@ -3,6 +3,7 @@ package dev.uffs.doisag.controller;
 import dev.uffs.doisag.dto.AnnulmentDTO;
 import dev.uffs.doisag.dto.PrescriptionCreateDTO;
 import dev.uffs.doisag.dto.PrescriptionResponseDTO;
+import dev.uffs.doisag.infra.RepeatedSendMemory;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.service.PrescriptionService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 // prescricao (RF05)
@@ -28,11 +30,15 @@ public class PrescriptionsController {
     }
 
     // a prescricao sempre nasce dentro de uma consulta q ja aconteceu
+    // o envio repetido com a mesma chave recebe a receita q ja foi gravada (decisao de novembro/2026)
     @PreAuthorize("hasRole('PRESCRIBER') and @patientAccess.canAccessAppointment(#appointmentId, authentication)")
     @PostMapping("/appointments/{appointmentId}/prescriptions")
     public ResponseEntity<PrescriptionResponseDTO> create(@PathVariable Long appointmentId,
-                                                          @RequestBody @Valid PrescriptionCreateDTO prescriptionData) {
-        PrescriptionResponseDTO createdPrescription = prescriptionService.create(prescriptionData, appointmentId);
+                                                          @RequestBody @Valid PrescriptionCreateDTO prescriptionData,
+                                                          @RequestHeader(value = RepeatedSendMemory.HEADER, required = false)
+                                                          String requestKey) {
+        PrescriptionResponseDTO createdPrescription = prescriptionService.create(prescriptionData, appointmentId,
+                requestKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPrescription);
     }
 

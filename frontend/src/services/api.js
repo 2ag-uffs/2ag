@@ -174,6 +174,16 @@ export async function loginAgain(password) {
     retryPendingRequests();
 }
 
+// chave do envio de um formulario (decisao de novembro/2026)
+// a resposta do salvar pode se perder com o registro ja gravado, e a pessoa clica de novo com tudo preenchido
+// o formulario sorteia uma chave qnd abre e manda a mesma em todo envio dele: a api reconhece o envio
+// repetido (mesma chave e mesmo conteudo, por alguns minutos) e devolve o registro q ja gravou
+// formulario aberto de novo sorteia outra, entao a receita emitida de novo de proposito continua saindo
+// n eh segredo nem senha, so precisa n repetir: a hora e um sorteio simples bastam
+export function newRequestKey() {
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+}
+
 // o layout escuta o aviso e abre o termo por cima da tela aberta
 function openPendingTerm(user) {
     loggedUser = user;
@@ -314,8 +324,10 @@ export const apiService = {
     get(path) {
         return request(path);
     },
-    post(path, body) {
-        return request(path, {method: "POST", body: JSON.stringify(body)});
+    // a chave do envio vai so nos formularios q criam registro clinico (veja newRequestKey)
+    post(path, body, requestKey) {
+        const headers = requestKey ? {"X-Request-Key": requestKey} : {};
+        return request(path, {method: "POST", body: JSON.stringify(body), headers});
     },
     put(path, body) {
         return request(path, {method: "PUT", body: JSON.stringify(body)});

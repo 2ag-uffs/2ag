@@ -12,7 +12,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, newRequestKey, readRequestError} from "../../services/api.js";
 import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ARCHIVED_RECORD_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
@@ -128,6 +128,8 @@ export default function ConsultationRecord() {
     const [isUpdated, setIsUpdated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    // uma chave por formulario aberto: salvar de novo dps de uma resposta perdida n cria outra consulta
+    const [requestKey] = useState(newRequestKey);
     const [loadError, setLoadError] = useState(null);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -209,7 +211,8 @@ export default function ConsultationRecord() {
         const requestBody = requestBodyOf(record);
         try {
             if (isNewConsultation) {
-                const savedAppointment = await apiService.post("/patients/" + patientId + "/appointments", requestBody);
+                const savedAppointment = await apiService.post("/patients/" + patientId + "/appointments",
+                    requestBody, requestKey);
                 // o endereco de consulta nova vira o da consulta salva
                 // senao voltar ou recarregar abre o formulario vazio e salvar de novo cria outra consulta
                 navigate("/consulta/" + savedAppointment.id + "/registro", {replace: true, state: {registered: true}});

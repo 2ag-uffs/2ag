@@ -16,6 +16,7 @@ import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.DateCheck;
 import dev.uffs.doisag.infra.InvalidFieldException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.RepeatedSendMemory;
 import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Annulment;
 import dev.uffs.doisag.model.Appointment;
@@ -73,25 +74,38 @@ public class PrescriptionService {
     private final AuditService auditService;
     private final NotificationService notificationService;
     private final RowLock rowLock;
+    private final RepeatedSendMemory repeatedSendMemory;
 
     public PrescriptionService(PrescriptionRepository prescriptionRepository, PatientRepository patientRepository,
                                ConsultationService consultationService, AuditService auditService,
-                               NotificationService notificationService, RowLock rowLock) {
+                               NotificationService notificationService, RowLock rowLock,
+                               RepeatedSendMemory repeatedSendMemory) {
         this.prescriptionRepository = prescriptionRepository;
         this.patientRepository = patientRepository;
         this.consultationService = consultationService;
         this.auditService = auditService;
         this.notificationService = notificationService;
         this.rowLock = rowLock;
+        this.repeatedSendMemory = repeatedSendMemory;
     }
 
     // a consulta e o paciente ficam travados ate o fim: duas receitas lancadas ao mesmo tempo liam
     // as duas a mesma vigente e o paciente ficava com duas em uso, q so a anulacao desfazia
     // a vigente eh do paciente, entao a trava dele pega tbm duas receitas em consultas diferentes
+    // a chave do envio eh a q a tela manda no X-Request-Key, e vem nula de quem n manda
     @Transactional
-    public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId) {
+    public PrescriptionResponseDTO create(PrescriptionCreateDTO prescriptionData, Long appointmentId,
+                                          String requestKey) {
         Appointment appointment = rowLock.reload(Appointment.class, appointmentId)
                 .orElseThrow(() -> NotFoundException.appointment(appointmentId));
+        // o mesmo envio de novo, pq a resposta do primeiro se perdeu, recebe a receita q ja foi gravada:
+        // sem segunda receita, sem a primeira virar substituida e sem segundo aviso pro paciente
+        // a conferencia vem dps da trava da consulta, entao o reenvio espera o primeiro terminar
+        String sendPlace = "receita da consulta " + appointmentId;
+        Prescription alreadySaved = findSavedBySameSend(sendPlace, requestKey, prescriptionData);
+        if (alreadySaved != null) {
+            return new PrescriptionResponseDTO(alreadySaved);
+        }
         checkAppointmentCanPrescribe(appointment);
         // a trava do paciente vem aqui, junto da conferencia do arquivado (decisao de 17/11/2026)
         Long patientId = appointment.getPatient().getId();
@@ -109,6 +123,7 @@ public class PrescriptionService {
         copyPrescriptionData(prescriptionData, prescription);
 
         Prescription savedPrescription = prescriptionRepository.save(prescription);
+        repeatedSendMemory.remember(sendPlace, requestKey, prescriptionData, savedPrescription.getId());
         auditService.recordCreation(AuditRecordType.PRESCRICAO, savedPrescription.getId(), patientId);
         // a trilha encosta no paciente e na conta, entao a da consulta concluida vem dps da trava do paciente
         if (concludedNow) {
@@ -122,6 +137,21 @@ public class PrescriptionService {
                     Notification.TYPE_ALERT, Notification.PATIENT_PRESCRIPTIONS_LINK);
         }
         return new PrescriptionResponseDTO(savedPrescription);
+    }
+
+    // a receita q esse mesmo envio ja criou, ou null. a anulada nesse meio tempo n conta, e a q n foi
+    // gravada de vdd (o primeiro envio falhou dps de guardar a chave) tbm n
+    private Prescription findSavedBySameSend(String sendPlace, String requestKey,
+                                             PrescriptionCreateDTO prescriptionData) {
+        Long savedId = repeatedSendMemory.findSaved(sendPlace, requestKey, prescriptionData);
+        if (savedId == null) {
+            return null;
+        }
+        Prescription saved = prescriptionRepository.findById(savedId).orElse(null);
+        if (saved == null || saved.isAnnulled()) {
+            return null;
+        }
+        return saved;
     }
 
     // prescricao errada fica no historico marcada como anulada e deixa de valer

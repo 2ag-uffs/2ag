@@ -619,6 +619,77 @@ class PrescriptionFlowTest {
                 .andExpect(status().isForbidden());
     }
 
+    // a resposta do emitir se perdeu e a tela mandou tudo de novo com a mesma chave (decisao de novembro/2026)
+    // a api devolve a receita q ja gravou: sem segunda receita, sem substituida e sem segundo aviso
+    @Test
+    void repeatedSendWithTheSameKeyReturnsThePrescriptionAlreadySaved() throws Exception {
+        Long appointmentId = registeredConsultationId();
+        Long firstId = issuedPrescriptionId(appointmentId, "Oleo do envio", "chave-do-envio-repetido");
+        Long secondId = issuedPrescriptionId(appointmentId, "Oleo do envio", "chave-do-envio-repetido");
+
+        assertThat(secondId).isEqualTo(firstId);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("VIGENTE"));
+        assertThat(prescriptionNoticesOf(patient)).hasSize(1);
+        mockMvc.perform(get("/patients/" + patient.getId() + "/audit-events")
+                        .param("from", LocalDate.now().toString())
+                        .param("to", LocalDate.now().toString())
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.recordType == 'PRESCRICAO')]", hasSize(1)));
+    }
+
+    // a receita igual emitida de proposito sai de um formulario novo, com outra chave, e eh criada como sempre
+    @Test
+    void samePrescriptionFromANewFormIsIssuedAgain() throws Exception {
+        Long appointmentId = registeredConsultationId();
+        Long firstId = issuedPrescriptionId(appointmentId, "Oleo de proposito", "chave-do-primeiro-formulario");
+        Long secondId = issuedPrescriptionId(appointmentId, "Oleo de proposito", "chave-do-segundo-formulario");
+        // quem n manda chave nenhuma continua criando uma receita por envio
+        Long thirdId = issuedPrescriptionId(appointmentId, "Oleo de proposito");
+        Long fourthId = issuedPrescriptionId(appointmentId, "Oleo de proposito");
+
+        assertThat(List.of(firstId, secondId, thirdId, fourthId)).doesNotHaveDuplicates();
+        mockMvc.perform(get("/patients/" + patient.getId() + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[?(@.current == true)]", hasSize(1)));
+    }
+
+    // a prescritora corrigiu um campo antes de tentar de novo: o conteudo mudou, entao eh outra receita,
+    // senao a tela diria emitida e a gravada seria a de antes da correcao
+    @Test
+    void sameKeyWithChangedContentIssuesAnotherPrescription() throws Exception {
+        Long appointmentId = registeredConsultationId();
+        Long firstId = issuedPrescriptionId(appointmentId, "Oleo antes da correcao", "chave-do-formulario-corrigido");
+        Long secondId = issuedPrescriptionId(appointmentId, "Oleo corrigido", "chave-do-formulario-corrigido");
+
+        assertThat(secondId).isNotEqualTo(firstId);
+    }
+
+    // a chave vale so dentro da consulta dela
+    @Test
+    void sameKeyInAnotherConsultationIssuesAnotherPrescription() throws Exception {
+        Long firstId = issuedPrescriptionId(registeredConsultationId(), "Oleo de duas consultas", "chave-de-duas-consultas");
+        Long secondId = issuedPrescriptionId(registeredConsultationId(), "Oleo de duas consultas", "chave-de-duas-consultas");
+
+        assertThat(secondId).isNotEqualTo(firstId);
+    }
+
+    // a receita anulada n vale mais, entao o envio repetido dela emite outra
+    @Test
+    void repeatedSendOfAnAnnulledPrescriptionIssuesAnother() throws Exception {
+        Long appointmentId = registeredConsultationId();
+        Long firstId = issuedPrescriptionId(appointmentId, "Oleo anulado", "chave-da-receita-anulada");
+        annulPrescription(firstId, "emitida por engano").andExpect(status().isOk());
+        Long secondId = issuedPrescriptionId(appointmentId, "Oleo anulado", "chave-da-receita-anulada");
+
+        assertThat(secondId).isNotEqualTo(firstId);
+    }
+
     private Map<String, Object> prescriptionWith(String productName) {
         Map<String, Object> prescription = new LinkedHashMap<>();
         prescription.put("productDescription", productName);
@@ -670,6 +741,18 @@ class PrescriptionFlowTest {
 
     private Long issuedPrescriptionId(Long appointmentId, String productName) throws Exception {
         String response = issuePrescription(appointmentId, prescriptionWith(productName))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).get("id").asLong();
+    }
+
+    // emite mandando a chave do envio, como a tela faz
+    private Long issuedPrescriptionId(Long appointmentId, String productName, String requestKey) throws Exception {
+        String response = mockMvc.perform(post("/appointments/" + appointmentId + "/prescriptions")
+                        .header("Authorization", bearerTokenOf(prescriber))
+                        .header("X-Request-Key", requestKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(prescriptionWith(productName))))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(response).get("id").asLong();
