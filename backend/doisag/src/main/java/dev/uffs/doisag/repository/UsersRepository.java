@@ -1,5 +1,6 @@
 package dev.uffs.doisag.repository;
 
+import dev.uffs.doisag.model.Admin;
 import dev.uffs.doisag.model.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UsersRepository extends JpaRepository<Users, Long> {
@@ -18,6 +20,10 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
     boolean existsByEmail(String email);
 
     boolean existsByCpf(String cpf);
+
+    // contas administrativas ainda ativas com outro e-mail: a subida desativa elas qnd o ADMIN_EMAIL muda
+    @Query("select admin from Admin admin where admin.active = true and admin.email <> :email order by admin.id")
+    List<Admin> findActiveAdminsWithAnotherEmail(@Param("email") String email);
 
     // trava a linha da conta ate o fim da transacao: o pedido de e-mail novo, a troca de senha
     // e a confirmacao do e-mail passam um de cada vez, entao um pedido feito no mesmo instante

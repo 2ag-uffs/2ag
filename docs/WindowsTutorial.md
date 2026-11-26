@@ -130,6 +130,8 @@ com `SEED_DADOS_TESTE=true` a api cria três contas, todas com a senha `Senha@12
 
 na primeira subida o seed também cria dados fictícios para demonstração: horários de atendimento, consultas, prescrições, dois meses de diário da Maria e mais quatro pacientes (`joao.almeida`, `renata.dias`, `paulo.nunes` e `carla.menezes`) e um segundo prescritor (`carlos.pereira`), todos `@email.com` com a mesma senha. nomes, cpfs e históricos são inventados.
 
+com o `ADMIN_EMAIL` preenchido no `.env`, só a conta dele administra: a administração de teste (`admin@email.com`) nasce desativada, e você entra na administração com o `ADMIN_EMAIL` e a senha do `ADMIN_PASSWORD`. sem o `ADMIN_EMAIL`, como na api rodando sem docker pelo comando acima, a `admin@email.com` entra normalmente.
+
 o seed nunca pode ser ligado em produção: no `.env` do servidor a variável `SEED_DADOS_TESTE` nem deve existir. como segunda trava, a api ignora o seed em qualquer `PUBLIC_URL` com `https://` que não seja `localhost`.
 
 > **banco local antigo:** as migrações foram consolidadas numa base única em 13/09/2026. quem já tinha um banco de antes dessa data precisa recriá-lo: `docker compose down -v` com docker, ou `drop database doisag;` seguido de `create database doisag owner admindoisag;` sem docker.

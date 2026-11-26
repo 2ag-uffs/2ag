@@ -31,7 +31,7 @@ npm run dev
 
 Abra http://localhost:5173 no navegador. Se a porta 8080 já estiver ocupada no computador, o [`WindowsTutorial.md`](../WindowsTutorial.md) explica como subir a API em outra porta.
 
-Quem já usa o docker pode seguir a seção *rodando com docker* do [`WindowsTutorial.md`](../WindowsTutorial.md) ou do [`LinuxTutorial.md`](../LinuxTutorial.md), com `SEED_DADOS_TESTE=true` e valores de treino em `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` no `.env` (sem os três a api não sobe), e abrir https://localhost. Nesse caso os dados ficam guardados ao parar (recomeçar do zero pede `docker compose down -v`) e o link dos e-mails não aparece no log. Para a capacitação, o banco em memória é mais prático.
+Quem já usa o docker pode seguir a seção *rodando com docker* do [`WindowsTutorial.md`](../WindowsTutorial.md) ou do [`LinuxTutorial.md`](../LinuxTutorial.md), com `SEED_DADOS_TESTE=true` e valores de treino em `CLINIC_NAME`, `CLINIC_CNPJ` e `CLINIC_DPO_CONTACT` no `.env` (sem os três a api não sobe), e abrir https://localhost. Com o docker, a administração entra com o e-mail do `ADMIN_EMAIL` e a senha do `ADMIN_PASSWORD` do `.env`, e não com a `admin@email.com` da tabela abaixo: com o `ADMIN_EMAIL` preenchido só a conta dele administra, e a de teste nasce desativada (seção *contas de teste* do [`WindowsTutorial.md`](../WindowsTutorial.md)). Nesse caso os dados ficam guardados ao parar (recomeçar do zero pede `docker compose down -v`) e o link dos e-mails não aparece no log. Para a capacitação, o banco em memória é mais prático.
 
 Bom saber sobre essa demonstração:
 
@@ -42,7 +42,7 @@ Bom saber sobre essa demonstração:
 
 ### contas da demonstração
 
-Todas usam a mesma senha, que está na tabela *contas de teste* do [`WindowsTutorial.md`](../WindowsTutorial.md). Ela só existe na instalação de desenvolvimento.
+Todas usam a mesma senha, que está na tabela *contas de teste* do [`WindowsTutorial.md`](../WindowsTutorial.md). Ela só existe na instalação de desenvolvimento. Quem subiu pelo docker com o `ADMIN_EMAIL` preenchido usa a conta do `ADMIN_EMAIL`, com a senha do `ADMIN_PASSWORD`, em todo passo que pede a `admin@email.com`.
 
 | conta | quem é | para que serve na sessão |
 | :--- | :--- | :--- |

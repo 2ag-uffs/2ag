@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +25,10 @@ import java.util.Locale;
 
 // cria contas de teste pra quem esta desenvolvendo
 // so roda com SEED_DADOS_TESTE ligado e nunca pode rodar em producao
+// roda antes do AdminAccountCreator: com o ADMIN_EMAIL preenchido a administracao de teste ja nasce
+// desativada, em vez de valer ate a subida seguinte
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @ConditionalOnProperty(name = "api.seed.enabled", havingValue = "true")
 public class DevDataSeed implements ApplicationRunner {
 
