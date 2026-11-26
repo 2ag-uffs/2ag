@@ -8,9 +8,10 @@ import accountStyles from "./admin-prescribers.module.css";
 import styles from "./admin-patients.module.css";
 
 // uma conta de paciente com o botao de ligar ou desligar o acesso
-function PatientRow({patient, onToggle}) {
+// enquanto a api responde a linha fica ocupada e o botao n aceita outro clique
+function PatientRow({patient, isBusy, onToggle}) {
     return (
-        <li className={accountStyles.row}>
+        <li className={accountStyles.row} aria-busy={isBusy ? "true" : undefined}>
             <span
                 className={patient.active
                     ? accountStyles.avatar
@@ -30,13 +31,15 @@ function PatientRow({patient, onToggle}) {
                 <span className={patient.active ? accountStyles.badgeActive : accountStyles.badgeInactive}>
                     {patient.active ? "Ativa" : "Desativada"}
                 </span>
-                <button
+                <BusyButton
                     type="button"
                     className={patient.active ? "button-danger button-small" : "button-secondary button-small"}
+                    isBusy={isBusy}
+                    busyText={patient.active ? "Desativando..." : "Reativando..."}
                     onClick={() => onToggle(patient)}
                 >
                     {patient.active ? "Desativar" : "Reativar"}
-                </button>
+                </BusyButton>
             </div>
         </li>
     );
@@ -54,6 +57,8 @@ export default function AdminPatients() {
     const [notice, setNotice] = useState(null);
     const [pageError, setPageError] = useState(null);
     const [patientToToggle, setPatientToToggle] = useState(null);
+    // contas com o pedido de desativar ou reativar ainda sem resposta
+    const [busyIds, setBusyIds] = useState([]);
 
     const loadDeactivated = useCallback(() => {
         return apiService.get("/admin/patients/deactivated")
@@ -77,6 +82,8 @@ export default function AdminPatients() {
         setSearchError(null);
         setFoundPatient(null);
         setNotice(null);
+        // a busca nova limpa o aviso da acao anterior
+        setPageError(null);
         try {
             const patient = await apiService.post("/admin/patients/lookup", {email: email});
             setFoundPatient(patient);
@@ -94,6 +101,7 @@ export default function AdminPatients() {
     const confirmToggle = async () => {
         const patient = patientToToggle;
         setPatientToToggle(null);
+        setBusyIds((currentIds) => [...currentIds, patient.id]);
         try {
             const savedPatient = await apiService.put("/admin/patients/" + patient.id + "/active", {
                 active: !patient.active,
@@ -103,14 +111,33 @@ export default function AdminPatients() {
             } else {
                 setNotice("Acesso de " + patient.name + " reativado.");
             }
-            if (foundPatient && foundPatient.id === savedPatient.id) {
-                setFoundPatient(savedPatient);
-            }
+            // a busca fica livre enquanto a linha esta ocupada, entao a conta achada eh a de agora
+            setFoundPatient((currentPatient) => {
+                if (currentPatient && currentPatient.id === savedPatient.id) {
+                    return savedPatient;
+                }
+                return currentPatient;
+            });
             await loadDeactivated();
         } catch (requestError) {
             setNotice(null);
+            if (requestError instanceof ApiError) {
+                // o 400 dessa rota eh a conta q ja esta no estado pedido (outra janela ou outra pessoa
+                // mudou antes), entao a linha passa a mostrar ele. a lista recarrega em qualquer recusa
+                if (requestError.status === 400) {
+                    setFoundPatient((currentPatient) => {
+                        if (currentPatient && currentPatient.id === patient.id) {
+                            return {...currentPatient, active: !patient.active};
+                        }
+                        return currentPatient;
+                    });
+                }
+                await loadDeactivated();
+            }
             setPageError(errorMessageOf(requestError,
                 "Não foi possível alterar a conta. Confira sua internet e tente de novo."));
+        } finally {
+            setBusyIds((currentIds) => currentIds.filter((busyId) => busyId !== patient.id));
         }
     };
 
@@ -152,7 +179,11 @@ export default function AdminPatients() {
 
             {foundPatient && (
                 <ul className={accountStyles.list}>
-                    <PatientRow patient={foundPatient} onToggle={setPatientToToggle}/>
+                    <PatientRow
+                        patient={foundPatient}
+                        isBusy={busyIds.includes(foundPatient.id)}
+                        onToggle={setPatientToToggle}
+                    />
                 </ul>
             )}
 
@@ -161,7 +192,12 @@ export default function AdminPatients() {
                     <h2 className={styles.sectionTitle}>Contas desativadas</h2>
                     <ul className={accountStyles.list}>
                         {otherDeactivated.map((patient) => (
-                            <PatientRow key={patient.id} patient={patient} onToggle={setPatientToToggle}/>
+                            <PatientRow
+                                key={patient.id}
+                                patient={patient}
+                                isBusy={busyIds.includes(patient.id)}
+                                onToggle={setPatientToToggle}
+                            />
                         ))}
                     </ul>
                 </div>

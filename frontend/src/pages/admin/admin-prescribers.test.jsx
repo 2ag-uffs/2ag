@@ -2,6 +2,7 @@ import {fireEvent, render, screen, waitFor, within} from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
+import {contrastOf, rgbaOf, themesOf} from "../../test/contrast.js";
 import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import AdminPrescribers from "./admin-prescribers.jsx";
 
@@ -398,5 +399,84 @@ describe("AdminPrescribers", () => {
         expect(declarationsOf(mobile, ".rowActions").width).toBe("100%");
         expect(declarationsOf(mobile, ".rowActions > button").flex).toBe("1 1 auto");
         expect(declarationsOf(css, ".rowActions > button").flex).toBeUndefined();
+    });
+
+    // o botao ocupado eh o unico sinal q a pessoa le na linha enquanto a api responde. com a opacidade
+    // do botao travado o texto dele ficava perto de 2,5:1 (decisao da dona, D5)
+    it("o botao da linha ocupada n usa opacidade e o texto e a borda dele continuam legiveis nos dois temas", () => {
+        const busy = declarationsOf(readCss(import.meta.url, "./admin-prescribers.module.css"),
+            ".rowActions > button[aria-disabled=\"true\"]");
+        const themes = themesOf(readCss(import.meta.url, "../../styles/colors.css"));
+        // o valor aqui eh sempre var(--token)
+        const colorIn = (theme, value) => rgbaOf(theme[value.slice(4, -1)]);
+
+        expect(busy.opacity).toBe("1");
+        Object.keys(themes).forEach((themeName) => {
+            const theme = themes[themeName];
+            const background = colorIn(theme, busy["background-color"]);
+            expect(contrastOf(colorIn(theme, busy.color), background), themeName).toBeGreaterThanOrEqual(4.5);
+            expect(contrastOf(colorIn(theme, busy["border-color"]), background), themeName).toBeGreaterThanOrEqual(3);
+            expect(contrastOf(colorIn(theme, busy["border-color"]), rgbaOf(theme["--color-surface"])), themeName)
+                .toBeGreaterThanOrEqual(3);
+        });
+    });
+
+    // com internet lenta a linha n mudava e dava pra pedir de novo (decisao da dona, D5)
+    it("a linha fica ocupada enquanto a api desativa a conta e nenhum botao dela aceita clique", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(PRESCRIBERS);
+        let finishPut = null;
+        const put = vi.spyOn(apiService, "put").mockImplementation(() => new Promise((resolve) => {
+            finishPut = resolve;
+        }));
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Desativar"});
+        await user.click(buttons[0]);
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, desativar"}));
+
+        const busyButton = await screen.findByRole("button", {name: "Desativando..."});
+        const row = busyButton.closest("li");
+        expect(row).toHaveAttribute("aria-busy", "true");
+        expect(row).toHaveTextContent("Ana Lima");
+        within(row).getAllByRole("button").forEach((button) => {
+            expect(button).toHaveAttribute("aria-disabled", "true");
+        });
+        await user.click(busyButton);
+        await user.click(within(row).getByRole("button", {name: "Senha nova"}));
+        await user.click(within(row).getByRole("button", {name: "Corrigir dados"}));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(put).toHaveBeenCalledTimes(1);
+
+        // a outra linha continua livre
+        const otherRow = screen.getByText("Bruno Novo").closest("li");
+        expect(otherRow).not.toHaveAttribute("aria-busy");
+        expect(within(otherRow).getByRole("button", {name: "Desativar"})).not.toHaveAttribute("aria-disabled");
+
+        finishPut({...PRESCRIBERS[0], active: false, openTasks: 0, futureAppointments: 0});
+        expect(await screen.findByText(/Acesso de Ana Lima desativado/)).toBeInTheDocument();
+        await waitFor(() => expect(row).not.toHaveAttribute("aria-busy"));
+    });
+
+    // a recusa da api aparece na tela como antes, e a lista recarrega pra linha mostrar a conta como esta
+    it("a recusa da api ao desativar aparece no aviso e a lista recarrega", async () => {
+        let prescribers = PRESCRIBERS;
+        const get = vi.spyOn(apiService, "get").mockImplementation(() => Promise.resolve(prescribers));
+        vi.spyOn(apiService, "put").mockImplementation(() => {
+            prescribers = [{...PRESCRIBERS[0], active: false}, PRESCRIBERS[1]];
+            return Promise.reject(new ApiError(400, "Não foi possível alterar esta conta agora"));
+        });
+        const user = userEvent.setup();
+        render(<AdminPrescribers/>);
+
+        const buttons = await screen.findAllByRole("button", {name: "Desativar"});
+        await user.click(buttons[0]);
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, desativar"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível alterar esta conta agora");
+        expect(get).toHaveBeenCalledTimes(2);
+        const row = screen.getByText("Ana Lima").closest("li");
+        expect(within(row).getByRole("button", {name: "Reativar"})).not.toHaveAttribute("aria-disabled");
+        expect(within(row).getByText("Desativado")).toBeInTheDocument();
     });
 });

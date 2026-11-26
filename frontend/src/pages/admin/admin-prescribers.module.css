@@ -70,6 +70,14 @@
     gap: var(--space-3);
 }
 
+/* botao da linha ocupada: cinza e sem a opacidade do botao travado, q deixava o "Desativando..." abaixo de 3:1 */
+.rowActions > button[aria-disabled="true"] {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-control-border);
+    color: var(--color-text-secondary);
+    opacity: 1;
+}
+
 .badgeActive,
 .badgeInactive {
     border-radius: var(--radius-pill);

@@ -146,9 +146,10 @@ function LoadingList() {
 }
 
 // uma conta de prescritor com os botoes de senha nova, e-mail, dados e acesso
-function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onFixData, onToggle}) {
+// enquanto a api desativa ou reativa a conta a linha fica ocupada e nenhum botao dela aceita clique
+function PrescriberRow({prescriber, isBusy, onResetPassword, onChangeEmail, onFixData, onToggle}) {
     return (
-        <li className={styles.row}>
+        <li className={styles.row} aria-busy={isBusy ? "true" : undefined}>
             <span
                 className={prescriber.active ? styles.avatar : styles.avatar + " " + styles.avatarInactive}
                 aria-hidden="true"
@@ -167,39 +168,44 @@ function PrescriberRow({prescriber, onResetPassword, onChangeEmail, onFixData, o
                     {prescriber.active ? "Ativo" : "Desativado"}
                 </span>
                 {prescriber.active && (
-                    <button
+                    <BusyButton
                         type="button"
                         className="button-secondary button-small"
+                        isBusy={isBusy}
                         onClick={() => onResetPassword(prescriber)}
                     >
                         Senha nova
-                    </button>
+                    </BusyButton>
                 )}
                 {/* enquanto a pessoa n cria a senha o e-mail errado ainda pode ser corrigido */}
                 {prescriber.active && !prescriber.passwordCreated && (
-                    <button
+                    <BusyButton
                         type="button"
                         className="button-secondary button-small"
+                        isBusy={isBusy}
                         onClick={() => onChangeEmail(prescriber)}
                     >
                         Corrigir e-mail
-                    </button>
+                    </BusyButton>
                 )}
                 {/* registro, cpf ou profissao digitados errado (#149) */}
-                <button
+                <BusyButton
                     type="button"
                     className="button-secondary button-small"
+                    isBusy={isBusy}
                     onClick={() => onFixData(prescriber)}
                 >
                     Corrigir dados
-                </button>
-                <button
+                </BusyButton>
+                <BusyButton
                     type="button"
                     className={prescriber.active ? "button-danger button-small" : "button-secondary button-small"}
+                    isBusy={isBusy}
+                    busyText={prescriber.active ? "Desativando..." : "Reativando..."}
                     onClick={() => onToggle(prescriber)}
                 >
                     {prescriber.active ? "Desativar" : "Reativar"}
-                </button>
+                </BusyButton>
             </div>
         </li>
     );
@@ -225,6 +231,8 @@ export default function AdminPrescribers() {
     const [firstAccess, setFirstAccess] = useState(null);
 
     const [prescriberToToggle, setPrescriberToToggle] = useState(null);
+    // contas com o pedido de desativar ou reativar ainda sem resposta
+    const [busyIds, setBusyIds] = useState([]);
 
     // senha nova de um prescritor: pede a senha do admin e o link vem na resposta ou vai por e-mail
     const [resetTarget, setResetTarget] = useState(null);
@@ -335,6 +343,7 @@ export default function AdminPrescribers() {
     const confirmToggle = async () => {
         const prescriber = prescriberToToggle;
         setPrescriberToToggle(null);
+        setBusyIds((currentIds) => [...currentIds, prescriber.id]);
         try {
             const result = await apiService.put("/admin/prescribers/" + prescriber.id + "/active",
                 {active: !prescriber.active});
@@ -346,8 +355,14 @@ export default function AdminPrescribers() {
             await loadPrescribers();
         } catch (requestError) {
             setNotice(null);
+            // a api recusou: a lista recarrega pra linha mostrar como a conta esta de vdd
+            if (requestError instanceof ApiError) {
+                await loadPrescribers();
+            }
             setPageError(errorMessageOf(requestError,
                 "Não foi possível alterar a conta. Confira sua internet e tente de novo."));
+        } finally {
+            setBusyIds((currentIds) => currentIds.filter((busyId) => busyId !== prescriber.id));
         }
     };
 
@@ -551,6 +566,7 @@ export default function AdminPrescribers() {
                         <PrescriberRow
                             key={prescriber.id}
                             prescriber={prescriber}
+                            isBusy={busyIds.includes(prescriber.id)}
                             onResetPassword={openReset}
                             onChangeEmail={openEmailChange}
                             onFixData={openFix}
