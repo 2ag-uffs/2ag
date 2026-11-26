@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
@@ -180,6 +181,11 @@ class ConsentTermTest {
                         .content("{\"termVersion\":\"" + ConsentTermService.CURRENT_VERSION + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PatientService.OUTDATED_TERM_MESSAGE));
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .extracting("termVersion").containsExactly("2026-01-versao-antiga");
+
+        // a pesquisa so chega no aceite com o termo do cadastro em dia
+        consentTermService.registerAcceptance(patient, ConsentTermService.CURRENT_VERSION);
         mockMvc.perform(post("/consent-term/research/accept")
                         .header("Authorization", bearerTokenOf(patient))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -188,7 +194,7 @@ class ConsentTermTest {
                 .andExpect(jsonPath("$.message").value(ConsentTermService.OUTDATED_RESEARCH_MESSAGE));
 
         assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
-                .extracting("termVersion").containsExactly("2026-01-versao-antiga");
+                .noneMatch(acceptance -> acceptance.getTermType() == ConsentType.RESEARCH);
     }
 
     // clausula em destaque pro responsavel legal do menor de 18 (LGPD art. 14 e Codigo Civil)
@@ -685,6 +691,73 @@ class ConsentTermTest {
                     assertThat(acceptance.getTermType()).isEqualTo(ConsentType.RESEARCH);
                     assertThat(acceptance.getRevokedAt()).isNotNull();
                 });
+    }
+
+    // decisao da dona (11/2026): com o termo do cadastro pendente a api recusa entrar na pesquisa, como as
+    // outras gravacoes. ler e aceitar o termo continuam passando, e dps dele a pesquisa entra
+    @Test
+    void pendingRegistrationTermRefusesTheResearchAcceptance() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+        String body = "{" + researchTermJson() + "}";
+
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string(PendingTermException.HEADER, "true"))
+                .andExpect(jsonPath("$.message").value(PendingTermException.MESSAGE));
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .noneMatch(acceptance -> acceptance.getTermType() == ConsentType.RESEARCH);
+        mockMvc.perform(get("/consent-term/research").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/consent-term/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" + currentTermJson() + "}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/consent-term/research/accept")
+                        .header("Authorization", bearerTokenOf(patient))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    // o endereco escrito com letra codificada (%61 eh o a) chega na msm rota e n pode escapar da recusa:
+    // a regra fica no servico, q n depende de como o endereco veio escrito
+    @Test
+    void pendingRegistrationTermRefusesTheResearchAcceptanceOnAnEncodedPath() throws Exception {
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        for (String path : List.of("/consent-term/research/%61ccept", "/consent-term/research/accep%74",
+                "/consent-term/%72esearch/accept")) {
+            mockMvc.perform(post(URI.create(path))
+                            .header("Authorization", bearerTokenOf(patient))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{" + researchTermJson() + "}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(header().string(PendingTermException.HEADER, "true"))
+                    .andExpect(jsonPath("$.message").value(PendingTermException.MESSAGE));
+        }
+        assertThat(consentAcceptanceRepository.findAllByUserIdOrderByAcceptedAtDesc(patient.getId()))
+                .noneMatch(acceptance -> acceptance.getTermType() == ConsentType.RESEARCH);
+    }
+
+    // quem ja estava na pesquisa e ficou com o termo pendente ainda consegue sair dela, e sair da conta
+    @Test
+    void pendingRegistrationTermStillLetsThePatientRevokeTheResearch() throws Exception {
+        consentTermService.registerAcceptance(patient, ConsentType.RESEARCH, ConsentTermService.RESEARCH_VERSION);
+        consentTermService.registerAcceptance(patient, "2026-01-versao-antiga");
+
+        mockMvc.perform(post("/consent-term/research/revoke").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist(PendingTermException.HEADER))
+                .andExpect(jsonPath("$.active").value(false));
+        mockMvc.perform(post("/auth/logout").header("Authorization", bearerTokenOf(patient)))
+                .andExpect(status().isNoContent())
+                .andExpect(header().doesNotExist(PendingTermException.HEADER));
     }
 
     @Test

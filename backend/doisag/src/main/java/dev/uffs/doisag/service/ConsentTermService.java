@@ -6,6 +6,7 @@ import dev.uffs.doisag.dto.ResearchConsentDTO;
 import dev.uffs.doisag.enums.ConsentType;
 import dev.uffs.doisag.infra.BusinessException;
 import dev.uffs.doisag.infra.NotFoundException;
+import dev.uffs.doisag.infra.PendingTermException;
 import dev.uffs.doisag.model.ConsentAcceptance;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Users;
@@ -263,8 +264,14 @@ public class ConsentTermService {
         return new ResearchConsentDTO(false, null, acceptedOlderText);
     }
 
+    // entrar na pesquisa pede o termo do cadastro em dia, como a tela, q so oferece a pesquisa dps dele
+    // (decisao da dona, 11/2026). a recusa fica aqui e n na trava por endereco, q deixa o /consent-term passar:
+    // o msm caminho escrito com letra codificada (accep%74) chegava aqui sem bater na comparacao do endereco
     @Transactional
     public void acceptResearch(Patient patient, String termVersion, String termHash) {
+        if (needsNewAcceptance(patient)) {
+            throw new PendingTermException();
+        }
         if (!isCurrentResearchTerm(termVersion, termHash)) {
             throw new BusinessException(OUTDATED_RESEARCH_MESSAGE);
         }
