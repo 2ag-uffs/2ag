@@ -1,16 +1,21 @@
 package dev.uffs.doisag.controller;
 
 import tools.jackson.databind.ObjectMapper;
+import dev.uffs.doisag.enums.ScaleTaskStatus;
+import dev.uffs.doisag.enums.ScaleType;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
+import dev.uffs.doisag.model.ScaleTask;
 import dev.uffs.doisag.model.Users;
 import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.repository.AnamnesisRepository;
 import dev.uffs.doisag.repository.NotificationRepository;
 import dev.uffs.doisag.repository.PatientRepository;
 import dev.uffs.doisag.repository.PrescriberRepository;
+import dev.uffs.doisag.repository.ScaleTaskRepository;
 import dev.uffs.doisag.security.TokenService;
 import dev.uffs.doisag.service.AnamnesisService;
+import dev.uffs.doisag.service.ScaleTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +56,8 @@ class AnamnesisTest {
     @Autowired private PatientRepository patientRepository;
     @Autowired private AnamnesisRepository anamnesisRepository;
     @Autowired private NotificationRepository notificationRepository;
+    @Autowired private ScaleTaskRepository taskRepository;
+    @Autowired private ScaleTaskService scaleTaskService;
     @Autowired private TokenService tokenService;
 
     private Prescriber prescriber;
@@ -214,6 +222,55 @@ class AnamnesisTest {
         annul(anamnesisId, "Anulando de novo", prescriber)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(AnamnesisService.ALREADY_ANNULLED_MESSAGE));
+    }
+
+    // decisao da dona (11/2026): anular a anamnese avisa o paciente dentro do sistema, com o motivo e o
+    // caminho pra preencher de novo, como a resposta de escala anulada. a avaliacao inicial n eh reaberta
+    @Test
+    void annullingTheAnamnesisNotifiesThePatientWithTheReason() throws Exception {
+        scaleTaskService.assign(patient.getId(), ScaleType.ANAMNESE, LocalDate.now(), 7, false);
+        Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .extracting(Notification::getTitle)
+                .doesNotContain(AnamnesisService.ANNULLED_NOTICE_TITLE);
+
+        annul(anamnesisId, "Ficha incompleta", prescriber).andExpect(status().isOk());
+
+        List<Notification> notices = notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId())
+                .stream()
+                .filter(notice -> notice.getTitle().equals(AnamnesisService.ANNULLED_NOTICE_TITLE))
+                .toList();
+        assertThat(notices).hasSize(1);
+        assertThat(notices.get(0).getMessage()).isEqualTo("Sua avaliação inicial (anamnese) foi anulada pelo "
+                + "prescritor. Preencha a ficha de novo. Motivo: Ficha incompleta");
+        assertThat(notices.get(0).getType()).isEqualTo("FORM");
+        assertThat(notices.get(0).getLink()).isEqualTo("/anamnese");
+        // a tarefa da avaliacao inicial continua respondida, pq reabrir mexeria no indicador
+        assertThat(taskRepository.findByPatientIdOrderByPeriodStartDesc(patient.getId()))
+                .extracting(ScaleTask::getStatus)
+                .containsExactly(ScaleTaskStatus.RESPONDIDA);
+        // anular de novo eh recusado e n manda outro aviso
+        annul(anamnesisId, "Anulando de novo", prescriber).andExpect(status().isBadRequest());
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .filteredOn(notice -> notice.getTitle().equals(AnamnesisService.ANNULLED_NOTICE_TITLE))
+                .hasSize(1);
+    }
+
+    // o arquivado n consegue mandar ficha nova (a api recusa), entao o aviso dele manda falar com a clinica
+    @Test
+    void annullingTheAnamnesisOfAnArchivedPatientTellsThemToTalkToTheClinic() throws Exception {
+        Long anamnesisId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        patient.setArchivedAt(LocalDateTime.now());
+        patient = patientRepository.save(patient);
+
+        annul(anamnesisId, "Ficha de outra pessoa", prescriber).andExpect(status().isOk());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .filteredOn(notice -> notice.getTitle().equals(AnamnesisService.ANNULLED_NOTICE_TITLE))
+                .singleElement()
+                .satisfies(notice -> assertThat(notice.getMessage())
+                        .isEqualTo(AnamnesisService.ANNULLED_NOTICE_ARCHIVED_MESSAGE
+                                + " Motivo: Ficha de outra pessoa"));
     }
 
     // corrigir eh anular e preencher de novo, as vezes no mesmo dia: a ficha valida vem antes da anulada

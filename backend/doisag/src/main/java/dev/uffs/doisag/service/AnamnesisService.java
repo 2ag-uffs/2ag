@@ -13,6 +13,7 @@ import dev.uffs.doisag.infra.RowLock;
 import dev.uffs.doisag.model.Anamnesis;
 import dev.uffs.doisag.model.AnamnesisCorrection;
 import dev.uffs.doisag.model.Annulment;
+import dev.uffs.doisag.model.Notification;
 import dev.uffs.doisag.model.Patient;
 import dev.uffs.doisag.model.Prescriber;
 import dev.uffs.doisag.model.Users;
@@ -39,23 +40,33 @@ public class AnamnesisService {
     public static final String ARCHIVED_PATIENT_MESSAGE =
             "Seu acompanhamento foi encerrado. Fale com a clínica antes de preencher uma anamnese nova";
     public static final String ALREADY_ANNULLED_MESSAGE = "Esta anamnese já foi anulada";
+    // o aviso q o paciente recebe qnd a ficha eh anulada, com o motivo no fim
+    public static final String ANNULLED_NOTICE_TITLE = "Avaliação inicial para preencher de novo";
+    public static final String ANNULLED_NOTICE_MESSAGE =
+            "Sua avaliação inicial (anamnese) foi anulada pelo prescritor. Preencha a ficha de novo.";
+    public static final String ANNULLED_NOTICE_ARCHIVED_MESSAGE =
+            "Sua avaliação inicial (anamnese) foi anulada pelo prescritor. Seu acompanhamento foi encerrado: "
+                    + "fale com a clínica antes de preencher uma ficha nova.";
 
     private final AnamnesisRepository anamnesisRepository;
     private final AnamnesisCorrectionRepository correctionRepository;
     private final PatientRepository patientRepository;
     private final AuditService auditService;
     private final ScaleTaskService scaleTaskService;
+    private final NotificationService notificationService;
     private final RowLock rowLock;
 
     public AnamnesisService(AnamnesisRepository anamnesisRepository,
                             AnamnesisCorrectionRepository correctionRepository,
                             PatientRepository patientRepository,
-                            AuditService auditService, ScaleTaskService scaleTaskService, RowLock rowLock) {
+                            AuditService auditService, ScaleTaskService scaleTaskService,
+                            NotificationService notificationService, RowLock rowLock) {
         this.anamnesisRepository = anamnesisRepository;
         this.correctionRepository = correctionRepository;
         this.patientRepository = patientRepository;
         this.auditService = auditService;
         this.scaleTaskService = scaleTaskService;
+        this.notificationService = notificationService;
         this.rowLock = rowLock;
     }
 
@@ -121,7 +132,20 @@ public class AnamnesisService {
         Anamnesis savedAnamnesis = anamnesisRepository.save(anamnesis);
         auditService.recordAnnulment(AuditRecordType.ANAMNESE, savedAnamnesis.getId(),
                 savedAnamnesis.getPatient().getId());
+        notifyPatientOfAnnulment(savedAnamnesis);
         return new AnamnesisResponseDTO(savedAnamnesis);
+    }
+
+    // o paciente fica sabendo da anulacao com o motivo e o caminho pra preencher de novo, como na resposta
+    // de escala anulada: antes ele so descobria abrindo o historico (decisao da dona, 11/2026)
+    // a tarefa da avaliacao inicial fica como esta, e o aviso eh so dentro do sistema, nada vai por e-mail
+    // o arquivado n consegue mandar ficha nova, entao o aviso dele manda falar com a clinica
+    private void notifyPatientOfAnnulment(Anamnesis anamnesis) {
+        Patient patient = anamnesis.getPatient();
+        String message = patient.isArchived() ? ANNULLED_NOTICE_ARCHIVED_MESSAGE : ANNULLED_NOTICE_MESSAGE;
+        notificationService.createNotification(patient, ANNULLED_NOTICE_TITLE,
+                message + " Motivo: " + anamnesis.getAnnulment().getAnnulmentReason(),
+                Notification.TYPE_FORM, ScaleType.ANAMNESE.getPath());
     }
 
     // anamneses de um paciente da mais recente pra mais antiga
