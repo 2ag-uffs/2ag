@@ -11,7 +11,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import UrgencyNotice from "../../components/urgency-notice/urgency-notice.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
 import {
@@ -147,6 +147,7 @@ export default function AgendamentoConsultaPaciente() {
     const [replacement, setReplacement] = useState(null);
     const [busyAppointmentId, setBusyAppointmentId] = useState(null);
     const noticeRef = useRef(null);
+    const actionErrorRef = useRef(null);
     const [requestStepRef, focusFirstError] = useFocusFirstError();
 
     // o botao de pedir ou de cancelar some depois do envio e o foco ia pro body, entao ele vai pro aviso (CT-39)
@@ -155,6 +156,14 @@ export default function AgendamentoConsultaPaciente() {
             noticeRef.current.focus();
         }
     }, [notice]);
+
+    // o aviso de erro fica no alto da tela e o botao q falhou la embaixo, entao o foco vai pro aviso
+    // e o navegador rola ate ele
+    useEffect(() => {
+        if (actionError && actionErrorRef.current) {
+            actionErrorRef.current.focus();
+        }
+    }, [actionError]);
 
     // no celular o passo 3 aparece embaixo da grade de horarios e fora da tela, entao a tela rola ate ele.
     // sem rolagem suave, q respeita quem pede menos movimento, e o foco continua no horario.
@@ -234,6 +243,7 @@ export default function AgendamentoConsultaPaciente() {
     const sendRequest = async (slotStart, replacedRequests) => {
         setIsSending(true);
         clearMessages();
+        let apiAnswered = true;
         try {
             await apiService.post("/appointments/requests", {
                 dateTime: slotStart,
@@ -248,10 +258,14 @@ export default function AgendamentoConsultaPaciente() {
             setPatientNote("");
         } catch (requestError) {
             showActionError(requestError);
+            // sem resposta da api a busca falharia tbm e empilhava um segundo aviso
+            apiAnswered = requestError instanceof ApiError;
         } finally {
             setIsSending(false);
-            // mesmo com erro vale buscar de novo pq o horario pode ter sido pedido por outra pessoa
-            reload();
+            // mesmo com erro da api vale buscar de novo pq o horario pode ter sido pedido por outra pessoa
+            if (apiAnswered) {
+                reload();
+            }
         }
     };
 
@@ -328,7 +342,9 @@ export default function AgendamentoConsultaPaciente() {
             />
 
             {notice && <p className="aviso" role="status" tabIndex={-1} ref={noticeRef}>{notice}</p>}
-            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+            {actionError && (
+                <p className="aviso aviso--atencao" role="alert" tabIndex={-1} ref={actionErrorRef}>{actionError}</p>
+            )}
             {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
 
             {patient.archived && <EmptyState icon={FiUserX} message={ARCHIVED_APPOINTMENT_NOTICE}/>}

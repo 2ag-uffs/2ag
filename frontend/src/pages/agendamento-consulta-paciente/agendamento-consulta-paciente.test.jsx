@@ -385,9 +385,31 @@ describe("AgendamentoConsultaPaciente", () => {
         await user.click(screen.getByRole("button", {name: "Trocar pedido"}));
         await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, trocar"}));
 
-        expect(await screen.findByRole("alert"))
-            .toHaveTextContent("Escolha um horário com pelo menos 24 horas de antecedência");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Escolha um horário com pelo menos 24 horas de antecedência");
+        // o aviso fica no alto da tela, longe do botao, entao o foco vai pra ele e o navegador rola ate la
+        await waitFor(() => expect(alert).toHaveFocus());
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    // sem rede o aviso ficava la no alto e fora da tela, o foco no botao, e a tela buscava tudo de novo,
+    // q falhava tbm e empilhava um segundo aviso
+    it("pedido sem conexao leva o foco pro aviso de erro e n busca a tela de novo", async () => {
+        vi.stubEnv("TZ", "America/Sao_Paulo");
+        mockScreen([APPOINTMENT], [FREE_SLOT]);
+        vi.spyOn(apiService, "post").mockRejectedValue(new TypeError("Failed to fetch"));
+        render(<AgendamentoConsultaPaciente/>);
+        const user = userEvent.setup();
+
+        await chooseFreeSlot(user, "14:00");
+        await user.click(screen.getByRole("button", {name: "Pedir consulta"}));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Não foi possível conectar ao sistema. Confira sua internet e tente de novo.");
+        await waitFor(() => expect(alert).toHaveFocus());
+        expect(apiService.get.mock.calls.filter(([path]) => path === "/appointments/mine")).toHaveLength(1);
+        // o horario escolhido continua la pra tentar de novo
+        expect(screen.getByRole("button", {name: "Pedir consulta"})).toBeInTheDocument();
     });
 
     // a modalidade vinha marcada como presencial e quem n mexia pedia presencial sem querer: agora vem vazia e

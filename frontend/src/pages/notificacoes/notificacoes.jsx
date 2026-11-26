@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router";
 import {FiAlertCircle, FiBell, FiCalendar, FiClipboard} from "react-icons/fi";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
@@ -70,6 +70,15 @@ export default function Notificacoes() {
     const [pageNumber, setPageNumber] = useState(0);
     const [loadError, setLoadError] = useState(null);
     const [actionError, setActionError] = useState(null);
+    const actionErrorRef = useRef(null);
+
+    // o aviso de erro fica no alto da tela e o botao q falhou pode estar bem embaixo, entao o foco vai pro aviso
+    // e o navegador rola ate ele
+    useEffect(() => {
+        if (actionError && actionErrorRef.current) {
+            actionErrorRef.current.focus();
+        }
+    }, [actionError]);
 
     const loadPage = useCallback(() => {
         apiService.get("/notifications?page=" + pageNumber)
@@ -153,7 +162,9 @@ export default function Notificacoes() {
                 ) : null}
             />
 
-            {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
+            {actionError && (
+                <p className="aviso aviso--atencao" role="alert" tabIndex={-1} ref={actionErrorRef}>{actionError}</p>
+            )}
 
             {page.notifications.length === 0 ? (
                 <EmptyState icon={FiBell} message="Nenhum aviso por aqui."/>

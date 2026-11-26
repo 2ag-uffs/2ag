@@ -1,4 +1,4 @@
-import {render, screen} from "@testing-library/react";
+import {render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -57,6 +57,27 @@ describe("Notificacoes", () => {
         expect(await screen.findByText("Aviso 1")).toBeInTheDocument();
         expect(screen.queryByText("Aviso 21")).not.toBeInTheDocument();
         expect(screen.queryByText("Nenhum aviso por aqui.")).not.toBeInTheDocument();
+    });
+
+    // sem rede o aviso de erro ficava la no alto, fora da tela de quem tinha rolado ate o aviso q queria apagar
+    it("apagar sem conexao leva o foco pro aviso de erro", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({
+            notifications: [notification(1), notification(2)], page: 0, totalPages: 1, totalNotifications: 2, unread: 0,
+        });
+        vi.spyOn(apiService, "delete").mockRejectedValue(new TypeError("Failed to fetch"));
+        const user = userEvent.setup();
+        const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+            {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        await screen.findByText("Aviso 2");
+        await user.click(screen.getAllByRole("button", {name: "Apagar"})[1]);
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Não foi possível conectar ao sistema. Confira sua internet e tente de novo.");
+        await waitFor(() => expect(alert).toHaveFocus());
+        expect(screen.getAllByRole("alert")).toHaveLength(1);
+        expect(screen.getByText("Aviso 2")).toBeInTheDocument();
     });
 
     // apagar n pede confirmacao: fica longe do Abrir, na outra ponta no celular, e na cor de acao q perde algo
