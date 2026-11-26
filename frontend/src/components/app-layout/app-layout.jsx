@@ -43,6 +43,8 @@ const MAX_BADGE_COUNT = 99;
 // itens do menu de cada perfil
 // o menu lateral mostra todos e a barra de baixo do celular so os com mobile
 // prefixes deixa o item marcado tbm nas telas q ficam dentro dele
+// mobilePrefixes so vale na barra de baixo: as telas do paciente q n tem item nela marcam o inicio,
+// e o menu lateral continua marcando o item da tela
 // pattern marca o item numa tela q tbm cairia no prefixo de outro item
 function menuFor(user) {
     if (!user) {
@@ -50,7 +52,10 @@ function menuFor(user) {
     }
     if (user.role === "PATIENT") {
         return [
-            {path: "/painel-paciente", label: "Início", icon: FiHome, mobile: true},
+            {
+                path: "/painel-paciente", label: "Início", icon: FiHome, mobile: true,
+                mobilePrefixes: ["/pacientes/", "/escalas/", "/minhas-prescricoes", "/historico-paciente", "/anamnese", "/impressao"],
+            },
             {path: "/pacientes/" + user.id + "/escalas", label: "Escalas", icon: FiClipboard, prefixes: ["/escalas/"]},
             {path: "/progresso", label: "Progresso", icon: FiTrendingUp, mobile: true},
             {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar, mobile: true},
@@ -82,13 +87,13 @@ function menuFor(user) {
 
 // so um item fica marcado por vez
 // o pattern vem antes pq /paciente/5/progresso tbm comeca com o prefixo da lista de pacientes
-function findActiveItem(items, pathname) {
+function findActiveItem(items, pathname, isBottomBar) {
     const patternItem = items.find((item) => item.pattern && item.pattern.test(pathname));
     if (patternItem) {
         return patternItem;
     }
     return items.find((item) => {
-        const prefixes = item.prefixes || [];
+        const prefixes = (item.prefixes || []).concat(isBottomBar && item.mobilePrefixes ? item.mobilePrefixes : []);
         return pathname === item.path || prefixes.some((prefix) => pathname.startsWith(prefix));
     });
 }
@@ -138,7 +143,8 @@ function SideMenu({items, activeItem, unreadCount}) {
     );
 }
 
-function BottomMenu({items, activeItem, unreadCount}) {
+// o item marcado so pelo mobilePrefixes n eh a tela aberta: o leitor de tela le "atual" e n "pagina atual"
+function BottomMenu({items, activeItem, isActivePage, unreadCount}) {
     return (
         <nav className={styles.bottomMenu} aria-label="Menu" data-bottom-bar="">
             {items.map((item) => {
@@ -150,7 +156,7 @@ function BottomMenu({items, activeItem, unreadCount}) {
                         to={item.path}
                         className={active ? styles.bottomLink + " " + styles.bottomLinkActive : styles.bottomLink}
                         aria-label={menuLabelOf(item, unreadCount)}
-                        aria-current={active ? "page" : undefined}
+                        aria-current={active ? (isActivePage ? "page" : "true") : undefined}
                     >
                         <span className={styles.bottomIcon}>
                             <Icon/>
@@ -365,9 +371,10 @@ export default function AppLayout() {
     }, []);
 
     // a barra do celular tem menos itens entao ela acha o item marcado dela
-    // assim no progresso de um paciente o celular marca a lista de pacientes
-    const activeSideItem = findActiveItem(menuItems, location.pathname);
-    const activeBottomItem = findActiveItem(mobileItems, location.pathname);
+    // assim no progresso de um paciente o celular marca a lista de pacientes, e nas prescricoes o inicio
+    const activeSideItem = findActiveItem(menuItems, location.pathname, false);
+    const ownBottomItem = findActiveItem(mobileItems, location.pathname, false);
+    const activeBottomItem = ownBottomItem || findActiveItem(mobileItems, location.pathname, true);
 
     // quem abriu o link direto n tem pra onde voltar entao vai pro inicio
     const handleBack = () => {
@@ -485,7 +492,12 @@ export default function AppLayout() {
                     </div>
                 </main>
 
-                <BottomMenu items={mobileItems} activeItem={activeBottomItem} unreadCount={unreadCount}/>
+                <BottomMenu
+                    items={mobileItems}
+                    activeItem={activeBottomItem}
+                    isActivePage={Boolean(ownBottomItem)}
+                    unreadCount={unreadCount}
+                />
 
                 <ScrollRestoration/>
             </div>

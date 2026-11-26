@@ -55,7 +55,7 @@ src/
 
 ## navegação
 
-- **layout por perfil:** paciente, prescritor e administrador têm menu próprio. no celular o menu vira uma barra inferior
+- **layout por perfil:** paciente, prescritor e administrador têm menu próprio. no celular o menu vira uma barra inferior. na barra do paciente, as telas que não têm item nela (*Prescrições*, *Histórico*, impressão, anamnese e escalas) marcam o *Início*, para a pessoa não perder onde está, e o menu lateral continua marcando o item da tela, do mesmo jeito que o progresso de um paciente marca *Pacientes* na barra do prescritor. no celular o menu lateral some e o leitor de tela só tem a barra, então esse *Início* vai com `aria-current="true"` e é lido como o item atual, e não como a página aberta, que fica para o *Início* do próprio painel (26/11/2026)
 - **rotas protegidas:** as regras ficam em `app/route-guards.js` e rodam antes da tela abrir. quem não tem acesso volta para a própria tela inicial, e quem não está logado vai para o login com `?voltar=` e, depois de entrar, volta para a tela que pediu. a api confere tudo de novo, porque esconder rota não protege dado
 - **carregamento sob demanda:** cada tela é um arquivo separado. enquanto a próxima tela baixa, a atual continua visível e uma barra fina aparece no topo
 - **transição:** cada tela nova entra com um fade curto, desligado para quem pede menos movimento no sistema operacional

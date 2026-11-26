@@ -890,6 +890,38 @@ describe("AppLayout", () => {
         expect(bottomMenu().getByRole("link", {name: "Pacientes"})).toHaveAttribute("aria-current", "page");
     });
 
+    // prescricoes, historico, impressao, anamnese e escalas n estao na barra do celular, e nelas nenhum item ficava
+    // marcado: a barra marca o inicio, e o menu lateral continua marcando o item da tela
+    // no celular a lateral some e o leitor de tela so tem a barra: o inicio eh o item atual dela, e n a pagina aberta
+    [
+        ["/minhas-prescricoes", "Prescrições"],
+        ["/historico-paciente", "Histórico"],
+        ["/impressao", "Histórico"],
+        ["/anamnese", "Histórico"],
+        ["/pacientes/3/escalas", "Escalas"],
+        ["/escalas/diario-sono", "Escalas"],
+        ["/escalas/resposta/7", "Escalas"],
+    ].forEach(([path, sideLabel]) => {
+        it("no celular " + path + " marca o inicio na barra sem dizer q eh a pagina aberta e o menu lateral marca " + sideLabel, async () => {
+            setLoggedUser(MARIA);
+            openLayoutAt(path);
+
+            await screen.findByText("conteudo da tela");
+            expect(bottomMenu().getByRole("link", {name: "Início"})).toHaveAttribute("aria-current", "true");
+            expect(bottomMenu().getAllByRole("link").filter((link) => link.hasAttribute("aria-current"))).toHaveLength(1);
+            expect(sideMenu().getByRole("link", {name: sideLabel})).toHaveAttribute("aria-current", "page");
+            expect(sideMenu().getByRole("link", {name: "Início"})).not.toHaveAttribute("aria-current");
+        });
+    });
+
+    it("no proprio inicio a barra do celular diz q ele eh a pagina aberta", async () => {
+        setLoggedUser(MARIA);
+        openLayoutAt("/painel-paciente");
+
+        await screen.findByText("conteudo da tela");
+        expect(bottomMenu().getByRole("link", {name: "Início"})).toHaveAttribute("aria-current", "page");
+    });
+
     // a barra do celular ja tem cinco itens, entao Indicadores fica so no menu lateral
     it("os indicadores ficam no menu lateral do prescritor e n na barra do celular", async () => {
         setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
