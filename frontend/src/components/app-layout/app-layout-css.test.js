@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
+import {cssRules, declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 
 // o jsdom n desenha a tela, entao o teste le as regras do css
 
@@ -43,6 +43,46 @@ describe("cabecalho do celular", () => {
 
         expect(header["min-height"]).toBe("calc(var(--mobile-header-height) + env(safe-area-inset-top))");
         expect(header["min-height"]).toBe(declarationsOf(mediaRules(scaleFormCss, MOBILE), ".progress").top);
+    });
+});
+
+// em q posicao a declaracao fica dentro da regra: a longhand q vem antes da shorthand perde pra ela
+function placeInRule(cssText, selector, property) {
+    const rule = cssRules(cssText).find((item) => item.selectors.includes(selector));
+    return rule.body.split(";").findIndex((declaration) => declaration.trim().startsWith(property + ":"));
+}
+
+describe("celular e tablet deitados com entalhe", () => {
+    // em 740x360 com 32 px de entalhe na esquerda o voltar ficava em x 12 e o titulo e os cartoes em x 16
+    it("no celular o cabecalho, o conteudo e o menu de baixo saem de baixo do entalhe dos lados", () => {
+        const mobile = mediaRules(css, MOBILE);
+        const header = declarationsOf(mobile, ".mobileHeader");
+        const content = declarationsOf(mobile, ".content");
+        const menu = declarationsOf(mobile, ".bottomMenu");
+
+        expect(header["padding-left"]).toBe("max(var(--space-3), env(safe-area-inset-left))");
+        expect(header["padding-right"]).toBe("max(var(--space-3), env(safe-area-inset-right))");
+        expect(content["padding-left"]).toBe("calc(var(--space-4) + env(safe-area-inset-left))");
+        expect(content["padding-right"]).toBe("calc(var(--space-4) + env(safe-area-inset-right))");
+        expect(menu["padding-left"]).toBe("env(safe-area-inset-left)");
+        expect(menu["padding-right"]).toBe("env(safe-area-inset-right)");
+        expect(placeInRule(mobile, ".mobileHeader", "padding-left")).toBeGreaterThan(placeInRule(mobile, ".mobileHeader", "padding"));
+        expect(placeInRule(mobile, ".content", "padding-left")).toBeGreaterThan(placeInRule(mobile, ".content", "padding"));
+    });
+
+    // o iphone de 844x390 deitado cai na faixa so de icones: os icones ficavam embaixo do entalhe
+    // e o ultimo botao em cima da barra de inicio
+    it("na faixa so de icones a lateral cresce com o entalhe e o conteudo sai de baixo do da direita", () => {
+        const rail = mediaRules(css, RAIL);
+        const sidebar = declarationsOf(rail, ".sidebar");
+
+        expect(declarationsOf(rail, ".layout")["grid-template-columns"])
+            .toBe("calc(var(--rail-width) + env(safe-area-inset-left)) minmax(0, 1fr)");
+        expect(sidebar["padding-left"]).toBe("calc(var(--space-2) + env(safe-area-inset-left))");
+        expect(sidebar["padding-bottom"]).toBe("calc(var(--space-4) + env(safe-area-inset-bottom))");
+        expect(declarationsOf(rail, ".content")["padding-right"]).toBe("max(var(--space-6), env(safe-area-inset-right))");
+        expect(placeInRule(rail, ".sidebar", "padding-left")).toBeGreaterThan(placeInRule(rail, ".sidebar", "padding"));
+        expect(placeInRule(rail, ".content", "padding-right")).toBeGreaterThan(placeInRule(rail, ".content", "padding"));
     });
 });
 
