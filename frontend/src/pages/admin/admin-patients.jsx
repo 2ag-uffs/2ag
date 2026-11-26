@@ -1,5 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
+import {FiSearch} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import EmptyState from "../../components/empty-state/empty-state.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
@@ -51,6 +53,10 @@ export default function AdminPatients() {
     const [email, setEmail] = useState("");
     const [foundPatient, setFoundPatient] = useState(null);
     const [searchError, setSearchError] = useState(null);
+    // o campo so fica vermelho qnd o e-mail esta mal digitado
+    const [isEmailWrong, setIsEmailWrong] = useState(false);
+    // busca sem resultado n eh erro de quem digitou, entao vira o aviso neutro da lista vazia
+    const [notFoundText, setNotFoundText] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
 
     const [deactivatedPatients, setDeactivatedPatients] = useState([]);
@@ -80,6 +86,8 @@ export default function AdminPatients() {
         event.preventDefault();
         setIsSearching(true);
         setSearchError(null);
+        setIsEmailWrong(false);
+        setNotFoundText(null);
         setFoundPatient(null);
         setNotice(null);
         // a busca nova limpa o aviso da acao anterior
@@ -89,7 +97,15 @@ export default function AdminPatients() {
             setFoundPatient(patient);
         } catch (requestError) {
             if (requestError instanceof ApiError) {
-                setSearchError(requestError.fieldErrors().email || requestError.message);
+                const emailError = requestError.fieldErrors().email;
+                if (emailError) {
+                    setSearchError(emailError);
+                    setIsEmailWrong(true);
+                } else if (requestError.status === 404) {
+                    setNotFoundText(requestError.message);
+                } else {
+                    setSearchError(requestError.message);
+                }
             } else {
                 setSearchError(CONNECTION_ERROR_MESSAGE);
             }
@@ -167,7 +183,7 @@ export default function AdminPatients() {
                         autoComplete="off"
                         value={email}
                         required={true}
-                        aria-invalid={searchError ? "true" : undefined}
+                        aria-invalid={isEmailWrong ? "true" : undefined}
                         onChange={(event) => setEmail(event.target.value)}
                     />
                 </div>
@@ -176,6 +192,11 @@ export default function AdminPatients() {
                 </BusyButton>
             </form>
             {searchError && <p className="aviso aviso--atencao" role="alert">{searchError}</p>}
+            {notFoundText && (
+                <div role="status">
+                    <EmptyState icon={FiSearch} message={notFoundText}/>
+                </div>
+            )}
 
             {foundPatient && (
                 <ul className={accountStyles.list}>

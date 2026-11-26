@@ -143,6 +143,8 @@ O fundo das telas é um neutro frio levemente esverdeado (`#F4F6F4`), o cartão 
 
 A primeira versão usava a palha `#FFEEDA` como fundo de tudo. Na tela pesou: fundo creme, cabeçalho verde e caixa de destaque em pêssego são três coisas quentes empilhadas, e as faixas azul, amarela e vermelha da escala de dor brigavam com elas. Palha, pêssego e terracota voltaram para o papel que o manual dá a elas — destaque em até 10%: badge, estado, erro e faixa de escala.
 
+A terracota de erro fica para o que a pessoa precisa corrigir. Uma busca que não acha ninguém não é erro de quem digitou: na tela de pacientes da administração, o e-mail sem conta aparece no aviso neutro de lista vazia, com o ícone de lupa, como na lista de pacientes do prescritor, e o campo só fica terracota quando o e-mail está mal escrito (decisão da dona do projeto, novembro de 2026).
+
 Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
 
 O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Desde 20/11/2026 essa borda neutra é a `--color-control-border`, mais escura que a do cartão (veja *contraste*). Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.

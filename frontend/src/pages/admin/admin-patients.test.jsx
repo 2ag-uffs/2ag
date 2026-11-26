@@ -182,4 +182,63 @@ describe("AdminPatients", () => {
         expect(screen.getByRole("button", {name: "Desativar"})).not.toHaveAttribute("aria-disabled");
         expect(get).toHaveBeenCalledTimes(1);
     });
+
+    // n achar alguem n eh erro de quem digitou: vira o aviso neutro com a lupa, igual a lista vazia
+    // do prescritor, e o campo n fica vermelho (decisao da dona, V-P9)
+    it("busca sem resultado mostra o aviso neutro com a lupa e o campo n fica vermelho", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([]);
+        const notFoundMessage = "Nenhuma conta de paciente com este e-mail. Confira se ele foi digitado certo";
+        const post = vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(404, notFoundMessage));
+        const user = userEvent.setup();
+        render(<AdminPatients/>);
+
+        const emailField = screen.getByLabelText("E-mail da conta do paciente");
+        await user.type(emailField, "ninguem@email.com");
+        await user.click(screen.getByRole("button", {name: "Buscar"}));
+
+        const notice = await screen.findByRole("status");
+        expect(notice).toHaveTextContent(notFoundMessage);
+        expect(notice.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(emailField).not.toHaveAttribute("aria-invalid");
+        expect(post).toHaveBeenCalledWith("/admin/patients/lookup", {email: "ninguem@email.com"});
+
+        // a busca seguinte q acha a conta tira o aviso
+        post.mockResolvedValue({id: 1, name: "Ana Souza", email: "ana@email.com", active: true});
+        await user.click(screen.getByRole("button", {name: "Buscar"}));
+        expect(await screen.findByText("Ana Souza")).toBeInTheDocument();
+        expect(screen.queryByText(notFoundMessage)).not.toBeInTheDocument();
+    });
+
+    it("e-mail mal digitado deixa o campo vermelho e mostra a mensagem como erro", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([]);
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Confira os campos", [
+            {field: "email", message: "Confira o e-mail: ele precisa ter @ e o endereço completo"},
+        ]));
+        const user = userEvent.setup();
+        render(<AdminPatients/>);
+
+        const emailField = screen.getByLabelText("E-mail da conta do paciente");
+        await user.type(emailField, "ana@email");
+        await user.click(screen.getByRole("button", {name: "Buscar"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Confira o e-mail");
+        expect(emailField).toHaveAttribute("aria-invalid", "true");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    // erro q n eh do e-mail (sem conexao) continua no aviso de erro, mas n pinta o campo
+    it("sem conexao a busca mostra o erro e o campo n fica vermelho", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue([]);
+        vi.spyOn(apiService, "post").mockRejectedValue(new TypeError("Failed to fetch"));
+        const user = userEvent.setup();
+        render(<AdminPatients/>);
+
+        const emailField = screen.getByLabelText("E-mail da conta do paciente");
+        await user.type(emailField, "ana@email.com");
+        await user.click(screen.getByRole("button", {name: "Buscar"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/Não foi possível conectar/);
+        expect(emailField).not.toHaveAttribute("aria-invalid");
+    });
 });
