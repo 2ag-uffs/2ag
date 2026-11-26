@@ -534,8 +534,9 @@ export default function Escala() {
 
     const save = async (event) => {
         event.preventDefault();
-        // no diario o campo da pergunta eh o unico do form e o enter nele envia: no meio das perguntas so passa
-        // pra proxima. nas outras a data fica junto e o navegador n envia nada com o enter sem o salvar na tela
+        // no meio das perguntas o enter so passa pra proxima, sem salvar pela metade. no diario o campo da pergunta
+        // eh o unico do form, e nas outras o chrome n conta a data entre os campos de digitar, entao o enter num campo
+        // de numero tbm envia. no de horario ele n envia
         if (isStepMode && !isLastStep) {
             goToStep(currentStep + 1);
             return;
