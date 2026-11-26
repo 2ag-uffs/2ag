@@ -434,9 +434,10 @@ export default function AppLayout() {
                 {isChangingPage && <div className={styles.loadingBar} role="progressbar" aria-label="Carregando"/>}
 
                 <aside className={styles.sidebar}>
+                    {/* no celular a lateral fica escondida, e com o lazy a logo dela n eh baixada a toa */}
                     <Link to={homePath} className={styles.brand} aria-label="Ir para o início">
-                        <img src="/images/logotipo-vertical-claro.svg" alt="2AG" className={styles.brandFull}/>
-                        <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon}/>
+                        <img src="/images/logotipo-vertical-claro.svg" alt="2AG" className={styles.brandFull} loading="lazy"/>
+                        <img src="/images/logotipo-icon-claro.svg" alt="" className={styles.brandIcon} loading="lazy"/>
                     </Link>
 
                     <SideMenu items={menuItems} activeItem={activeSideItem} unreadCount={unreadCount}/>

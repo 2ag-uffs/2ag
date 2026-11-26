@@ -1028,6 +1028,19 @@ describe("AppLayout", () => {
         expect(accountName["overflow-wrap"]).toBe("anywhere");
     });
 
+    // abaixo de 768 px a lateral fica escondida e mesmo assim a logo dela (25 kB) baixava em toda primeira abertura
+    it("as logos da lateral so baixam qnd a lateral aparece e a do cabecalho do celular baixa na hora", async () => {
+        setLoggedUser(MARIA);
+        openLayoutAt("/painel-paciente");
+
+        await screen.findByText("conteudo da tela");
+        // a logo so de icone tem alt vazio e n eh lida como imagem, entao o teste pega as duas pela tag
+        const sidebarImages = screen.getByRole("complementary").querySelectorAll("img");
+        expect(sidebarImages).toHaveLength(2);
+        sidebarImages.forEach((image) => expect(image).toHaveAttribute("loading", "lazy"));
+        expect(within(screen.getByRole("banner")).getByRole("img", {name: "2AG"})).not.toHaveAttribute("loading");
+    });
+
     it("o nome salvo no perfil aparece no menu lateral na hora", async () => {
         const profile = {
             id: 1, role: "ADMIN", name: "Administrador", email: "admin@clinica.com", pendingEmail: null, cpf: null,
