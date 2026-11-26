@@ -12,6 +12,10 @@ const buttonCss = readCss(import.meta.url, "./button.css");
 const sectionLinksCss = readCss(import.meta.url, "../components/section-links/section-links.module.css");
 const formCss = readCss(import.meta.url, "../components/form/form.module.css");
 const layoutCss = readCss(import.meta.url, "../components/app-layout/app-layout.module.css");
+const loginCss = readCss(import.meta.url, "../pages/login/login.module.css");
+const forgotPasswordCss = readCss(import.meta.url, "../pages/forgot-password/forgot-password.module.css");
+const resetPasswordCss = readCss(import.meta.url, "../pages/reset-password/reset-password.module.css");
+const confirmEmailCss = readCss(import.meta.url, "../pages/confirm-email/confirm-email.module.css");
 
 describe("alvos de toque", () => {
     it("o --control-height tem 44 px com a letra padrao de 16 px", () => {
@@ -41,6 +45,25 @@ describe("alvos de toque", () => {
         expect(eye["background-clip"]).toBe("content-box");
         // o campo guarda 48 px na direita, entao a senha digitada n passa por baixo do olho
         expect(parseFloat(declarationsOf(formCss, ".passwordBox input")["padding-right"]) * 16).toBeGreaterThanOrEqual(44);
+    });
+
+    // o Esqueci minha senha tinha 21 px de altura e ficava a 8 px do olho: quem queria um acertava o outro
+    it("os links soltos das telas de entrada tem 44 px de altura", () => {
+        const links = [
+            declarationsOf(loginCss, ".forgotLink"),
+            declarationsOf(forgotPasswordCss, ".backLink"),
+            declarationsOf(resetPasswordCss, ".textLink"),
+            declarationsOf(confirmEmailCss, ".textLink"),
+        ];
+
+        links.forEach((link) => {
+            expect(link.display).toBe("inline-flex");
+            expect(link["align-items"]).toBe("center");
+            expect(link["min-height"]).toBe(TARGET);
+        });
+        // o Esqueci minha senha n sobe mais pra perto do olho: fica o espaco normal do formulario
+        expect(declarationsOf(loginCss, ".forgotLink")["margin-top"]).toBeUndefined();
+        expect(declarationsOf(loginCss, ".form").gap).toBe("var(--space-4)");
     });
 
     it("os icones da moldura (voltar, tema e sair) tem 44 px e no celular ficam a 8 px um do outro", () => {

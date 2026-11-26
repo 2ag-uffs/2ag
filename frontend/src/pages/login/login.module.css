@@ -10,12 +10,15 @@
     margin-top: var(--space-2);
 }
 
+/* 44 px pro dedo e o espaco normal do formulario: colado no olho da senha quem queria um acertava o outro */
 .forgotLink {
+    align-items: center;
     align-self: flex-end;
     color: var(--color-primary);
+    display: inline-flex;
     font-size: var(--text-sm);
     font-weight: 600;
-    margin-top: calc(-1 * var(--space-2));
+    min-height: var(--control-height);
 }
 
 /* o espaco entre os blocos ja vem do gap da moldura */

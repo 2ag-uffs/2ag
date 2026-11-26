@@ -19,8 +19,12 @@
     text-decoration: none;
 }
 
+/* link solto com os 44 px de alvo pro dedo */
 .textLink {
+    align-items: center;
     align-self: flex-start;
     color: var(--color-primary);
+    display: inline-flex;
     font-weight: 600;
+    min-height: var(--control-height);
 }
