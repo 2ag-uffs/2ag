@@ -75,6 +75,19 @@
     box-shadow: inset 0 3px 0 var(--color-primary), var(--shadow-sm);
 }
 
+/* dia sem consulta: o nome do dia e o nenhuma consulta na mesma linha, numa caixa baixa q n acompanha a altura
+   do dia cheio do lado. se n couber numa linha, o aviso desce */
+.dayWithoutAppointments {
+    align-items: center;
+    align-self: start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    justify-content: space-between;
+    padding-bottom: var(--space-3);
+    padding-top: var(--space-3);
+}
+
 .dayName {
     align-items: center;
     display: flex;
@@ -228,6 +241,11 @@
 @media (max-width: 47.99rem) {
     .days {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* a agenda abre rolada ate hoje e o cabecalho verde preso no topo cobriria o nome do dia */
+    .day {
+        scroll-margin-top: 4.5rem;
     }
 
     /* no celular os botoes do modal empilham com o voltar em cima */

@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router";
 import {FiChevronLeft, FiChevronRight, FiClock} from "react-icons/fi";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
@@ -22,6 +22,7 @@ import {
     toIsoDate,
 } from "../../utils/date-format.js";
 import {emptyToNull, numberOrNull} from "../../utils/form-values.js";
+import {isPhoneWidth} from "../../utils/phone-width.js";
 import AppointmentFormModal from "./appointment-form-modal.jsx";
 import DeclineRequestModal from "./decline-request-modal.jsx";
 import styles from "./agendamento-consulta-prescritor.module.css";
@@ -92,6 +93,8 @@ export default function AgendamentoPrescritor() {
     const weekEndIso = toIsoDate(addDays(weekStart, 6));
     const todayIso = toIsoDate(new Date());
     const isCurrentWeek = weekStartIso === toIsoDate(mondayOf(new Date()));
+    const todayRef = useRef(null);
+    const hasOpenedOnToday = useRef(false);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -120,6 +123,19 @@ export default function AgendamentoPrescritor() {
             isCurrentRequest = false;
         };
     }, [weekStartIso, weekEndIso, reloadCount]);
+
+    // no celular os dias ficam um embaixo do outro e hoje podia estar la no fim: a semana abre rolada ate o
+    // dia de hoje. so na primeira vez q a agenda chega, pra n puxar a tela dps de cada acao
+    // (decisao da dona do projeto, novembro de 2026)
+    useEffect(() => {
+        if (agenda === null || hasOpenedOnToday.current) {
+            return;
+        }
+        hasOpenedOnToday.current = true;
+        if (isPhoneWidth() && todayRef.current) {
+            todayRef.current.scrollIntoView({block: "start"});
+        }
+    }, [agenda]);
 
     const finishAction = (message) => {
         setNotice(message);
@@ -366,8 +382,16 @@ export default function AgendamentoPrescritor() {
         const dayAppointments = shownAppointments.filter((appointment) => appointment.dateTime.slice(0, 10) === dayIso);
         const isToday = dayIso === todayIso;
         const isDayOff = daysOffDates.includes(dayIso);
+        let dayClass = styles.day;
+        if (isToday) {
+            dayClass = dayClass + " " + styles.dayToday;
+        }
+        // o dia sem consulta eh uma linha curta, q n estica ate a altura do dia cheio do lado
+        if (dayAppointments.length === 0) {
+            dayClass = dayClass + " " + styles.dayWithoutAppointments;
+        }
         return (
-            <div key={dayIso} className={isToday ? styles.day + " " + styles.dayToday : styles.day}>
+            <div key={dayIso} ref={isToday ? todayRef : null} className={dayClass}>
                 <h3 className={styles.dayName}>
                     {formatWeekdayAndDate(dayIso)}
                     <span className={styles.dayTags}>

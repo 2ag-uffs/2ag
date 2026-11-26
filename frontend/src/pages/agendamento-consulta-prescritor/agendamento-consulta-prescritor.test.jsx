@@ -156,6 +156,60 @@ describe("AgendamentoPrescritor", () => {
         expect(screen.getByText("sem atendimento")).toBeInTheDocument();
     });
 
+    // o dia vazio ocupava a msm caixa do dia cheio (decisao da dona do projeto, novembro de 2026)
+    it("o dia sem consulta vira a linha curta e o dia com consulta continua o cartao inteiro", async () => {
+        const monday = toIsoDate(mondayOf(new Date()));
+        renderAgenda({weekAppointments: [{...SCHEDULED_RETURN, dateTime: monday + "T09:00:00"}]});
+
+        const fullDay = (await screen.findByText("Maria Souza")).closest("li").parentElement.parentElement;
+        expect(fullDay.className).not.toMatch(/dayWithoutAppointments/);
+        const emptyDays = screen.getAllByText("Nenhuma consulta.").map((text) => text.parentElement);
+        expect(emptyDays).toHaveLength(6);
+        emptyDays.forEach((day) => {
+            expect(day.className).toMatch(/dayWithoutAppointments/);
+            expect(within(day).getByRole("heading", {level: 3})).toBeInTheDocument();
+        });
+    });
+
+    it("no celular a agenda abre rolada ate o dia de hoje, uma vez so", async () => {
+        vi.stubGlobal("matchMedia", (media) => ({matches: media === "(max-width: 47.99rem)"}));
+        const scrolled = [];
+        Element.prototype.scrollIntoView = function scrollIntoView(options) {
+            scrolled.push({text: this.textContent, options});
+        };
+        try {
+            renderAgenda();
+            const user = userEvent.setup();
+
+            await screen.findByText("hoje");
+            expect(scrolled).toHaveLength(1);
+            expect(scrolled[0].text).toContain("hoje");
+            expect(scrolled[0].options).toEqual({block: "start"});
+
+            // trocar de semana e voltar n puxa a tela de novo
+            await user.click(screen.getByRole("button", {name: "Próxima semana"}));
+            await user.click(await screen.findByRole("button", {name: "Esta semana"}));
+            await screen.findByText("hoje");
+            expect(scrolled).toHaveLength(1);
+        } finally {
+            delete Element.prototype.scrollIntoView;
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("no computador a agenda abre no alto, sem rolar ate hoje", async () => {
+        const scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView = scrollIntoView;
+        try {
+            renderAgenda();
+
+            await screen.findByText("hoje");
+            expect(scrollIntoView).not.toHaveBeenCalled();
+        } finally {
+            delete Element.prototype.scrollIntoView;
+        }
+    });
+
     // a modalidade vinha marcada como presencial numa clinica quase toda online: agora vem vazia e marcar sem
     // escolher marca o campo e leva o foco pra ele (decisao de 14/11/2026, revisao das regras R24)
     it("a nova consulta vem sem modalidade e marcar sem escolher leva o foco pra modalidade", async () => {

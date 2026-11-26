@@ -8,6 +8,12 @@ function phoneQuery() {
     return typeof window.matchMedia === "function" ? window.matchMedia(PHONE_QUERY) : null;
 }
 
+// a largura de agora, pra quem so precisa olhar uma vez, como a agenda q abre rolada ate hoje
+export function isPhoneWidth() {
+    const query = phoneQuery();
+    return query ? query.matches : false;
+}
+
 // diz se a tela esta na largura do celular, e muda junto qnd a pessoa gira o aparelho ou estica a janela
 // o onChange roda antes da tela se desenhar na largura nova, entao o q ele mudar ja vale nesse desenho
 export function usePhoneWidth(onChange) {

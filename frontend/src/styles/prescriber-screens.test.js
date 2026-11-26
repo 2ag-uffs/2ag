@@ -104,6 +104,20 @@ describe("telas do prescritor", () => {
         expect(declarationsOf(indicatorsCss, ".goalMissed").padding).toBe(cardBadge.padding);
     });
 
+    // decisao da dona do projeto, novembro de 2026: o dia vazio n acompanha mais a altura do dia cheio do lado
+    it("o dia sem consulta da agenda eh uma linha q n estica, e no celular o dia rola pra baixo do cabecalho", () => {
+        const emptyDay = declarationsOf(cssWithoutMedia(agendaCss), ".dayWithoutAppointments");
+        const mobile = mediaRules(agendaCss, MOBILE);
+
+        expect(emptyDay["align-self"]).toBe("start");
+        expect(emptyDay["flex-direction"]).toBe("row");
+        expect(emptyDay["flex-wrap"]).toBe("wrap");
+        expect(emptyDay["align-items"]).toBe("center");
+        // a regra vem dps da do .day no arquivo, senao a coluna do cartao ganhava
+        expect(agendaCss.indexOf(".dayWithoutAppointments {")).toBeGreaterThan(agendaCss.indexOf(".day {"));
+        expect(declarationsOf(mobile, ".day")["scroll-margin-top"]).toBe("4.5rem");
+    });
+
     // texto pequeno em terracota usa o tom 3. o tom 2 dava 3,85:1 sobre o bloco cinza
     it("o selo sem atendimento da agenda passa de 4,5:1 nos temas", () => {
         const tag = declarationsOf(agendaCss, ".dayOffTag");
