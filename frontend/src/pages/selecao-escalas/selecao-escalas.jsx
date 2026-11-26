@@ -8,13 +8,17 @@ import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
+import {ARCHIVED_INITIAL_ASSESSMENT_NOTICE} from "../../utils/archived-patient.js";
 import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./selecao-escalas.module.css";
 
-// escala ja enviada ou recusada mostra o motivo no lugar da descricao
-function descriptionOf(scale, alreadySent, refusal) {
+// escala ja enviada, bloqueada ou recusada mostra o motivo no lugar da descricao
+function descriptionOf(scale, alreadySent, blockedReason, refusal) {
     if (alreadySent) {
         return "Já enviada. Esperando o paciente responder.";
+    }
+    if (blockedReason) {
+        return blockedReason;
     }
     if (refusal) {
         return refusal.endsWith(".") ? refusal : refusal + ".";
@@ -51,6 +55,7 @@ export default function SelecaoEscalas() {
                 if (isCurrentRequest) {
                     setPage({
                         patientName: patient.name,
+                        isArchived: Boolean(patient.archived),
                         // as q ainda esperam resposta n entram de novo
                         waiting: tasks.filter((task) => task.status === "PENDENTE")
                             .map((task) => task.scaleType),
@@ -84,9 +89,14 @@ export default function SelecaoEscalas() {
         return <SkeletonPage cards={3}/>;
     }
 
+    // o arquivado n preenche a avaliacao inicial e a api recusa o envio, entao o cartao ja vem bloqueado
+    // com o motivo e as outras escalas vao num clique so (decisao da dona do projeto, novembro de 2026)
+    const blockedReasonOf = (scale) => (
+        page.isArchived && scale.type === "ANAMNESE" ? ARCHIVED_INITIAL_ASSESSMENT_NOTICE : null);
+
     const visibleScales = page.scales.filter((scale) => matchesSearch(scale.name, search));
     const scalesToSend = page.scales.filter((scale) => chosen[scale.type] && !page.waiting.includes(scale.type)
-        && !refused[scale.type]);
+        && !refused[scale.type] && !blockedReasonOf(scale));
 
     const send = async () => {
         setActionError(null);
@@ -150,13 +160,15 @@ export default function SelecaoEscalas() {
                     {visibleScales.map((scale) => {
                         const alreadySent = page.waiting.includes(scale.type);
                         const refusal = refused[scale.type];
+                        const blockedReason = blockedReasonOf(scale);
+                        const isBlocked = Boolean(blockedReason) || Boolean(refusal);
                         return (
                             <li key={scale.type}>
                                 <ChoiceCard
                                     title={scale.name}
-                                    description={descriptionOf(scale, alreadySent, refusal)}
-                                    checked={alreadySent || (!refusal && Boolean(chosen[scale.type]))}
-                                    disabled={alreadySent || Boolean(refusal) || isSending}
+                                    description={descriptionOf(scale, alreadySent, blockedReason, refusal)}
+                                    checked={alreadySent || (!isBlocked && Boolean(chosen[scale.type]))}
+                                    disabled={alreadySent || isBlocked || isSending}
                                     onChange={() => toggleScale(scale.type)}
                                 />
                             </li>

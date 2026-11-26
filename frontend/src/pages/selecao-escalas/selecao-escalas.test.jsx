@@ -13,6 +13,10 @@ const ASSIGNABLE = [
     {type: "REGISTRO_DOR", name: "Registro de dor", description: "A dor da última semana."},
 ];
 
+const INITIAL_ASSESSMENT = {
+    type: "ANAMNESE", name: "Avaliação inicial", description: "Ficha de triagem com histórico de saúde.",
+};
+
 function renderPage() {
     const router = createMemoryRouter([
         {path: "/paciente/:patientId/selecao-escalas", element: <SelecaoEscalas/>},
@@ -82,6 +86,60 @@ describe("SelecaoEscalas", () => {
         const hamilton = screen.getByRole("checkbox", {name: /Escala de ansiedade de Hamilton/});
         expect(hamilton).toBeEnabled();
         expect(hamilton).toBeChecked();
+    });
+
+    // a api recusa a avaliacao inicial de paciente arquivado: o cartao ja vem bloqueado com o motivo e as
+    // outras escalas vao num clique so (decisao da dona do projeto, novembro de 2026)
+    it("paciente arquivado ve a avaliacao inicial bloqueada com o motivo e envia as outras de uma vez", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients/5") {
+                return Promise.resolve({id: 5, name: "Carla Menezes", archived: true});
+            }
+            if (path === "/patients/5/scales") {
+                return Promise.resolve([]);
+            }
+            return Promise.resolve([INITIAL_ASSESSMENT, ...ASSIGNABLE]);
+        });
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({id: 9});
+        const router = renderPage();
+        const user = userEvent.setup();
+
+        const assessment = await screen.findByRole("checkbox", {name: /Avaliação inicial/});
+        expect(assessment).toBeDisabled();
+        expect(assessment).not.toBeChecked();
+        expect(screen.getByText("Paciente arquivado não preenche a avaliação inicial. Reative o paciente, na aba "
+            + "Arquivados da lista de pacientes, antes de enviar.")).toBeInTheDocument();
+        expect(screen.queryByText(INITIAL_ASSESSMENT.description)).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("checkbox", {name: /Escala de ansiedade de Hamilton/}));
+        await user.click(screen.getByRole("checkbox", {name: /Registro de dor/}));
+        expect(screen.getByText("2 escala(s) para enviar.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Enviar ao paciente"}));
+
+        expect(await screen.findByText("Histórico do paciente")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/paciente/5/historico");
+        expect(post).toHaveBeenCalledTimes(2);
+        expect(post).not.toHaveBeenCalledWith("/patients/5/scales", {scaleType: "ANAMNESE"});
+    });
+
+    it("paciente fora do arquivo marca a avaliacao inicial como qualquer escala", async () => {
+        apiService.get.mockImplementation((path) => {
+            if (path === "/patients/5") {
+                return Promise.resolve({id: 5, name: "Maria Souza", archived: false});
+            }
+            if (path === "/patients/5/scales") {
+                return Promise.resolve([]);
+            }
+            return Promise.resolve([INITIAL_ASSESSMENT, ...ASSIGNABLE]);
+        });
+        renderPage();
+        const user = userEvent.setup();
+
+        const assessment = await screen.findByRole("checkbox", {name: /Avaliação inicial/});
+        expect(assessment).toBeEnabled();
+        expect(screen.getByText(INITIAL_ASSESSMENT.description)).toBeInTheDocument();
+        await user.click(assessment);
+        expect(screen.getByText("1 escala(s) para enviar.")).toBeInTheDocument();
     });
 
     // o botao desabilitado enquanto enviava perdia o foco, q ia pro body (CT-39)

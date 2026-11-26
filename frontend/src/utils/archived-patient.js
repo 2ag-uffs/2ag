@@ -22,3 +22,7 @@ export const ARCHIVED_PRESCRIPTION_NOTICE = "Paciente arquivado. " + HOW_TO_REAC
 export const ARCHIVED_EXAM_NOTICE = "Paciente arquivado. " + HOW_TO_REACTIVATE + "aplicar o Mini-Exame.";
 
 export const ARCHIVED_ATTENDANCE_NOTICE = "Paciente arquivado: reative antes de registrar o atendimento.";
+
+// em Enviar escalas o cartao da avaliacao inicial do arquivado ja vem bloqueado com este motivo
+export const ARCHIVED_INITIAL_ASSESSMENT_NOTICE = "Paciente arquivado não preenche a avaliação inicial. "
+    + "Reative o paciente, na aba Arquivados da lista de pacientes, antes de enviar.";
