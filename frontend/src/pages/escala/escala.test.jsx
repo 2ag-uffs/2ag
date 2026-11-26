@@ -837,6 +837,54 @@ describe("Escala diaria", () => {
         expect(screen.getByText(/Esqueceu algum dia/)).toBeInTheDocument();
     });
 
+    // em rede lenta a semana aparecia antes da tarefa aberta e trocava pelo periodo uns segundos dps (15 s em 3g),
+    // e o dia tocado nesse meio ficava escolhido fora do periodo
+    it("a grade espera a tarefa aberta chegar e mostra o esqueleto dos dias no lugar", async () => {
+        let deliverOverview = null;
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return new Promise((resolve) => {
+                    deliverOverview = resolve;
+                });
+            }
+            return Promise.resolve([]);
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+
+        expect(await screen.findByRole("status", {name: "Carregando os dias"})).toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "4"})).toBeInTheDocument();
+        expect(screen.queryByText("Dia da semana")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {pressed: true})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {pressed: false})).not.toBeInTheDocument();
+
+        await act(async () => deliverOverview({pending: pendingTasks, history: []}));
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        expect(within(grid).getAllByRole("button")).toHaveLength(10);
+        expect(screen.queryByRole("status", {name: "Carregando os dias"})).not.toBeInTheDocument();
+    });
+
+    it("se a tarefa aberta n chega a grade da semana aparece como antes", async () => {
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return Promise.reject(new Error("a rede caiu"));
+            }
+            return Promise.resolve([]);
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+
+        const grid = await screen.findByRole("group", {name: "Dias da semana"});
+        expect(within(grid).getAllByRole("button").length).toBeGreaterThan(0);
+        expect(screen.queryByRole("status", {name: "Carregando os dias"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/Esqueceu algum dia/)).not.toBeInTheDocument();
+    });
+
     it("o paciente preenche um dia esquecido", async () => {
         const post = vi.spyOn(apiService, "post").mockResolvedValue({
             id: 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal", periodStart: taskStart,

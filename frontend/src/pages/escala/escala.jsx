@@ -10,7 +10,7 @@ import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import {stepOfKey, stepsOf} from "../../components/scale-form/scale-steps.js";
-import SkeletonPage from "../../components/skeleton/skeleton.jsx";
+import SkeletonPage, {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
 import {ApiError, apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
@@ -153,6 +153,21 @@ function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, lateU
     );
 }
 
+// o lugar da grade enquanto a tarefa aberta n chega: sem ela a grade era a semana e virava o periodo dps
+// (15 s em 3g), e o dia tocado nesse meio ficava fora do periodo. tem a altura do titulo e dos dias
+function DayGridSkeleton() {
+    return (
+        <section className={styles.daysSection} role="status" aria-label="Carregando os dias">
+            <SkeletonBlock width="9rem" height="1.5rem"/>
+            <div className={styles.days}>
+                {[0, 1, 2].map((index) => (
+                    <SkeletonBlock key={index} width="7.5rem" height="3.5rem"/>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 // o painel q fica no lugar do formulario dps de salvar tudo
 // o botao q salvou some junto com o formulario, entao o foco vem pro painel e o leitor de tela le o q aconteceu
 // o erro da recarga dps de salvar (a rede caiu) aparece aqui tbm, senao ficava escondido no formulario
@@ -199,6 +214,8 @@ export default function Escala() {
     const [responses, setResponses] = useState([]);
     const [sleepSchedule, setSleepSchedule] = useState(null);
     const [openTask, setOpenTask] = useState(null);
+    // a grade do diario so aparece dps q a tarefa aberta chega (ou falha, e ai fica a semana)
+    const [isTaskLoaded, setIsTaskLoaded] = useState(false);
     // o periodo q fechou ontem, q ainda aparece na grade ate o fim de hoje
     const [lateTask, setLateTask] = useState(null);
     const [loadError, setLoadError] = useState(null);
@@ -315,8 +332,12 @@ export default function Escala() {
                 if (lastDayToOpen < today && !chosenDate) {
                     setSelectedDay((currentDay) => (currentDay === today ? lastDayToOpen : currentDay));
                 }
+                setIsTaskLoaded(true);
             })
-            .catch(() => setOpenTask(null));
+            .catch(() => {
+                setOpenTask(null);
+                setIsTaskLoaded(true);
+            });
     }, [isDiary, slug, loggedUser.id, today, chosenDate, startingDay]);
 
     // as telas do celular: uma por pergunta, e o valor calculado vai junto da pergunta de antes
@@ -696,7 +717,9 @@ export default function Escala() {
                 </p>
             )}
 
-            {isDiary && (
+            {isDiary && !isTaskLoaded && <DayGridSkeleton/>}
+
+            {isDiary && isTaskLoaded && (
                 <DayGrid
                     days={gridDays}
                     responses={responses}
