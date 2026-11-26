@@ -21,6 +21,7 @@ import {
 } from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {isValidCpf} from "../../utils/cpf.js";
+import {toIsoDate} from "../../utils/date-format.js";
 import {ACCEPT_BUTTON_TEXT, ageBandOf, findGuardianErrors, guardianBody} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./sign-up.module.css";
@@ -427,14 +428,19 @@ export default function SignUp() {
                         label="Nome completo"
                         name="name"
                         autoComplete="name"
+                        autoCapitalize="words"
                         value={formData.name}
                         onChange={(event) => updateField("name", event.target.value)}
                         error={fieldErrors.name}
                         required={true}
                     />
+                    {/* o celular poria o nome de registro aqui e o nome e o telefone do paciente no familiar,
+                        entao esses campos ficam sem preenchimento automatico */}
                     <TextField
                         label="Nome social (opcional)"
                         name="socialName"
+                        autoComplete="off"
+                        autoCapitalize="words"
                         maxLength={255}
                         hint="Se você usa um nome social, é ele que aparece no sistema e nos avisos."
                         value={formData.socialName}
@@ -457,6 +463,7 @@ export default function SignUp() {
                             name="birthDate"
                             type="date"
                             autoComplete="bday"
+                            max={toIsoDate(new Date())}
                             value={formData.birthDate}
                             onChange={(event) => changeBirthDate(event.target.value)}
                             error={fieldErrors.birthDate}
@@ -483,6 +490,7 @@ export default function SignUp() {
                             label="Rua"
                             name="address.street"
                             autoComplete="address-line1"
+                            autoCapitalize="words"
                             value={formData.street}
                             onChange={(event) => updateField("street", event.target.value)}
                             error={fieldErrors["address.street"]}
@@ -502,6 +510,7 @@ export default function SignUp() {
                             label="Cidade"
                             name="address.city"
                             autoComplete="address-level2"
+                            autoCapitalize="words"
                             value={formData.city}
                             onChange={(event) => updateField("city", event.target.value)}
                             error={fieldErrors["address.city"]}
@@ -510,6 +519,7 @@ export default function SignUp() {
                         <SelectField
                             label="Estado"
                             name="address.state"
+                            autoComplete="address-level1"
                             options={BRAZIL_STATE_OPTIONS}
                             placeholder="Escolha"
                             value={formData.state}
@@ -528,6 +538,8 @@ export default function SignUp() {
                     <TextField
                         label="Nome"
                         name="guardian.name"
+                        autoComplete="off"
+                        autoCapitalize="words"
                         value={formData.guardianName}
                         onChange={(event) => updateField("guardianName", event.target.value)}
                         error={fieldErrors["guardian.name"]}
@@ -537,6 +549,7 @@ export default function SignUp() {
                         <TextField
                             label="Parentesco"
                             name="guardian.relationship"
+                            autoComplete="off"
                             placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
                             value={formData.guardianRelationship}
                             onChange={(event) => updateField("guardianRelationship", event.target.value)}
@@ -547,6 +560,7 @@ export default function SignUp() {
                             label="Telefone com DDD"
                             name="guardian.phone"
                             type="tel"
+                            autoComplete="off"
                             placeholder="(49) 99999-9999"
                             value={formData.guardianPhone}
                             onChange={(event) => updateField("guardianPhone", formatPhone(event.target.value))}

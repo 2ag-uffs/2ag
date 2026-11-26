@@ -80,6 +80,7 @@ const TYPING_TIMEOUT = 15000;
 
 describe("SignUp", () => {
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
         setLoggedUser(null);
     });
@@ -111,6 +112,38 @@ describe("SignUp", () => {
         expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
         expect(post).toHaveBeenCalledWith("/auth/register", expect.objectContaining({socialName: null}));
     }, TYPING_TIMEOUT);
+
+    // o teclado do celular so punha a letra grande no comeco do nome, o estado ficava em branco no preenchimento
+    // do endereco e o celular podia oferecer o nome e o telefone do proprio paciente nos campos do familiar
+    it("os campos pedem ao celular a letra grande de cada nome e o preenchimento certo", async () => {
+        mockApi();
+        renderSignUp();
+
+        const name = await screen.findByLabelText("Nome completo");
+        [name, screen.getByLabelText("Nome social (opcional)"), screen.getByLabelText("Nome"),
+            screen.getByLabelText("Rua"), screen.getByLabelText("Cidade")].forEach((field) => {
+            expect(field).toHaveAttribute("autocapitalize", "words");
+        });
+        expect(name).toHaveAttribute("autocomplete", "name");
+        expect(screen.getByLabelText("Estado")).toHaveAttribute("autocomplete", "address-level1");
+        const [patientPhone, guardianPhone] = screen.getAllByLabelText("Telefone com DDD");
+        expect(patientPhone).toHaveAttribute("autocomplete", "tel-national");
+        [screen.getByLabelText("Nome social (opcional)"), screen.getByLabelText("Nome"),
+            screen.getByLabelText("Parentesco"), guardianPhone].forEach((field) => {
+            expect(field).toHaveAttribute("autocomplete", "off");
+        });
+    });
+
+    // a api recusa nascimento no futuro (@Past) dps do envio, entao o calendario para no hoje de brasilia
+    it("a data de nascimento vai ate o hoje de brasilia, mesmo com o relogio do aparelho em outro fuso", async () => {
+        vi.useFakeTimers({toFake: ["Date"]});
+        // 23:50 em brasilia ja eh o dia seguinte em utc
+        vi.setSystemTime(new Date("2026-11-21T23:50:00-03:00"));
+        mockApi();
+        renderSignUp();
+
+        expect(await screen.findByLabelText("Data de nascimento")).toHaveAttribute("max", "2026-11-21");
+    });
 
     // menor de 18: qm preenche e aceita eh o responsavel legal, e a pesquisa ainda n abre pra menor
     it("data de nascimento de crianca pede o responsavel legal e esconde a pesquisa", async () => {

@@ -10,7 +10,7 @@ import {
     readRequestError,
     setLoggedUser,
 } from "../../services/api.js";
-import {formatDate} from "../../utils/date-format.js";
+import {formatDate, toIsoDate} from "../../utils/date-format.js";
 import {
     ACCEPT_BUTTON_TEXT,
     ageBandOf,
@@ -43,9 +43,12 @@ function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChan
                     : "O responsável legal ainda não foi informado. Preencha o nome e o parentesco "
                     + "dele para aceitar o termo."}
             </p>
+            {/* o celular poria o nome do paciente aqui */}
             <TextField
                 label="Nome"
                 name="guardian.name"
+                autoComplete="off"
+                autoCapitalize="words"
                 value={guardianData.guardianName}
                 onChange={(event) => onFieldChange("guardianName", event.target.value)}
                 error={fieldErrors["guardian.name"]}
@@ -54,6 +57,7 @@ function MissingGuardianFields({guardian, guardianData, fieldErrors, onFieldChan
             <TextField
                 label="Parentesco"
                 name="guardian.relationship"
+                autoComplete="off"
                 placeholder="Mãe, pai, avó, tutor..."
                 value={guardianData.guardianRelationship}
                 onChange={(event) => onFieldChange("guardianRelationship", event.target.value)}
@@ -119,6 +123,8 @@ function BirthDateFix({profile, onFixed}) {
                 label="Data de nascimento"
                 name="correctedBirthDate"
                 type="date"
+                autoComplete="bday"
+                max={toIsoDate(new Date())}
                 value={birthDate}
                 onChange={(event) => setBirthDate(event.target.value)}
                 error={error}

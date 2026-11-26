@@ -238,6 +238,7 @@ export default function Anamnese() {
                         <TextField
                             label="Ocupação"
                             name="profession"
+                            autoComplete="organization-title"
                             value={answers.profession}
                             onChange={updateAnswer}
                             error={fieldErrors.profession}

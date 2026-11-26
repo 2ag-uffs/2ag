@@ -29,6 +29,7 @@ function minorProfile(researchConsent) {
 
 describe("Profile", () => {
     afterEach(() => {
+        vi.useRealTimers();
         vi.restoreAllMocks();
         setLoggedUser(null);
     });
@@ -325,6 +326,38 @@ describe("Profile", () => {
 
         expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
         expect(put).toHaveBeenCalledWith("/profile", expect.objectContaining({socialName: null}));
+    });
+
+    // o teclado do celular so punha a letra grande no comeco do nome, o estado ficava em branco no preenchimento
+    // do endereco e o celular podia oferecer o nome e o telefone do proprio paciente nos campos do familiar
+    it("os campos pedem ao celular a letra grande de cada nome e o preenchimento certo", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue(minorProfile(null));
+        render(<Profile/>);
+
+        const name = await screen.findByLabelText(/Nome completo/);
+        [name, screen.getByLabelText(/Nome social/), screen.getByLabelText("Nome"), screen.getByLabelText(/^Rua/),
+            screen.getByLabelText(/^Cidade/)].forEach((field) => {
+            expect(field).toHaveAttribute("autocapitalize", "words");
+        });
+        expect(name).toHaveAttribute("autocomplete", "name");
+        expect(screen.getByLabelText(/^Estado/)).toHaveAttribute("autocomplete", "address-level1");
+        const [patientPhone, guardianPhone] = screen.getAllByLabelText(/Telefone com DDD/);
+        expect(patientPhone).toHaveAttribute("autocomplete", "tel-national");
+        [screen.getByLabelText(/Nome social/), screen.getByLabelText("Nome"), screen.getByLabelText("Parentesco"),
+            guardianPhone].forEach((field) => {
+            expect(field).toHaveAttribute("autocomplete", "off");
+        });
+    });
+
+    // a api recusa nascimento no futuro (@Past) dps do envio, entao o calendario para no hoje de brasilia
+    it("a data de nascimento vai ate o hoje de brasilia, mesmo com o relogio do aparelho em outro fuso", async () => {
+        vi.useFakeTimers({toFake: ["Date"]});
+        // 23:50 em brasilia ja eh o dia seguinte em utc
+        vi.setSystemTime(new Date("2026-11-21T23:50:00-03:00"));
+        vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, birthDate: "1990-04-12"});
+        render(<Profile/>);
+
+        expect(await screen.findByLabelText(/Data de nascimento/)).toHaveAttribute("max", "2026-11-21");
     });
 
     // o responsavel legal aceitou o termo pelo menor, e a pesquisa ainda n abre pra menor de 18

@@ -21,7 +21,7 @@ import {
     setLoggedUser,
 } from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
-import {formatDate} from "../../utils/date-format.js";
+import {formatDate, toIsoDate} from "../../utils/date-format.js";
 import {guardianBody, guardianFieldsFrom, isMinorPatient} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import styles from "./profile.module.css";
@@ -154,6 +154,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
                     name="birthDate"
                     type="date"
                     autoComplete="bday"
+                    max={toIsoDate(new Date())}
                     value={formData.birthDate}
                     onChange={(event) => onFieldChange("birthDate", event.target.value)}
                     error={fieldErrors.birthDate}
@@ -176,6 +177,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
                     label="Rua"
                     name="address.street"
                     autoComplete="address-line1"
+                    autoCapitalize="words"
                     value={formData.street}
                     onChange={(event) => onFieldChange("street", event.target.value)}
                     error={fieldErrors["address.street"]}
@@ -195,6 +197,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
                     label="Cidade"
                     name="address.city"
                     autoComplete="address-level2"
+                    autoCapitalize="words"
                     value={formData.city}
                     onChange={(event) => onFieldChange("city", event.target.value)}
                     error={fieldErrors["address.city"]}
@@ -203,6 +206,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
                 <SelectField
                     label="Estado"
                     name="address.state"
+                    autoComplete="address-level1"
                     options={BRAZIL_STATE_OPTIONS}
                     placeholder="Escolha"
                     value={formData.state}
@@ -216,6 +220,7 @@ function ContactFields({formData, fieldErrors, isPatient, onFieldChange}) {
 }
 
 // familiar ou cuidador q vira obrigatorio qnd o paciente eh menor
+// o celular poria o nome e o telefone do paciente aqui, entao os campos ficam sem preenchimento automatico
 function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
     return (
         <fieldset className={styles.formSection}>
@@ -231,6 +236,8 @@ function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
             <TextField
                 label="Nome"
                 name="guardian.name"
+                autoComplete="off"
+                autoCapitalize="words"
                 value={formData.guardianName}
                 onChange={(event) => onFieldChange("guardianName", event.target.value)}
                 error={fieldErrors["guardian.name"]}
@@ -240,6 +247,7 @@ function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
                 <TextField
                     label="Parentesco"
                     name="guardian.relationship"
+                    autoComplete="off"
                     placeholder={isMinor ? "Mãe, pai, avó, tutor..." : "Filha, marido, cuidadora..."}
                     value={formData.guardianRelationship}
                     onChange={(event) => onFieldChange("guardianRelationship", event.target.value)}
@@ -250,6 +258,7 @@ function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
                     label="Telefone com DDD"
                     name="guardian.phone"
                     type="tel"
+                    autoComplete="off"
                     placeholder="(49) 99999-9999"
                     value={formData.guardianPhone}
                     onChange={(event) => onFieldChange("guardianPhone", formatPhone(event.target.value))}
@@ -305,15 +314,19 @@ function PersonalDataCard({profile, onSaved}) {
                     label="Nome completo"
                     name="name"
                     autoComplete="name"
+                    autoCapitalize="words"
                     value={formData.name}
                     onChange={(event) => updateField("name", event.target.value)}
                     error={fieldErrors.name}
                     required={true}
                 />
+                {/* o celular poria o nome de registro no nome social */}
                 {isPatient && (
                     <TextField
                         label="Nome social (opcional)"
                         name="socialName"
+                        autoComplete="off"
+                        autoCapitalize="words"
                         maxLength={255}
                         hint="Se você usa um nome social, é ele que aparece no sistema e nos avisos."
                         value={formData.socialName}
