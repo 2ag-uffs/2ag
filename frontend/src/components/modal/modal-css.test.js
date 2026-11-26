@@ -52,6 +52,20 @@ describe("caixa do modal", () => {
         expect(content["min-width"]).toBe("auto");
     });
 
+    // no fim da rolagem da caixa o dedo rolava a pagina atras do fundo escuro
+    it("a caixa segura a propria rolagem", () => {
+        expect(declarationsOf(modalCss, ".content")["overscroll-behavior"]).toBe("contain");
+    });
+
+    // no celular deitado com o recorte da camera do lado o texto da caixa entrava embaixo dele
+    it("no celular a folga dos lados respeita o recorte da camera e nunca fica menor q a de hoje", () => {
+        const content = declarationsOf(mediaRules(modalCss, MOBILE), ".content");
+
+        expect(content["padding-left"]).toBe("max(var(--space-8), env(safe-area-inset-left))");
+        expect(content["padding-right"]).toBe("max(var(--space-8), env(safe-area-inset-right))");
+        expect(declarationsOf(modalCss, ".content").padding).toBe("var(--space-8)");
+    });
+
     it("os botoes do pe ficam na direita em todo modal, o de exportar dados tbm", () => {
         [confirmCss, annulmentCss, exportCss, loginAgainCss].forEach((css) => {
             expect(declarationsOf(css, ".actions")["justify-content"]).toBe("flex-end");

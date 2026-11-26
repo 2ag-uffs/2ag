@@ -14,7 +14,8 @@
 }
 
 /* a largura para na medida de leitura, q a caixa de so texto abria na tela toda com linhas de 160 letras
-   a borda separa a caixa da tela escurecida no tema escuro, onde a sombra quase n aparece */
+   a borda separa a caixa da tela escurecida no tema escuro, onde a sombra quase n aparece
+   no fim da rolagem da caixa o dedo rolava a pagina atras do fundo escuro, o contain segura ela */
 .content {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -24,6 +25,7 @@
     max-width: min(90vw, var(--width-narrow));
     min-width: min(36rem, 90vw);
     overflow: auto;
+    overscroll-behavior: contain;
     padding: var(--space-8);
 }
 
@@ -67,6 +69,9 @@
         max-height: 100svh;
         max-width: none;
         min-width: auto;
+        /* no celular deitado com o recorte da camera do lado o texto entrava embaixo dele */
+        padding-left: max(var(--space-8), env(safe-area-inset-left));
+        padding-right: max(var(--space-8), env(safe-area-inset-right));
         width: 100vw;
     }
 }
