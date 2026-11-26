@@ -155,7 +155,7 @@ function BottomMenu({items, activeItem, unreadCount}) {
                             <Icon/>
                             {item.path === NOTICES_PATH && <UnreadBadge count={unreadCount}/>}
                         </span>
-                        <span>{item.label}</span>
+                        <span className={styles.bottomLabel}>{item.label}</span>
                     </Link>
                 );
             })}

@@ -402,9 +402,21 @@
         gap: 0.125rem;
         justify-content: center;
         min-height: var(--bottom-bar-height);
+        /* sem isso o item n fica mais estreito q o icone e o nome, e com a letra em 200% o Avisos e o Perfil
+           saiam da tela, sem outro caminho pro perfil no celular */
+        min-width: 0;
         padding: var(--space-1);
         text-decoration: none;
         -webkit-tap-highlight-color: transparent;
+    }
+
+    /* o nome q n cabe no item quebra dentro dele. a altura da linha fica a da pagina: com a mais apertada
+       o icone descia 1,5 px na letra normal */
+    .bottomLabel {
+        hyphens: auto;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        text-align: center;
     }
 
     .bottomIcon .unreadBadge {
@@ -420,9 +432,10 @@
         font-size: 1.25rem;
         height: 1.75rem;
         justify-content: center;
+        max-width: 3.25rem;
         position: relative;
         transition: background-color var(--duration-base) var(--easing-standard);
-        width: 3.25rem;
+        width: 100%;
     }
 
     .bottomLinkActive {
