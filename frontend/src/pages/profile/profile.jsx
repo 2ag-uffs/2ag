@@ -307,8 +307,6 @@ function PersonalDataCard({profile, onSaved}) {
         <Card title={cardTitle(FiUser, isAdmin ? "Dados da conta" : "Dados pessoais")}>
             <AccountInfo profile={profile} isPatient={isPatient} isAdmin={isAdmin}/>
 
-            <CardMessage message={message}/>
-
             <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <TextField
                     label="Nome completo"
@@ -350,6 +348,8 @@ function PersonalDataCard({profile, onSaved}) {
                         onFieldChange={updateField}
                     />
                 )}
+                {/* o aviso fica do lado do botao: no celular o topo do cartao fica longe, fora da tela */}
+                <CardMessage message={message}/>
                 <div className={styles.actions}>
                     <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Salvando...">
                         Salvar dados
@@ -498,8 +498,6 @@ function PasswordCard({onPasswordChanged}) {
 
     return (
         <Card title={cardTitle(FiLock, "Senha")}>
-            <CardMessage message={message}/>
-
             <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <PasswordField
                     label="Senha atual"
@@ -529,6 +527,7 @@ function PasswordCard({onPasswordChanged}) {
                     error={fieldErrors.newPasswordConfirmation}
                     required={true}
                 />
+                <CardMessage message={message}/>
                 <div className={styles.actions}>
                     <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Trocando...">
                         Trocar senha

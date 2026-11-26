@@ -94,6 +94,44 @@ describe("Profile", () => {
         expect(screen.getByRole("button", {name: "Salvar dados"})).not.toHaveAttribute("aria-disabled");
     });
 
+    // o aviso ficava no topo do cartao e o botao no pe: no celular, dps de salvar, o aviso ficava uns 1000 px acima
+    // da tela, nada mudava perto do dedo e a pessoa tocava de novo
+    it("os avisos dos dados e da senha aparecem dps do ultimo campo, logo antes do botao usado", async () => {
+        const profile = {
+            ...PATIENT_PROFILE, birthDate: "1990-04-12", phone: "49999887766",
+            address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC"},
+        };
+        vi.spyOn(apiService, "get").mockResolvedValue(profile);
+        const put = vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(500, "Não foi possível salvar agora"));
+        const user = userEvent.setup();
+        render(<Profile/>);
+
+        // o erro geral tbm fica do lado do botao
+        const saveButton = await screen.findByRole("button", {name: "Salvar dados"});
+        await user.click(saveButton);
+        const saveError = await screen.findByRole("alert");
+        expect(saveError).toHaveTextContent("Não foi possível salvar agora");
+        expect(saveError.nextElementSibling).toContainElement(saveButton);
+
+        put.mockImplementation((path) => Promise.resolve(path === "/profile" ? profile : null));
+        await user.click(saveButton);
+        const saved = await screen.findByText("Dados salvos.");
+        expect(saved.nextElementSibling).toContainElement(saveButton);
+        // o ultimo campo do cartao eh o telefone do familiar
+        const guardianPhone = screen.getAllByLabelText(/Telefone com DDD/)[1];
+        expect(guardianPhone.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+        await user.type(screen.getAllByLabelText(/Senha atual/)[1], "Senha@123");
+        await user.type(screen.getByLabelText(/^Nova senha/), "Valor-Novo#2026");
+        await user.type(screen.getByLabelText(/Repita a nova senha/), "Valor-Novo#2026");
+        const passwordButton = screen.getByRole("button", {name: "Trocar senha"});
+        await user.click(passwordButton);
+        const changed = await screen.findByText(/Senha trocada/);
+        expect(changed.nextElementSibling).toContainElement(passwordButton);
+        expect(screen.getByLabelText(/Repita a nova senha/).compareDocumentPosition(changed)
+            & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     // os botoes da pesquisa ficavam desabilitados enquanto salvavam e o foco ia pro body (CT-39)
     it("retirar o consentimento pelo teclado deixa o foco no botao enquanto a api responde", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({
