@@ -95,6 +95,12 @@ h4 {
     outline: none;
 }
 
+/* no iphone dois toques rapidos num botao ou em duas notas vizinhas davam zoom no meio da escala. o zoom de
+   pinca continua, e com o peso zero do :where o grafico fica com o touch-action dele */
+:where(button, a, label, input, select, textarea, summary, [role="button"]) {
+    touch-action: manipulation;
+}
+
 img {
     max-width: 100%;
 }

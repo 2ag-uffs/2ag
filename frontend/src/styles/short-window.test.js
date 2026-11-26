@@ -163,3 +163,15 @@ describe("tela estreita com a letra grande", () => {
         expect(2 * columnRem * 32 + 16).toBeGreaterThan(190);
     });
 });
+
+// no safari do iphone dois toques rapidos no proxima ou em duas notas vizinhas podiam dar zoom no meio da escala
+describe("toque duplo no celular", () => {
+    it("botoes, links e campos n dao zoom com dois toques, e o zoom de pinca continua", () => {
+        const controls = ":where(button, a, label, input, select, textarea, summary, [role=\"button\"])";
+        const rule = cssRules(indexCss).find((item) => item.selectors.join(", ") === controls);
+
+        expect(rule).toBeDefined();
+        // o :where tem peso zero, entao o grafico continua com o pan-y pinch-zoom dele
+        expect(rule.body.trim()).toBe("touch-action: manipulation;");
+    });
+});
