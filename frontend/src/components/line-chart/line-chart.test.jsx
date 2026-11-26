@@ -1,6 +1,7 @@
 import {act, fireEvent, render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe, expect, it, vi} from "vitest";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import LineChart from "./line-chart.jsx";
 
 // as linhas do jeito q a tela de progresso monta
@@ -141,9 +142,9 @@ describe("LineChart", () => {
 
         await user.tab();
         await user.keyboard("{End}");
-        expect(screen.getByText("Gotas no dia : 10 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 10 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
         await user.keyboard("{Home}");
-        expect(screen.getByText("Gotas no dia : 20")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 20")).toBeInTheDocument();
     });
 
     it("sem dia com dose em branco a legenda n fala dele", () => {
@@ -267,6 +268,35 @@ describe("LineChart", () => {
         expect(screen.queryByText("Fora do eixo")).not.toBeInTheDocument();
     });
 
+    // no celular o nome da consulta mais baixo encostava no 10 do eixo da nota (e no numero de cima das gotas)
+    it("com consulta o grafico desce um pouco e o nome dela n encosta no numero de cima do eixo", () => {
+        const tenOf = (container) => Array.from(container.querySelectorAll("text[class*='tick']"))
+            .find((text) => text.textContent === "10");
+        const {container} = renderChart({appointmentMarks: [{id: 7, date: "2026-10-01", geraPrescricao: true}]});
+
+        const markText = screen.getByText("consulta + receita");
+        expect(Number(tenOf(container).getAttribute("y")) - Number(markText.getAttribute("y"))).toBe(16);
+        // a linha da consulta continua saindo de baixo do nome
+        const line = container.querySelector("line[class*='appointment']");
+        expect(Number(line.getAttribute("y1"))).toBe(Number(markText.getAttribute("y")) + 3);
+    });
+
+    it("sem consulta o grafico fica no msm lugar", () => {
+        const {container} = renderChart();
+
+        const ten = Array.from(container.querySelectorAll("text[class*='tick']")).find((text) => text.textContent === "10");
+        expect(ten.getAttribute("y")).toBe("28");
+    });
+
+    // o toque num ponto da o foco pro grafico pra o tooltip fechar no toque fora, e o navegador desenhava
+    // o contorno preto dele, q parecia erro. o anel verde de quem chega pelo teclado continua
+    it("o foco do toque n desenha contorno e o do teclado continua com o anel verde", () => {
+        const css = readCss(import.meta.url, "./line-chart.module.css");
+
+        expect(declarationsOf(css, ".svg:focus:not(:focus-visible)").outline).toBe("none");
+        expect(declarationsOf(css, ".svg:focus-visible").outline).toBe("2px solid var(--color-primary)");
+    });
+
     it("a consulta vira uma linha no dia do ponto com o nome em cima", () => {
         const {container} = renderChart({
             appointmentMarks: [{id: 7, date: "2026-10-02", geraPrescricao: true}, {id: 8, date: "2026-10-03", geraPrescricao: false}],
@@ -320,13 +350,13 @@ describe("LineChart", () => {
 
         await user.keyboard("{ArrowRight}");
         expect(status).toHaveTextContent("10/09");
-        expect(screen.getByText("Escore total : 24 · Abaixo do esperado para a escolaridade (corte 25)")).toBeInTheDocument();
+        expect(screen.getByText("Escore total: 24 · Abaixo do esperado para a escolaridade (corte 25)")).toBeInTheDocument();
 
         await user.keyboard("{ArrowLeft}");
         expect(status).toHaveTextContent("10/09");
 
         await user.keyboard("{End}");
-        expect(screen.getByText("Escore total : 27 · Dentro do esperado para a escolaridade (corte 25)")).toBeInTheDocument();
+        expect(screen.getByText("Escore total: 27 · Dentro do esperado para a escolaridade (corte 25)")).toBeInTheDocument();
 
         await user.keyboard("{Home}");
         expect(status).toHaveTextContent("10/09");
@@ -350,13 +380,13 @@ describe("LineChart", () => {
 
         await user.tab();
         await user.keyboard("{ArrowRight}");
-        expect(screen.getByText("Ansiedade : 3")).toBeInTheDocument();
-        expect(screen.getByText("Gotas no dia : 10")).toBeInTheDocument();
+        expect(screen.getByText("Ansiedade: 3")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 10")).toBeInTheDocument();
 
         // o dia sem gota n mostra a gota vazia
         await user.keyboard("{ArrowRight}");
-        expect(screen.getByText("Ansiedade : 5")).toBeInTheDocument();
-        expect(screen.queryByText(/Gotas no dia :/)).not.toBeInTheDocument();
+        expect(screen.getByText("Ansiedade: 5")).toBeInTheDocument();
+        expect(screen.queryByText(/Gotas no dia:/)).not.toBeInTheDocument();
     });
 
     // no jsdom o svg tem 640 de largura e os pontos ficam em 40 330 e 620
@@ -367,7 +397,7 @@ describe("LineChart", () => {
 
         fireEvent.pointerMove(chart, {clientX: 300, pointerType: "mouse"});
         expect(status).toHaveTextContent("02/10");
-        expect(screen.getByText("Ansiedade : 5")).toBeInTheDocument();
+        expect(screen.getByText("Ansiedade: 5")).toBeInTheDocument();
 
         fireEvent.pointerMove(chart, {clientX: 600, pointerType: "mouse"});
         expect(status).toHaveTextContent("03/10");
@@ -387,13 +417,13 @@ describe("LineChart", () => {
         const chart = screen.getByRole("application");
 
         fireEvent.pointerMove(chart, {clientX: 610, clientY: 50, pointerType: "mouse"});
-        expect(screen.getByText("Escore total : 27")).toBeInTheDocument();
+        expect(screen.getByText("Escore total: 27")).toBeInTheDocument();
 
         fireEvent.pointerMove(chart, {clientX: 610, clientY: 90, pointerType: "mouse"});
-        expect(screen.getByText("Escore total : 22")).toBeInTheDocument();
+        expect(screen.getByText("Escore total: 22")).toBeInTheDocument();
 
         fireEvent.pointerDown(chart, {clientX: 610, clientY: 40, pointerType: "touch"});
-        expect(screen.getByText("Escore total : 27")).toBeInTheDocument();
+        expect(screen.getByText("Escore total: 27")).toBeInTheDocument();
     });
 
     it("no toque o tooltip fica dps de tirar o dedo e some ao tocar fora", () => {

@@ -127,7 +127,10 @@ export default function LineChart({
         lineCount = Math.max(lineCount, line + 1);
     }
 
-    const top = 10 + LINE_HEIGHT * lineCount;
+    // onde acabam as linhas dos nomes das consultas. o nome mais baixo encostava no numero de cima do eixo,
+    // entao com consulta o desenho comeca 6 px mais pra baixo
+    const labelsBottom = 10 + LINE_HEIGHT * lineCount;
+    const top = labelsBottom + (marks.length > 0 ? 6 : 0);
     const bottom = HEIGHT - BOTTOM;
     const plotHeight = bottom - top;
     const yAt = (value) => yOf(value, range, top, plotHeight);
@@ -299,7 +302,7 @@ export default function LineChart({
                                 className={styles.appointment}
                                 x1={mark.x}
                                 x2={mark.x}
-                                y1={top - 3 - LINE_HEIGHT * markLines[position]}
+                                y1={labelsBottom - 3 - LINE_HEIGHT * markLines[position]}
                                 y2={bottom}
                             />
                         ))}
@@ -308,7 +311,7 @@ export default function LineChart({
                                 key={"t" + mark.id}
                                 className={styles.appointmentText}
                                 x={mark.textX}
-                                y={top - 6 - LINE_HEIGHT * markLines[position]}
+                                y={labelsBottom - 6 - LINE_HEIGHT * markLines[position]}
                                 textAnchor="middle"
                             >
                                 {mark.text}
@@ -348,12 +351,12 @@ export default function LineChart({
                             <p className={styles.tooltipLabel}>{activeRow.label}</p>
                             <p className={styles.tooltipItem}>
                                 <span className={styles.scoreSwatch} aria-hidden="true"/>
-                                {valueName + " : " + scoreText(activeRow)}
+                                {valueName + ": " + scoreText(activeRow)}
                             </p>
                             {hasActiveDose && (
                                 <p className={styles.tooltipItem}>
                                     <span className={styles.doseSwatch} aria-hidden="true"/>
-                                    {DOSE_NAME + " : " + doseText(activeRow)}
+                                    {DOSE_NAME + ": " + doseText(activeRow)}
                                 </p>
                             )}
                         </div>

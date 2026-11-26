@@ -24,6 +24,12 @@
     outline-offset: 2px;
 }
 
+/* o toque num ponto da o foco pro grafico, pro tooltip fechar no toque fora, e o navegador desenhava
+   o contorno preto dele, q parecia erro. quem chega pelo teclado continua com o anel verde */
+.svg:focus:not(:focus-visible) {
+    outline: none;
+}
+
 .grid {
     stroke: var(--color-chart-grid);
     stroke-dasharray: 3 3;

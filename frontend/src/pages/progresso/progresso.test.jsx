@@ -725,9 +725,9 @@ describe("Progresso", () => {
 
         await user.click(chart);
         await user.keyboard("{End}");
-        expect(screen.getByText("Gotas no dia : 5 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 5 (só a manhã, a tarde ficou em branco)")).toBeInTheDocument();
         await user.keyboard("{Home}");
-        expect(screen.getByText("Gotas no dia : 8")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 8")).toBeInTheDocument();
     });
 
     // CT-32 o item em branco num dia com as gotas preenchidas n tira a gota do grafico nem corta a linha delas,
@@ -773,8 +773,8 @@ describe("Progresso", () => {
         // a dica do 02/10 diz q a dor ficou em branco, sem virar zero
         await user.click(chart);
         await user.keyboard("{Home}{ArrowRight}");
-        expect(screen.getByText("Dor : em branco")).toBeInTheDocument();
-        expect(screen.getByText("Gotas no dia : 8")).toBeInTheDocument();
+        expect(screen.getByText("Dor: em branco")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 8")).toBeInTheDocument();
     });
 
     // com a decisao de 13/11/2026 a linha das gotas de quem toma uma dose so por dia sumia inteira
@@ -808,7 +808,7 @@ describe("Progresso", () => {
         await vi.waitFor(() => expect(chart.querySelectorAll("circle[class*='partialDoseDot']")).toHaveLength(2));
         await user.click(chart);
         await user.keyboard("{End}");
-        expect(screen.getByText("Gotas no dia : 12 (só a tarde, a manhã ficou em branco)")).toBeInTheDocument();
+        expect(screen.getByText("Gotas no dia: 12 (só a tarde, a manhã ficou em branco)")).toBeInTheDocument();
     });
 
     // CT-40 sem servidor o api.js lanca o erro de sem conexao, e a tela n pode dizer q n tem dado nenhum
@@ -1077,7 +1077,7 @@ describe("Progresso", () => {
         // a dica do ultimo ponto diz a msm coisa q a ultima linha
         await user.click(screen.getByRole("application"));
         await user.keyboard("{End}");
-        expect(screen.getByText("Escore total : 27 · Dentro do esperado para a escolaridade (corte 26,5)"))
+        expect(screen.getByText("Escore total: 27 · Dentro do esperado para a escolaridade (corte 26,5)"))
             .toBeInTheDocument();
     });
 
