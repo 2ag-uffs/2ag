@@ -101,3 +101,8 @@
         position: static;
     }
 }
+
+/* e com a letra grande tbm, pelo data-loose-bars do html (utils/loose-bars.js) */
+:global(html[data-loose-bars]) .actions {
+    position: static;
+}

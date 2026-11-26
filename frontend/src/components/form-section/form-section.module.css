@@ -70,3 +70,8 @@
         position: static;
     }
 }
+
+/* com a letra grande o utils/loose-bars.js marca o html e os botoes se soltam do msm jeito */
+:global(html[data-loose-bars]) .actions {
+    position: static;
+}

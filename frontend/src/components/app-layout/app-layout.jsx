@@ -25,6 +25,7 @@ import LoginAgain from "../login-again/login-again.jsx";
 import TermUpdate from "../term-update/term-update.jsx";
 import {apiService, getLoggedUser, leaveExpiredSession, logout, setLoginAgainOpener} from "../../services/api.js";
 import {useFocusAboveBars} from "../../utils/focus-above-bars.js";
+import {useLooseBars} from "../../utils/loose-bars.js";
 import {applyTheme, currentTheme} from "../../utils/theme.js";
 import styles from "./app-layout.module.css";
 
@@ -275,6 +276,8 @@ export default function AppLayout() {
     const unreadCount = useUnreadCount(hasNotices, location.pathname);
     // o campo com foco do tab n fica atras da barra de acoes nem do menu de baixo do celular
     useFocusAboveBars();
+    // com a letra grande as barras presas se soltam, como na janela baixa
+    useLooseBars();
 
     useEffect(() => {
         // o termo q abriu pelo login de novo ja guardou o botao q enviou, e o 403 do envio reenviado

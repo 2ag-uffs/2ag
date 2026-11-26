@@ -21,6 +21,17 @@ function placeOf(cssText, media) {
     return cssRules(cssText).findIndex((rule) => rule.selectors.join(", ") === media);
 }
 
+// as regras de todos os @media com esse texto, juntas
+function allMediaRules(cssText, media) {
+    return cssRules(cssText)
+        .filter((rule) => rule.selectors.join(", ") === media)
+        .map((rule) => rule.body)
+        .join("\n");
+}
+
+// com a letra grande o utils/loose-bars.js marca o html, e nos css modules a marca vem pelo :global
+const LOOSE = ":global(html[data-loose-bars]) ";
+
 describe("janela baixa", () => {
     it("o contador das escalas e a barra de acoes dos formularios se soltam em qualquer largura", () => {
         expect(declarationsOf(mediaRules(scaleFormCss, SHORT), ".progress").position).toBe("static");
@@ -71,6 +82,33 @@ describe("janela baixa", () => {
         expect(limit).toBeLessThan(667);
         expect(limit).toBeLessThan(720);
     });
+
+    // o @media mede o rem com a letra padrao do navegador e n com a do html: com a letra em 200% as barras presas
+    // deixavam 74 px livres em 360x740 e nenhum em 375x667, e a janela baixa n disparava
+    [
+        ["scale-form", scaleFormCss, SHORT, scaleFormCss],
+        ["form-section", formSectionCss, SHORT, formSectionCss],
+        ["anamnese", anamnesisCss, SHORT, anamnesisCss],
+        ["app-layout", layoutCss, MOBILE_SHORT, allMediaRules(layoutCss, MOBILE)],
+    ].forEach(([name, css, media, looseScope]) => {
+        it("cada regra da janela baixa do " + name + " vale tbm com a letra grande, pelo html[data-loose-bars]", () => {
+            const shortRules = cssRules(mediaRules(css, media));
+
+            expect(shortRules.length).toBeGreaterThan(0);
+            shortRules.forEach((rule) => {
+                rule.selectors.forEach((selector) => {
+                    expect(declarationsOf(looseScope, LOOSE + selector))
+                        .toEqual(declarationsOf(mediaRules(css, media), selector));
+                });
+            });
+        });
+    });
+
+    it("com a letra grande o navegador tbm n desconta mais as barras", () => {
+        expect(declarationsOf(indexCss, "html[data-loose-bars]"))
+            .toEqual(declarationsOf(mediaRules(indexCss, SHORT), "html"));
+    });
+
     // em 320x256 a caixa tem 402 px de altura: centralizada pelo flex, o titulo e os botoes ficavam fora da janela, sem rolagem
     it("o login por cima da sessao vencida rola qnd n cabe na janela", () => {
         const backdrop = declarationsOf(loginAgainCss, ".backdrop");

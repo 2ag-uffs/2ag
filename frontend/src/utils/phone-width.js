@@ -1,7 +1,7 @@
 import {useEffect, useEffectEvent, useState} from "react";
 
 // a mesma quebra do celular do css (styles/tokens.css): ate 47.99rem, abaixo de 768 px
-const PHONE_QUERY = "(max-width: 47.99rem)";
+export const PHONE_QUERY = "(max-width: 47.99rem)";
 
 // navegador sem matchMedia, como o jsdom dos testes, fica com a tela de computador
 function phoneQuery() {

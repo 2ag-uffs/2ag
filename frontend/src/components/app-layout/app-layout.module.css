@@ -475,6 +475,22 @@
     }
 }
 
+/* com a letra em 125% ou mais o utils/loose-bars.js marca o html e as msm barras se soltam:
+   o @media de cima mede o rem com a letra padrao do navegador, entao n dispara com a letra grande */
+@media (max-width: 47.99rem) {
+    :global(html[data-loose-bars]) .mobileHeader {
+        position: relative;
+    }
+
+    :global(html[data-loose-bars]) .bottomMenu {
+        position: static;
+    }
+
+    :global(html[data-loose-bars]) .content {
+        padding-bottom: var(--space-6);
+    }
+}
+
 /* na impressao fica so o conteudo: a moldura n vai pro papel */
 @media print {
     .layout {

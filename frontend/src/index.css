@@ -40,6 +40,12 @@ html {
     }
 }
 
+/* com a letra grande as barras tbm se soltam, pelo data-loose-bars q o utils/loose-bars.js poe aqui */
+html[data-loose-bars] {
+    scroll-padding-bottom: 0;
+    scroll-padding-top: 0;
+}
+
 #root {
     display: flex;
     flex-direction: column;

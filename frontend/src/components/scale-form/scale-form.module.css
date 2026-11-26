@@ -447,6 +447,11 @@ fieldset:disabled .optionCard:hover {
     }
 }
 
+/* com a letra grande o utils/loose-bars.js marca o html e o contador se solta do msm jeito */
+:global(html[data-loose-bars]) .progress {
+    position: static;
+}
+
 /* no alto contraste do windows as cores viram as do sistema e as sombras somem, entao o fundo cheio da nota
    e o anel por dentro n aparecem: a nota e a opcao escolhidas usam a cor de destaque do sistema */
 @media (forced-colors: active) {
