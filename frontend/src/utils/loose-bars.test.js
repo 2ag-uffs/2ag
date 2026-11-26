@@ -102,4 +102,139 @@ describe("barras soltas com a letra grande", () => {
         unmount();
         expect(isLoose()).toBe(false);
     });
+
+    // com a letra em 200% posta com o painel aberto, sem resize, o menu de baixo ficava preso e so se soltava no
+    // foco do toque no Perfil: o menu mudava de lugar no meio do toque e a pessoa continuava no painel
+    it("a letra q cresce sem resize solta as barras pela regua de 1rem, antes de qqr toque", () => {
+        const observed = [];
+        vi.stubGlobal("ResizeObserver", class {
+            constructor(callback) {
+                this.callback = callback;
+            }
+
+            observe(element) {
+                observed.push({element, callback: this.callback});
+            }
+
+            disconnect() {}
+        });
+        stubWidth(360);
+        document.documentElement.style.fontSize = "16px";
+        const {unmount} = render(createElement(Probe));
+        expect(isLoose()).toBe(false);
+        expect(observed).toHaveLength(1);
+        expect(observed[0].element.style.width).toBe("1rem");
+
+        act(() => {
+            document.documentElement.style.fontSize = "32px";
+            observed[0].callback([]);
+        });
+        expect(isLoose()).toBe(true);
+
+        act(() => {
+            document.documentElement.style.fontSize = "16px";
+            observed[0].callback([]);
+        });
+        expect(isLoose()).toBe(false);
+
+        unmount();
+        expect(document.body.contains(observed[0].element)).toBe(false);
+    });
+});
+
+// o jsdom n tem o visualViewport, entao o teste poe um no lugar com a altura do q aparece acima do teclado
+function stubVisibleHeight(height) {
+    const visible = new EventTarget();
+    visible.height = height;
+    Object.defineProperty(window, "visualViewport", {value: visible, configurable: true});
+    return visible;
+}
+
+function addField(type) {
+    const field = document.createElement("input");
+    field.type = type;
+    document.body.appendChild(field);
+    return field;
+}
+
+describe("barras soltas com o teclado da tela aberto", () => {
+    afterEach(() => {
+        delete window.visualViewport;
+        document.body.innerHTML = "";
+        vi.unstubAllGlobals();
+    });
+
+    it("o foco num campo com 400 px visiveis solta as barras e sair do campo prende de novo", () => {
+        stubVisibleHeight(400);
+        render(createElement(Probe));
+        const field = addField("number");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(true);
+
+        act(() => field.blur());
+        expect(isLoose()).toBe(false);
+    });
+
+    it("o teclado q fecha e deixa 700 px visiveis prende as barras de novo", () => {
+        const visible = stubVisibleHeight(400);
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(true);
+
+        act(() => {
+            visible.height = 700;
+            visible.dispatchEvent(new Event("resize"));
+        });
+        expect(isLoose()).toBe(false);
+    });
+
+    it("o teclado q abre dps do foco solta as barras", () => {
+        const visible = stubVisibleHeight(700);
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(false);
+
+        act(() => {
+            visible.height = 400;
+            visible.dispatchEvent(new Event("resize"));
+        });
+        expect(isLoose()).toBe(true);
+    });
+
+    it("o foco numa caixa de marcar n abre teclado e n solta nada", () => {
+        stubVisibleHeight(400);
+        render(createElement(Probe));
+
+        act(() => addField("checkbox").focus());
+        expect(isLoose()).toBe(false);
+    });
+
+    it("com a letra grande as barras continuam soltas msm sem teclado", () => {
+        stubWidth(360);
+        stubVisibleHeight(700);
+        document.documentElement.style.fontSize = "32px";
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        act(() => field.blur());
+        expect(isLoose()).toBe(true);
+        document.documentElement.style.fontSize = "";
+    });
+
+    // no tablet deitado o teclado tbm deixa menos de 30rem visiveis e o @media da janela baixa n dispara
+    it("o teclado solta as barras tbm fora do celular", () => {
+        stubWidth(1024);
+        stubVisibleHeight(400);
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(true);
+    });
 });

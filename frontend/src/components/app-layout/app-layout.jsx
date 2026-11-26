@@ -276,7 +276,7 @@ export default function AppLayout() {
     const unreadCount = useUnreadCount(hasNotices, location.pathname);
     // o campo com foco do tab n fica atras da barra de acoes nem do menu de baixo do celular
     useFocusAboveBars();
-    // com a letra grande as barras presas se soltam, como na janela baixa
+    // com a letra grande ou o teclado da tela aberto as barras presas se soltam, como na janela baixa
     useLooseBars();
 
     useEffect(() => {
