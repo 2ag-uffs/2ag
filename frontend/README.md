@@ -34,7 +34,8 @@ abra http://localhost:5173. o vite repassa as chamadas de `/api` para a api em `
 src/
 ├── main.jsx                  carrega a sessão e monta as rotas
 ├── app/
-│   ├── router.jsx            todas as rotas, cada tela num arquivo baixado sob demanda
+│   ├── router.jsx            todas as rotas, cada tela num arquivo baixado sob demanda, que já começa a baixar junto com a sessão
+│   ├── app-router.jsx        monta o router com as rotas depois que a sessão carregou
 │   ├── page-title.jsx        título da aba de cada rota e o "Erro: " do envio recusado
 │   ├── route-guards.js       quem pode abrir cada rota
 │   └── role-home.js          tela inicial de cada perfil

@@ -2,7 +2,7 @@ import {render, screen, waitFor} from "@testing-library/react";
 import {createBrowserRouter} from "react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {apiService, setLoggedUser} from "../services/api.js";
-import AppRouter from "./router.jsx";
+import AppRouter from "./app-router.jsx";
 
 // o createBrowserRouter de verdade, so q guardando a tabela de rotas q o router.jsx passou pra ele
 vi.mock("react-router", async (importOriginal) => {

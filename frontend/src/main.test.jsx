@@ -85,6 +85,37 @@ describe("abertura do app", () => {
         expect(nginx).toContain("try_files $uri $uri/ /index.html;");
     });
 
+    // no 3G cada ida e volta leva uns 2 s, e o codigo da tela so comecava a baixar dps da resposta de quem esta logado
+    it("o codigo da tela do endereco comeca a baixar junto com a pergunta de quem esta logado", async () => {
+        const pageDownloaded = vi.fn();
+        vi.doMock("./pages/dashboard-paciente/dashboard-paciente.jsx", () => {
+            pageDownloaded();
+            return {default: () => null};
+        });
+        // a api ainda n respondeu
+        vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {}));
+
+        await openAppAt("/painel-paciente");
+
+        await vi.waitFor(() => expect(pageDownloaded).toHaveBeenCalled());
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(document.getElementById("root")).toBeEmptyDOMElement();
+        vi.doUnmock("./pages/dashboard-paciente/dashboard-paciente.jsx");
+    });
+
+    // o router baixa de novo e mostra o erro dele, entao a falha desse adiantamento n aparece em lugar nenhum
+    it("sem internet o codigo adiantado falha calado e a tela de sem conexao abre igual", async () => {
+        vi.doMock("./pages/progresso/progresso.jsx", () => {
+            throw new TypeError("Failed to fetch dynamically imported module");
+        });
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+
+        await openAppAt("/progresso");
+
+        expect(await screen.findByText(CONNECTION_ERROR_MESSAGE)).toBeInTheDocument();
+        vi.doUnmock("./pages/progresso/progresso.jsx");
+    });
+
     it("sem sessao a api responde 401 e o login abre como sempre", async () => {
         vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({message: "Sua sessão expirou ou foi encerrada. Entre de novo para continuar"}), {status: 401}));
 

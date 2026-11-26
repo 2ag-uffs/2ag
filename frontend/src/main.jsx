@@ -1,6 +1,7 @@
 import {StrictMode} from "react";
 import {createRoot} from "react-dom/client";
-import AppRouter from "./app/router.jsx";
+import AppRouter from "./app/app-router.jsx";
+import {preloadRouteOf} from "./app/router.jsx";
 import StatusPage from "./components/status-page/status-page.jsx";
 import {ApiError, errorMessageOf, loadSession} from "./services/api.js";
 import "./styles/tokens.css";
@@ -20,6 +21,9 @@ window.addEventListener("pageshow", (event) => {
         window.location.reload();
     }
 });
+
+// o codigo da tela aberta pelo link do e-mail n espera a resposta da sessao pra comecar a baixar
+preloadRouteOf(window.location.pathname);
 
 // descobre quem esta logado antes de montar as rotas
 // as regras de acesso de cada rota dependem disso

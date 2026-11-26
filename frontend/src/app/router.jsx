@@ -1,7 +1,4 @@
-import {useState} from "react";
-import {createBrowserRouter} from "react-router";
-// no navegador o RouterProvider vem do react-router/dom como pede a versao 8
-import {RouterProvider} from "react-router/dom";
+import {matchRoutes} from "react-router";
 import AppLayout from "../components/app-layout/app-layout.jsx";
 import PageLoader from "../components/page-loader/page-loader.jsx";
 import RouteError from "../components/route-error/route-error.jsx";
@@ -26,7 +23,8 @@ function lazyPage(importPage) {
 
 // o handle de cada rota leva o nome fixo q vai pro titulo da aba ("Agenda · 2AG")
 // o nome nunca sai de dado: a tela de uma escala eh so "Escala", sem o nome dela nem o do paciente
-const routes = [
+// o AppRouter (app-router.jsx) monta o router com esta tabela
+export const routes = [
     {
         // a raiz so cuida do titulo da aba, entao ele vale tbm pras telas de fora do layout
         element: <PageTitle/>,
@@ -278,10 +276,14 @@ const routes = [
     },
 ];
 
-// o router so eh criado depois q a sessao carregou
-// senao as regras de acesso rodariam achando q ninguem esta logado
-// o useState guarda o mesmo router enquanto o app fica aberto
-export default function AppRouter() {
-    const [router] = useState(() => createBrowserRouter(routes));
-    return <RouterProvider router={router}/>;
+// na primeira abertura o codigo da tela do endereco comeca a baixar junto com a pergunta de quem esta logado
+// o navegador guarda o import, entao o lazy do router resolve na hora dps
+// a falha aqui fica calada pq o router baixa de novo e mostra o erro dele
+export function preloadRouteOf(pathname) {
+    const matches = matchRoutes(routes, pathname) || [];
+    matches.forEach((match) => {
+        if (typeof match.route.lazy === "function") {
+            match.route.lazy().catch(() => {});
+        }
+    });
 }
