@@ -31,6 +31,13 @@ function unreadTextOf(unread) {
     return unread + " avisos não lidos.";
 }
 
+// o titulo e a contagem n sao de clicar, entao recebem o foco so dessa vez, como o main do layout
+function focusText(element) {
+    element.setAttribute("tabindex", "-1");
+    element.focus();
+    element.addEventListener("blur", () => element.removeAttribute("tabindex"), {once: true});
+}
+
 function NotificationItem({notification, onOpen, onRemove}) {
     const Icon = TYPE_ICONS[notification.type] || FiBell;
     return (
@@ -71,6 +78,9 @@ export default function Notificacoes() {
     const [loadError, setLoadError] = useState(null);
     const [actionError, setActionError] = useState(null);
     const actionErrorRef = useRef(null);
+    const pageRef = useRef(null);
+    // a posicao do aviso apagado ou "count", pra saber onde por o foco qnd a lista chegar de novo
+    const focusAfterLoadRef = useRef(null);
 
     // o aviso de erro fica no alto da tela e o botao q falhou pode estar bem embaixo, entao o foco vai pro aviso
     // e o navegador rola ate ele
@@ -79,6 +89,27 @@ export default function Notificacoes() {
             actionErrorRef.current.focus();
         }
     }, [actionError]);
+
+    // o botao tocado some dps de apagar ou de marcar todos e o foco caia no body: com o leitor de tela a pessoa
+    // voltava pro comeco da pagina. entao ele vai pro aviso q ficou no lugar do apagado (ou o de cima, se era
+    // o ultimo), pro titulo qnd a lista acaba ou pra contagem de nao lidos
+    useEffect(() => {
+        const target = focusAfterLoadRef.current;
+        if (target === null || !page || !pageRef.current) {
+            return;
+        }
+        focusAfterLoadRef.current = null;
+        if (target === "count") {
+            focusText(pageRef.current.querySelector("header p"));
+            return;
+        }
+        const items = pageRef.current.querySelectorAll("ul > li");
+        if (items.length === 0) {
+            focusText(pageRef.current.querySelector("h1"));
+            return;
+        }
+        items[Math.min(target, items.length - 1)].querySelector("button").focus();
+    }, [page]);
 
     const loadPage = useCallback(() => {
         apiService.get("/notifications?page=" + pageNumber)
@@ -126,16 +157,18 @@ export default function Notificacoes() {
         setActionError(null);
         try {
             await apiService.post("/notifications/read-all");
+            focusAfterLoadRef.current = "count";
             loadPage();
         } catch (requestError) {
             showActionError(requestError);
         }
     };
 
-    const removeNotification = async (notificationId) => {
+    const removeNotification = async (notificationId, index) => {
         setActionError(null);
         try {
             await apiService.delete("/notifications/" + notificationId);
+            focusAfterLoadRef.current = index;
             loadPage();
         } catch (requestError) {
             showActionError(requestError);
@@ -151,7 +184,7 @@ export default function Notificacoes() {
     }
 
     return (
-        <section className={styles.page}>
+        <section className={styles.page} ref={pageRef}>
             <PageHeader
                 title="Avisos"
                 subtitle={unreadTextOf(page.unread)}
@@ -170,12 +203,12 @@ export default function Notificacoes() {
                 <EmptyState icon={FiBell} message="Nenhum aviso por aqui."/>
             ) : (
                 <ul className={styles.list}>
-                    {page.notifications.map((notification) => (
+                    {page.notifications.map((notification, index) => (
                         <NotificationItem
                             key={notification.id}
                             notification={notification}
                             onOpen={() => openNotification(notification)}
-                            onRemove={() => removeNotification(notification.id)}
+                            onRemove={() => removeNotification(notification.id, index)}
                         />
                     ))}
                 </ul>

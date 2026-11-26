@@ -1,4 +1,4 @@
-import {render, screen, waitFor} from "@testing-library/react";
+import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -57,6 +57,84 @@ describe("Notificacoes", () => {
         expect(await screen.findByText("Aviso 1")).toBeInTheDocument();
         expect(screen.queryByText("Aviso 21")).not.toBeInTheDocument();
         expect(screen.queryByText("Nenhum aviso por aqui.")).not.toBeInTheDocument();
+    });
+
+    // o botao tocado some com o aviso e o foco caia no body: com o leitor de tela a pessoa voltava pro comeco da pagina
+    describe("foco dps de apagar e de marcar todos como lidos", () => {
+        // a lista q a api devolve agora, trocada pelo teste depois de cada acao
+        let current;
+
+        function renderList(notifications, unread = 0) {
+            current = {notifications, unread};
+            vi.spyOn(apiService, "get").mockImplementation(async () => ({
+                notifications: current.notifications, page: 0, totalPages: 1,
+                totalNotifications: current.notifications.length, unread: current.unread,
+            }));
+            const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+                {initialEntries: ["/notificacoes"]});
+            render(<RouterProvider router={router}/>);
+        }
+
+        function deleteRemoves(id) {
+            vi.spyOn(apiService, "delete").mockImplementation(async () => {
+                current = {...current, notifications: current.notifications.filter((item) => item.id !== id)};
+                return null;
+            });
+        }
+
+        function itemOf(title) {
+            return screen.getByRole("heading", {name: title}).closest("li");
+        }
+
+        it("apagar um aviso leva o foco pro Abrir do aviso q ficou no lugar dele", async () => {
+            renderList([notification(1), notification(2), {...notification(3), link: "/progresso"}]);
+            deleteRemoves(2);
+            const user = userEvent.setup();
+
+            await screen.findByText("Aviso 2");
+            await user.click(within(itemOf("Aviso 2")).getByRole("button", {name: "Apagar"}));
+
+            await waitFor(() => expect(screen.queryByText("Aviso 2")).not.toBeInTheDocument());
+            await waitFor(() => expect(within(itemOf("Aviso 3")).getByRole("button", {name: "Abrir"})).toHaveFocus());
+        });
+
+        it("apagar o ultimo da lista leva o foco pro primeiro botao do aviso de cima", async () => {
+            renderList([notification(1), notification(2)]);
+            deleteRemoves(2);
+            const user = userEvent.setup();
+
+            await screen.findByText("Aviso 2");
+            await user.click(within(itemOf("Aviso 2")).getByRole("button", {name: "Apagar"}));
+
+            await waitFor(() => expect(within(itemOf("Aviso 1")).getByRole("button", {name: "Marcar como lido"}))
+                .toHaveFocus());
+        });
+
+        it("apagar o unico aviso leva o foco pro titulo da tela", async () => {
+            renderList([notification(1)]);
+            deleteRemoves(1);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole("button", {name: "Apagar"}));
+
+            expect(await screen.findByText("Nenhum aviso por aqui.")).toBeInTheDocument();
+            await waitFor(() => expect(screen.getByRole("heading", {name: "Avisos"})).toHaveFocus());
+        });
+
+        it("marcar todos como lidos leva o foco pra contagem de avisos", async () => {
+            renderList([{...notification(1), isRead: false}, {...notification(2), isRead: false}], 2);
+            vi.spyOn(apiService, "post").mockImplementation(async () => {
+                current = {notifications: current.notifications.map((item) => ({...item, isRead: true})), unread: 0};
+                return null;
+            });
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole("button", {name: "Marcar todos como lidos"}));
+
+            const count = await screen.findByText("Você está em dia, nenhum aviso novo.");
+            await waitFor(() => expect(count).toHaveFocus());
+            expect(screen.queryByRole("button", {name: "Marcar todos como lidos"})).not.toBeInTheDocument();
+        });
     });
 
     // sem rede o aviso de erro ficava la no alto, fora da tela de quem tinha rolado ate o aviso q queria apagar
