@@ -66,6 +66,6 @@ describe("AnamnesisView", () => {
         // com auto-fit o grupo de dois itens esticava em metades e os outros ficavam em tercos
         const details = declarationsOf(readCss(import.meta.url, "./anamnesis-view.module.css"), ".details");
 
-        expect(details["grid-template-columns"]).toBe("repeat(auto-fill, minmax(14rem, 1fr))");
+        expect(details["grid-template-columns"]).toBe("repeat(auto-fill, minmax(min(14rem, 100%), 1fr))");
     });
 });
