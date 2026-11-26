@@ -36,9 +36,30 @@
     margin: 0;
 }
 
+/* com a letra grande os dois botoes n cabem lado a lado e o Sair passava da beira esquerda */
 .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-3);
     justify-content: flex-end;
     margin-top: var(--space-2);
+}
+
+/* no celular as folgas do fundo e da caixa diminuem e sobra mais largura pro texto e pros campos */
+@media (max-width: 47.99rem) {
+    .backdrop {
+        padding: var(--space-2);
+    }
+
+    .box {
+        padding: var(--space-4);
+    }
+}
+
+/* celular deitado: a caixa fica mais justa pra caber na altura da janela */
+@media (max-height: 30rem) {
+    .box {
+        gap: var(--space-3);
+        padding: var(--space-4);
+    }
 }
