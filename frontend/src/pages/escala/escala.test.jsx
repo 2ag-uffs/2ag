@@ -784,6 +784,185 @@ describe("Escala no celular, uma pergunta por tela", () => {
         expect(screen.getByRole("status")).toHaveTextContent("0 de 3 respondidas");
         expect(screen.queryByRole("button", {name: "Próxima"})).not.toBeInTheDocument();
     });
+
+    // com o cartao das datas e o aviso antes da pergunta 1, ela abria atras da barra de acoes do celular
+    // os dois vao pra ultima tela, junto do salvar, e a instrucao continua no alto
+    // (decisao da dona do projeto, novembro de 2026)
+    describe("as datas e o aviso de responder tudo", () => {
+        const scored = {...TEA, maxScore: 2, items: TEA.items.slice(0, 2)};
+        const ANSWER_ALL = /Responda todos os itens antes de salvar/;
+
+        beforeEach(() => {
+            apiService.get.mockImplementation((path) => Promise.resolve(
+                path === "/scales/definitions/registro-tea" ? scored : []));
+        });
+
+        // o elemento vem antes do outro na pagina?
+        const comesBefore = (first, second) => Boolean(
+            first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+        it("no celular ficam fora das primeiras telas e aparecem na ultima, dps da pergunta", async () => {
+            mockPhoneWidth(true);
+            renderTea();
+            const user = userEvent.setup();
+
+            expect(await screen.findByRole("group", {name: "Sono"})).toBeInTheDocument();
+            expect(screen.getByText("Pense na última semana para responder.")).toBeInTheDocument();
+            expect(screen.queryByLabelText("Início do período")).not.toBeInTheDocument();
+            expect(screen.queryByLabelText("Fim do período")).not.toBeInTheDocument();
+            expect(screen.queryByText(ANSWER_ALL)).not.toBeInTheDocument();
+
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+
+            const question = screen.getByRole("group", {name: "Apetite"});
+            const start = screen.getByLabelText("Início do período");
+            const notice = screen.getByText(ANSWER_ALL);
+            const saveButton = screen.getByRole("button", {name: "Salvar respostas"});
+            expect(screen.getByLabelText("Fim do período")).toBeInTheDocument();
+            expect(comesBefore(question, start)).toBe(true);
+            expect(comesBefore(start, notice)).toBe(true);
+            expect(comesBefore(notice, saveButton)).toBe(true);
+            // a instrucao n sai do alto
+            expect(screen.getByText("Pense na última semana para responder.")).toBeInTheDocument();
+            // o foco da tela nova continua indo pra pergunta, e n pra data
+            expect(question).toHaveFocus();
+
+            // voltando uma tela eles somem de novo
+            await user.click(screen.getByRole("button", {name: "Anterior"}));
+            expect(screen.queryByLabelText("Início do período")).not.toBeInTheDocument();
+            expect(screen.queryByText(ANSWER_ALL)).not.toBeInTheDocument();
+        });
+
+        it("no computador continuam antes da primeira pergunta", async () => {
+            mockPhoneWidth(false);
+            renderTea();
+
+            const question = await screen.findByRole("group", {name: "Sono"});
+            const start = screen.getByLabelText("Início do período");
+            const notice = screen.getByText(ANSWER_ALL);
+            expect(screen.getByLabelText("Fim do período")).toBeInTheDocument();
+            expect(comesBefore(start, notice)).toBe(true);
+            expect(comesBefore(notice, question)).toBe(true);
+            expect(screen.getAllByLabelText("Início do período")).toHaveLength(1);
+            expect(screen.getAllByText(ANSWER_ALL)).toHaveLength(1);
+        });
+
+        // a data so aparece dps de tudo respondido: trocar ela n pode esconder as respostas com a data antiga
+        it("no celular trocar a data na ultima tela leva as respostas junto e salvar envia com a data nova", async () => {
+            mockPhoneWidth(true);
+            renderTea();
+            const user = userEvent.setup();
+            const newStart = toIsoDate(addDays(new Date(), -10));
+            const newEnd = toIsoDate(addDays(new Date(), -4));
+
+            await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            await user.click(screen.getByRole("radio", {name: "Nenhum dia"}));
+            fireEvent.change(screen.getByLabelText("Fim do período"), {target: {value: newEnd}});
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: newStart}});
+
+            // a tela continua na ultima pergunta, com a resposta dela e a conta das respondidas
+            expect(screen.getByRole("status")).toHaveTextContent("Pergunta 2 de 2 · 2 de 2 respondidas");
+            expect(screen.getByRole("radio", {name: "Nenhum dia"})).toBeChecked();
+            expect(screen.getByLabelText("Início do período")).toHaveValue(newStart);
+            expect(screen.getByLabelText("Fim do período")).toHaveValue(newEnd);
+
+            await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+            await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+            expect(post.mock.calls[0][1]).toEqual({periodStart: newStart, periodEnd: newEnd,
+                answers: {freqSono: 1, freqApetite: 0}});
+        });
+
+        it("no celular a data q ja tem resposta salva abre essa resposta, como no computador", async () => {
+            mockPhoneWidth(true);
+            const savedDay = toIsoDate(addDays(new Date(), -20));
+            const saved = {id: 4, slug: "registro-tea", periodStart: savedDay, periodEnd: savedDay,
+                answers: {freqSono: 0, freqApetite: 1}, result: null, reviewed: false, annulled: false,
+                editableByPatient: true};
+            apiService.get.mockImplementation((path) => Promise.resolve(
+                path === "/scales/definitions/registro-tea" ? scored : [saved]));
+            renderTea();
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: savedDay}});
+
+            // volta pra primeira pergunta, com a resposta salva daquela data
+            expect(await screen.findByRole("group", {name: "Sono"})).toBeInTheDocument();
+            expect(screen.getByRole("radio", {name: "Nenhum dia"})).toBeChecked();
+            // o campo da data sumiu com a ultima tela: o foco vai pra pergunta 1 e n cai no body
+            expect(screen.getByRole("group", {name: "Sono"})).toHaveFocus();
+        });
+
+        // o rascunho em cima de resposta salva eh a resposta inteira mais a mudanca: levar ele pra outra data
+        // criava uma copia da resposta la e deixava a de hoje sem a correcao
+        it("no celular a correcao de uma resposta salva n vai junto pra outra data, q abre em branco", async () => {
+            mockPhoneWidth(true);
+            // a escala de periodo abre no comeco da ultima semana
+            const openDay = toIsoDate(addDays(new Date(), -6));
+            const otherDay = toIsoDate(addDays(new Date(), -8));
+            const saved = {id: 4, slug: "registro-tea", periodStart: openDay, periodEnd: openDay,
+                answers: {freqSono: 0, freqApetite: 1}, result: null, reviewed: false, annulled: false,
+                editableByPatient: true};
+            apiService.get.mockImplementation((path) => Promise.resolve(
+                path === "/scales/definitions/registro-tea" ? scored : [saved]));
+            renderTea();
+            const user = userEvent.setup();
+
+            await waitFor(() => expect(screen.getByRole("radio", {name: "Nenhum dia"})).toBeChecked());
+            await user.click(screen.getByRole("radio", {name: "Até 3 dias"}));
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: otherDay}});
+
+            // a outra data abre na primeira pergunta, sem nada marcado
+            expect(await screen.findByRole("group", {name: "Sono"})).toBeInTheDocument();
+            expect(screen.getByRole("status")).toHaveTextContent("Pergunta 1 de 2 · 0 de 2 respondidas");
+            expect(screen.getByRole("radio", {name: "Nenhum dia"})).not.toBeChecked();
+            expect(screen.getByRole("radio", {name: "Até 3 dias"})).not.toBeChecked();
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            expect(screen.getByLabelText("Início do período")).toHaveValue(otherDay);
+            expect(screen.getByRole("radio", {name: "Nenhum dia"})).not.toBeChecked();
+            expect(screen.getByRole("radio", {name: "Até 3 dias"})).not.toBeChecked();
+        });
+
+        it("no celular trocar a data sem ter respondido nada leva o foco pra primeira pergunta", async () => {
+            mockPhoneWidth(true);
+            renderTea();
+            const user = userEvent.setup();
+            const newStart = toIsoDate(addDays(new Date(), -3));
+
+            await screen.findByRole("group", {name: "Sono"});
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            screen.getByLabelText("Início do período").focus();
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: newStart}});
+
+            expect(await screen.findByRole("group", {name: "Sono"})).toHaveFocus();
+        });
+
+        it("no celular o fim escolhido n vai junto qnd o inicio novo fica dps dele", async () => {
+            mockPhoneWidth(true);
+            renderTea();
+            const user = userEvent.setup();
+            const firstStart = toIsoDate(addDays(new Date(), -10));
+            const end = toIsoDate(addDays(new Date(), -6));
+            const laterStart = toIsoDate(addDays(new Date(), -2));
+            const todayIso = toIsoDate(new Date());
+
+            await user.click(await screen.findByRole("radio", {name: "Até 3 dias"}));
+            await user.click(screen.getByRole("button", {name: "Próxima"}));
+            await user.click(screen.getByRole("radio", {name: "Nenhum dia"}));
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: firstStart}});
+            fireEvent.change(screen.getByLabelText("Fim do período"), {target: {value: end}});
+            fireEvent.change(screen.getByLabelText("Início do período"), {target: {value: laterStart}});
+
+            expect(screen.getByLabelText("Fim do período")).toHaveValue(todayIso);
+            await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+            await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+            expect(post.mock.calls[0][1]).toEqual({periodStart: laterStart, periodEnd: todayIso,
+                answers: {freqSono: 1, freqApetite: 0}});
+        });
+    });
 });
 
 // diario com um item de nota, preenchido um dia por vez na grade

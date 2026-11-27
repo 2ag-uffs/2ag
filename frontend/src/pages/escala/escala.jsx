@@ -509,6 +509,31 @@ export default function Escala() {
         setPeriodEndByDay((current) => ({...current, [selectedDay]: dayIso}));
     };
 
+    // no celular as datas ficam na ultima tela, dps das perguntas (decisao da dona do projeto, novembro de 2026)
+    // trocar a data ali leva junto o q a pessoa ja respondeu, senao as respostas sumiam da tela com a data antiga
+    // a data q ja tem resposta salva abre essa resposta, como no computador
+    // e so vai junto o q ainda n foi salvo: o rascunho em cima de resposta salva eh a resposta inteira mais a
+    // mudanca, e levar ele criava uma copia da resposta na outra data
+    const changeDayAtTheEnd = (dayIso) => {
+        const hasSavedResponse = responses.some((response) => response.periodStart === dayIso && !response.annulled);
+        if (!hasDraft(selectedDay) || currentResponse !== null || hasSavedResponse) {
+            changeDay(dayIso);
+            // o campo da data some com a ultima tela, entao o foco vai pra primeira pergunta
+            goToStep(0);
+            return;
+        }
+        const carryToNewDay = (byDay) => ({...byDay, [selectedDay]: null, [dayIso]: byDay[selectedDay]});
+        // o fim escolhido q ficou antes do inicio novo n vai junto, e o fim volta pra hoje
+        const carryEndToNewDay = (byDay) => ({...byDay, [selectedDay]: null,
+            [dayIso]: byDay[selectedDay] && byDay[selectedDay] >= dayIso ? byDay[selectedDay] : null});
+        setEditsByDay(carryToNewDay);
+        setPeriodEndByDay(carryEndToNewDay);
+        setSelectedDay(dayIso);
+        setNotice(null);
+        setFormError(null);
+        setMissingKeys([]);
+    };
+
     const isReadOnly = currentResponse !== null && !currentResponse.editableByPatient;
 
     // a correcao de escala de periodo abre pela data (?data=) e mexe na resposta q ja existe:
@@ -555,9 +580,9 @@ export default function Escala() {
 
     const save = async (event) => {
         event.preventDefault();
-        // no meio das perguntas o enter so passa pra proxima, sem salvar pela metade. no diario o campo da pergunta
-        // eh o unico do form, e nas outras o chrome n conta a data entre os campos de digitar, entao o enter num campo
-        // de numero tbm envia. no de horario ele n envia
+        // no meio das perguntas o enter so passa pra proxima, sem salvar pela metade. o campo da pergunta eh o unico
+        // do form (as datas so entram na ultima tela), entao o enter num campo de numero envia. no de horario ele
+        // n envia
         if (isStepMode && !isLastStep) {
             goToStep(currentStep + 1);
             return;
@@ -705,6 +730,49 @@ export default function Escala() {
         .filter((item) => missingKeys.includes(item.key))
         .map((item) => item.label);
 
+    // o cartao das datas e o aviso de responder tudo. no computador ficam antes das perguntas, como sempre
+    // no celular vao pra ultima tela, junto do salvar: antes deles a pergunta 1 abria atras da barra de acoes
+    // (decisao da dona do projeto, novembro de 2026). a instrucao da escala continua no alto
+    const changeStartDay = isStepMode ? changeDayAtTheEnd : changeDay;
+    const periodCard = !isDiary && (
+        <div className={styles.period}>
+            <div className={styles.dateField}>
+                <label htmlFor="periodStart">
+                    {isPeriod ? "Início do período" : "Data da avaliação"}
+                </label>
+                <input
+                    id="periodStart"
+                    type="date"
+                    max={today}
+                    value={periodStart}
+                    disabled={isReadOnly}
+                    onChange={(event) => (isCorrecting
+                        ? changePeriodStart(event.target.value)
+                        : changeStartDay(event.target.value))}
+                />
+            </div>
+            {isPeriod && (
+                <div className={styles.dateField}>
+                    <label htmlFor="periodEnd">Fim do período</label>
+                    <input
+                        id="periodEnd"
+                        type="date"
+                        min={periodStart}
+                        max={today}
+                        value={periodEnd}
+                        disabled={isReadOnly}
+                        onChange={(event) => changePeriodEnd(event.target.value)}
+                    />
+                </div>
+            )}
+        </div>
+    );
+    const answerAllNotice = hasRequiredItems && !isReadOnly && (
+        <p className="aviso">
+            Responda todos os itens antes de salvar. Sem eles a escala pode ficar sem escore e continuar pendente.
+        </p>
+    );
+
     return (
         <section className={styles.page}>
             <PageHeader title={definition.title} subtitle={definition.instruction}/>
@@ -745,39 +813,7 @@ export default function Escala() {
                 />
             ) : (
                 <form ref={formRef} className={styles.form} onSubmit={save} onFocus={followFocus}>
-                    {!isDiary && (
-                        <div className={styles.period}>
-                            <div className={styles.dateField}>
-                                <label htmlFor="periodStart">
-                                    {isPeriod ? "Início do período" : "Data da avaliação"}
-                                </label>
-                                <input
-                                    id="periodStart"
-                                    type="date"
-                                    max={today}
-                                    value={periodStart}
-                                    disabled={isReadOnly}
-                                    onChange={(event) => (isCorrecting
-                                        ? changePeriodStart(event.target.value)
-                                        : changeDay(event.target.value))}
-                                />
-                            </div>
-                            {isPeriod && (
-                                <div className={styles.dateField}>
-                                    <label htmlFor="periodEnd">Fim do período</label>
-                                    <input
-                                        id="periodEnd"
-                                        type="date"
-                                        min={periodStart}
-                                        max={today}
-                                        value={periodEnd}
-                                        disabled={isReadOnly}
-                                        onChange={(event) => changePeriodEnd(event.target.value)}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {!isStepMode && periodCard}
 
                     {isReadOnly && (
                         <p className="aviso">O prescritor já analisou esta resposta. Para corrigir, fale com ele.</p>
@@ -800,11 +836,7 @@ export default function Escala() {
                     {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
                     {notice && <p className="aviso" role="status">{notice}</p>}
 
-                    {hasRequiredItems && !isReadOnly && (
-                        <p className="aviso">
-                            Responda todos os itens antes de salvar. Sem eles a escala pode ficar sem escore e continuar pendente.
-                        </p>
-                    )}
+                    {!isStepMode && answerAllNotice}
 
                     <ScaleForm
                         items={definition.items}
@@ -817,6 +849,9 @@ export default function Escala() {
                         showsUrgencyNotice={true}
                         step={isStepMode ? currentStep : null}
                     />
+
+                    {isStepMode && isLastStep && periodCard}
+                    {isStepMode && isLastStep && answerAllNotice}
 
                     {!isDiary && currentResponse && (
                         <p className={styles.periodNote}>
