@@ -458,6 +458,13 @@ fieldset:disabled .optionCard:hover {
     .scores .score {
         width: 2.75rem;
     }
+
+    /* a faixa cresce ate as notas dela terem 52 px, q eh como elas ficam no cartao de 1280 px, e para ai:
+       em 768 px a terceira faixa descia sozinha pra linha de baixo e esticava ate a borda, com notas de 185 px
+       a conta eh a das notas (3.25rem cada), dos vaos entre elas e da folga dos dois lados da faixa */
+    .band {
+        max-width: calc(var(--band-scores) * 3.25rem + (var(--band-scores) + 1) * var(--space-2));
+    }
 }
 
 /* na janela baixa, como o celular deitado ou o zoom de 400%, o contador preso tomava o lugar da pergunta:

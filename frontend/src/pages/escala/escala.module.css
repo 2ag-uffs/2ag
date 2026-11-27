@@ -236,3 +236,14 @@
         flex-direction: column;
     }
 }
+
+/* no celular de janela curta, como o de 320x568, a regua da dor (434 px) n cabia nos 311 px entre o contador e
+   os botoes presos, e a faixa de 8 a 10 comecava atras dos botoes. ate 36rem de altura o contador e os botoes
+   da escala rolam com a pagina, e a pergunta tem os 447 px entre o cabecalho e o menu de baixo
+   abaixo de 30rem o cabecalho e o menu tbm se soltam, como em toda tela (a janela baixa do index.css) */
+@media (max-width: 47.99rem) and (max-height: 36rem) {
+    .form [data-top-bar],
+    .form > [data-bottom-bar] {
+        position: static;
+    }
+}

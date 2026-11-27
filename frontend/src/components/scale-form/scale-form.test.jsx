@@ -654,6 +654,60 @@ describe("regua do tamanho das notas no computador", () => {
     });
 });
 
+// a partir de 768 px a faixa crescia pra encher a linha. em 768 px a terceira faixa da dor n cabia na linha das
+// outras duas, descia sozinha e esticava ate a borda do cartao, com notas de 185 px ao lado das de 62 px
+// (decisao da dona do projeto, novembro de 2026)
+describe("regua com faixas no computador", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+    const desktopCss = mediaRules(css, "@media (min-width: 48rem)");
+    const mobileCss = mediaRules(css, "@media (max-width: 47.99rem)");
+    // os tokens de espaco q a conta usa, em rem
+    const SPACE_2 = 0.5;
+
+    // a largura maxima da faixa em px, pela conta do css, com a letra de 16 px
+    function maxBandWidth(scoreCount) {
+        const rule = declarationsOf(desktopCss, ".band")["max-width"];
+        const match = rule.match(/^calc\(var\(--band-scores\) \* ([\d.]+)rem \+ \(var\(--band-scores\) \+ 1\) \* var\(--space-2\)\)$/);
+        expect(match).not.toBeNull();
+        return (scoreCount * Number(match[1]) + (scoreCount + 1) * SPACE_2) * 16;
+    }
+
+    it("cada faixa leva pro css quantas notas tem", () => {
+        render(<ScaleForm items={[PAIN_ITEM]} bands={PAIN_BANDS} values={{}} onChange={() => {}}/>);
+
+        const counts = ["Dor leve", "Dor moderada", "Dor intensa"].map((name) =>
+            screen.getByRole("group", {name: new RegExp(name)}).style.getPropertyValue("--band-scores"));
+        expect(counts).toEqual(["3", "5", "3"]);
+    });
+
+    it("a faixa cresce so ate as notas dela terem 52 px e n estica mais q isso", () => {
+        // 3 notas de 52 px, 2 vaos de 8 px e a folga de 8 px de cada lado da faixa
+        expect(maxBandWidth(3)).toBe(3 * 52 + 2 * 8 + 16);
+        expect(maxBandWidth(5)).toBe(5 * 52 + 4 * 8 + 16);
+        // a nota continua com pelo menos 44 px
+        expect(declarationsOf(css, ".bandScores")["grid-auto-columns"]).toBe("minmax(2.75rem, 1fr)");
+    });
+
+    it("no cartao de 1280 px as tres faixas continuam enchendo a linha, e em 768 px a terceira desce sem esticar", () => {
+        const gap = SPACE_2 * 16;
+        // o cartao da pergunta tem 694 px por dentro em 1280 px e 587 px em 768 px (medido no Chrome sem janela)
+        const allBands = maxBandWidth(3) + maxBandWidth(5) + maxBandWidth(3) + 2 * gap;
+        expect(allBands).toBeGreaterThanOrEqual(694);
+        // em 768 px as tres n cabem nem no menor tamanho delas (notas de 44 px), entao a terceira desce
+        const smallest = (count) => count * 44 + (count - 1) * gap + 16;
+        expect(smallest(3) + smallest(5) + smallest(3) + 2 * gap).toBeGreaterThan(587);
+        // e as duas de cima cabem inteiras, no tamanho maximo
+        expect(maxBandWidth(3) + maxBandWidth(5) + gap).toBeLessThanOrEqual(587);
+        // sozinha na linha de baixo, a terceira para na largura das notas dela, longe da borda do cartao
+        expect(maxBandWidth(3)).toBeLessThan(587 / 2);
+    });
+
+    it("no celular a regra continua a de antes", () => {
+        expect(declarationsOf(mobileCss, ".band")["max-width"]).toBe("max-content");
+        expect(declarationsOf(css, ".band")["max-width"]).toBeUndefined();
+    });
+});
+
 // o jsdom n desenha a tela, entao o lugar do contador sai do css
 describe("contador preso no alto do formulario", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");

@@ -360,18 +360,20 @@ function ScoreChoices({item, value, onChange, invalid}) {
 // a regua desenhada como a escala visual do papel, com cada faixa nomeada e
 // colorida em cima das notas dela (RF25). o nome fica escrito, entao a cor n
 // eh o unico sinal. as pontas ja estao no nome das faixas e as ancoras saem
+// quantas notas a faixa tem vai tbm pro css (--band-scores), q no computador n deixa a faixa passar da largura delas
 function BandedScoreChoices({item, bands, value, onChange, invalid}) {
     return (
         <div className={styles.bands}>
             {bands.map((band, index) => {
                 const nameId = item.key + "-faixa-" + index;
+                const scoreCount = band.maxScore - band.minScore + 1;
                 return (
                     <div
                         key={band.label}
                         role="group"
                         aria-labelledby={nameId}
                         className={styles.band + " " + toneOf(index, bands.length, item.higherIsBetter)}
-                        style={{flexGrow: band.maxScore - band.minScore + 1}}
+                        style={{flexGrow: scoreCount, "--band-scores": scoreCount}}
                     >
                         <p id={nameId} className={styles.bandName}>
                             <span>{band.label}</span>{" "}

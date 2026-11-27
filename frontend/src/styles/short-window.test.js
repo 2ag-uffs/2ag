@@ -123,6 +123,46 @@ describe("janela baixa", () => {
     });
 });
 
+// no celular de 320x568 a regua da dor tem 460 px de altura e so sobravam 311 px entre o contador e os botoes
+// presos: a faixa de 8 a 10 comecava atras dos botoes. nessa janela curta o contador e os botoes da escala se
+// soltam, e o cabecalho e o menu continuam presos ate os 30rem de sempre
+// (decisao da dona do projeto, novembro de 2026)
+describe("celular de janela curta na tela da escala", () => {
+    const SHORT_PHONE = "@media (max-width: 47.99rem) and (max-height: 36rem)";
+    const shortPhone = mediaRules(scaleCss, SHORT_PHONE);
+
+    it("o contador e os botoes da escala rolam com a pagina", () => {
+        expect(declarationsOf(shortPhone, ".form [data-top-bar]")).toEqual({position: "static"});
+        expect(declarationsOf(shortPhone, ".form > [data-bottom-bar]")).toEqual({position: "static"});
+        // so esses dois mudam
+        expect(cssRules(shortPhone)).toHaveLength(1);
+    });
+
+    // o seletor da tela (duas partes) ganha do .progress e do .actions (uma parte) em qualquer ordem dos arquivos
+    it("o contador e os botoes tem a marca q o seletor da tela procura", () => {
+        expect(scaleFormCss).toContain(".progress {");
+        expect(formSectionCss).toContain(".actions {");
+        expect(readCss(import.meta.url, "../components/scale-form/scale-form.jsx")).toContain("data-top-bar=\"\"");
+        expect(readCss(import.meta.url, "../components/form-section/form-section.jsx")).toContain("data-bottom-bar=\"\"");
+    });
+
+    // em px com a letra padrao do navegador, de 16 px
+    it("o limite pega o celular de 320x568 e deixa de fora o de 360x640 pra cima", () => {
+        const limit = Number(SHORT_PHONE.match(/max-height: ([\d.]+)rem/)[1]) * 16;
+
+        expect(limit).toBeGreaterThanOrEqual(568);
+        expect(limit).toBeLessThan(640);
+        expect(limit).toBeLessThan(667);
+    });
+
+    it("o cabecalho, o menu de baixo e as barras das outras telas continuam com o limite de 30rem", () => {
+        [layoutCss, formSectionCss, anamnesisCss, scaleFormCss, indexCss].forEach((css) => {
+            expect(css).not.toContain("36rem");
+        });
+        expect(placeOf(scaleCss, SHORT_PHONE)).toBeGreaterThan(placeOf(scaleCss, MOBILE));
+    });
+});
+
 // com a letra em 200% numa tela de 320 px os 11rem passavam da largura do cartao, a data do Pittsburgh ia de
 // x 65 a 346 e um e-mail comprido empurrava a pagina pro lado
 describe("tela estreita com a letra grande", () => {
