@@ -1,5 +1,7 @@
 import {render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import {createMemoryRouter, Link} from "react-router";
+import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
 import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
@@ -27,6 +29,22 @@ function minorProfile(researchConsent) {
     };
 }
 
+// o perfil dentro das rotas, com um link pra sair dele como o menu faz
+function renderProfile() {
+    const router = createMemoryRouter([
+        {path: "/perfil", element: <><Link to="/painel-paciente">Início</Link><Profile/></>},
+        {path: "/painel-paciente", element: <p>painel do paciente</p>},
+    ], {initialEntries: ["/perfil"]});
+    render(<RouterProvider router={router}/>);
+    return router;
+}
+
+// paciente adulto com o cadastro completo, pra salvar sem a api recusar nada
+const FILLED_PATIENT_PROFILE = {
+    ...PATIENT_PROFILE, birthDate: "1990-04-12", phone: "49999887766",
+    address: {street: "Rua das Flores", number: "120", city: "Chapecó", state: "SC"},
+};
+
 describe("Profile", () => {
     afterEach(() => {
         vi.useRealTimers();
@@ -34,9 +52,189 @@ describe("Profile", () => {
         setLoggedUser(null);
     });
 
+    // o perfil saia calado e o q a pessoa digitou se perdia num toque no menu (decisao da dona, novembro de 2026)
+    describe("sair com mudanca n salva", () => {
+        it("com um dado mudado sair pergunta antes, e continuar deixa o q foi digitado", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            const city = await screen.findByLabelText(/^Cidade/);
+            await user.clear(city);
+            await user.type(city, "Xaxim");
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            let dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+            expect(dialog).toHaveTextContent("O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?");
+            await user.click(within(dialog).getByRole("button", {name: "Continuar preenchendo"}));
+            await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+            expect(screen.getByLabelText(/^Cidade/)).toHaveValue("Xaxim");
+
+            await user.click(screen.getByRole("link", {name: "Início"}));
+            dialog = await screen.findByRole("dialog", {name: "Sair sem salvar"});
+            await user.click(within(dialog).getByRole("button", {name: "Sim, sair"}));
+            expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        });
+
+        it("sem nada mudado sair n pergunta", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            await screen.findByLabelText(/^Cidade/);
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("a mudanca desfeita n pergunta", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            const city = await screen.findByLabelText(/^Cidade/);
+            await user.type(city, "x");
+            await user.type(city, "{Backspace}");
+            expect(city).toHaveValue("Chapecó");
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("o q ja foi salvo n pergunta, e mudar de novo dps de salvar volta a perguntar", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            // a api devolve a cidade aparada, diferente do q ficou no campo
+            vi.spyOn(apiService, "put").mockResolvedValue({
+                ...FILLED_PATIENT_PROFILE, address: {...FILLED_PATIENT_PROFILE.address, city: "Xaxim"},
+            });
+            const user = userEvent.setup();
+            const router = renderProfile();
+
+            const city = await screen.findByLabelText(/^Cidade/);
+            await user.clear(city);
+            await user.type(city, "Xaxim ");
+            await user.click(screen.getByRole("button", {name: "Salvar dados"}));
+            expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+
+            // o cartao avisa a tela num efeito, entao o aviso do navegador sai um instante dps da mensagem
+            await waitFor(() => {
+                const saved = new Event("beforeunload", {cancelable: true});
+                window.dispatchEvent(saved);
+                expect(saved.defaultPrevented).toBe(false);
+            });
+
+            await user.type(screen.getByLabelText(/^Cidade/), "zinho");
+            await user.click(screen.getByRole("link", {name: "Início"}));
+            expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+            expect(router.state.location.pathname).toBe("/perfil");
+        });
+
+        it("o envio recusado continua perguntando", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, "Confira os campos destacados",
+                [{field: "phone", message: "Telefone inválido"}]));
+            const user = userEvent.setup();
+            renderProfile();
+
+            const [phone] = await screen.findAllByLabelText(/Telefone com DDD/);
+            await user.clear(phone);
+            await user.type(phone, "49");
+            await user.click(screen.getByRole("button", {name: "Salvar dados"}));
+            expect(await screen.findByText("Telefone inválido")).toBeInTheDocument();
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+        });
+
+        // recarregar ou fechar a aba n passa pelas rotas, entao o navegador pergunta
+        it("recarregar ou fechar a aba so pede pro navegador perguntar com algo mudado", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            const city = await screen.findByLabelText(/^Cidade/);
+            const before = new Event("beforeunload", {cancelable: true});
+            window.dispatchEvent(before);
+            expect(before.defaultPrevented).toBe(false);
+
+            await user.type(city, " do Oeste");
+            const changed = new Event("beforeunload", {cancelable: true});
+            window.dispatchEvent(changed);
+            expect(changed.defaultPrevented).toBe(true);
+
+            await user.clear(city);
+            await user.type(city, "Chapecó");
+            const undone = new Event("beforeunload", {cancelable: true});
+            window.dispatchEvent(undone);
+            expect(undone.defaultPrevented).toBe(false);
+        });
+
+        it("o e-mail novo e a senha nova digitados tbm perguntam, e a senha atual sozinha n", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+            const asksBeforeLeaving = () => {
+                const leaving = new Event("beforeunload", {cancelable: true});
+                window.dispatchEvent(leaving);
+                return leaving.defaultPrevented;
+            };
+
+            // o navegador preenche a senha atual sozinho, e isso n eh mudanca de ninguem
+            const [emailPassword, currentPassword] = await screen.findAllByLabelText(/Senha atual/);
+            await user.type(emailPassword, "valor-antigo-A1!");
+            await user.type(currentPassword, "valor-antigo-A1!");
+            expect(asksBeforeLeaving()).toBe(false);
+
+            await user.type(screen.getByLabelText(/Novo e-mail/), "maria.nova@email.com");
+            expect(asksBeforeLeaving()).toBe(true);
+            await user.clear(screen.getByLabelText(/Novo e-mail/));
+            expect(asksBeforeLeaving()).toBe(false);
+
+            await user.type(screen.getByLabelText(/^Nova senha/), "Valor");
+            expect(asksBeforeLeaving()).toBe(true);
+            await user.click(screen.getByRole("link", {name: "Início"}));
+            expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+        });
+
+        it("a administracao tbm ve a pergunta ao mudar o nome", async () => {
+            setLoggedUser({id: 1, name: "Administrador", role: "ADMIN"});
+            vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            await user.type(await screen.findByLabelText(/Nome completo/), " da Clínica");
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            expect(await screen.findByRole("dialog", {name: "Sair sem salvar"})).toBeInTheDocument();
+        });
+
+        // sair da conta ja acabou com a sessao, entao a tela vai pro login sem perguntar
+        it("sem ninguem logado a saida n pergunta", async () => {
+            setLoggedUser({id: 3, name: "Maria Souza", role: "PATIENT"});
+            vi.spyOn(apiService, "get").mockResolvedValue(FILLED_PATIENT_PROFILE);
+            const user = userEvent.setup();
+            renderProfile();
+
+            await user.type(await screen.findByLabelText(/^Cidade/), " do Oeste");
+            setLoggedUser(null);
+            await user.click(screen.getByRole("link", {name: "Início"}));
+
+            expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+        });
+    });
+
     it("administrador ve nome e senha, sem cpf, sem troca de e-mail e sem avisos", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByRole("heading", {name: "Senha"})).toBeInTheDocument();
         expect(screen.getByLabelText(/Nome completo/)).toHaveValue("Administrador");
@@ -52,7 +250,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_PROFILE);
         const put = vi.spyOn(apiService, "put").mockResolvedValue(null);
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await screen.findByRole("heading", {name: "Senha"});
         await user.type(screen.getByLabelText(/Senha atual/), "valor-antigo-A1!");
@@ -75,7 +273,7 @@ describe("Profile", () => {
             finishSaving = resolve;
         }));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         (await screen.findByRole("button", {name: "Salvar dados"})).focus();
         await user.keyboard("{Enter}");
@@ -104,7 +302,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "get").mockResolvedValue(profile);
         const put = vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(500, "Não foi possível salvar agora"));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         // o erro geral tbm fica do lado do botao
         const saveButton = await screen.findByRole("button", {name: "Salvar dados"});
@@ -140,7 +338,7 @@ describe("Profile", () => {
         });
         const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         (await screen.findByRole("button", {name: "Retirar consentimento"})).focus();
         await user.keyboard("{Enter}");
@@ -165,7 +363,7 @@ describe("Profile", () => {
                 ? {active: true, acceptedAt: "2026-11-14T10:00:00", termChanged: false}
                 : {active: false, acceptedAt: null, termChanged: false}));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         (await screen.findByRole("button", {name: "Retirar consentimento"})).focus();
         await user.keyboard("{Enter}");
@@ -198,7 +396,7 @@ describe("Profile", () => {
             path === "/consent-term/research" ? {version: "1.0", text: "Texto do termo de pesquisa."} : profile));
         const post = vi.spyOn(apiService, "post").mockReturnValue(new Promise(() => {}));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await user.click(await screen.findByRole("button", {name: "Ler o termo e decidir"}));
         (await screen.findByRole("button", {name: "Aceito participar"})).focus();
@@ -224,7 +422,7 @@ describe("Profile", () => {
         const post = vi.spyOn(apiService, "post")
             .mockResolvedValue({active: true, acceptedAt: "2026-11-14T10:00:00", termChanged: false});
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await user.click(await screen.findByRole("button", {name: "Ler o termo e decidir"}));
         await user.click(await screen.findByRole("button", {name: "Aceito participar"}));
@@ -240,7 +438,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "put").mockRejectedValue(new ApiError(400, "A senha atual está incorreta",
             [{field: "currentPassword", message: "A senha atual está incorreta"}]));
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await screen.findByRole("heading", {name: "Senha"});
         await user.type(screen.getByLabelText(/Senha atual/), "valor-errado-A1!");
@@ -255,7 +453,7 @@ describe("Profile", () => {
 
     it("paciente continua com cpf, troca de e-mail e avisos", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(PATIENT_PROFILE);
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByRole("heading", {name: "E-mail de acesso"})).toBeInTheDocument();
         expect(screen.getByText("CPF")).toBeInTheDocument();
@@ -269,7 +467,7 @@ describe("Profile", () => {
             ...ADMIN_PROFILE, id: 2, role: "PRESCRIBER", name: "Ana Lima", email: "ana@clinica.com",
             cpf: "52998224725", profession: "Médica", registryType: "CRM", registryNumber: "123",
         });
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByRole("heading", {name: "E-mail de acesso"})).toBeInTheDocument();
         expect(screen.getByText("Seus dados, o e-mail de acesso e a senha.")).toBeInTheDocument();
@@ -282,7 +480,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "get").mockResolvedValue(PATIENT_PROFILE);
         const put = vi.spyOn(apiService, "put").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await screen.findByRole("heading", {name: "E-mail de acesso"});
         await user.type(screen.getByLabelText(/Novo e-mail/), "Nova@Email.com");
@@ -301,7 +499,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
         vi.spyOn(apiService, "put").mockResolvedValue(null);
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByText(/Aguardando a confirmação de/)).toBeInTheDocument();
         // o segundo "Senha atual" eh o do cartao da senha
@@ -316,7 +514,7 @@ describe("Profile", () => {
 
     it("o perfil mostra o endereco q esta esperando confirmacao", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, pendingEmail: "nova@email.com"});
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByText(/Aguardando a confirmação de/)).toBeInTheDocument();
         expect(screen.getByText("nova@email.com")).toBeInTheDocument();
@@ -331,7 +529,7 @@ describe("Profile", () => {
         const put = vi.spyOn(apiService, "put").mockResolvedValue({...patientWithSocialName, socialName: "Ana Lima"});
         setLoggedUser({id: 3, name: "Ana Souza", role: "PATIENT"});
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         const socialNameField = await screen.findByLabelText(/Nome social/);
         expect(socialNameField).toHaveValue("Ana Souza");
@@ -357,7 +555,7 @@ describe("Profile", () => {
         vi.spyOn(apiService, "get").mockResolvedValue(patientWithSocialName);
         const put = vi.spyOn(apiService, "put").mockResolvedValue({...patientWithSocialName, socialName: null});
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         await user.clear(await screen.findByLabelText(/Nome social/));
         await user.click(screen.getByRole("button", {name: "Salvar dados"}));
@@ -370,7 +568,7 @@ describe("Profile", () => {
     // do endereco e o celular podia oferecer o nome e o telefone do proprio paciente nos campos do familiar
     it("os campos pedem ao celular a letra grande de cada nome e o preenchimento certo", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(minorProfile(null));
-        render(<Profile/>);
+        renderProfile();
 
         const name = await screen.findByLabelText(/Nome completo/);
         [name, screen.getByLabelText(/Nome social/), screen.getByLabelText("Nome"), screen.getByLabelText(/^Rua/),
@@ -393,7 +591,7 @@ describe("Profile", () => {
         // 23:50 em brasilia ja eh o dia seguinte em utc
         vi.setSystemTime(new Date("2026-11-21T23:50:00-03:00"));
         vi.spyOn(apiService, "get").mockResolvedValue({...PATIENT_PROFILE, birthDate: "1990-04-12"});
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByLabelText(/Data de nascimento/)).toHaveAttribute("max", "2026-11-21");
     });
@@ -402,7 +600,7 @@ describe("Profile", () => {
     it("paciente menor de 18 ve o responsavel legal obrigatorio e n ve a pesquisa", async () => {
         vi.spyOn(apiService, "get")
             .mockResolvedValue(minorProfile({active: false, acceptedAt: null, termChanged: false}));
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByRole("group", {name: "Responsável legal"})).toBeInTheDocument();
         expect(screen.getByLabelText("Nome")).toHaveValue("Joana Souza");
@@ -418,7 +616,7 @@ describe("Profile", () => {
         const post = vi.spyOn(apiService, "post")
             .mockResolvedValue({active: false, acceptedAt: null, termChanged: false});
         const user = userEvent.setup();
-        render(<Profile/>);
+        renderProfile();
 
         expect(await screen.findByRole("heading", {name: "Pesquisa"})).toBeInTheDocument();
         expect(screen.getByText(/Você aceitou participar da pesquisa em 01\/10\/2026/)).toBeInTheDocument();
@@ -432,7 +630,7 @@ describe("Profile", () => {
     // qnd cada um tem 11rem, onde cabe o nome mais comprido com a seta
     it("cidade e estado so ficam lado a lado qnd o nome mais comprido do estado cabe", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(minorProfile(null));
-        render(<Profile/>);
+        renderProfile();
 
         const cityRow = (await screen.findByLabelText(/^Estado/)).closest("div").parentElement;
         expect(cityRow.className).toMatch(/cityRow/);

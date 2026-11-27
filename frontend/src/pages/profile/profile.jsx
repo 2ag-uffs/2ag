@@ -1,6 +1,8 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
+import {useBlocker} from "react-router";
 import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
@@ -23,6 +25,7 @@ import {
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
 import {toIsoDate} from "../../utils/date-format.js";
 import {guardianBody, guardianFieldsFrom, isMinorPatient} from "../../utils/guardian.js";
+import {useForgetBlockedExit, useLeaveWarning} from "../../utils/leave-warning.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
 import {RESEARCH_REVOKED_TEXT, researchStatusText, showsResearch} from "../../utils/research-consent.js";
 import styles from "./profile.module.css";
@@ -74,6 +77,15 @@ function profileRequestBody(formData, isPatient) {
             : null,
         guardian: isPatient ? guardianBody(formData) : null,
     };
+}
+
+// cada cartao avisa a tela qnd tem algo digitado e n salvo, pra ela perguntar antes de sair
+// o cartao q sai da tela deixa de contar
+function useReportUnsaved(cardName, hasUnsaved, onUnsavedChange) {
+    useEffect(() => {
+        onUnsavedChange(cardName, hasUnsaved);
+        return () => onUnsavedChange(cardName, false);
+    }, [cardName, hasUnsaved, onUnsavedChange]);
 }
 
 // aviso de sucesso ou de erro dentro de cada cartao
@@ -272,8 +284,10 @@ function GuardianFieldset({formData, fieldErrors, isMinor, onFieldChange}) {
 
 // dados pessoais e endereco
 // a conta administrativa so tem nome e o e-mail dela vem do servidor
-function PersonalDataCard({profile, onSaved}) {
+function PersonalDataCard({profile, onSaved, onUnsavedChange}) {
     const [formData, setFormData] = useState(() => personalDataFrom(profile));
+    // como os campos estavam ao abrir ou no ultimo salvar, pra saber se a pessoa mexeu em algo
+    const [savedData, setSavedData] = useState(formData);
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -282,6 +296,10 @@ function PersonalDataCard({profile, onSaved}) {
     // menor de 18 n fica sem o responsavel legal q aceitou o termo por ele (LGPD art. 14)
     const isMinor = isPatient && isMinorPatient(formData.birthDate);
     const [formRef, focusFirstError] = useFocusFirstError();
+
+    // o campo desfeito, q voltou ao q estava salvo, n conta como mudanca
+    const hasChanges = Object.keys(formData).some((fieldName) => formData[fieldName] !== savedData[fieldName]);
+    useReportUnsaved("personalData", hasChanges, onUnsavedChange);
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -295,6 +313,8 @@ function PersonalDataCard({profile, onSaved}) {
 
         try {
             const savedProfile = await apiService.put("/profile", profileRequestBody(formData, isPatient));
+            // o q foi enviado eh o q esta salvo, e o q a pessoa digitar enquanto a api responde continua contando
+            setSavedData(formData);
             onSaved(savedProfile);
             setMessage({isError: false, text: "Dados salvos."});
         } catch (requestError) {
@@ -363,13 +383,16 @@ function PersonalDataCard({profile, onSaved}) {
 
 // troca do e-mail de acesso pedindo a senha atual
 // o e-mail so muda dps q a pessoa abre o link q vai pro endereco novo (issue 130)
-function EmailCard({profile, onSaved}) {
+function EmailCard({profile, onSaved, onUnsavedChange}) {
     const [newEmail, setNewEmail] = useState("");
     const [currentPassword, setCurrentPassword] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formRef, focusFirstError] = useFocusFirstError();
+
+    // so o e-mail novo conta: a senha atual o navegador pode preencher sozinho, sem a pessoa digitar nada
+    useReportUnsaved("email", newEmail !== "", onUnsavedChange);
 
     // qnd o pedido some (a senha foi trocada) a mensagem de link enviado sai junto
     const shownMessage = message && !message.isError && !profile.pendingEmail ? null : message;
@@ -454,12 +477,16 @@ function findPasswordErrors(formData) {
 }
 
 // troca de senha pedindo a senha atual
-function PasswordCard({onPasswordChanged}) {
+function PasswordCard({onPasswordChanged, onUnsavedChange}) {
     const [formData, setFormData] = useState(EMPTY_PASSWORD_FORM);
     const [fieldErrors, setFieldErrors] = useState({});
     const [message, setMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formRef, focusFirstError] = useFocusFirstError();
+
+    // so a senha nova conta, pelo msm motivo do cartao do e-mail
+    useReportUnsaved("password", formData.newPassword !== "" || formData.newPasswordConfirmation !== "",
+        onUnsavedChange);
 
     const updateField = (fieldName, value) => {
         setFormData((currentData) => ({...currentData, [fieldName]: value}));
@@ -677,6 +704,30 @@ function ResearchCard({profile, onChanged}) {
 export default function Profile() {
     const [profile, setProfile] = useState(null);
     const [loadError, setLoadError] = useState(null);
+    // os cartoes com algo digitado e n salvo (dados, e-mail e senha)
+    const [unsavedCards, setUnsavedCards] = useState([]);
+
+    const handleUnsavedChange = useCallback((cardName, hasUnsaved) => {
+        setUnsavedCards((currentCards) => {
+            if (hasUnsaved === currentCards.includes(cardName)) {
+                return currentCards;
+            }
+            return hasUnsaved
+                ? [...currentCards, cardName]
+                : currentCards.filter((currentCard) => currentCard !== cardName);
+        });
+    }, []);
+
+    // sair do perfil com algo digitado e n salvo pergunta antes, como na anamnese e nas escalas
+    // (decisao da dona do projeto, novembro de 2026). vale pra qqr saida de dentro do sistema, e recarregar
+    // ou fechar a aba fica com o aviso do navegador. o q ja foi salvo e o campo desfeito n perguntam,
+    // e sair da conta tbm n pq a sessao ja acabou
+    const hasUnsavedChanges = unsavedCards.length > 0;
+    const exitBlocker = useBlocker(({currentLocation, nextLocation}) => hasUnsavedChanges
+        && getLoggedUser() !== null
+        && currentLocation.pathname !== nextLocation.pathname);
+    useLeaveWarning(hasUnsavedChanges);
+    useForgetBlockedExit(exitBlocker, hasUnsavedChanges);
 
     useEffect(() => {
         let isCurrentPage = true;
@@ -756,14 +807,27 @@ export default function Profile() {
             <PageHeader title="Meu perfil" subtitle={subtitle}/>
 
             <div className={styles.grid}>
-                <PersonalDataCard profile={profile} onSaved={handlePersonalDataSaved}/>
+                <PersonalDataCard profile={profile} onSaved={handlePersonalDataSaved}
+                                  onUnsavedChange={handleUnsavedChange}/>
                 <div className={styles.column}>
-                    {!isAdmin && <EmailCard profile={profile} onSaved={handleSaved}/>}
-                    <PasswordCard onPasswordChanged={handlePasswordChanged}/>
+                    {!isAdmin && (
+                        <EmailCard profile={profile} onSaved={handleSaved} onUnsavedChange={handleUnsavedChange}/>
+                    )}
+                    <PasswordCard onPasswordChanged={handlePasswordChanged} onUnsavedChange={handleUnsavedChange}/>
                     {isPatient && <EmailPreferenceCard profile={profile} onSaved={handleSaved}/>}
                     {showResearch && <ResearchCard profile={profile} onChanged={handleResearchChanged}/>}
                 </div>
             </div>
+
+            <ConfirmModal
+                show={exitBlocker.state === "blocked"}
+                title="Sair sem salvar"
+                message="O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"
+                confirmText="Sim, sair"
+                cancelText="Continuar preenchendo"
+                onConfirm={() => exitBlocker.proceed()}
+                onCancel={() => exitBlocker.reset()}
+            />
         </section>
     );
 }
