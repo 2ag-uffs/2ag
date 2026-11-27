@@ -32,13 +32,29 @@ public interface ScaleResponseRepository extends JpaRepository<ScaleResponse, Lo
 
     List<ScaleResponse> findByPatientIdAndScaleTypeOrderByPeriodStartDescIdDesc(Long patientId, ScaleType scaleType);
 
-    // as respostas de um periodo, q o grafico de evolucao usa
+    // as respostas q comecam dentro de um periodo, pros dias do diario de uma tarefa
     List<ScaleResponse> findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(
             Long patientId, ScaleType scaleType, LocalDate from, LocalDate to);
 
-    // as respostas de qualquer escala no periodo, pros comentarios (RF07)
-    List<ScaleResponse> findByPatientIdAndPeriodStartBetweenOrderByPeriodStartAsc(
-            Long patientId, LocalDate from, LocalDate to);
+    // as respostas com ao menos um dia dentro do periodo, q o grafico de evolucao usa: a semana de dor ou de TEA
+    // q comecou antes do corte e terminou dps dele entra (decisao da dona do projeto, novembro de 2026)
+    @Query("select response from ScaleResponse response "
+            + "where response.patient.id = :patientId and response.scaleType = :scaleType "
+            + "and response.periodEnd >= :from and response.periodStart <= :to "
+            + "order by response.periodStart asc, response.id asc")
+    List<ScaleResponse> findOfScaleTouchingPeriod(@Param("patientId") Long patientId,
+                                                  @Param("scaleType") ScaleType scaleType,
+                                                  @Param("from") LocalDate from,
+                                                  @Param("to") LocalDate to);
+
+    // o msm, de qualquer escala, pros comentarios (RF07)
+    @Query("select response from ScaleResponse response "
+            + "where response.patient.id = :patientId "
+            + "and response.periodEnd >= :from and response.periodStart <= :to "
+            + "order by response.periodStart asc, response.id asc")
+    List<ScaleResponse> findTouchingPeriod(@Param("patientId") Long patientId,
+                                           @Param("from") LocalDate from,
+                                           @Param("to") LocalDate to);
 
     // o dia q ja foi preenchido no diario, pq o mesmo dia n vira dois registros
     // a anulada fica de fora: ela vira historico e o dia pode ser respondido de novo

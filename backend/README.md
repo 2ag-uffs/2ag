@@ -428,6 +428,7 @@ cada lista traz no máximo cinco itens, porque o painel é um resumo, e o cartã
 | `GET /patients/{patientId}/progress/comments?period=` | o que o paciente escreveu nas escalas do período, por data |
 
 - `periodo` é `DIAS_15`, `DIAS_30`, `DIAS_60`, `DIAS_90` ou `TUDO`. o `TUDO` é o "todo o tempo" da tela de progresso, do paciente e do prescritor
+- a resposta entra na série e nos comentários quando o período dela (`period_start` a `period_end`) tem ao menos um dia entre o começo do período pedido e hoje. nas escalas de um dia só é o próprio dia. o registro semanal de dor e o de TEA, que guardam a semana inteira, entram quando a semana toca o período: a que começou antes do corte e terminou nele ou depois dele aparece, com a data do ponto no começo da semana, e a que terminou um dia antes fica de fora. o `progress.csv` usa a mesma série (decisão da dona do projeto, novembro de 2026)
 - dia sem resposta não vira ponto no zero: ele simplesmente não entra na série (RN10)
 - resposta anulada sai do gráfico e dos comentários, mas continua no histórico
 - as âncoras são as do formulário da clínica: em ansiedade o 0 é "muito ansioso" e o 10 é "tranquilo", em dor o 10 é "dor intensa". no escore, as pontas são a primeira e a última faixa do instrumento. contagem e minutos não têm âncora no papel e vêm com `higherIsBetter` nulo, para a tela não inventar um lado melhor (RF20)

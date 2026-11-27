@@ -75,9 +75,11 @@ public class ProgressReportService {
     private List<ProgressDataPointDTO> seriesOf(Long patientId, TrackableAttribute attribute, TimePeriod period) {
         LocalDate today = LocalDate.now();
 
+        // a resposta entra qnd o periodo dela tem ao menos um dia dentro do periodo escolhido. nas escalas de um
+        // dia so n muda nada, e a semana de dor ou de TEA q comecou antes do corte entra pelos dias q caem dentro
+        // (decisao da dona do projeto, novembro de 2026). o ponto continua na data do comeco da semana
         return responseRepository
-                .findByPatientIdAndScaleTypeAndPeriodStartBetweenOrderByPeriodStartAsc(
-                        patientId, attribute.getScaleType(), startOf(period, today), today)
+                .findOfScaleTouchingPeriod(patientId, attribute.getScaleType(), startOf(period, today), today)
                 .stream()
                 .filter(response -> !response.isAnnulled())
                 // dia sem resposta vira lacuna no grafico, n ponto no zero.
@@ -109,7 +111,8 @@ public class ProgressReportService {
         auditService.recordChartView(patientId);
         LocalDate today = LocalDate.now();
 
-        List<ScaleResponse> responses = responseRepository.findByPatientIdAndPeriodStartBetweenOrderByPeriodStartAsc(
+        // a msm regra da serie: a semana q toca o periodo traz o comentario dela
+        List<ScaleResponse> responses = responseRepository.findTouchingPeriod(
                 patientId, startOf(period, today), today);
         List<ProgressCommentDTO> comments = new ArrayList<>();
         for (ScaleResponse response : responses) {

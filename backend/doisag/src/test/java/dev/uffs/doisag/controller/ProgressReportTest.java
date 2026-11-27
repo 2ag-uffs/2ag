@@ -266,6 +266,87 @@ class ProgressReportTest {
                 .andExpect(jsonPath("$[1].text").value("Dormi mal a semana toda"));
     }
 
+    // a semana de dor entra qnd tem ao menos um dia dentro do periodo (decisao da dona do projeto, novembro
+    // de 2026). antes ela entrava so pelo primeiro dia, e a semana respondida dentro do periodo ficava de fora
+    @Test
+    void aSemanaQueTocaOComecoDoPeriodoEntraNoGrafico() throws Exception {
+        LocalDate periodStart = TODAY.minusDays(30);
+        // terminou um dia antes do corte: nenhum dia dentro
+        scoredPainLog(periodStart.minusDays(1), 9);
+        // so o ultimo dia da semana cai no corte
+        scoredPainLog(periodStart, 7);
+        // comecou antes do corte e terminou dentro
+        scoredPainLog(periodStart.plusDays(3), 5);
+
+        progress("INTENSIDADE_DOR", "DIAS_30")
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].date").value(periodStart.minusDays(6).toString()))
+                .andExpect(jsonPath("$[0].value").value(7))
+                .andExpect(jsonPath("$[1].date").value(periodStart.minusDays(3).toString()))
+                .andExpect(jsonPath("$[1].value").value(5));
+    }
+
+    // na outra ponta o periodo termina hoje: a semana q comeca hoje entra e a q so comeca amanha n
+    @Test
+    void aSemanaQueTocaOFimDoPeriodoEntraNoGrafico() throws Exception {
+        ScaleResponse startsToday = saveResponse(ScaleType.REGISTRO_DOR, TODAY, TODAY,
+                Map.of("intensidadeDor", 4));
+        startsToday.setScore(4);
+        responseRepository.save(startsToday);
+        ScaleResponse startsTomorrow = saveResponse(ScaleType.REGISTRO_DOR, TODAY.plusDays(1), TODAY.plusDays(7),
+                Map.of("intensidadeDor", 8));
+        startsTomorrow.setScore(8);
+        responseRepository.save(startsTomorrow);
+        // a semana em andamento, q comecou antes de hoje e termina dps
+        ScaleResponse stillOpen = saveResponse(ScaleType.REGISTRO_DOR, TODAY.minusDays(2), TODAY.plusDays(4),
+                Map.of("intensidadeDor", 6));
+        stillOpen.setScore(6);
+        responseRepository.save(stillOpen);
+
+        progress("INTENSIDADE_DOR", "DIAS_30")
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].date").value(TODAY.minusDays(2).toString()))
+                .andExpect(jsonPath("$[0].value").value(6))
+                .andExpect(jsonPath("$[1].date").value(TODAY.toString()))
+                .andExpect(jsonPath("$[1].value").value(4));
+    }
+
+    // a escala de um dia so continua entrando pelo dia dela, nas duas pontas
+    @Test
+    void aEscalaDeUmDiaContinuaEntrandoPeloDiaDela() throws Exception {
+        saveFollowUp(TODAY.minusDays(31), Map.of("dor", 9));
+        saveFollowUp(TODAY.minusDays(30), Map.of("dor", 7));
+        saveFollowUp(TODAY, Map.of("dor", 3));
+
+        progress("DOR", "DIAS_30")
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].date").value(TODAY.minusDays(30).toString()))
+                .andExpect(jsonPath("$[1].date").value(TODAY.toString()));
+    }
+
+    // o comentario da semana q toca o periodo vem junto com o ponto dela
+    @Test
+    void oComentarioDaSemanaQueTocaOPeriodoSaiJunto() throws Exception {
+        LocalDate periodStart = TODAY.minusDays(30);
+        savePainLog(periodStart.minusDays(1), Map.of("intensidadeDor", 9, "observacao", "Semana de fora"));
+        savePainLog(periodStart, Map.of("intensidadeDor", 7, "observacao", "Semana da borda"));
+
+        mockMvc.perform(get("/patients/" + patient.getId() + "/progress/comments")
+                        .param("period", "DIAS_30")
+                        .header("Authorization", bearerTokenOf(prescriber)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].date").value(periodStart.minusDays(6).toString()))
+                .andExpect(jsonPath("$[0].text").value("Semana da borda"));
+    }
+
+    // a semana de dor q termina naquele dia, com o escore gravado
+    private void scoredPainLog(LocalDate lastDay, int score) {
+        ScaleResponse painLog = savePainLog(lastDay, Map.of("intensidadeDor", score));
+        painLog.setScore(score);
+        responseRepository.save(painLog);
+    }
+
     // o catalogo do prescritor, q tem todos os atributos. o do paciente vem sem o MEEM
     private JsonNode trackableAttributes() throws Exception {
         String body = mockMvc.perform(get("/progress/attributes")

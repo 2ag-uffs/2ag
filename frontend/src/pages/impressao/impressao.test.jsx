@@ -176,4 +176,54 @@ describe("Impressao", () => {
         const notCorrected = screen.getByText("Acompanhamento semanal").closest("tr");
         expect(within(notCorrected).queryByText(/corrigida em/)).not.toBeInTheDocument();
     });
+
+    // a semana de dor ou de TEA entra na impressao qnd tem ao menos um dia dentro do periodo (decisao da dona
+    // do projeto, novembro de 2026). antes entrava so pelo primeiro dia, e a semana respondida dentro dos 90 dias
+    // q tinha comecado ate 6 dias antes do corte n saia no papel
+    it("a semana q toca o comeco do periodo sai e a q terminou um dia antes n", async () => {
+        const daysAgo = (days) => toIsoDate(addDays(new Date(), -days));
+        renderPrint([], [], [], [
+            {
+                id: 11, scaleName: "Acompanhamento semanal de dor", periodStart: daysAgo(93), periodEnd: daysAgo(87),
+                annulled: false, result: "semana que termina dentro",
+            },
+            {
+                id: 12, scaleName: "Acompanhamento semanal de dor", periodStart: daysAgo(96), periodEnd: daysAgo(90),
+                annulled: false, result: "semana com o último dia no corte",
+            },
+            {
+                id: 13, scaleName: "Acompanhamento semanal de dor", periodStart: daysAgo(97), periodEnd: daysAgo(91),
+                annulled: false, result: "semana que terminou antes",
+            },
+            {
+                id: 14, scaleName: "Escala de ansiedade de Hamilton", periodStart: daysAgo(91), periodEnd: daysAgo(91),
+                annulled: false, result: "hamilton de antes do corte",
+            },
+        ]);
+
+        expect(await screen.findByRole("heading", {name: "Escalas respondidas (2)"})).toBeInTheDocument();
+        expect(screen.getByText("semana que termina dentro")).toBeInTheDocument();
+        expect(screen.getByText("semana com o último dia no corte")).toBeInTheDocument();
+        expect(screen.queryByText("semana que terminou antes")).not.toBeInTheDocument();
+        expect(screen.queryByText("hamilton de antes do corte")).not.toBeInTheDocument();
+    });
+
+    // na outra ponta o periodo termina hoje: a semana q comeca hoje e a q ainda esta em andamento saem
+    it("a semana q toca o fim do periodo sai", async () => {
+        const today = toIsoDate(new Date());
+        renderPrint([], [], [], [
+            {
+                id: 15, scaleName: "Acompanhamento semanal de TEA", periodStart: today, periodEnd: today,
+                annulled: false, result: "semana que começa hoje",
+            },
+            {
+                id: 16, scaleName: "Acompanhamento semanal de TEA", periodStart: toIsoDate(addDays(new Date(), -2)),
+                periodEnd: toIsoDate(addDays(new Date(), 4)), annulled: false, result: "semana em andamento",
+            },
+        ]);
+
+        expect(await screen.findByRole("heading", {name: "Escalas respondidas (2)"})).toBeInTheDocument();
+        expect(screen.getByText("semana que começa hoje")).toBeInTheDocument();
+        expect(screen.getByText("semana em andamento")).toBeInTheDocument();
+    });
 });

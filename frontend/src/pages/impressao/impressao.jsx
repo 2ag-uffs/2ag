@@ -93,7 +93,10 @@ export default function Impressao() {
     // a ficha mais recente tbm sai sempre: o remedio em uso e a alergia de maio continuam valendo em novembro
     // a api manda da mais recente pra mais antiga, e a anulada n vale como relato (revisao das regras R10)
     const latestAnamnesis = anamneses.find((anamnesis) => !anamnesis.annulled);
-    const scalesInPeriod = scales.filter((scale) => insidePeriod(scale.periodStart));
+    // a escala entra qnd o periodo dela tem ao menos um dia dentro do periodo escolhido: a semana de dor ou
+    // de TEA q comecou antes do corte entra pelo ultimo dia dela, igual no grafico de progresso
+    // (decisao da dona do projeto, novembro de 2026). nas escalas de um dia so o fim eh o proprio dia
+    const scalesInPeriod = scales.filter((scale) => insidePeriod(scale.periodEnd));
 
     return (
         <section className={styles.page}>
