@@ -7,9 +7,10 @@ export default function ItemList({children}) {
 
 // uma linha da lista: o texto principal, o detalhe embaixo e a acao do lado
 // no celular a acao desce pra baixo do texto
-export function ListItem({title, details, aside}) {
+// isLate: a linha com o prazo vencido ganha o traco pessego na esquerda, como o cartao das avaliacoes
+export function ListItem({title, details, aside, isLate}) {
     return (
-        <li className={styles.item}>
+        <li className={isLate ? styles.item + " " + styles.itemLate : styles.item}>
             <div className={styles.text}>
                 <strong className={styles.title}>{title}</strong>
                 {details && <span className={styles.details}>{details}</span>}

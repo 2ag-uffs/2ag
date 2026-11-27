@@ -26,6 +26,10 @@ function fiveItemsOf(makeItem) {
     return [1, 2, 3, 4, 5].map(makeItem);
 }
 
+function pendingScale(taskId, name, deadline, late) {
+    return {taskId, name, deadline, late, path: "/escalas/x", answerPath: "/escalas/x"};
+}
+
 function ScaleProbe() {
     const location = useLocation();
     return <p>tela {location.pathname + location.search}</p>;
@@ -109,6 +113,79 @@ describe("DashboardPaciente", () => {
         await user.click(await screen.findByRole("button", {name: "Responder"}));
 
         expect(await screen.findByText("tela /escalas/hamilton?data=2026-11-06")).toBeInTheDocument();
+    });
+
+    // decisao de nov/2026: eram cinco botoes verdes cheios e nenhum dizia o q fazer primeiro
+    it("so o responder mais urgente eh cheio: o atrasado vem antes do prazo mais perto, e os outros e o agendar ficam em contorno", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: [
+                pendingScale(1, "Diário do sono", "2026-11-20", false),
+                pendingScale(2, "Escala de ansiedade de Hamilton", "2026-11-10", true),
+                pendingScale(3, "Registro de dor", "2026-11-18", false),
+            ],
+            pendingScalesTotal: 3,
+        });
+        renderPanel();
+
+        const answerButtons = await screen.findAllByRole("button", {name: "Responder"});
+        expect(answerButtons.map((button) => button.className)).toEqual([
+            "button-secondary button-small", "button button-small", "button-secondary button-small",
+        ]);
+        expect(screen.getByRole("button", {name: "Agendar consulta"})).toHaveClass("button-secondary");
+        expect(screen.getByRole("button", {name: "Agendar consulta"})).not.toHaveClass("button");
+    });
+
+    it("sem nenhuma atrasada o responder cheio eh o do prazo mais perto", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: [
+                pendingScale(1, "Diário do sono", "2026-11-20", false),
+                pendingScale(3, "Registro de dor", "2026-11-18", false),
+                pendingScale(4, "Diário de dor", "2026-11-25", false),
+            ],
+            pendingScalesTotal: 3,
+        });
+        renderPanel();
+
+        const answerButtons = await screen.findAllByRole("button", {name: "Responder"});
+        expect(answerButtons.map((button) => button.className)).toEqual([
+            "button-secondary button-small", "button button-small", "button-secondary button-small",
+        ]);
+    });
+
+    it("com duas atrasadas o responder cheio eh o da q venceu antes", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: [
+                pendingScale(1, "Diário do sono", "2026-11-12", true),
+                pendingScale(2, "Escala de ansiedade de Hamilton", "2026-11-10", true),
+            ],
+            pendingScalesTotal: 2,
+        });
+        renderPanel();
+
+        const answerButtons = await screen.findAllByRole("button", {name: "Responder"});
+        expect(answerButtons.map((button) => button.className)).toEqual([
+            "button-secondary button-small", "button button-small",
+        ]);
+    });
+
+    it("a linha da escala atrasada ganha o traco pessego e as outras n", async () => {
+        apiService.get.mockResolvedValue({
+            ...PANEL,
+            pendingScales: [
+                pendingScale(1, "Diário do sono", "2026-11-20", false),
+                pendingScale(2, "Escala de ansiedade de Hamilton", "2026-11-10", true),
+            ],
+            pendingScalesTotal: 2,
+        });
+        renderPanel();
+
+        const lateRow = (await screen.findByText("Escala de ansiedade de Hamilton")).closest("li");
+        expect(lateRow.className).toContain("itemLate");
+        expect(lateRow).toHaveTextContent("O prazo era 10/11/2026");
+        expect(screen.getByText("Diário do sono").closest("li").className).not.toContain("itemLate");
     });
 
     it("qnd a lista cabe inteira no cartao n aparece o mostrando", async () => {

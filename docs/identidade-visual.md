@@ -147,6 +147,8 @@ A terracota de erro fica para o que a pessoa precisa corrigir. Uma busca que nã
 
 Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
 
+O pêssego marca o prazo que passou: um traço de 4 px na esquerda do cartão atrasado em Minhas avaliações e, desde novembro de 2026, também da linha atrasada no *Início* do paciente. É um dos destaques dos 10%, e o texto *O prazo era* diz o atraso, então o traço nunca é o único sinal. No mesmo *Início*, o verde cheio fica para um botão só, o **Responder** mais urgente; os outros **Responder** e o *Agendar consulta* são de contorno (decisão da dona do projeto, novembro de 2026).
+
 O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Desde 20/11/2026 essa borda neutra é a `--color-control-border`, mais escura que a do cartão (veja *contraste*). Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.
 
 No cabeçalho do celular do paciente, o *Perfil* é um botão com o nome escrito na cor do texto da moldura verde (`--color-on-brand-surface`), com borda branca a 70% (mais de 3:1 sobre o verde nos dois temas) e pelo menos 44 px de toque; a letra é a do corpo do texto (16 px), como a dos botões pequenos no celular, e cresce com a letra da pessoa; aberto, ganha fundo e sublinhado, para não depender só da cor. Com ele a logo do cabeçalho sai do meio e fica à esquerda, depois do *Voltar* (decisão da dona do projeto, novembro de 2026).

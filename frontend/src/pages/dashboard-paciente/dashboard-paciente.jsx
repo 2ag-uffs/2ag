@@ -13,6 +13,20 @@ import {formatDate, formatDateTimeWithZone, withBrasiliaTimeNote} from "../../ut
 import {firstNameOf} from "../../utils/initials.js";
 import styles from "./dashboard-paciente.module.css";
 
+// a escala q pede resposta primeiro: a atrasada vem antes, e dps a de prazo mais perto
+function mostUrgentOf(scales) {
+    let urgent = null;
+    scales.forEach((scale) => {
+        const isMoreUrgent = !urgent
+            || (scale.late && !urgent.late)
+            || (Boolean(scale.late) === Boolean(urgent.late) && scale.deadline < urgent.deadline);
+        if (isMoreUrgent) {
+            urgent = scale;
+        }
+    });
+    return urgent;
+}
+
 // painel do paciente (RF03)
 //
 // mostra so o q o resto do sistema grava: as escalas esperando resposta,
@@ -56,6 +70,8 @@ export default function DashboardPaciente() {
     }
 
     const firstName = firstNameOf(loggedUser.name);
+    // so um botao cheio na tela: o responder mais urgente. os outros e o agendar ficam em contorno
+    const urgentScale = mostUrgentOf(panel.pendingScales);
 
     return (
         <section className={styles.page}>
@@ -69,7 +85,7 @@ export default function DashboardPaciente() {
                         </button>
                         {/* a api recusa pedido de consulta de quem foi arquivado */}
                         {!panel.isArchived && (
-                            <button type="button" className="button" onClick={() => navigate("/agendamento-consulta")}>
+                            <button type="button" className="button-secondary" onClick={() => navigate("/agendamento-consulta")}>
                                 Agendar consulta
                             </button>
                         )}
@@ -99,6 +115,7 @@ export default function DashboardPaciente() {
                                 <ListItem
                                     key={scale.taskId}
                                     title={scale.name}
+                                    isLate={scale.late}
                                     details={(
                                         <span className={scale.late ? styles.late : undefined}>
                                             {scale.late
@@ -107,7 +124,11 @@ export default function DashboardPaciente() {
                                         </span>
                                     )}
                                     aside={(
-                                        <button type="button" className="button button-small" onClick={() => navigate(scale.answerPath)}>
+                                        <button
+                                            type="button"
+                                            className={scale === urgentScale ? "button button-small" : "button-secondary button-small"}
+                                            onClick={() => navigate(scale.answerPath)}
+                                        >
                                             Responder
                                         </button>
                                     )}

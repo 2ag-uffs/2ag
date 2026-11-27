@@ -25,6 +25,13 @@
     padding-bottom: 0;
 }
 
+/* prazo q passou ganha o traco pessego na esquerda, igual o cartao de Minhas avaliacoes.
+   o texto do prazo ja diz q venceu, o traco so ajuda a achar */
+.itemLate {
+    box-shadow: inset 4px 0 0 var(--color-peach);
+    padding-left: var(--space-3);
+}
+
 .text {
     display: flex;
     flex: 1 1 12rem;
