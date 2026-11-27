@@ -34,4 +34,29 @@ describe("cabecalho da tela", () => {
     it("no celular as acoes continuam na linha de baixo, com a largura toda", () => {
         expect(declarationsOf(mediaRules(css, MOBILE), ".actions").width).toBe("100%");
     });
+
+    // os botoes quebravam de linha com larguras desiguais e o principal sobrava sozinho na ultima
+    it("no celular os botoes esticam e preenchem a linha deles", () => {
+        const mobile = mediaRules(css, MOBILE);
+
+        [".button", ".button-secondary", ".button-danger"].forEach((button) => {
+            expect(declarationsOf(mobile, ".actions > :global(" + button + ")").flex, button).toBe("1 1 auto");
+        });
+    });
+
+    it("o atalho discreto, como o Indicadores, fica do tamanho dele e nada estica fora do celular", () => {
+        const mobile = mediaRules(css, MOBILE);
+
+        expect(mobile).not.toContain("button-tertiary");
+        expect(mobile).not.toContain(".actions > *");
+        expect(declarationsOf(css, ".actions > :global(.button)").flex).toBeUndefined();
+    });
+
+    it("o Indicadores do painel do prescritor eh o atalho discreto e os outros dois sao botoes", () => {
+        const dashboard = readCss(import.meta.url, "../../pages/dashboard-prescritor/dashboard-prescritor.jsx");
+
+        expect(dashboard).toMatch(/className="button-tertiary" onClick=\{\(\) => navigate\("\/indicadores"\)\}/);
+        expect(dashboard).toMatch(/className="button-secondary" onClick=\{\(\) => navigate\("\/lista-paciente"\)\}/);
+        expect(dashboard).toMatch(/className="button" onClick=\{\(\) => setIsInviteOpen\(true\)\}/);
+    });
 });

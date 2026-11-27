@@ -44,4 +44,12 @@
     .actions {
         width: 100%;
     }
+
+    /* os botoes esticam e preenchem a linha deles, como na barra de acoes dos formularios
+       o atalho discreto (button-tertiary, como o Indicadores) fica do tamanho dele, pra n ganhar destaque */
+    .actions > :global(.button),
+    .actions > :global(.button-secondary),
+    .actions > :global(.button-danger) {
+        flex: 1 1 auto;
+    }
 }
