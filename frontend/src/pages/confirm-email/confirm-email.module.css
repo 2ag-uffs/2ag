@@ -14,6 +14,12 @@
     margin-top: var(--space-1);
 }
 
+/* botao principal do link recusado, da largura da tela como o de confirmar */
+.askAgainButton {
+    margin-top: var(--space-1);
+    text-decoration: none;
+}
+
 .linkButton {
     align-self: flex-start;
     text-decoration: none;

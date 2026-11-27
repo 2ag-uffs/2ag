@@ -4,6 +4,7 @@ import {createMemoryRouter, useLocation} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError, getLoggedUser, setLoggedUser} from "../../services/api.js";
+import {declarationsOf, readCss} from "../../test/css-rules.js";
 import ConfirmEmail from "./confirm-email.jsx";
 
 // a tela de login de mentira mostra o aviso q a confirmacao mandou junto
@@ -123,6 +124,44 @@ describe("ConfirmEmail", () => {
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Este link não vale mais.");
         expect(screen.getByRole("link", {name: "Pedir a troca de novo"})).toBeInTheDocument();
+    });
+
+    // decisao da dona em novembro de 2026: o botao grande continuava mandando confirmar e falhava de novo
+    it("link recusado tira o botao de confirmar e o Pedir a troca de novo vira o botao principal embaixo do aviso", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Este link não vale mais.", null));
+        const user = userEvent.setup();
+        renderConfirmPage("/confirmar-email?token=abc");
+
+        await user.click(await screen.findByRole("button", {name: "Confirmar e-mail novo"}));
+
+        const alert = await screen.findByRole("alert");
+        const askAgain = screen.getByRole("link", {name: "Pedir a troca de novo"});
+        expect(screen.queryByRole("button", {name: "Confirmar e-mail novo"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/Ao confirmar, o e-mail antigo/)).not.toBeInTheDocument();
+        expect(askAgain).toHaveClass("button");
+        expect(askAgain).not.toHaveClass("button-secondary");
+        expect(askAgain).toHaveAttribute("href", "/perfil");
+        // o botao vem dps do aviso, e o foco q estava no confirmar n fica perdido
+        expect(alert.compareDocumentPosition(askAgain) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(askAgain).toHaveFocus();
+    });
+
+    it("sem conexao n eh recusa do link: o botao de confirmar fica pra tentar de novo", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new Error("sem rede"));
+        const user = userEvent.setup();
+        renderConfirmPage("/confirmar-email?token=abc");
+
+        await user.click(await screen.findByRole("button", {name: "Confirmar e-mail novo"}));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível conectar ao sistema.");
+        expect(screen.getByRole("button", {name: "Confirmar e-mail novo"})).toBeInTheDocument();
+    });
+
+    it("o botao do link recusado n eh sublinhado como link solto", () => {
+        const askAgain = declarationsOf(readCss(import.meta.url, "./confirm-email.module.css"), ".askAgainButton");
+
+        expect(askAgain["text-decoration"]).toBe("none");
+        expect(askAgain["align-self"]).toBeUndefined();
     });
 
     // o botao desabilitado enquanto confirmava perdia o foco, q ia pro body (CT-39)

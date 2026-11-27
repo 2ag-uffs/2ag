@@ -1,8 +1,8 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {Link, useNavigate, useSearchParams} from "react-router";
 import AuthLayout from "../../components/auth-layout/auth-layout.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
-import {apiService, errorMessageOf, getLoggedUser, logout} from "../../services/api.js";
+import {ApiError, apiService, errorMessageOf, getLoggedUser, logout} from "../../services/api.js";
 import styles from "./confirm-email.module.css";
 
 // confirmacao do e-mail de acesso novo pelo link q chegou nele (issue 130)
@@ -15,6 +15,9 @@ export default function ConfirmEmail() {
     const [token] = useState(tokenInUrl);
 
     const [errorMessage, setErrorMessage] = useState(null);
+    // a api respondeu q o link n serve: confirmar de novo ia falhar igual, a saida eh pedir a troca de novo
+    const [isRefused, setIsRefused] = useState(false);
+    const askAgainRef = useRef(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     // a conta q estava aberta neste navegador e ficou, pq a api n confirmou a saida dela dps da confirmacao
     const [openAccount, setOpenAccount] = useState(null);
@@ -40,6 +43,13 @@ export default function ConfirmEmail() {
         setIsSubmitting(false);
     };
 
+    // o botao de confirmar sai da tela com a recusa, entao o foco do teclado vai pro botao q ficou no lugar
+    useEffect(() => {
+        if (isRefused && askAgainRef.current) {
+            askAgainRef.current.focus();
+        }
+    }, [isRefused]);
+
     const handleConfirm = async () => {
         setErrorMessage(null);
         setIsSubmitting(true);
@@ -47,6 +57,8 @@ export default function ConfirmEmail() {
             await apiService.post("/auth/email-change/confirm", {token: token});
         } catch (requestError) {
             setErrorMessage(errorMessageOf(requestError));
+            // sem conexao, erro do sistema e limite de pedidos n sao recusa do link: vale tentar de novo
+            setIsRefused(requestError instanceof ApiError && requestError.status < 500 && requestError.status !== 429);
             setIsSubmitting(false);
             return;
         }
@@ -62,6 +74,19 @@ export default function ConfirmEmail() {
                 </p>
                 <Link to="/perfil" className={"button button-secondary " + styles.linkButton}>
                     Abrir o perfil
+                </Link>
+            </AuthLayout>
+        );
+    }
+
+    // link recusado: o confirmar some e o Pedir a troca de novo vira o botao principal embaixo do aviso
+    // (decisao da dona, nov/2026)
+    if (isRefused) {
+        return (
+            <AuthLayout title="Confirmar e-mail novo">
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">{errorMessage}</p>
+                <Link to="/perfil" className={"button " + styles.askAgainButton} ref={askAgainRef}>
+                    Pedir a troca de novo
                 </Link>
             </AuthLayout>
         );
