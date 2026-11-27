@@ -384,9 +384,18 @@ export default function SignUp() {
     }
 
     if (inviteStatus !== "valid") {
+        // abrir o cadastro sem convite n eh erro: a frase vai na nota neutra, sem o leitor de tela anunciar erro
+        // convite q n vale mais e falta de conexao continuam na caixa de atencao (decisao da dona, nov/2026)
+        const isMissingInvite = inviteStatus !== "invalid" && inviteStatus !== "offline";
         return (
             <AuthLayout title="Criar conta">
-                <p className={"aviso aviso--atencao " + styles.message}>{inviteProblemText(inviteStatus)}</p>
+                {isMissingInvite ? (
+                    <p className={"aviso " + styles.message}>{inviteProblemText(inviteStatus)}</p>
+                ) : (
+                    <p className={"aviso aviso--atencao " + styles.message} role="alert">
+                        {inviteProblemText(inviteStatus)}
+                    </p>
+                )}
                 {otherAccount ? <BackToOpenAccount account={otherAccount}/> : (
                     <Link to="/entrar" className={"button button-secondary " + styles.linkButton}>
                         Já tenho conta

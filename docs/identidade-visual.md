@@ -175,6 +175,8 @@ A primeira versão usava a palha `#FFEEDA` como fundo de tudo. Na tela pesou: fu
 
 A terracota de erro fica para o que a pessoa precisa corrigir. Uma busca que não acha ninguém não é erro de quem digitou: na tela de pacientes da administração, o e-mail sem conta aparece no aviso neutro de lista vazia, com o ícone de lupa, como na lista de pacientes do prescritor, e o campo só fica terracota quando o e-mail está mal escrito (decisão da dona do projeto, novembro de 2026).
 
+Pelo mesmo motivo, a tela de cadastro aberta sem link de convite mostra a frase que explica o convite na nota neutra, de fundo verde diluído, e não na caixa terracota de atenção. A caixa de atenção continua para o convite que não vale mais e para a falta de conexão (decisão da dona do projeto, novembro de 2026).
+
 Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
 
 O pêssego marca o prazo que passou: um traço de 4 px na esquerda do cartão atrasado em Minhas avaliações e, desde novembro de 2026, também da linha atrasada no *Início* do paciente. É um dos destaques dos 10%, e o texto *O prazo era* diz o atraso, então o traço nunca é o único sinal. No mesmo *Início*, o verde cheio fica para um botão só, o **Responder** mais urgente; os outros **Responder** e o *Agendar consulta* são de contorno (decisão da dona do projeto, novembro de 2026).

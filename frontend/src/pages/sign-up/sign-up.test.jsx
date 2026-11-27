@@ -476,6 +476,35 @@ describe("SignUp", () => {
         expect(screen.queryByRole("link", {name: "Esqueci minha senha"})).not.toBeInTheDocument();
     }, TYPING_TIMEOUT);
 
+    // decisao da dona em novembro de 2026: abrir o cadastro sem convite n eh erro
+    it("sem convite a frase vai na nota neutra, sem aviso de erro pro leitor de tela", async () => {
+        renderSignUp("/cadastro");
+
+        const note = await screen.findByText(/O cadastro de paciente é feito pelo link de convite/);
+        expect(note).toHaveClass("aviso");
+        expect(note).not.toHaveClass("aviso--atencao");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", {name: "Já tenho conta"})).toBeInTheDocument();
+    });
+
+    it("convite q n vale mais continua na caixa de atencao e eh anunciado como erro", async () => {
+        mockApi().mockRejectedValue(new ApiError(404, "Convite não encontrado"));
+        renderSignUp();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Este convite não vale mais");
+        expect(alert).toHaveClass("aviso", "aviso--atencao");
+    });
+
+    it("sem conexao pra conferir o convite continua na caixa de atencao e eh anunciado como erro", async () => {
+        mockApi().mockRejectedValue(new Error("sem rede"));
+        renderSignUp();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Não foi possível conferir o convite agora.");
+        expect(alert).toHaveClass("aviso", "aviso--atencao");
+    });
+
     // responsavel com dois filhos logado na conta do primeiro abre o convite do segundo (RF38)
     it("convite aberto com outra conta logada explica e deixa sair pra seguir o cadastro", async () => {
         const post = mockApi();
