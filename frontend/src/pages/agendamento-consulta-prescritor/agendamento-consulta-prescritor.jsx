@@ -364,7 +364,7 @@ export default function AgendamentoPrescritor() {
                     <AppointmentStatusBadge appointment={appointment}/>
                     {/* o paciente n ve a confirmacao nem recebe lembrete, mas a consulta continua valendo (R25) */}
                     {appointment.patientAccountActive === false && (
-                        <span className={styles.badgeInactive}>Conta desativada</span>
+                        <span className="etiqueta etiqueta--anulada">Conta desativada</span>
                     )}
                 </div>
                 <p className={styles.meta}>
@@ -395,8 +395,9 @@ export default function AgendamentoPrescritor() {
                 <h3 className={styles.dayName}>
                     {formatWeekdayAndDate(dayIso)}
                     <span className={styles.dayTags}>
-                        {isToday && <span className={styles.todayTag}>hoje</span>}
-                        {isDayOff && <span className={styles.dayOffTag}>sem atendimento</span>}
+                        {isToday && <span className="etiqueta etiqueta--ok">hoje</span>}
+                        {/* folga marcada nos horarios de atendimento: o paciente n pede, mas o q ja estava marcado fica */}
+                        {isDayOff && <span className="etiqueta etiqueta--atencao">sem atendimento</span>}
                     </span>
                 </h3>
                 {dayAppointments.length === 0 ? (

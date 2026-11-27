@@ -124,11 +124,11 @@ export default function AnamnesisView({anamnesis, actions}) {
                 <h3>Preenchida em {formatDate(anamnesis.assessmentDate)}</h3>
                 <span className={styles.badges}>
                     {previousVersions.length > 0 && (
-                        <span className={styles.badgeCorrected}>
+                        <span className="etiqueta etiqueta--atencao">
                             Corrigida em {formatDate(previousVersions[0].correction.correctedAt)}
                         </span>
                     )}
-                    {anamnesis.annulled && <span className={styles.badgeAnnulled}>Anulada</span>}
+                    {anamnesis.annulled && <span className="etiqueta etiqueta--anulada">Anulada</span>}
                 </span>
             </header>
 

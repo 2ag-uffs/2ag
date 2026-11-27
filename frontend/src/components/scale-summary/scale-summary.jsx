@@ -46,7 +46,7 @@ export default function ScaleSummary({scalesPage, pendingTitle, pendingAction, o
                                     <span className={styles.responseMeta}>
                                         <span className={styles.date}>{formatPeriod(response.periodStart, response.periodEnd)}</span>
                                         <span className={styles.result}>{response.result}</span>
-                                        {response.annulled && <span className={styles.annulled}>anulada</span>}
+                                        {response.annulled && <span className="etiqueta etiqueta--anulada">anulada</span>}
                                         {response.reviewed && !response.annulled && (
                                             <span className={styles.date}>analisada</span>
                                         )}

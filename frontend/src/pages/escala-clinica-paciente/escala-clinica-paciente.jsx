@@ -86,9 +86,9 @@ function groupByScale(history) {
 function ResponseTags({response}) {
     return (
         <>
-            {response.annulled && <span className={styles.tagAnnulled}>Anulada pelo prescritor</span>}
+            {response.annulled && <span className={"etiqueta etiqueta--anulada " + styles.tag}>Anulada pelo prescritor</span>}
             {response.reviewed && !response.annulled && (
-                <span className={styles.tagReviewed}>O prescritor já analisou</span>
+                <span className={"etiqueta etiqueta--neutra " + styles.tag}>O prescritor já analisou</span>
             )}
         </>
     );

@@ -1,0 +1,54 @@
+/*
+ * etiqueta de situacao: Vigente, Concluída, Anulada, Ativo, hoje, Conta desativada...
+ *
+ * era copiada a mao em 13 arquivos, com duas folgas diferentes. agora o desenho eh um so
+ * e fica em styles pq eh importado uma vez no main e vale pra todas as telas, como o aviso.css.
+ * a tela so escolhe a variante e, se precisar, o lugar da etiqueta (margem, alinhamento)
+ *
+ * variantes:
+ *   etiqueta--ok       o q esta valendo ou deu certo (Vigente, Agendada, Ativo, hoje, meta atingida)
+ *   etiqueta--neutra   o q ja passou ou so informa (Substituída, Encerrado, o tipo do aviso)
+ *   etiqueta--anulada  o q foi anulado ou desligado (Anulada, Conta desativada)
+ *   etiqueta--atencao  o q espera alguem ou pede um olhar (Aguardando resposta, sem atendimento)
+ *
+ * o texto de toda variante passa de 4,5:1 sobre o fundo dela nos dois temas (etiqueta.test.js).
+ * a situacao vai sempre escrita na etiqueta, nunca so na cor, e a de atencao tem tbm a borda.
+ * a fonte e a altura da linha ficam aqui pq tem etiqueta dentro de titulo
+ */
+
+.etiqueta {
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    display: inline-block;
+    flex: 0 0 auto;
+    font-family: "Yaldevi Colombo", system-ui, sans-serif;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: normal;
+    line-height: var(--leading-normal);
+    /* etiqueta comprida quebra dentro do cartao qnd a letra esta grande, em vez de empurrar a tela pro lado */
+    max-width: 100%;
+    padding: 0.125rem var(--space-3);
+}
+
+.etiqueta--ok {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+}
+
+.etiqueta--neutra {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-secondary);
+}
+
+.etiqueta--anulada {
+    background-color: var(--color-error-soft);
+    color: var(--color-error);
+}
+
+/* a borda chama atencao sem parecer erro */
+.etiqueta--atencao {
+    background-color: var(--color-surface);
+    border-color: var(--color-warning);
+    color: var(--color-text-headings);
+}

@@ -208,15 +208,6 @@
     padding-top: 0;
 }
 
-.mark {
-    background-color: var(--color-primary-soft);
-    border-radius: var(--radius-pill);
-    color: var(--color-primary);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    padding: 0 var(--space-2);
-}
-
 /* os comentarios viram uma linha do tempo */
 .comments {
     border-left: 2px solid var(--color-border);

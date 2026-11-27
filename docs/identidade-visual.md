@@ -143,6 +143,19 @@ Antes essas bordas usavam `--color-border`, que dá 1,3:1 sobre o cartão nos do
 
 Os tamanhos de letra ficam em `frontend/src/styles/tokens.css`: 12 px (`--text-xs`), 14 px (`--text-sm`), 16 px (`--text-md`, o corpo do texto) e os tamanhos dos títulos. A regra da escala (decisão da dona do projeto, novembro de 2026): o que a pessoa precisa ler para agir nunca fica menor que o corpo. Por isso a mensagem de erro do campo, a dica embaixo do campo, o nome do campo nos cartões de receita, consulta, anamnese e do Perfil e, no celular, o texto do botão pequeno passaram de 14 para 16 px. Vale igual para o paciente, o prescritor e a administração, como um padrão só. O rótulo em cima do campo do formulário continua em 14 px e em negrito, e os tamanhos de 14 e 12 px ficam para o que é só apoio, como a data, a contagem e a etiqueta de situação. No computador o botão pequeno continua com a letra de 14 px. Medido no Chrome sem janela em 320 px, nos três perfis: nenhuma tela rola de lado. `frontend/src/styles/reading-size.test.js` lista as regras que seguem a escala.
 
+### etiquetas de situação
+
+As etiquetas pequenas como *Vigente*, *Concluída*, *Anulada*, *Ativo*, *hoje* e *Conta desativada* têm um desenho só, em `frontend/src/styles/etiqueta.css` (decisão da dona do projeto, novembro de 2026). Antes o desenho era copiado à mão em 13 arquivos, com duas folgas diferentes, e as cópias se desencontravam a cada mudança. Toda tela que tem etiqueta usa a classe `etiqueta` com uma das quatro variantes, e as cópias locais saíram:
+
+| Variante | Para quê | Cores |
+| :--- | :--- | :--- |
+| `etiqueta--ok` | o que está valendo ou deu certo: *Vigente*, *Agendada*, *Concluída* no histórico, *Ativo*, *hoje*, *receita emitida*, meta atingida | verde sobre o verde diluído |
+| `etiqueta--neutra` | o que já passou ou só informa: *Substituída*, *Encerrado*, *Cancelada*, *O prescritor já analisou*, o tipo do aviso | texto secundário sobre o bloco cinza |
+| `etiqueta--anulada` | o que foi anulado ou desligado: *Anulada*, *Conta desativada*, *Desativado* | terracota do tom 3 sobre o fundo de erro |
+| `etiqueta--atencao` | o que espera alguém ou pede um olhar: *Aguardando resposta*, *sem atendimento*, *Corrigida em*, meta não atingida | texto de título sobre o cartão, com borda terracota |
+
+O texto de cada variante passa de 4,5:1 sobre o fundo dela nos dois temas, e a borda da de atenção passa de 3:1; `frontend/src/styles/etiqueta.test.jsx` refaz a conta e confere que nenhum css de tela guarda uma cópia. A situação vai sempre escrita na etiqueta, nunca só na cor. Para quem usa quase nada muda: todas ficaram com a mesma folga e a mesma altura (24 px), as etiquetas dos Indicadores passaram de 14 para 12 px como as outras, *sem atendimento* na agenda e *Corrigida em* na anamnese passaram para o desenho de atenção (com borda), e o tipo do aviso passou para o texto secundário. O contador de avisos do menu e o número do passo em *Pedir consulta* não são etiquetas de situação e continuam como estavam. A etiqueta nunca passa da largura de onde está (`max-width: 100%`) e o texto dela pode quebrar de linha: com a letra em 200% num celular de 320 px, uma etiqueta comprida como *O prescritor já analisou* ou *Abaixo da meta de 70%* ocupa duas linhas dentro do cartão em vez de empurrar a tela para o lado.
+
 ### superfícies
 
 O fundo das telas é um neutro frio levemente esverdeado (`#F4F6F4`), o cartão é branco e o bloco dentro do cartão é `#E9EDEA`. Nenhum dos três sai da cartela, porque ela não tem tom neutro.

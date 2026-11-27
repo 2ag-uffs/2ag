@@ -45,7 +45,7 @@ function NotificationItem({notification, onOpen, onRemove}) {
             <span className={styles.icon} aria-hidden="true"><Icon/></span>
             <div className={styles.content}>
                 <p className={styles.meta}>
-                    <span className={styles.tag}>
+                    <span className="etiqueta etiqueta--neutra">
                         {TYPE_LABELS[notification.type] || "Aviso"}
                     </span>
                     {formatDateTime(notification.createdAt)}

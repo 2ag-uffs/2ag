@@ -30,7 +30,7 @@ function PatientRow({patient, isBusy, onToggle}) {
                 </span>
             </div>
             <div className={accountStyles.rowActions}>
-                <span className={patient.active ? accountStyles.badgeActive : accountStyles.badgeInactive}>
+                <span className={patient.active ? "etiqueta etiqueta--ok" : "etiqueta etiqueta--anulada"}>
                     {patient.active ? "Ativa" : "Desativada"}
                 </span>
                 <BusyButton

@@ -13,9 +13,11 @@ const dashboardCss = readCss(import.meta.url, "../pages/dashboard-prescritor/das
 const dashboardSource = readCss(import.meta.url, "../pages/dashboard-prescritor/dashboard-prescritor.jsx");
 const skeletonCss = readCss(import.meta.url, "../components/skeleton/skeleton.module.css");
 const patientListCss = readCss(import.meta.url, "../pages/lista-paciente/lista-paciente.module.css");
-const statusBadgeCss = readCss(import.meta.url, "../components/appointment-status-badge/appointment-status-badge.module.css");
-const consultationCardCss = readCss(import.meta.url, "../components/consultation-card/consultation-card.module.css");
-const indicatorsCss = readCss(import.meta.url, "../pages/indicadores/indicadores.module.css");
+const statusBadgeSource = readCss(import.meta.url, "../components/appointment-status-badge/appointment-status-badge.jsx");
+const consultationCardSource = readCss(import.meta.url, "../components/consultation-card/consultation-card.jsx");
+const indicatorsSource = readCss(import.meta.url, "../pages/indicadores/indicadores.jsx");
+const agendaSource = readCss(import.meta.url, "../pages/agendamento-consulta-prescritor/agendamento-consulta-prescritor.jsx");
+const tagCss = readCss(import.meta.url, "./etiqueta.css");
 const THEMES = themesOf(readCss(import.meta.url, "./colors.css"));
 
 const MOBILE = "@media (max-width: 47.99rem)";
@@ -93,15 +95,11 @@ describe("telas do prescritor", () => {
     });
 
     // Agendada na tela de consultas e Concluída no historico sao o msm tipo de selo
+    // desde a decisao da dona do projeto de novembro de 2026 os tres usam o estilo unico (etiqueta.test.jsx)
     it("o selo da situacao da consulta tem o tamanho, o peso e a folga dos outros selos", () => {
-        const statusBadge = declarationsOf(statusBadgeCss, ".waiting");
-        const cardBadge = declarationsOf(consultationCardCss, ".badgeDone");
-
-        ["border-radius", "font-size", "font-weight", "padding"].forEach((property) => {
-            expect(statusBadge[property], property).toBe(cardBadge[property]);
+        [statusBadgeSource, consultationCardSource, indicatorsSource].forEach((source) => {
+            expect(source).toContain("\"etiqueta etiqueta--ok");
         });
-        expect(declarationsOf(indicatorsCss, ".goalMet").padding).toBe(cardBadge.padding);
-        expect(declarationsOf(indicatorsCss, ".goalMissed").padding).toBe(cardBadge.padding);
     });
 
     // decisao da dona do projeto, novembro de 2026: o dia vazio n acompanha mais a altura do dia cheio do lado
@@ -120,7 +118,8 @@ describe("telas do prescritor", () => {
 
     // texto pequeno em terracota usa o tom 3. o tom 2 dava 3,85:1 sobre o bloco cinza
     it("o selo sem atendimento da agenda passa de 4,5:1 nos temas", () => {
-        const tag = declarationsOf(agendaCss, ".dayOffTag");
+        expect(agendaSource).toContain("<span className=\"etiqueta etiqueta--atencao\">sem atendimento</span>");
+        const tag = declarationsOf(tagCss, ".etiqueta--atencao");
 
         Object.entries(THEMES).forEach(([themeName, theme]) => {
             const contrast = contrastOf(colorIn(theme, tag.color), colorIn(theme, tag["background-color"]));

@@ -164,7 +164,7 @@ function PrescriberRow({prescriber, isBusy, onResetPassword, onChangeEmail, onFi
                 </span>
             </div>
             <div className={styles.rowActions}>
-                <span className={prescriber.active ? styles.badgeActive : styles.badgeInactive}>
+                <span className={prescriber.active ? "etiqueta etiqueta--ok" : "etiqueta etiqueta--anulada"}>
                     {prescriber.active ? "Ativo" : "Desativado"}
                 </span>
                 {prescriber.active && (

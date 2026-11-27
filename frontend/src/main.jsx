@@ -9,6 +9,7 @@ import "./index.css";
 import "./styles/aviso.css";
 import "./styles/button.css";
 import "./styles/colors.css";
+import "./styles/etiqueta.css";
 import "./styles/fonts.css";
 import "./styles/input.css";
 

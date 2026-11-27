@@ -131,7 +131,7 @@ export default function ListaPacientes() {
                             <h2 className={styles.patientName}>{patient.name}</h2>
                             {/* a conta desligada pela administracao: o paciente n consegue entrar (#153) */}
                             {patient.accountActive === false && (
-                                <span className={styles.badgeInactive}>Conta desativada</span>
+                                <span className="etiqueta etiqueta--anulada">Conta desativada</span>
                             )}
                         </div>
                         <p className={styles.details}>{patientDetailsOf(patient)}</p>

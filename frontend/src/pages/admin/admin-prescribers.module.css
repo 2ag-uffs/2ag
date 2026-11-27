@@ -78,24 +78,6 @@
     opacity: 1;
 }
 
-.badgeActive,
-.badgeInactive {
-    border-radius: var(--radius-pill);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    padding: 0.125rem var(--space-3);
-}
-
-.badgeActive {
-    background-color: var(--color-primary-soft);
-    color: var(--color-primary);
-}
-
-.badgeInactive {
-    background-color: var(--color-error-soft);
-    color: var(--color-error);
-}
-
 /* ---- formulario do novo prescritor ---- */
 
 .form {

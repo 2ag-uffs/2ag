@@ -15,9 +15,9 @@ const CLINICAL_FIELDS = [
 
 function badgeClassOf(appointment) {
     if (appointment.annulled) {
-        return styles.badgeAnnulled;
+        return "etiqueta etiqueta--anulada";
     }
-    return appointment.status === "CONCLUIDA" ? styles.badgeDone : styles.badgeOther;
+    return appointment.status === "CONCLUIDA" ? "etiqueta etiqueta--ok" : "etiqueta etiqueta--neutra";
 }
 
 // junta pressao peso e altura numa linha so
@@ -45,7 +45,7 @@ export default function ConsultationCard({appointment, actions}) {
             <article className={styles.card}>
                 <header className={styles.header}>
                     <h3>{formatDateTime(appointment.dateTime)}</h3>
-                    <span className={styles.badgeAnnulled}>{statusLabelOf(appointment)}</span>
+                    <span className="etiqueta etiqueta--anulada">{statusLabelOf(appointment)}</span>
                 </header>
                 <AnnulmentNotice record={appointment}/>
             </article>

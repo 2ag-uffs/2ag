@@ -46,26 +46,10 @@
     color: var(--color-text-secondary);
 }
 
-/* a meta vai escrita, n so na cor */
-.goalMet,
-.goalMissed {
+/* a meta vai escrita, n so na cor. o desenho da etiqueta vem do styles/etiqueta.css,
+   aqui so o lugar dela: n estica na largura do cartao */
+.goal {
     align-self: flex-start;
-    border: 1px solid transparent;
-    border-radius: var(--radius-pill);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    padding: 0.125rem var(--space-3);
-}
-
-.goalMet {
-    background-color: var(--color-primary-soft);
-    color: var(--color-primary);
-}
-
-.goalMissed {
-    background-color: var(--color-surface);
-    border-color: var(--color-warning);
-    color: var(--color-text-headings);
 }
 
 .bar {

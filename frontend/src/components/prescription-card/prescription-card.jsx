@@ -10,9 +10,9 @@ function isInUse(prescription) {
 
 function badgeClassOf(prescription) {
     if (isInUse(prescription)) {
-        return styles.badgeCurrent;
+        return "etiqueta etiqueta--ok";
     }
-    return prescription.annulled ? styles.badgeAnnulled : styles.badgeReplaced;
+    return prescription.annulled ? "etiqueta etiqueta--anulada" : "etiqueta etiqueta--neutra";
 }
 
 function DetailItem({term, children}) {

@@ -852,7 +852,7 @@ function AppointmentsCard({appointments}) {
                             {appointment.diagnosis ? "\u00a0— " + appointment.diagnosis : ""}
                         </span>
                         {appointment.geraPrescricao && (
-                            <span className={styles.mark}>receita emitida</span>
+                            <span className="etiqueta etiqueta--ok">receita emitida</span>
                         )}
                     </li>
                 ))}

@@ -280,8 +280,8 @@ export default function AcompanhamentoProtocolo() {
                 <Card
                     title={hasProtocolEnded ? "Último acompanhamento" : "Em andamento"}
                     headerAction={hasProtocolEnded
-                        ? <span className={styles.status + " " + styles.statusEnded}>Encerrado</span>
-                        : <span className={styles.status}>Ativo</span>}
+                        ? <span className="etiqueta etiqueta--neutra">Encerrado</span>
+                        : <span className="etiqueta etiqueta--ok">Ativo</span>}
                     footer={hasProtocolEnded ? null : (
                         <>
                             <button

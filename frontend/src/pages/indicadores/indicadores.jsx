@@ -187,7 +187,7 @@ function PatientsInCycleCard({indicators}) {
             </p>
             <p className={styles.explain}>Meta: todo paciente convidado cadastrado e no ciclo.</p>
             {indicators.invitesSent > 0 && (
-                <p className={invitesGoalMet ? styles.goalMet : styles.goalMissed}>
+                <p className={(invitesGoalMet ? "etiqueta etiqueta--ok " : "etiqueta etiqueta--atencao ") + styles.goal}>
                     {invitesGoalMet ? "Meta atingida" : "Meta ainda não atingida"}
                 </p>
             )}
@@ -209,7 +209,7 @@ function FormsOnTimeCard({indicators}) {
             </p>
             {hasPercent(percent) && (
                 <>
-                    <p className={isGoalMet ? styles.goalMet : styles.goalMissed}>
+                    <p className={(isGoalMet ? "etiqueta etiqueta--ok " : "etiqueta etiqueta--atencao ") + styles.goal}>
                         {isGoalMet ? "Meta de " + goal + "% atingida" : "Abaixo da meta de " + goal + "%"}
                     </p>
                     {/* o numero e a etiqueta ja dizem tudo e a barra eh so o desenho */}

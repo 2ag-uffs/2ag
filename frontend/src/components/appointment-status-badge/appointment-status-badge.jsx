@@ -1,20 +1,18 @@
 import {statusLabelOf} from "../../utils/appointment-labels.js";
-import styles from "./appointment-status-badge.module.css";
 
+// a variante da etiqueta (styles/etiqueta.css)
 function badgeClassOf(appointment) {
     if (appointment.annulled) {
-        return styles.inactive;
+        return "etiqueta etiqueta--neutra";
     }
+    // pedido esperando resposta ganha borda pra chamar atencao sem parecer erro
     if (appointment.status === "SOLICITADA") {
-        return styles.waiting;
+        return "etiqueta etiqueta--atencao";
     }
     if (appointment.status === "AGENDADA" || appointment.status === "EM_ANDAMENTO") {
-        return styles.scheduled;
+        return "etiqueta etiqueta--ok";
     }
-    if (appointment.status === "CONCLUIDA") {
-        return styles.done;
-    }
-    return styles.inactive;
+    return "etiqueta etiqueta--neutra";
 }
 
 // etiqueta com a situacao da consulta ou do pedido na agenda

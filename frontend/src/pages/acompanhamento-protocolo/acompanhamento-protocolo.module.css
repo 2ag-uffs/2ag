@@ -32,21 +32,6 @@
 
 /* ---- acompanhamento em andamento ---- */
 
-.status {
-    background-color: var(--color-primary-soft);
-    border-radius: var(--radius-pill);
-    color: var(--color-primary);
-    font-size: var(--text-xs);
-    font-weight: 700;
-    padding: 0.125rem var(--space-2);
-}
-
-/* passou do fim e o job das 8h ainda n encerrou */
-.statusEnded {
-    background-color: var(--color-surface-alt);
-    color: var(--color-text-secondary);
-}
-
 .facts {
     display: flex;
     flex-wrap: wrap;
