@@ -112,14 +112,21 @@
     list-style: none;
 }
 
+/* uma linha por escala: em cima o resultado mais recente e as acoes, embaixo as outras respostas */
 .row {
-    align-items: center;
     border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3) 0;
+}
+
+.rowHead {
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2) var(--space-4);
     justify-content: space-between;
-    padding: var(--space-3) 0;
 }
 
 .row:first-child {
@@ -151,6 +158,49 @@
     font-weight: 600;
 }
 
+/* o botao q abre as outras respostas da escala fica na ponta do texto, sem ocupar a linha toda */
+.othersToggle {
+    align-self: flex-start;
+    margin-left: calc(-1 * var(--space-3));
+}
+
+/* as outras respostas ficam recuadas com um fio do lado, pra ler como parte da escala de cima */
+.others {
+    border-left: 2px solid var(--color-border-light);
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    padding-left: var(--space-3);
+}
+
+.other {
+    align-items: center;
+    border-top: 1px solid var(--color-border-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    justify-content: space-between;
+    padding: var(--space-2) 0;
+}
+
+.other:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.other:last-child {
+    padding-bottom: 0;
+}
+
+.otherPeriod {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+}
+
+.otherResult {
+    color: var(--color-text-primary);
+}
+
 .tagAnnulled,
 .tagReviewed {
     border-radius: var(--radius-pill);
@@ -179,7 +229,8 @@
         flex: 1 1 100%;
     }
 
-    .row button {
+    .rowActions button,
+    .other button {
         flex: 1 1 auto;
     }
 }
