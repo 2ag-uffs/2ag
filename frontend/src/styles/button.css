@@ -104,9 +104,11 @@
     width: 100%;
 }
 
-/* no celular o botao pequeno tem a altura do botao normal, q o dedo precisa de 44 px. a letra continua a pequena */
+/* no celular o botao pequeno tem a altura do botao normal, q o dedo precisa de 44 px, e a letra do corpo do texto:
+   o q a pessoa precisa ler pra agir n fica menor q o corpo (regra da escala de letras, no tokens.css) */
 @media (max-width: 47.99rem) {
     :where(.button-small) {
+        font-size: var(--text-md);
         min-height: var(--control-height);
     }
 }

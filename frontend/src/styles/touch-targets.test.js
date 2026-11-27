@@ -27,11 +27,11 @@ describe("alvos de toque", () => {
         expect(declarationsOf(mediaRules(sectionLinksCss, MOBILE), ".link")["min-height"]).toBe(TARGET);
     });
 
-    it("no computador o botao pequeno e o atalho continuam com 36 px e a letra pequena n muda", () => {
+    it("no computador o botao pequeno e o atalho continuam com 36 px e a letra pequena, q no celular sobe pro corpo", () => {
         expect(declarationsOf(buttonCss, ":where(.button-small)")["min-height"]).toBe("var(--control-height-small)");
         expect(declarationsOf(buttonCss, ":where(.button-small)")["font-size"]).toBe("var(--text-sm)");
         expect(declarationsOf(sectionLinksCss, ".link")["min-height"]).toBe("2.25rem");
-        expect(declarationsOf(mediaRules(buttonCss, MOBILE), ":where(.button-small)")["font-size"]).toBeUndefined();
+        expect(declarationsOf(mediaRules(buttonCss, MOBILE), ":where(.button-small)")["font-size"]).toBe("var(--text-md)");
     });
 
     it("o olho de mostrar a senha tem 44 px, encostado na ponta do campo, e o circulo do hover fica por dentro", () => {

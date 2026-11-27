@@ -148,7 +148,7 @@
 /* o erro q a api mandou pro item, igual ao dos outros formularios */
 .error {
     color: var(--color-error);
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: 500;
 }
 

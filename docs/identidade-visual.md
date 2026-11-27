@@ -139,6 +139,10 @@ A regra que ficou: onde o verde claro é fundo, o texto vai escuro (`--color-tex
 
 Antes essas bordas usavam `--color-border`, que dá 1,3:1 sobre o cartão nos dois temas. `--color-border` e `--color-chart-grid` não mudaram de valor: continuam no contorno dos cartões e na grade do gráfico, que não precisam ser achados. Como a borda em repouso ficou quase tão escura quanto a de erro, o campo recusado passou a ter a borda dobrada (2 px), além da cor, do halo e da mensagem embaixo; a opção escolhida já tinha a borda dobrada e o check. `frontend/src/styles/control-border.test.js` refaz a conta nos dois temas.
 
+### escala de letras
+
+Os tamanhos de letra ficam em `frontend/src/styles/tokens.css`: 12 px (`--text-xs`), 14 px (`--text-sm`), 16 px (`--text-md`, o corpo do texto) e os tamanhos dos títulos. A regra da escala (decisão da dona do projeto, novembro de 2026): o que a pessoa precisa ler para agir nunca fica menor que o corpo. Por isso a mensagem de erro do campo, a dica embaixo do campo, o nome do campo nos cartões de receita, consulta, anamnese e do Perfil e, no celular, o texto do botão pequeno passaram de 14 para 16 px. Vale igual para o paciente, o prescritor e a administração, como um padrão só. O rótulo em cima do campo do formulário continua em 14 px e em negrito, e os tamanhos de 14 e 12 px ficam para o que é só apoio, como a data, a contagem e a etiqueta de situação. No computador o botão pequeno continua com a letra de 14 px. Medido no Chrome sem janela em 320 px, nos três perfis: nenhuma tela rola de lado. `frontend/src/styles/reading-size.test.js` lista as regras que seguem a escala.
+
 ### superfícies
 
 O fundo das telas é um neutro frio levemente esverdeado (`#F4F6F4`), o cartão é branco e o bloco dentro do cartão é `#E9EDEA`. Nenhum dos três sai da cartela, porque ela não tem tom neutro.

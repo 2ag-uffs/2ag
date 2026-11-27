@@ -13,7 +13,7 @@
 }
 
 .hint {
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     margin-top: calc(-1 * var(--space-2));
 }
 
@@ -57,7 +57,7 @@
 
 .readOnlyInfo dt {
     color: var(--color-text-secondary);
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
 }
 
 .readOnlyInfo dd {

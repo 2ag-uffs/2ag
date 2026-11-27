@@ -70,7 +70,7 @@
 .block h4 {
     color: var(--color-text-secondary);
     font-family: inherit;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     font-weight: 600;
 }
 

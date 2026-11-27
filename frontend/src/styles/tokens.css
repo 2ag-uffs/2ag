@@ -22,7 +22,11 @@
     --space-10: 2.5rem;
     --space-12: 3rem;
 
-    /* ---- texto ---- */
+    /* ---- texto ----
+     * regra da escala: o q a pessoa precisa ler pra agir nunca fica menor q o corpo, o --text-md.
+     * vale pra mensagem de erro do campo, dica embaixo do campo, nome do campo nos cartoes e,
+     * no celular, o texto do botao pequeno, em todos os perfis (reading-size.test.js).
+     * --text-sm e --text-xs ficam pro q eh so apoio, como data, contagem e etiqueta */
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
     --text-md: 1rem;

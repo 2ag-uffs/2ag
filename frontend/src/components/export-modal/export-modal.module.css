@@ -10,7 +10,7 @@
 .help {
     color: var(--color-text-secondary);
     display: block;
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
     margin-top: 0.125rem;
 }
 

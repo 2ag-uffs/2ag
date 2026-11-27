@@ -139,7 +139,7 @@
 
 .fieldError {
     color: var(--color-error);
-    font-size: var(--text-sm);
+    font-size: var(--text-md);
 }
 
 /* o link de senha nova fica inteiro numa linha so pra dar pra copiar na mao tbm */
