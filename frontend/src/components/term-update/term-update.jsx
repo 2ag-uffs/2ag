@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import BusyButton from "../form/busy-button.jsx";
 import {useFocusFirstError} from "../form/focus-first-error.js";
+import {useFocusWhenShown} from "../form/focus-when-shown.js";
 import TextField from "../form/text-field.jsx";
 import PageHeader from "../page-header/page-header.jsx";
 import {
@@ -18,6 +19,7 @@ import {
     guardianBody,
     guardianFieldsFrom,
 } from "../../utils/guardian.js";
+import {RESEARCH_REVOKED_TEXT, researchStatusText, showsResearch} from "../../utils/research-consent.js";
 import styles from "./term-update.module.css";
 
 const EMPTY_GUARDIAN = {guardianName: "", guardianRelationship: "", guardianPhone: ""};
@@ -139,12 +141,61 @@ function BirthDateFix({profile, onFixed}) {
     );
 }
 
+// a pesquisa eh separada do termo do cadastro (RF37) e o perfil fica escondido com o termo pendente,
+// entao quem n concorda com o termo novo ve aqui como esta a pesquisa e pode retirar o aceite dela
+// entrar na pesquisa e ler o termo dela continuam so no perfil, dps do termo do cadastro
+function ResearchOnTerm({consent, onRevoked}) {
+    const [message, setMessage] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    // retirar tira o botao da tela e o foco ia pro body, entao o aviso de retirado recebe o foco (CT-39)
+    const [wasRevokedNow, setWasRevokedNow] = useState(false);
+    const revokedNoticeRef = useFocusWhenShown(wasRevokedNow);
+
+    const revoke = async () => {
+        setIsSaving(true);
+        setMessage(null);
+        try {
+            const savedConsent = await apiService.post("/consent-term/research/revoke", undefined);
+            onRevoked(savedConsent);
+            setWasRevokedNow(true);
+        } catch (requestError) {
+            setMessage(readRequestError(requestError).message || CONNECTION_ERROR_MESSAGE);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <section className={styles.research} aria-labelledby="term-research-title">
+            <h2 id="term-research-title" className={styles.researchTitle}>Pesquisa</h2>
+            <p>
+                {researchStatusText(consent)}
+                {!consent.active && " A pesquisa fica no Perfil, depois de aceitar o termo acima."}
+            </p>
+            {wasRevokedNow && (
+                <p className="aviso" role="status" tabIndex={-1} ref={revokedNoticeRef}>{RESEARCH_REVOKED_TEXT}</p>
+            )}
+            {message && <p className="aviso aviso--atencao" role="alert">{message}</p>}
+            {consent.active && (
+                <div>
+                    <BusyButton type="button" className="button-danger" onClick={revoke} isBusy={isSaving}
+                                busyText="Salvando...">
+                        Retirar consentimento
+                    </BusyButton>
+                </div>
+            )}
+        </section>
+    );
+}
+
 // paciente q aceitou uma versao antiga do termo le e aceita a nova antes de seguir (#58)
 // a api tbm pede o aceite de novo qnd a idade cruzou os 18 anos: menor aceita com o responsavel e adulto sozinho
 export default function TermUpdate({onAccepted, onBirthDateFixed}) {
     const [term, setTerm] = useState(null);
     const [profile, setProfile] = useState(null);
     const [isPendingByAge, setIsPendingByAge] = useState(false);
+    // decidido qnd a tela abre: o menor q retira o aceite daqui continua vendo o aviso de retirado
+    const [hasResearch, setHasResearch] = useState(false);
     const [guardianData, setGuardianData] = useState(EMPTY_GUARDIAN);
     const [fieldErrors, setFieldErrors] = useState({});
     const [loadError, setLoadError] = useState(null);
@@ -168,6 +219,7 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                 if (isCurrentPage) {
                     setTerm(currentTerm);
                     setProfile(loadedProfile);
+                    setHasResearch(showsResearch(loadedProfile));
                     setIsPendingByAge(Boolean(sessionUser && sessionUser.termPendingByAge));
                     // o q ja esta salvo vem preenchido e o telefone salvo vai junto no aceite
                     setGuardianData(guardianFieldsFrom(loadedProfile.guardian));
@@ -256,6 +308,10 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
         setIsPendingByAge(Boolean(sessionUser.termPendingByAge));
     };
 
+    const handleResearchRevoked = (researchConsent) => {
+        setProfile((currentProfile) => ({...currentProfile, researchConsent: researchConsent}));
+    };
+
     const guardianText = guardianTextOf(guardian);
 
     return (
@@ -308,6 +364,9 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                             {ACCEPT_BUTTON_TEXT[ageBand]}
                         </BusyButton>
                     </div>
+                    {hasResearch && (
+                        <ResearchOnTerm consent={profile.researchConsent} onRevoked={handleResearchRevoked}/>
+                    )}
                 </>
             )}
         </section>

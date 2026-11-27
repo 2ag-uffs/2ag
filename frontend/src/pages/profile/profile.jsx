@@ -21,9 +21,10 @@ import {
     setLoggedUser,
 } from "../../services/api.js";
 import {BRAZIL_STATE_OPTIONS} from "../../utils/brazil-states.js";
-import {formatDate, toIsoDate} from "../../utils/date-format.js";
+import {toIsoDate} from "../../utils/date-format.js";
 import {guardianBody, guardianFieldsFrom, isMinorPatient} from "../../utils/guardian.js";
 import {formatCpf, formatPhone, onlyDigits} from "../../utils/masks.js";
+import {RESEARCH_REVOKED_TEXT, researchStatusText, showsResearch} from "../../utils/research-consent.js";
 import styles from "./profile.module.css";
 
 const EMPTY_PASSWORD_FORM = {currentPassword: "", newPassword: "", newPasswordConfirmation: ""};
@@ -582,17 +583,6 @@ function EmailPreferenceCard({profile, onSaved}) {
     );
 }
 
-function researchStatusText(consent) {
-    if (consent.active) {
-        return "Você aceitou participar da pesquisa em " + formatDate(consent.acceptedAt)
-            + ". Pode retirar quando quiser.";
-    }
-    if (consent.termChanged) {
-        return "O termo de pesquisa mudou desde o seu aceite. Para continuar participando, leia e aceite a versão nova.";
-    }
-    return "Você não participa da pesquisa. Participar é opcional e não muda o seu atendimento.";
-}
-
 // consentimento de pesquisa, opcional e q pode ser retirado a qq hora (RF37)
 function ResearchCard({profile, onChanged}) {
     const [term, setTerm] = useState(null);
@@ -647,8 +637,7 @@ function ResearchCard({profile, onChanged}) {
         }
     };
     const revoke = async () => {
-        const isSaved = await saveChoice("/consent-term/research/revoke", undefined,
-            "Consentimento retirado. Seus dados não entram em novas exportações para pesquisa.");
+        const isSaved = await saveChoice("/consent-term/research/revoke", undefined, RESEARCH_REVOKED_TEXT);
         setWasRevokedNow(isSaved);
     };
 
@@ -752,9 +741,7 @@ export default function Profile() {
     const isAdmin = profile.role === "ADMIN";
     // so o paciente recebe lembrete por e-mail, os avisos do prescritor ficam so no sistema
     const isPatient = profile.role === "PATIENT";
-    // a pesquisa ainda n abre pra menor de 18, so aparece pra retirar um aceite q ja existe
-    const showResearch = profile.researchConsent
-        && (!isMinorPatient(profile.birthDate) || profile.researchConsent.active);
+    const showResearch = showsResearch(profile);
 
     let subtitle = "Seus dados, o e-mail de acesso e a senha.";
     if (isAdmin) {
