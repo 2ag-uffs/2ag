@@ -55,6 +55,18 @@ describe("DashboardPaciente", () => {
         setLoggedUser(null);
     });
 
+    // a frase solta virou o cartao com o botao (decisao da dona, nov/2026)
+    it("o painel q n carregou mostra o cartao com o Tentar de novo", async () => {
+        apiService.get.mockRejectedValue(new Error("sem rede"));
+        renderPanel();
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Não foi possível carregar o painel. Confira sua internet e tente de novo.");
+        expect(screen.getByRole("heading", {level: 1, name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        expect(screen.queryByRole("link", {name: "Ir para o início"})).not.toBeInTheDocument();
+    });
+
     // em rio branco eh duas horas a menos e o paciente leria o 10:00 como o horario de la
     it("fora do fuso de brasilia a consulta e o aviso dela dizem q o horario eh de brasilia", async () => {
         vi.stubEnv("TZ", "America/Rio_Branco");

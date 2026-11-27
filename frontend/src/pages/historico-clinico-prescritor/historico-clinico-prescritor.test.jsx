@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService} from "../../services/api.js";
+import {ApiError, apiService, setLoggedUser} from "../../services/api.js";
 import {declarationsOf, readCss} from "../../test/css-rules.js";
 import HistoricoClinicoPrescritor from "./historico-clinico-prescritor.jsx";
 
@@ -38,6 +38,15 @@ function renderHistory(appointments, patient = PATIENT, prescriptions = []) {
     return router;
 }
 
+// abre o historico com a api recusando tudo com o erro dado
+function renderHistoryThatFails(requestError) {
+    vi.spyOn(apiService, "get").mockRejectedValue(requestError);
+    const router = createMemoryRouter([
+        {path: "/paciente/:patientId/historico", element: <HistoricoClinicoPrescritor/>},
+    ], {initialEntries: ["/paciente/5/historico"]});
+    render(<RouterProvider router={router}/>);
+}
+
 async function cardWithStatus(statusLabel) {
     return within((await screen.findByText(statusLabel)).closest("article"));
 }
@@ -45,6 +54,28 @@ async function cardWithStatus(statusLabel) {
 describe("HistoricoClinicoPrescritor", () => {
     afterEach(() => {
         vi.restoreAllMocks();
+        setLoggedUser(null);
+    });
+
+    // o paciente de outro prescritor aparecia como uma frase solta, sem saida (decisao da dona, nov/2026)
+    it("paciente de outro prescritor mostra o cartao de falta de acesso com o Ir para o início", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        renderHistoryThatFails(
+            new ApiError(403, "Sua conta não tem permissão para isso. Se precisar, fale com a clínica"));
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Sua conta não tem permissão para isso. Se precisar, fale com a clínica");
+        expect(screen.getByRole("heading", {name: "Sem acesso a esta tela"})).toBeInTheDocument();
+        expect(screen.getByRole("link", {name: "Ir para o início"})).toHaveAttribute("href", "/painel-prescritor");
+        expect(screen.queryByRole("button", {name: "Tentar de novo"})).not.toBeInTheDocument();
+    });
+
+    it("o historico q n carregou mostra o cartao com o Tentar de novo", async () => {
+        renderHistoryThatFails(new Error("sem rede"));
+
+        expect(await screen.findByRole("heading", {name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        expect(screen.queryByRole("link", {name: "Ir para o início"})).not.toBeInTheDocument();
     });
 
     // a falta marcada por engano so se desfazia digitando o endereco do registro na mao

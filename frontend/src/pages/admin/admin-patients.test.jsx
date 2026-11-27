@@ -241,4 +241,40 @@ describe("AdminPatients", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent(/Não foi possível conectar/);
         expect(emailField).not.toHaveAttribute("aria-invalid");
     });
+
+    // a lista q n carregou era uma frase solta, sem botao (decisao da dona, V-P7)
+    it("a lista das desativadas q n carregou mostra o cartao com o Tentar de novo e a busca continua", async () => {
+        vi.spyOn(apiService, "get").mockRejectedValue(new TypeError("Failed to fetch"));
+        render(<AdminPatients/>);
+
+        const card = await screen.findByRole("alert");
+        expect(within(card).getByRole("heading", {level: 2, name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(card).toHaveTextContent("Não foi possível carregar as contas desativadas. Confira sua internet e tente de novo.");
+        expect(within(card).getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        expect(screen.getAllByRole("alert")).toHaveLength(1);
+        expect(screen.getByLabelText("E-mail da conta do paciente")).toBeInTheDocument();
+    });
+
+    // a acao recusada continua no aviso, e a lista q volta a carregar tira o cartao
+    it("a lista q carrega dps de uma acao tira o cartao de falha", async () => {
+        const get = vi.spyOn(apiService, "get").mockRejectedValueOnce(new TypeError("Failed to fetch"));
+        get.mockResolvedValue([{id: 1, name: "Ana Souza", email: "ana@email.com", active: false}]);
+        vi.spyOn(apiService, "post").mockResolvedValue({id: 1, name: "Ana Souza", email: "ana@email.com", active: true});
+        vi.spyOn(apiService, "put").mockResolvedValue({id: 1, name: "Ana Souza", email: "ana@email.com", active: false});
+        const user = userEvent.setup();
+        render(<AdminPatients/>);
+
+        expect(await screen.findByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        await user.type(screen.getByLabelText("E-mail da conta do paciente"), "ana@email.com");
+        await user.click(screen.getByRole("button", {name: "Buscar"}));
+        // a busca limpa o aviso da acao anterior, n o cartao da lista q n carregou
+        expect(await screen.findByRole("button", {name: "Desativar"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        await user.click(screen.getByRole("button", {name: "Desativar"}));
+        await user.click(within(screen.getByRole("dialog")).getByRole("button", {name: "Sim, desativar"}));
+
+        expect(await screen.findByText("Acesso de Ana Souza desativado.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Tentar de novo"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
 });

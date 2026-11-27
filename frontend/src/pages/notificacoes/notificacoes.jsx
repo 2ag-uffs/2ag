@@ -2,9 +2,10 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router";
 import {FiAlertCircle, FiBell, FiCalendar, FiClipboard} from "react-icons/fi";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
 import styles from "./notificacoes.module.css";
 
@@ -125,7 +126,7 @@ export default function Notificacoes() {
                 window.dispatchEvent(new CustomEvent("notifications-changed", {detail: loadedPage.unread}));
             })
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar os avisos. Confira sua internet e tente de novo."));
             });
     }, [pageNumber]);
@@ -176,7 +177,7 @@ export default function Notificacoes() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!page) {

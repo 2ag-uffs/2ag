@@ -1,4 +1,4 @@
-import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -246,5 +246,23 @@ describe("Anamnese", () => {
             .toBeInTheDocument();
         expect(apiService.get).toHaveBeenCalledWith("/patients/3");
         expect(screen.queryByRole("button", {name: "Enviar anamnese"})).not.toBeInTheDocument();
+    });
+
+    // a tela abriu, so n tem o q preencher: eh o estado da ficha, e n um erro q o leitor de tela interrompe pra ler
+    it("o aviso da ficha anulada e o do acompanhamento encerrado n sao anunciados como erro", async () => {
+        apiService.get.mockResolvedValue({id: 3, archived: true});
+        renderAnamnesis("/painel-paciente", "/anamnese");
+
+        const archivedNotice = await screen.findByText(/Seu acompanhamento foi encerrado/);
+        expect(archivedNotice).toHaveAttribute("role", "status");
+        expect(archivedNotice).toHaveClass("aviso", "aviso--atencao");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        cleanup();
+        apiService.get.mockResolvedValue({id: 8, annulled: true});
+        renderAnamnesis("/historico-paciente", "/anamnese?id=8");
+
+        expect(await screen.findByText(/Esta ficha foi anulada pelo prescritor/)).toHaveAttribute("role", "status");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 });

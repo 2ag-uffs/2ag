@@ -3,9 +3,10 @@ import {useNavigate, useParams} from "react-router";
 import {FiPrinter} from "react-icons/fi";
 import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {belongsToHistory} from "../../utils/appointment-labels.js";
 import {addDays, ageFrom, formatDate, formatNow, formatPeriod, toIsoDate} from "../../utils/date-format.js";
 import {lastPrescriptionTitle} from "../../utils/prescription-labels.js";
@@ -56,7 +57,7 @@ export default function Impressao() {
                 setLoadError(null);
             })
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar o histórico. Confira sua internet e tente de novo."));
             });
     }, [patientId]);
@@ -72,7 +73,7 @@ export default function Impressao() {
     const insidePeriod = (isoDate) => !startDate || String(isoDate).slice(0, 10) >= startDate;
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!history) {

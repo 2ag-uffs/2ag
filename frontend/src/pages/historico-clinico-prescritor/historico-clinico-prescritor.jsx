@@ -17,13 +17,14 @@ import AnamnesisView from "../../components/anamnesis-view/anamnesis-view.jsx";
 import AnnulmentModal from "../../components/annulment-modal/annulment-modal.jsx";
 import ConsultationCard from "../../components/consultation-card/consultation-card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import ExportModal from "../../components/export-modal/export-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import ScaleSummary from "../../components/scale-summary/scale-summary.jsx";
 import SectionLinks from "../../components/section-links/section-links.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {belongsToHistory, isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_CHART_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, formatDate, formatDateTime, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
@@ -68,7 +69,7 @@ export default function HistoricoClinicoPrescritor() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar o histórico. Confira sua internet e tente de novo."));
                 }
             });
@@ -98,7 +99,7 @@ export default function HistoricoClinicoPrescritor() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (history === null) {

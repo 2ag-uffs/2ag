@@ -3,11 +3,12 @@ import {useNavigate, useParams} from "react-router";
 import {FiSearch} from "react-icons/fi";
 import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, loadErrorOf} from "../../services/api.js";
 import {ARCHIVED_INITIAL_ASSESSMENT_NOTICE} from "../../utils/archived-patient.js";
 import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./selecao-escalas.module.css";
@@ -66,7 +67,7 @@ export default function SelecaoEscalas() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar as escalas. Confira sua internet e tente de novo."));
                 }
             });
@@ -82,7 +83,7 @@ export default function SelecaoEscalas() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!page) {

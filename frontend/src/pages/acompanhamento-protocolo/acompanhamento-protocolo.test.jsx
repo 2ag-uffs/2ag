@@ -318,7 +318,10 @@ describe("AcompanhamentoProtocolo", () => {
         expect(await screen.findByRole("alert"))
             .toHaveTextContent("Acesso negado. Esse paciente não está na sua lista de pacientes.");
         expect(screen.getByRole("heading", {name: "Acompanhamento automático"})).toBeInTheDocument();
-        expect(screen.getByRole("link", {name: "Ver pacientes"})).toHaveAttribute("href", "/lista-paciente");
+        // cartao unico de falta de acesso: cadeado, a frase e o Ir para o inicio (decisao da dona, nov/2026)
+        expect(screen.getByRole("heading", {name: "Sem acesso a esta tela"})).toBeInTheDocument();
+        expect(screen.getByRole("link", {name: "Ir para o início"})).toHaveClass("button");
+        expect(screen.queryByRole("button", {name: "Tentar de novo"})).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Começa em")).not.toBeInTheDocument();
         expect(screen.queryByText("Escala de Hamilton")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Iniciar acompanhamento"})).not.toBeInTheDocument();

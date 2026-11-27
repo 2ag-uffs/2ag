@@ -19,6 +19,18 @@ describe("MyPrescriptions", () => {
         setLoggedUser(null);
     });
 
+    // a frase solta em terracota virou o cartao com o botao (decisao da dona, nov/2026)
+    it("a lista q n carregou mostra o cartao com o Tentar de novo, sem dizer q n ha prescricao", async () => {
+        vi.spyOn(apiService, "get").mockRejectedValue(new Error("sem rede"));
+        render(<MyPrescriptions/>);
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Não foi possível carregar suas prescrições. Confira sua internet e tente de novo.");
+        expect(screen.getByRole("heading", {level: 2, name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        expect(screen.queryByText("Você não tem prescrição vigente no momento.")).not.toBeInTheDocument();
+    });
+
     it("a receita em uso fica em Vigente", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue([PRESCRIPTION]);
         render(<MyPrescriptions/>);

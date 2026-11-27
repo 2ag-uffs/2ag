@@ -1,9 +1,10 @@
 import {useEffect, useState} from "react";
 import {FiShield} from "react-icons/fi";
 import EmptyState from "../empty-state/empty-state.jsx";
+import {LoadError} from "../error-card/error-card.jsx";
 import TextField from "../form/text-field.jsx";
 import {SkeletonBlock} from "../skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, loadErrorOf} from "../../services/api.js";
 import {addDays, periodErrorOf, toIsoDate} from "../../utils/date-format.js";
 import styles from "./audit-trail.module.css";
 
@@ -70,6 +71,8 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
     const [trail, setTrail] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState(null);
+    // falha de carregar a trilha. o errorMessage fica pro periodo mal escolhido
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         // resposta de um filtro antigo q chega atrasada n pode sobrescrever a nova
@@ -85,7 +88,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
             .catch((requestError) => {
                 if (isCurrentRequest) {
                     setTrail(null);
-                    setErrorMessage(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar a trilha. Confira sua internet e tente de novo."));
                 }
             })
@@ -108,6 +111,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
             return;
         }
         setErrorMessage(null);
+        setLoadError(null);
         setIsLoading(true);
         setPage(0);
         setPeriod({from: fromDate, to: toDate});
@@ -115,6 +119,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
 
     const goToPage = (newPage) => {
         setErrorMessage(null);
+        setLoadError(null);
         setIsLoading(true);
         setPage(newPage);
     };
@@ -146,6 +151,7 @@ export default function AuditTrail({endpoint, showPatientNumber}) {
             </form>
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
+            {loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
             {isLoading && <TrailSkeleton/>}
 

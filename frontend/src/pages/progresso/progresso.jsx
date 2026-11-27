@@ -3,10 +3,11 @@ import {Link, useLocation, useNavigate, useParams} from "react-router";
 import {FiArrowDown, FiArrowUp, FiDownload, FiFileText, FiTrendingUp, FiUsers} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import ErrorCard, {LoadError} from "../../components/error-card/error-card.jsx";
 import LineChart from "../../components/line-chart/line-chart.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {ApiError, apiService, download, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, download, errorMessageOf, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import {
     anchorsTextOf,
@@ -151,7 +152,7 @@ export default function Progresso() {
                     });
                 } else {
                     // sem servidor (ou outro erro) n quer dizer q o paciente n eh dele, entao vai so o aviso
-                    setLoadError(errorMessageOf(requestError));
+                    setLoadError(loadErrorOf(requestError));
                 }
             })
             .finally(() => {
@@ -184,7 +185,7 @@ export default function Progresso() {
                 });
             })
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError));
+                setLoadError(loadErrorOf(requestError));
             });
     }, [patientId]);
 
@@ -213,7 +214,7 @@ export default function Progresso() {
     const isSeriesLoading = Boolean(patientId && chosenAttribute) && loadedSeriesKey !== seriesKey;
     const isLoading = !loadError && (!isCatalogLoaded || isSeriesLoading);
     const periodKey = patientId + "|" + period;
-    const pageError = loadError || (seriesError && seriesError.key === seriesKey ? seriesError.message : null);
+    const pageError = seriesError && seriesError.key === seriesKey ? seriesError.message : null;
 
     useEffect(() => {
         if (!patientId || !isAttributeInCatalog) {
@@ -465,12 +466,7 @@ export default function Progresso() {
         return (
             <section className={styles.page}>
                 <PageHeader title="Progresso"/>
-                <p className="aviso aviso--atencao" role="alert">{patientError.message}</p>
-                <EmptyState
-                    icon={FiUsers}
-                    message="Escolha um dos seus pacientes para ver como o tratamento está evoluindo."
-                    action={<Link to="/lista-paciente" className="button-secondary">Ver pacientes</Link>}
-                />
+                <ErrorCard message={patientError.message} isDenied={true} isUnderPageHeader={true}/>
             </section>
         );
     }
@@ -514,7 +510,7 @@ export default function Progresso() {
         return (
             <section className={styles.page}>
                 <PageHeader title={pageTitle} actions={historyLink}/>
-                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+                <LoadError error={loadError} isUnderPageHeader={true}/>
             </section>
         );
     }

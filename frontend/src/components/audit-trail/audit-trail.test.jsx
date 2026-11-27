@@ -33,6 +33,18 @@ describe("AuditTrail", () => {
         vi.restoreAllMocks();
     });
 
+    // a frase solta virou o cartao com o botao (decisao da dona, nov/2026)
+    it("a trilha q n carregou mostra o cartao com o Tentar de novo, e o filtro continua na tela", async () => {
+        vi.spyOn(apiService, "get").mockRejectedValue(new Error("sem rede"));
+        render(<AuditTrail endpoint="/admin/audit-events" showPatientNumber={true}/>);
+
+        expect(await screen.findByRole("alert"))
+            .toHaveTextContent("Não foi possível carregar a trilha. Confira sua internet e tente de novo.");
+        expect(screen.getByRole("heading", {level: 2, name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Filtrar"})).toBeInTheDocument();
+    });
+
     // com dois prescritores a administracao n sabia de quem era a conta da senha nova
     it("o evento de conta de prescritor diz de quem era a conta", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue(ADMIN_TRAIL);

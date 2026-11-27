@@ -3,6 +3,7 @@ import {useBlocker, useLocation, useNavigate, useParams, useSearchParams} from "
 import {FiCheck, FiCheckCircle, FiEdit2, FiMoon} from "react-icons/fi";
 import {homePathFor} from "../../app/role-home.js";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
@@ -11,7 +12,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import {stepOfKey, stepsOf} from "../../components/scale-form/scale-steps.js";
 import SkeletonPage, {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {ApiError, apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {ApiError, apiService, errorMessageOf, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {addDays, formatDate, formatWeekdayAndDate, mondayOf, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
 import {usePhoneWidth} from "../../utils/phone-width.js";
@@ -284,7 +285,7 @@ export default function Escala() {
                     setFormError((currentError) => (currentError ? currentError + " " : "")
                         + "Não foi possível atualizar a tela agora. As respostas salvas continuam salvas.");
                 } else {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível abrir a escala. Confira sua internet e tente de novo."));
                 }
             });
@@ -716,7 +717,7 @@ export default function Escala() {
     if (loadError) {
         return (
             <>
-                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+                <LoadError error={loadError}/>
                 {exitModal}
             </>
         );

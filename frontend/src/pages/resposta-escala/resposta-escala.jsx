@@ -1,9 +1,10 @@
 import {useEffect, useId, useState} from "react";
 import {useNavigate, useParams} from "react-router";
 import Card from "../../components/card/card.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {formatDateTime, formatPeriod} from "../../utils/date-format.js";
 import {formatAnswer} from "../../utils/scale-answers.js";
 import styles from "./resposta-escala.module.css";
@@ -96,7 +97,7 @@ export default function RespostaEscala() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível abrir a resposta. Confira sua internet e tente de novo."));
                 }
             });
@@ -107,7 +108,7 @@ export default function RespostaEscala() {
     }, [responseId]);
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!response || !definition) {

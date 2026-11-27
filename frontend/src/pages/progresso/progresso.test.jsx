@@ -391,7 +391,10 @@ describe("Progresso", () => {
         renderPrescriberProgress("DOR");
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Esse paciente não está na sua lista");
-        expect(screen.getByRole("link", {name: "Ver pacientes"})).toHaveAttribute("href", "/lista-paciente");
+        // cartao unico de falta de acesso: cadeado, a frase e o Ir para o inicio (decisao da dona, nov/2026)
+        expect(screen.getByRole("heading", {name: "Sem acesso a esta tela"})).toBeInTheDocument();
+        expect(screen.getByRole("link", {name: "Ir para o início"})).toHaveClass("button");
+        expect(screen.queryByRole("button", {name: "Tentar de novo"})).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Período")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", {name: "Dor"})).not.toBeInTheDocument();
         expect(screen.queryByText(/escreveu/)).not.toBeInTheDocument();

@@ -1,13 +1,14 @@
 import {useEffect, useRef, useState} from "react";
 import {useBlocker, useNavigate, useSearchParams} from "react-router";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import UrgencyNotice from "../../components/urgency-notice/urgency-notice.jsx";
-import {apiService, errorMessageOf, getLoggedUser, readRequestError} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf, readRequestError} from "../../services/api.js";
 import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
@@ -99,6 +100,8 @@ export default function Anamnese() {
     const [startingAnswers, setStartingAnswers] = useState(emptyAnswers);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
+    // ficha anulada ou acompanhamento encerrado: a tela abriu, so n tem o q preencher
+    const [blockedMessage, setBlockedMessage] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [formError, setFormError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -116,18 +119,18 @@ export default function Anamnese() {
                     return;
                 }
                 if (isCorrection && found.annulled) {
-                    setLoadError("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
+                    setBlockedMessage("Esta ficha foi anulada pelo prescritor e fica no histórico como está.");
                 } else if (isCorrection) {
                     setAnswers(answersFrom(found));
                     setStartingAnswers(answersFrom(found));
                 } else if (found.archived) {
-                    setLoadError(ARCHIVED_ANAMNESIS_NOTICE);
+                    setBlockedMessage(ARCHIVED_ANAMNESIS_NOTICE);
                 }
                 setIsLoading(false);
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível abrir a ficha. Confira sua internet e tente de novo."));
                     setIsLoading(false);
                 }
@@ -189,7 +192,11 @@ export default function Anamnese() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
+    }
+
+    if (blockedMessage) {
+        return <p className="aviso aviso--atencao" role="status">{blockedMessage}</p>;
     }
 
     if (isLoading) {

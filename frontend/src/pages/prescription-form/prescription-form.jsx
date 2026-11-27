@@ -3,6 +3,7 @@ import {useBlocker, useNavigate, useParams} from "react-router";
 import {FiCheckCircle, FiPlus} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {focusFirstInvalidField} from "../../components/form/focus-first-error.js";
@@ -12,7 +13,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser, newRequestKey, readRequestError} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf, newRequestKey, readRequestError} from "../../services/api.js";
 import {isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_PRESCRIPTION_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, isInTheFuture, isSameOrAfter} from "../../utils/date-format.js";
@@ -260,7 +261,7 @@ export default function PrescriptionForm() {
         loadPage()
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar a consulta. Confira sua internet e tente de novo."));
                 }
             })
@@ -375,7 +376,7 @@ export default function PrescriptionForm() {
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (issuedPrescription) {

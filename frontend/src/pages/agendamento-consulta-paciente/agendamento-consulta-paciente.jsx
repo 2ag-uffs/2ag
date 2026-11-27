@@ -4,6 +4,7 @@ import AppointmentStatusBadge from "../../components/appointment-status-badge/ap
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import SelectField from "../../components/form/select-field.jsx";
@@ -11,7 +12,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import UrgencyNotice from "../../components/urgency-notice/urgency-notice.jsx";
-import {apiService, ApiError, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, ApiError, errorMessageOf, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {appointmentTypeLabelOf, MODALITY_OPTIONS, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
 import {
@@ -222,7 +223,7 @@ export default function AgendamentoConsultaPaciente() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar suas consultas. Confira sua internet e tente de novo."));
                 }
             });
@@ -327,7 +328,7 @@ export default function AgendamentoConsultaPaciente() {
     };
 
     if (loadError && page === null) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (page === null) {
@@ -363,7 +364,7 @@ export default function AgendamentoConsultaPaciente() {
             {actionError && (
                 <p className="aviso aviso--atencao" role="alert" tabIndex={-1} ref={actionErrorRef}>{actionError}</p>
             )}
-            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
+            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError.message}</p>}
 
             {patient.archived && <EmptyState icon={FiUserX} message={ARCHIVED_APPOINTMENT_NOTICE}/>}
 

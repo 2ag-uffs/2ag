@@ -3,6 +3,7 @@ import {useBlocker, useLocation, useNavigate, useParams} from "react-router";
 import {FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
@@ -12,7 +13,7 @@ import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser, newRequestKey, readRequestError} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf, newRequestKey, readRequestError} from "../../services/api.js";
 import {MODALITY_OPTIONS} from "../../utils/appointment-labels.js";
 import {ARCHIVED_RECORD_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
@@ -166,7 +167,7 @@ export default function ConsultationRecord() {
         loadPage
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar os dados. Confira sua internet e tente de novo."));
                 }
             })
@@ -241,7 +242,7 @@ export default function ConsultationRecord() {
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (isUpdated || wasJustRegistered) {

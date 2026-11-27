@@ -4,9 +4,10 @@ import {FiChevronLeft, FiChevronRight, FiClock} from "react-icons/fi";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {appointmentTypeLabelOf, modalityLabelOf} from "../../utils/appointment-labels.js";
 import {ARCHIVED_ATTENDANCE_NOTICE} from "../../utils/archived-patient.js";
 import {
@@ -114,7 +115,7 @@ export default function AgendamentoPrescritor() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar a agenda. Confira sua internet e tente de novo."));
                 }
             });
@@ -213,7 +214,7 @@ export default function AgendamentoPrescritor() {
     };
 
     if (loadError && agenda === null) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (agenda === null) {
@@ -455,7 +456,7 @@ export default function AgendamentoPrescritor() {
             )}
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
-            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
+            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError.message}</p>}
 
             <Card title="Pedidos aguardando resposta" count={waitingRequests.length}>
                 {waitingRequests.length === 0 ? (

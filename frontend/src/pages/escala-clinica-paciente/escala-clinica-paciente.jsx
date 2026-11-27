@@ -3,9 +3,10 @@ import {useNavigate, useParams} from "react-router";
 import {FiCheckCircle, FiChevronDown, FiChevronUp, FiTrendingUp} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, loadErrorOf} from "../../services/api.js";
 import {formatDate, formatPeriod} from "../../utils/date-format.js";
 import styles from "./escala-clinica-paciente.module.css";
 
@@ -203,7 +204,7 @@ export default function CentralEscalas() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar suas avaliações. Confira sua internet e tente de novo."));
                 }
             });
@@ -223,7 +224,7 @@ export default function CentralEscalas() {
     const firstAttributeOf = (scaleType) => attributes.find((attribute) => attribute.scaleType === scaleType);
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!page) {

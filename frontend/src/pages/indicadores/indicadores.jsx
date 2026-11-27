@@ -1,11 +1,12 @@
 import {useEffect, useState} from "react";
 import Card from "../../components/card/card.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, loadErrorOf} from "../../services/api.js";
 import {addDays, periodErrorOf, toIsoDate} from "../../utils/date-format.js";
 import styles from "./indicadores.module.css";
 
@@ -45,6 +46,8 @@ export default function Indicadores() {
     const [indicators, setIndicators] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState(null);
+    // falha de carregar os numeros. o errorMessage fica pro periodo mal escolhido
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         // resposta de um filtro antigo q chega atrasada n pode sobrescrever a nova
@@ -62,7 +65,7 @@ export default function Indicadores() {
             .catch((requestError) => {
                 if (isCurrentRequest) {
                     setIndicators(null);
-                    setErrorMessage(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar os indicadores. Confira sua internet e tente de novo."));
                 }
             })
@@ -88,6 +91,7 @@ export default function Indicadores() {
             return;
         }
         setErrorMessage(null);
+        setLoadError(null);
         setIsLoading(true);
         setPeriod({from: fromDate, to: toDate});
     };
@@ -128,6 +132,7 @@ export default function Indicadores() {
             </form>
 
             {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
+            {loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
             {indicators && <IndicatorCards indicators={indicators}/>}
 

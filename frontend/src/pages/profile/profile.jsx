@@ -3,6 +3,7 @@ import {useBlocker} from "react-router";
 import {FiBell, FiBookOpen, FiLock, FiMail, FiUser} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
@@ -19,6 +20,7 @@ import {
     checkPendingTerm,
     CONNECTION_ERROR_MESSAGE,
     getLoggedUser,
+    loadErrorOf,
     readRequestError,
     setLoggedUser,
 } from "../../services/api.js";
@@ -739,7 +741,7 @@ export default function Profile() {
             })
             .catch((requestError) => {
                 if (isCurrentPage) {
-                    setLoadError(generalErrorText(requestError));
+                    setLoadError(loadErrorOf(requestError));
                 }
             });
 
@@ -779,7 +781,7 @@ export default function Profile() {
         return (
             <section className={styles.page}>
                 <PageHeader title="Meu perfil"/>
-                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
+                <LoadError error={loadError} isUnderPageHeader={true}/>
             </section>
         );
     }

@@ -177,6 +177,8 @@ A terracota de erro fica para o que a pessoa precisa corrigir. Uma busca que nã
 
 Pelo mesmo motivo, a tela de cadastro aberta sem link de convite mostra a frase que explica o convite na nota neutra, de fundo verde diluído, e não na caixa terracota de atenção. A caixa de atenção continua para o convite que não vale mais e para a falta de conexão (decisão da dona do projeto, novembro de 2026).
 
+A tela que não carregou e a tela que a conta não pode abrir usam um cartão só, branco como os outros cartões, com o ícone em terracota (o triângulo de atenção ou o cadeado), o título em verde escuro, a mensagem em texto secundário e um botão verde: *Tentar de novo* ou *Ir para o início*. A terracota fica no ícone e não no cartão inteiro, para o destaque continuar dentro dos 10%, e quem diz o que houve é o título, não a cor (decisão da dona do projeto, novembro de 2026).
+
 Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionada) usa `--color-primary-soft`, um verde bem diluído, em vez do pêssego.
 
 O pêssego marca o prazo que passou: um traço de 4 px na esquerda do cartão atrasado em Minhas avaliações e, desde novembro de 2026, também da linha atrasada no *Início* do paciente. É um dos destaques dos 10%, e o texto *O prazo era* diz o atraso, então o traço nunca é o único sinal. No mesmo *Início*, o verde cheio fica para um botão só, o **Responder** mais urgente; os outros **Responder** e o *Agendar consulta* são de contorno (decisão da dona do projeto, novembro de 2026).

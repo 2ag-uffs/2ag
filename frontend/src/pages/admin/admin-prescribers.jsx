@@ -2,13 +2,14 @@ import {useCallback, useEffect, useState} from "react";
 import {FiUserPlus, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
 import PasswordField from "../../components/form/password-field.jsx";
 import Modal from "../../components/modal/modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, errorMessageOf, readRequestError} from "../../services/api.js";
+import {apiService, ApiError, errorMessageOf, loadErrorOf, readRequestError} from "../../services/api.js";
 import {isValidCpf} from "../../utils/cpf.js";
 import {initialsOf} from "../../utils/initials.js";
 import {onlyDigits} from "../../utils/masks.js";
@@ -218,6 +219,8 @@ export default function AdminPrescribers() {
     const [prescribers, setPrescribers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [pageError, setPageError] = useState(null);
+    // falha de carregar a lista. o pageError fica pra acao recusada
+    const [loadError, setLoadError] = useState(null);
     const [notice, setNotice] = useState(null);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -266,9 +269,10 @@ export default function AdminPrescribers() {
             .then((prescriberList) => {
                 setPrescribers(prescriberList);
                 setPageError(null);
+                setLoadError(null);
             })
             .catch((requestError) => {
-                setPageError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar os prescritores. Confira sua internet e tente de novo."));
             })
             .finally(() => setIsLoading(false));
@@ -545,10 +549,11 @@ export default function AdminPrescribers() {
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
+            {loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
             {isLoading && <LoadingList/>}
 
-            {!isLoading && !pageError && prescribers.length === 0 && (
+            {!isLoading && !pageError && !loadError && prescribers.length === 0 && (
                 <EmptyState
                     icon={FiUsers}
                     message="Nenhum prescritor cadastrado ainda."

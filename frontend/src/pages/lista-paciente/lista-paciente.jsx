@@ -3,10 +3,11 @@ import {useNavigate} from "react-router";
 import {FiSearch, FiUsers} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import {SkeletonBlock} from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf} from "../../services/api.js";
+import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {ageFrom, formatDate} from "../../utils/date-format.js";
 import {initialsOf} from "../../utils/initials.js";
 import {matchesSearch} from "../../utils/search-text.js";
@@ -66,7 +67,7 @@ export default function ListaPacientes() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar seus pacientes. Confira sua internet e tente de novo."));
                 }
             })
@@ -251,7 +252,7 @@ export default function ListaPacientes() {
                 </ul>
             )}
 
-            {!isLoading && loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
+            {!isLoading && loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
             {!isLoading && !loadError && visiblePatients.length === 0 && (
                 <EmptyState

@@ -2,9 +2,10 @@ import {useCallback, useEffect, useState} from "react";
 import {FiSearch} from "react-icons/fi";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
-import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {initialsOf} from "../../utils/initials.js";
 import accountStyles from "./admin-prescribers.module.css";
 import styles from "./admin-patients.module.css";
@@ -62,6 +63,8 @@ export default function AdminPatients() {
     const [deactivatedPatients, setDeactivatedPatients] = useState([]);
     const [notice, setNotice] = useState(null);
     const [pageError, setPageError] = useState(null);
+    // falha de carregar a lista das desativadas. o pageError fica pra acao recusada
+    const [loadError, setLoadError] = useState(null);
     const [patientToToggle, setPatientToToggle] = useState(null);
     // contas com o pedido de desativar ou reativar ainda sem resposta
     const [busyIds, setBusyIds] = useState([]);
@@ -71,9 +74,10 @@ export default function AdminPatients() {
             .then((patientList) => {
                 setDeactivatedPatients(patientList);
                 setPageError(null);
+                setLoadError(null);
             })
             .catch((requestError) => {
-                setPageError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar as contas desativadas. Confira sua internet e tente de novo."));
             });
     }, []);
@@ -172,6 +176,7 @@ export default function AdminPatients() {
 
             {notice && <p className="aviso" role="status">{notice}</p>}
             {pageError && <p className="aviso aviso--atencao" role="alert">{pageError}</p>}
+            {loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
             <form className={styles.search} onSubmit={handleSearch}>
                 <div className={accountStyles.field + " " + styles.searchField}>
@@ -208,7 +213,7 @@ export default function AdminPatients() {
                 </ul>
             )}
 
-            {otherDeactivated.length > 0 && (
+            {!loadError && otherDeactivated.length > 0 && (
                 <div className={styles.section}>
                     <h2 className={styles.sectionTitle}>Contas desativadas</h2>
                     <ul className={accountStyles.list}>

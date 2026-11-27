@@ -49,6 +49,15 @@ export function errorMessageOf(requestError, offlineText = CONNECTION_ERROR_MESS
     return offlineText;
 }
 
+// erro de carregar uma tela, pro cartao de erro (components/error-card): a frase e se foi falta de acesso
+// o 403 quer dizer q a conta n pode abrir aquilo, e o cartao troca o Tentar de novo pelo Ir para o inicio
+export function loadErrorOf(requestError, offlineText = CONNECTION_ERROR_MESSAGE) {
+    return {
+        message: errorMessageOf(requestError, offlineText),
+        isDenied: requestError instanceof ApiError && requestError.status === 403,
+    };
+}
+
 // separa o erro da api em erros de campo e mensagem geral
 export function readRequestError(requestError, offlineText = CONNECTION_ERROR_MESSAGE) {
     if (!(requestError instanceof ApiError)) {

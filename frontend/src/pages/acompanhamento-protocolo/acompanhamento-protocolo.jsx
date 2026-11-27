@@ -1,16 +1,16 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {Link, useNavigate, useParams} from "react-router";
-import {FiCalendar, FiMoon, FiUsers} from "react-icons/fi";
+import {useNavigate, useParams} from "react-router";
+import {FiCalendar, FiMoon} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ChoiceCard from "../../components/choice-card/choice-card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
-import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import FormSection, {FieldRow, FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf} from "../../services/api.js";
+import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {addDays, formatDate, shortTime, toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
 import styles from "./acompanhamento-protocolo.module.css";
@@ -142,8 +142,8 @@ export default function AcompanhamentoProtocolo() {
                 const isNotTheirs = requestError instanceof ApiError
                     && (requestError.status === 403 || requestError.status === 404);
                 setLoadError(isNotTheirs
-                    ? "Acesso negado. Esse paciente não está na sua lista de pacientes."
-                    : errorMessageOf(requestError,
+                    ? {message: "Acesso negado. Esse paciente não está na sua lista de pacientes.", isDenied: true}
+                    : loadErrorOf(requestError,
                         "Não foi possível abrir o acompanhamento. Confira sua internet e tente de novo."));
             })
             .finally(() => setIsLoading(false));
@@ -245,12 +245,7 @@ export default function AcompanhamentoProtocolo() {
         return (
             <section className={styles.page}>
                 <PageHeader title="Acompanhamento automático"/>
-                <p className="aviso aviso--atencao" role="alert">{loadError}</p>
-                <EmptyState
-                    icon={FiUsers}
-                    message="Escolha um dos seus pacientes para ver o acompanhamento automático dele."
-                    action={<Link to="/lista-paciente" className="button-secondary">Ver pacientes</Link>}
-                />
+                <LoadError error={loadError} isUnderPageHeader={true}/>
             </section>
         );
     }

@@ -1,13 +1,14 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router";
 import {FiPlus, FiTrash2} from "react-icons/fi";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import FormSection, {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import SelectField from "../../components/form/select-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, readRequestError} from "../../services/api.js";
+import {apiService, errorMessageOf, loadErrorOf, readRequestError} from "../../services/api.js";
 import {DURATION_OPTIONS, WEEKDAYS} from "../../utils/appointment-labels.js";
 import {formatDate, formatWeekdayAndDate, shortTime, toIsoDate} from "../../utils/date-format.js";
 import styles from "./agenda-disponibilidade.module.css";
@@ -114,7 +115,7 @@ export default function AgendaDisponibilidade() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar seus horários. Confira sua internet e tente de novo."));
                 }
             })
@@ -257,7 +258,7 @@ export default function AgendaDisponibilidade() {
     }
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     return (

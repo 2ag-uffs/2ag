@@ -1,10 +1,11 @@
 import {useEffect, useState} from "react";
 import {FiFileText} from "react-icons/fi";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import PrescriptionCard from "../../components/prescription-card/prescription-card.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {formatDate} from "../../utils/date-format.js";
 import {lastPrescriptionTitle} from "../../utils/prescription-labels.js";
 import styles from "./my-prescriptions.module.css";
@@ -15,7 +16,7 @@ export default function MyPrescriptions() {
     const loggedUser = getLoggedUser();
     const [prescriptions, setPrescriptions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -28,7 +29,7 @@ export default function MyPrescriptions() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setErrorMessage(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível carregar suas prescrições. Confira sua internet e tente de novo."));
                 }
             })
@@ -60,9 +61,9 @@ export default function MyPrescriptions() {
         <section className={styles.page}>
             <PageHeader title="Minhas prescrições" subtitle={subtitle}/>
 
-            {errorMessage && <p className="aviso aviso--atencao" role="alert">{errorMessage}</p>}
+            {loadError && <LoadError error={loadError} isUnderPageHeader={true}/>}
 
-            {!errorMessage && (
+            {!loadError && (
                 <>
                     <section className={styles.section}>
                         <h2 className={styles.sectionTitle}>

@@ -3,6 +3,7 @@ import {useBlocker, useNavigate, useParams} from "react-router";
 import {FiAlertCircle, FiCheckCircle} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import {FormActions} from "../../components/form-section/form-section.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
 import {useFocusFirstError} from "../../components/form/focus-first-error.js";
@@ -10,7 +11,7 @@ import {useFocusWhenShown} from "../../components/form/focus-when-shown.js";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ScaleForm from "../../components/scale-form/scale-form.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, errorMessageOf, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {isConfirmed} from "../../utils/appointment-labels.js";
 import {ARCHIVED_EXAM_NOTICE} from "../../utils/archived-patient.js";
 import {formatDateTime, isInTheFuture} from "../../utils/date-format.js";
@@ -103,7 +104,7 @@ export default function MiniExame() {
             })
             .catch((requestError) => {
                 if (isCurrentRequest) {
-                    setLoadError(errorMessageOf(requestError,
+                    setLoadError(loadErrorOf(requestError,
                         "Não foi possível abrir o exame. Confira sua internet e tente de novo."));
                 }
             });
@@ -157,7 +158,7 @@ export default function MiniExame() {
     };
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!definition || !appointment) {

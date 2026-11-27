@@ -39,6 +39,9 @@ describe("ListaPacientes", () => {
 
         expect(await screen.findByRole("alert"))
             .toHaveTextContent("Não foi possível carregar seus pacientes. Confira sua internet e tente de novo.");
+        // a frase solta virou o cartao com o botao (decisao da dona, nov/2026)
+        expect(screen.getByRole("heading", {level: 2, name: "Esta tela não carregou"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Tentar de novo"})).toBeInTheDocument();
     });
 
     // a conta desligada pela administracao so aparecia na trilha; o prescritor precisa ver na lista (#153)

@@ -2,11 +2,12 @@ import {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import AppointmentStatusBadge from "../../components/appointment-status-badge/appointment-status-badge.jsx";
 import Card from "../../components/card/card.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {ARCHIVED_APPOINTMENT_NOTICE} from "../../utils/archived-patient.js";
 import {formatDate, formatDateTimeWithZone, withBrasiliaTimeNote} from "../../utils/date-format.js";
@@ -56,13 +57,13 @@ export default function DashboardPaciente() {
                 setPanel({...dashboard, isArchived: patient.archived, archivedAt: patient.archivedAt});
             })
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar o painel. Confira sua internet e tente de novo."));
             });
     }, [loggedUser, navigate]);
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!panel) {

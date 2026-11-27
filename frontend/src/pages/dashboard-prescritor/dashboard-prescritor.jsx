@@ -2,12 +2,13 @@ import {useEffect, useState} from "react";
 import {useLocation, useNavigate} from "react-router";
 import {FiAlertCircle, FiBell, FiCalendar, FiInbox, FiUsers} from "react-icons/fi";
 import Card from "../../components/card/card.jsx";
+import {LoadError} from "../../components/error-card/error-card.jsx";
 import InvitePatientModal from "../../components/invite-patient-modal/invite-patient-modal.jsx";
 import ItemList, {ListItem} from "../../components/item-list/item-list.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import ShownOfTotal from "../../components/shown-of-total/shown-of-total.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
-import {apiService, errorMessageOf, getLoggedUser} from "../../services/api.js";
+import {apiService, getLoggedUser, loadErrorOf} from "../../services/api.js";
 import {modalityLabelOf} from "../../utils/appointment-labels.js";
 import {formatDate, formatDateTime, formatTime, isInTheFuture} from "../../utils/date-format.js";
 import {firstNameOf} from "../../utils/initials.js";
@@ -36,13 +37,13 @@ export default function DashboardPrescritor() {
         apiService.get("/dashboard/prescriber/" + loggedUser.id)
             .then(setPanel)
             .catch((requestError) => {
-                setLoadError(errorMessageOf(requestError,
+                setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar o painel. Confira sua internet e tente de novo."));
             });
     }, [loggedUser, navigate]);
 
     if (loadError) {
-        return <p className="aviso aviso--atencao" role="alert">{loadError}</p>;
+        return <LoadError error={loadError}/>;
     }
 
     if (!panel) {
