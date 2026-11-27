@@ -455,7 +455,7 @@ export default function AgendamentoPrescritor() {
             )}
             {notice && <p className="aviso" role="status">{notice}</p>}
             {actionError && <p className="aviso aviso--atencao" role="alert">{actionError}</p>}
-            {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
 
             <Card title="Pedidos aguardando resposta" count={waitingRequests.length}>
                 {waitingRequests.length === 0 ? (

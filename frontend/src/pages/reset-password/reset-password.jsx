@@ -82,7 +82,7 @@ export default function ResetPassword() {
     if (!token) {
         return (
             <AuthLayout title="Criar senha nova">
-                <p className={"aviso aviso--atencao " + styles.message}>
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">
                     Este link está incompleto. Abra de novo o link que chegou no seu e-mail ou peça um novo.
                 </p>
                 <Link to="/esqueci-senha" className={"button button-secondary " + styles.linkButton}>

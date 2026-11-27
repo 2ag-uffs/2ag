@@ -387,7 +387,8 @@ export default function AgendaDisponibilidade() {
                     disabled={isSavingDayOff}
                 >
                     {dayOffNotice && <p className="aviso" role="status">{dayOffNotice}</p>}
-                    {dayOffWarning && <p className="aviso aviso--atencao" role="alert">{dayOffWarning}</p>}
+                    {/* a folga foi salva: o lembrete do q continua marcado n eh erro, entao n leva role="alert" */}
+                    {dayOffWarning && <p className="aviso aviso--atencao" role="status">{dayOffWarning}</p>}
                     {dayOffError && <p className="aviso aviso--atencao" role="alert">{dayOffError}</p>}
 
                     <div className={styles.dayOffForm}>

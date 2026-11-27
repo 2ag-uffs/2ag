@@ -64,6 +64,25 @@ function CoveredPage() {
     );
 }
 
+// tela com o aviso geral de erro no topo, sem campo marcado, e com a nota neutra q n eh erro
+function NoticePage() {
+    const [error, setError] = useState(null);
+    const [isCovered, setIsCovered] = useState(false);
+    return (
+        <>
+            <p className="aviso">O cadastro é feito pelo link de convite.</p>
+            <p className="aviso" role="status">Dados salvos.</p>
+            <button type="button" onClick={() => setError("Não foi possível conectar ao sistema.")}>Enviar sem rede</button>
+            <button type="button" onClick={() => setError(null)}>Enviar com rede</button>
+            <button type="button" onClick={() => setIsCovered(!isCovered)}>Cobrir a tela</button>
+            <div hidden={isCovered}>
+                {error && <p className="aviso aviso--atencao" role="alert">{error}</p>}
+            </div>
+            <Link to="/agenda">Agenda</Link>
+        </>
+    );
+}
+
 // as rotas de mentira ficam embaixo da msm raiz q o router.jsx usa
 function openAt(path) {
     const router = createMemoryRouter([
@@ -74,6 +93,7 @@ function openAt(path) {
                 {path: "/agenda", handle: {title: "Agenda"}, element: <p>agenda</p>},
                 {path: "/pacientes", handle: {title: "Pacientes"}, element: <PatientsPage/>},
                 {path: "/coberta", handle: {title: "Perfil"}, element: <CoveredPage/>},
+                {path: "/aviso", handle: {title: "Entrar"}, element: <NoticePage/>},
                 {path: "/sem-nome", element: <p>sem nome</p>},
                 {
                     errorElement: <RouteError/>,
@@ -182,6 +202,55 @@ describe("PageTitle", () => {
         await expectTitle("Erro: Perfil · 2AG");
     });
 
+    // decisao da dona em novembro de 2026: o aviso geral de erro, sem campo marcado, tbm poe o Erro na frente
+    it("aviso geral de erro sem campo poe Erro na frente e o titulo volta qnd o aviso sai", async () => {
+        const user = userEvent.setup();
+        openAt("/aviso");
+        await expectTitle("Entrar · 2AG");
+
+        await user.click(screen.getByRole("button", {name: "Enviar sem rede"}));
+        expect(screen.getByRole("alert")).toHaveTextContent("Não foi possível conectar ao sistema.");
+        await expectTitle("Erro: Entrar · 2AG");
+
+        await user.click(screen.getByRole("button", {name: "Enviar com rede"}));
+        await expectTitle("Entrar · 2AG");
+    });
+
+    it("nota neutra e aviso de sucesso n poem Erro na frente", async () => {
+        openAt("/aviso");
+        await expectTitle("Entrar · 2AG");
+
+        expect(screen.getByText("O cadastro é feito pelo link de convite.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Dados salvos.");
+        // da tempo de o observador rodar antes de conferir q o titulo ficou como estava
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(document.title).toBe("Entrar · 2AG");
+    });
+
+    it("trocar de tela com o aviso geral de erro tira o Erro da frente", async () => {
+        const user = userEvent.setup();
+        openAt("/aviso");
+        await user.click(screen.getByRole("button", {name: "Enviar sem rede"}));
+        await expectTitle("Erro: Entrar · 2AG");
+
+        await user.click(screen.getByRole("link", {name: "Agenda"}));
+        await expectTitle("Agenda · 2AG");
+    });
+
+    it("aviso geral de erro na tela escondida n conta, e volta a contar qnd ela aparece de novo", async () => {
+        const user = userEvent.setup();
+        openAt("/aviso");
+        await user.click(screen.getByRole("button", {name: "Enviar sem rede"}));
+        await expectTitle("Erro: Entrar · 2AG");
+
+        await user.click(screen.getByRole("button", {name: "Cobrir a tela"}));
+        await expectTitle("Entrar · 2AG");
+
+        await user.click(screen.getByRole("button", {name: "Cobrir a tela"}));
+        await expectTitle("Erro: Entrar · 2AG");
+    });
+
+    // a tela de erro leva role="alert" e ja diz o problema no nome, entao n ganha o Erro na frente
     it("a tela q n abriu troca o nome da rota pelo dela, e sair dela devolve o nome da rota", async () => {
         // o componente e o router escrevem o erro no console de proposito
         vi.spyOn(console, "error").mockImplementation(() => {});

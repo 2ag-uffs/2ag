@@ -10,23 +10,27 @@ const ERROR_PREFIX = "Erro: ";
 let routeName = "";
 // a tela de erro entra no lugar da rota, e o nome dela vale enquanto ela estiver na tela
 let statusName = "";
-let hasFieldError = false;
+let hasError = false;
 
 function writeTitle() {
     const name = statusName || routeName;
     const title = name ? name + " · " + APP_NAME : APP_NAME;
-    document.title = hasFieldError ? ERROR_PREFIX + title : title;
+    // a tela de erro ja diz o problema no proprio nome, entao ela n ganha o "Erro: "
+    document.title = hasError && !statusName ? ERROR_PREFIX + title : title;
 }
 
-// campo q o envio recusado marcou. o da tela escondida pelo termo ou pelo login por cima n conta
-function findFieldError() {
-    const markedFields = Array.from(document.querySelectorAll("[aria-invalid='true']"));
-    return markedFields.some((field) => !field.closest("[hidden]"));
+// campo q o envio recusado marcou, ou aviso geral de erro sem campo (falha de conexao, recusa da api)
+// todo aviso de erro da tela leva role="alert". a nota neutra e o aviso de sucesso n levam, e n contam
+// o da tela escondida pelo termo ou pelo login por cima tbm n conta
+function findError() {
+    const marked = Array.from(document.querySelectorAll("[aria-invalid='true'], [role='alert']"));
+    return marked.some((element) => !element.closest("[hidden]"));
 }
 
 // raiz de todas as rotas, pra o titulo valer tbm nas telas de fora do layout (entrar, cadastro, senha)
-// o "Erro: " na frente acompanha o campo marcado com erro q esta na tela: ele sai sozinho qnd o envio
-// seguinte passa, qnd a pessoa troca de tela e qnd o modal do formulario fecha, pq o campo marcado some junto
+// o "Erro: " na frente acompanha o campo marcado com erro e o aviso geral de erro q estao na tela: ele sai
+// sozinho qnd o envio seguinte passa, qnd a pessoa troca de tela e qnd o modal do formulario fecha, pq o campo
+// marcado e o aviso somem junto
 export default function PageTitle() {
     const matches = useMatches();
     const lastMatch = matches[matches.length - 1];
@@ -38,21 +42,21 @@ export default function PageTitle() {
     }, [name]);
 
     useEffect(() => {
-        const checkFields = () => {
-            hasFieldError = findFieldError();
+        const checkErrors = () => {
+            hasError = findError();
             writeTitle();
         };
-        const observer = new MutationObserver(checkFields);
+        const observer = new MutationObserver(checkErrors);
         observer.observe(document.body, {
             subtree: true,
             childList: true,
             attributes: true,
-            attributeFilter: ["aria-invalid", "hidden"],
+            attributeFilter: ["aria-invalid", "role", "hidden"],
         });
-        checkFields();
+        checkErrors();
         return () => {
             observer.disconnect();
-            hasFieldError = false;
+            hasError = false;
             writeTitle();
         };
     }, []);

@@ -1,8 +1,9 @@
-import {fireEvent, render, screen} from "@testing-library/react";
+import {fireEvent, render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
+import PageTitle from "../../app/page-title.jsx";
 import {apiService, ApiError} from "../../services/api.js";
 import {formatWeekdayAndDate} from "../../utils/date-format.js";
 import AgendaDisponibilidade from "./agenda-disponibilidade.jsx";
@@ -113,6 +114,38 @@ describe("AgendaDisponibilidade", () => {
         expect(await screen.findByText(/Você tem 2 consultas ou pedidos nesse dia/)).toBeInTheDocument();
         expect(screen.getByText(formatWeekdayAndDate("2030-03-04"))).toBeInTheDocument();
         expect(screen.getByText("2 consultas ou pedidos ainda marcados")).toBeInTheDocument();
+    });
+
+    // a folga foi salva, entao o lembrete do q continua marcado n eh erro: n interrompe o leitor de tela
+    // nem poe o Erro no titulo da aba
+    it("o lembrete das consultas q continuam no dia da folga n eh anunciado como erro nem muda o titulo", async () => {
+        vi.spyOn(apiService, "post").mockResolvedValue({date: "2030-03-04", appointmentsOnTheDay: 1});
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/availability/days-off" ? [] : AVAILABILITY));
+        const user = userEvent.setup();
+        const router = createMemoryRouter([{
+            element: <PageTitle/>,
+            children: [{
+                path: "/agenda/disponibilidade",
+                handle: {title: "Horários de atendimento"},
+                element: <AgendaDisponibilidade/>,
+            }],
+        }], {initialEntries: ["/agenda/disponibilidade"]});
+        render(<RouterProvider router={router}/>);
+
+        fireEvent.change(await screen.findByLabelText("Dia"), {target: {value: "2030-03-04"}});
+        await user.click(screen.getByRole("button", {name: "Marcar folga"}));
+
+        const warning = await screen.findByText(/Você tem 1 consulta ou pedido nesse dia/);
+        expect(warning).toHaveAttribute("role", "status");
+        expect(warning).toHaveClass("aviso", "aviso--atencao");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        await waitFor(() => expect(document.title).toBe("Horários de atendimento · 2AG"));
+
+        // o erro de vdd continua pondo o Erro na frente
+        await user.click(screen.getByRole("button", {name: "Marcar folga"}));
+        expect(screen.getByText("Escolha o dia.")).toHaveAttribute("role", "alert");
+        await waitFor(() => expect(document.title).toBe("Erro: Horários de atendimento · 2AG"));
     });
 
     it("sem dia escolhido pede o dia, e o dia repetido mostra o erro da api", async () => {

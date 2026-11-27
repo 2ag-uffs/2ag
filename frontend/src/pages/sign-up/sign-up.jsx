@@ -373,7 +373,7 @@ export default function SignUp() {
     if (otherAccount && inviteStatus === "invalid") {
         return (
             <AuthLayout title="Criar conta">
-                <p className={"aviso aviso--atencao " + styles.message}>
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">
                     Este convite não vale mais: ele pode ter vencido ou já ter sido usado. Você continua conectado
                     como <strong>{otherAccount.name}</strong>. Para criar outra conta, peça um novo link ao seu
                     prescritor.

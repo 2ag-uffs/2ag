@@ -456,7 +456,7 @@ export default function Progresso() {
     }
 
     if (!patientId) {
-        return <p className="aviso aviso--atencao">Não foi possível identificar o paciente.</p>;
+        return <p className="aviso aviso--atencao" role="alert">Não foi possível identificar o paciente.</p>;
     }
 
     // sem o paciente a tela fica so no aviso: filtro grafico e cartao vazios

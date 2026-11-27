@@ -59,8 +59,10 @@ describe("AppRouter", () => {
         ["/entrar", "Entrar · 2AG"],
         ["/cadastro", "Criar conta · 2AG"],
         ["/esqueci-senha", "Recuperar senha · 2AG"],
-        ["/redefinir-senha", "Criar senha nova · 2AG"],
-        ["/confirmar-email", "Confirmar e-mail novo · 2AG"],
+        // sem o codigo no endereco as duas abrem no aviso de link incompleto, q eh erro e poe o Erro na frente
+        ["/redefinir-senha", "Erro: Criar senha nova · 2AG"],
+        ["/confirmar-email", "Erro: Confirmar e-mail novo · 2AG"],
+        ["/confirmar-email?token=abc", "Confirmar e-mail novo · 2AG"],
     ])("a tela publica %s tem o titulo %s", async (path, title) => {
         openAt(path);
 

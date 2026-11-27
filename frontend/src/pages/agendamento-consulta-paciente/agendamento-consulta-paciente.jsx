@@ -363,7 +363,7 @@ export default function AgendamentoConsultaPaciente() {
             {actionError && (
                 <p className="aviso aviso--atencao" role="alert" tabIndex={-1} ref={actionErrorRef}>{actionError}</p>
             )}
-            {loadError && <p className="aviso aviso--atencao">{loadError}</p>}
+            {loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
 
             {patient.archived && <EmptyState icon={FiUserX} message={ARCHIVED_APPOINTMENT_NOTICE}/>}
 

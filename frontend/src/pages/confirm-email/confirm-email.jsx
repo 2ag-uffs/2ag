@@ -56,7 +56,7 @@ export default function ConfirmEmail() {
     if (!token) {
         return (
             <AuthLayout title="Confirmar e-mail novo">
-                <p className={"aviso aviso--atencao " + styles.message}>
+                <p className={"aviso aviso--atencao " + styles.message} role="alert">
                     Este link está incompleto. Abra de novo o link que chegou no seu e-mail novo ou peça a troca
                     de novo no seu perfil.
                 </p>
