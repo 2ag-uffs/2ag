@@ -168,4 +168,4 @@ vale para todo código novo ou reescrito:
 
 ## situação das telas
 
-todas as telas seguem o padrão novo, cada uma com o seu css module. o css global que sobrou fica em `src/styles`: cores, fontes, botões, campos, avisos e os tokens de espaço e tamanho.
+todas as telas seguem o padrão novo, cada uma com o seu css module. o css global que sobrou fica em `src/styles`: cores, fontes, botões, campos, avisos e os tokens de espaço e tamanho. os algarismos saem na fonte do aparelho (`system-ui`) e o resto do texto na Yaldevi, sem baixar arquivo: as faces da Yaldevi em `styles/fonts.css` deixam os algarismos fora do `unicode-range`, porque os da Yaldevi são do estilo antigo e o zero parecia a letra o em doses e horários (decisão da dona do projeto, novembro de 2026; `styles/numerals.test.js`).

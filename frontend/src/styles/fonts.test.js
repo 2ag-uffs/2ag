@@ -5,7 +5,7 @@ import {cssRules, declarationsOf, readCss} from "../test/css-rules.js";
 // o arquivo da Belleza do projeto so tem o A e o Á das letras q o portugues usa
 // enquanto o arquivo completo n chega nenhum titulo pede ela, senao so o A sai diferente do resto da palavra
 
-const YALDEVI = "\"Yaldevi Colombo\", sans-serif";
+const YALDEVI = "\"Yaldevi Colombo\", system-ui, sans-serif";
 
 const TITLES = [
     ["./fonts.css", "h1"],
@@ -14,8 +14,9 @@ const TITLES = [
     ["../pages/sign-up/sign-up.module.css", ".sectionTitle"],
 ];
 
-// as letras do recorte latin da Yaldevi, as msm do comando q cortou os arquivos
-const LATIN = "U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD";
+// as letras do recorte latin da Yaldevi, as msm do comando q cortou os arquivos, menos os algarismos (U+0030-0039),
+// q saem na fonte do aparelho (numerals.test.js)
+const LATIN = "U+0000-002F, U+003A-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD";
 
 // o peso q o css pede e o arquivo q desenha ele (a troca de nome entre peso e arquivo eh a de hj e fica assim)
 const YALDEVI_FILES = {

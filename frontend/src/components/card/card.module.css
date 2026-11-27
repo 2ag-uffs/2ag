@@ -32,7 +32,7 @@
     background-color: var(--color-primary-soft);
     border-radius: var(--radius-pill);
     color: var(--color-primary);
-    font-family: "Yaldevi Colombo", sans-serif;
+    font-family: "Yaldevi Colombo", system-ui, sans-serif;
     font-size: var(--text-sm);
     font-weight: 700;
     line-height: 1.5;

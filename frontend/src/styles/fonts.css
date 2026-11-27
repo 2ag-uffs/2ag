@@ -1,7 +1,10 @@
 /*
  * Yaldevi: o corpo de texto da marca
  * os arquivos sao o recorte latin dos originais, sem o alfabeto cingales q vinha junto e pesava 80% de cada um.
- * o unicode-range eh o msm do recorte, entao letra fora dele vai direto pra fonte do aparelho.
+ * o unicode-range eh o do recorte menos os algarismos (U+0030-0039), entao letra fora dele vai direto pra fonte do aparelho.
+ * os numeros da Yaldevi sao do estilo antigo: o zero eh baixinho como um o e 30 mL parecia 3o mL.
+ * sem eles no unicode-range o navegador desenha os algarismos com a fonte seguinte da lista, o system-ui,
+ * q eh a fonte do proprio aparelho e n baixa arquivo nenhum
  * com o swap o texto aparece na fonte do aparelho e troca qnd a da marca chega, em vez de ficar invisivel
  */
 @font-face {
@@ -12,7 +15,7 @@
     src:
         local("Yaldevi Colombo Regular"),
         url("/fonts/YaldeviColombo-Regular-latin.woff") format("woff");
-    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
+    unicode-range: U+0000-002F, U+003A-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -23,7 +26,7 @@
     src:
         local("Yaldevi Colombo Bold"),
         url("/fonts/YaldeviColombo-Bold-latin.woff") format("woff");
-    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
+    unicode-range: U+0000-002F, U+003A-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -34,7 +37,7 @@
     src:
         local("Yaldevi Colombo Medium Regular"),
         url("/fonts/YaldeviColombo-Medium-latin.woff") format("woff");
-    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
+    unicode-range: U+0000-002F, U+003A-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -45,7 +48,7 @@
     src:
         local("Yaldevi Colombo SemiBold Regular"),
         url("/fonts/YaldeviColombo-SemiBold-latin.woff") format("woff");
-    unicode-range: U+0000-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
+    unicode-range: U+0000-002F, U+003A-024F, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2190-2199, U+2212, U+2264-2265, U+FEFF, U+FFFD;
 }
 
 /*
@@ -68,6 +71,6 @@
    com ela na frente so o A do titulo saia na Belleza e o resto da palavra na Yaldevi
    os titulos ficam na Yaldevi ate o arquivo latin chegar. a face de cima fica: fonte sem uso o navegador n baixa */
 h1, h2, h3 {
-    font-family: "Yaldevi Colombo", sans-serif;
+    font-family: "Yaldevi Colombo", system-ui, sans-serif;
     letter-spacing: 0.01em;
 }

@@ -29,7 +29,7 @@
 .sectionTitle {
     color: var(--color-text-headings);
     float: left;
-    font-family: "Yaldevi Colombo", sans-serif;
+    font-family: "Yaldevi Colombo", system-ui, sans-serif;
     font-size: var(--text-lg);
     padding: 0;
     width: 100%;
