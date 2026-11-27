@@ -46,6 +46,47 @@ describe("cabecalho do celular", () => {
     });
 });
 
+// decisao de nov/2026: o Perfil do paciente saiu da barra de baixo e virou um botao com o nome no cabecalho
+describe("Perfil no cabecalho do celular do paciente", () => {
+    // a letra saia em 14 px, menor q o corpo do texto. medido no chrome: com 16 px e a letra em 200% o Perfil
+    // fica com 83 px e o cabecalho de 320 px ainda cabe inteiro
+    it("o botao tem pelo menos 44 px de toque, borda e a letra do corpo, q cresce com a da pessoa", () => {
+        const link = declarationsOf(mediaRules(css, MOBILE), ".headerLink");
+
+        expect(link["min-height"]).toBe("44px");
+        expect(link["min-width"]).toBe("44px");
+        expect(link["font-size"]).toBe("var(--text-md)");
+        expect(link.border).toBe("1px solid rgba(255, 255, 255, 0.7)");
+    });
+
+    it("o perfil aberto fica marcado pelo fundo e pelo sublinhado, n so pela cor", () => {
+        const active = declarationsOf(mediaRules(css, MOBILE), ".headerLinkActive");
+
+        expect(active["background-color"]).toBe("rgba(255, 255, 255, 0.16)");
+        expect(active["text-decoration"]).toBe("underline");
+    });
+
+    // com a letra em 200% em 320 px as folgas em rem empurravam o sair pra fora da tela
+    it("as folgas do cabecalho com o Perfil sao em px e a logo sai do meio pra n ficar embaixo dele", () => {
+        const mobile = mediaRules(css, MOBILE);
+        const header = declarationsOf(mobile, ".mobileHeaderWithLink");
+        const logo = declarationsOf(mobile, ".mobileHeaderWithLink .mobileLogo");
+
+        expect(header["padding-left"]).toBe("max(12px, env(safe-area-inset-left))");
+        expect(header["padding-right"]).toBe("max(12px, env(safe-area-inset-right))");
+        expect(declarationsOf(mobile, ".mobileHeaderWithLink .headerActions").gap).toBe("8px");
+        expect(logo.position).toBe("static");
+        expect(logo.transform).toBe("none");
+        expect(logo["margin-right"]).toBe("auto");
+    });
+
+    it("o foco do teclado no Perfil tem o msm anel dos botoes do cabecalho", () => {
+        const focusRule = cssRules(css).find((rule) => rule.selectors.includes(".iconButton:focus-visible"));
+
+        expect(focusRule.selectors).toContain(".headerLink:focus-visible");
+    });
+});
+
 // em q posicao a declaracao fica dentro da regra: a longhand q vem antes da shorthand perde pra ela
 function placeInRule(cssText, selector, property) {
     const rule = cssRules(cssText).find((item) => item.selectors.includes(selector));

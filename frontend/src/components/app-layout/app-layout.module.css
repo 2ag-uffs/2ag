@@ -63,6 +63,7 @@
 
 .brand:focus-visible,
 .sideLink:focus-visible,
+.headerLink:focus-visible,
 .iconButton:focus-visible {
     box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
     outline: none;
@@ -389,6 +390,58 @@
         gap: var(--space-2);
     }
 
+    /* o Perfil do paciente, com o nome escrito, ao lado do tema e do sair. a letra eh a do corpo, pq eh texto
+       q a pessoa le pra agir, e cresce com a dela: em 200% ainda cabe em 320 px.
+       o toque tem 44 px mesmo com ela pequena. a borda a 70% sobre o verde da mais de 3:1 */
+    .headerLink {
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: var(--radius-pill);
+        color: inherit;
+        display: inline-flex;
+        font-size: var(--text-md);
+        font-weight: 600;
+        justify-content: center;
+        line-height: var(--leading-tight);
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0 8px;
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .headerLink:hover {
+        background-color: rgba(255, 255, 255, 0.14);
+    }
+
+    /* o perfil aberto fica marcado pelo fundo e pelo sublinhado, n so pela cor */
+    .headerLinkActive {
+        background-color: rgba(255, 255, 255, 0.16);
+        text-decoration: underline;
+        text-underline-offset: 0.2em;
+    }
+
+    /* com o Perfil os botoes da direita passam do meio em 320 px, entao a logo sai do meio e fica
+       depois do voltar, sempre no msm lugar */
+    .mobileHeaderWithLink .mobileLogo {
+        left: auto;
+        margin-left: 8px;
+        margin-right: auto;
+        position: static;
+        transform: none;
+    }
+
+    /* as folgas desse cabecalho sao em px, como os icones: em rem elas dobravam com a letra em 200% e,
+       em 320 px, o sair ia pra fora da tela. em px o voltar, a logo, o Perfil, o tema e o sair cabem */
+    .mobileHeaderWithLink {
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+    }
+
+    .mobileHeaderWithLink .headerActions {
+        gap: 8px;
+    }
+
     /* deitado, o texto e os cartoes ficam com a folga de 16 px depois do entalhe, e n embaixo dele */
     .content {
         padding: var(--space-5) var(--space-4) calc(var(--bottom-bar-height) + var(--space-6) + env(safe-area-inset-bottom));
@@ -422,8 +475,8 @@
         gap: 0.125rem;
         justify-content: center;
         min-height: var(--bottom-bar-height);
-        /* sem isso o item n fica mais estreito q o icone e o nome, e com a letra em 200% o Avisos e o Perfil
-           saiam da tela, sem outro caminho pro perfil no celular */
+        /* sem isso o item n fica mais estreito q o icone e o nome, e com a letra em 200% os dois ultimos
+           saiam da tela */
         min-width: 0;
         padding: var(--space-1);
         text-decoration: none;

@@ -890,7 +890,7 @@ describe("AppLayout", () => {
         expect(bottomMenu().getByRole("link", {name: "Pacientes"})).toHaveAttribute("aria-current", "page");
     });
 
-    // prescricoes, historico, impressao, anamnese e escalas n estao na barra do celular, e nelas nenhum item ficava
+    // prescricoes, historico, impressao e anamnese n estao na barra do celular, e nelas nenhum item ficava
     // marcado: a barra marca o inicio, e o menu lateral continua marcando o item da tela
     // no celular a lateral some e o leitor de tela so tem a barra: o inicio eh o item atual dela, e n a pagina aberta
     [
@@ -898,9 +898,6 @@ describe("AppLayout", () => {
         ["/historico-paciente", "Histórico"],
         ["/impressao", "Histórico"],
         ["/anamnese", "Histórico"],
-        ["/pacientes/3/escalas", "Escalas"],
-        ["/escalas/diario-sono", "Escalas"],
-        ["/escalas/resposta/7", "Escalas"],
     ].forEach(([path, sideLabel]) => {
         it("no celular " + path + " marca o inicio na barra sem dizer q eh a pagina aberta e o menu lateral marca " + sideLabel, async () => {
             setLoggedUser(MARIA);
@@ -912,6 +909,58 @@ describe("AppLayout", () => {
             expect(sideMenu().getByRole("link", {name: sideLabel})).toHaveAttribute("aria-current", "page");
             expect(sideMenu().getByRole("link", {name: "Início"})).not.toHaveAttribute("aria-current");
         });
+    });
+
+    // decisao de nov/2026: as escalas entram na barra do celular do paciente, entre o inicio e o progresso,
+    // e o perfil sai dela e vira um botao com o nome no cabecalho
+    it("a barra do celular do paciente tem Início, Escalas, Progresso, Consultas e Avisos, e o Perfil fica no cabeçalho", async () => {
+        setLoggedUser(MARIA);
+        openLayoutAt("/painel-paciente");
+
+        await screen.findByText("conteudo da tela");
+        expect(bottomMenu().getAllByRole("link").map((link) => link.textContent))
+            .toEqual(["Início", "Escalas", "Progresso", "Consultas", "Avisos"]);
+        expect(bottomMenu().getByRole("link", {name: "Escalas"})).toHaveAttribute("href", "/pacientes/3/escalas");
+        const profileLink = within(screen.getByRole("banner")).getByRole("link", {name: "Perfil"});
+        expect(profileLink).toHaveAttribute("href", "/perfil");
+        expect(profileLink).toHaveTextContent("Perfil");
+        expect(profileLink).not.toHaveAttribute("aria-current");
+        // o menu lateral do computador continua com os oito itens
+        expect(sideMenu().getAllByRole("link").map((link) => link.textContent)).toEqual(
+            ["Início", "Escalas", "Progresso", "Consultas", "Prescrições", "Histórico", "Avisos", "Perfil"]);
+    });
+
+    ["/pacientes/3/escalas", "/escalas/diario-sono", "/escalas/resposta/7"].forEach((path) => {
+        it("no celular " + path + " marca Escalas na barra como a pagina aberta", async () => {
+            setLoggedUser(MARIA);
+            openLayoutAt(path);
+
+            await screen.findByText("conteudo da tela");
+            expect(bottomMenu().getByRole("link", {name: "Escalas"})).toHaveAttribute("aria-current", "page");
+            expect(bottomMenu().getAllByRole("link").filter((link) => link.hasAttribute("aria-current"))).toHaveLength(1);
+            expect(sideMenu().getByRole("link", {name: "Escalas"})).toHaveAttribute("aria-current", "page");
+        });
+    });
+
+    it("no perfil do paciente o botao do cabecalho fica marcado e a barra de baixo n marca nenhum item", async () => {
+        setLoggedUser(MARIA);
+        openLayoutAt("/perfil");
+
+        await screen.findByText("conteudo da tela");
+        expect(within(screen.getByRole("banner")).getByRole("link", {name: "Perfil"}))
+            .toHaveAttribute("aria-current", "page");
+        expect(bottomMenu().getAllByRole("link").filter((link) => link.hasAttribute("aria-current"))).toHaveLength(0);
+        expect(sideMenu().getByRole("link", {name: "Perfil"})).toHaveAttribute("aria-current", "page");
+    });
+
+    it("o prescritor continua com o Perfil na barra do celular e sem botao de Perfil no cabecalho", async () => {
+        setLoggedUser({id: 2, name: "Ana Lima", role: "PRESCRIBER"});
+        openLayoutAt("/perfil");
+
+        await screen.findByText("conteudo da tela");
+        expect(bottomMenu().getAllByRole("link").map((link) => link.textContent))
+            .toEqual(["Início", "Pacientes", "Agenda", "Avisos", "Perfil"]);
+        expect(within(screen.getByRole("banner")).queryByRole("link", {name: "Perfil"})).not.toBeInTheDocument();
     });
 
     it("no proprio inicio a barra do celular diz q ele eh a pagina aberta", async () => {
@@ -947,6 +996,7 @@ describe("AppLayout", () => {
         await screen.findByText("conteudo da tela");
         expect(sideMenu().getByRole("link", {name: "Perfil"})).toHaveAttribute("aria-current", "page");
         expect(bottomMenu().getByRole("link", {name: "Perfil"})).toHaveAttribute("aria-current", "page");
+        expect(within(screen.getByRole("banner")).queryByRole("link", {name: "Perfil"})).not.toBeInTheDocument();
         expect(sideMenu().getByRole("link", {name: "Prescritores"})).not.toHaveAttribute("aria-current");
     });
 

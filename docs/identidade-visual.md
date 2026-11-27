@@ -149,6 +149,8 @@ Realce dentro do cartão (a caixa de pontuação das escalas, a linha selecionad
 
 O campo de formulário também perdeu a borda verde e o texto verde; ficou com borda neutra e o verde só aparece no foco. Desde 20/11/2026 essa borda neutra é a `--color-control-border`, mais escura que a do cartão (veja *contraste*). Com verde no cabeçalho, no botão, no título e em toda borda de campo, a tela virava verde de ponta a ponta.
 
+No cabeçalho do celular do paciente, o *Perfil* é um botão com o nome escrito na cor do texto da moldura verde (`--color-on-brand-surface`), com borda branca a 70% (mais de 3:1 sobre o verde nos dois temas) e pelo menos 44 px de toque; a letra é a do corpo do texto (16 px), como a dos botões pequenos no celular, e cresce com a letra da pessoa; aberto, ganha fundo e sublinhado, para não depender só da cor. Com ele a logo do cabeçalho sai do meio e fica à esquerda, depois do *Voltar* (decisão da dona do projeto, novembro de 2026).
+
 ### logotipo
 
 Os três SVGs oficiais substituíram os exports antigos em `frontend/public/images/`. As proporções do símbolo e da versão vertical são idênticas às anteriores; o horizontal ficou 6% mais largo na mesma altura, e como o cabeçalho dimensiona por altura, nenhuma tela precisou mudar.

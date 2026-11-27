@@ -331,7 +331,7 @@ Janela anônima, paciente adulto.
   - A Hamilton mostra *Respostas salvas. Resultado:* com o escore e a faixa.
   - Na ficha diária, o dia passa de **em branco** para **preenchido**. O que o paciente não responder fica em branco, e em branco não vale zero.
   - Em **Respondidas**, o paciente tem **Ver e corrigir** enquanto o prescritor não analisa a resposta.
-  - No celular, **Escalas** não fica na barra de baixo: o paciente chega pelo **Início**, no quadro **Esperando resposta**.
+  - No celular, **Escalas** fica na barra de baixo do paciente, entre **Início** e **Progresso**, e o **Perfil** dele fica no alto da tela, ao lado do **Sair**.
 
 ### os dias que o paciente esqueceu
 

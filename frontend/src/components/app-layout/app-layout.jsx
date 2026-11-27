@@ -45,6 +45,7 @@ const MAX_BADGE_COUNT = 99;
 // prefixes deixa o item marcado tbm nas telas q ficam dentro dele
 // mobilePrefixes so vale na barra de baixo: as telas do paciente q n tem item nela marcam o inicio,
 // e o menu lateral continua marcando o item da tela
+// mobileHeader: no celular o item vira um botao com o nome no cabecalho, e n entra na barra de baixo
 // pattern marca o item numa tela q tbm cairia no prefixo de outro item
 function menuFor(user) {
     if (!user) {
@@ -54,15 +55,19 @@ function menuFor(user) {
         return [
             {
                 path: "/painel-paciente", label: "Início", icon: FiHome, mobile: true,
-                mobilePrefixes: ["/pacientes/", "/escalas/", "/minhas-prescricoes", "/historico-paciente", "/anamnese", "/impressao"],
+                mobilePrefixes: ["/minhas-prescricoes", "/historico-paciente", "/anamnese", "/impressao"],
             },
-            {path: "/pacientes/" + user.id + "/escalas", label: "Escalas", icon: FiClipboard, prefixes: ["/escalas/"]},
+            // as escalas sao a tarefa de todo dia, entao ficam na barra, e o perfil foi pro cabecalho pra caber
+            {
+                path: "/pacientes/" + user.id + "/escalas", label: "Escalas", icon: FiClipboard, mobile: true,
+                prefixes: ["/escalas/"],
+            },
             {path: "/progresso", label: "Progresso", icon: FiTrendingUp, mobile: true},
             {path: "/agendamento-consulta", label: "Consultas", icon: FiCalendar, mobile: true},
             {path: "/minhas-prescricoes", label: "Prescrições", icon: FiFileText},
             {path: "/historico-paciente", label: "Histórico", icon: FiActivity, prefixes: ["/anamnese", "/impressao"]},
             {path: NOTICES_PATH, label: "Avisos", icon: FiBell, mobile: true},
-            {path: "/perfil", label: "Perfil", icon: FiUser, mobile: true},
+            {path: "/perfil", label: "Perfil", icon: FiUser, mobileHeader: true},
         ];
     }
     if (user.role === "PRESCRIBER") {
@@ -244,6 +249,7 @@ export default function AppLayout() {
     const [loggedUser, setCurrentUser] = useState(() => getLoggedUser());
     const menuItems = menuFor(loggedUser);
     const mobileItems = menuItems.filter((item) => item.mobile);
+    const headerItem = menuItems.find((item) => item.mobileHeader);
     const homePath = homePathFor(loggedUser);
     const isHomePage = location.pathname === homePath;
     const isChangingPage = navigation.state === "loading";
@@ -453,7 +459,7 @@ export default function AppLayout() {
                     </div>
                 </aside>
 
-                <header className={styles.mobileHeader}>
+                <header className={headerItem ? styles.mobileHeader + " " + styles.mobileHeaderWithLink : styles.mobileHeader}>
                     {isHomePage ? (
                         <span className={styles.headerSpacer}/>
                     ) : (
@@ -464,6 +470,16 @@ export default function AppLayout() {
                     )}
                     <img src="/images/logotipo-icon-claro.svg" alt="2AG" className={styles.mobileLogo}/>
                     <div className={styles.headerActions}>
+                        {headerItem && (
+                            <Link
+                                to={headerItem.path}
+                                className={headerItem === activeSideItem
+                                    ? styles.headerLink + " " + styles.headerLinkActive : styles.headerLink}
+                                aria-current={headerItem === activeSideItem ? "page" : undefined}
+                            >
+                                {headerItem.label}
+                            </Link>
+                        )}
                         <ThemeAndLogoutButtons theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout}/>
                     </div>
                 </header>
