@@ -63,15 +63,22 @@
     box-shadow: var(--focus-ring);
 }
 
+/* no celular a caixa eh um cartao de canto redondo com uma folga em volta, igual o login por cima da sessao vencida
+   antes era uma faixa quadrada de lado a lado, com a pagina legivel em cima e embaixo
+   a folga fica no fundo escuro e a caixa ocupa o q sobra, entao o conteudo comprido continua rolando dentro dela */
 @media (max-width: 47.99rem) {
+    .backdrop {
+        padding: var(--space-2);
+        /* no celular deitado com o recorte da camera do lado a caixa entrava embaixo dele */
+        padding-left: max(var(--space-2), env(safe-area-inset-left));
+        padding-right: max(var(--space-2), env(safe-area-inset-right));
+    }
+
     .content {
-        border-radius: 0;
-        max-height: 100svh;
+        max-height: 100%;
         max-width: none;
         min-width: auto;
-        /* no celular deitado com o recorte da camera do lado o texto entrava embaixo dele */
-        padding-left: max(var(--space-8), env(safe-area-inset-left));
-        padding-right: max(var(--space-8), env(safe-area-inset-right));
-        width: 100vw;
+        padding: var(--space-4);
+        width: 100%;
     }
 }

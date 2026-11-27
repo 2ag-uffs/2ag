@@ -44,12 +44,30 @@ describe("caixa do modal", () => {
         expect(declarationsOf(modalCss, ".closeButton:focus-visible")["border-radius"]).toBe(close["border-radius"]);
     });
 
-    it("no celular a caixa continua ocupando a largura toda", () => {
-        const content = declarationsOf(mediaRules(modalCss, MOBILE), ".content");
+    // antes era uma faixa quadrada de lado a lado, diferente da caixa de entrar de novo
+    it("no celular a caixa eh um cartao de canto redondo com folga em volta, igual o login por cima", () => {
+        const mobile = mediaRules(modalCss, MOBILE);
+        const content = declarationsOf(mobile, ".content");
+        const loginAgainMobile = mediaRules(loginAgainCss, MOBILE);
 
-        expect(content.width).toBe("100vw");
+        // o canto redondo da regra de fora n eh mais zerado no celular
+        expect(content["border-radius"]).toBeUndefined();
+        expect(declarationsOf(modalCss, ".content")["border-radius"]).toBe(declarationsOf(loginAgainCss, ".box")["border-radius"]);
+        expect(declarationsOf(mobile, ".backdrop").padding).toBe(declarationsOf(loginAgainMobile, ".backdrop").padding);
+        expect(content.padding).toBe(declarationsOf(loginAgainMobile, ".box").padding);
+        // a caixa ocupa o q sobra da folga, sem passar da janela
+        expect(content.width).toBe("100%");
         expect(content["max-width"]).toBe("none");
         expect(content["min-width"]).toBe("auto");
+    });
+
+    it("no celular o conteudo comprido continua rolando dentro da caixa, q n passa da altura da janela", () => {
+        const content = declarationsOf(mediaRules(modalCss, MOBILE), ".content");
+
+        expect(content["max-height"]).toBe("100%");
+        expect(content.overflow).toBeUndefined();
+        expect(declarationsOf(modalCss, ".content").overflow).toBe("auto");
+        expect(declarationsOf(modalCss, ".backdrop").position).toBe("fixed");
     });
 
     // no fim da rolagem da caixa o dedo rolava a pagina atras do fundo escuro
@@ -57,12 +75,12 @@ describe("caixa do modal", () => {
         expect(declarationsOf(modalCss, ".content")["overscroll-behavior"]).toBe("contain");
     });
 
-    // no celular deitado com o recorte da camera do lado o texto da caixa entrava embaixo dele
-    it("no celular a folga dos lados respeita o recorte da camera e nunca fica menor q a de hoje", () => {
-        const content = declarationsOf(mediaRules(modalCss, MOBILE), ".content");
+    // no celular deitado com o recorte da camera do lado a caixa entrava embaixo dele
+    it("no celular a folga dos lados respeita o recorte da camera e nunca fica menor q a do cartao", () => {
+        const backdrop = declarationsOf(mediaRules(modalCss, MOBILE), ".backdrop");
 
-        expect(content["padding-left"]).toBe("max(var(--space-8), env(safe-area-inset-left))");
-        expect(content["padding-right"]).toBe("max(var(--space-8), env(safe-area-inset-right))");
+        expect(backdrop["padding-left"]).toBe("max(var(--space-2), env(safe-area-inset-left))");
+        expect(backdrop["padding-right"]).toBe("max(var(--space-2), env(safe-area-inset-right))");
         expect(declarationsOf(modalCss, ".content").padding).toBe("var(--space-8)");
     });
 
