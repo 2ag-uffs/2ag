@@ -172,7 +172,10 @@ class ScaleFormsTest {
                 .andExpect(jsonPath("$.items[1].question").doesNotExist())
                 .andExpect(jsonPath("$.items[3].question").value("Na produtividade do trabalho"))
                 .andExpect(jsonPath("$.items[3].label").value("Produtividade no trabalho"))
-                .andExpect(jsonPath("$.items[4].question").value("No seu sono"));
+                .andExpect(jsonPath("$.items[4].question").value("No seu sono"))
+                // o lembrete do periodo vai em cada pergunta da dor, e so nela
+                .andExpect(jsonPath("$.items[0].period").value("Na última semana"))
+                .andExpect(jsonPath("$.items[6].period").value("Na última semana"));
 
         mockMvc.perform(get("/scales/definitions/registro-tea").header("Authorization", bearerTokenOf(patient)))
                 .andExpect(jsonPath("$.items[0].key").value("qualidadeDeVida"))

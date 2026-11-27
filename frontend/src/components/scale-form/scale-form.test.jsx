@@ -534,6 +534,68 @@ describe("ScaleForm com a pergunta inteira do papel", () => {
     });
 });
 
+// na dor cada pergunta lembra o periodo (o period q vem da api) numa linha so dele, em cima da pergunta
+// eh frase do sistema: o texto da pergunta, o titulo da parte e as opcoes continuam os do papel
+// (decisao da dona do projeto, novembro de 2026)
+describe("ScaleForm com o lembrete do periodo em cada pergunta", () => {
+    const css = readCss(import.meta.url, "./scale-form.module.css");
+    const PERIOD = "Na última semana";
+    const PAIN_TROUBLE = "Durante a última semana com que frequência a dor te atrapalhou:";
+    const PAIN_QUESTION = "De acordo com a escala visual abaixo, como você classifica a sua dor no último período?";
+    const options = [{value: 0, label: "Nenhum dia"}, {value: 1, label: "Até 3 dias"}];
+    const items = [
+        {...PAIN_ITEM, question: PAIN_QUESTION, period: PERIOD},
+        {key: "freqSono", label: "Sono", type: "ESCOLHA", options, section: PAIN_TROUBLE, question: "No seu sono",
+            period: PERIOD},
+        {key: "observacao", label: "Observações", type: "TEXTO", period: PERIOD},
+    ];
+    // o nome q o leitor de tela ouve: o lembrete e dps a pergunta
+    const withReminder = (question) => (name) => name.startsWith(PERIOD) && name.endsWith(question);
+
+    it("cada pergunta traz o lembrete numa linha em cima dela, e a pergunta do papel continua inteira", () => {
+        render(<ScaleForm items={items} bands={PAIN_BANDS} values={{}} onChange={() => {}}/>);
+
+        expect(screen.getAllByText(PERIOD)).toHaveLength(3);
+        // a pergunta continua sozinha no elemento dela, com o texto do papel, e o lembrete vem antes
+        const question = screen.getByText(PAIN_QUESTION);
+        const reminder = question.previousElementSibling;
+        expect(reminder).toHaveTextContent(PERIOD);
+        expect(reminder.className).not.toBe(question.className);
+        // o leitor de tela ouve o lembrete junto com a pergunta
+        expect(screen.getByRole("group", {name: withReminder(PAIN_QUESTION)})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: withReminder("No seu sono")})).toBeInTheDocument();
+        expect(screen.getByRole("textbox", {name: withReminder("Observações")})).toBeInTheDocument();
+        // o titulo da parte continua uma vez so, em cima dos itens dela
+        expect(screen.getAllByText(PAIN_TROUBLE)).toHaveLength(1);
+    });
+
+    it("no celular a tela de cada pergunta leva o lembrete dela", () => {
+        render(<ScaleForm items={items} bands={PAIN_BANDS} values={{}} onChange={() => {}} step={1}/>);
+
+        expect(screen.getAllByText(PERIOD)).toHaveLength(1);
+        expect(screen.getByRole("heading", {name: PAIN_TROUBLE})).toBeInTheDocument();
+        expect(screen.getByRole("group", {name: withReminder("No seu sono")})).toBeInTheDocument();
+    });
+
+    it("o item sem lembrete fica como era, e o limpar resposta continua com o nome curto", () => {
+        render(<ScaleForm items={[{...items[1], period: null}, items[0]]} bands={PAIN_BANDS}
+            values={{intensidadeDor: "3"}} onChange={() => {}}/>);
+
+        expect(screen.getAllByText(PERIOD)).toHaveLength(1);
+        expect(screen.getByRole("group", {name: "No seu sono"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Limpar resposta de Intensidade da dor no período"}))
+            .toBeInTheDocument();
+    });
+
+    // o paciente precisa ler o lembrete, entao ele n fica menor q o texto da pagina
+    it("o lembrete tem o tamanho do texto da pagina e eh mais leve q a pergunta", () => {
+        expect(declarationsOf(css, ".frame")["font-size"]).toBe("var(--text-md)");
+        expect(declarationsOf(css, ".frame").color).toBe("var(--color-text-secondary)");
+        expect(declarationsOf(css, ".frame")["font-weight"]).toBeUndefined();
+        expect(declarationsOf(css, ".label")["font-weight"]).toBe("600");
+    });
+});
+
 // o q quer dizer cada ponta da regua e o nome de cada faixa da dor sao texto do instrumento
 describe("texto da regua", () => {
     const css = readCss(import.meta.url, "./scale-form.module.css");

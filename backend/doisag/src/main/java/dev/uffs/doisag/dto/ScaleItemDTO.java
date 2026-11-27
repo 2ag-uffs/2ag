@@ -9,7 +9,7 @@ import java.util.List;
 // um item do formulario do jeito q a tela precisa pra desenhar o campo
 // o section eh a pergunta do papel q junta varios itens, q a tela mostra uma vez em cima deles
 // o question eh a pergunta inteira do papel, q a tela mostra no lugar do label, e o intro eh a frase q o
-// papel poe antes do item
+// papel poe antes do item. o period eh o lembrete do periodo, q a tela poe numa linha em cima da pergunta
 public record ScaleItemDTO(
         String key,
         String label,
@@ -23,7 +23,8 @@ public record ScaleItemDTO(
         List<ScaleOption> options,
         String section,
         String question,
-        String intro
+        String intro,
+        String period
 ) {
     public ScaleItemDTO(ScaleItem item) {
         this(
@@ -39,7 +40,8 @@ public record ScaleItemDTO(
                 item.options(),
                 item.section(),
                 item.question(),
-                item.intro()
+                item.intro(),
+                item.period()
         );
     }
 }

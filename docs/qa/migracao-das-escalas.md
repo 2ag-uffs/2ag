@@ -46,6 +46,7 @@ a ficha em papel não traz a conta do índice nem o corte: eles vêm do Anexo A.
 | período | `Período: De __/__/__ A __/__/__` | *Início do período* e *Fim do período* | difere na forma: dois campos de data |
 | subtítulo | Qualidade de vida | não aparece | difere. o papel de dor traz esse subtítulo em cima da pergunta da dor |
 | frase do sistema | não tem | Pense na última semana para responder. | é do sistema, não do papel. fica no cabeçalho da página, embaixo do título, fora dos itens do formulário |
+| lembrete do período | não tem | Na última semana | é do sistema, não do papel. fica numa linha só dele em cima de cada uma das sete perguntas (a intensidade, as cinco linhas da tabela e as observações), em letra mais leve que a da pergunta. o texto de cada pergunta e o cabeçalho da tabela continuam os do papel (decisão da dona do projeto, novembro de 2026) |
 | intensidade | De acordo com a escala visual abaixo, como você classifica a sua dor no ultimo período? | …no último período? | igual, com o acento corrigido. nome curto: *Intensidade da dor no período* |
 | escala visual | LEVE de 0 a 2, MODERADA de 3 a 7, INTENSA de 8 a 10, com rostos e cores | Dor leve 0 a 2 · Dor moderada 3 a 7 · Dor intensa 8 a 10 | difere. o nome da faixa leva *Dor* na frente e a tela não tem os rostos. os cortes são os mesmos. faixa não muda nesta rodada |
 | cabeçalho da tabela | Durante a última semana com que frequência a dor te atrapalhou: | igual | igual. fica uma vez em cima das cinco linhas. antes vinha reescrito (*Durante a última semana, com que frequência a dor atrapalhou*), embaixo de cada linha |
@@ -140,7 +141,7 @@ a lista abaixo são os cuidados que a pesquisa de tendências de 19/11/2026 leva
 **atendidos**
 
 - no celular, uma pergunta por tela, e a pergunta que o papel usa para juntar vários itens aparece em cima de cada um deles.
-- no Pittsburgh, na dor e no TEA, cada item traz a pergunta inteira do papel, com o período de que ela fala (*Durante o último mês*, *Durante a última semana*, *no último período*).
+- no Pittsburgh, na dor e no TEA, cada item traz a pergunta inteira do papel, com o período de que ela fala (*Durante o último mês*, *Durante a última semana*, *no último período*). na dor, cada pergunta leva também o lembrete *Na última semana*, do sistema, numa linha em cima dela, para a pessoa não esquecer o período nas últimas perguntas (decisão da dona do projeto, novembro de 2026).
 - nada vem marcado. o item sem resposta fica em branco e não vira zero, e *Limpar resposta* desfaz uma escolha.
 - a tela não passa sozinha para a próxima pergunta: é a pessoa que toca em *Próxima*, e *Anterior* volta mostrando o que estava marcado.
 - as opções vêm em lista, uma embaixo da outra, na ordem e com o texto do papel, e só uma pode ser escolhida.

@@ -111,6 +111,13 @@
     padding: 0;
 }
 
+/* o lembrete do periodo em cima da pergunta, como "Na última semana" na dor: o paciente precisa ler,
+   entao tem o tamanho do texto da pagina, e fica mais leve q a pergunta pra n se passar por ela */
+.frame {
+    color: var(--color-text-secondary);
+    font-size: var(--text-md);
+}
+
 .label {
     color: var(--color-text-primary);
     font-weight: 600;

@@ -43,6 +43,36 @@ class ScaleCatalogTest {
                 ScaleType.REGISTRO_TEA);
     }
 
+    // cada pergunta da dor leva o lembrete do periodo numa linha so dele (decisao da dona, novembro de 2026)
+    // eh frase do sistema: a pergunta do papel, o titulo da parte e as opcoes continuam os msm, e as outras
+    // escalas ficam sem lembrete
+    @Test
+    void cadaPerguntaDaDorLembraAUltimaSemanaESoEla() {
+        for (ScaleDefinition definition : catalog.all()) {
+            for (ScaleItem item : definition.items()) {
+                if (definition.type() == ScaleType.REGISTRO_DOR) {
+                    assertThat(item.period()).as(item.key()).isEqualTo("Na última semana");
+                } else {
+                    assertThat(item.period()).as(item.key()).isNull();
+                }
+            }
+        }
+
+        ScaleDefinition pain = catalog.definitionOf(ScaleType.REGISTRO_DOR);
+        assertThat(pain.instruction()).isEqualTo("Pense na última semana para responder.");
+        assertThat(pain.items()).extracting(ScaleItem::key).containsExactly("intensidadeDor",
+                "freqAtividadesBasicas", "freqAtividadesSociais", "freqProdutividade", "freqSono",
+                "freqMedicacaoExtra", "observacao");
+        ScaleItem intensity = pain.itemOf("intensidadeDor").orElseThrow();
+        assertThat(intensity.question()).isEqualTo("De acordo com a escala visual abaixo, como você classifica a "
+                + "sua dor no último período?");
+        ScaleItem sleep = pain.itemOf("freqSono").orElseThrow();
+        assertThat(sleep.question()).isEqualTo("No seu sono");
+        assertThat(sleep.section()).isEqualTo("Durante a última semana com que frequência a dor te atrapalhou:");
+        assertThat(sleep.options()).extracting("label").containsExactly("Nenhum dia", "Até 3 dias",
+                "Entre 3 e 6 dias", "Todos os dias");
+    }
+
     // a tela mostra a pergunta no lugar do nome curto, entao a msm frase n pode vir tbm na ajuda nem no titulo
     // da parte, senao o paciente le duas vezes
     @Test

@@ -19,6 +19,10 @@ import java.util.List;
 //
 // o intro eh a frase q o papel poe antes do item, tipo o "para cada uma das questoes restantes" do
 // pittsburgh. tbm so a tela usa
+//
+// o period eh o lembrete do periodo da escala, tipo "Na última semana". eh frase do sistema e n do papel:
+// a tela mostra numa linha so dela em cima da pergunta, e a pergunta do instrumento continua como eh
+// (decisao da dona do projeto, novembro de 2026)
 public record ScaleItem(
         String key,
         String label,
@@ -33,20 +37,21 @@ public record ScaleItem(
         boolean trackable,
         String section,
         String question,
-        String intro) {
+        String intro,
+        String period) {
 
     // nota numa regua, tipo os itens de 0 a 10 da ficha de acompanhamento
     public static ScaleItem nota(String key, String label, int minValue, int maxValue,
                                  String lowAnchor, String highAnchor, boolean higherIsBetter) {
         return new ScaleItem(key, label, null, ScaleItemType.NOTA, minValue, maxValue,
-                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null);
+                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null, null);
     }
 
     // nota com um texto de apoio embaixo, tipo os itens do hamilton
     public static ScaleItem notaComAjuda(String key, String label, String help, int minValue, int maxValue,
                                          String lowAnchor, String highAnchor, boolean higherIsBetter) {
         return new ScaleItem(key, label, help, ScaleItemType.NOTA, minValue, maxValue,
-                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null);
+                lowAnchor, highAnchor, higherIsBetter, List.of(), true, null, null, null, null);
     }
 
     public static ScaleItem escolha(String key, String label, String help, List<ScaleOption> options,
@@ -54,42 +59,48 @@ public record ScaleItem(
         int maxValue = options.stream().mapToInt(ScaleOption::value).max().orElse(0);
         int minValue = options.stream().mapToInt(ScaleOption::value).min().orElse(0);
         return new ScaleItem(key, label, help, ScaleItemType.ESCOLHA, minValue, maxValue,
-                null, null, higherIsBetter, options, true, null, null, null);
+                null, null, higherIsBetter, options, true, null, null, null, null);
     }
 
     public static ScaleItem simples(String key, String label, String help, ScaleItemType type) {
         return new ScaleItem(key, label, help, type, null, null, null, null, true, List.of(),
                 type == ScaleItemType.NUMERO || type == ScaleItemType.MINUTOS || type == ScaleItemType.HORAS,
-                null, null, null);
+                null, null, null, null);
     }
 
     public static ScaleItem texto(String key, String label, String help) {
         return new ScaleItem(key, label, help, ScaleItemType.TEXTO, null, null, null, null, true,
-                List.of(), false, null, null, null);
+                List.of(), false, null, null, null, null);
     }
 
     // valor q sai de conta, como o tempo total de sono do diario
     public static ScaleItem calculado(String key, String label, String help) {
         return new ScaleItem(key, label, help, ScaleItemType.CALCULADO, null, null, null, null, true,
-                List.of(), true, null, null, null);
+                List.of(), true, null, null, null, null);
     }
 
     // o msm item embaixo da pergunta q o papel usa pra juntar os itens dela
     public ScaleItem inSection(String newSection) {
         return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
-                options, trackable, newSection, question, intro);
+                options, trackable, newSection, question, intro, period);
     }
 
     // o msm item com a pergunta inteira do papel
     public ScaleItem withQuestion(String paperQuestion) {
         return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
-                options, trackable, section, paperQuestion, intro);
+                options, trackable, section, paperQuestion, intro, period);
     }
 
     // o msm item com a frase q o papel poe antes dele
     public ScaleItem withIntro(String paperIntro) {
         return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
-                options, trackable, section, question, paperIntro);
+                options, trackable, section, question, paperIntro, period);
+    }
+
+    // o msm item com o lembrete do periodo em cima da pergunta
+    public ScaleItem withPeriod(String periodReminder) {
+        return new ScaleItem(key, label, help, type, minValue, maxValue, lowAnchor, highAnchor, higherIsBetter,
+                options, trackable, section, question, intro, periodReminder);
     }
 
     public boolean isNumeric() {

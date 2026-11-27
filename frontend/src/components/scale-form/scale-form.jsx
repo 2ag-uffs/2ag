@@ -322,9 +322,12 @@ function inputStepOf(item) {
 
 // a pergunta inteira do papel (o question q vem da api) entra no lugar do rotulo, do msm tamanho e peso
 // o rotulo eh o nome curto do item: fica no limpar resposta e na lista do q falta, e n aparece junto dela
+// o lembrete do periodo (o period, como "Na última semana" na dor) fica numa linha so dele em cima da pergunta:
+// eh frase do sistema, e a pergunta do instrumento continua como eh (decisao da dona do projeto, novembro de 2026)
 function Label({item}) {
     return (
         <>
+            {item.period && <span className={styles.frame}>{item.period}</span>}
             <span className={styles.label}>{item.question || item.label}</span>
             {item.help && <span className={styles.help}>{item.help}</span>}
         </>

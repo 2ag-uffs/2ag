@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 // o unico lugar q descreve as escalas
 //
@@ -25,6 +26,9 @@ public class ScaleCatalog {
     private static final String ANSWERED_RESULT = "Respondida";
     // essa frase eh do sistema e n do papel. fica no cabecalho da pagina, fora dos itens do instrumento
     private static final String LAST_WEEK_INSTRUCTION = "Pense na última semana para responder.";
+    // o lembrete do periodo q cada pergunta da dor leva em cima, numa linha so dele. tbm eh do sistema:
+    // a pergunta do papel fica como eh (decisao da dona do projeto, novembro de 2026)
+    private static final String LAST_WEEK_REMINDER = "Na última semana";
     private static final String NOTES_HELP = "Relato de efeito colateral, ausência da tomada de alguma medicação, "
             + "momento significativo na rotina";
     // o texto das observacoes de registro-dor.pdf e de registro-tea.pdf, inteiro
@@ -346,7 +350,7 @@ public class ScaleCatalog {
                         new ScaleOption(1, "Parceiro ou colega, mas em outro quarto"),
                         new ScaleOption(2, "Parceiro no mesmo quarto, mas em outra cama"),
                         new ScaleOption(3, "Parceiro na mesma cama")), false, null,
-                        "Você tem um parceiro (a), esposo (a) ou colega de quarto?", null));
+                        "Você tem um parceiro (a), esposo (a) ou colega de quarto?", null, null));
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 5, "Boa qualidade de sono"),
@@ -371,8 +375,9 @@ public class ScaleCatalog {
     // acompanhamento semanal de paciente com dor (RF25)
     // as faixas sao as da escala visual do formulario
     // a pergunta da intensidade e as linhas da tabela q o catalogo tinha encurtado vem inteiras de registro-dor.pdf
+    // cada pergunta leva o lembrete do periodo, pra pessoa n esquecer a semana nas ultimas perguntas
     private ScaleDefinition painLog() {
-        List<ScaleItem> items = List.of(
+        List<ScaleItem> items = Stream.of(
                 ScaleItem.nota("intensidadeDor", "Intensidade da dor no período", 0, 10,
                         "leve", "intensa", false)
                         .withQuestion("De acordo com a escala visual abaixo, como você classifica a sua dor no "
@@ -382,7 +387,9 @@ public class ScaleCatalog {
                 painFreq("freqProdutividade", "Produtividade no trabalho").withQuestion("Na produtividade do trabalho"),
                 painFreq("freqSono", "Sono").withQuestion("No seu sono"),
                 painFreq("freqMedicacaoExtra", "Necessitou de medicação extra para dor"),
-                paperNotesItem("observacao"));
+                paperNotesItem("observacao"))
+                .map(item -> item.withPeriod(LAST_WEEK_REMINDER))
+                .toList();
 
         List<ScoreBand> bands = List.of(
                 new ScoreBand(0, 2, "Dor leve"),
