@@ -321,22 +321,24 @@ public class ScaleCatalog {
                         new ScaleOption(3, "Muito ruim")), false)
                         .withQuestion("Durante o último mês como você classificaria a qualidade do seu sono de "
                                 + "uma maneira geral:"),
-                // o papel corta a pergunta 7 em "para lhe ajudar" e escreve a 8 sem o "com", e a tela copia
+                // o papel corta a pergunta 7 em "para lhe ajudar", escreve a 8 sem o "com" e n fecha a 7, a 8 e a 9
+                // com interrogacao. a tela corrige o portugues e fica diferente do papel de proposito
+                // (decisao da dona do projeto, novembro de 2026)
                 psqiFreq("freqMedicacao", "Tomou medicamento para ajudar a dormir")
                         .withQuestion("Durante o último mês, com que frequência você tomou medicamento "
-                                + "(prescrito ou “por conta própria”) para lhe ajudar"),
+                                + "(prescrito ou “por conta própria”) para lhe ajudar a dormir?"),
                 psqiFreq("freqDificuldadeAcordado",
                         "Teve dificuldade para ficar acordado dirigindo, comendo ou numa atividade social")
-                        .withQuestion("No último mês, que frequência você teve dificuldade para ficar acordado "
+                        .withQuestion("No último mês, com que frequência você teve dificuldade para ficar acordado "
                                 + "enquanto dirigia, comia ou participava de uma atividade social (festa, reunião "
-                                + "de amigos)"),
+                                + "de amigos)?"),
                 ScaleItem.escolha("dificuldadeEntusiasmo", "Dificuldade para manter o entusiasmo", null, List.of(
                         new ScaleOption(0, "Nenhuma dificuldade"),
                         new ScaleOption(1, "Um problema leve"),
                         new ScaleOption(2, "Um problema razoável"),
                         new ScaleOption(3, "Um grande problema")), false)
                         .withQuestion("Durante o último mês, quão problemático foi pra você manter o entusiasmo "
-                                + "(ânimo) para fazer as coisas (suas atividades habituais)"),
+                                + "(ânimo) para fazer as coisas (suas atividades habituais)?"),
                 // o parceiro de quarto eh contexto e n entra no indice
                 new ScaleItem("parceiroDeQuarto", "Você tem parceiro ou colega de quarto", null,
                         ScaleItemType.ESCOLHA, 0, 3, null, null, true, List.of(

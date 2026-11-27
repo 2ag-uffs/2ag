@@ -73,4 +73,32 @@ class ScaleCatalogTest {
             }
         }
     }
+
+    // no papel a pergunta 7 acaba em "para lhe ajudar", a 8 vem sem o "com" e a 7, a 8 e a 9 n fecham com
+    // interrogacao. a tela corrige e fica diferente do papel de proposito (decisao da dona, novembro de 2026)
+    // o nome curto e as opcoes continuam os msm
+    @Test
+    void asPerguntas7A9DoPittsburghVemComOPortuguesCorrigido() {
+        ScaleDefinition pittsburgh = catalog.definitionOf(ScaleType.ESCALA_PITTSBURGH);
+
+        ScaleItem question7 = pittsburgh.itemOf("freqMedicacao").orElseThrow();
+        assertThat(question7.question()).isEqualTo("Durante o último mês, com que frequência você tomou "
+                + "medicamento (prescrito ou “por conta própria”) para lhe ajudar a dormir?");
+        assertThat(question7.label()).isEqualTo("Tomou medicamento para ajudar a dormir");
+
+        ScaleItem question8 = pittsburgh.itemOf("freqDificuldadeAcordado").orElseThrow();
+        assertThat(question8.question()).isEqualTo("No último mês, com que frequência você teve dificuldade para "
+                + "ficar acordado enquanto dirigia, comia ou participava de uma atividade social (festa, reunião "
+                + "de amigos)?");
+
+        ScaleItem question9 = pittsburgh.itemOf("dificuldadeEntusiasmo").orElseThrow();
+        assertThat(question9.question()).isEqualTo("Durante o último mês, quão problemático foi pra você manter o "
+                + "entusiasmo (ânimo) para fazer as coisas (suas atividades habituais)?");
+
+        assertThat(question7.options()).isEqualTo(question8.options());
+        assertThat(question7.options()).extracting("label").containsExactly("Nenhuma no último mês",
+                "Menos de uma vez por semana", "Uma ou duas vezes por semana", "Três ou mais vezes na semana");
+        assertThat(question9.options()).extracting("label").containsExactly("Nenhuma dificuldade",
+                "Um problema leve", "Um problema razoável", "Um grande problema");
+    }
 }

@@ -27,9 +27,9 @@ conferência de 20/11/2026, feita depois da pesquisa de tendências de 19/11/202
 | aviso do sistema, na 5j | não tem | Isto não é atendimento de urgência. Se algo piorou, fale com a clínica ou procure um serviço de saúde. | é do sistema, não do papel. fica embaixo do campo de texto da 5j, como embaixo de todo texto livre que o paciente escreve |
 | 5j, frequência | Com que frequência, durante o último mês, você teve dificuldade para dormir devido a essa razão? | igual | igual. o título da pergunta 5 fica em cima e não se repete dentro do item |
 | 6 | Durante o último mês como você classificaria a qualidade do seu sono de uma maneira geral: | igual | igual |
-| 7 | Durante o último mês, com que frequência você tomou medicamento (prescrito ou “por conta própria”) para lhe ajudar | igual | igual. no papel a frase acaba em *para lhe ajudar*, sem dizer a quê: copiada como está, a confirmar com a clínica |
-| 8 | No último mês, que frequência você teve dificuldade para ficar acordado enquanto dirigia, comia ou participava de uma atividade social (festa, reunião de amigos) | igual | igual. o papel escreve *que frequência*, sem o *com*: copiada como está |
-| 9 | Durante o último mês, quão problemático foi pra você manter o entusiasmo (ânimo) para fazer as coisas (suas atividades habituais) | igual | igual |
+| 7 | Durante o último mês, com que frequência você tomou medicamento (prescrito ou “por conta própria”) para lhe ajudar | …para lhe ajudar a dormir? | difere de propósito. no papel a frase acaba em *para lhe ajudar*, sem dizer a quê e sem ponto de interrogação; a tela completa com *a dormir?* (decisão da dona do projeto, novembro de 2026) |
+| 8 | No último mês, que frequência você teve dificuldade para ficar acordado enquanto dirigia, comia ou participava de uma atividade social (festa, reunião de amigos) | No último mês, com que frequência você teve dificuldade… (festa, reunião de amigos)? | difere de propósito. o papel escreve *que frequência*, sem o *com*, e não fecha a pergunta; a tela põe o *com* e o ponto de interrogação (decisão da dona do projeto, novembro de 2026) |
+| 9 | Durante o último mês, quão problemático foi pra você manter o entusiasmo (ânimo) para fazer as coisas (suas atividades habituais) | …(suas atividades habituais)? | difere de propósito: a tela fecha a pergunta com o ponto de interrogação que o papel não traz (decisão da dona do projeto, novembro de 2026) |
 | 10 | Você tem um parceiro (a), esposo (a) ou colega de quarto? | igual | igual |
 | opções da 5, da 7 e da 8 | Nenhuma no último mês · Menos de uma vez por semana · Uma ou duas vezes por semana · Três ou mais vezes na semana | igual | igual. o papel traz o número de 0 a 3 embaixo de cada opção, e a tela não mostra |
 | opções da 6 | Muito boa · Boa · Ruim · Muito Ruim | Muito boa · Boa · Ruim · Muito ruim | difere só na maiúscula de *Ruim*. opção não muda nesta rodada |
@@ -87,7 +87,15 @@ só erro evidente de digitação foi corrigido. são cinco:
 4. Pittsburgh, frase antes da pergunta 5: *resposta .* (espaço antes do ponto) virou *resposta.*
 5. dor, pergunta da intensidade: *ultimo período* virou *último período*.
 
-o que não é erro de digitação foi copiado como está no papel, e fica para a clínica confirmar: a pergunta 7 do Pittsburgh, que acaba em *para lhe ajudar*; a pergunta 8, com *que frequência* sem o *com*; as perguntas 7, 8 e 9, que o papel não fecha com ponto de interrogação; a falta de vírgula depois de *Durante o último mês* na pergunta 6 e de *Durante a última semana* nos cabeçalhos de dor e de TEA. A única palavra trocada de propósito é *outras pessoas* no lugar de *outras crianças* no formulário de TEA (decisão de 20/11/2026).
+o que não é erro de digitação foi copiado como está no papel, e fica para a clínica confirmar: a falta de vírgula depois de *Durante o último mês* na pergunta 6 e de *Durante a última semana* nos cabeçalhos de dor e de TEA. A única palavra trocada de propósito é *outras pessoas* no lugar de *outras crianças* no formulário de TEA (decisão de 20/11/2026).
+
+**perguntas 7, 8 e 9 do Pittsburgh: a tela difere do papel de propósito.** na conferência de 20/11/2026 as três tinham sido copiadas com as falhas do papel: a 7 acabava em *para lhe ajudar*, a 8 dizia *que frequência* sem o *com*, e nenhuma das três fechava com ponto de interrogação. a dona do projeto decidiu, em novembro de 2026, corrigir o português na tela, para o paciente não estranhar uma frase que parece incompleta. a tela agora diz:
+
+- 7: *Durante o último mês, com que frequência você tomou medicamento (prescrito ou “por conta própria”) para lhe ajudar a dormir?*
+- 8: *No último mês, com que frequência você teve dificuldade para ficar acordado enquanto dirigia, comia ou participava de uma atividade social (festa, reunião de amigos)?*
+- 9: *Durante o último mês, quão problemático foi pra você manter o entusiasmo (ânimo) para fazer as coisas (suas atividades habituais)?*
+
+só a frase da pergunta mudou. o nome curto de cada item, as opções (texto, ordem e valor), a ordem dos itens e o escore continuam os mesmos (teste `asPerguntas7A9DoPittsburghVemComOPortuguesCorrigido`, em `ScaleCatalogTest`). o papel de [`docs/scales`](../scales) não foi mexido, então quem confere a tela com a folha (CT-25) encontra essas três diferenças, e elas não são defeito.
 
 ## 5. o que foi comparado e não mudou nesta rodada
 
