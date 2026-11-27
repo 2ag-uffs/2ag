@@ -282,6 +282,7 @@ export default function ListaPacientes() {
                     + " depois continuam chegando e você pode reativar quando quiser."
                     : ""}
                 confirmText="Arquivar"
+                danger={true}
                 cancelText="Voltar"
                 onConfirm={archivePatient}
                 onCancel={() => setPatientToArchive(null)}

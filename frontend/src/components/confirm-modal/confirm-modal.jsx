@@ -5,12 +5,15 @@ import styles from "./confirm-modal.module.css";
 //
 // antes cada tela chamava o confirm do navegador q trava a pagina
 // inteira e n da pra estilizar
+// danger eh pra qnd o sim faz perder algo (anular, desativar, cancelar, sair sem salvar):
+// o botao sai na terracota cheia, e n no verde q tem cara de caminho seguro
 export default function ConfirmModal({
                                          show,
                                          title = "Confirmar",
                                          message,
                                          confirmText = "Confirmar",
                                          cancelText = "Voltar",
+                                         danger = false,
                                          onConfirm,
                                          onCancel,
                                      }) {
@@ -22,7 +25,7 @@ export default function ConfirmModal({
                 <button type="button" className="button-secondary" onClick={onCancel}>
                     {cancelText}
                 </button>
-                <button type="button" className="button" onClick={onConfirm}>
+                <button type="button" className={danger ? "button-danger-filled" : "button"} onClick={onConfirm}>
                     {confirmText}
                 </button>
             </div>

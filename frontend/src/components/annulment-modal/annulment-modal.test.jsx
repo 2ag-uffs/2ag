@@ -21,6 +21,14 @@ describe("AnnulmentModal", () => {
         vi.restoreAllMocks();
     });
 
+    // anular faz perder o registro, entao o botao n tem o verde de caminho seguro
+    it("o anular registro sai na terracota cheia e o voltar continua igual", () => {
+        renderModal();
+
+        expect(screen.getByRole("button", {name: "Anular registro"})).toHaveClass("button-danger-filled");
+        expect(screen.getByRole("button", {name: "Voltar"})).toHaveClass("button-secondary");
+    });
+
     // o paciente le o motivo, e no MEEM, q ele n ve, quem usa n manda nada (revisao das regras R7)
     it("mostra o q o paciente ve do registro so qnd quem usa manda", () => {
         const {unmount} = render(

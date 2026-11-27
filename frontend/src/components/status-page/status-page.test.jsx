@@ -32,7 +32,7 @@ describe("StatusPage", () => {
         const indexCss = readCss(import.meta.url, "../../index.css");
         const buttonCss = readCss(import.meta.url, "../../styles/button.css");
         const mainJsx = readCss(import.meta.url, "../../main.jsx");
-        const button = ":where(button, .button, .button-secondary, .button-tertiary, .button-danger)";
+        const button = ":where(button, .button, .button-secondary, .button-tertiary, .button-danger, .button-danger-filled)";
 
         expect(declarationsOf(indexCss, ":where(a)").color).toBe("var(--color-primary)");
         expect(declarationsOf(indexCss, "a").color).toBeUndefined();

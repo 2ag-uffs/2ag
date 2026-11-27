@@ -824,6 +824,7 @@ export default function Profile() {
                 title="Sair sem salvar"
                 message="O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"
                 confirmText="Sim, sair"
+                danger={true}
                 cancelText="Continuar preenchendo"
                 onConfirm={() => exitBlocker.proceed()}
                 onCancel={() => exitBlocker.reset()}

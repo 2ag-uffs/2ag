@@ -458,6 +458,7 @@ export default function AcompanhamentoProtocolo() {
                     + "que ainda esperam resposta: ele não é mais cobrado por elas. O acompanhamento fica guardado "
                     + "como encerrado."}
                 confirmText="Sim, encerrar"
+                danger={true}
                 cancelText="Manter ativo"
                 onConfirm={end}
                 onCancel={() => setIsEndingOpen(false)}

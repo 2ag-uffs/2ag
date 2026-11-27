@@ -571,6 +571,7 @@ export default function AgendamentoPrescritor() {
                     + " vai ser cancelada e o paciente recebe um aviso."
                     : ""}
                 confirmText="Cancelar consulta"
+                danger={true}
                 cancelText="Voltar"
                 onConfirm={cancelAppointment}
                 onCancel={() => setCancelTarget(null)}
@@ -585,6 +586,7 @@ export default function AgendamentoPrescritor() {
                     + " atendimento em vez disso."
                     : ""}
                 confirmText="Marcar falta"
+                danger={true}
                 cancelText="Voltar"
                 onConfirm={markNoShow}
                 onCancel={() => setNoShowTarget(null)}

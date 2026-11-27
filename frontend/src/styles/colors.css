@@ -91,6 +91,12 @@
     --color-success: #006633;
     --color-warning: #bf563f;           /* terracota tom 2, 4,6:1 */
 
+    /* ---- botao cheio de confirmar uma perda ----
+     * texto branco na terracota tom 3 (6,0:1). o tom do hover eh nosso, mais escuro q a cartela */
+    --color-danger: #a44819;
+    --color-danger-hover: #873b14;
+    --color-text-on-danger: #ffffff;
+
     /* ---- nomes antigos, mantidos pra n quebrar as telas ---- */
     --color-accent-agree: #77954f;
     --color-accent-disagree: #bf663f;
@@ -183,6 +189,10 @@
         --color-success: #3fa96a;
         --color-warning: #d99a5e;
 
+        /* no escuro a terracota tom 2 ainda leva o branco (4,5:1) e aparece na tela escura (3,4:1 ou mais); o tom 3 sumia nela (2,9:1) */
+        --color-danger: #bf563f;
+        --color-danger-hover: #b3513b;
+
         --color-brand-surface: #16281d;
         --color-brand-surface-light: #1d3627;
         --color-brand-surface-dark: #0f1a13;
@@ -240,6 +250,10 @@
     --color-error-border: #5c3a2a;
     --color-success: #3fa96a;
     --color-warning: #d99a5e;
+
+    /* no escuro a terracota tom 2 ainda leva o branco (4,5:1) e aparece na tela escura (3,4:1 ou mais); o tom 3 sumia nela (2,9:1) */
+    --color-danger: #bf563f;
+    --color-danger-hover: #b3513b;
 
     --color-brand-surface: #16281d;
     --color-brand-surface-light: #1d3627;
@@ -300,6 +314,10 @@
         --color-error-border: #dfbfae;
         --color-success: #006633;
         --color-warning: #bf563f;
+
+        --color-danger: #a44819;
+        --color-danger-hover: #873b14;
+        --color-text-on-danger: #ffffff;
 
         --color-brand-surface: #006633;
         --color-brand-surface-light: #006625;

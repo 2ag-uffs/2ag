@@ -548,6 +548,7 @@ export default function AgendamentoConsultaPaciente() {
                         + " volta a ficar livre na agenda. Quer cancelar?"
                     : ""}
                 confirmText="Sim, cancelar"
+                danger={true}
                 cancelText="Voltar"
                 onConfirm={cancelAppointment}
                 onCancel={() => setCancelTarget(null)}

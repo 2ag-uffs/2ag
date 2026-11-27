@@ -102,7 +102,7 @@ Sobre fundo sem contraste · esticar horizontalmente · aumentar o tamanho do s�
 
 `frontend/src/styles/colors.css` é a única fonte de cor do frontend. Os quinze tons da cartela estão lá com o nome da família, mais o preto neutro.
 
-Cinco valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-control-border`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo.
+Cinco valores são derivação nossa, porque a cartela não tem tom neutro nenhum: `--color-border`, `--color-border-light`, `--color-control-border`, `--color-primary-soft` e `--color-neutral`. Mais as três superfícies, pelo mesmo motivo. Estão marcados como tal no arquivo. Desde novembro de 2026 há mais dois: `--color-danger-hover` no tema claro (`#873B14`) e no escuro (`#B3513B`), o tom um pouco mais escuro do botão cheio de confirmar uma perda com o mouse em cima, porque a cartela não tem terracota mais escura que o tom 3.
 
 Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores da paleta. As três exceções são as faixas azul, âmbar e vermelha da escala de dor, que seguem o formulário impresso que a clínica já usa. No papel a faixa moderada vai do verde ao âmbar; na tela ela foi simplificada num âmbar só.
 
@@ -125,6 +125,17 @@ Nenhuma tela tem cor escrita à mão: o bundle de produção só contém valores
 O verde claro e a terracota do manual **reprovam como cor de texto**, nos dois sentidos: branco em cima deles e eles em cima de branco. Isso não contraria o manual — ele descreve a secundária como "detalhes principais, grafismos", não como texto.
 
 A regra que ficou: onde o verde claro é fundo, o texto vai escuro (`--color-text-on-secondary`); onde ele era texto, virou a primária, porque nem o tom 3 (`#637D40`, 4,3:1) passa em cima do fundo da página; e a terracota de texto e de fundo virou o tom 3 (`#A44819`), que é também a `--color-error`. O verde claro e a terracota do tom 1 continuam na paleta, em preenchimento, borda e ícone.
+
+**Botão cheio de confirmar uma perda (decisão da dona do projeto, novembro de 2026).** Nas perguntas de confirmação em que o sim faz perder algo (arquivar paciente, anular registro, desativar conta, marcar falta, cancelar consulta, encerrar acompanhamento e sair sem salvar), o botão que confirma deixou de ser o verde cheio, que tem cara de caminho seguro, e passou a ser texto branco sobre a terracota cheia. O botão de voltar não mudou, e reativar conta e trocar pedido continuam verdes. A terracota do tom 1 não carrega texto branco (4,0:1), então o fundo é o tom 3 no tema claro e o tom 2 no escuro, onde o tom 3 quase some na tela (2,9:1 sobre o cartão escuro). A conta é a da WCAG e está em `frontend/src/styles/danger-button.test.js`:
+
+| | claro `#A44819` | claro, mouse em cima `#873B14` | escuro `#BF563F` | escuro, mouse em cima `#B3513B` |
+| :--- | :--- | :--- | :--- | :--- |
+| texto branco sobre o botão (pede 4,5:1) | 6,0:1 | 7,9:1 | 4,5:1 | 5,1:1 |
+| botão sobre a caixa da pergunta (pede 3:1) | 6,0:1 | 7,9:1 | 3,8:1 | 3,4:1 |
+| botão sobre o fundo da página | 5,5:1 | 7,3:1 | 4,1:1 | 3,7:1 |
+| botão sobre o bloco dentro do cartão | 5,0:1 | 6,7:1 | 3,4:1 | 3,1:1 |
+
+A terracota continua nos 10% de destaque: o botão cheio só aparece dentro dessas perguntas, um por vez, e o `button-danger` de contorno continua sendo o das linhas e dos cartões.
 
 **Borda dos controles (20/11/2026).** A borda do que a pessoa precisa achar para tocar ou preencher (campo de texto, seletor, área de texto, cartão de opção, bolinha e caixa de marcar vazias, nota da régua) e a linha tracejada das faixas no gráfico usam `--color-control-border`: `#6B756F` no tema claro e `#7A887E` no escuro, dois neutros esverdeados da mesma receita dos outros. Passam de 3:1 em todo fundo em que a borda encosta:
 
@@ -223,6 +234,7 @@ Aplicado em 20/09/2026. Segue a preferência do aparelho e tem um botão no menu
 | Primária `#006633` é fundo de botão, com texto branco | A ação passa a `#3fa96a`, com texto escuro | No escuro a primária não carrega texto branco com contraste suficiente |
 | Fundo da página é um neutro quase branco | `#0f1411`, verde quase sem saturação | Mesma receita dos neutros claros; preto puro não pertence à paleta |
 | Palha é fundo do selo, com texto escuro | Fundo palha escurecido, texto palha claro | Palha, pêssego e terracota continuam nos 10% de destaque, invertidos |
+| Botão de confirmar uma perda é a terracota do tom 3 `#A44819`, com texto branco | Passa ao tom 2 `#BF563F`, ainda com texto branco | O tom 3 dá 2,9:1 sobre o cartão escuro, e o tom 2 ainda leva o branco com 4,5:1 (decisão da dona do projeto, novembro de 2026) |
 | Menu e arte do login são verde escuro | Continuam escuros, `#16281d` | Com a primária clareada, a navegação viraria um bloco brilhante |
 
 Três papéis novos nasceram daí, porque a família sozinha não diz o que a cor faz:

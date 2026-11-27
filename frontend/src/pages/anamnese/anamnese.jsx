@@ -463,6 +463,7 @@ export default function Anamnese() {
                     ? "O que você mudou ainda não foi salvo e vai se perder. Quer mesmo sair?"
                     : "O que você preencheu ainda não foi enviado e vai se perder. Quer mesmo sair?"}
                 confirmText="Sim, sair"
+                danger={true}
                 cancelText="Continuar preenchendo"
                 onConfirm={() => exitBlocker.proceed()}
                 onCancel={() => exitBlocker.reset()}

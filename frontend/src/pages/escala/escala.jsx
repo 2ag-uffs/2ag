@@ -706,6 +706,7 @@ export default function Escala() {
                     + "Quer mesmo sair?"
                 : "O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"}
             confirmText="Sim, sair"
+            danger={true}
             cancelText="Continuar preenchendo"
             onConfirm={() => exitBlocker.proceed()}
             onCancel={() => exitBlocker.reset()}

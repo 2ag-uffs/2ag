@@ -78,7 +78,7 @@ export default function AnnulmentModal({
                     <button type="button" className="button-secondary" onClick={onClose} disabled={isSaving}>
                         Voltar
                     </button>
-                    <BusyButton type="submit" className="button" isBusy={isSaving} busyText="Anulando...">
+                    <BusyButton type="submit" className="button-danger-filled" isBusy={isSaving} busyText="Anulando...">
                         Anular registro
                     </BusyButton>
                 </div>

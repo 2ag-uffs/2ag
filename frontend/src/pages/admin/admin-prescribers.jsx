@@ -830,6 +830,7 @@ export default function AdminPrescribers() {
                             + " continua de onde parou, e os lembretes de escala e de consulta voltam a sair."
                 }
                 confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
+                danger={isDeactivating}
                 cancelText="Voltar"
                 onConfirm={confirmToggle}
                 onCancel={() => setPrescriberToToggle(null)}

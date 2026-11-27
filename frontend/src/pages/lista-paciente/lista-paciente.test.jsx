@@ -83,6 +83,7 @@ describe("ListaPacientes", () => {
         const dialog = screen.getByRole("dialog");
         expect(dialog).toHaveTextContent(/pedidos de consulta esperando resposta são recusados/);
         expect(dialog).toHaveTextContent(/consultas já marcadas continuam na agenda/);
+        expect(within(dialog).getByRole("button", {name: "Arquivar"})).toHaveClass("button-danger-filled");
         await user.click(within(dialog).getByRole("button", {name: "Arquivar"}));
 
         expect(put).toHaveBeenCalledWith("/patients/1/archive");

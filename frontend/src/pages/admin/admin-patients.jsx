@@ -233,6 +233,7 @@ export default function AdminPatients() {
                         : "A pessoa volta a conseguir entrar com a mesma senha."
                 }
                 confirmText={isDeactivating ? "Sim, desativar" : "Sim, reativar"}
+                danger={isDeactivating}
                 cancelText="Voltar"
                 onConfirm={confirmToggle}
                 onCancel={() => setPatientToToggle(null)}

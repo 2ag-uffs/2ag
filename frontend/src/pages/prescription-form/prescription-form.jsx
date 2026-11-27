@@ -686,6 +686,7 @@ export default function PrescriptionForm() {
                 title="Sair sem salvar"
                 message="O que você preencheu ainda não foi salvo e vai se perder. Quer mesmo sair?"
                 confirmText="Sim, sair"
+                danger={true}
                 cancelText="Continuar preenchendo"
                 onConfirm={() => exitBlocker.proceed()}
                 onCancel={() => exitBlocker.reset()}
