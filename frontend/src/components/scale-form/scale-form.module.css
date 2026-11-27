@@ -129,6 +129,11 @@
     font-size: var(--text-md);
 }
 
+/* no Mini-Exame quem le eh o prescritor, no computador e durante a consulta: so la a ajuda volta pra letra menor */
+.smallHelp .help {
+    font-size: var(--text-sm);
+}
+
 .computed {
     background-color: var(--color-background);
     border-radius: var(--radius-md);

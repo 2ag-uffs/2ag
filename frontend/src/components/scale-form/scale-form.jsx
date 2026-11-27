@@ -18,8 +18,11 @@ import styles from "./scale-form.module.css";
 // com o step (a tela do celular q a pagina da escala controla) so aparece a pergunta daquela tela
 // cada item diz a tela dele no data-step, e o data-step-focus marca onde o foco vai qnd a tela muda
 // ou qnd o formulario volta no lugar do painel de pronto (o ver respostas salvas, no celular e no computador)
+//
+// o smallHelp deixa o texto de apoio na letra menor. so o Mini-Exame usa, pq la quem le eh o prescritor
+// (decisao da dona do projeto, novembro de 2026)
 export default function ScaleForm({items, values, onChange, disabled, missingKeys = [], bands = [],
-    fieldErrors = {}, showsUrgencyNotice = false, step = null}) {
+    fieldErrors = {}, showsUrgencyNotice = false, step = null, smallHelp = false}) {
     // o valor q o sistema calcula n eh pergunta, entao fica fora da conta e vai junto da pergunta de antes
     const steps = stepsOf(items);
     const isLastStep = step !== null && step >= steps.length - 1;
@@ -63,7 +66,7 @@ export default function ScaleForm({items, values, onChange, disabled, missingKey
     );
 
     return (
-        <div className={styles.form}>
+        <div className={smallHelp ? styles.form + " " + styles.smallHelp : styles.form}>
             {steps.length > 0 && <ScaleProgress answered={answered} total={steps.length} step={step}/>}
             {parts.map((part) => {
                 // a frase q o papel poe antes da pergunta fica em cima da parte, so qnd o item dela esta na tela

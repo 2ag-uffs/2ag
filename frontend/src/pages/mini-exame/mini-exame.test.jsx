@@ -146,6 +146,22 @@ describe("MiniExame", () => {
         vi.unstubAllGlobals();
     });
 
+    // o texto de apoio das escalas tem o tamanho do texto da pagina, menos aqui: quem le o Mini-Exame eh o
+    // prescritor, e nele a ajuda volta pra letra menor (decisao da dona do projeto, novembro de 2026)
+    it("o texto de apoio do exame fica na letra menor", async () => {
+        const help = "Hora aproximada, dia da semana, dia do mês, mês e ano";
+        const withHelp = {...DEFINITION, items: [{...DEFINITION.items[0], help}]};
+        apiService.get.mockImplementation((path) => {
+            if (path === "/scales/definitions/mini-exame") {
+                return Promise.resolve(withHelp);
+            }
+            return Promise.resolve(path === "/appointments/7" ? APPOINTMENT : null);
+        });
+        renderExam();
+
+        expect((await screen.findByText(help)).closest("[class*='smallHelp']")).not.toBeNull();
+    });
+
     // a api recusa mini-exame novo de paciente arquivado, entao a tela avisa no lugar do formulario
     // (decisao de 17/11/2026)
     it("o mini-exame de paciente arquivado manda reativar e n mostra o formulario", async () => {

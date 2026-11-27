@@ -234,6 +234,7 @@ export default function MiniExame() {
                         onChange={changeAnswer}
                         disabled={isSaving}
                         missingKeys={missingKeys}
+                        smallHelp={true}
                     />
 
                     {/* perto do botao pq no topo o aviso some num form comprido */}

@@ -329,6 +329,25 @@ describe("ScaleForm com as opcoes em cartoes", () => {
         expect(tokens["--text-md"]).toBe("1rem");
     });
 
+    // o Mini-Exame eh lido pelo prescritor, entao so nele a ajuda volta pra letra menor
+    // (decisao da dona do projeto, novembro de 2026)
+    it("so com o smallHelp o texto de apoio fica na letra menor, e so ele", () => {
+        const item = {key: "registro", label: "Registro", help: "Repetir: CARRO, VASO, TIJOLO", type: "NOTA",
+            minValue: 0, maxValue: 3, lowAnchor: "nenhuma", highAnchor: "todas"};
+        const {unmount} = render(<ScaleForm items={[item]} values={{}} onChange={() => {}}/>);
+        expect(screen.getByText(item.help).closest("[class*='smallHelp']")).toBeNull();
+        unmount();
+
+        render(<ScaleForm items={[item]} values={{}} onChange={() => {}} smallHelp={true}/>);
+        expect(screen.getByText(item.help).closest("[class*='smallHelp']")).not.toBeNull();
+
+        // a regra so muda o tamanho do texto de apoio: 14 px
+        expect(declarationsOf(css, ".smallHelp .help")).toEqual({"font-size": "var(--text-sm)"});
+        expect(tokens["--text-sm"]).toBe("0.875rem");
+        // a pergunta, as pontas da regua e o nome das faixas n tem regra propria no Mini-Exame
+        expect(css.match(/\.smallHelp/g)).toHaveLength(1);
+    });
+
     // a regua continua regua, com os botoes maiores, e cabe no celular sem rolar a pagina de lado
     // no celular toda nota da regua com faixas tem a msm largura: a faixa n estica mais pra encher a linha, entao
     // a de 3 notas n fica com botoes mais largos q a de 5 qnd cada faixa cai numa linha (o jsdom n mede, a conta
