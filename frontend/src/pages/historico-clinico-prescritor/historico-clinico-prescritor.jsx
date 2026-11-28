@@ -273,7 +273,7 @@ export default function HistoricoClinicoPrescritor() {
                 <button
                     type="button"
                     className="button-tertiary button-small"
-                    onClick={() => navigate("/paciente/" + patientId + "/auditoria", {state: {patientName: patient.name}})}
+                    onClick={() => navigate("/paciente/" + patientId + "/auditoria")}
                 >
                     <FiShield aria-hidden="true"/>
                     Histórico de acesso

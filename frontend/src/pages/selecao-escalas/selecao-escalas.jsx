@@ -115,9 +115,10 @@ export default function SelecaoEscalas() {
             if (!screenOpenRef.current) {
                 return;
             }
+            // o aviso fica guardado no historico do navegador, por isso vai sem o nome do paciente
             navigate("/paciente/" + patientId + "/historico", {
                 state: {
-                    notice: sent.length + " escala(s) enviada(s) para " + page.patientName
+                    notice: sent.length + " escala(s) enviada(s)"
                         + ". O paciente recebeu o aviso e a escala já aparece no painel dele.",
                 },
             });

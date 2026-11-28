@@ -73,6 +73,22 @@ describe("SelecaoEscalas", () => {
         expect(post).toHaveBeenLastCalledWith("/patients/5/scales", {scaleType: "REGISTRO_DOR"});
     });
 
+    // o aviso vai guardado no historico do navegador e o voltar devolve ele pra quem entrar dps
+    // no msm computador, entao ele n leva o nome do paciente
+    it("o aviso de escala enviada vai pro historico sem o nome do paciente", async () => {
+        vi.spyOn(apiService, "post").mockResolvedValue({id: 9});
+        const router = renderPage();
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("checkbox", {name: /Registro de dor/}));
+        await user.click(screen.getByRole("button", {name: "Enviar ao paciente"}));
+
+        expect(await screen.findByText("Histórico do paciente")).toBeInTheDocument();
+        expect(router.state.location.state.notice).toBe(
+            "1 escala(s) enviada(s). O paciente recebeu o aviso e a escala já aparece no painel dele.");
+        expect(JSON.stringify(router.state.location.state)).not.toContain("Maria Souza");
+    });
+
     // sem resposta do servidor nada foi recusado, entao a escala continua marcada pra tentar de novo
     it("falha de conexao nao marca a escala como recusada", async () => {
         vi.spyOn(apiService, "post").mockRejectedValue(new TypeError("Failed to fetch"));

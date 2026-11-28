@@ -33,6 +33,7 @@ function renderHistory(appointments, patient = PATIENT, prescriptions = []) {
     const router = createMemoryRouter([
         {path: "/paciente/:patientId/historico", element: <HistoricoClinicoPrescritor/>},
         {path: "/consulta/:appointmentId/registro", element: <p>registro da consulta</p>},
+        {path: "/paciente/:patientId/auditoria", element: <p>historico de acesso</p>},
     ], {initialEntries: ["/paciente/5/historico"]});
     render(<RouterProvider router={router}/>);
     return router;
@@ -195,6 +196,18 @@ describe("HistoricoClinicoPrescritor", () => {
     });
 
     // no celular o link quebrava entre o (49) e o numero e cada pedaco ficava com 18px de toque (CT-45)
+    // o q vai no state da navegacao fica guardado no historico do navegador e volta com o voltar,
+    // msm dps de outra pessoa entrar no msm computador
+    it("o Histórico de acesso abre sem mandar o nome do paciente pelo historico do navegador", async () => {
+        const router = renderHistory([DONE]);
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("button", {name: "Histórico de acesso"}));
+
+        expect(router.state.location.pathname).toBe("/paciente/5/auditoria");
+        expect(router.state.location.state).toBeNull();
+    });
+
     it("o telefone do familiar abre a ligacao e fica inteiro numa linha so", async () => {
         renderHistory([DONE], {...PATIENT, guardian: {name: "Carla Dias", relationship: "mãe", phone: "49981234567"}});
 
