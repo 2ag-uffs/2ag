@@ -85,6 +85,11 @@ export function useFocusAboveBars() {
     useEffect(() => {
         const handleFocus = (event) => {
             const element = event.target;
+            // quem deu o foco e ja esta rolando a pagina ate ele marca o elemento com o data-own-scroll,
+            // como o atalho das partes do historico: rolar aqui tbm cortava a rolagem suave dele no meio
+            if (element.hasAttribute("data-own-scroll")) {
+                return;
+            }
             requestAnimationFrame(() => showAboveBars(element));
         };
         document.addEventListener("focusin", handleFocus);
