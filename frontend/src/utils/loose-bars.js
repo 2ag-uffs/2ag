@@ -30,9 +30,13 @@ function opensKeyboard(element) {
 
 // no chrome do android e no safari o teclado so encolhe a parte visivel da tela (visualViewport),
 // entao o @media da janela baixa n dispara e o menu e a barra de acoes ficavam atras do teclado
+// o zoom de pinca tbm encolhe a parte visivel, sem teclado nenhum: a altura vezes a escala volta a ser a da janela
 function isKeyboardOpen(rootSize) {
     const visible = window.visualViewport;
-    return Boolean(visible) && opensKeyboard(document.activeElement) && visible.height < SHORT_WINDOW_REMS * rootSize;
+    if (!visible || !opensKeyboard(document.activeElement)) {
+        return false;
+    }
+    return visible.height * (visible.scale || 1) < SHORT_WINDOW_REMS * rootSize;
 }
 
 function updateLooseBars() {

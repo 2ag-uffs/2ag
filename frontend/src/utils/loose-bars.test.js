@@ -143,9 +143,10 @@ describe("barras soltas com a letra grande", () => {
 });
 
 // o jsdom n tem o visualViewport, entao o teste poe um no lugar com a altura do q aparece acima do teclado
-function stubVisibleHeight(height) {
+function stubVisibleHeight(height, scale = 1) {
     const visible = new EventTarget();
     visible.height = height;
+    visible.scale = scale;
     Object.defineProperty(window, "visualViewport", {value: visible, configurable: true});
     return visible;
 }
@@ -231,6 +232,34 @@ describe("barras soltas com o teclado da tela aberto", () => {
     it("o teclado solta as barras tbm fora do celular", () => {
         stubWidth(1024);
         stubVisibleHeight(400);
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(true);
+    });
+
+    // o zoom de pinca tbm encolhe a parte visivel (janela de 650 px em 1,4x vira 464), mas n abre teclado nenhum
+    it("o zoom de pinca com o foco num campo n solta as barras", () => {
+        stubWidth(1366);
+        const visible = stubVisibleHeight(464, 1.4);
+        render(createElement(Probe));
+        const field = addField("text");
+
+        act(() => field.focus());
+        expect(isLoose()).toBe(false);
+
+        act(() => {
+            visible.height = 325;
+            visible.scale = 2;
+            visible.dispatchEvent(new Event("resize"));
+        });
+        expect(isLoose()).toBe(false);
+    });
+
+    // com a pinca e o teclado juntos sobra menos q a janela baixa msm na escala da pagina: 300 px em 1,4x sao 420
+    it("o teclado aberto com zoom de pinca continua soltando as barras", () => {
+        stubVisibleHeight(300, 1.4);
         render(createElement(Probe));
         const field = addField("text");
 
