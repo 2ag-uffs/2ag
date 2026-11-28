@@ -80,8 +80,15 @@ export default function AppointmentFormModal({
         }
     };
 
+    // com o envio no ar o X e o Esc n fecham, como o Voltar: a recusa da api ia pra um modal q ja tinha sumido
+    const closeModal = () => {
+        if (!isSaving) {
+            onClose();
+        }
+    };
+
     return (
-        <Modal show={true} title={title} onClickClose={onClose}>
+        <Modal show={true} title={title} onClickClose={closeModal}>
             <form className={styles.modalForm} onSubmit={handleSubmit} noValidate ref={formRef}>
                 {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
                 {patients && (

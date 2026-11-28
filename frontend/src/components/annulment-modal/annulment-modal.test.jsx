@@ -1,4 +1,4 @@
-import {render, screen, waitFor} from "@testing-library/react";
+import {act, render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {apiService, ApiError} from "../../services/api.js";
@@ -82,5 +82,38 @@ describe("AnnulmentModal", () => {
         const reason = screen.getByLabelText("Motivo da anulação");
         await waitFor(() => expect(reason).toHaveFocus());
         expect(reason).toHaveAccessibleDescription("O motivo pode ter no máximo 2000 caracteres");
+    });
+
+    // o Voltar ja ficava desligado, mas o X e o Esc fechavam o modal com o pedido no ar, e a recusa da api
+    // ia pra um modal q n existia mais: a pessoa n sabia se o registro tinha sido anulado
+    it("o X e o Esc n fecham o modal durante o envio, e a recusa da api aparece nele", async () => {
+        let refuse = null;
+        vi.spyOn(apiService, "put").mockImplementation(() => new Promise((resolve, reject) => {
+            refuse = () => reject(new ApiError(400, "Esta prescrição já foi anulada"));
+        }));
+        const onClose = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <AnnulmentModal
+                title="Anular prescrição"
+                recordDescription="Prescrição de 10/11/2026"
+                endpoint="/prescriptions/1/annul"
+                onClose={onClose}
+                onAnnulled={() => {}}
+            />
+        );
+
+        await user.type(screen.getByLabelText("Motivo da anulação"), "lancei no paciente errado");
+        await user.click(screen.getByRole("button", {name: "Anular registro"}));
+        await user.keyboard("{Escape}");
+        await user.click(screen.getByRole("button", {name: "Fechar"}));
+        expect(onClose).not.toHaveBeenCalled();
+
+        await act(async () => refuse());
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Esta prescrição já foi anulada");
+        // com a resposta na tela o modal volta a fechar
+        await user.keyboard("{Escape}");
+        expect(onClose).toHaveBeenCalledTimes(1);
     });
 });

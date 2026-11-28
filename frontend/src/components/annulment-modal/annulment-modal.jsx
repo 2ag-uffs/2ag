@@ -52,8 +52,15 @@ export default function AnnulmentModal({
         }
     };
 
+    // com o envio no ar o X e o Esc n fecham, como o Voltar: a recusa da api ia pra um modal q ja tinha sumido
+    const closeModal = () => {
+        if (!isSaving) {
+            onClose();
+        }
+    };
+
     return (
-        <Modal show={true} title={title} onClickClose={onClose}>
+        <Modal show={true} title={title} onClickClose={closeModal}>
             <form className={styles.form} onSubmit={handleSubmit} noValidate ref={formRef}>
                 <p className={styles.recordDescription}>{recordDescription}</p>
                 {warning && <p className="aviso aviso--atencao">{warning}</p>}

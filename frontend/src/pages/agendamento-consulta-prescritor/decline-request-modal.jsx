@@ -28,8 +28,15 @@ export default function DeclineRequestModal({request, onClose, onDeclined}) {
         }
     };
 
+    // com o envio no ar o X e o Esc n fecham, como o Voltar: a recusa da api ia pra um modal q ja tinha sumido
+    const closeModal = () => {
+        if (!isSaving) {
+            onClose();
+        }
+    };
+
     return (
-        <Modal show={true} title="Recusar pedido de consulta" onClickClose={onClose}>
+        <Modal show={true} title="Recusar pedido de consulta" onClickClose={closeModal}>
             <form className={styles.modalForm} onSubmit={handleSubmit}>
                 <p className={styles.modalDescription}>
                     {request.patientName} pediu consulta para {formatDateTime(request.dateTime)}.
