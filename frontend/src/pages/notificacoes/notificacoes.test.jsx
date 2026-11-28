@@ -1,9 +1,9 @@
-import {render, screen, waitFor, within} from "@testing-library/react";
+import {act, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {apiService} from "../../services/api.js";
+import {apiService, ApiError} from "../../services/api.js";
 import {contrastOf, rgbaOf, themesOf} from "../../test/contrast.js";
 import {declarationsOf, mediaRules, readCss} from "../../test/css-rules.js";
 import Notificacoes from "./notificacoes.jsx";
@@ -57,6 +57,138 @@ describe("Notificacoes", () => {
         expect(await screen.findByText("Aviso 1")).toBeInTheDocument();
         expect(screen.queryByText("Aviso 21")).not.toBeInTheDocument();
         expect(screen.queryByText("Nenhum aviso por aqui.")).not.toBeInTheDocument();
+    });
+
+    // dois toques seguidos no Proxima pedem duas paginas, e a resposta da primeira pode chegar por ultimo:
+    // ela ficava na tela no lugar da pagina q a pessoa pediu
+    it("a pagina pedida por ultimo fica na tela msm qnd a resposta da anterior chega dps", async () => {
+        const deliverPage = {};
+        vi.spyOn(apiService, "get").mockImplementation((path) => {
+            const pageNumber = Number(path.split("page=")[1]);
+            const pageBody = {
+                notifications: pageNumber === 0 ? FIRST_PAGE : [notification(pageNumber * 20 + 1)],
+                page: pageNumber, totalPages: 4, totalNotifications: 61, unread: 0,
+            };
+            if (pageNumber === 0) {
+                return Promise.resolve(pageBody);
+            }
+            return new Promise((resolve) => {
+                deliverPage[pageNumber] = () => resolve(pageBody);
+            });
+        });
+        const user = userEvent.setup();
+        const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+            {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        await user.click(await screen.findByRole("button", {name: "Próxima"}));
+        await user.click(screen.getByRole("button", {name: "Próxima"}));
+        await act(async () => deliverPage[2]());
+        await act(async () => deliverPage[1]());
+
+        expect(await screen.findByText("Aviso 41")).toBeInTheDocument();
+        expect(screen.getByText("Página 3 de 4")).toBeInTheDocument();
+        expect(screen.queryByText("Aviso 21")).not.toBeInTheDocument();
+    });
+
+    // o aviso continua na lista ate a recarga chegar, e o segundo toque mandava outro DELETE, q a api recusa
+    // pq o aviso ja foi apagado: a tela mostrava erro de uma acao q deu certo
+    it("dois toques seguidos em Apagar mandam um pedido so e n mostram erro", async () => {
+        let notifications = [notification(1), notification(2)];
+        vi.spyOn(apiService, "get").mockImplementation(async () => ({
+            notifications, page: 0, totalPages: 1, totalNotifications: notifications.length, unread: 0,
+        }));
+        let finishDelete = null;
+        const remove = vi.spyOn(apiService, "delete").mockImplementation(() => {
+            if (finishDelete) {
+                return Promise.reject(new ApiError(404, "Não foi possível encontrar o que você procura."));
+            }
+            return new Promise((resolve) => {
+                finishDelete = () => {
+                    notifications = [notification(2)];
+                    resolve(null);
+                };
+            });
+        });
+        const user = userEvent.setup();
+        const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+            {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        await screen.findByText("Aviso 1");
+        const firstItem = screen.getByRole("heading", {name: "Aviso 1"}).closest("li");
+        await user.click(within(firstItem).getByRole("button", {name: "Apagar"}));
+        // enquanto a api responde a linha fica ocupada e os dois botoes dela n aceitam outro toque
+        expect(firstItem).toHaveAttribute("aria-busy", "true");
+        expect(within(firstItem).getByRole("button", {name: "Apagar"})).toHaveAttribute("aria-disabled", "true");
+        expect(within(firstItem).getByRole("button", {name: "Marcar como lido"})).toHaveAttribute("aria-disabled", "true");
+        await user.click(within(firstItem).getByRole("button", {name: "Apagar"}));
+        await user.click(within(firstItem).getByRole("button", {name: "Marcar como lido"}));
+        await act(async () => finishDelete());
+
+        await waitFor(() => expect(screen.queryByText("Aviso 1")).not.toBeInTheDocument());
+        expect(remove).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        // a linha q ficou n herda o ocupado
+        const secondItem = screen.getByRole("heading", {name: "Aviso 2"}).closest("li");
+        expect(secondItem).not.toHaveAttribute("aria-busy");
+        expect(within(secondItem).getByRole("button", {name: "Apagar"})).not.toHaveAttribute("aria-disabled");
+    });
+
+    // a recarga pedida pelo apagar de um aviso soltava todas as linhas, e o outro aviso q ainda estava com o
+    // DELETE no ar aceitava o segundo toque
+    it("a recarga de um aviso apagado n solta a linha de outro aviso q ainda esta sendo apagado", async () => {
+        let notifications = [notification(1), notification(2)];
+        let loads = 0;
+        let deliverReload = null;
+        vi.spyOn(apiService, "get").mockImplementation(() => {
+            loads += 1;
+            const pageBody = {
+                notifications, page: 0, totalPages: 1, totalNotifications: notifications.length, unread: 0,
+            };
+            if (loads !== 2) {
+                return Promise.resolve(pageBody);
+            }
+            return new Promise((resolve) => {
+                deliverReload = () => resolve(pageBody);
+            });
+        });
+        let finishSecondDelete = null;
+        const remove = vi.spyOn(apiService, "delete").mockImplementation((path) => {
+            if (path.endsWith("/1")) {
+                notifications = [notification(2)];
+                return Promise.resolve(null);
+            }
+            return new Promise((resolve) => {
+                finishSecondDelete = () => {
+                    notifications = [];
+                    resolve(null);
+                };
+            });
+        });
+        const user = userEvent.setup();
+        const router = createMemoryRouter([{path: "/notificacoes", element: <Notificacoes/>}],
+            {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        await screen.findByText("Aviso 1");
+        const firstItem = screen.getByRole("heading", {name: "Aviso 1"}).closest("li");
+        await user.click(within(firstItem).getByRole("button", {name: "Apagar"}));
+        await waitFor(() => expect(deliverReload).not.toBeNull());
+        const secondItem = screen.getByRole("heading", {name: "Aviso 2"}).closest("li");
+        await user.click(within(secondItem).getByRole("button", {name: "Apagar"}));
+        await act(async () => deliverReload());
+
+        await waitFor(() => expect(screen.queryByText("Aviso 1")).not.toBeInTheDocument());
+        const stillBusyItem = screen.getByRole("heading", {name: "Aviso 2"}).closest("li");
+        expect(stillBusyItem).toHaveAttribute("aria-busy", "true");
+        await user.click(within(stillBusyItem).getByRole("button", {name: "Apagar"}));
+        expect(remove).toHaveBeenCalledTimes(2);
+
+        await act(async () => finishSecondDelete());
+        expect(await screen.findByText("Nenhum aviso por aqui.")).toBeInTheDocument();
+        expect(remove).toHaveBeenCalledTimes(2);
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     // o botao tocado some com o aviso e o foco caia no body: com o leitor de tela a pessoa voltava pro comeco da pagina

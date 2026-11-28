@@ -3,6 +3,7 @@ import {useNavigate} from "react-router";
 import {FiAlertCircle, FiBell, FiCalendar, FiClipboard} from "react-icons/fi";
 import EmptyState from "../../components/empty-state/empty-state.jsx";
 import {LoadError} from "../../components/error-card/error-card.jsx";
+import BusyButton from "../../components/form/busy-button.jsx";
 import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
@@ -39,10 +40,14 @@ function focusText(element) {
     element.addEventListener("blur", () => element.removeAttribute("tabindex"), {once: true});
 }
 
-function NotificationItem({notification, onOpen, onRemove}) {
+// enquanto a api responde o abrir ou o apagar, a linha fica ocupada e os dois botoes n aceitam outro toque
+function NotificationItem({notification, isBusy, onOpen, onRemove}) {
     const Icon = TYPE_ICONS[notification.type] || FiBell;
     return (
-        <li className={notification.isRead ? styles.item : styles.item + " " + styles.itemUnread}>
+        <li
+            className={notification.isRead ? styles.item : styles.item + " " + styles.itemUnread}
+            aria-busy={isBusy ? "true" : undefined}
+        >
             <span className={styles.icon} aria-hidden="true"><Icon/></span>
             <div className={styles.content}>
                 <p className={styles.meta}>
@@ -56,12 +61,17 @@ function NotificationItem({notification, onOpen, onRemove}) {
                 <p className={styles.message}>{withBrasiliaTimeNote(notification.message)}</p>
             </div>
             <div className={styles.actions}>
-                <button type="button" className="button-secondary button-small" onClick={onOpen}>
+                <BusyButton type="button" className="button-secondary button-small" isBusy={isBusy} onClick={onOpen}>
                     {notification.link ? "Abrir" : "Marcar como lido"}
-                </button>
-                <button type="button" className={"button-tertiary button-small " + styles.remove} onClick={onRemove}>
+                </BusyButton>
+                <BusyButton
+                    type="button"
+                    className={"button-tertiary button-small " + styles.remove}
+                    isBusy={isBusy}
+                    onClick={onRemove}
+                >
                     Apagar
-                </button>
+                </BusyButton>
             </div>
         </li>
     );
@@ -112,9 +122,31 @@ export default function Notificacoes() {
         items[Math.min(target, items.length - 1)].querySelector("button").focus();
     }, [page]);
 
+    // os avisos com abrir ou apagar no ar. o aviso continua na lista ate a recarga chegar, e o segundo toque em
+    // Apagar mandava outro pedido, q a api recusa pq o aviso ja foi apagado
+    const [busyIds, setBusyIds] = useState([]);
+    // os avisos q a api ainda n respondeu. a recarga pedida por um aviso so solta as linhas q ja tiveram resposta,
+    // senao o outro aviso com o apagar no ar aceitava o segundo toque
+    const waitingIdsRef = useRef([]);
+    const stopWaiting = (notificationId) => {
+        waitingIdsRef.current = waitingIdsRef.current.filter((waitingId) => waitingId !== notificationId);
+    };
+    const freeAnsweredRows = () => {
+        setBusyIds((currentIds) => currentIds.filter((busyId) => waitingIdsRef.current.includes(busyId)));
+    };
+
+    // so a resposta do ultimo pedido da lista vale. com dois pedidos no ar (dois toques seguidos no Proxima)
+    // o da pagina anterior podia chegar por ultimo e ficar na tela no lugar da pagina pedida
+    const lastLoadRef = useRef(0);
+
     const loadPage = useCallback(() => {
+        lastLoadRef.current += 1;
+        const loadNumber = lastLoadRef.current;
         apiService.get("/notifications?page=" + pageNumber)
             .then((loadedPage) => {
+                if (loadNumber !== lastLoadRef.current) {
+                    return;
+                }
                 // apagar o ultimo aviso da ultima pagina deixa ela vazia, entao volta pra ultima q ainda tem aviso
                 if (loadedPage.notifications.length === 0 && loadedPage.page > 0) {
                     setPageNumber(Math.max(loadedPage.totalPages - 1, 0));
@@ -122,35 +154,52 @@ export default function Notificacoes() {
                 }
                 setPage(loadedPage);
                 setLoadError(null);
+                // a lista nova chegou, entao a linha q ja teve resposta da api n continua ocupada
+                freeAnsweredRows();
                 // o numero do menu acompanha o q foi lido ou apagado aqui
                 window.dispatchEvent(new CustomEvent("notifications-changed", {detail: loadedPage.unread}));
             })
             .catch((requestError) => {
+                if (loadNumber !== lastLoadRef.current) {
+                    return;
+                }
+                freeAnsweredRows();
                 setLoadError(loadErrorOf(requestError,
                     "Não foi possível carregar os avisos. Confira sua internet e tente de novo."));
             });
     }, [pageNumber]);
 
-    useEffect(loadPage, [loadPage]);
+    useEffect(() => {
+        loadPage();
+        // a resposta q chega dps de a pessoa sair da tela tbm n vale
+        return () => {
+            lastLoadRef.current += 1;
+        };
+    }, [loadPage]);
 
-    const showActionError = (requestError) => {
+    const showActionError = (requestError, notificationId) => {
+        stopWaiting(notificationId);
+        setBusyIds((currentIds) => currentIds.filter((busyId) => busyId !== notificationId));
         setActionError(errorMessageOf(requestError));
     };
 
     // abrir o aviso marca como lido e leva pra tela de onde ele veio
     const openNotification = async (notification) => {
         setActionError(null);
+        setBusyIds((currentIds) => [...currentIds, notification.id]);
+        waitingIdsRef.current = [...waitingIdsRef.current, notification.id];
         try {
             if (!notification.isRead) {
                 await apiService.post("/notifications/" + notification.id + "/read");
             }
+            stopWaiting(notification.id);
             if (notification.link) {
                 navigate(notification.link);
                 return;
             }
             loadPage();
         } catch (requestError) {
-            showActionError(requestError);
+            showActionError(requestError, notification.id);
         }
     };
 
@@ -167,12 +216,15 @@ export default function Notificacoes() {
 
     const removeNotification = async (notificationId, index) => {
         setActionError(null);
+        setBusyIds((currentIds) => [...currentIds, notificationId]);
+        waitingIdsRef.current = [...waitingIdsRef.current, notificationId];
         try {
             await apiService.delete("/notifications/" + notificationId);
+            stopWaiting(notificationId);
             focusAfterLoadRef.current = index;
             loadPage();
         } catch (requestError) {
-            showActionError(requestError);
+            showActionError(requestError, notificationId);
         }
     };
 
@@ -208,6 +260,7 @@ export default function Notificacoes() {
                         <NotificationItem
                             key={notification.id}
                             notification={notification}
+                            isBusy={busyIds.includes(notification.id)}
                             onOpen={() => openNotification(notification)}
                             onRemove={() => removeNotification(notification.id, index)}
                         />
