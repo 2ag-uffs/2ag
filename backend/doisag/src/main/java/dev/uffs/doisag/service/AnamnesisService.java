@@ -140,8 +140,14 @@ public class AnamnesisService {
     // de escala anulada: antes ele so descobria abrindo o historico (decisao da dona, 11/2026)
     // a tarefa da avaliacao inicial fica como esta, e o aviso eh so dentro do sistema, nada vai por e-mail
     // o arquivado n consegue mandar ficha nova, entao o aviso dele manda falar com a clinica
+    // a avaliacao inicial enviada de novo vira outra ficha: qnd sobra outra valida n tem o q preencher
+    // de novo e o aviso n sai, como na escala, q so avisa qnd a anulacao deixa a tarefa sem resposta
     private void notifyPatientOfAnnulment(Anamnesis anamnesis) {
         Patient patient = anamnesis.getPatient();
+        if (anamnesisRepository.existsByPatientIdAndIdNotAndAnnulmentAnnulledAtIsNull(
+                patient.getId(), anamnesis.getId())) {
+            return;
+        }
         String message = patient.isArchived() ? ANNULLED_NOTICE_ARCHIVED_MESSAGE : ANNULLED_NOTICE_MESSAGE;
         notificationService.createNotification(patient, ANNULLED_NOTICE_TITLE,
                 message + " Motivo: " + anamnesis.getAnnulment().getAnnulmentReason(),

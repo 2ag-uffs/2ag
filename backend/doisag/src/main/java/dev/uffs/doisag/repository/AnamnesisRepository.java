@@ -23,6 +23,9 @@ public interface AnamnesisRepository extends AssessmentRepository<Anamnesis> {
     boolean existsByPatientIdAndCreatedAtGreaterThanEqualAndAnnulmentAnnulledAtIsNull(
             Long patientId, LocalDateTime from);
 
+    // outra ficha valida do paciente, fora a q acabou de ser anulada: com ela o paciente n precisa preencher de novo
+    boolean existsByPatientIdAndIdNotAndAnnulmentAnnulledAtIsNull(Long patientId, Long id);
+
     // so o paciente da anamnese, sem carregar ela: quem vai mudar a anamnese trava o paciente
     // primeiro e so dps le a anamnese travada
     @Query("select anamnesis.patient.id from Anamnesis anamnesis where anamnesis.id = :id")

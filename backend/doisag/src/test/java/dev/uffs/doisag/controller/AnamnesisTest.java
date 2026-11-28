@@ -273,6 +273,30 @@ class AnamnesisTest {
                                 + " Motivo: Ficha de outra pessoa"));
     }
 
+    // a avaliacao inicial enviada de novo vira outra ficha. anular a repetida n pede ficha nova, pq a outra
+    // continua valendo e o historico do paciente nem mostra o Preencher anamnese. o aviso so sai qnd a
+    // anulacao deixa o paciente sem ficha valida, como na escala, q so avisa qnd a tarefa reabre
+    @Test
+    void annullingARepeatedAnamnesisDoesNotAskThePatientToFillItAgain() throws Exception {
+        Long firstId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+        Long secondId = idOf(fillAnamnesis(answers()).andExpect(status().isCreated()));
+
+        annul(firstId, "Ficha repetida", prescriber).andExpect(status().isOk());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .extracting(Notification::getTitle)
+                .doesNotContain(AnamnesisService.ANNULLED_NOTICE_TITLE);
+
+        // a ultima ficha valida anulada deixa o paciente sem nenhuma, e ai o aviso sai
+        annul(secondId, "Ficha incompleta", prescriber).andExpect(status().isOk());
+
+        assertThat(notificationRepository.findByUserIdOrderByCreatedAtDesc(patient.getId()))
+                .filteredOn(notice -> notice.getTitle().equals(AnamnesisService.ANNULLED_NOTICE_TITLE))
+                .singleElement()
+                .satisfies(notice -> assertThat(notice.getMessage())
+                        .isEqualTo(AnamnesisService.ANNULLED_NOTICE_MESSAGE + " Motivo: Ficha incompleta"));
+    }
+
     // corrigir eh anular e preencher de novo, as vezes no mesmo dia: a ficha valida vem antes da anulada
     @Test
     void theRedoneAnamnesisComesBeforeTheAnnulledOneOfTheSameDay() throws Exception {
