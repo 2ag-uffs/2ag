@@ -552,6 +552,9 @@ export default function Escala() {
     };
 
     const isReadOnly = currentResponse !== null && !currentResponse.editableByPatient;
+    // no diario os campos esperam a tarefa aberta junto com a grade: ela pode trocar o dia q a tela abre, e a
+    // resposta marcada antes ficava num dia q a pessoa n escolheu, as vezes fora da grade
+    const isWaitingTask = isDiary && !isTaskLoaded;
 
     // a correcao de escala de periodo abre pela data (?data=) e mexe na resposta q ja existe:
     // as datas viram campo dela e salvar atualiza ela, em vez de criar outra no dia novo
@@ -861,7 +864,7 @@ export default function Escala() {
                         bands={definition.bands}
                         values={values}
                         onChange={changeAnswer}
-                        disabled={isReadOnly || isSaving}
+                        disabled={isReadOnly || isSaving || isWaitingTask}
                         missingKeys={missingKeys}
                         fieldErrors={fieldErrorsByDay[selectedDay] || {}}
                         showsUrgencyNotice={true}

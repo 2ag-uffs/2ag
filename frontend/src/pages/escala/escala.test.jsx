@@ -1046,6 +1046,53 @@ describe("Escala diaria", () => {
         expect(screen.queryByRole("status", {name: "Carregando os dias"})).not.toBeInTheDocument();
     });
 
+    // a nota tocada nessa espera ficava guardada em hoje, e qnd chegava a pendente q venceu ontem a tela trocava
+    // sozinha pro ultimo dia dela: a pergunta voltava em branco e o salvar mandava hoje, q nem estava na grade
+    it("o formulario do diario so aceita resposta dps q a tarefa aberta chega", async () => {
+        const post = vi.spyOn(apiService, "post").mockResolvedValue({
+            id: 9, scaleType: "ACOMPANHAMENTO_SEMANAL", slug: "acompanhamento-semanal", periodStart: dayFromToday(-1),
+            periodEnd: dayFromToday(-1), answers: {dor: 6}, result: null, reviewed: false, annulled: false,
+            editableByPatient: true,
+        });
+        pendingTasks[0].periodEnd = dayFromToday(-1);
+        let deliverOverview = null;
+        vi.mocked(apiService.get).mockImplementation((path) => {
+            if (path === "/scales/definitions/acompanhamento-semanal") {
+                return Promise.resolve(DIARY);
+            }
+            if (path === "/patients/3/scales/overview") {
+                return new Promise((resolve) => {
+                    deliverOverview = resolve;
+                });
+            }
+            return Promise.resolve([]);
+        });
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        expect(await screen.findByRole("status", {name: "Carregando os dias"})).toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "4"})).toBeDisabled();
+        await user.click(screen.getByRole("radio", {name: "4"}));
+        expect(screen.getByRole("radio", {name: "4"})).not.toBeChecked();
+
+        await act(async () => deliverOverview({pending: pendingTasks, history: []}));
+
+        // a tela abre no ultimo dia do periodo, em branco e sem nenhum dia por salvar
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        expect(within(grid).getByRole("button", {pressed: true}))
+            .toHaveTextContent(formatWeekdayAndDate(dayFromToday(-1)));
+        expect(within(grid).queryByText(/não salvo/)).not.toBeInTheDocument();
+        expect(screen.getByRole("radio", {name: "4"})).toBeEnabled();
+        expect(screen.getByRole("radio", {name: "4"})).not.toBeChecked();
+
+        await user.click(screen.getByRole("radio", {name: "6"}));
+        await user.click(screen.getByRole("button", {name: "Salvar respostas"}));
+
+        await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+        expect(post.mock.calls[0][1]).toEqual({periodStart: dayFromToday(-1), periodEnd: dayFromToday(-1),
+            answers: {dor: 6}});
+    });
+
     it("se a tarefa aberta n chega a grade da semana aparece como antes", async () => {
         vi.mocked(apiService.get).mockImplementation((path) => {
             if (path === "/scales/definitions/acompanhamento-semanal") {
