@@ -246,3 +246,10 @@ test("codigo de caso de teste citado no codigo ou nos documentos existe no plano
     }
     assert.deepEqual(missing, []);
 });
+
+// o codigo vai no relato de bug e no card de QA, entao dois casos com o msm codigo n dizem qual foi testado
+test("cada codigo do plano de testes eh de um caso so", () => {
+    const codes = testPlanCodes();
+    const repeated = codes.filter((code, index) => codes.indexOf(code) !== index);
+    assert.deepEqual(repeated, []);
+});
