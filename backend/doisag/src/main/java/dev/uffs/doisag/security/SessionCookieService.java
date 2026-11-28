@@ -49,6 +49,12 @@ public class SessionCookieService {
         addCookie(response, token, tokenService.getSessionDuration());
     }
 
+    // sessao do login: a hora dela eh a q o login marcou com a conta travada, dps de conferir a senha
+    public void writeSession(HttpServletResponse response, Users user, Instant loginAt) {
+        String token = tokenService.generateToken(user, loginAt);
+        addCookie(response, token, tokenService.getSessionDuration());
+    }
+
     // troca o token de uma sessao em uso mantendo a hora do login
     public void renewSession(HttpServletResponse response, Users user, Instant loginAt) {
         String token = tokenService.generateToken(user, loginAt);

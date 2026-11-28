@@ -46,8 +46,10 @@ public class AuthenticationController {
     @PostMapping("/login")
     public SessionUserDTO login(@RequestBody @Valid LoginDTO loginData, HttpServletRequest request,
                                 HttpServletResponse response) {
-        Users user = authService.login(loginData.email(), loginData.password(), request.getRemoteAddr());
-        sessionCookieService.writeSession(response, user);
+        AuthService.CheckedLogin checkedLogin = authService.login(loginData.email(), loginData.password(),
+                request.getRemoteAddr());
+        Users user = checkedLogin.user();
+        sessionCookieService.writeSession(response, user, checkedLogin.loginAt());
         return new SessionUserDTO(user, consentTermService.needsNewAcceptance(user),
                 consentTermService.isPendingOnlyByAge(user));
     }

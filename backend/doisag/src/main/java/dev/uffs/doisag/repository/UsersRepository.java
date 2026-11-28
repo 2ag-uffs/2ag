@@ -37,4 +37,9 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
     @Transactional(propagation = Propagation.MANDATORY)
     @Query(value = "select id from users where id = :id for update", nativeQuery = true)
     Long lockById(@Param("id") Long id);
+
+    // a senha guardada agora, lida direto do banco: o login confere com ela, dps da trava, se a senha
+    // q ele conferiu ainda eh a da conta
+    @Query("select account.password from Users account where account.id = :id")
+    String findPasswordById(@Param("id") Long id);
 }

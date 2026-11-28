@@ -108,14 +108,17 @@ public class PasswordService {
         if (!PasswordRules.fitsInBcrypt(newPassword)) {
             throw new InvalidFieldException("newPassword", PasswordRules.TOO_LONG_MESSAGE);
         }
-        user.setPassword(passwordEncoder.encode(newPassword));
-        // a troca e o fim do pedido de e-mail novo saem do msm instante
-        LocalDateTime now = LocalDateTime.now();
-        user.setPasswordChangedAt(now.truncatedTo(ChronoUnit.MILLIS));
         // trocar a senha eh como a dona da conta retoma ela, entao o pedido de e-mail novo
         // q estiver esperando confirmacao cai junto (issue 130). a conta fica travada antes,
         // pra um pedido feito no mesmo instante esperar e encontrar a senha nova
         usersRepository.lockById(user.getId());
+        // o hash e a hora da troca vem dps da trava, nessa ordem: o login q conferiu a senha antiga
+        // marca a hora dele com a trava na mao, e o tempo de gerar o hash garante q a hora da troca
+        // fica dps dela, nunca no msm milissegundo
+        user.setPassword(passwordEncoder.encode(newPassword));
+        // a troca e o fim do pedido de e-mail novo saem do msm instante
+        LocalDateTime now = LocalDateTime.now();
+        user.setPasswordChangedAt(now.truncatedTo(ChronoUnit.MILLIS));
         for (EmailChange pendingChange : emailChangeRepository.findPendingForUpdate(user.getId())) {
             pendingChange.setUsedAt(now);
         }
