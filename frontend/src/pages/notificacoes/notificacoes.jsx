@@ -8,6 +8,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, errorMessageOf, loadErrorOf} from "../../services/api.js";
 import {formatDateTime, withBrasiliaTimeNote} from "../../utils/date-format.js";
+import {useScreenOpen} from "../../utils/screen-open.js";
 import styles from "./notificacoes.module.css";
 
 // o tipo vem do backend e vira uma etiqueta curta e um icone na lista
@@ -83,6 +84,7 @@ function NotificationItem({notification, isBusy, onOpen, onRemove}) {
 // paginada pq cresce sem limite (RNF06)
 export default function Notificacoes() {
     const navigate = useNavigate();
+    const screenOpenRef = useScreenOpen();
 
     const [page, setPage] = useState(null);
     const [pageNumber, setPageNumber] = useState(0);
@@ -193,6 +195,10 @@ export default function Notificacoes() {
                 await apiService.post("/notifications/" + notification.id + "/read");
             }
             stopWaiting(notification.id);
+            // quem saiu da tela enquanto a api marcava como lido fica onde foi
+            if (!screenOpenRef.current) {
+                return;
+            }
             if (notification.link) {
                 navigate(notification.link);
                 return;

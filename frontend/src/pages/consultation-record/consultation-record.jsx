@@ -19,6 +19,7 @@ import {ARCHIVED_RECORD_NOTICE} from "../../utils/archived-patient.js";
 import {ageFrom, nowInBrasilia} from "../../utils/date-format.js";
 import {numberOrNull, textOrNull} from "../../utils/form-values.js";
 import {useForgetBlockedExit, useLeaveWarning, useSendWaitingLogin} from "../../utils/leave-warning.js";
+import {useScreenOpen} from "../../utils/screen-open.js";
 import styles from "./consultation-record.module.css";
 
 // a modalidade vem vazia e a prescritora escolhe, pq a que vinha marcada como presencial ficava sem ninguem
@@ -114,6 +115,7 @@ function blockedMessageOf(appointment) {
 // abre vazio pra uma consulta nova ou com os dados de uma consulta q ja existe
 export default function ConsultationRecord() {
     const navigate = useNavigate();
+    const screenOpenRef = useScreenOpen();
     const location = useLocation();
     const {patientId, appointmentId} = useParams();
     const isNewConsultation = appointmentId === undefined;
@@ -219,7 +221,11 @@ export default function ConsultationRecord() {
                     requestBody, requestKey);
                 // o endereco de consulta nova vira o da consulta salva
                 // senao voltar ou recarregar abre o formulario vazio e salvar de novo cria outra consulta
-                navigate("/consulta/" + savedAppointment.id + "/registro", {replace: true, state: {registered: true}});
+                // quem saiu da tela no meio do salvar fica onde foi: a consulta esta salva e aparece no historico
+                if (screenOpenRef.current) {
+                    navigate("/consulta/" + savedAppointment.id + "/registro",
+                        {replace: true, state: {registered: true}});
+                }
             } else {
                 await apiService.put("/appointments/" + appointmentId + "/clinical-record", requestBody);
                 setStartingRecord(record);

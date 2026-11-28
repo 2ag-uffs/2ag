@@ -14,6 +14,7 @@ import {ARCHIVED_ANAMNESIS_NOTICE} from "../../utils/archived-patient.js";
 import {toIsoDate} from "../../utils/date-format.js";
 import {emptyToNull} from "../../utils/form-values.js";
 import {useLeaveWarning} from "../../utils/leave-warning.js";
+import {useScreenOpen} from "../../utils/screen-open.js";
 import styles from "./anamnese.module.css";
 
 const SMOKING_OPTIONS = [
@@ -91,6 +92,7 @@ function requestBodyOf(answers) {
 // com id na url a mesma tela corrige uma ficha q ja foi enviada
 export default function Anamnese() {
     const navigate = useNavigate();
+    const screenOpenRef = useScreenOpen();
     const [searchParams] = useSearchParams();
     const anamnesisId = searchParams.get("id");
     const isCorrection = anamnesisId !== null;
@@ -199,7 +201,10 @@ export default function Anamnese() {
                 ? "Correção da anamnese salva. O seu prescritor já vê a ficha nova."
                 : "Ficha de anamnese enviada. Obrigado por responder.";
             isSentRef.current = true;
-            navigate(exitPath, {replace: true, state: {notice}});
+            // quem confirmou o sair no meio do envio fica onde foi, a ficha ja foi gravada
+            if (screenOpenRef.current) {
+                navigate(exitPath, {replace: true, state: {notice}});
+            }
         } catch (requestError) {
             const errorInfo = readRequestError(requestError);
             setFieldErrors(errorInfo.fieldErrors);

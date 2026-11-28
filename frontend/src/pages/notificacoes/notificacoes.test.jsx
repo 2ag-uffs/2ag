@@ -290,6 +290,35 @@ describe("Notificacoes", () => {
         expect(screen.getByText("Aviso 2")).toBeInTheDocument();
     });
 
+    // o marcar como lido demora, a pessoa toca em outra tela, e a resposta q chegava dps levava ela pro link do aviso
+    it("a resposta do Abrir q chega dps de a pessoa sair da tela n troca de tela", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({
+            notifications: [{...notification(1), isRead: false, link: "/agendamento-consulta"}],
+            page: 0, totalPages: 1, totalNotifications: 1, unread: 1,
+        });
+        let finishRead = null;
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => new Promise((resolve) => {
+            finishRead = () => resolve(null);
+        }));
+        const user = userEvent.setup();
+        const router = createMemoryRouter([
+            {path: "/notificacoes", element: <Notificacoes/>},
+            {path: "/agendamento-consulta", element: <p>tela de consultas</p>},
+            {path: "/painel-paciente", element: <p>painel do paciente</p>},
+        ], {initialEntries: ["/notificacoes"]});
+        render(<RouterProvider router={router}/>);
+
+        await user.click(await screen.findByRole("button", {name: "Abrir"}));
+        await waitFor(() => expect(post).toHaveBeenCalledWith("/notifications/1/read"));
+        await act(() => router.navigate("/painel-paciente"));
+        expect(await screen.findByText("painel do paciente")).toBeInTheDocument();
+
+        await act(async () => finishRead());
+
+        expect(router.state.location.pathname).toBe("/painel-paciente");
+        expect(screen.queryByText("tela de consultas")).not.toBeInTheDocument();
+    });
+
     // apagar n pede confirmacao: fica longe do Abrir, na outra ponta no celular, e na cor de acao q perde algo
     it("o Apagar fica longe do Abrir e na terracota, q passa de 4,5:1 nos temas", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({

@@ -75,6 +75,32 @@ describe("Anamnese", () => {
         expect(post).toHaveBeenCalledTimes(1);
     });
 
+    // quem confirma o Sair sem enviar no meio do envio era puxado de volta pro painel qnd a resposta chegava,
+    // com replace, e perdia a tela pra onde tinha ido
+    it("a resposta do envio q chega dps de a pessoa sair da tela n troca de tela", async () => {
+        let finishSend = null;
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => new Promise((resolve) => {
+            finishSend = () => resolve({id: 1});
+        }));
+        const router = renderAnamnesis("/painel-paciente", "/anamnese");
+        const user = userEvent.setup();
+
+        fireEvent.change(await screen.findByLabelText("Motivo principal da consulta"), {target: {value: "dor"}});
+        fireEvent.change(screen.getByLabelText("Você sabe que o tratamento precisa de acompanhamento regular?"),
+            {target: {value: "Sim"}});
+        fireEvent.click(screen.getByRole("button", {name: "Enviar anamnese"}));
+        await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+        await act(() => router.navigate("/historico-paciente"));
+        await user.click(within(await screen.findByRole("dialog", {name: "Sair sem enviar"}))
+            .getByRole("button", {name: "Sim, sair"}));
+        expect(await screen.findByText("historico")).toBeInTheDocument();
+
+        await act(async () => finishSend());
+
+        expect(router.state.location.pathname).toBe("/historico-paciente");
+        expect(screen.queryByText("painel do paciente")).not.toBeInTheDocument();
+    });
+
     // a ficha eh toda de texto livre e ninguem le na hora, entao cada parte dela diz q n eh canal de urgencia e o
     // leitor de tela le o aviso junto de cada campo de texto (decisao de 14/11/2026, revisao das regras R1)
     it("cada parte da ficha avisa que nao e atendimento de urgencia, junto dos campos de texto", async () => {

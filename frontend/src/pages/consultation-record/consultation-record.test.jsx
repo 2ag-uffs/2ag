@@ -111,6 +111,29 @@ describe("ConsultationRecord", () => {
         expect(screen.queryByRole("button", {name: "Salvar consulta"})).not.toBeInTheDocument();
     });
 
+    // sair no meio do salvar n pergunta, e a resposta q chegava dps trocava a tela pra onde a pessoa foi
+    // pela Consulta registrada, com replace, entao o voltar do navegador nem voltava pra la
+    it("a resposta do salvar q chega dps de a pessoa sair da tela n troca de tela", async () => {
+        let finishSave = null;
+        post.mockImplementation(() => new Promise((resolve) => {
+            finishSave = () => resolve({id: 99});
+        }));
+        const router = renderNewConsultation();
+
+        fireEvent.change(await screen.findByLabelText("Evolução do quadro"), {target: {value: "melhorou da dor"}});
+        fireEvent.change(screen.getByLabelText("Modalidade"), {target: {value: "REMOTA"}});
+        fireEvent.click(screen.getByRole("button", {name: "Salvar consulta"}));
+        await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+        await act(() => router.navigate("/consulta/7/prescricao"));
+        expect(await screen.findByText("tela da prescricao")).toBeInTheDocument();
+
+        await act(async () => finishSave());
+
+        expect(router.state.location.pathname).toBe("/consulta/7/prescricao");
+        expect(screen.getByText("tela da prescricao")).toBeInTheDocument();
+        expect(screen.queryByText("Consulta registrada")).not.toBeInTheDocument();
+    });
+
     it("do arquivado a consulta marcada n recebe registro e a concluida continua sendo corrigida", async () => {
         apiService.get.mockResolvedValue({...SAVED_APPOINTMENT, status: "AGENDADA", patientArchived: true});
         const {unmount} = render(<RouterProvider router={createMemoryRouter([

@@ -10,6 +10,7 @@ import PageHeader from "../../components/page-header/page-header.jsx";
 import SkeletonPage from "../../components/skeleton/skeleton.jsx";
 import {apiService, ApiError, CONNECTION_ERROR_MESSAGE, loadErrorOf} from "../../services/api.js";
 import {ARCHIVED_INITIAL_ASSESSMENT_NOTICE} from "../../utils/archived-patient.js";
+import {useScreenOpen} from "../../utils/screen-open.js";
 import {matchesSearch} from "../../utils/search-text.js";
 import styles from "./selecao-escalas.module.css";
 
@@ -33,6 +34,7 @@ function descriptionOf(scale, alreadySent, blockedReason, refusal) {
 // aparece aqui: quem aplica eh o prescritor na consulta (RN09)
 export default function SelecaoEscalas() {
     const navigate = useNavigate();
+    const screenOpenRef = useScreenOpen();
     const {patientId} = useParams();
 
     const [page, setPage] = useState(null);
@@ -108,6 +110,10 @@ export default function SelecaoEscalas() {
             for (const scale of scalesToSend) {
                 await apiService.post("/patients/" + patientId + "/scales", {scaleType: scale.type});
                 sent.push(scale.type);
+            }
+            // quem saiu da tela no meio do envio fica onde foi, as escalas ja foram enviadas
+            if (!screenOpenRef.current) {
+                return;
             }
             navigate("/paciente/" + patientId + "/historico", {
                 state: {

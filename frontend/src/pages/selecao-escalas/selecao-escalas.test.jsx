@@ -1,4 +1,4 @@
-import {render, screen} from "@testing-library/react";
+import {act, render, screen, waitFor} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {createMemoryRouter} from "react-router";
 import {RouterProvider} from "react-router/dom";
@@ -140,6 +140,32 @@ describe("SelecaoEscalas", () => {
         expect(screen.getByText(INITIAL_ASSESSMENT.description)).toBeInTheDocument();
         await user.click(assessment);
         expect(screen.getByText("1 escala(s) para enviar.")).toBeInTheDocument();
+    });
+
+    // o Voltar continua ligado durante o envio, e a resposta q chegava dps puxava a pessoa pro historico
+    it("a resposta do envio q chega dps de a pessoa sair da tela n troca de tela", async () => {
+        let finishSend = null;
+        const post = vi.spyOn(apiService, "post").mockImplementation(() => new Promise((resolve) => {
+            finishSend = () => resolve({id: 9});
+        }));
+        const router = createMemoryRouter([
+            {path: "/paciente/:patientId/selecao-escalas", element: <SelecaoEscalas/>},
+            {path: "/paciente/:patientId/historico", element: <p>Histórico do paciente</p>},
+            {path: "/pacientes", element: <p>Lista de pacientes</p>},
+        ], {initialEntries: ["/paciente/5/selecao-escalas"]});
+        render(<RouterProvider router={router}/>);
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole("checkbox", {name: /Escala de ansiedade de Hamilton/}));
+        await user.click(screen.getByRole("button", {name: "Enviar ao paciente"}));
+        await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+        await act(() => router.navigate("/pacientes"));
+        expect(await screen.findByText("Lista de pacientes")).toBeInTheDocument();
+
+        await act(async () => finishSend());
+
+        expect(router.state.location.pathname).toBe("/pacientes");
+        expect(screen.queryByText("Histórico do paciente")).not.toBeInTheDocument();
     });
 
     // o botao desabilitado enquanto enviava perdia o foco, q ia pro body (CT-39)
