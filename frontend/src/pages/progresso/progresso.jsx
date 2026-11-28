@@ -868,7 +868,7 @@ function CommentsCard({comments, isPrescriber, isLoading, loadError}) {
             count={isLoaded ? comments.length : undefined}
         >
             {isLoading && <SkeletonBlock height="3rem"/>}
-            {!isLoading && loadError && <p className={styles.empty}>{loadError}</p>}
+            {!isLoading && loadError && <p className="aviso aviso--atencao" role="alert">{loadError}</p>}
             {isLoaded && comments.length === 0 && (
                 <p className={styles.empty}>
                     {isPrescriber

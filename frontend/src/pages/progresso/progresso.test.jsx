@@ -958,8 +958,12 @@ describe("Progresso", () => {
 
         // o grafico continua, so o cartao dos comentarios avisa q eles n carregaram
         expect(await screen.findByRole("application", {name: /Gráfico de Ansiedade/})).toBeInTheDocument();
-        expect(await screen.findByText("Não foi possível carregar os comentários. Confira sua internet e tente de novo."))
-            .toBeInTheDocument();
+        const commentsError = await screen.findByText(
+            "Não foi possível carregar os comentários. Confira sua internet e tente de novo.");
+        // eh um erro como os outros da tela: o leitor de tela anuncia e a cara eh a do aviso de atencao,
+        // n o texto cinza do "Nenhum comentario"
+        expect(commentsError).toHaveAttribute("role", "alert");
+        expect(commentsError).toHaveClass("aviso", "aviso--atencao");
         expect(screen.queryByText(/Nenhum comentário/)).not.toBeInTheDocument();
         expect(screen.getByRole("heading", {name: "O que você escreveu"})).toBeInTheDocument();
     });
