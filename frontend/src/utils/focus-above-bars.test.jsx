@@ -236,6 +236,23 @@ describe("campo com foco atras da barra presa no pe da tela", () => {
         expect(scrollBy).not.toHaveBeenCalled();
     });
 
+    // o main recebe o foco do layout na troca de tela. no voltar do navegador a pagina volta rolada,
+    // com o comeco dela acima da janela, e esse foco n pode subir a pagina
+    it("o foco no comeco do conteudo n faz a pagina rolar", async () => {
+        window.innerHeight = 900;
+        renderForm();
+        await screen.findByLabelText("Conduta e plano terapêutico");
+        const main = screen.getByRole("main");
+        placeAt(main, box(-600, 1400, 248, 1280));
+        main.setAttribute("tabindex", "-1");
+
+        act(() => main.focus());
+        await nextFrame();
+
+        expect(main).toHaveFocus();
+        expect(scrollBy).not.toHaveBeenCalled();
+    });
+
     // campo mais alto q o espaco livre: sobe so ate o topo dele, onde fica o rotulo e o cursor
     it("campo mais alto q o espaco livre sobe so ate o topo dele aparecer", async () => {
         window.innerHeight = 900;

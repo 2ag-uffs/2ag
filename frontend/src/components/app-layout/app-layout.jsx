@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
-import {Link, Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation} from "react-router";
+import {Link, Outlet, ScrollRestoration, useLocation, useMatches, useNavigate, useNavigation} from "react-router";
 import {
     FiActivity,
     FiArrowLeft,
@@ -232,10 +232,18 @@ function hasPendingTerm(user) {
 }
 
 // o main recebe o foco so dessa vez, senao clicar no meio da tela tbm ia focar ele
+// a pagina n rola por causa desse foco: no voltar do navegador ela fica onde a pessoa tinha deixado
 function focusContentStart(main) {
     main.setAttribute("tabindex", "-1");
-    main.focus();
+    main.focus({preventScroll: true});
     main.addEventListener("blur", () => main.removeAttribute("tabindex"), {once: true});
+}
+
+// nome fixo da tela, o msm q vai no titulo da aba (router.jsx). nunca leva dado de paciente
+function usePageName() {
+    const matches = useMatches();
+    const lastMatch = matches[matches.length - 1];
+    return lastMatch && lastMatch.handle && lastMatch.handle.title ? lastMatch.handle.title : undefined;
 }
 
 // moldura de todas as telas de quem esta logado
@@ -261,6 +269,26 @@ export default function AppLayout() {
     // quem tinha o foco qnd o termo abriu por cima da tela, pra ele voltar pra la qnd o termo fechar (CT-39)
     const focusBeforeTermRef = useRef(null);
     const mainRef = useRef(null);
+
+    // trocou de tela: o botao ou o link q abriu a tela nova ficou pra tras e o foco se perdia no body, sem o
+    // leitor de tela ler nada. agora o foco vai pro comeco do conteudo, o main, q leva o nome da tela nova
+    // (o titulo dela quase sempre so chega dps do esqueleto). a primeira tela aberta n mexe no foco, e a tela
+    // q ja levou o foco pra dentro dela ao abrir (o termo, um campo) fica com ele
+    const pageName = usePageName();
+    const pageRef = useRef(null);
+    const focusedPathRef = useRef(location.pathname);
+
+    useEffect(() => {
+        if (focusedPathRef.current === location.pathname) {
+            return;
+        }
+        focusedPathRef.current = location.pathname;
+        const page = pageRef.current;
+        if (!page || page.closest("[inert]") || page.contains(document.activeElement)) {
+            return;
+        }
+        focusContentStart(mainRef.current);
+    }, [location.pathname]);
 
     // como nos modais o foco volta pra onde estava. se a tela de baixo montou de novo, o q tinha o foco
     // n existe mais, entao ele vai pro comeco do conteudo em vez de ficar perdido no body
@@ -485,7 +513,7 @@ export default function AppLayout() {
                     </div>
                 </header>
 
-                <main className={styles.content} ref={mainRef}>
+                <main className={styles.content} ref={mainRef} aria-label={pageName}>
                     {logoutError && (
                         <p className={"aviso aviso--atencao " + styles.logoutError} role="alert" ref={logoutErrorRef}>
                             {logoutError.message}
@@ -498,7 +526,7 @@ export default function AppLayout() {
                         </button>
                     )}
                     {/* a chave muda a cada rota entao cada tela nova entra com o fade */}
-                    <div key={location.pathname} className={styles.page}>
+                    <div key={location.pathname} className={styles.page} ref={pageRef}>
                         {isTermPending && (
                             <TermUpdate onAccepted={() => closeTerm(false)} onBirthDateFixed={() => closeTerm(true)}/>
                         )}

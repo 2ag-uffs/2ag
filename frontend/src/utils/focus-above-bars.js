@@ -60,6 +60,11 @@ function showAboveBars(element) {
     if (document.activeElement !== element || element.closest("[data-bottom-bar], [data-top-bar], [role='dialog']")) {
         return;
     }
+    // o main so recebe o foco do layout, na troca de tela, pro leitor de tela e o tab comecarem dali
+    // a pagina fica onde esta, senao o voltar do navegador perdia o ponto onde a pessoa estava
+    if (element.matches("main")) {
+        return;
+    }
     const fieldBox = visibleBoxOf(element);
     if (fieldBox.height === 0) {
         return;

@@ -1,7 +1,7 @@
 import {act, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {useState} from "react";
-import {createMemoryRouter} from "react-router";
+import {useEffect, useRef, useState} from "react";
+import {createMemoryRouter, useNavigate} from "react-router";
 import {RouterProvider} from "react-router/dom";
 import {afterEach, describe, expect, it, vi} from "vitest";
 import AgendamentoConsultaPaciente from "../../pages/agendamento-consulta-paciente/agendamento-consulta-paciente.jsx";
@@ -62,6 +62,47 @@ function openLayoutWithLoginAt(path) {
                 {path: "/perfil", element: <Profile/>},
                 {path: "/escalas/:scaleName", element: <AnswerForm/>},
                 {path: "*", element: <p>conteudo da tela</p>},
+            ],
+        },
+    ], {initialEntries: [path]});
+    render(<RouterProvider router={router}/>);
+    return router;
+}
+
+// inicio de teste com dois botoes q abrem outra tela, como o Responder do painel do paciente
+function HomeWithButtons() {
+    const navigate = useNavigate();
+    return (
+        <>
+            <h1>Início</h1>
+            <button type="button" onClick={() => navigate("/escalas/teste")}>Responder</button>
+            <button type="button" onClick={() => navigate("/busca")}>Abrir a busca</button>
+        </>
+    );
+}
+
+// tela q cuida do proprio foco ao abrir
+function SearchWithFocus() {
+    const inputRef = useRef(null);
+    useEffect(() => inputRef.current.focus(), []);
+    return (
+        <>
+            <h1>Busca</h1>
+            <label htmlFor="search">Busca</label>
+            <input id="search" ref={inputRef}/>
+        </>
+    );
+}
+
+function openRoutesInLayout(path) {
+    const router = createMemoryRouter([
+        {
+            element: <AppLayout/>,
+            children: [
+                {path: "/painel-paciente", element: <HomeWithButtons/>},
+                {path: "/escalas/teste", element: <h1>Escala de teste</h1>, handle: {title: "Responder escala"}},
+                {path: "/busca", element: <SearchWithFocus/>},
+                {path: "/notificacoes", element: <p>lista de avisos</p>, handle: {title: "Avisos"}},
             ],
         },
     ], {initialEntries: [path]});
@@ -1028,6 +1069,45 @@ describe("AppLayout", () => {
 
         expect(await screen.findByText("tela de login")).toBeInTheDocument();
         expect(getLoggedUser()).toBeNull();
+    });
+
+    // o botao q abriu a tela nova some com a tela antiga e o foco caia no body: o leitor de tela n lia nada
+    // e o tab recomecava do menu. agora o foco vai pro comeco do conteudo, q leva o nome da tela nova
+    it("trocar de tela leva o foco pro comeco do conteudo da tela nova, e a primeira tela n rouba o foco", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({unread: 0});
+        setLoggedUser(MARIA);
+        const user = userEvent.setup();
+        const router = openRoutesInLayout("/painel-paciente");
+
+        await screen.findByRole("heading", {name: "Início"});
+        expect(document.body).toHaveFocus();
+
+        await user.click(screen.getByRole("button", {name: "Responder"}));
+
+        await screen.findByRole("heading", {name: "Escala de teste"});
+        const main = screen.getByRole("main", {name: "Responder escala"});
+        expect(main).toHaveFocus();
+        // o main so fica focavel dessa vez: o tab segue pra tela nova e ele n volta a ser parada
+        await user.tab();
+        expect(within(main).getByRole("button", {name: "Voltar"})).toHaveFocus();
+        expect(main).not.toHaveAttribute("tabindex");
+
+        // pelo menu tbm
+        await user.click(sideMenu().getByRole("link", {name: "Avisos"}));
+        await screen.findByText("lista de avisos");
+        expect(screen.getByRole("main", {name: "Avisos"})).toHaveFocus();
+        expect(router.state.location.pathname).toBe("/notificacoes");
+    });
+
+    it("a tela nova q ja levou o foco pra dentro dela continua com ele", async () => {
+        vi.spyOn(apiService, "get").mockResolvedValue({unread: 0});
+        setLoggedUser(MARIA);
+        const user = userEvent.setup();
+        openRoutesInLayout("/painel-paciente");
+
+        await user.click(await screen.findByRole("button", {name: "Abrir a busca"}));
+
+        expect(await screen.findByLabelText("Busca")).toHaveFocus();
     });
 
     // o Sair do menu esquecia quem estava logado com a tela ainda montada, e enquanto o login era baixado
