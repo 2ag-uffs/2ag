@@ -218,3 +218,31 @@ test("ficha tecnica lista do front so o q o frontend/package.json tem", () => {
     }
     assert.deepEqual(wrong, []);
 });
+
+// os codigos (CT-01, CT-02...) q tem linha propria nas tabelas do plano de testes, com repeticao
+function testPlanCodes() {
+    const text = readFileSync(path.join(REPO, "docs", "qa", "plano-de-testes.md"), "utf8");
+    return [...text.matchAll(/^\| (CT-\d+) \|/gm)].map((match) => match[1]);
+}
+
+// o CT-14 sumiu do plano num commit q so mexia no CT-15, e um teste do front e o card de QA seguiam citando ele
+test("codigo de caso de teste citado no codigo ou nos documentos existe no plano de testes", () => {
+    const codes = testPlanCodes();
+    const names = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--",
+        "*.md", "*.js", "*.jsx", "*.mjs", "*.java", "*.yml", "*.sql"], { cwd: REPO, encoding: "utf8" });
+    const missing = [];
+    for (const name of names.split("\0").filter((fileName) => fileName !== "")) {
+        const file = path.join(REPO, name);
+        if (!existsSync(file)) {
+            continue;
+        }
+        readFileSync(file, "utf8").split(/\r?\n/).forEach((line, index) => {
+            for (const match of line.matchAll(/\bCT-\d+\b/g)) {
+                if (!codes.includes(match[0])) {
+                    missing.push(name + ":" + (index + 1) + " " + match[0]);
+                }
+            }
+        });
+    }
+    assert.deepEqual(missing, []);
+});
