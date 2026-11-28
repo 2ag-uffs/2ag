@@ -673,7 +673,11 @@ export default function SignUp() {
             </p>
 
             <Modal show={isTermOpen} title="Termo de consentimento" onClickClose={() => setIsTermOpen(false)}>
-                <div className={styles.termText}>{consentTerm.text}</div>
+                {/* a caixa rola sozinha, entao eh parada do tab: sem isso o teclado n rolava o texto no safari */}
+                <div className={styles.termText} tabIndex={0} role="region"
+                     aria-label="Texto do termo de consentimento">
+                    {consentTerm.text}
+                </div>
                 <div className={styles.termActions}>
                     <button type="button" className={styles.termAcceptButton} onClick={acceptTerm}>
                         {ACCEPT_BUTTON_TEXT[ageBand]}
@@ -682,7 +686,9 @@ export default function SignUp() {
             </Modal>
 
             <Modal show={isResearchOpen} title="Termo de pesquisa" onClickClose={() => setIsResearchOpen(false)}>
-                <div className={styles.termText}>{researchTerm.text}</div>
+                <div className={styles.termText} tabIndex={0} role="region" aria-label="Texto do termo de pesquisa">
+                    {researchTerm.text}
+                </div>
                 <div className={styles.termActions}>
                     <button type="button" className={styles.termAcceptButton} onClick={acceptResearch}>
                         Aceito participar

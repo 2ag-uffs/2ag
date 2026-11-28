@@ -220,6 +220,31 @@ describe("SignUp", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
+    // a caixa do texto tem rolagem propria, e sem ser parada do tab quem usa so o teclado n rolava o termo
+    // no safari, q n da foco sozinho a caixa com rolagem: o tab pulava do Fechar direto pro aceite
+    it("o texto dos termos dentro do modal eh parada do tab, com nome, entre o fechar e o aceite", async () => {
+        mockApi();
+        const user = userEvent.setup();
+        renderSignUp();
+
+        await user.click(await screen.findByRole("button", {name: "Ler o termo de consentimento"}));
+        const consentText = screen.getByRole("region", {name: "Texto do termo de consentimento"});
+        expect(consentText).toHaveTextContent("Texto do termo");
+        expect(consentText).toHaveAttribute("tabindex", "0");
+        expect(screen.getByRole("button", {name: "Fechar"})).toHaveFocus();
+        await user.tab();
+        expect(consentText).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole("button", {name: /Li e aceito/})).toHaveFocus();
+        await user.keyboard("{Escape}");
+
+        await user.click(screen.getByRole("button", {name: "Ler o termo de pesquisa"}));
+        const researchText = screen.getByRole("region", {name: "Texto do termo de pesquisa"});
+        expect(researchText).toHaveTextContent("Texto da pesquisa");
+        await user.tab();
+        expect(researchText).toHaveFocus();
+    });
+
     // com a frase a 8 px do botao, o dedo q errava o botao uns 6 px pra cima caia na frase e marcava a caixa.
     // com 16 px, o toque 12 px acima do botao ficava a 4 px da frase e o chrome do celular ainda entregava pra ela
     it("a frase fica afastada do botao de ler, q o toque um pouco acima dele n marca a caixa", () => {

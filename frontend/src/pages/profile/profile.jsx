@@ -687,7 +687,11 @@ function ResearchCard({profile, onChanged}) {
             </div>
 
             <Modal show={isTermOpen} title="Termo de pesquisa" onClickClose={() => setIsTermOpen(false)}>
-                <div className={styles.termText}>{term && term.text}</div>
+                {/* a caixa rola sozinha, entao eh parada do tab: sem isso o teclado n rolava o texto no safari,
+                    e com a pesquisa ja aceita o tab ficava preso no Fechar */}
+                <div className={styles.termText} tabIndex={0} role="region" aria-label="Texto do termo de pesquisa">
+                    {term && term.text}
+                </div>
                 <CardMessage message={message}/>
                 {!consent.active && (
                     <div className={styles.actions}>

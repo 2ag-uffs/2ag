@@ -345,7 +345,8 @@ export default function TermUpdate({onAccepted, onBirthDateFixed}) {
                         <BirthDateFix profile={profile} onFixed={handleBirthDateFixed}/>
                     )}
                     {/* a chave faz o texto novo comecar do topo */}
-                    <div key={term.version} className={styles.termText} tabIndex={0} aria-label="Texto do termo">
+                    <div key={term.version} className={styles.termText} tabIndex={0} role="region"
+                         aria-label="Texto do termo">
                         {term.text}
                     </div>
                     {needsGuardian && (

@@ -410,6 +410,28 @@ describe("Profile", () => {
         expect(post).toHaveBeenCalledTimes(1);
     });
 
+    // com a pesquisa ja aceita o modal so tem o Fechar, e o tab ficava preso nele sem chegar no texto q rola
+    it("o texto do termo de pesquisa no modal eh parada do tab, msm qnd o fechar eh o unico botao", async () => {
+        const profile = {
+            ...PATIENT_PROFILE, birthDate: "1990-01-01",
+            researchConsent: {active: true, acceptedAt: "2026-10-01T10:00:00", termChanged: false},
+        };
+        vi.spyOn(apiService, "get").mockImplementation((path) => Promise.resolve(
+            path === "/consent-term/research" ? {version: "1.0", text: "Texto do termo de pesquisa."} : profile));
+        const user = userEvent.setup();
+        renderProfile();
+
+        await user.click(await screen.findByRole("button", {name: "Ler o termo"}));
+        const termText = await screen.findByRole("region", {name: "Texto do termo de pesquisa"});
+        expect(termText).toHaveTextContent("Texto do termo de pesquisa.");
+        expect(termText).toHaveAttribute("tabindex", "0");
+        expect(screen.getByRole("button", {name: "Fechar"})).toHaveFocus();
+        await user.tab();
+        expect(termText).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole("button", {name: "Fechar"})).toHaveFocus();
+    });
+
     // o aceite manda o hash do texto q o modal mostrou, e a api recusa se o texto mudou dps (revisao das regras R21)
     it("aceitar a pesquisa manda a versao e o hash do texto mostrado", async () => {
         const profile = {
