@@ -50,9 +50,10 @@
     fill: var(--color-text-secondary);
 }
 
-/* o eixo das gotas na cor da linha delas, pra n confundir com o da nota (revisao das regras R13) */
+/* o eixo das gotas no verde da linha delas, pra n confundir com o da nota (revisao das regras R13)
+ * eh o tom 3 da familia pq o da linha so da 3,4:1 no cartao branco, pouco pra numero de 12 px */
 .doseTick {
-    fill: var(--color-secondary);
+    fill: var(--color-secondary-dark);
 }
 
 /* o contorno da cor do cartao deixa o texto legivel qnd a linha passa por baixo */

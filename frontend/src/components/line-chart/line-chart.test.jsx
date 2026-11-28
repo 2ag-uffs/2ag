@@ -1,6 +1,7 @@
 import {act, fireEvent, render, screen} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {describe, expect, it, vi} from "vitest";
+import {contrastOf, rgbaOf, themesOf} from "../../test/contrast.js";
 import {declarationsOf, readCss} from "../../test/css-rules.js";
 import LineChart from "./line-chart.jsx";
 
@@ -252,6 +253,18 @@ describe("LineChart", () => {
         const {container} = renderChart();
 
         expect(container.querySelectorAll("text[class*='doseTick']")).toHaveLength(0);
+    });
+
+    // o verde claro da linha das gotas so da 3,4:1 no cartao branco, pouco pra numero de 12 px
+    it("os numeros do eixo das gotas passam de 4,5:1 sobre o cartao nos dois temas", () => {
+        const css = readCss(import.meta.url, "./line-chart.module.css");
+        const token = declarationsOf(css, ".doseTick").fill.match(/var\((--[\w-]+)\)/)[1];
+
+        // continua na familia do verde claro, a da linha das gotas
+        expect(token).toContain("--color-secondary");
+        Object.entries(themesOf(readCss(import.meta.url, "../../styles/colors.css"))).forEach(([themeName, theme]) => {
+            expect(contrastOf(rgbaOf(theme[token]), rgbaOf(theme["--color-surface"])), themeName).toBeGreaterThanOrEqual(4.5);
+        });
     });
 
     it("cada faixa vira uma linha com o nome e o corte do MEEM tbm", () => {

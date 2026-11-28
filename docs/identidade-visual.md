@@ -213,7 +213,7 @@ Nas telas de entrada e nas páginas de status (página não encontrada, sem cone
 
 ### gráfico de progresso
 
-O gráfico de evolução é um SVG feito à mão, e as cores vêm direto dos tokens do CSS por `var()` (`--color-chart-line`, `--color-chart-grid`, `--color-control-border` nas linhas das faixas, `--color-secondary` e `--color-error`, em `line-chart.module.css`). Por isso o tema escuro vale no gráfico sem nenhum JavaScript.
+O gráfico de evolução é um SVG feito à mão, e as cores vêm direto dos tokens do CSS por `var()` (`--color-chart-line`, `--color-chart-grid`, `--color-control-border` nas linhas das faixas, `--color-secondary` e `--color-error`, em `line-chart.module.css`). Os números do eixo das gotas usam `--color-secondary-dark`, o tom 3 do verde claro (4,6:1 sobre o cartão claro e 6,3:1 sobre o escuro), porque o tom da linha, como texto, reprova no claro (3,4:1). Por isso o tema escuro vale no gráfico sem nenhum JavaScript.
 
 ---
 
