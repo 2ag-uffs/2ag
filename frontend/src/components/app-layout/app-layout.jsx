@@ -405,7 +405,8 @@ export default function AppLayout() {
 
     const handleLogout = async () => {
         setLogoutError(null);
-        const isLoggedOut = await logout();
+        // como no sair do login por cima, a tela aberta desmonta antes de a api esquecer quem estava logado
+        const isLoggedOut = await logout(() => flushSync(() => setIsLeavingSession(true)));
         if (isLoggedOut) {
             navigate("/entrar", {replace: true});
         } else {

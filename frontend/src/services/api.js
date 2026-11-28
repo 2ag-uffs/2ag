@@ -328,7 +328,9 @@ export async function download(path, fallbackName) {
 // entao a tela so esquece quem estava logado qnd a api confirma, senao a proxima pessoa no computador entraria logada
 // 401 tbm conta como saiu pq a sessao ja tinha acabado
 // devolve se saiu ou n
-export async function logout() {
+// o beforeForgetting roda com a saida confirmada e antes de esquecer quem estava logado: o layout tira a tela
+// aberta ali, pq ela le quem esta logado ao desenhar e quebraria se desenhasse de novo antes do login abrir
+export async function logout(beforeForgetting) {
     try {
         const response = await fetch(BASE_URL + "/auth/logout", {method: "POST"});
         if (!response.ok && response.status !== 401) {
@@ -336,6 +338,9 @@ export async function logout() {
         }
     } catch {
         return false;
+    }
+    if (beforeForgetting) {
+        beforeForgetting();
     }
     loggedUser = null;
     return true;

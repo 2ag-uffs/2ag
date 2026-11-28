@@ -1030,6 +1030,43 @@ describe("AppLayout", () => {
         expect(getLoggedUser()).toBeNull();
     });
 
+    // o Sair do menu esquecia quem estava logado com a tela ainda montada, e enquanto o login era baixado
+    // qualquer coisa q fizesse a tela desenhar de novo (aqui as consultas q chegam atrasadas) quebrava lendo o id
+    it("sair pelo menu com a tela de consultas aberta vai pro login sem erro na tela", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        const pageAnswers = [];
+        vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            if (url === "/api/notifications/unread-count") {
+                return Promise.resolve(apiResponse(200, {unread: 0}));
+            }
+            if (url === "/api/auth/logout") {
+                return Promise.resolve(new Response(null, {status: 204}));
+            }
+            // os dados da tela ficam esperando ate dps do sair
+            return new Promise((resolve) => pageAnswers.push(() => resolve(apiResponse(200, []))));
+        });
+        // o login de vdd demora um pouco pra abrir, pq a tela dele eh baixada na hora
+        const router = createMemoryRouter([
+            {path: "/entrar", loader: () => new Promise((resolve) => setTimeout(() => resolve(null), 50)),
+                element: <p>tela de login</p>},
+            {element: <AppLayout/>, children: [{path: "/agendamento-consulta", element: <AgendamentoConsultaPaciente/>}]},
+        ], {initialEntries: ["/agendamento-consulta"]});
+        const user = userEvent.setup();
+        setLoggedUser(MARIA);
+        render(<RouterProvider router={router}/>);
+
+        await waitFor(() => expect(pageAnswers.length).toBeGreaterThan(0));
+        await user.click(screen.getAllByRole("button", {name: "Sair"})[0]);
+        await waitFor(() => expect(getLoggedUser()).toBeNull());
+        await act(async () => pageAnswers.forEach((answer) => answer()));
+
+        expect(await screen.findByText("tela de login")).toBeInTheDocument();
+        expect(router.state.location.pathname).toBe("/entrar");
+        expect(getLoggedUser()).toBeNull();
+        const loggedErrors = consoleError.mock.calls.flat().map(String).join("\n");
+        expect(loggedErrors).not.toMatch(/Cannot read properties of null/);
+    });
+
     // o Sair fica na barra q acompanha a rolagem e o aviso no alto da tela, entao a tela rola ate ele
     // e o aviso eh daquela tela: o layout continua montado na proxima, mas o aviso n pode seguir junto
     it("o aviso de sair q falhou rola ate aparecer e some ao trocar de tela", async () => {
