@@ -178,7 +178,8 @@
 
         --color-primary-light: #57bd80;
         --color-primary: #3fa96a;
-        --color-primary-dark: #2d8a54;
+        /* o botao principal com o mouse em cima: mais claro q o tom 3 de antes (#2d8a54), q deixava o texto em 4,3:1 */
+        --color-primary-dark: #33935a;
         --color-secondary-light: #aecb84;
         --color-secondary: #9cbd6e;
         --color-secondary-dark: #86a75c;
@@ -241,7 +242,8 @@
 
     --color-primary-light: #57bd80;
     --color-primary: #3fa96a;
-    --color-primary-dark: #2d8a54;
+    /* o botao principal com o mouse em cima: mais claro q o tom 3 de antes (#2d8a54), q deixava o texto em 4,3:1 */
+    --color-primary-dark: #33935a;
     --color-secondary-light: #aecb84;
     --color-secondary: #9cbd6e;
     --color-secondary-dark: #86a75c;
