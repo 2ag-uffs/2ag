@@ -1168,6 +1168,61 @@ describe("Escala diaria", () => {
         grid.scrollLeft = 0;
         await user.click(within(grid).getAllByRole("button")[0]);
         expect(grid.scrollLeft).toBe(0);
+
+        // a folga do comeco da faixa eh do anel de foco: o dia para dps dela, senao o anel dele cortava na esquerda
+        grid.style.paddingLeft = "4px";
+        grid.scrollLeft = 258;
+        await user.click(within(grid).getAllByRole("button")[1]);
+        expect(grid.scrollLeft).toBe(125);
+        expect(pageScroll).not.toHaveBeenCalled();
+        expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    // o navegador n rola ate o dia q ja aparece um pouco na borda da faixa: no celular de 360 o tab ate o
+    // primeiro dia deixava ele pela metade, com o anel de foco cortado na esquerda
+    it("o tab ate um dia cortado na borda da faixa rola ela ate o dia aparecer inteiro, e o toque n", async () => {
+        pendingTasks = [{...pendingTasks[0], periodStart: dayFromToday(-2), periodEnd: dayFromToday(4)}];
+        vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+            const strip = this.closest("[role='group']");
+            if (this.getAttribute("role") === "group") {
+                return {left: 16, right: 359, top: 0, bottom: 60, width: 343, height: 60};
+            }
+            if (strip && this.tagName === "BUTTON") {
+                const index = within(strip).getAllByRole("button").indexOf(this);
+                const left = 16 + index * 129 - strip.scrollLeft;
+                return {left, right: left + 121, top: 0, bottom: 56, width: 121, height: 56};
+            }
+            return {left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0};
+        });
+        const pageScroll = vi.spyOn(window, "scrollTo");
+        const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+        renderScale("/escalas/acompanhamento-semanal");
+        const user = userEvent.setup();
+
+        const grid = await screen.findByRole("group", {name: "Dias do período"});
+        await waitFor(() => expect(within(grid).getAllByRole("button")).toHaveLength(3));
+        const [firstDay, secondDay, thirdDay] = within(grid).getAllByRole("button");
+        await waitFor(() => expect(grid.scrollLeft).toBe(258));
+
+        // o dia com foco q ja aparece inteiro n mexe na faixa
+        thirdDay.focus();
+        expect(grid.scrollLeft).toBe(258);
+
+        // o shift tab volta pro dia do meio, q esta fora da faixa, e dps pro primeiro
+        await user.tab({shift: true});
+        expect(secondDay).toHaveFocus();
+        expect(grid.scrollLeft).toBe(129);
+        await user.tab({shift: true});
+        expect(firstDay).toHaveFocus();
+        expect(grid.scrollLeft).toBe(0);
+
+        // o foco q n veio do teclado deixa a faixa onde o dedo deixou
+        grid.scrollLeft = 77;
+        const matches = firstDay.matches.bind(firstDay);
+        vi.spyOn(firstDay, "matches").mockImplementation((selector) => selector !== ":focus-visible" && matches(selector));
+        firstDay.blur();
+        firstDay.focus();
+        expect(grid.scrollLeft).toBe(77);
         expect(pageScroll).not.toHaveBeenCalled();
         expect(scrollIntoView).not.toHaveBeenCalled();
     });

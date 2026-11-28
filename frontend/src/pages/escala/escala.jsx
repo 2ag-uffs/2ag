@@ -82,21 +82,36 @@ function daysBetween(firstDay, lastDay) {
     return days;
 }
 
+// anda a faixa ate o dia cortado na borda dela aparecer inteiro
+// mexe so na faixa: o scrollIntoView rolaria a pagina tbm e o aviso perto do salvar sairia da vista
+function showWholeDay(strip, day) {
+    const stripBox = strip.getBoundingClientRect();
+    const dayBox = day.getBoundingClientRect();
+    if (dayBox.left < stripBox.left || dayBox.right > stripBox.right) {
+        // o dia para dps da folga do comeco da faixa, q eh do anel de foco dele
+        const ringRoom = parseFloat(getComputedStyle(strip).paddingLeft) || 0;
+        strip.scrollLeft += dayBox.left - stripBox.left - ringRoom;
+    }
+}
+
+// o navegador n rola ate o dia q ja aparece um pouco na borda da faixa, e o tab deixava o dia com foco
+// cortado, com o anel pela metade. so pelo teclado: no toque a faixa n anda embaixo do dedo
+function showFocusedDay(event) {
+    const day = event.currentTarget;
+    if (day.matches(":focus-visible")) {
+        showWholeDay(day.parentElement, day);
+    }
+}
+
 function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, lateUntil, onChooseDay}) {
     const stripRef = useRef(null);
 
     // no celular a faixa rola de lado e o dia escolhido abria cortado, entao ela anda ate ele
-    // mexe so na faixa: o scrollIntoView rolaria a pagina tbm e o aviso perto do salvar sairia da vista
     useEffect(() => {
         const strip = stripRef.current;
         const chosenDay = strip ? strip.querySelector("[aria-pressed='true']") : null;
-        if (!chosenDay) {
-            return;
-        }
-        const stripBox = strip.getBoundingClientRect();
-        const dayBox = chosenDay.getBoundingClientRect();
-        if (dayBox.left < stripBox.left || dayBox.right > stripBox.right) {
-            strip.scrollLeft += dayBox.left - stripBox.left;
+        if (chosenDay) {
+            showWholeDay(strip, chosenDay);
         }
     }, [days, selectedDay]);
 
@@ -139,6 +154,7 @@ function DayGrid({days, responses, selectedDay, unsavedDays, isInsideTask, lateU
                             className={dayIso === selectedDay ? styles.day + " " + styles.dayChosen : styles.day}
                             aria-pressed={dayIso === selectedDay}
                             onClick={() => onChooseDay(dayIso)}
+                            onFocus={showFocusedDay}
                         >
                             <span className={styles.dayName}>{formatWeekdayAndDate(dayIso)}</span>
                             <span className={markClass}>

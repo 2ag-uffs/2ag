@@ -49,12 +49,17 @@
     width: 1.5rem;
 }
 
-/* os dias rolam de lado em vez de empilhar */
+/* os dias rolam de lado em vez de empilhar
+   a faixa q rola corta o q passa dela, tbm em cima, e o anel de foco do dia sai 4 px pra fora do botao:
+   a folga de 4 px em toda a volta deixa o anel inteiro, e a margem negativa devolve os dias ao lugar.
+   o scroll-padding guarda a msm folga qnd a faixa encaixa num dia ou rola ate o dia com foco */
 .days {
     display: flex;
     gap: var(--space-2);
+    margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) 0;
     overflow-x: auto;
-    padding-bottom: var(--space-1);
+    padding: var(--space-1);
+    scroll-padding-inline: var(--space-1);
     scroll-snap-type: x proximity;
 }
 

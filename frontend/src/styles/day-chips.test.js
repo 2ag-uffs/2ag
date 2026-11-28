@@ -37,6 +37,27 @@ describe("dias e horarios de escolher", () => {
     });
 });
 
+// a faixa q rola de lado corta tudo q passa da caixa dela, tbm em cima e embaixo, e o anel de foco do dia
+// sai 4 px pra fora do botao. so tinha folga embaixo: em cima e na esquerda o anel ficava cortado
+describe("anel de foco dos dias na faixa q rola de lado", () => {
+    const tokens = declarationsOf(readCss(import.meta.url, "./tokens.css"), ":root");
+
+    [["do diario", scaleCss], ["do pedido de consulta", bookingCss]].forEach(([name, css]) => {
+        it("a faixa " + name + " tem a folga do anel em toda a volta, sem tirar os dias do lugar", () => {
+            const days = declarationsOf(css, ".days");
+
+            expect(days["overflow-x"]).toBe("auto");
+            expect(tokens["--focus-ring"]).toBe("0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary)");
+            expect(parseFloat(tokens["--space-1"]) * 16).toBe(4);
+            expect(days.padding).toBe("var(--space-1)");
+            // a margem negativa em cima e dos lados devolve os dias ao alinhamento do titulo e do cartao
+            expect(days.margin).toBe("calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) 0");
+            // o encaixe e a rolagem ate o dia com foco param antes da folga
+            expect(days["scroll-padding-inline"]).toBe("var(--space-1)");
+        });
+    });
+});
+
 // o paciente le e age em cima desses textos: nada de 12 px nem de texto apagado pela opacidade
 describe("texto dos dias e dos horarios", () => {
     it("o nome do dia tem o tamanho do texto da pagina e a marca dele o de 14 px, sem opacidade", () => {
