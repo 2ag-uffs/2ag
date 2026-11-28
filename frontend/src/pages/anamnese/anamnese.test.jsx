@@ -101,6 +101,40 @@ describe("Anamnese", () => {
             "Conte o motivo em menos palavras " + URGENCY_NOTICE_TEXT);
     });
 
+    // o botao de enviar fica preso no pe da tela e o campo recusado la no alto da ficha comprida
+    it("ficha recusada pela api leva o foco pro primeiro campo com erro", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(400, "Dados inválidos", [
+            {field: "treatmentAwareness", message: "Escolha uma resposta"},
+            {field: "reasonForVisit", message: "Conte o motivo da consulta"},
+        ]));
+        renderAnamnesis("/painel-paciente", "/anamnese");
+        await screen.findByLabelText("Motivo principal da consulta");
+        fillRequiredAnswers();
+
+        fireEvent.click(screen.getByRole("button", {name: "Enviar anamnese"}));
+
+        expect(await screen.findByText("Conte o motivo da consulta")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText("Motivo principal da consulta")).toHaveFocus());
+    });
+
+    // recusa sem campo, como a falta de internet: o foco vai pro aviso de cima, e de novo a cada envio recusado
+    it("ficha recusada sem campo marcado leva o foco pro aviso geral", async () => {
+        vi.spyOn(apiService, "post").mockRejectedValue(new ApiError(409, "Você já tem uma anamnese enviada."));
+        renderAnamnesis("/painel-paciente", "/anamnese");
+        await screen.findByLabelText("Motivo principal da consulta");
+        fillRequiredAnswers();
+
+        fireEvent.click(screen.getByRole("button", {name: "Enviar anamnese"}));
+
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
+        expect(screen.getByRole("alert")).toHaveTextContent("Você já tem uma anamnese enviada.");
+
+        screen.getByRole("button", {name: "Enviar anamnese"}).focus();
+        fireEvent.click(screen.getByRole("button", {name: "Enviar anamnese"}));
+
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveFocus());
+    });
+
     it("correcao salva tbm sai do historico", async () => {
         vi.spyOn(apiService, "get").mockResolvedValue({id: 3, annulled: false, reasonForVisit: "dor", treatmentAwareness: "Sim"});
         const put = vi.spyOn(apiService, "put").mockResolvedValue({id: 3});

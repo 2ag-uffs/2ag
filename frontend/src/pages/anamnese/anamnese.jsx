@@ -3,6 +3,7 @@ import {useBlocker, useNavigate, useSearchParams} from "react-router";
 import ConfirmModal from "../../components/confirm-modal/confirm-modal.jsx";
 import {LoadError} from "../../components/error-card/error-card.jsx";
 import BusyButton from "../../components/form/busy-button.jsx";
+import {focusFirstInvalidField} from "../../components/form/focus-first-error.js";
 import SelectField from "../../components/form/select-field.jsx";
 import TextAreaField from "../../components/form/text-area-field.jsx";
 import TextField from "../../components/form/text-field.jsx";
@@ -107,6 +108,9 @@ export default function Anamnese() {
     const [fieldErrors, setFieldErrors] = useState({});
     // a ficha enviada sai sem perguntar. eh ref pq o blocker le na hora da saida, logo dps do envio
     const isSentRef = useRef(false);
+    const formRef = useRef(null);
+    const formErrorRef = useRef(null);
+    const [refusedCount, setRefusedCount] = useState(0);
 
     useEffect(() => {
         let isCurrentRequest = true;
@@ -140,6 +144,19 @@ export default function Anamnese() {
             isCurrentRequest = false;
         };
     }, [isCorrection, anamnesisId, loggedUser.id]);
+
+    // envio recusado: o foco sai do botao preso no pe da tela e vai pro primeiro campo marcado, como nos
+    // outros formularios. sem campo marcado vai pro aviso de cima, q fica longe do botao numa ficha comprida
+    // eh um efeito pq o campo so fica marcado depois q a tela desenha de novo
+    useEffect(() => {
+        if (refusedCount === 0 || !formRef.current) {
+            return;
+        }
+        const hasFocusedField = focusFirstInvalidField(formRef.current);
+        if (!hasFocusedField && formErrorRef.current) {
+            formErrorRef.current.focus();
+        }
+    }, [refusedCount]);
 
     // quem desiste volta pra tela de onde veio a ficha
     const exitPath = isCorrection ? "/historico-paciente" : "/painel-paciente";
@@ -188,6 +205,7 @@ export default function Anamnese() {
             setFieldErrors(errorInfo.fieldErrors);
             setFormError(errorInfo.message || "Confira as respostas destacadas.");
             setIsSaving(false);
+            setRefusedCount((count) => count + 1);
         }
     };
 
@@ -225,9 +243,11 @@ export default function Anamnese() {
                 )}
             </div>
 
-            {formError && <p className="aviso aviso--atencao" role="alert">{formError}</p>}
+            {formError && (
+                <p className="aviso aviso--atencao" role="alert" tabIndex={-1} ref={formErrorRef}>{formError}</p>
+            )}
 
-            <form className={styles.form} onSubmit={handleSubmit}>
+            <form className={styles.form} onSubmit={handleSubmit} ref={formRef}>
                 <fieldset className={styles.section} disabled={isSaving}>
                     <legend>Sobre você</legend>
                     {/* o aviso de urgencia vem em cada parte da ficha, ligado aos campos de texto dela (R1) */}
