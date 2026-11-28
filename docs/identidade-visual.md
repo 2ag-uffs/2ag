@@ -150,6 +150,16 @@ A terracota continua nos 10% de destaque: o botão cheio só aparece dentro dess
 
 Antes essas bordas usavam `--color-border`, que dá 1,3:1 sobre o cartão nos dois temas. `--color-border` e `--color-chart-grid` não mudaram de valor: continuam no contorno dos cartões e na grade do gráfico, que não precisam ser achados. Como a borda em repouso ficou quase tão escura quanto a de erro, o campo recusado passou a ter a borda dobrada (2 px), além da cor, do halo e da mensagem embaixo; a opção escolhida já tinha a borda dobrada e o check. `frontend/src/styles/control-border.test.js` refaz a conta nos dois temas.
 
+**Halo do campo em foco (28/11/2026).** O campo de texto, o seletor e a caixa de texto com o foco ficam com a borda na primária e um halo de 3 px em volta, na cor `--color-focus-halo`. No tema claro ela é a primária `#006633` a 30%, como sempre foi: o halo é leve (1,6:1 sobre o cartão) e quem mostra o foco é a borda, que fica verde escura. No tema escuro essa mesma cor dava 1,2:1 e sumia, e a borda só trocava de um cinza para um verde de claridade parecida, então o halo do escuro passou a ser o verde claro do tema, `#57BD80`, a 70%:
+
+| Fundo | halo no escuro |
+| :--- | :--- |
+| fundo da página | 4,5:1 |
+| cartão, que é também o lado de dentro do campo | 4,3:1 |
+| bloco dentro do cartão | 4,0:1 |
+
+`frontend/src/styles/focus.test.js` refaz a conta e pede 3:1 nos três fundos.
+
 ### escala de letras
 
 Os tamanhos de letra ficam em `frontend/src/styles/tokens.css`: 12 px (`--text-xs`), 14 px (`--text-sm`), 16 px (`--text-md`, o corpo do texto) e os tamanhos dos títulos. A regra da escala (decisão da dona do projeto, novembro de 2026): o que a pessoa precisa ler para agir nunca fica menor que o corpo. Por isso a mensagem de erro do campo, a dica embaixo do campo, o nome do campo nos cartões de receita, consulta, anamnese e do Perfil e, no celular, o texto do botão pequeno passaram de 14 para 16 px. Vale igual para o paciente, o prescritor e a administração, como um padrão só. O rótulo em cima do campo do formulário continua em 14 px e em negrito, e os tamanhos de 14 e 12 px ficam para o que é só apoio, como a data, a contagem e a etiqueta de situação. No computador o botão pequeno continua com a letra de 14 px. Medido no Chrome sem janela em 320 px, nos três perfis: nenhuma tela rola de lado. `frontend/src/styles/reading-size.test.js` lista as regras que seguem a escala.

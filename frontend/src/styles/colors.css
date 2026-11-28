@@ -84,6 +84,12 @@
      * clara pq eh so o contorno dos cartoes, q n precisa ser achado */
     --color-control-border: #6b756f;
 
+    /* ---- halo do campo em foco ----
+     * no claro eh o verde escuro bem leve, pq a borda do campo ja fica verde escura.
+     * no escuro eh o verde claro do tema a 70%, q passa de 3:1 sobre a pagina, o cartao
+     * e o bloco de dentro (o verde leve do claro dava 1,2:1 e sumia) */
+    --color-focus-halo: rgba(0, 102, 51, 0.3);
+
     /* ---- estados ---- */
     --color-error: #a44819;             /* terracota tom 3, 6,0:1 */
     --color-error-soft: #f1e4dd;        /* fundo da caixa de erro */
@@ -182,6 +188,7 @@
         --color-primary-soft: #16281d;
         --color-neutral: #6f7c73;
         --color-control-border: #7a887e;
+        --color-focus-halo: rgba(87, 189, 128, 0.7);
 
         --color-error: #e0906b;
         --color-error-soft: #2e1d16;
@@ -244,6 +251,7 @@
     --color-primary-soft: #16281d;
     --color-neutral: #6f7c73;
     --color-control-border: #7a887e;
+    --color-focus-halo: rgba(87, 189, 128, 0.7);
 
     --color-error: #e0906b;
     --color-error-soft: #2e1d16;
@@ -308,6 +316,7 @@
         --color-primary-soft: #e0ede6;
         --color-neutral: #9aa69f;
         --color-control-border: #6b756f;
+        --color-focus-halo: rgba(0, 102, 51, 0.3);
 
         --color-error: #a44819;
         --color-error-soft: #f1e4dd;

@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {contrastOf, onTopOf, rgbaOf, themesOf} from "../test/contrast.js";
-import {declarationsOf, mediaRules, readCss} from "../test/css-rules.js";
+import {cssRules, declarationsOf, mediaRules, readCss} from "../test/css-rules.js";
 
 // foco sempre visivel pra quem usa so o teclado (CT-39)
 
@@ -45,6 +45,38 @@ describe("anel de foco de botoes e links", () => {
                 expect(contrastOf(ring, backdrop)).toBeGreaterThanOrEqual(3);
             });
         });
+    });
+});
+
+// a cor do halo, a unica sombra do --focus-halo
+function haloColorIn(theme) {
+    const token = tokens["--focus-halo"].match(/var\((--[\w-]+)\)$/);
+    return token ? theme[token[1]] : tokens["--focus-halo"].match(/(#[0-9a-f]{6}|rgba?\([^)]*\))$/i)[1];
+}
+
+// no escuro o halo era o verde escuro do tema claro meio transparente e sumia no cartao (1,2:1), e no seletor,
+// q n tem cursor piscando, sobrava so a borda fina. no claro a borda verde escura do campo continua mostrando o foco
+describe("halo de foco de campo, seletor e caixa de texto", () => {
+    it("eh o q o campo em foco mostra", () => {
+        // a lista dentro do :where tem virgula, entao a regra sai do cssRules com os pedacos juntos de novo
+        const focused = cssRules(readCss(import.meta.url, "./input.css"))
+            .find((rule) => rule.selectors.join(", ") === ":where(input, select, textarea):focus");
+
+        expect(focused.body).toContain("box-shadow: var(--focus-halo);");
+    });
+
+    Object.entries(THEMES).filter(([themeName]) => themeName.startsWith("escuro")).forEach(([themeName, theme]) => {
+        it("no tema " + themeName + " passa de 3:1 sobre a pagina, o cartao (a cor do campo) e o bloco de dentro", () => {
+            ["--color-background", "--color-surface", "--color-surface-alt"].forEach((backdropName) => {
+                const backdrop = rgbaOf(theme[backdropName]);
+                const halo = onTopOf(rgbaOf(haloColorIn(theme)), backdrop);
+                expect(contrastOf(halo, backdrop), backdropName).toBeGreaterThanOrEqual(3);
+            });
+        });
+    });
+
+    it("no tema claro continua o verde leve de antes", () => {
+        expect(haloColorIn(THEMES.claro)).toBe("rgba(0, 102, 51, 0.3)");
     });
 });
 

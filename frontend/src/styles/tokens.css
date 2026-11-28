@@ -51,9 +51,10 @@
 
     /* ---- anel de foco de quem navega pelo teclado ----
      * verde cheio, q passa de 3:1 sobre o fundo nos dois temas, com uma folga da cor do cartao
-     * pra n grudar no botao verde. o campo de texto fica so com o halo pq a borda dele ja fica verde */
+     * pra n grudar no botao verde. o campo de texto fica so com o halo pq a borda dele ja fica verde.
+     * a cor do halo vem do tema (colors.css): no escuro o verde leve do claro sumia */
     --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary);
-    --focus-halo: 0 0 0 3px rgba(0, 102, 51, 0.3);
+    --focus-halo: 0 0 0 3px var(--color-focus-halo);
 
     /* ---- movimento ---- */
     --duration-fast: 120ms;
